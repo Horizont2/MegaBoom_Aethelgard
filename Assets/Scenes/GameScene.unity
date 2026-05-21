@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 00:01
+  m_text: 00:00
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7d430f65ed0f6ce4690bbb04e23c04c2, type: 2}
   m_sharedMaterial: {fileID: -3152210484460238209, guid: 7d430f65ed0f6ce4690bbb04e23c04c2, type: 2}
@@ -39753,6 +39753,7 @@ MonoBehaviour:
   timerText: {fileID: 3515864}
   fadeDuration: 2
   waitBeforeRestart: 1.5
+  isTimerActive: 0
 --- !u!4 &1555677133
 Transform:
   m_ObjectHideFlags: 0

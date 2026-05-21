@@ -10,14 +10,20 @@ public class LoadingManager : MonoBehaviour
 
     [Header("UI References")]
     public CanvasGroup loadingCanvasGroup;
-    public Slider loadingSlider;
     public TextMeshProUGUI loadingText;
     public TextMeshProUGUI hintText;
     public CanvasGroup blackFadeGroup;
 
+    public RectTransform loadingSpinner;
+
+    [Header("Dynamic Backgrounds")]
+    public Image loadingArt;
+    public Sprite[] loadingSprites;
+
     [Header("Settings")]
     public float sceneFadeSpeed = 1.5f;
     public float hintChangeInterval = 5f;
+    public float spinnerRotationSpeed = 150f;
 
     [TextArea(2, 3)]
     public string[] gameHints;
@@ -41,9 +47,23 @@ public class LoadingManager : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        if (isLoading && loadingSpinner != null)
+        {
+            loadingSpinner.Rotate(0, 0, -spinnerRotationSpeed * Time.unscaledDeltaTime);
+        }
+    }
+
     public void LoadScene(string sceneName)
     {
         if (isLoading) return;
+
+        if (loadingSprites != null && loadingSprites.Length > 0 && loadingArt != null)
+        {
+            loadingArt.sprite = loadingSprites[Random.Range(0, loadingSprites.Length)];
+        }
+
         StartCoroutine(LoadRoutine(sceneName));
     }
 
@@ -51,20 +71,19 @@ public class LoadingManager : MonoBehaviour
     {
         isLoading = true;
 
-        // 1. Поява чорного екрану
         if (blackFadeGroup != null)
         {
             blackFadeGroup.gameObject.SetActive(true);
             while (blackFadeGroup.alpha < 1f)
             {
-                blackFadeGroup.alpha += Time.unscaledDeltaTime * sceneFadeSpeed * 2f;
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                blackFadeGroup.alpha += dt * sceneFadeSpeed * 2f;
                 yield return null;
             }
         }
 
         if (loadingCanvasGroup != null)
         {
-            loadingSlider.value = 0f;
             loadingCanvasGroup.gameObject.SetActive(true);
             loadingCanvasGroup.alpha = 1f;
         }
@@ -72,7 +91,6 @@ public class LoadingManager : MonoBehaviour
         if (hintCoroutine != null) StopCoroutine(hintCoroutine);
         hintCoroutine = StartCoroutine(HintRoutine());
 
-        // Пріоритет Low, щоб UI міг анімуватися
         Application.backgroundLoadingPriority = ThreadPriority.Low;
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
@@ -80,77 +98,90 @@ public class LoadingManager : MonoBehaviour
 
         float visualProgress = 0f;
 
-        // Чекаємо завантаження файлів сцени (до 90%)
-        while (asyncLoad.progress < 0.9f || visualProgress < 0.9f)
+        // ФАЗА 1: Завантаження асетів (0% - 50%)
+        while (asyncLoad.progress < 0.9f || visualProgress < 1f)
         {
-            visualProgress = Mathf.MoveTowards(visualProgress, asyncLoad.progress / 0.9f, Time.unscaledDeltaTime * 0.5f);
-            if (loadingSlider != null) loadingSlider.value = visualProgress * 0.5f; // Перша половина прогресу
+            // Обмежуємо dt, щоб уникнути різких стрибків відсотків через лаги рушія
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            float targetProgress = asyncLoad.progress / 0.9f;
+
+            visualProgress = Mathf.MoveTowards(visualProgress, targetProgress, dt * 1.5f);
             if (loadingText != null) loadingText.text = $"LOADING ASSETS... {Mathf.FloorToInt(visualProgress * 50)}%";
+
             yield return null;
         }
 
-        // 3. Активуємо сцену
+        yield return new WaitForEndOfFrame();
+
+        // 3. Активація сцени
         asyncLoad.allowSceneActivation = true;
         while (!asyncLoad.isDone) yield return null;
 
-        // --- ОЧІКУВАННЯ ГЕНЕРАЦІЇ СВІТУ ---
-        // 3. Активуємо сцену
-        asyncLoad.allowSceneActivation = true;
-        while (!asyncLoad.isDone) yield return null;
-
-        // --- ФІКС: Перевіряємо, чи є в цій сцені генератор світу ---
+        // ФАЗА 2: Генерація світу (50% - 100%)
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
+
+        Application.backgroundLoadingPriority = ThreadPriority.Normal;
 
         if (worldGen != null)
         {
-            if (loadingText != null) loadingText.text = "GENERATING WORLD...";
             float genProgress = 0f;
-
-            Application.backgroundLoadingPriority = ThreadPriority.Normal;
-
-            // Цикл чекає, поки WorldGenerator.cs змінить IsGenerationDone на true
             while (!WorldGenerator.IsGenerationDone)
             {
-                genProgress = Mathf.MoveTowards(genProgress, 1f, Time.unscaledDeltaTime * 0.2f);
-                if (loadingSlider != null) loadingSlider.value = 0.5f + (genProgress * 0.45f);
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                // Фейковий плавний прогрес генерації, який доходить максимум до 99%
+                genProgress = Mathf.MoveTowards(genProgress, 1f, dt * 0.5f);
+                int displayPercent = Mathf.FloorToInt(50f + (genProgress * 49f));
+
+                if (loadingText != null) loadingText.text = $"GENERATING WORLD... {displayPercent}%";
                 yield return null;
             }
         }
         else
         {
-            // Якщо генератора немає (наприклад, сюжетний Lvl_1 або Магазин),
-            // просто повертаємо нормальний пріоритет процесору
-            Application.backgroundLoadingPriority = ThreadPriority.Normal;
+            // Якщо генератора немає (ми вантажимо Табір)
+            float prepProgress = 0f;
+            while (prepProgress < 1f)
+            {
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                prepProgress += dt * 1.5f;
+                if (loadingText != null) loadingText.text = $"PREPARING SCENE... {Mathf.FloorToInt(50 + (prepProgress * 50))}%";
+                yield return null;
+            }
         }
 
-        if (loadingSlider != null) loadingSlider.value = 1f;
         if (loadingText != null) loadingText.text = "READY";
 
-        yield return new WaitForSecondsRealtime(0.5f); // Коротка пауза для візуального комфорту
+        yield return new WaitForSecondsRealtime(0.3f);
 
-        // 4. Плавне зникнення панелі завантаження
         if (loadingCanvasGroup != null)
         {
             while (loadingCanvasGroup.alpha > 0f)
             {
-                loadingCanvasGroup.alpha -= Time.unscaledDeltaTime * sceneFadeSpeed;
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                loadingCanvasGroup.alpha -= dt * sceneFadeSpeed;
                 yield return null;
             }
             loadingCanvasGroup.gameObject.SetActive(false);
         }
 
-        // 5. Плавний Fade Out чорного екрану (тут гравець вже бачить оптимізований світ)
         if (blackFadeGroup != null)
         {
             while (blackFadeGroup.alpha > 0f)
             {
-                blackFadeGroup.alpha -= Time.unscaledDeltaTime * sceneFadeSpeed;
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                blackFadeGroup.alpha -= dt * sceneFadeSpeed;
                 yield return null;
             }
             blackFadeGroup.gameObject.SetActive(false);
         }
 
         isLoading = false;
+
+        // --- ЗАПУСК ТАЙМЕРА ПІСЛЯ ЗНИКНЕННЯ ЕКРАНУ ---
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.StartLevelTimer();
+        }
     }
 
     private IEnumerator HintRoutine()

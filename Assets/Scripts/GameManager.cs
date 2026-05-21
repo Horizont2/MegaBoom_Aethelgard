@@ -21,6 +21,7 @@ public class GameManager : MonoBehaviour
 
     public static float survivalTime = 0f;
     private bool isGameOver = false;
+    public bool isTimerActive = false;
 
     private float nextSurvivalTick = 1f;
 
@@ -50,8 +51,8 @@ public class GameManager : MonoBehaviour
         survivalTime = 0f;
         nextSurvivalTick = 1f;
         isGameOver = false;
+        isTimerActive = false; // Таймер стоїть, поки йде завантаження
 
-        // ФІКС: Динамічно шукаємо UI елементи в новій сцені
         GameObject timerObj = GameObject.Find("TimerText");
         if (timerObj != null) timerText = timerObj.GetComponent<TextMeshProUGUI>();
 
@@ -59,6 +60,8 @@ public class GameManager : MonoBehaviour
         if (panelObj != null) gameOverPanel = panelObj.GetComponent<CanvasGroup>();
 
         if (gameOverPanel != null) gameOverPanel.alpha = 0f;
+
+        StartCoroutine(CheckForLoadingManager());
     }
 
     private void Start()
@@ -68,18 +71,35 @@ public class GameManager : MonoBehaviour
         isGameOver = false;
     }
 
+    private IEnumerator CheckForLoadingManager()
+    {
+        yield return null;
+        // Якщо екрану завантаження немає (тест в редакторі), стартуємо одразу
+        if (LoadingManager.Instance == null) StartLevelTimer();
+    }
+
     private void Update()
     {
-        if (isGameOver) return;
+        if (isGameOver || !isTimerActive) return;
 
         survivalTime += Time.deltaTime;
 
+        // Коли проходить секунда
         if (survivalTime >= nextSurvivalTick)
         {
             nextSurvivalTick += 1f;
-            if (MissionManager.Instance != null)
+
+            // ФІКС ЗАВИСАННЯ: Захищаємо код від крашу, якщо MissionManager глючить
+            try
             {
-                MissionManager.Instance.AddProgress(MissionType.Survive, 1);
+                if (MissionManager.Instance != null)
+                {
+                    MissionManager.Instance.AddProgress(MissionType.Survive, 1);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("MissionManager error suppressed to keep timer running: " + e.Message);
             }
         }
 
@@ -91,11 +111,17 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void StartLevelTimer()
+    {
+        isTimerActive = true;
+    }
+
     public void TriggerGameOver()
     {
         if (isGameOver) return;
 
         isGameOver = true;
+        isTimerActive = false;
 
         PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.Save();
@@ -115,14 +141,8 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForSeconds(waitBeforeRestart);
 
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
-        }
-        else
-        {
-            SceneManager.LoadScene("CampScene");
-        }
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        else SceneManager.LoadScene("CampScene");
     }
 
     public void ReturnToMenu()

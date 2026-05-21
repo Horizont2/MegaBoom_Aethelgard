@@ -42,6 +42,16 @@ public class MapPanelUI : MonoBehaviour
     public TextMeshProUGUI upgFoodCostText;
     public TextMeshProUGUI upgMaxLevelText;
 
+    [Header("Dynamic UI Colors")]
+    [Tooltip("Колір тексту, коли ресурсів вистачає (або сила гравця достатня)")]
+    public Color affordableColor = new Color(0.298f, 0.686f, 0.314f, 1f); // Дефолтний зелений
+    [Tooltip("Колір тексту, коли ресурсів НЕ вистачає")]
+    public Color unaffordableColor = new Color(0.957f, 0.263f, 0.212f, 1f); // Дефолтний червоний
+    [Tooltip("Колір тексту на кнопці Upgrade, коли вона активна")]
+    public Color btnTextAffordableColor = Color.white;
+    [Tooltip("Колір тексту на кнопці Upgrade, коли вона НЕ активна")]
+    public Color btnTextUnaffordableColor = new Color(0.6f, 0.6f, 0.6f, 1f);
+
     [Header("AAA Juice Effects")]
     public ParticleSystem upgradeSuccessVFX;
     public float shakeIntensity = 8f;
@@ -62,9 +72,6 @@ public class MapPanelUI : MonoBehaviour
     private Coroutine animationCoroutine;
     private bool isConfirmingUpgrade = false;
     private Vector3 currentRegionPos;
-
-    private string colorGreen = "#4CAF50";
-    private string colorRed = "#F44336";
 
     public RegionData GetCurrentRegion() { return currentRegion; }
     public bool IsPanelOpen() { return canvasGroup.interactable; }
@@ -197,11 +204,9 @@ public class MapPanelUI : MonoBehaviour
         if (conquerFoodText != null) conquerFoodText.text = $"+{currentRegion.foodReward}";
         if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
 
-        // --- ФІКС БАГУ З POWER ---
-        // Якщо гравець щойно почав гру і ще не заходив у Shop, дефолтне значення буде 70 (Герой 50 + Зброя 20), а не 50.
         int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 70);
 
-        string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? colorGreen : colorRed;
+        string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
         if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
         if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
     }
@@ -219,11 +224,17 @@ public class MapPanelUI : MonoBehaviour
             bool canAfford = ResourceManager.Instance != null && ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             if (upgradeButton) upgradeButton.interactable = canAfford;
 
+            // Динамічна зміна кольору тексту кнопки (опціонально для більшої виразності)
+            if (upgradeButtonText != null && !isConfirmingUpgrade)
+            {
+                upgradeButtonText.color = canAfford ? btnTextAffordableColor : btnTextUnaffordableColor;
+            }
+
             if (ResourceManager.Instance != null)
             {
-                string wCol = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? colorGreen : colorRed;
-                string sCol = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? colorGreen : colorRed;
-                string fCol = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? colorGreen : colorRed;
+                string wCol = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
+                string sCol = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
+                string fCol = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
 
                 if (upgWoodCostText) upgWoodCostText.text = $"<color={wCol}>{nextLevelData.costWood}</color>";
                 if (upgStoneCostText) upgStoneCostText.text = $"<color={sCol}>{nextLevelData.costStone}</color>";
@@ -260,7 +271,11 @@ public class MapPanelUI : MonoBehaviour
 
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-                    if (upgradeButtonText != null) upgradeButtonText.text = "<color=#FFD700>CONFIRM</color>";
+                    if (upgradeButtonText != null)
+                    {
+                        upgradeButtonText.text = "<color=#FFD700>CONFIRM</color>";
+                        upgradeButtonText.color = btnTextAffordableColor; // Повертаємо нормальний колір підтвердження
+                    }
                     if (actionButton != null) actionButton.interactable = false;
 
                     ShowUpgradePreview(currentLevel);
@@ -305,10 +320,12 @@ public class MapPanelUI : MonoBehaviour
         RegionLevelData currentData = currentRegion.upgradeLevels[currentLevel - 1];
         RegionLevelData nextData = currentRegion.upgradeLevels[currentLevel];
 
-        if (passiveWoodText) passiveWoodText.text = $"{currentData.passiveWood} <color={colorGreen}>→ {nextData.passiveWood}</color>/hr";
-        if (passiveStoneText) passiveStoneText.text = $"{currentData.passiveStone} <color={colorGreen}>→ {nextData.passiveStone}</color>/hr";
-        if (passiveFoodText) passiveFoodText.text = $"{currentData.passiveFood} <color={colorGreen}>→ {nextData.passiveFood}</color>/hr";
-        if (passiveDiamondText) passiveDiamondText.text = $"{currentData.passiveDiamonds} <color={colorGreen}>→ {nextData.passiveDiamonds}</color>/hr";
+        string arrowCol = ColorToHex(affordableColor);
+
+        if (passiveWoodText) passiveWoodText.text = $"{currentData.passiveWood} <color={arrowCol}>→ {nextData.passiveWood}</color>/hr";
+        if (passiveStoneText) passiveStoneText.text = $"{currentData.passiveStone} <color={arrowCol}>→ {nextData.passiveStone}</color>/hr";
+        if (passiveFoodText) passiveFoodText.text = $"{currentData.passiveFood} <color={arrowCol}>→ {nextData.passiveFood}</color>/hr";
+        if (passiveDiamondText) passiveDiamondText.text = $"{currentData.passiveDiamonds} <color={arrowCol}>→ {nextData.passiveDiamonds}</color>/hr";
     }
 
     private IEnumerator ShakePanel()
@@ -405,5 +422,11 @@ public class MapPanelUI : MonoBehaviour
         panelRect.anchoredPosition = targetPos;
         canvasGroup.alpha = targetAlpha;
         if (!state) { canvasGroup.interactable = false; canvasGroup.blocksRaycasts = false; }
+    }
+
+    // Хелпер для конвертації Unity Color у шістнадцятковий код (HEX) для TextMeshPro
+    private string ColorToHex(Color color)
+    {
+        return "#" + ColorUtility.ToHtmlStringRGB(color);
     }
 }

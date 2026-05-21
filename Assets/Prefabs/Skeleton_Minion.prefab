@@ -959,7 +959,7 @@ MonoBehaviour:
   moveSpeed: 4
   damage: 10
   isCinematicFrozen: 0
-  attackRange: 1.6
+  attackRange: 1
   attackCooldown: 1
   attackTelegraphTime: 0.5
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
