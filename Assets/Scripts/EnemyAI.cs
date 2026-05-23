@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI; // ДОДАНО ДЛЯ РОБОТИ З UI
+using UnityEngine.UI;
 using System.Collections;
 
 public class EnemyAI : MonoBehaviour
@@ -8,6 +8,10 @@ public class EnemyAI : MonoBehaviour
     public float maxHealth = 20f;
     public float moveSpeed = 4f;
     public float damage = 10f;
+
+    [Header("Night Buff Settings")]
+    [Tooltip("На скільки множиться шкода та швидкість вночі (1.25 = +25%)")]
+    public float nightMultiplier = 1.25f;
 
     [Header("Cinematic Settings")]
     public bool isCinematicFrozen = false;
@@ -24,8 +28,8 @@ public class EnemyAI : MonoBehaviour
     public GameObject damagePopupPrefab;
 
     [Header("UI (Health Bar)")]
-    public Canvas hpCanvas; // Канвас над ворогами
-    public Image hpFill;    // Смужка здоров'я
+    public Canvas hpCanvas;
+    public Image hpFill;
 
     [Header("Targeting & Swarm")]
     public Transform target;
@@ -42,6 +46,12 @@ public class EnemyAI : MonoBehaviour
     private float actualMoveSpeed;
     private float randomOffset;
 
+    // Змінні для збереження базових статів перед нічним бафом
+    private float baseActualMoveSpeed;
+    private float baseDamage;
+    private bool isNightBuffActive = false;
+    private DayNightCycle dayNightCycle;
+
     private MeshRenderer[] meshRenderers;
     private Color[] originalColors;
     private PlayerController playerController;
@@ -52,7 +62,7 @@ public class EnemyAI : MonoBehaviour
     private float stunTimer = 0f;
     private float lastAttackTime;
     private bool isPreparingAttack = false;
-    private Transform mainCamTransform; // Для повороту UI
+    private Transform mainCamTransform;
 
     private void Awake()
     {
@@ -81,6 +91,10 @@ public class EnemyAI : MonoBehaviour
     private void Start()
     {
         if (Camera.main != null) mainCamTransform = Camera.main.transform;
+
+        // Знаходимо годинник сцени
+        dayNightCycle = FindFirstObjectByType<DayNightCycle>();
+
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
@@ -117,8 +131,12 @@ public class EnemyAI : MonoBehaviour
             xpRewardMultiplier = finalHpMult * 0.5f;
         }
 
+        // Зберігаємо фінальні денні стати
+        baseActualMoveSpeed = actualMoveSpeed;
+        baseDamage = damage;
+
         currentHealth = maxHealth;
-        UpdateHealthUI(); // Оновлюємо UI на старті
+        UpdateHealthUI();
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
@@ -140,7 +158,8 @@ public class EnemyAI : MonoBehaviour
     {
         if (isDead || target == null) return;
 
-        // Поворот смужки здоров'я до камери
+        CheckNightBuff();
+
         if (hpCanvas != null && mainCamTransform != null)
         {
             hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
@@ -223,6 +242,30 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    // НОВИЙ МЕТОД: Перевірка і застосування нічного бафу
+    private void CheckNightBuff()
+    {
+        if (dayNightCycle == null || isEnraged) return; // Не чіпаємо розлючених ворогів (босів)
+
+        // За логікою гри, ніч - це час до 5 ранку та після 19 вечора
+        bool isNight = dayNightCycle.timeOfDay < 5f || dayNightCycle.timeOfDay > 19f;
+
+        if (isNight && !isNightBuffActive)
+        {
+            isNightBuffActive = true;
+            actualMoveSpeed = baseActualMoveSpeed * nightMultiplier;
+            damage = baseDamage * nightMultiplier;
+
+            // Опціонально: можна додати тут ефект (наприклад, червоне світіння очей)
+        }
+        else if (!isNight && isNightBuffActive)
+        {
+            isNightBuffActive = false;
+            actualMoveSpeed = baseActualMoveSpeed;
+            damage = baseDamage;
+        }
+    }
+
     private IEnumerator AttackRoutine()
     {
         isPreparingAttack = true;
@@ -265,16 +308,15 @@ public class EnemyAI : MonoBehaviour
         if (isDead || isInvincible) return;
 
         currentHealth -= damageAmount;
-        if (currentHealth < 0) currentHealth = 0; // Щоб смужка не йшла в мінус
+        if (currentHealth < 0) currentHealth = 0;
 
-        UpdateHealthUI(); // Оновлюємо смужку здоров'я
+        UpdateHealthUI();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
 
-        // Попап спавниться ТІЛЬКИ тут, коли ворог отримує шкоду
         if (damagePopupPrefab != null && showPopups)
         {
             GameObject popup = Instantiate(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
@@ -288,7 +330,7 @@ public class EnemyAI : MonoBehaviour
     {
         isInvincible = true;
         isEnraged = true;
-        actualMoveSpeed = moveSpeed * 1.8f;
+        actualMoveSpeed = moveSpeed * 1.8f; // Перевизначає всі бафи
 
         for (int i = 0; i < originalColors.Length; i++)
         {
@@ -322,7 +364,7 @@ public class EnemyAI : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
-        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false); // Ховаємо смужку здоров'я
+        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
 
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
