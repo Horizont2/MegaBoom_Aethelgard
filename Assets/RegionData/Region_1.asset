@@ -22,7 +22,7 @@ MonoBehaviour:
   neighboringRegions:
   - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 70
+  recommendedPower: 210
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 100

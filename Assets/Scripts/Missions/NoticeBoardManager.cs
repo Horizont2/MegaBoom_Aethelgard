@@ -33,6 +33,13 @@ public class NoticeBoardManager : MonoBehaviour
     {
         if (embarkButton != null) embarkButton.onClick.AddListener(EmbarkOnJourney);
         boardCanvas.SetActive(false);
+
+        // "Тихо" генеруємо місії при старті сцени (без показу UI), 
+        // щоб скрипт знав, чи є на дошці папірці
+        CheckAndGenerateMissions();
+
+        // Оновлюємо стан руни
+        UpdateRuneVisibility();
     }
 
     private void Update()
@@ -68,9 +75,15 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = true;
         boardCanvas.SetActive(true);
 
+        // Відмічаємо, що гравець вперше ознайомився з дошкою
+        if (PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0)
+        {
+            PlayerPrefs.SetInt("HasInteractedWithBoard", 1);
+            PlayerPrefs.Save();
+        }
+
         if (interactionRune != null) interactionRune.SetActive(false);
 
-        // ЗВУК: Відкриття дошки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         CheckAndGenerateMissions();
@@ -86,16 +99,14 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        if (interactionRune != null) interactionRune.SetActive(true);
+        // Перевіряємо, чи треба повертати руну (якщо місії ще залишилися)
+        UpdateRuneVisibility();
 
-        // ЗВУК: Закриття дошки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        // Запускаємо корутину замість прямого виклику
         StartCoroutine(LockCursorRoutine());
     }
 
-    // НОВИЙ МЕТОД: Чекаємо кінець кадру, щоб перебити стандартну поведінку Unity
     private System.Collections.IEnumerator LockCursorRoutine()
     {
         yield return new WaitForEndOfFrame();
@@ -103,16 +114,41 @@ public class NoticeBoardManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
     }
 
+    // НОВИЙ МЕТОД: Керує видимістю руни
+    public void UpdateRuneVisibility()
+    {
+        if (interactionRune == null) return;
+
+        bool isFirstTime = PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0;
+        bool hasMissions = paperLayoutGroup.childCount > 0;
+
+        // Руна активна ТІЛЬКИ якщо:
+        // 1. Це перша гра (гравець ще не взаємодіяв з дошкою)
+        // АБО 2. На дошці є місії
+        // І ПРИ ЦЬОМУ дошка зараз закрита.
+        interactionRune.SetActive((isFirstTime || hasMissions) && !isBoardOpen);
+    }
+
     private void CheckAndGenerateMissions()
     {
+        bool isFirstTime = PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0;
         string lastRestockStr = PlayerPrefs.GetString("LastMissionRestockTime", "");
-        bool needsRestock = string.IsNullOrEmpty(lastRestockStr);
+
+        // Якщо це перша гра — ІГНОРУЄМО ТАЙМЕР і гарантовано оновлюємо місії
+        bool needsRestock = string.IsNullOrEmpty(lastRestockStr) || isFirstTime;
 
         if (!needsRestock)
         {
-            DateTime lastRestock = DateTime.Parse(lastRestockStr);
-            if ((DateTime.Now - lastRestock).TotalMinutes >= restockTimeMinutes)
+            DateTime lastRestock;
+            if (DateTime.TryParse(lastRestockStr, out lastRestock))
+            {
+                if ((DateTime.Now - lastRestock).TotalMinutes >= restockTimeMinutes)
+                    needsRestock = true;
+            }
+            else
+            {
                 needsRestock = true;
+            }
         }
 
         int currentActiveMissions = 0;
@@ -143,7 +179,7 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (needsRestock)
         {
-            GenerateNewMissions(3 - currentActiveMissions);
+            GenerateNewMissions(3 - currentActiveMissions); // Гарантовано згенерує 1-3 місії для новачка
             PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
             PlayerPrefs.Save();
         }
@@ -195,7 +231,6 @@ public class NoticeBoardManager : MonoBehaviour
 
             paperUI.SetupPaper(scaledMission, 1f);
 
-            // ЗВУК ТА ДІЯ: При натисканні на Accept
             paperUI.acceptButton.onClick.AddListener(() =>
             {
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
@@ -228,14 +263,15 @@ public class NoticeBoardManager : MonoBehaviour
         yield return new WaitForEndOfFrame();
         int paperCount = paperLayoutGroup.childCount;
         if (emptyBoardMessage != null) emptyBoardMessage.gameObject.SetActive(paperCount == 0);
+
+        // Оновлюємо руну щоразу, коли гравець приймає місію
+        if (!isBoardOpen) UpdateRuneVisibility();
     }
 
     private void EmbarkOnJourney()
     {
-        // ЗВУК: Натискання кнопки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        // --- НОВЕ: Зкидаємо прапорці місії регіону, щоб генератор створив мікс біомів ---
         if (GameManager.Instance != null)
         {
             GameManager.Instance.currentRegion = null;
@@ -243,10 +279,9 @@ public class NoticeBoardManager : MonoBehaviour
         }
 
         PlayerPrefs.SetInt("IsRegionMission", 0);
-        PlayerPrefs.SetInt("IsRunActive", 1); // Позначаємо, що забіг почався
-        PlayerPrefs.SetInt("IsContinuing", 0); // Обнуляємо сід, щоб згенерувати нову мапу
+        PlayerPrefs.SetInt("IsRunActive", 1);
+        PlayerPrefs.SetInt("IsContinuing", 0);
         PlayerPrefs.Save();
-        // --------------------------------------------------------------------------------
 
         CloseBoard();
 

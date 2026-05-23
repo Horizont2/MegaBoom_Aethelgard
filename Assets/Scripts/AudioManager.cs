@@ -1,10 +1,10 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public static class AudioID
 {
-    // UI
     public const string UI_Click = "UI_Click";
     public const string UI_Hover = "UI_Hover";
     public const string UI_QuestAccept = "UI_QuestAccept";
@@ -13,7 +13,6 @@ public static class AudioID
     public const string UI_LevelUp = "UI_LevelUp";
     public const string UI_Purchase = "UI_Purchase";
 
-    // Player
     public const string Player_Dash = "Player_Dash";
     public const string Player_Swing = "Player_Swing";
     public const string Player_HitEnemy = "Player_HitEnemy";
@@ -24,7 +23,6 @@ public static class AudioID
     public const string Player_Footstep = "Player_Footstep";
     public const string Explosion = "Explosion";
 
-    // Enemies
     public const string Enemy_Agro = "Enemy_Agro";
     public const string Enemy_Telegraph = "Enemy_Telegraph";
     public const string Enemy_Attack = "Enemy_Attack";
@@ -32,7 +30,6 @@ public static class AudioID
     public const string Enemy_Die = "Enemy_Die";
     public const string Enemy_Footstep = "Enemy_Footstep";
 
-    // Camp & Environment
     public const string Camp_CollectItem = "Camp_CollectItem";
     public const string Camp_CollectGem = "Camp_CollectGem";
     public const string Camp_BuildStart = "Camp_BuildStart";
@@ -41,11 +38,9 @@ public static class AudioID
     public const string Env_Thunder = "Env_Thunder";
     public const string Env_ChestOpen = "Env_ChestOpen";
 
-    // Animals (NEW)
     public const string Animal_CatMeow = "Animal_CatMeow";
     public const string Animal_Chicken = "Animal_Chicken";
 
-    // Music
     public const string Music_Camp = "Music_Camp";
     public const string Music_Battle = "Music_Battle";
 }
@@ -88,33 +83,75 @@ public class AudioManager : MonoBehaviour
     [HideInInspector] public float globalMusicVolume = 1f;
     [HideInInspector] public float globalSFXVolume = 1f;
 
-    private Dictionary<string, SoundGroup> sfxDictionary, uiDictionary, musicDictionary;
+    // Внутрішні компоненти (більше не треба налаштовувати в Інспекторі)
+    private AudioSource musicSource;
+    private AudioSource uiSource;
     private AudioSource[] sfxSources;
-    private AudioSource uiSource, musicSource;
+
+    private Dictionary<string, SoundGroup> sfxDictionary, uiDictionary, musicDictionary;
     private Coroutine musicFadeCoroutine;
+
+    // Змінні для анти-спаму (захист від дублювання звуків)
+    private float lastUIPlayTime;
+    private string lastUIPlaySound;
 
     private void Awake()
     {
-        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
-        else { Destroy(gameObject); return; }
+        if (Instance == null)
+        {
+            Instance = this;
+            transform.parent = null;
+            DontDestroyOnLoad(gameObject);
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         InitializeDictionaries();
+        CreateAudioSources();
+        LoadAudioSettings();
+    }
 
-        uiSource = gameObject.AddComponent<AudioSource>();
+    private void CreateAudioSources()
+    {
+        // Автоматично створюємо і ховаємо всі динаміки
         musicSource = gameObject.AddComponent<AudioSource>();
         musicSource.loop = true;
+        musicSource.hideFlags = HideFlags.HideInInspector;
+
+        uiSource = gameObject.AddComponent<AudioSource>();
+        uiSource.hideFlags = HideFlags.HideInInspector;
 
         sfxSources = new AudioSource[sfxPoolSize];
-        for (int i = 0; i < sfxPoolSize; i++) sfxSources[i] = gameObject.AddComponent<AudioSource>();
+        for (int i = 0; i < sfxPoolSize; i++)
+        {
+            sfxSources[i] = gameObject.AddComponent<AudioSource>();
+            sfxSources[i].hideFlags = HideFlags.HideInInspector;
+        }
+    }
 
-        LoadAudioSettings();
+    private void OnDestroy()
+    {
+        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "CampScene") PlayMusic(AudioID.Music_Camp);
+        else if (scene.name == "WorldScene") PlayMusic(AudioID.Music_Battle);
     }
 
     private void LoadAudioSettings()
     {
-        globalMusicVolume = PlayerPrefs.GetFloat("Settings_MusicVol", 1f);
-        globalSFXVolume = PlayerPrefs.GetFloat("Settings_SFXVol", 1f);
-        AudioListener.volume = PlayerPrefs.GetFloat("Settings_MasterVol", 1f);
+        // ЖОРСТКИЙ ЗАХИСТ: Mathf.Clamp не дасть гучності стати більшою за 1 (100%)
+        globalMusicVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MusicVol", 1f), 0f, 1f);
+        globalSFXVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_SFXVol", 1f), 0f, 1f);
+
+        float masterVol = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MasterVol", 1f), 0f, 1f);
+        AudioListener.volume = masterVol;
     }
 
     public void SetMasterVolume(float vol) { AudioListener.volume = vol; PlayerPrefs.SetFloat("Settings_MasterVol", vol); }
@@ -185,15 +222,23 @@ public class AudioManager : MonoBehaviour
 
     public void PlayUI(string soundName)
     {
-        if (uiDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0)
+        // АНТИ-СПАМ: Забороняємо грати абсолютно той самий звук, якщо з минулого виклику пройшло менше 0.05 секунди
+        if (soundName == lastUIPlaySound && Time.unscaledTime - lastUIPlayTime < 0.05f) return;
+
+        lastUIPlaySound = soundName;
+        lastUIPlayTime = Time.unscaledTime;
+
+        if (uiDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0 && uiSource != null)
         {
+            float dynamicPitch = group.randomizePitch ? group.pitch * Random.Range(0.85f, 1.15f) : group.pitch * Random.Range(0.95f, 1.05f);
+            uiSource.pitch = dynamicPitch;
             uiSource.PlayOneShot(group.clips[Random.Range(0, group.clips.Length)], group.volume * globalSFXVolume);
         }
     }
 
     public void PlayMusic(string soundName)
     {
-        if (musicDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0)
+        if (musicDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0 && musicSource != null)
         {
             AudioClip clipToPlay = group.clips[0];
             if (musicSource.clip == clipToPlay && musicSource.isPlaying) return;

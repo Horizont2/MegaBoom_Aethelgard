@@ -8,12 +8,10 @@ public class PlayerController : MonoBehaviour
     [Header("Scene Mode")]
     public bool isCampMode = false;
     [HideInInspector] public bool isControlBlocked = false;
+    private float actionLockEndTime = 0f; // ФІКС: Таймер блокування дій
 
-    [Header("Character & Weapon Spawning")]
-    public GameObject[] heroPrefabs;
+    [Header("Weapon Spawning")]
     public GameObject[] weaponPrefabs;
-    public float visualYOffset = -1f;
-    private GameObject currentVisual;
     private GameObject currentWeapon;
 
     [Header("Debug")]
@@ -118,30 +116,8 @@ public class PlayerController : MonoBehaviour
         Physics.IgnoreLayerCollision(8, 9, true);
 
         characterController = GetComponent<CharacterController>();
-
-        int selectedHeroID = PlayerPrefs.GetInt("SelectedHeroID", 0);
-        int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
-
-        if (heroPrefabs != null && heroPrefabs.Length > selectedHeroID && heroPrefabs[selectedHeroID] != null)
-        {
-            currentVisual = Instantiate(heroPrefabs[selectedHeroID], transform.position, transform.rotation, transform);
-            currentVisual.transform.localPosition = new Vector3(0, visualYOffset, 0);
-
-            anim = currentVisual.GetComponent<Animator>();
-            if (anim != null) anim.applyRootMotion = false;
-
-            Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
-            if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
-            {
-                currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket.position, socket.rotation, socket);
-                weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
-            }
-        }
-        else
-        {
-            anim = GetComponentInChildren<Animator>();
-            if (anim != null) anim.applyRootMotion = false;
-        }
+        anim = GetComponentInChildren<Animator>();
+        if (anim != null) anim.applyRootMotion = false;
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
@@ -152,9 +128,8 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         isDead = false;
-
-        // --- ФІКС: Автоматичне підключення UI ---
         ReconnectUI();
+        SpawnEquippedWeapon();
 
         if (!isCampMode) ApplyMetaUpgrades();
         currentHealth = maxHealth;
@@ -169,20 +144,36 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(SpawnSafely());
     }
 
-    // МАГІЯ ПОШУКУ UI
-    // МАГІЯ ПОШУКУ UI (СУПЕР-РОЗУМНА ВЕРСІЯ)
+    private void SpawnEquippedWeapon()
+    {
+        Transform socket = FindDeepChild(transform, "WeaponSocket");
+        if (socket == null) socket = FindDeepChild(transform, "handslot.r");
+        if (socket == null) socket = FindDeepChild(transform, "hand_r");
+        if (socket == null) socket = FindDeepChild(transform, "hand_R");
+        if (socket == null) socket = FindDeepChild(transform, "RightHand");
+
+        int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+
+        if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
+        {
+            currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket);
+            currentWeapon.transform.localPosition = Vector3.zero;
+            currentWeapon.transform.localRotation = Quaternion.identity;
+
+            weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
+        }
+    }
+
     private void ReconnectUI()
     {
-        if (hpFill != null) return; // Якщо посилання вже є, нічого не робимо
+        if (hpFill != null) return;
 
-        // 1. Шукаємо ВСІ картинки на сцені (і в локальних Canvas, і в глобальному HUD)
         Image[] images = FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (Image img in images)
         {
             string n = img.name.ToLower();
             string p = img.transform.parent != null ? img.transform.parent.name.ToLower() : "";
 
-            // Перевіряємо, чи є маркер "hp", "xp" або "stamina" в імені самої картинки АБО в імені її батька
             bool isHP = n.Contains("hp") || p.Contains("hp");
             bool isXP = n.Contains("xp") || p.Contains("xp");
             bool isStamina = n.Contains("stamina") || n.Contains("dash") || p.Contains("stamina") || p.Contains("dash");
@@ -193,7 +184,6 @@ public class PlayerController : MonoBehaviour
             else if (isStamina && n.Contains("fill")) dashStaminaFill = img;
         }
 
-        // 2. Шукаємо ВСІ тексти
         TextMeshProUGUI[] texts = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (TextMeshProUGUI txt in texts)
         {
@@ -325,6 +315,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // ФІКС: Новий метод для жорсткої зупинки тіла
+    private void LockAction(string trigger, float duration)
+    {
+        actionLockEndTime = Time.time + duration;
+        currentVelocityMove = Vector3.zero; // Миттєва зупинка ковзання
+
+        if (anim != null)
+        {
+            anim.SetFloat("Speed", 0f); // Примушуємо ноги перейти в Idle
+            anim.SetTrigger(trigger);
+        }
+    }
+
     private void Update()
     {
         if (dashStaminaFill != null)
@@ -335,9 +338,7 @@ public class PlayerController : MonoBehaviour
 
         float targetHpFill = currentHealth / maxHealth;
 
-        // --- ФІКС: Жорстко і постійно синхронізуємо смужку ХП! ---
         if (hpFill != null) hpFill.fillAmount = targetHpFill;
-
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
         {
             hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.deltaTime * uiLerpSpeed);
@@ -351,11 +352,6 @@ public class PlayerController : MonoBehaviour
         }
 
         CheckStack();
-
-        if (currentVisual != null)
-        {
-            currentVisual.transform.localRotation = Quaternion.identity;
-        }
 
         if (Input.GetKeyDown(KeyCode.F10))
         {
@@ -379,10 +375,13 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        // ФІКС: Перевірка, чи гравець зараз в процесі атаки/отримання урону
+        bool isCurrentlyLocked = isControlBlocked || Time.time < actionLockEndTime;
+
         Vector3 movement = Vector3.zero;
         Vector3 inputDir = Vector3.zero;
 
-        if (!isControlBlocked)
+        if (!isCurrentlyLocked)
         {
             float horizontal = Input.GetAxisRaw("Horizontal");
             float vertical = Input.GetAxisRaw("Vertical");
@@ -393,10 +392,14 @@ public class PlayerController : MonoBehaviour
                 StartCoroutine(DashRoutine(inputDir));
             }
         }
+        else
+        {
+            inputDir = Vector3.zero; // Забороняємо рух
+        }
 
         if (isDashing) return;
-
         if (Camera.main == null) return;
+
         Vector3 camForward = Camera.main.transform.forward;
         Vector3 camRight = Camera.main.transform.right;
         camForward.y = 0f; camRight.y = 0f;
@@ -444,7 +447,7 @@ public class PlayerController : MonoBehaviour
         float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
 
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
-        if (!isControlBlocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
+        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
@@ -459,6 +462,7 @@ public class PlayerController : MonoBehaviour
 
         if (anim != null)
         {
+            // Оновлюємо анімацію швидкості (яка тепер миттєво падає до 0 при атаці)
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
@@ -466,34 +470,22 @@ public class PlayerController : MonoBehaviour
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
 
-            if (characterController.isGrounded && !isControlBlocked)
+            if (characterController.isGrounded && !isCurrentlyLocked)
             {
                 if (!isCampMode)
                 {
                     if (Input.GetMouseButtonDown(0))
                     {
-                        // Якщо ми НЕ цілимося гранатою — звичайна атака мечем
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.time;
-
-                            if (camForward.sqrMagnitude > 0.01f)
-                            {
-                                transform.rotation = Quaternion.LookRotation(camForward);
-                            }
-
-                            anim.SetTrigger("Attack");
+                            if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
+                            LockAction("Attack", 0.4f); // Блокуємо рух на 0.4 секунди
                         }
-                        // --- НОВЕ: Відміна кидка гранати ---
                         else if (isAimingGrenade)
                         {
-                            isAimingGrenade = false; // Вимикаємо режим прицілювання
-
-                            if (trajectoryLine != null)
-                                trajectoryLine.positionCount = 0; // Ховаємо лінію
-
-                            // Якщо хочеш, можна додати якийсь тихий звук відміни:
-                            // if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+                            isAimingGrenade = false;
+                            if (trajectoryLine != null) trajectoryLine.positionCount = 0;
                         }
                     }
 
@@ -506,14 +498,14 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            if (!isCampMode && !isControlBlocked && Input.GetMouseButton(1) && isAimingGrenade)
+            if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade)
             {
                 currentThrowForce += chargeRate * Time.deltaTime;
                 if (currentThrowForce > maxThrowForce) currentThrowForce = maxThrowForce;
                 DrawTrajectory();
             }
 
-            if (!isCampMode && (!isControlBlocked && Input.GetMouseButtonUp(1) || (isControlBlocked && isAimingGrenade)))
+            if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
                 {
@@ -521,7 +513,7 @@ public class PlayerController : MonoBehaviour
                     savedThrowVelocity = GetThrowVelocity();
                     if (trajectoryLine != null) trajectoryLine.positionCount = 0;
 
-                    if (characterController.isGrounded) anim.SetTrigger("Throw");
+                    if (characterController.isGrounded) LockAction("Throw", 0.4f);
                     else ExecuteThrow();
                 }
             }
@@ -533,24 +525,10 @@ public class PlayerController : MonoBehaviour
             currentHealth = Mathf.Min(currentHealth, maxHealth);
             UpdateHUD();
         }
-
-        if (transform.position.y < -20f)
-        {
-            if (characterController != null) characterController.enabled = false;
-            float safeY = 100f;
-            if (Terrain.activeTerrain != null)
-            {
-                safeY = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y + 20f;
-            }
-            transform.position = new Vector3(transform.position.x, safeY, transform.position.z);
-            velocity = Vector3.zero;
-            if (characterController != null) characterController.enabled = true;
-        }
     }
 
     private Vector3 GetThrowVelocity()
     {
-        // 1. Знаходимо точку куди дивиться мишка на площині землі (AAA прицілювання від камери)
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         Plane groundPlane = new Plane(Vector3.up, transform.position);
         Vector3 aimDir = transform.forward;
@@ -559,18 +537,16 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 hitPoint = ray.GetPoint(enter);
             aimDir = (hitPoint - throwPoint.position).normalized;
-            aimDir.y = 0; // Тільки горизонтальний напрямок
+            aimDir.y = 0;
             aimDir.Normalize();
         }
 
-        // 2. Плавний поворот персонажа за прицілом під час замаху!
         if (aimDir.sqrMagnitude > 0.01f)
         {
             Quaternion targetRot = Quaternion.LookRotation(aimDir);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime * 2f);
         }
 
-        // 3. Формуємо дугу кидка
         Vector3 throwDir = (aimDir + Vector3.up * upwardAngle).normalized;
         return throwDir * currentThrowForce;
     }
@@ -578,7 +554,6 @@ public class PlayerController : MonoBehaviour
     private void DrawTrajectory()
     {
         if (trajectoryLine == null || throwPoint == null) return;
-
         trajectoryLine.positionCount = linePoints;
         Vector3 startPosition = throwPoint.position;
         Vector3 startVelocity = GetThrowVelocity();
@@ -588,14 +563,12 @@ public class PlayerController : MonoBehaviour
             float t = i * timeBetweenPoints;
             Vector3 point = startPosition + startVelocity * t + Physics.gravity * 0.5f * t * t;
 
-            // Обрізаємо лінію рівно там, де вона торкається землі
             if (point.y < transform.position.y && i > 3)
             {
                 trajectoryLine.positionCount = i + 1;
                 trajectoryLine.SetPosition(i, new Vector3(point.x, transform.position.y + 0.1f, point.z));
                 break;
             }
-
             trajectoryLine.SetPosition(i, point);
         }
     }
@@ -686,7 +659,6 @@ public class PlayerController : MonoBehaviour
             if (rb != null)
             {
                 rb.linearVelocity = savedThrowVelocity;
-                // ДОДАНО: Випадкове обертання гранати в польоті
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
         }
@@ -715,13 +687,16 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(FlashRoutine());
         }
 
-        if (anim != null) anim.SetTrigger("Hit");
         UpdateHUD();
 
         if (currentHealth <= 0)
         {
             if (hpCatchupFill != null) hpCatchupFill.fillAmount = 0;
             Die();
+        }
+        else
+        {
+            LockAction("Hit", 0.35f); // Блокуємо рух при отриманні удару
         }
     }
 
@@ -781,7 +756,6 @@ public class PlayerController : MonoBehaviour
         crystalsCollected += amount;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
-
         UpdateHUD();
 
         if (MissionManager.Instance != null)
@@ -795,7 +769,6 @@ public class PlayerController : MonoBehaviour
         currentLevel++;
         currentXP -= xpToNextLevel;
         xpToNextLevel *= 1.5f;
-
         visualXP = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
@@ -883,7 +856,8 @@ public class PlayerController : MonoBehaviour
     {
         foreach (Transform child in parent)
         {
-            if (child.name == name) return child;
+            string childName = child.name.ToLower();
+            if (childName == name.ToLower()) return child;
             Transform result = FindDeepChild(child, name);
             if (result != null) return result;
         }

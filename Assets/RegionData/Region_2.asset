@@ -23,7 +23,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2f2837b413442634e97ea3f264438260, type: 2}
   - {fileID: 11400000, guid: 58483a790fad88749b3b12122e0668dc, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 85
+  recommendedPower: 250
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
   woodReward: 115

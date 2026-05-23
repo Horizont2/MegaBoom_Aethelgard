@@ -593,18 +593,8 @@ MonoBehaviour:
   gameSceneName: GameScene
   shopSceneName: ShopScene
   campSceneName: CampScene
-  heroPrefabs:
-  - {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
-  - {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
-  - {fileID: 1700948328246899227, guid: 622bd3c05e1b9c84d82ca8d443e9175d, type: 3}
-  - {fileID: 6711135348820887869, guid: 4e14ee18fa4ad0140a4995cd40fa3fa1, type: 3}
-  - {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
-  weaponPrefabs:
-  - {fileID: 8149005041056945625, guid: 7591ca8f7cf77a64588fe74f1c1f7eaa, type: 3}
-  - {fileID: 7292583777197831632, guid: 264c445fd8372214891a5e34393d63be, type: 3}
-  - {fileID: 4292794119454397175, guid: 0e62603268aa13a468fb711d3737de96, type: 3}
-  - {fileID: 8406527810264565357, guid: 73df0b61d7cbc0b488506125cca18713, type: 3}
-  - {fileID: 3030662099941857429, guid: a8847a5e05a707a4ebc10a507999f4a8, type: 3}
+  heroPrefab: {fileID: 2945078721770132420, guid: 17d909356842f394ca1d3c3de3cd64f3, type: 3}
+  weaponPrefabs: []
   heroSpawnPoint: {fileID: 1953537542}
   menuAnimatorController: {fileID: 9100000, guid: 0a6151049bdd4a44eb78e5b273d92f48, type: 2}
 --- !u!4 &108765464
@@ -3335,13 +3325,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 908804950}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9eb912440a83ff847b32e7ad84819e6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   uiClick:
-    clips: []
+    clips:
+    - {fileID: 8300000, guid: 50fbea6c138d3ea42a74d6590cc2ad4b, type: 3}
     volume: 1
     pitch: 1
     randomizePitch: 0
@@ -3351,12 +3342,14 @@ MonoBehaviour:
     pitch: 1
     randomizePitch: 0
   uiQuestAccept:
-    clips: []
+    clips:
+    - {fileID: 8300000, guid: 46296c765d01de74da228fa15f785117, type: 3}
     volume: 1
     pitch: 1
     randomizePitch: 0
   uiQuestComplete:
-    clips: []
+    clips:
+    - {fileID: 8300000, guid: fe7978cc72edee44e9028a0b428e34ec, type: 3}
     volume: 1
     pitch: 1
     randomizePitch: 0
@@ -3371,7 +3364,8 @@ MonoBehaviour:
     pitch: 1
     randomizePitch: 0
   uiPurchase:
-    clips: []
+    clips:
+    - {fileID: 8300000, guid: 1a738ab4bd199294b9b38b5590400abf, type: 3}
     volume: 1
     pitch: 1
     randomizePitch: 0
@@ -3496,7 +3490,8 @@ MonoBehaviour:
     pitch: 1
     randomizePitch: 0
   musicCamp:
-    clips: []
+    clips:
+    - {fileID: 8300000, guid: 2f81e7c29f7609146bea894c96d68900, type: 3}
     volume: 1
     pitch: 1
     randomizePitch: 0
@@ -3688,13 +3683,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 924895243}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.8239893, z: -0, w: -0.56660545}
-  m_LocalPosition: {x: 0.53, y: 0.0844, z: 7.75}
-  m_LocalScale: {x: 1, y: 1, z: 0.25366938}
+  m_LocalRotation: {x: -0, y: 0.8000048, z: -0, w: -0.5999936}
+  m_LocalPosition: {x: 0.909, y: 0.0483, z: 7.7}
+  m_LocalScale: {x: 1, y: 1.2544, z: 0.30757412}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1266153106}
-  m_LocalEulerAnglesHint: {x: 0, y: 249.028, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 253.739, z: 0}
 --- !u!64 &924895245
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -6488,11 +6483,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 457671230112397505, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 0.018270345
+      value: 0.017906766
       objectReference: {fileID: 0}
     - target: {fileID: 457671230112397505, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 18.270346
+      value: 17.906767
       objectReference: {fileID: 0}
     - target: {fileID: 457671230112397505, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startColor.maxColor.g
@@ -6596,11 +6591,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3248476463663495497, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 0.091351725
+      value: 0.08953383
       objectReference: {fileID: 0}
     - target: {fileID: 3248476463663495497, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 2.7405517
+      value: 2.686015
       objectReference: {fileID: 0}
     - target: {fileID: 3248476463663495497, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startColor.maxColor.g
@@ -6644,11 +6639,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4665926127180379650, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 0.018270345
+      value: 0.017906766
       objectReference: {fileID: 0}
     - target: {fileID: 4665926127180379650, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 18.270346
+      value: 17.906767
       objectReference: {fileID: 0}
     - target: {fileID: 4665926127180379650, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startColor.maxColor.g
@@ -6716,11 +6711,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8213357944924456597, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 0.07308138
+      value: 0.071627066
       objectReference: {fileID: 0}
     - target: {fileID: 8213357944924456597, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 27.40552
+      value: 26.86015
       objectReference: {fileID: 0}
     - target: {fileID: 8213357944924456597, guid: aa9300c048314dcd92786b6ab7919da4, type: 3}
       propertyPath: InitialModule.startColor.maxColor.g
@@ -7929,13 +7924,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1953537541}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.8182646, z: -0, w: 0.57484186}
-  m_LocalPosition: {x: 0.032, y: 0.1, z: 7.496}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0.02078834, y: -0.81772935, z: -0.029591387, w: 0.5744658}
+  m_LocalPosition: {x: 0.29199994, y: -0.034, z: 7.5846}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: -109.823, z: 0}
+  m_LocalEulerAnglesHint: {x: -4.145, y: -109.823, z: 0}
 --- !u!1001 &2019512117
 PrefabInstance:
   m_ObjectHideFlags: 0

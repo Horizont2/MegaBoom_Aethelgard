@@ -4,47 +4,28 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.Events;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 public class ShopManager : MonoBehaviour
 {
-    public enum ShopMode { Heroes, Weapons }
-
-    [Header("Current Mode")]
-    public ShopMode currentMode = ShopMode.Heroes;
-
     [Header("Databases")]
-    public HeroData[] heroes;
     public WeaponData[] weapons;
+    public ArmorData[] armors;
 
     [Header("Spawn Points")]
     public Transform heroPedestalPos;
-    public Transform offscreenLeft;
-    public Transform offscreenRight;
+    public GameObject dummyHeroPrefab;
 
     [Header("Scene Navigation")]
     public string campSceneName = "CampScene";
 
-    [Header("UI Tabs (Category BG)")]
-    public Button heroesTabButton;
-    public CanvasGroup heroesTabGroup;
-    public Button arsenalTabButton;
-    public CanvasGroup arsenalTabGroup;
-    public float activeTabAlpha = 0.3f;
-    public float inactiveTabAlpha = 1f;
-
     [Header("UI Canvas Groups (For AAA Fades)")]
-    public CanvasGroup heroArrowsGroup;
     public CanvasGroup arsenalGridGroup;
     public CanvasGroup arsenalContentGroup;
-    public CanvasGroup arsenalDescriptionGroup; // ФІКС: Окрема група для опису зброї
+    public CanvasGroup arsenalDescriptionGroup;
 
     [Header("Stats Panel Dynamic Positioning")]
     public RectTransform statsPanelRect;
     public CanvasGroup statsPanelGroup;
-    public Vector2 statsPosHero = new Vector2(300, 0);
     public Vector2 statsPosArsenal = new Vector2(1500, 0);
 
     [Header("Arsenal Dynamic List")]
@@ -52,25 +33,28 @@ public class ShopManager : MonoBehaviour
     public GameObject itemButtonPrefab;
     public Button backToGridButton;
 
-    [Header("Arsenal Category Buttons")]
+    [Header("Arsenal Category Buttons (WEAPONS)")]
     public Button btnCategorySwords;
     public Button btnCategoryAxes;
     public Button btnCategoryBows;
+
+    [Header("Arsenal Category Buttons (ARMOR)")]
     public Button btnCategoryHelmets;
     public Button btnCategoryArmor;
     public Button btnCategoryGloves;
+    public Button btnCategoryBelts;
+    public Button btnCategoryLegs;
+    public Button btnCategoryFeet;
 
     [Header("UI Labels & Theme Colors")]
-    public TextMeshProUGUI stat1Label; public TextMeshProUGUI stat2Label; public TextMeshProUGUI stat3Label; public TextMeshProUGUI powerLabel;
-
-    public Color heroStat1Color = new Color(1f, 0.2f, 0.2f);
-    public Color heroStat2Color = new Color(0.2f, 0.6f, 1f);
-    public Color heroStat3Color = new Color(0.6f, 0.2f, 1f);
+    public TextMeshProUGUI stat1Label;
+    public TextMeshProUGUI stat2Label;
+    public TextMeshProUGUI stat3Label;
+    public TextMeshProUGUI powerLabel;
 
     public Color wepStat1Color = new Color(1f, 0.5f, 0f);
     public Color wepStat2Color = new Color(1f, 0.9f, 0.1f);
     public Color wepStat3Color = new Color(0.1f, 1f, 0.8f);
-
     public Color powerColor = new Color(0.6f, 0.8f, 0.2f);
 
     private Color textNormalColor;
@@ -78,12 +62,10 @@ public class ShopManager : MonoBehaviour
     private Color textSuccessColor;
 
     [Header("UI Fills (Images)")]
-    public Image stat1Fill; public Image stat2Fill; public Image stat3Fill; public Image powerFill;
-
-    [Header("Animation Settings")]
-    public float swipeSpeed = 4f;
-    public float rotationSpeed = 500f;
-    public float fadeSpeed = 7f;
+    public Image stat1Fill;
+    public Image stat2Fill;
+    public Image stat3Fill;
+    public Image powerFill;
 
     [Header("UI Main Elements")]
     public TextMeshProUGUI itemNameText;
@@ -91,57 +73,38 @@ public class ShopManager : MonoBehaviour
     public Image descriptionItemIcon;
     public TextMeshProUGUI priceText;
     public TextMeshProUGUI diamondBalanceText;
-
-    [Header("UI Control Buttons")]
     public Button buyButton;
-    public Button backToCampButton;
-    public Button leftArrow;
-    public Button rightArrow;
-
-    [Header("UI Upgrade Button")]
     public Button upgradeButton;
     public TextMeshProUGUI upgradePriceText;
-
-    [Header("Buy Button Dynamic Style")]
-    public RectTransform buyButtonRect;
-    public Image buyButtonImage;
-    public Vector2 heroBuyButtonSize = new Vector2(250f, 60f);
-    public Color heroBuyButtonColor = new Color(0.1f, 0.1f, 0.1f, 1f);
-    public Vector2 arsenalBuyButtonSize = new Vector2(350f, 80f);
-    public Color arsenalBuyButtonColor = new Color(0.15f, 0.15f, 0.15f, 1f);
-    private Coroutine buyButtonAnimCoroutine;
+    public Button backToCampButton;
 
     [Header("UI Stats Values")]
-    public TextMeshProUGUI stat1PercentText; public TextMeshProUGUI stat2PercentText; public TextMeshProUGUI stat3PercentText; public TextMeshProUGUI powerPercentText;
+    public TextMeshProUGUI stat1PercentText;
+    public TextMeshProUGUI stat2PercentText;
+    public TextMeshProUGUI stat3PercentText;
+    public TextMeshProUGUI powerPercentText;
 
-    private int currentHeroIndex = 0;
-    private int currentWeaponIndex = 0;
+    [Header("Rotation Settings")]
+    public float rotationSpeed = 500f;
+
     private GameObject currentHeroModel;
     private GameObject currentWeaponModel;
+    private ModularArmorManager dummyArmorManager;
 
-    private bool isSwapping = false;
-    private bool isFading = false;
-    private Coroutine statsMoveCoroutine;
-    private bool isViewingWeaponCategory = false;
+    private bool isViewingWeapon = false;
 
-    private List<WeaponData> currentCategoryList = new List<WeaponData>();
     private WeaponData selectedWeaponData;
+    private ArmorData selectedArmorData;
 
     private const string DIAMONDS_KEY = "PlayerDiamonds";
-    private const string SELECTED_HERO_KEY = "SelectedHeroID";
-    private const string SELECTED_WEP_KEY = "SelectedWeaponID";
+
+    private Dictionary<CanvasGroup, Coroutine> activeFades = new Dictionary<CanvasGroup, Coroutine>();
 
     private void Awake()
     {
         ColorUtility.TryParseHtmlString("#EAE5D9", out textNormalColor);
         ColorUtility.TryParseHtmlString("#8B2E2E", out textErrorColor);
         ColorUtility.TryParseHtmlString("#758B2E", out textSuccessColor);
-
-        SetGroupAlpha(statsPanelGroup, 0);
-        SetGroupAlpha(heroArrowsGroup, 0);
-        SetGroupAlpha(arsenalGridGroup, 0);
-        SetGroupAlpha(arsenalContentGroup, 0);
-        SetGroupAlpha(arsenalDescriptionGroup, 0);
     }
 
     private void Start()
@@ -150,65 +113,95 @@ public class ShopManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
 
         if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
-        if (!PlayerPrefs.HasKey(SELECTED_HERO_KEY)) { PlayerPrefs.SetInt(SELECTED_HERO_KEY, 0); PlayerPrefs.SetInt("HeroUnlocked_0", 1); }
-        if (!PlayerPrefs.HasKey(SELECTED_WEP_KEY)) { PlayerPrefs.SetInt(SELECTED_WEP_KEY, 0); PlayerPrefs.SetInt("WeaponUnlocked_0", 1); PlayerPrefs.Save(); }
+        if (!PlayerPrefs.HasKey("SelectedWeaponID"))
+        {
+            PlayerPrefs.SetInt("SelectedWeaponID", 0);
+            PlayerPrefs.SetInt("WeaponUnlocked_0", 1);
+            PlayerPrefs.Save();
+        }
 
-        int savedHeroID = PlayerPrefs.GetInt(SELECTED_HERO_KEY, 0);
-        for (int i = 0; i < heroes.Length; i++) { if (heroes[i].heroID == savedHeroID) { currentHeroIndex = i; break; } }
+        AssignButtonListeners();
+        SpawnDummyHero();
 
-        int savedWepID = PlayerPrefs.GetInt(SELECTED_WEP_KEY, 0);
-        for (int i = 0; i < weapons.Length; i++) { if (weapons[i].weaponID == savedWepID) { selectedWeaponData = weapons[i]; currentWeaponIndex = i; break; } }
+        if (statsPanelRect != null)
+        {
+            statsPanelRect.anchoredPosition = statsPosArsenal;
+        }
 
-        if (leftArrow) leftArrow.onClick.AddListener(() => { PlayButtonAnim(leftArrow.transform); PreviousHero(); });
-        if (rightArrow) rightArrow.onClick.AddListener(() => { PlayButtonAnim(rightArrow.transform); NextHero(); });
+        SetGroupAlphaInstant(arsenalContentGroup, 0f);
+        SetGroupAlphaInstant(arsenalDescriptionGroup, 0f);
+        SetGroupAlphaInstant(statsPanelGroup, 0f);
+        SetGroupAlphaInstant(arsenalGridGroup, 1f);
+    }
+
+    private void AssignButtonListeners()
+    {
         if (buyButton) buyButton.onClick.AddListener(() => { PlayButtonAnim(buyButton.transform); OnBuyOrSelectPressed(); });
         if (upgradeButton) upgradeButton.onClick.AddListener(() => { PlayButtonAnim(upgradeButton.transform); OnUpgradePressed(); });
         if (backToCampButton) backToCampButton.onClick.AddListener(() => { PlayButtonAnim(backToCampButton.transform); GoToCampScene(); });
         if (backToGridButton) backToGridButton.onClick.AddListener(() => { PlayButtonAnim(backToGridButton.transform); ReturnToArsenalGrid(); });
 
-        if (heroesTabButton) heroesTabButton.onClick.AddListener(() => { PlayButtonAnim(heroesTabButton.transform); SwitchTab(ShopMode.Heroes); });
-        if (arsenalTabButton) arsenalTabButton.onClick.AddListener(() => { PlayButtonAnim(arsenalTabButton.transform); SwitchTab(ShopMode.Weapons); });
+        if (btnCategorySwords) btnCategorySwords.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Sword));
+        if (btnCategoryAxes) btnCategoryAxes.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Axe));
+        if (btnCategoryBows) btnCategoryBows.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Bow));
 
-        if (btnCategorySwords) btnCategorySwords.onClick.AddListener(() => { PlayButtonAnim(btnCategorySwords.transform); OpenArsenalCategory(ItemCategory.Sword); });
-        if (btnCategoryAxes) btnCategoryAxes.onClick.AddListener(() => { PlayButtonAnim(btnCategoryAxes.transform); OpenArsenalCategory(ItemCategory.Axe); });
-        if (btnCategoryBows) btnCategoryBows.onClick.AddListener(() => { PlayButtonAnim(btnCategoryBows.transform); OpenArsenalCategory(ItemCategory.Bow); });
-        if (btnCategoryHelmets) btnCategoryHelmets.onClick.AddListener(() => { PlayButtonAnim(btnCategoryHelmets.transform); OpenArsenalCategory(ItemCategory.Helmet); });
-        if (btnCategoryArmor) btnCategoryArmor.onClick.AddListener(() => { PlayButtonAnim(btnCategoryArmor.transform); OpenArsenalCategory(ItemCategory.Armor); });
-        if (btnCategoryGloves) btnCategoryGloves.onClick.AddListener(() => { PlayButtonAnim(btnCategoryGloves.transform); OpenArsenalCategory(ItemCategory.Gloves); });
-
-        // --- ФІКС: Віднімаємо 40 від поточної позиції, яку ти виставив в Інспекторі ---
-        if (buyButtonRect != null)
-        {
-            float currentX = buyButtonRect.anchoredPosition.x;
-            buyButtonRect.anchoredPosition = new Vector2(currentX - 40, buyButtonRect.anchoredPosition.y);
-        }
-
-        currentMode = ShopMode.Heroes;
-        ApplyUITheme();
-        UpdateTabVisuals();
-
-        if (buyButtonRect != null) buyButtonRect.sizeDelta = heroBuyButtonSize;
-        if (buyButtonImage != null) buyButtonImage.color = heroBuyButtonColor;
-
-        SpawnHero(currentHeroIndex, heroPedestalPos.position);
-
-        if (statsPanelRect != null) statsPanelRect.anchoredPosition = statsPosHero;
-        UpdateUI(false);
-
-        StartCoroutine(FadeAndScaleGroup(statsPanelGroup, 1f));
-        StartCoroutine(FadeAndScaleGroup(heroArrowsGroup, 1f));
+        if (btnCategoryHelmets) btnCategoryHelmets.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Head));
+        if (btnCategoryArmor) btnCategoryArmor.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Chest));
+        if (btnCategoryGloves) btnCategoryGloves.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Arms));
+        if (btnCategoryBelts) btnCategoryBelts.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Belt));
+        if (btnCategoryLegs) btnCategoryLegs.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Legs));
+        if (btnCategoryFeet) btnCategoryFeet.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Feet));
     }
 
     private void Update()
     {
-        if (currentHeroModel != null && !isSwapping && Input.GetMouseButton(0))
+        if (currentHeroModel != null && Input.GetMouseButton(0))
         {
             float rotX = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
             currentHeroModel.transform.Rotate(Vector3.up, -rotX, Space.World);
         }
     }
 
-    // --- AAA АНІМАЦІЯ КЛІКУ КНОПОК ---
+    private void SetGroupAlphaInstant(CanvasGroup group, float targetAlpha)
+    {
+        if (group == null) return;
+        group.gameObject.SetActive(true);
+        group.alpha = targetAlpha;
+        group.interactable = (targetAlpha > 0.5f);
+        group.blocksRaycasts = (targetAlpha > 0.5f);
+    }
+
+    private void FadeGroup(CanvasGroup group, float targetAlpha)
+    {
+        if (group == null) return;
+
+        if (activeFades.ContainsKey(group) && activeFades[group] != null)
+        {
+            StopCoroutine(activeFades[group]);
+        }
+
+        activeFades[group] = StartCoroutine(FadeRoutine(group, targetAlpha));
+    }
+
+    private IEnumerator FadeRoutine(CanvasGroup group, float targetAlpha)
+    {
+        group.gameObject.SetActive(true);
+        group.blocksRaycasts = (targetAlpha > 0.5f);
+        group.interactable = (targetAlpha > 0.5f);
+
+        float startAlpha = group.alpha;
+        float t = 0;
+
+        while (t < 1)
+        {
+            t += Time.unscaledDeltaTime * 10f;
+            group.alpha = Mathf.Lerp(startAlpha, targetAlpha, t);
+            yield return null;
+        }
+
+        group.alpha = targetAlpha;
+    }
+
     private void PlayButtonAnim(Transform btnTransform)
     {
         StartCoroutine(ButtonScaleRoutine(btnTransform));
@@ -217,7 +210,7 @@ public class ShopManager : MonoBehaviour
     private IEnumerator ButtonScaleRoutine(Transform btnTransform)
     {
         Vector3 originalScale = Vector3.one;
-        btnTransform.localScale = originalScale * 0.9f; // Стискаємо кнопку
+        btnTransform.localScale = originalScale * 0.9f;
         float t = 0;
         while (t < 1)
         {
@@ -228,626 +221,335 @@ public class ShopManager : MonoBehaviour
         btnTransform.localScale = originalScale;
     }
 
-    private void SetGroupAlpha(CanvasGroup group, float alpha)
+    public void OpenWeaponCategory(ItemCategory cat)
     {
-        if (group == null) return;
-        group.alpha = alpha;
-        group.interactable = (alpha > 0.5f);
-        group.blocksRaycasts = (alpha > 0.5f);
-    }
-
-    // --- AAA АНІМАЦІЯ ПОЯВИ ПАНЕЛЕЙ (Фейд + Легке збільшення) ---
-    private IEnumerator FadeAndScaleGroup(CanvasGroup group, float targetAlpha)
-    {
-        if (group == null) yield break;
-        isFading = true;
-
-        group.blocksRaycasts = (targetAlpha > 0.5f);
-        group.interactable = (targetAlpha > 0.5f);
-
-        float startAlpha = group.alpha;
-        Vector3 startScale = (targetAlpha > 0.5f) ? new Vector3(0.95f, 0.95f, 0.95f) : Vector3.one;
-        Vector3 endScale = (targetAlpha > 0.5f) ? Vector3.one : new Vector3(0.95f, 0.95f, 0.95f);
-        Transform tForm = group.transform;
-
-        float t = 0;
-        while (t < 1)
-        {
-            t += Time.deltaTime * fadeSpeed;
-            float curve = Mathf.SmoothStep(0, 1, t);
-            group.alpha = Mathf.Lerp(startAlpha, targetAlpha, curve);
-            tForm.localScale = Vector3.Lerp(startScale, endScale, curve);
-            yield return null;
-        }
-        group.alpha = targetAlpha;
-        tForm.localScale = endScale;
-        isFading = false;
-    }
-
-    private IEnumerator TeleportAndFadeStatsPanel(Vector2 targetPos, float targetAlpha)
-    {
-        if (statsPanelGroup == null || statsPanelRect == null) yield break;
-        isFading = true;
-        statsPanelGroup.blocksRaycasts = false;
-
-        while (statsPanelGroup.alpha > 0.01f)
-        {
-            statsPanelGroup.alpha = Mathf.MoveTowards(statsPanelGroup.alpha, 0f, Time.deltaTime * fadeSpeed * 1.5f);
-            yield return null;
-        }
-        statsPanelGroup.alpha = 0f;
-
-        statsPanelRect.anchoredPosition = targetPos;
-
-        if (targetAlpha > 0f)
-        {
-            ApplyUITheme();
-            UpdateUI(false);
-
-            while (statsPanelGroup.alpha < targetAlpha - 0.01f)
-            {
-                statsPanelGroup.alpha = Mathf.MoveTowards(statsPanelGroup.alpha, targetAlpha, Time.deltaTime * fadeSpeed * 1.5f);
-                yield return null;
-            }
-        }
-
-        statsPanelGroup.alpha = targetAlpha;
-        statsPanelGroup.blocksRaycasts = (targetAlpha > 0.5f);
-        isFading = false;
-    }
-
-    // --- НОВИЙ МЕТОД: Повертає зброю в руці до тієї, що реально екіпірована ---
-    private void RevertToEquippedWeapon()
-    {
-        int equippedWepID = PlayerPrefs.GetInt(SELECTED_WEP_KEY, 0);
-        int equippedIndex = 0;
-        for (int i = 0; i < weapons.Length; i++) { if (weapons[i].weaponID == equippedWepID) { equippedIndex = i; break; } }
-
-        if (currentWeaponIndex != equippedIndex)
-        {
-            currentWeaponIndex = equippedIndex;
-            selectedWeaponData = weapons[currentWeaponIndex];
-            EquipWeaponToHero(currentWeaponIndex);
-        }
-    }
-    public void SwitchTab(ShopMode newMode)
-    {
-        if (currentMode == newMode || isSwapping || isFading) return;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        currentMode = newMode;
-        UpdateTabVisuals();
+        isViewingWeapon = true;
+        SetupDynamicUI(true);
 
-        if (buyButtonAnimCoroutine != null) StopCoroutine(buyButtonAnimCoroutine);
-        buyButtonAnimCoroutine = StartCoroutine(AnimateBuyButtonRoutine(currentMode));
-
-        if (statsMoveCoroutine != null) StopCoroutine(statsMoveCoroutine);
-
-        if (currentMode == ShopMode.Heroes)
-        {
-            isViewingWeaponCategory = false; // Скидаємо стан
-            RevertToEquippedWeapon(); // ФІКС: Повертаємо зброю в руці до екіпірованої
-
-            StartCoroutine(FadeAndScaleGroup(arsenalGridGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(arsenalContentGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(arsenalDescriptionGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(heroArrowsGroup, 1f));
-
-            statsMoveCoroutine = StartCoroutine(TeleportAndFadeStatsPanel(statsPosHero, 1f));
-        }
-        else
-        {
-            isViewingWeaponCategory = false; // Ми на сітці
-            StartCoroutine(FadeAndScaleGroup(heroArrowsGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(arsenalContentGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(arsenalDescriptionGroup, 0f));
-            StartCoroutine(FadeAndScaleGroup(arsenalGridGroup, 1f));
-
-            statsMoveCoroutine = StartCoroutine(TeleportAndFadeStatsPanel(statsPosArsenal, 0f));
-
-            if (itemNameText) itemNameText.text = "";
-            if (itemDescriptionText) itemDescriptionText.text = "Select an item from a category.";
-            if (upgradeButton) upgradeButton.gameObject.SetActive(false);
-
-            // --- ФІКС: Повертаємо екіпірованого героя з анімацією ---
-            int equippedHeroID = PlayerPrefs.GetInt(SELECTED_HERO_KEY, 0);
-            int equippedIndex = 0;
-            for (int i = 0; i < heroes.Length; i++) { if (heroes[i].heroID == equippedHeroID) { equippedIndex = i; break; } }
-
-            if (currentHeroIndex != equippedIndex)
-            {
-                int oldIndex = currentHeroIndex;
-                currentHeroIndex = equippedIndex;
-                StartCoroutine(SwapHeroAnimation(oldIndex, currentHeroIndex, currentHeroIndex < oldIndex));
-            }
-        }
-        UpdateUI(false);
-    }
-
-    private IEnumerator AnimateBuyButtonRoutine(ShopMode targetMode)
-    {
-        if (buyButtonRect == null || buyButtonImage == null) yield break;
-
-        Vector2 targetSize = (targetMode == ShopMode.Heroes) ? heroBuyButtonSize : arsenalBuyButtonSize;
-        Color targetColor = (targetMode == ShopMode.Heroes) ? heroBuyButtonColor : arsenalBuyButtonColor;
-
-        Vector2 startSize = buyButtonRect.sizeDelta;
-        Color startColor = buyButtonImage.color;
-
-        float t = 0f;
-        while (t < 1f)
-        {
-            t += Time.deltaTime * fadeSpeed;
-            float curve = Mathf.SmoothStep(0f, 1f, t);
-
-            buyButtonRect.sizeDelta = Vector2.Lerp(startSize, targetSize, curve);
-            buyButtonImage.color = Color.Lerp(startColor, targetColor, curve);
-
-            yield return null;
-        }
-    }
-
-    private void UpdateTabVisuals()
-    {
-        // ВАЖЛИВО: Перевір в Інспекторі, щоб Inactive Tab Alpha було 1.0!
-        if (heroesTabGroup) heroesTabGroup.alpha = (currentMode == ShopMode.Heroes) ? activeTabAlpha : inactiveTabAlpha;
-        if (arsenalTabGroup) arsenalTabGroup.alpha = (currentMode == ShopMode.Weapons) ? activeTabAlpha : inactiveTabAlpha;
-    }
-
-    public void OpenArsenalCategory(ItemCategory cat)
-    {
-        if (isFading) return;
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
-        isViewingWeaponCategory = true; // Ми відкрили список
-
-        StartCoroutine(FadeAndScaleGroup(arsenalGridGroup, 0f));
+        FadeGroup(arsenalGridGroup, 0f);
 
         foreach (Transform child in itemListContent) Destroy(child.gameObject);
-        currentCategoryList.Clear();
 
+        WeaponData firstWep = null;
         foreach (var w in weapons)
         {
             if (w.category == cat)
             {
-                currentCategoryList.Add(w);
+                if (firstWep == null) firstWep = w;
+                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(w));
+            }
+        }
 
-                GameObject btnObj = Instantiate(itemButtonPrefab, itemListContent);
-                ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
+        if (firstWep != null) SelectWeapon(firstWep);
+        else SetEmptyUI();
 
-                if (itemSlot != null)
+        ShowContentPanels();
+    }
+
+    private void SelectWeapon(WeaponData w)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        selectedWeaponData = w;
+        EquipWeaponToHero(w);
+        UpdateUI(true);
+    }
+
+    public void OpenArmorCategory(ArmorCategory cat)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+        isViewingWeapon = false;
+        SetupDynamicUI(false);
+
+        FadeGroup(arsenalGridGroup, 0f);
+
+        foreach (Transform child in itemListContent) Destroy(child.gameObject);
+
+        ArmorData firstArm = null;
+        if (armors != null)
+        {
+            foreach (var a in armors)
+            {
+                if (a != null && a.category == cat)
                 {
-                    if (itemSlot.nameText != null) itemSlot.nameText.text = w.weaponName;
-                    if (itemSlot.iconImage != null) itemSlot.iconImage.sprite = w.icon;
-
-                    WeaponData capturedData = w;
-                    if (itemSlot.buttonComponent != null)
-                    {
-                        itemSlot.buttonComponent.onClick.AddListener(() =>
-                        {
-                            PlayButtonAnim(itemSlot.transform);
-                            SelectWeaponFromList(capturedData);
-                        });
-                    }
+                    if (firstArm == null) firstArm = a;
+                    CreateListButton(a.armorName, a.icon, () => SelectArmor(a));
                 }
             }
         }
 
-        if (currentCategoryList.Count > 0)
-        {
-            SelectWeaponFromList(currentCategoryList[0]);
-        }
-        else
-        {
-            if (itemNameText) itemNameText.text = "Empty Category";
-            if (itemDescriptionText) itemDescriptionText.text = "There are no items in this category yet.";
-            UpdateUI(false);
-        }
+        if (firstArm != null) SelectArmor(firstArm);
+        else SetEmptyUI();
 
-        StartCoroutine(FadeAndScaleGroup(arsenalContentGroup, 1f));
-        StartCoroutine(FadeAndScaleGroup(arsenalDescriptionGroup, 1f));
-        StartCoroutine(FadeAndScaleGroup(statsPanelGroup, 1f));
+        ShowContentPanels();
+    }
+
+    private void SelectArmor(ArmorData a)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        selectedArmorData = a;
+        if (dummyArmorManager != null) dummyArmorManager.EquipArmorVisuals((ArmorSlot)a.category, a.prefabIndex);
+        UpdateUI(true);
+    }
+
+    private void CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
+    {
+        GameObject btnObj = Instantiate(itemButtonPrefab, itemListContent);
+        ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
+        if (itemSlot != null)
+        {
+            if (itemSlot.nameText != null) itemSlot.nameText.text = name;
+            if (itemSlot.iconImage != null && icon != null) itemSlot.iconImage.sprite = icon;
+            if (itemSlot.buttonComponent != null)
+            {
+                itemSlot.buttonComponent.onClick.AddListener(() => { PlayButtonAnim(itemSlot.transform); action.Invoke(); });
+            }
+        }
+    }
+
+    private void ShowContentPanels()
+    {
+        FadeGroup(arsenalContentGroup, 1f);
+        FadeGroup(arsenalDescriptionGroup, 1f);
+        FadeGroup(statsPanelGroup, 1f);
+    }
+
+    private void SetEmptyUI()
+    {
+        if (itemNameText) itemNameText.text = "Empty Category";
+        if (itemDescriptionText) itemDescriptionText.text = "There are no items in this category yet.";
+        UpdateUI(false);
     }
 
     public void ReturnToArsenalGrid()
     {
-        if (isFading) return;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        isViewingWeaponCategory = false; // Повернулися на сітку
-        RevertToEquippedWeapon(); // ФІКС: Повертаємо зброю в руці до екіпірованої
+        isViewingWeapon = false;
 
-        StartCoroutine(FadeAndScaleGroup(arsenalContentGroup, 0f));
-        StartCoroutine(FadeAndScaleGroup(arsenalDescriptionGroup, 0f));
-        StartCoroutine(FadeAndScaleGroup(statsPanelGroup, 0f));
-        StartCoroutine(FadeAndScaleGroup(arsenalGridGroup, 1f));
-
-        if (itemNameText) itemNameText.text = "";
-        if (itemDescriptionText) itemDescriptionText.text = "Select a category.";
-
-        UpdateUI(false);
-    }
-
-    private void SelectWeaponFromList(WeaponData wData)
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
-        selectedWeaponData = wData;
-
-        for (int i = 0; i < weapons.Length; i++) { if (weapons[i] == wData) { currentWeaponIndex = i; break; } }
-
-        EquipWeaponToHero(currentWeaponIndex);
-        UpdateUI(true);
-    }
-
-    private void SpawnHero(int index, Vector3 position)
-    {
-        if (currentHeroModel != null) Destroy(currentHeroModel);
-
-        if (heroes.Length > 0 && heroes[index].shopModelPrefab != null)
+        int savedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+        foreach (var w in weapons)
         {
-            currentHeroModel = Instantiate(heroes[index].shopModelPrefab, position, heroPedestalPos.rotation);
-            Animator anim = currentHeroModel.GetComponent<Animator>();
-            if (anim != null) { anim.SetBool("IsGrounded", true); anim.SetFloat("Speed", 0f); }
-
-            EquipWeaponToHero(currentWeaponIndex);
+            if (w.weaponID == savedWepID) EquipWeaponToHero(w);
         }
+
+        if (dummyArmorManager != null) dummyArmorManager.LoadEquippedArmor();
+
+        FadeGroup(arsenalContentGroup, 0f);
+        FadeGroup(arsenalDescriptionGroup, 0f);
+        FadeGroup(statsPanelGroup, 0f);
+        FadeGroup(arsenalGridGroup, 1f);
     }
 
-    private void EquipWeaponToHero(int wepIndex)
+    private void SetupDynamicUI(bool isWeapon)
     {
-        if (currentWeaponModel != null) Destroy(currentWeaponModel);
-        if (currentHeroModel == null || weapons.Length <= wepIndex || weapons[wepIndex].shopPrefab == null) return;
-
-        Transform socket = FindDeepChild(currentHeroModel.transform, "handslot.r");
-        if (socket != null)
-        {
-            currentWeaponModel = Instantiate(weapons[wepIndex].shopPrefab, socket.position, socket.rotation, socket);
-
-            MonoBehaviour[] scripts = currentWeaponModel.GetComponents<MonoBehaviour>();
-            foreach (var script in scripts) { if (script != null) script.enabled = false; }
-
-            StartCoroutine(PopWeaponScale(currentWeaponModel.transform));
-        }
-    }
-
-    private IEnumerator PopWeaponScale(Transform wepTransform)
-    {
-        Vector3 finalScale = wepTransform.localScale;
-        wepTransform.localScale = Vector3.zero;
-
-        float t = 0;
-        while (t < 1)
-        {
-            t += Time.deltaTime * 6f;
-            float curve = Mathf.Sin(t * Mathf.PI * 0.5f);
-            wepTransform.localScale = Vector3.Lerp(Vector3.zero, finalScale * 1.2f, curve);
-            yield return null;
-        }
-        wepTransform.localScale = finalScale;
-    }
-
-    private Transform FindDeepChild(Transform parent, string name)
-    {
-        foreach (Transform child in parent) { if (child.name == name) return child; Transform result = FindDeepChild(child, name); if (result != null) return result; }
-        return null;
-    }
-
-    private void ApplyUITheme()
-    {
-        if (powerLabel) powerLabel.text = "POWER";
-        if (powerFill) powerFill.color = powerColor;
-
-        if (currentMode == ShopMode.Heroes)
-        {
-            if (stat1Label) stat1Label.text = "HP";
-            if (stat2Label) stat2Label.text = "SPEED";
-            if (stat3Label) stat3Label.text = "RADIUS";
-
-            if (stat1Fill) stat1Fill.color = heroStat1Color;
-            if (stat2Fill) stat2Fill.color = heroStat2Color;
-            if (stat3Fill) stat3Fill.color = heroStat3Color;
-        }
-        else
+        if (isWeapon)
         {
             if (stat1Label) stat1Label.text = "DAMAGE";
             if (stat2Label) stat2Label.text = "ATK SPEED";
-            if (stat3Label) stat3Label.text = "CRIT";
-
-            if (stat1Fill) stat1Fill.color = wepStat1Color;
-            if (stat2Fill) stat2Fill.color = wepStat2Color;
-            if (stat3Fill) stat3Fill.color = wepStat3Color;
+            if (stat3Label) { stat3Label.gameObject.SetActive(true); stat3Label.text = "CRIT"; }
+            if (stat3Fill) stat3Fill.gameObject.SetActive(true);
+            if (stat3PercentText) stat3PercentText.gameObject.SetActive(true);
         }
-    }
-
-    public void NextHero()
-    {
-        if (isSwapping || currentMode != ShopMode.Heroes) return;
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-        if (heroes.Length <= 1) return;
-
-        int oldIndex = currentHeroIndex;
-        currentHeroIndex = (currentHeroIndex + 1) % heroes.Length;
-        StartCoroutine(SwapHeroAnimation(oldIndex, currentHeroIndex, false));
-    }
-
-    public void PreviousHero()
-    {
-        if (isSwapping || currentMode != ShopMode.Heroes) return;
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-        if (heroes.Length <= 1) return;
-
-        int oldIndex = currentHeroIndex;
-        currentHeroIndex = (currentHeroIndex - 1 + heroes.Length) % heroes.Length;
-        StartCoroutine(SwapHeroAnimation(oldIndex, currentHeroIndex, true));
-    }
-
-    private IEnumerator SwapHeroAnimation(int oldIndex, int newIndex, bool swipeRight)
-    {
-        isSwapping = true;
-        GameObject oldModel = currentHeroModel;
-
-        Vector3 spawnPos = heroPedestalPos.position;
-        Vector3 oldTargetPos = swipeRight ? offscreenRight.position : offscreenLeft.position;
-        Vector3 newStartPos = swipeRight ? offscreenLeft.position : offscreenRight.position;
-        oldTargetPos.y = spawnPos.y; newStartPos.y = spawnPos.y;
-
-        SpawnHero(newIndex, newStartPos);
-        UpdateUI(true);
-
-        float progress = 0f;
-        while (progress < 1f)
+        else
         {
-            progress += Time.deltaTime * swipeSpeed;
-            float t = Mathf.Clamp01(progress);
-
-            // --- НОВЕ: AAA Криві Безьє (Відскок та зменшення) ---
-            float c1 = 1.70158f;
-            float c3 = c1 + 1f;
-
-            // Від'їжджає з прискоренням (Ease In Back)
-            float easeInBack = c3 * t * t * t - c1 * t * t;
-            // Приїжджає з відскоком (Ease Out Back)
-            float easeOutBack = 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
-
-            if (oldModel != null)
-            {
-                oldModel.transform.position = Vector3.LerpUnclamped(spawnPos, oldTargetPos, easeInBack);
-                oldModel.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.7f, t); // Герой трохи "стискається" коли тікає
-            }
-
-            if (currentHeroModel != null)
-            {
-                currentHeroModel.transform.position = Vector3.LerpUnclamped(newStartPos, spawnPos, easeOutBack);
-            }
-
-            yield return null;
+            if (stat1Label) stat1Label.text = "HEALTH";
+            if (stat2Label) stat2Label.text = "DEFENSE";
+            if (stat3Label) stat3Label.gameObject.SetActive(false);
+            if (stat3Fill) stat3Fill.gameObject.SetActive(false);
+            if (stat3PercentText) stat3PercentText.gameObject.SetActive(false);
         }
-
-        if (currentHeroModel != null) currentHeroModel.transform.position = spawnPos;
-        if (oldModel != null) Destroy(oldModel);
-        isSwapping = false;
+        if (powerLabel) powerLabel.text = "POWER";
     }
 
     public void OnBuyOrSelectPressed()
     {
-        if (isSwapping || isFading) return;
-
-        int id = 0; string unlockKey = ""; string selectKey = ""; int price = 0;
-
-        if (currentMode == ShopMode.Heroes)
-        {
-            id = heroes[currentHeroIndex].heroID; price = heroes[currentHeroIndex].price;
-            unlockKey = "HeroUnlocked_" + id; selectKey = SELECTED_HERO_KEY;
-        }
-        else
-        {
-            if (selectedWeaponData == null) return;
-            id = selectedWeaponData.weaponID; price = selectedWeaponData.price;
-            unlockKey = "WeaponUnlocked_" + id; selectKey = SELECTED_WEP_KEY;
-        }
-
-        bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
         int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
 
-        if (!isBought)
+        if (isViewingWeapon && selectedWeaponData != null)
         {
-            if (myDiamonds >= price)
+            int id = selectedWeaponData.weaponID;
+            int price = selectedWeaponData.price;
+            string unlockKey = "WeaponUnlocked_" + id;
+            bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
+
+            if (!isBought && myDiamonds >= price)
             {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+                AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
                 PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
-                PlayerPrefs.SetInt(selectKey, id);
-                PlayerPrefs.Save();
-                UpdateUI(true);
+                PlayerPrefs.SetInt("SelectedWeaponID", id);
             }
-            else if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
+            else if (isBought)
+            {
+                AudioManager.Instance?.PlayUI(AudioID.UI_Click);
+                PlayerPrefs.SetInt("SelectedWeaponID", id);
+            }
+            else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
-        else
+        else if (!isViewingWeapon && selectedArmorData != null)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-            PlayerPrefs.SetInt(selectKey, id);
-            PlayerPrefs.Save();
-            UpdateUI(true);
+            int id = selectedArmorData.armorID;
+            int price = selectedArmorData.price;
+            string unlockKey = "ArmorUnlocked_" + id;
+            bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
+
+            if (!isBought && myDiamonds >= price)
+            {
+                AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
+                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
+                PlayerPrefs.SetInt(unlockKey, 1);
+                dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
+            }
+            else if (isBought)
+            {
+                AudioManager.Instance?.PlayUI(AudioID.UI_Click);
+                dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
+            }
+            else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
+
+        PlayerPrefs.Save(); UpdateUI(true);
     }
 
     public void OnUpgradePressed()
     {
-        if (isSwapping || isFading || currentMode != ShopMode.Weapons || selectedWeaponData == null) return;
+        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
 
-        int id = selectedWeaponData.weaponID;
-        int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
-
-        if (level < selectedWeaponData.maxUpgradeLevel)
+        if (isViewingWeapon && selectedWeaponData != null)
         {
-            int upgCost = selectedWeaponData.GetUpgradeCost(level);
-            int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+            int id = selectedWeaponData.weaponID;
+            int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
 
-            if (myDiamonds >= upgCost)
+            if (level < selectedWeaponData.maxUpgradeLevel && myDiamonds >= selectedWeaponData.GetUpgradeCost(level))
             {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - upgCost);
+                AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
+                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedWeaponData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
-                PlayerPrefs.Save();
-                UpdateUI(true);
             }
-            else if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
+            else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
+        else if (!isViewingWeapon && selectedArmorData != null)
+        {
+            int id = selectedArmorData.armorID;
+            int level = PlayerPrefs.GetInt("ArmorLevel_" + id, 0);
+
+            if (level < selectedArmorData.maxUpgradeLevel && myDiamonds >= selectedArmorData.GetUpgradeCost(level))
+            {
+                AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
+                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedArmorData.GetUpgradeCost(level));
+                PlayerPrefs.SetInt("ArmorLevel_" + id, level + 1);
+            }
+            else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
+        }
+
+        PlayerPrefs.Save(); UpdateUI(true);
     }
 
     private void UpdateUI(bool animateText)
     {
+        if (buyButton) buyButton.gameObject.SetActive(true);
+        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + PlayerPrefs.GetInt(DIAMONDS_KEY, 0).ToString("N0");
         int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
-        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + myDiamonds.ToString("N0");
 
-        int price = 0; int id = 0; string unlockKey = ""; string selectKey = ""; string itemName = "";
-        float stat1FillVal = 0, stat2FillVal = 0, stat3FillVal = 0, powerFillVal = 0;
-
-        int displayPower = 0; // <--- ДОДАНО: Змінна для зберігання чистого числа Power
-
-        // --- ФІКС: Ховаємо кнопку Equip/Buy на екрані сітки категорій ---
-        if (currentMode == ShopMode.Weapons && !isViewingWeaponCategory)
+        if (isViewingWeapon && selectedWeaponData != null)
         {
-            if (buyButton) buyButton.gameObject.SetActive(false);
-            if (upgradeButton) upgradeButton.gameObject.SetActive(false);
-        }
-        else
-        {
-            if (buyButton) buyButton.gameObject.SetActive(true);
-        }
-
-        if (currentMode == ShopMode.Heroes)
-        {
-            if (heroes.Length == 0) return;
-            HeroData h = heroes[currentHeroIndex];
-            price = h.price; id = h.heroID; unlockKey = "HeroUnlocked_" + id; selectKey = SELECTED_HERO_KEY; itemName = h.heroName;
-
-            float maxGameHP = 600f; float maxGameSpeed = 10f; float maxGameRadius = 12f; float maxGamePower = 300f;
-
-            stat1FillVal = Mathf.Clamp01(h.actualMaxHealth / maxGameHP);
-            stat2FillVal = Mathf.Clamp01(h.actualMoveSpeed / maxGameSpeed);
-            stat3FillVal = Mathf.Clamp01(h.actualBombRadius / maxGameRadius);
-
-            powerFillVal = Mathf.Clamp01(h.basePower / maxGamePower);
-            displayPower = h.basePower; // <--- ДОДАНО: Зберігаємо число для героя
-
-            if (upgradeButton) upgradeButton.gameObject.SetActive(false);
-            if (descriptionItemIcon) descriptionItemIcon.gameObject.SetActive(false);
-        }
-        else
-        {
-            if (selectedWeaponData == null) return;
             WeaponData w = selectedWeaponData;
-            id = w.weaponID; price = w.price; unlockKey = "WeaponUnlocked_" + id; selectKey = SELECTED_WEP_KEY;
+            int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
+            bool isBought = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
+            bool isEquipped = PlayerPrefs.GetInt("SelectedWeaponID", 0) == w.weaponID;
 
-            int level = PlayerPrefs.GetInt("WeaponLevel_" + id, 0);
-            itemName = w.weaponName + (level > 0 ? $" <size=70%><color=#AAAAAA>(Lv. {level}/{w.maxUpgradeLevel})</color></size>" : "");
+            UpdateItemDetails(w.weaponName, w.description, w.icon, lvl, w.maxUpgradeLevel, w.price, isBought, isEquipped, myDiamonds, w.GetUpgradeCost(lvl));
+            UpdateStatsUI(w.damageBonus + (lvl * w.damagePerLevel), 400f, w.attackSpeed + (lvl * w.attackSpeedPerLevel), 3f, w.critChance + (lvl * w.critChancePerLevel), 1f, w.basePower + (lvl * w.powerPerLevel));
+        }
+        else if (!isViewingWeapon && selectedArmorData != null)
+        {
+            ArmorData a = selectedArmorData;
+            int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
+            bool isBought = PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1;
+            bool isEquipped = PlayerPrefs.GetInt($"EquippedArmor_{a.category}", 0) == a.prefabIndex;
 
-            if (itemDescriptionText) itemDescriptionText.text = w.description;
-
-            if (descriptionItemIcon)
-            {
-                descriptionItemIcon.gameObject.SetActive(true);
-                descriptionItemIcon.sprite = w.icon;
-            }
-
-            float currDmg = w.damageBonus + (level * w.damagePerLevel);
-            float currSpd = w.attackSpeed + (level * w.attackSpeedPerLevel);
-            float currCrit = w.critChance + (level * w.critChancePerLevel);
-            int currPower = w.basePower + (level * w.powerPerLevel);
-
-            float maxGameDmg = 400f; float maxGameAtkSpd = 3.0f; float maxGameCrit = 1.0f; float maxGamePower = 1000f;
-
-            stat1FillVal = Mathf.Clamp01(currDmg / maxGameDmg);
-            stat2FillVal = Mathf.Clamp01(currSpd / maxGameAtkSpd);
-            stat3FillVal = Mathf.Clamp01(currCrit / maxGameCrit);
-
-            powerFillVal = Mathf.Clamp01(currPower / maxGamePower);
-            displayPower = currPower; // <--- ДОДАНО: Зберігаємо число для зброї з урахуванням рівня
-
-            bool wIsBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
-            if (wIsBought)
-            {
-                if (upgradeButton != null) upgradeButton.gameObject.SetActive(true);
-
-                if (level < w.maxUpgradeLevel)
-                {
-                    int upgCost = w.GetUpgradeCost(level);
-                    if (upgradePriceText != null)
-                    {
-                        upgradePriceText.text = "Upgrade for " + upgCost.ToString("N0");
-                        upgradePriceText.color = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
-                    }
-                    if (upgradeButton != null) upgradeButton.interactable = (myDiamonds >= upgCost);
-                }
-                else
-                {
-                    if (upgradePriceText != null)
-                    {
-                        upgradePriceText.text = "MAX";
-                        upgradePriceText.color = new Color(1f, 0.8f, 0.2f);
-                    }
-                    if (upgradeButton != null) upgradeButton.interactable = false;
-                }
-            }
-            else
-            {
-                if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
-            }
+            UpdateItemDetails(a.armorName, a.description, a.icon, lvl, a.maxUpgradeLevel, a.price, isBought, isEquipped, myDiamonds, a.GetUpgradeCost(lvl));
+            UpdateStatsUI(a.baseHealthBonus + (lvl * a.healthPerLevel), 500f, (a.baseDamageReduction + (lvl * a.reductionPerLevel)) * 100f, 60f, 0, 1f, a.basePower + (lvl * a.powerPerLevel));
         }
 
-        bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
-        bool isSelected = PlayerPrefs.GetInt(selectKey, 0) == id;
+        if (animateText)
+        {
+            if (itemNameText != null) StartCoroutine(PopText(itemNameText));
+            if (priceText != null) StartCoroutine(PopText(priceText));
+        }
+        CalculateAndSaveTotalPower();
+    }
+
+    private void UpdateItemDetails(string name, string desc, Sprite icn, int lvl, int maxLvl, int price, bool isBought, bool isEquipped, int myDiamonds, int upgCost)
+    {
+        if (itemNameText) itemNameText.text = name + (lvl > 0 ? $" <size=70%><color=#AAAAAA>(Lv. {lvl}/{maxLvl})</color></size>" : "");
+        if (itemDescriptionText) itemDescriptionText.text = desc;
+        if (descriptionItemIcon) { descriptionItemIcon.gameObject.SetActive(true); descriptionItemIcon.sprite = icn; }
 
         if (!isBought)
         {
             priceText.text = price.ToString("N0");
-            if (buyButton) buyButton.interactable = (myDiamonds >= price);
+            buyButton.interactable = (myDiamonds >= price);
             priceText.color = (myDiamonds >= price) ? textNormalColor : textErrorColor;
+            if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
         }
-        else if (!isSelected)
+        else if (!isEquipped)
         {
             priceText.text = "EQUIP";
-            if (buyButton) buyButton.interactable = true;
+            buyButton.interactable = true;
             priceText.color = textNormalColor;
         }
         else
         {
             priceText.text = "EQUIPPED";
-            if (buyButton) buyButton.interactable = false;
+            buyButton.interactable = false;
             priceText.color = textSuccessColor;
         }
 
-        if (itemNameText) itemNameText.text = itemName;
-
-        if (stat1PercentText) stat1PercentText.text = Mathf.RoundToInt(stat1FillVal * 100) + "%";
-        if (stat2PercentText) stat2PercentText.text = Mathf.RoundToInt(stat2FillVal * 100) + "%";
-        if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt(stat3FillVal * 100) + "%";
-
-        // --- ФІКС: Виводимо чисте число замість відсотків ---
-        if (powerPercentText) powerPercentText.text = displayPower.ToString();
-
-        if (stat1Fill) stat1Fill.fillAmount = stat1FillVal;
-        if (stat2Fill) stat2Fill.fillAmount = stat2FillVal;
-        if (stat3Fill) stat3Fill.fillAmount = stat3FillVal;
-        if (powerFill) powerFill.fillAmount = powerFillVal;
-
-        if (animateText)
+        if (isBought && upgradeButton != null)
         {
-            StartCoroutine(PopText(itemNameText)); StartCoroutine(PopText(priceText));
+            upgradeButton.gameObject.SetActive(true);
+            if (lvl < maxLvl)
+            {
+                upgradePriceText.text = "Upgrade for " + upgCost.ToString("N0");
+                upgradePriceText.color = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
+                upgradeButton.interactable = (myDiamonds >= upgCost);
+            }
+            else
+            {
+                upgradePriceText.text = "MAX";
+                upgradePriceText.color = new Color(1f, 0.8f, 0.2f);
+                upgradeButton.interactable = false;
+            }
         }
+    }
 
-        CalculateAndSaveTotalPower();
+    private void UpdateStatsUI(float val1, float max1, float val2, float max2, float val3, float max3, int power)
+    {
+        if (stat1PercentText) stat1PercentText.text = isViewingWeapon ? Mathf.RoundToInt((val1 / max1) * 100) + "%" : "+" + Mathf.RoundToInt(val1) + " HP";
+        if (stat2PercentText) stat2PercentText.text = isViewingWeapon ? Mathf.RoundToInt((val2 / max2) * 100) + "%" : "+" + val2.ToString("F1") + "%";
+        if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt((val3 / max3) * 100) + "%";
+        if (powerPercentText) powerPercentText.text = power.ToString();
+
+        if (stat1Fill) stat1Fill.fillAmount = Mathf.Clamp01(val1 / max1);
+        if (stat2Fill) stat2Fill.fillAmount = Mathf.Clamp01(val2 / max2);
+        if (stat3Fill) stat3Fill.fillAmount = Mathf.Clamp01(val3 / max3);
+        if (powerFill) powerFill.fillAmount = Mathf.Clamp01((float)power / 1000f);
     }
 
     private void CalculateAndSaveTotalPower()
     {
-        int baseTotal = 0;
-        int selHeroID = PlayerPrefs.GetInt(SELECTED_HERO_KEY, 0);
-        int selWepID = PlayerPrefs.GetInt(SELECTED_WEP_KEY, 0);
+        int baseTotal = 50;
+        float totalArmorHealth = 0f;
+        float totalArmorReduction = 0f;
+        int selWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
 
-        if (heroes != null) foreach (var h in heroes) if (h.heroID == selHeroID) baseTotal += h.basePower;
-        if (weapons != null) foreach (var w in weapons)
+        if (weapons != null)
+        {
+            foreach (var w in weapons)
             {
                 if (w.weaponID == selWepID)
                 {
@@ -856,9 +558,90 @@ public class ShopManager : MonoBehaviour
                     PlayerPrefs.SetFloat("EquippedWeaponDamage", w.damageBonus + (lvl * w.damagePerLevel));
                 }
             }
+        }
 
-        int finalTotalPower = Mathf.RoundToInt(baseTotal == 0 ? 50 : baseTotal);
-        PlayerPrefs.SetInt("PlayerTotalPower", finalTotalPower);
+        if (armors != null)
+        {
+            foreach (ArmorCategory cat in System.Enum.GetValues(typeof(ArmorCategory)))
+            {
+                int equippedIndex = PlayerPrefs.GetInt($"EquippedArmor_{cat}", 0);
+                foreach (var a in armors)
+                {
+                    if (a != null && a.category == cat && a.prefabIndex == equippedIndex)
+                    {
+                        int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
+                        baseTotal += a.basePower + (lvl * a.powerPerLevel);
+                        totalArmorHealth += a.baseHealthBonus + (lvl * a.healthPerLevel);
+                        totalArmorReduction += a.baseDamageReduction + (lvl * a.reductionPerLevel);
+                        break;
+                    }
+                }
+            }
+        }
+
+        PlayerPrefs.SetFloat("EquippedArmorHealth", totalArmorHealth);
+        PlayerPrefs.SetFloat("EquippedArmorReduction", totalArmorReduction);
+        PlayerPrefs.SetInt("PlayerTotalPower", baseTotal);
+    }
+
+    private void SpawnDummyHero()
+    {
+        if (dummyHeroPrefab != null)
+        {
+            currentHeroModel = Instantiate(dummyHeroPrefab, heroPedestalPos.position, heroPedestalPos.rotation);
+            currentHeroModel.transform.localScale = new Vector3(2f, 2f, 2f);
+
+            PlayerController pc = currentHeroModel.GetComponent<PlayerController>();
+            if (pc != null) pc.enabled = false;
+
+            CharacterController cc = currentHeroModel.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+
+            Animator anim = currentHeroModel.GetComponentInChildren<Animator>();
+            if (anim != null)
+            {
+                anim.SetBool("IsGrounded", true);
+                anim.SetFloat("Speed", 0f);
+            }
+
+            dummyArmorManager = currentHeroModel.GetComponent<ModularArmorManager>();
+        }
+    }
+
+    private void EquipWeaponToHero(WeaponData w)
+    {
+        if (currentWeaponModel != null) DestroyImmediate(currentWeaponModel);
+        if (currentHeroModel == null || w.shopPrefab == null) return;
+
+        // ФІКС: Шукаємо наш ідеальний сокет першим!
+        Transform socket = FindDeepChild(currentHeroModel.transform, "WeaponSocket");
+        if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "handslot.r");
+        if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_r");
+        if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_R");
+        if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "RightHand");
+
+        if (socket != null)
+        {
+            currentWeaponModel = Instantiate(w.shopPrefab, socket);
+            currentWeaponModel.transform.localPosition = Vector3.zero;
+            currentWeaponModel.transform.localRotation = Quaternion.identity;
+
+            foreach (var s in currentWeaponModel.GetComponents<MonoBehaviour>())
+            {
+                if (s != null) s.enabled = false;
+            }
+        }
+    }
+
+    private Transform FindDeepChild(Transform parent, string name)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.name.ToLower() == name.ToLower()) return child;
+            Transform r = FindDeepChild(child, name);
+            if (r != null) return r;
+        }
+        return null;
     }
 
     private IEnumerator PopText(TextMeshProUGUI textComponent)
@@ -867,26 +650,23 @@ public class ShopManager : MonoBehaviour
         textComponent.transform.localScale = Vector3.one;
         Vector3 popScale = new Vector3(1.2f, 1.2f, 1.2f);
         float t = 0;
-        while (t < 1) { t += Time.deltaTime / 0.08f; textComponent.transform.localScale = Vector3.Lerp(Vector3.one, popScale, t); yield return null; }
+        while (t < 1) { t += Time.unscaledDeltaTime * 12f; textComponent.transform.localScale = Vector3.Lerp(Vector3.one, popScale, t); yield return null; }
         t = 0;
-        while (t < 1) { t += Time.deltaTime / 0.15f; textComponent.transform.localScale = Vector3.Lerp(popScale, Vector3.one, Mathf.SmoothStep(0f, 1f, t)); yield return null; }
+        while (t < 1) { t += Time.unscaledDeltaTime * 10f; textComponent.transform.localScale = Vector3.Lerp(popScale, Vector3.one, Mathf.SmoothStep(0f, 1f, t)); yield return null; }
         textComponent.transform.localScale = Vector3.one;
     }
 
     public void GoToCampScene()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        AudioManager.Instance?.PlayUI(AudioID.UI_Click);
         PlayerPrefs.SetInt("ReturningFromShop", 1);
         PlayerPrefs.Save();
-        Cursor.visible = false; Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
 
-        SetGroupAlpha(statsPanelGroup, 0);
-        SetGroupAlpha(arsenalGridGroup, 0);
-        SetGroupAlpha(arsenalContentGroup, 0);
-        SetGroupAlpha(arsenalDescriptionGroup, 0);
-
-        if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(campSceneName);
-        else if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+        // ФІКС: Повернуто підтримку GlobalHUD.Instance!
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
+        else if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);
     }
 }

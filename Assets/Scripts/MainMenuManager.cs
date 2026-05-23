@@ -15,10 +15,9 @@ public class MainMenuManager : MonoBehaviour
     public string campSceneName = "CampScene";
 
     [Header("Hero Spawning")]
-    public GameObject[] heroPrefabs;
-    public GameObject[] weaponPrefabs;
+    public GameObject heroPrefab;
+    public GameObject[] weaponPrefabs; // Обов'язково додай сюди зброю в Інспекторі!
     public Transform heroSpawnPoint;
-
     public RuntimeAnimatorController menuAnimatorController;
 
     private void Start()
@@ -52,31 +51,43 @@ public class MainMenuManager : MonoBehaviour
 
     private void SpawnSelectedHero()
     {
-        int selectedHeroID = PlayerPrefs.GetInt("SelectedHeroID", 0);
-
-        if (heroPrefabs != null && selectedHeroID >= 0 && selectedHeroID < heroPrefabs.Length && heroPrefabs[selectedHeroID] != null)
+        if (heroPrefab != null && heroSpawnPoint != null)
         {
-            GameObject currentVisual = Instantiate(heroPrefabs[selectedHeroID], heroSpawnPoint.position, heroSpawnPoint.rotation);
+            GameObject currentVisual = Instantiate(heroPrefab, heroSpawnPoint.position, heroSpawnPoint.rotation);
+            currentVisual.transform.localScale = new Vector3(1f, 1f, 1f); // Можеш змінити розмір, якщо потрібно
 
-            // ФІКС: Спавнимо героя у розмірі 0.5 по всьому скейлу
-            currentVisual.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+            // ФІКС: Знищуємо логіку, щоб гравець не телепортувався!
+            PlayerController pc = currentVisual.GetComponent<PlayerController>();
+            if (pc != null) Destroy(pc);
 
-            Animator anim = currentVisual.GetComponent<Animator>();
+            CharacterController cc = currentVisual.GetComponent<CharacterController>();
+            if (cc != null) Destroy(cc);
+
+            Animator anim = currentVisual.GetComponentInChildren<Animator>();
             if (anim != null)
             {
-                if (menuAnimatorController != null)
-                {
-                    anim.runtimeAnimatorController = menuAnimatorController;
-                }
-                else
-                {
-                    anim.SetBool("IsGrounded", true);
-                    anim.SetFloat("Speed", 0f);
-                }
+                if (menuAnimatorController != null) anim.runtimeAnimatorController = menuAnimatorController;
+                else { anim.SetBool("IsGrounded", true); anim.SetFloat("Speed", 0f); }
             }
 
-            // ФІКС: Повністю видалено блок спавну зброї (socket та weaponPrefabs), 
-            // щоб у меню персонаж лежав без спорядження в руках
+            // Одягаємо збережену броню
+            ModularArmorManager mam = currentVisual.GetComponent<ModularArmorManager>();
+            if (mam != null) mam.LoadEquippedArmor();
+
+            // Одягаємо збережену зброю
+            Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
+            if (socket == null) socket = FindDeepChild(currentVisual.transform, "RightHand");
+
+            if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > 0)
+            {
+                int savedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+                if (savedWepID < weaponPrefabs.Length && weaponPrefabs[savedWepID] != null)
+                {
+                    GameObject wep = Instantiate(weaponPrefabs[savedWepID], socket.position, socket.rotation, socket);
+                    wep.transform.SetParent(socket);
+                    foreach (var s in wep.GetComponents<MonoBehaviour>()) { if (s != null) s.enabled = false; }
+                }
+            }
         }
     }
 
@@ -84,9 +95,9 @@ public class MainMenuManager : MonoBehaviour
     {
         foreach (Transform child in parent)
         {
-            if (child.name == name) return child;
-            Transform result = FindDeepChild(child, name);
-            if (result != null) return result;
+            if (child.name.ToLower() == name.ToLower()) return child;
+            Transform r = FindDeepChild(child, name);
+            if (r != null) return r;
         }
         return null;
     }
@@ -96,53 +107,17 @@ public class MainMenuManager : MonoBehaviour
         if (continueButton != null)
         {
             bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
-
             TextMeshProUGUI btnText = continueButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null)
-            {
-                btnText.text = hasSave ? "Continue" : "Start Adventure!";
-            }
+            if (btnText != null) btnText.text = hasSave ? "Continue" : "Start Adventure!";
 
             continueButton.interactable = true;
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
             if (cg != null) cg.alpha = 1f;
 
             continueButton.onClick.RemoveAllListeners();
-            if (hasSave)
-            {
-                continueButton.onClick.AddListener(ContinueGame);
-            }
-            else
-            {
-                continueButton.onClick.AddListener(StartNewRun);
-            }
+            if (hasSave) continueButton.onClick.AddListener(ContinueGame);
+            else continueButton.onClick.AddListener(StartNewRun);
         }
-    }
-
-    public void UpdateCrystalsUI()
-    {
-        int targetCrystals = SaveManager.GetTotalCrystals();
-        StartCoroutine(AnimateCrystalCount(targetCrystals));
-    }
-
-    private System.Collections.IEnumerator AnimateCrystalCount(int targetCount)
-    {
-        int currentCount = 0;
-        float duration = 1.5f;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            currentCount = (int)Mathf.Lerp(0, targetCount, elapsed / duration);
-            if (crystalsText != null)
-                crystalsText.text = currentCount.ToString("N0");
-
-            yield return null;
-        }
-
-        if (crystalsText != null)
-            crystalsText.text = targetCount.ToString("N0");
     }
 
     private void HideMenuBeforeLoad()
@@ -152,11 +127,7 @@ public class MainMenuManager : MonoBehaviour
         else gameObject.SetActive(false);
     }
 
-    // --- ЛОГІКА КНОПОК ІЗ ЗВУКОМ ---
-    private void PlayClickSound()
-    {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-    }
+    private void PlayClickSound() { AudioManager.Instance?.PlayUI(AudioID.UI_Click); }
 
     public void StartNewRun()
     {
@@ -166,10 +137,9 @@ public class MainMenuManager : MonoBehaviour
         PlayerPrefs.SetInt("IsContinuing", 0);
         PlayerPrefs.Save();
 
-        if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+        ResourceManager.Instance?.ClearRunInventory();
         HideMenuBeforeLoad();
 
-        // ФІКС: Якщо туторіал не пройдено - кидаємо на Lvl_1
         if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
         {
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
@@ -177,7 +147,6 @@ public class MainMenuManager : MonoBehaviour
         }
         else
         {
-            // Інакше кидаємо відразу в табір
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
             else SceneManager.LoadScene(campSceneName);
         }
@@ -188,7 +157,6 @@ public class MainMenuManager : MonoBehaviour
         PlayClickSound();
         HideMenuBeforeLoad();
 
-        // ФІКС: Захист, якщо гравець якось натиснув Continue без пройденого туторіалу
         if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
         {
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
@@ -215,28 +183,13 @@ public class MainMenuManager : MonoBehaviour
     public void OpenOptions()
     {
         PlayClickSound();
-        if (SettingsUI.Instance != null)
-        {
-            SettingsUI.Instance.OpenSettings();
-        }
-        else
-        {
-            Debug.LogWarning("SettingsUI не знайдено! Переконайся, що HUD_Canvas існує в сцені.");
-        }
-    }
-
-    public void OpenAchievements()
-    {
-        PlayClickSound();
-        Debug.Log("Achievements clicked! (Show achievements panel)");
+        SettingsUI.Instance?.OpenSettings();
     }
 
     public void QuitGame()
     {
         PlayClickSound();
-        Debug.Log("Quitting Game...");
         Application.Quit();
-
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #endif

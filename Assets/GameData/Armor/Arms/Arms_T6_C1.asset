@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf08024f572954c49832aa70b05b000f, type: 3}
+  m_Name: Arms_T6_C1
+  m_EditorClassIdentifier: Assembly-CSharp::ArmorData
+  armorID: 151
+  armorName: Abyssal Gauntlets
+  description: A reliable gauntlets forged for a abyssal warrior. Provides decent
+    protection in battle.
+  category: 2
+  prefabIndex: 15
+  price: 9150
+  maxUpgradeLevel: 5
+  basePower: 125
+  baseHealthBonus: 95
+  baseDamageReduction: 0.06
+  powerPerLevel: 18
+  healthPerLevel: 10
+  reductionPerLevel: 0.005

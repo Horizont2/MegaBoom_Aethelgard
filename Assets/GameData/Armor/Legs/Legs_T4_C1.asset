@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf08024f572954c49832aa70b05b000f, type: 3}
+  m_Name: Legs_T4_C1
+  m_EditorClassIdentifier: Assembly-CSharp::ArmorData
+  armorID: 181
+  armorName: Paladin Greaves
+  description: A reliable greaves forged for a paladin warrior. Provides decent protection
+    in battle.
+  category: 4
+  prefabIndex: 9
+  price: 4150
+  maxUpgradeLevel: 5
+  basePower: 85
+  baseHealthBonus: 65
+  baseDamageReduction: 0.04
+  powerPerLevel: 12
+  healthPerLevel: 10
+  reductionPerLevel: 0.005

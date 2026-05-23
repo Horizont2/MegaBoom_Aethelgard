@@ -9,6 +9,18 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
       propertyPath: m_LocalPosition.x
       value: 1278.6029
       objectReference: {fileID: 0}
@@ -58,9 +70,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -1072956755854648693}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 4655070276738774522}
   m_SourcePrefab: {fileID: 100100000, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
 --- !u!1 &3030662099941857429 stripped
@@ -68,25 +77,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b9781ed47b10f344a83f3c99fd7a1780, type: 3}
   m_PrefabInstance: {fileID: 2796307446128911812}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &-1072956755854648693
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3030662099941857429}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5c978ffb0c13b24d8671abdc813632f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponDisplayObject
-  standAngleX: -90
-  tiltAngleZ: 45
-  tiltSpeed: 8
-  rotationSpeed: 300
-  moveSpeed: 5
-  idleBobAmount: 0.05
-  idleBobSpeed: 2
 --- !u!65 &4655070276738774522
 BoxCollider:
   m_ObjectHideFlags: 0

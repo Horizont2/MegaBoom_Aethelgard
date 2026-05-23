@@ -26,6 +26,37 @@ public class MapPanelUI : MonoBehaviour
     public TextMeshProUGUI passiveFoodText;
     public TextMeshProUGUI passiveDiamondText;
 
+    [Header("Reward Containers & Icons (NEW)")]
+    // Контейнери (WoodItem, StoneItem...) - ПЕРЕТЯГНИ СЮДИ БАТЬКІВСЬКІ БЛОКИ!
+    public GameObject passiveWoodItem;
+    public GameObject passiveStoneItem;
+    public GameObject passiveFoodItem;
+    public GameObject passiveDiamondItem;
+
+    public GameObject conquerWoodItem;
+    public GameObject conquerStoneItem;
+    public GameObject conquerFoodItem;
+    public GameObject conquerDiamondItem;
+
+    public GameObject upgWoodItem;
+    public GameObject upgStoneItem;
+    public GameObject upgFoodItem;
+
+    // Самі картинки (ResourceSprite) - ПЕРЕТЯГНИ СЮДИ КАРТИНКИ!
+    public Image passiveWoodIcon;
+    public Image passiveStoneIcon;
+    public Image passiveFoodIcon;
+    public Image passiveDiamondIcon;
+
+    public Image conquerWoodIcon;
+    public Image conquerStoneIcon;
+    public Image conquerFoodIcon;
+    public Image conquerDiamondIcon;
+
+    public Image upgWoodIcon;
+    public Image upgStoneIcon;
+    public Image upgFoodIcon;
+
     [Header("UI Elements - Graphics & Buttons")]
     public Image illustrationImage;
     public Button actionButton;
@@ -43,13 +74,9 @@ public class MapPanelUI : MonoBehaviour
     public TextMeshProUGUI upgMaxLevelText;
 
     [Header("Dynamic UI Colors")]
-    [Tooltip("Колір тексту, коли ресурсів вистачає (або сила гравця достатня)")]
-    public Color affordableColor = new Color(0.298f, 0.686f, 0.314f, 1f); // Дефолтний зелений
-    [Tooltip("Колір тексту, коли ресурсів НЕ вистачає")]
-    public Color unaffordableColor = new Color(0.957f, 0.263f, 0.212f, 1f); // Дефолтний червоний
-    [Tooltip("Колір тексту на кнопці Upgrade, коли вона активна")]
+    public Color affordableColor = new Color(0.298f, 0.686f, 0.314f, 1f);
+    public Color unaffordableColor = new Color(0.957f, 0.263f, 0.212f, 1f);
     public Color btnTextAffordableColor = Color.white;
-    [Tooltip("Колір тексту на кнопці Upgrade, коли вона НЕ активна")]
     public Color btnTextUnaffordableColor = new Color(0.6f, 0.6f, 0.6f, 1f);
 
     [Header("AAA Juice Effects")]
@@ -159,16 +186,39 @@ public class MapPanelUI : MonoBehaviour
         }
 
         int currentLevel = PlayerPrefs.GetInt("RegionLevel_" + currentRegion.regionID, 1);
-        if (currentRegion.upgradeLevels == null || currentRegion.upgradeLevels.Length == 0) return;
 
-        RegionLevelData levelData = currentRegion.upgradeLevels[currentLevel - 1];
+        // Примусово вмикаємо ВСІ картинки, щоб вони не зникали
+        if (passiveWoodIcon) { passiveWoodIcon.gameObject.SetActive(true); passiveWoodIcon.enabled = true; }
+        if (passiveStoneIcon) { passiveStoneIcon.gameObject.SetActive(true); passiveStoneIcon.enabled = true; }
+        if (passiveFoodIcon) { passiveFoodIcon.gameObject.SetActive(true); passiveFoodIcon.enabled = true; }
+        if (passiveDiamondIcon) { passiveDiamondIcon.gameObject.SetActive(true); passiveDiamondIcon.enabled = true; }
 
-        if (!isConfirmingUpgrade)
+        if (conquerWoodIcon) { conquerWoodIcon.gameObject.SetActive(true); conquerWoodIcon.enabled = true; }
+        if (conquerStoneIcon) { conquerStoneIcon.gameObject.SetActive(true); conquerStoneIcon.enabled = true; }
+        if (conquerFoodIcon) { conquerFoodIcon.gameObject.SetActive(true); conquerFoodIcon.enabled = true; }
+        if (conquerDiamondIcon) { conquerDiamondIcon.gameObject.SetActive(true); conquerDiamondIcon.enabled = true; }
+
+        if (upgWoodIcon) { upgWoodIcon.gameObject.SetActive(true); upgWoodIcon.enabled = true; }
+        if (upgStoneIcon) { upgStoneIcon.gameObject.SetActive(true); upgStoneIcon.enabled = true; }
+        if (upgFoodIcon) { upgFoodIcon.gameObject.SetActive(true); upgFoodIcon.enabled = true; }
+
+        if (currentRegion.upgradeLevels != null && currentRegion.upgradeLevels.Length > 0)
         {
-            if (passiveWoodText != null) passiveWoodText.text = $"+{levelData.passiveWood}/hr";
-            if (passiveStoneText != null) passiveStoneText.text = $"+{levelData.passiveStone}/hr";
-            if (passiveFoodText != null) passiveFoodText.text = $"+{levelData.passiveFood}/hr";
-            if (passiveDiamondText != null) passiveDiamondText.text = $"+{levelData.passiveDiamonds}/hr";
+            RegionLevelData levelData = currentRegion.upgradeLevels[currentLevel - 1];
+
+            if (!isConfirmingUpgrade)
+            {
+                if (passiveWoodText != null) passiveWoodText.text = $"+{levelData.passiveWood}/hr";
+                if (passiveStoneText != null) passiveStoneText.text = $"+{levelData.passiveStone}/hr";
+                if (passiveFoodText != null) passiveFoodText.text = $"+{levelData.passiveFood}/hr";
+                if (passiveDiamondText != null) passiveDiamondText.text = $"+{levelData.passiveDiamonds}/hr";
+
+                // Вмикаємо/Вимикаємо ЦІЛІ БЛОКИ (зсув списку)
+                if (passiveWoodItem != null) passiveWoodItem.SetActive(levelData.passiveWood > 0);
+                if (passiveStoneItem != null) passiveStoneItem.SetActive(levelData.passiveStone > 0);
+                if (passiveFoodItem != null) passiveFoodItem.SetActive(levelData.passiveFood > 0);
+                if (passiveDiamondItem != null) passiveDiamondItem.SetActive(levelData.passiveDiamonds > 0);
+            }
         }
 
         switch (currentRegion.currentState)
@@ -204,6 +254,12 @@ public class MapPanelUI : MonoBehaviour
         if (conquerFoodText != null) conquerFoodText.text = $"+{currentRegion.foodReward}";
         if (conquerDiamondText != null) conquerDiamondText.text = $"+{currentRegion.diamondReward}";
 
+        // Вмикаємо/Вимикаємо ЦІЛІ БЛОКИ (зсув списку)
+        if (conquerWoodItem != null) conquerWoodItem.SetActive(currentRegion.woodReward > 0);
+        if (conquerStoneItem != null) conquerStoneItem.SetActive(currentRegion.stoneReward > 0);
+        if (conquerFoodItem != null) conquerFoodItem.SetActive(currentRegion.foodReward > 0);
+        if (conquerDiamondItem != null) conquerDiamondItem.SetActive(currentRegion.diamondReward > 0);
+
         int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 70);
 
         string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
@@ -224,7 +280,6 @@ public class MapPanelUI : MonoBehaviour
             bool canAfford = ResourceManager.Instance != null && ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             if (upgradeButton) upgradeButton.interactable = canAfford;
 
-            // Динамічна зміна кольору тексту кнопки (опціонально для більшої виразності)
             if (upgradeButtonText != null && !isConfirmingUpgrade)
             {
                 upgradeButtonText.color = canAfford ? btnTextAffordableColor : btnTextUnaffordableColor;
@@ -240,6 +295,11 @@ public class MapPanelUI : MonoBehaviour
                 if (upgStoneCostText) upgStoneCostText.text = $"<color={sCol}>{nextLevelData.costStone}</color>";
                 if (upgFoodCostText) upgFoodCostText.text = $"<color={fCol}>{nextLevelData.costFood}</color>";
             }
+
+            // Вмикаємо/Вимикаємо блоки вартості апгрейду
+            if (upgWoodItem != null) upgWoodItem.SetActive(nextLevelData.costWood > 0);
+            if (upgStoneItem != null) upgStoneItem.SetActive(nextLevelData.costStone > 0);
+            if (upgFoodItem != null) upgFoodItem.SetActive(nextLevelData.costFood > 0);
         }
         else
         {
@@ -274,7 +334,7 @@ public class MapPanelUI : MonoBehaviour
                     if (upgradeButtonText != null)
                     {
                         upgradeButtonText.text = "<color=#FFD700>CONFIRM</color>";
-                        upgradeButtonText.color = btnTextAffordableColor; // Повертаємо нормальний колір підтвердження
+                        upgradeButtonText.color = btnTextAffordableColor;
                     }
                     if (actionButton != null) actionButton.interactable = false;
 
@@ -424,7 +484,6 @@ public class MapPanelUI : MonoBehaviour
         if (!state) { canvasGroup.interactable = false; canvasGroup.blocksRaycasts = false; }
     }
 
-    // Хелпер для конвертації Unity Color у шістнадцятковий код (HEX) для TextMeshPro
     private string ColorToHex(Color color)
     {
         return "#" + ColorUtility.ToHtmlStringRGB(color);
