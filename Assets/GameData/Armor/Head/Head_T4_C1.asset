@@ -18,6 +18,7 @@ MonoBehaviour:
     in battle.
   category: 0
   prefabIndex: 9
+  icon: {fileID: 21300000, guid: 063696c62b0a60443a878d98c4aa1bb4, type: 3}
   price: 4150
   maxUpgradeLevel: 5
   basePower: 85

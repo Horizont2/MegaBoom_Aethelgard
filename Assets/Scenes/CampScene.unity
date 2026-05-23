@@ -72168,8 +72168,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 522811750}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.074671045, y: -0.86047256, z: 0.13558508, w: 0.48541522}
-  m_LocalPosition: {x: 108.907425, y: 38.730473, z: 70.60573}
+  m_LocalRotation: {x: 0.048917532, y: -0.9273803, z: 0.13555136, w: 0.3452516}
+  m_LocalPosition: {x: 80.06161, y: 23.790352, z: 45.975365}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -76690,7 +76690,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CampNPC_Elias
   subtitleText: {fileID: 1563443647}
-  typingSpeed: 0.04
+  typingSpeed: 0.045
   exclamationMark: {fileID: 1693206954}
   mapTableObject: {fileID: 25809848}
   dialogueBreakDistance: 7
@@ -285119,8 +285119,29 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3825772852290716023, guid: 2dfc4a59caf034a4a8e743e8f27c7010, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1173428784}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4493519919864830925, guid: 2dfc4a59caf034a4a8e743e8f27c7010, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2144321838}
   m_SourcePrefab: {fileID: 100100000, guid: 2dfc4a59caf034a4a8e743e8f27c7010, type: 3}
+--- !u!1 &2144321837 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4493519919864830925, guid: 2dfc4a59caf034a4a8e743e8f27c7010, type: 3}
+  m_PrefabInstance: {fileID: 2144321836}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2144321838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144321837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61da8c97c45b3624ababf7126e235ab2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MissionBoardMarker
+  exclamationMark: {fileID: 1173428783}
 --- !u!1 &2144507986 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1369031296425274, guid: 22a3fd8d3e59a1149bdcd775c0e87241, type: 3}

@@ -18,6 +18,7 @@ MonoBehaviour:
     protection in battle.
   category: 2
   prefabIndex: 7
+  icon: {fileID: 21300000, guid: 9ec646e190fe55449bd1b1d5ce7dd0da, type: 3}
   price: 2550
   maxUpgradeLevel: 5
   basePower: 70

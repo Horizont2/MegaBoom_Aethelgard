@@ -13,9 +13,9 @@ public class CampNPC_Elias : MonoBehaviour
     public GameObject mapTableObject;
 
     [Header("Dialogue Settings")]
-    public float dialogueBreakDistance = 7f; // Відстань, на якій текст остаточно зникає
+    public float dialogueBreakDistance = 7f;
 
-    private Transform playerTransform; // Кешуємо гравця
+    private Transform playerTransform;
 
     private bool isPlayerInRange = false;
     private bool isTalking = false;
@@ -49,7 +49,7 @@ public class CampNPC_Elias : MonoBehaviour
                 UpdateNPCState();
             }
         }
-        else // --- НОВА ЛОГІКА ПЕРЕРИВАННЯ ПО ДИСТАНЦІЇ ---
+        else
         {
             if (playerTransform != null && Vector3.Distance(transform.position, playerTransform.position) > dialogueBreakDistance)
             {
@@ -65,8 +65,12 @@ public class CampNPC_Elias : MonoBehaviour
 
     private void UpdateNPCState()
     {
+        // ПОВЕРНЕНО: Стіл вмикається СТРОГО від рівня будівлі, діалог на нього не впливає
         int lodgeLevel = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
-        if (mapTableObject != null) mapTableObject.SetActive(lodgeLevel >= 2);
+        if (mapTableObject != null)
+        {
+            mapTableObject.SetActive(lodgeLevel >= 2);
+        }
 
         if (exclamationMark != null)
         {
@@ -105,7 +109,6 @@ public class CampNPC_Elias : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerInRange = false;
-            // Просто ховаємо підказку "Press E", але текст діалогу продовжує йти!
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
@@ -129,7 +132,9 @@ public class CampNPC_Elias : MonoBehaviour
             yield return StartCoroutine(ShowSubtitle("Elias: Listen closely. This camp won't survive on scraps forever.", 3.5f));
             yield return StartCoroutine(ShowSubtitle("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.", 4.5f));
             yield return StartCoroutine(ShowSubtitle("Elias: Centuries ago, the Ashen Blight ruined this kingdom. We must reclaim the 24 lost provinces.", 5f));
-            yield return StartCoroutine(ShowSubtitle("Elias: Upgrade my lodge. Build me a drafting table, and I will chart a safe path to the forests.", 4.5f));
+            yield return StartCoroutine(ShowSubtitle("Elias: Build me a drafting table here later, and I will chart a safe path to the forests.", 4.5f));
+
+            // Тільки кажемо грі, що інтро пройдено
             PlayerPrefs.SetInt("Elias_Intro", 1);
         }
         else if (lodgeLvl >= 2 && PlayerPrefs.GetInt("Elias_TableBuilt", 0) == 0)
@@ -185,6 +190,11 @@ public class CampNPC_Elias : MonoBehaviour
         PlayerPrefs.Save();
         isTalking = false;
         UpdateNPCState();
+
+        // Оновлюємо маркер дошки місій напряму, якщо вона зараз активна на сцені
+        MissionBoardMarker board = FindFirstObjectByType<MissionBoardMarker>();
+        if (board != null) board.UpdateMarkerState();
+
         if (isPlayerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Talk to Elias");
     }
 
