@@ -204,19 +204,39 @@ public class PlayerController : MonoBehaviour
         yield return null;
         yield return null;
 
+        // Шукаємо точку спавну заздалегідь для обох режимів
+        GameObject spawnPoint = GameObject.Find("PlayerSpawnPoint");
+
         if (isCampMode)
         {
+            bool loadedSave = false;
+
             if (PlayerPrefs.GetInt("HasCampSave", 0) == 1)
             {
                 float cx = PlayerPrefs.GetFloat("CampPosX");
                 float cy = PlayerPrefs.GetFloat("CampPosY");
                 float cz = PlayerPrefs.GetFloat("CampPosZ");
-                transform.position = new Vector3(cx, cy, cz);
+
+                // ЗАПОБІЖНИК: Якщо гравець не падає у бездну (Y > -10)
+                if (cy > -10f)
+                {
+                    transform.position = new Vector3(cx, cy, cz);
+                    loadedSave = true;
+                }
             }
+
+            // Якщо збереження бите або гравець впав під карту — використовуємо безпечний спавн
+            if (!loadedSave && spawnPoint != null)
+            {
+                transform.position = spawnPoint.transform.position;
+                transform.rotation = spawnPoint.transform.rotation;
+            }
+
             if (characterController != null) characterController.enabled = true;
             yield break;
         }
 
+        // --- ЛОГІКА ДЛЯ БОЙОВИХ РЕГІОНІВ ---
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
             float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
@@ -226,7 +246,6 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            GameObject spawnPoint = GameObject.Find("PlayerSpawnPoint");
             if (spawnPoint != null)
             {
                 transform.position = spawnPoint.transform.position;

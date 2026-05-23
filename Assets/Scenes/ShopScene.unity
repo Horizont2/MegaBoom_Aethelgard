@@ -2559,6 +2559,7 @@ MonoBehaviour:
   beltView: {fileID: 1043108198}
   legsView: {fileID: 1791726803}
   feetView: {fileID: 1584616326}
+  weaponView: {fileID: 173970519}
 --- !u!1 &249303639
 GameObject:
   m_ObjectHideFlags: 0

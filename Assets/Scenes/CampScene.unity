@@ -2439,6 +2439,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4457848601906800, guid: f661498175107c749a33d97304c423eb, type: 3}
   m_PrefabInstance: {fileID: 27106811}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &27156737
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 27156738}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &27156738
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 27156737}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 76.563, y: 21.705248, z: 47.19}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &27935613 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1369031296425274, guid: 22a3fd8d3e59a1149bdcd775c0e87241, type: 3}
@@ -287147,6 +287178,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: meleePoint
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: grenadePrefab
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 809571974800134349, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 70.51
@@ -290657,3 +290696,4 @@ SceneRoots:
   - {fileID: 874921758}
   - {fileID: 1195632532}
   - {fileID: 3691782032850957282}
+  - {fileID: 27156738}

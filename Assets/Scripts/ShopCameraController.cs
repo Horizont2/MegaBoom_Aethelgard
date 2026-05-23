@@ -19,6 +19,9 @@ public class ShopCameraController : MonoBehaviour
     public Transform legsView;
     public Transform feetView;
 
+    // НОВЕ: Ракурс для огляду зброї
+    public Transform weaponView;
+
     private Coroutine moveCoroutine;
 
     private void Awake()
@@ -36,19 +39,20 @@ public class ShopCameraController : MonoBehaviour
         }
     }
 
-    // Метод для кнопок категорій (приймає індекс з твого enum ArmorCategory)
+    // Метод для кнопок категорій (приймає індекс з твого enum або кнопок UI)
     public void MoveToCategory(int categoryIndex)
     {
         Transform target = defaultView;
 
         switch (categoryIndex)
         {
-            case 0: target = headView; break;  // Head
-            case 1: target = chestView; break; // Chest
-            case 2: target = armsView; break;  // Arms
-            case 3: target = beltView; break;  // Belt
-            case 4: target = legsView; break;  // Legs
-            case 5: target = feetView; break;  // Feet
+            case 0: target = headView; break;   // Head
+            case 1: target = chestView; break;  // Chest
+            case 2: target = armsView; break;   // Arms
+            case 3: target = beltView; break;   // Belt
+            case 4: target = legsView; break;   // Legs
+            case 5: target = feetView; break;   // Feet
+            case 6: target = weaponView; break; // НОВЕ: Weapon (Зброя)
         }
 
         if (target != null) MoveToTarget(target);
