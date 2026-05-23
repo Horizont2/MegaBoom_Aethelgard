@@ -589,7 +589,7 @@ public class ShopManager : MonoBehaviour
         if (dummyHeroPrefab != null)
         {
             currentHeroModel = Instantiate(dummyHeroPrefab, heroPedestalPos.position, heroPedestalPos.rotation);
-            currentHeroModel.transform.localScale = new Vector3(2f, 2f, 2f);
+            currentHeroModel.transform.localScale = new Vector3(1f, 1f, 1f);
 
             PlayerController pc = currentHeroModel.GetComponent<PlayerController>();
             if (pc != null) pc.enabled = false;

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: d17861c71d6156c44b26a8bf2f8e6bd0
+guid: d1c3109bdb54ad54c8a2b2838528e640
 DefaultImporter:
   externalObjects: {}
   userData: 
@@ -7,8 +7,8 @@ DefaultImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 369810
-  packageName: Gravefield Cemetery Kit - FREE - Dark Corners
-  packageVersion: 1.0
-  assetPath: Assets/EmaceArt/NecroPOLY Dark Corners/Scenes/Asset Preview.unity
-  uploadId: 895898
+  productId: 262473
+  packageName: Low-Poly Medieval Market
+  packageVersion: 1.1
+  assetPath: Assets/Low-Poly Medieval Market/Scenes/SampleScene.unity
+  uploadId: 617661
