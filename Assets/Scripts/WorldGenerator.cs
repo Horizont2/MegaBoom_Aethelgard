@@ -59,6 +59,15 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseFlowers;
     public GameObject[] logPrefabs;
 
+    [Header("Map Border Mountains (NEW)")]
+    public GameObject[] borderMountainPrefabs;
+    [Tooltip("Відстань між горами по периметру")]
+    public float borderSpacing = 40f;
+    [Tooltip("Відступ від краю карти (щоб не красти ігровий простір)")]
+    public float borderOffset = 10f;
+    public float borderMinScale = 3f;
+    public float borderMaxScale = 6f;
+
     [Header("Points of Interest")]
     public GameObject[] poiPrefabs;
     public int maxPOIs = 15;
@@ -75,7 +84,7 @@ public class WorldGenerator : MonoBehaviour
 
     private void Start()
     {
-        IsGenerationDone = false; // Скидаємо прапорець на початку
+        IsGenerationDone = false;
         terrain = GetComponent<Terrain>();
 
         if (skyboxMaterial != null)
@@ -103,7 +112,6 @@ public class WorldGenerator : MonoBehaviour
         terrain.terrainData = GenerateHeights(terrain.terrainData);
         PaintTerrain(terrain.terrainData);
 
-        // Запуск асинхронної генерації лісу
         StartCoroutine(GenerateWorldRoutine());
     }
 
@@ -112,6 +120,9 @@ public class WorldGenerator : MonoBehaviour
         yield return StartCoroutine(PopulateBiomesRoutine());
         yield return StartCoroutine(SpawnPOIsRoutine());
         yield return StartCoroutine(SpawnExtractionCartsRoutine());
+
+        // ФІКС: Спавнимо гори по краях карти перед тим, як зняти екран завантаження
+        yield return StartCoroutine(SpawnBorderMountainsRoutine());
 
         Physics.SyncTransforms();
 
@@ -122,11 +133,10 @@ public class WorldGenerator : MonoBehaviour
             player.transform.position = new Vector3(player.transform.position.x, groundY + 1.5f, player.transform.position.z);
         }
 
-        // Даємо DistanceOptimizer час (2 кадри) щоб сховати всі далекі об'єкти ДО того, як зникне чорний екран
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame();
 
-        IsGenerationDone = true; // Даємо сигнал LoadingManager-у
+        IsGenerationDone = true;
     }
 
     private void AdjustSettingsForBiome()
@@ -344,7 +354,6 @@ public class WorldGenerator : MonoBehaviour
 
         for (int i = 0; i < spawnAttempts; i++)
         {
-            // Тайм-слайсинг: не даємо рушію залагати під час генерації тисяч об'єктів
             if (i % 250 == 0) yield return null;
 
             float px = Random.Range(10f, w - 10f); float pz = Random.Range(10f, l - 10f);
@@ -503,6 +512,60 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
         }
+    }
+
+    // НОВИЙ МЕТОД: Генерація гір по краях карти
+    private IEnumerator SpawnBorderMountainsRoutine()
+    {
+        if (borderMountainPrefabs == null || borderMountainPrefabs.Length == 0) yield break;
+
+        Transform borderContainer = new GameObject("BorderMountainsContainer").transform;
+        borderContainer.SetParent(this.transform);
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+
+        // Нижня (z = -offset) та Верхня (z = l + offset) межі
+        for (float x = -borderOffset; x <= w + borderOffset; x += borderSpacing)
+        {
+            SpawnSingleBorderMountain(new Vector3(x, 0, -borderOffset), borderContainer, w, l);
+            SpawnSingleBorderMountain(new Vector3(x, 0, l + borderOffset), borderContainer, w, l);
+            yield return null;
+        }
+
+        // Ліва (x = -offset) та Права (x = w + offset) межі
+        for (float z = -borderOffset; z <= l + borderOffset; z += borderSpacing)
+        {
+            SpawnSingleBorderMountain(new Vector3(-borderOffset, 0, z), borderContainer, w, l);
+            SpawnSingleBorderMountain(new Vector3(w + borderOffset, 0, z), borderContainer, w, l);
+            yield return null;
+        }
+    }
+
+    private void SpawnSingleBorderMountain(Vector3 localPos, Transform container, float w, float l)
+    {
+        GameObject prefab = GetRandomPrefab(borderMountainPrefabs);
+        if (prefab == null) return;
+
+        // Щоб дізнатися висоту, "затискаємо" координати в межах террейну (бо SampleHeight не працює за межами)
+        float clampedX = Mathf.Clamp(localPos.x, 0, w);
+        float clampedZ = Mathf.Clamp(localPos.z, 0, l);
+
+        float worldX = transform.position.x + localPos.x;
+        float worldZ = transform.position.z + localPos.z;
+
+        float y = terrain.SampleHeight(new Vector3(transform.position.x + clampedX, 0, transform.position.z + clampedZ)) + transform.position.y;
+
+        // Віднімаємо трохи висоти, щоб гора "вросла" в землю
+        Vector3 spawnPos = new Vector3(worldX, y - 5f, worldZ);
+
+        GameObject mnt = Instantiate(prefab, spawnPos, Quaternion.Euler(0, Random.Range(0f, 360f), 0), container);
+        mnt.transform.localScale *= Random.Range(borderMinScale, borderMaxScale);
+
+        // Опціонально: фарбуємо крайові гори в колір скель поточного біому
+        float temp = GetTemperature(clampedX / w, clampedZ / l);
+        Color rockColor = temp >= 0.65f ? desertRockColor : (temp <= 0.35f ? snowRockColor : forestRockColor);
+        ApplyBiomeColor(mnt, rockColor);
     }
 
     private bool IsPositionClear(Vector3 position, float radius)
