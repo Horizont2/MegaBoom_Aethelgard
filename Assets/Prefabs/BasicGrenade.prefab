@@ -153,11 +153,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56cf863d40e86944ea49d03078b49efa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrenadeLogic
-  delay: 2
+  fallbackDelay: 3
   explosionRadius: 6
   damage: 200
-  explosionEffect: {fileID: 1762402419756544444, guid: a6824951b475fc64eb95187927f9ba5d, type: 3}
-  crystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
+  explosionEffect: {fileID: 6192724089161036641, guid: e17d9a3f04750764c8c0a7a0461e4c3b, type: 3}
+  crystalPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   baseHitStopDuration: 0.05
   maxHitStopDuration: 0.15
   baseShakeMagnitude: 0.2

@@ -28,7 +28,7 @@ public class LoadingManager : MonoBehaviour
     [TextArea(2, 3)]
     public string[] gameHints;
 
-    private bool isLoading = false;
+    public bool isLoading = false;
     private Coroutine hintCoroutine;
 
     private void Awake()

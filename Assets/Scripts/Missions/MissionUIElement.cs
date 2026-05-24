@@ -10,7 +10,7 @@ public class MissionUIElement : MonoBehaviour
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI descriptionText;
 
-    public Image backgroundImage;
+    public Image backgroundImage; // Це наш об'єкт Bg, який ми будемо рухати
 
     [Header("Settings")]
     [Tooltip("Увімкни це ТІЛЬКИ для сюжетної місії на сцені (щоб вона гарно виїжджала)")]
@@ -22,16 +22,9 @@ public class MissionUIElement : MonoBehaviour
 
     private string baseDescription = "";
 
-    // Кешування позиції для безпечної анімації
-    private Vector3 originalPos;
-    private bool isPosCached = false;
-
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
-
-        originalPos = transform.localPosition;
-        isPosCached = true;
 
         if (animateAppearance)
         {
@@ -62,27 +55,32 @@ public class MissionUIElement : MonoBehaviour
 
     private IEnumerator AppearRoutine()
     {
-        if (!isPosCached)
-        {
-            originalPos = transform.localPosition;
-            isPosCached = true;
-        }
+        // МАГІЯ ТУТ: Ми не чіпаємо головний об'єкт (його тримає Layout Group).
+        // Ми беремо тільки внутрішню графіку (Bg) і рухаємо її!
+        if (backgroundImage == null) yield break;
+
+        Transform visualTransform = backgroundImage.transform;
+
+        // Зчитуємо локальну позицію Bg (зазвичай це 0,0,0)
+        Vector3 targetPos = visualTransform.localPosition;
+
+        // Відсуваємо її на 300 пікселів вліво для старту
+        Vector3 startPos = targetPos + new Vector3(-300f, 0, 0);
 
         float t = 0;
-        // ФІКС: Віднімаємо 300 по осі X, щоб плашка виїжджала з-за лівого краю екрана
-        Vector3 startPos = originalPos + new Vector3(-300f, 0, 0);
-        Vector3 targetPos = originalPos;
-
         while (t < 1)
         {
             t += Time.deltaTime / animationDuration;
             float curve = Mathf.SmoothStep(0, 1, t);
 
+            // Плавно проявляємо головний об'єкт
             if (canvasGroup != null) canvasGroup.alpha = curve;
-            transform.localPosition = Vector3.Lerp(startPos, targetPos, curve);
+
+            // Плавно висуваємо графіку
+            visualTransform.localPosition = Vector3.Lerp(startPos, targetPos, curve);
             yield return null;
         }
-        transform.localPosition = targetPos;
+        visualTransform.localPosition = targetPos;
     }
 
     public void UpdateProgress(int current, int target)

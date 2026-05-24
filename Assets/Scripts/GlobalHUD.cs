@@ -62,6 +62,8 @@ public class GlobalHUD : MonoBehaviour
 
     private void Update()
     {
+        if (LoadingManager.Instance != null && LoadingManager.Instance.isLoading) return;
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); return; }

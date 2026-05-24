@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
     [Header("Scene Mode")]
     public bool isCampMode = false;
     [HideInInspector] public bool isControlBlocked = false;
-    private float actionLockEndTime = 0f; // ФІКС: Таймер блокування дій
+    private float actionLockEndTime = 0f;
 
     [Header("Weapon Spawning")]
     public GameObject[] weaponPrefabs;
@@ -51,20 +51,28 @@ public class PlayerController : MonoBehaviour
     public float attackCooldown = 0.6f;
     private float lastAttackTime = -100f;
 
-    [Header("Grenade")]
+    [Header("Grenade (Smart Aim & Cooldown)")]
     public GameObject grenadePrefab;
     public Transform throwPoint;
     public LineRenderer trajectoryLine;
     public int linePoints = 30;
-    public float timeBetweenPoints = 0.1f;
-    public float minThrowForce = 5f;
-    public float maxThrowForce = 30f;
-    public float chargeRate = 15f;
-    public float upwardAngle = 0.5f;
 
-    private float currentThrowForce;
+    [Tooltip("Максимальна дальність кидка")]
+    public float maxThrowDistance = 18f;
+    [Tooltip("Радіус вибуху (має збігатися з гранатою)")]
+    public float grenadeExplosionRadius = 6f;
+    [Tooltip("Базова швидкість польоту гранати (більше = швидше)")]
+    public float grenadeThrowSpeed = 20f;
+    [Tooltip("Перезарядка (Кулдаун)")]
+    public float grenadeCooldown = 5f;
+
+    [HideInInspector] public float lastGrenadeTime = -100f;
     private bool isAimingGrenade = false;
-    private Vector3 savedThrowVelocity;
+    private Vector3 currentGrenadeTarget;
+
+    // МАРКЕРИ
+    private LineRenderer aoeMarkerLine; // Велике коло ураження
+    private LineRenderer innerMarkerLine; // Маленький центр
 
     [Header("Visual Effects")]
     public Image damageFlashImage;
@@ -123,6 +131,8 @@ public class PlayerController : MonoBehaviour
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+
+        InitAoEMarker();
     }
 
     private void Start()
@@ -142,6 +152,35 @@ public class PlayerController : MonoBehaviour
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
+    }
+
+    private void InitAoEMarker()
+    {
+        // 1. Велике коло (Зона ураження)
+        GameObject markerObj = new GameObject("GrenadeAoEMarker");
+        aoeMarkerLine = markerObj.AddComponent<LineRenderer>();
+        aoeMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
+        aoeMarkerLine.startColor = new Color(1f, 0.2f, 0.2f, 0.4f);
+        aoeMarkerLine.endColor = new Color(1f, 0.2f, 0.2f, 0.4f);
+        aoeMarkerLine.startWidth = 0.25f;
+        aoeMarkerLine.endWidth = 0.25f;
+        aoeMarkerLine.useWorldSpace = true;
+        aoeMarkerLine.loop = true;
+        aoeMarkerLine.positionCount = 40;
+        aoeMarkerLine.enabled = false;
+
+        // 2. Маленьке коло (Епіцентр/Ціль)
+        GameObject innerObj = new GameObject("GrenadeInnerMarker");
+        innerMarkerLine = innerObj.AddComponent<LineRenderer>();
+        innerMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
+        innerMarkerLine.startColor = new Color(1f, 0.1f, 0.1f, 0.8f);
+        innerMarkerLine.endColor = new Color(1f, 0.1f, 0.1f, 0.8f);
+        innerMarkerLine.startWidth = 0.15f;
+        innerMarkerLine.endWidth = 0.15f;
+        innerMarkerLine.useWorldSpace = true;
+        innerMarkerLine.loop = true;
+        innerMarkerLine.positionCount = 20;
+        innerMarkerLine.enabled = false;
     }
 
     private void SpawnEquippedWeapon()
@@ -204,7 +243,6 @@ public class PlayerController : MonoBehaviour
         yield return null;
         yield return null;
 
-        // Шукаємо точку спавну заздалегідь для обох режимів
         GameObject spawnPoint = GameObject.Find("PlayerSpawnPoint");
 
         if (isCampMode)
@@ -217,7 +255,6 @@ public class PlayerController : MonoBehaviour
                 float cy = PlayerPrefs.GetFloat("CampPosY");
                 float cz = PlayerPrefs.GetFloat("CampPosZ");
 
-                // ЗАПОБІЖНИК: Якщо гравець не падає у бездну (Y > -10)
                 if (cy > -10f)
                 {
                     transform.position = new Vector3(cx, cy, cz);
@@ -225,7 +262,6 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            // Якщо збереження бите або гравець впав під карту — використовуємо безпечний спавн
             if (!loadedSave && spawnPoint != null)
             {
                 transform.position = spawnPoint.transform.position;
@@ -236,7 +272,6 @@ public class PlayerController : MonoBehaviour
             yield break;
         }
 
-        // --- ЛОГІКА ДЛЯ БОЙОВИХ РЕГІОНІВ ---
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
             float savedX = PlayerPrefs.GetFloat("PlayerPosX", transform.position.x);
@@ -334,17 +369,24 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // ФІКС: Новий метод для жорсткої зупинки тіла
     private void LockAction(string trigger, float duration)
     {
         actionLockEndTime = Time.time + duration;
-        currentVelocityMove = Vector3.zero; // Миттєва зупинка ковзання
+        currentVelocityMove = Vector3.zero;
 
         if (anim != null)
         {
-            anim.SetFloat("Speed", 0f); // Примушуємо ноги перейти в Idle
+            anim.SetFloat("Speed", 0f);
             anim.SetTrigger(trigger);
         }
+    }
+
+    private void CancelGrenadeAim()
+    {
+        isAimingGrenade = false;
+        if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+        if (aoeMarkerLine != null) aoeMarkerLine.enabled = false;
+        if (innerMarkerLine != null) innerMarkerLine.enabled = false;
     }
 
     private void Update()
@@ -394,7 +436,6 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // ФІКС: Перевірка, чи гравець зараз в процесі атаки/отримання урону
         bool isCurrentlyLocked = isControlBlocked || Time.time < actionLockEndTime;
 
         Vector3 movement = Vector3.zero;
@@ -410,10 +451,6 @@ public class PlayerController : MonoBehaviour
             {
                 StartCoroutine(DashRoutine(inputDir));
             }
-        }
-        else
-        {
-            inputDir = Vector3.zero; // Забороняємо рух
         }
 
         if (isDashing) return;
@@ -450,7 +487,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        float actualSpeed = isAimingGrenade ? moveSpeed * 0.5f : moveSpeed;
+        float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
 
         if (inputDir.magnitude >= 0.1f)
         {
@@ -481,7 +518,6 @@ public class PlayerController : MonoBehaviour
 
         if (anim != null)
         {
-            // Оновлюємо анімацію швидкості (яка тепер миттєво падає до 0 при атаці)
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
             anim.SetBool("IsGrounded", characterController.isGrounded);
 
@@ -493,47 +529,49 @@ public class PlayerController : MonoBehaviour
             {
                 if (!isCampMode)
                 {
+                    // ЛКМ: Атака АБО скасування кидка
                     if (Input.GetMouseButtonDown(0))
                     {
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.time;
                             if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
-                            LockAction("Attack", 0.4f); // Блокуємо рух на 0.4 секунди
+                            LockAction("Attack", 0.4f);
                         }
                         else if (isAimingGrenade)
                         {
-                            isAimingGrenade = false;
-                            if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                            CancelGrenadeAim(); // Скасувати прицілювання
                         }
                     }
 
+                    // ПКМ: Почати прицілювання
                     if (Input.GetMouseButtonDown(1))
                     {
-                        isAimingGrenade = true;
-                        currentThrowForce = minThrowForce;
-                        if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+                        if (Time.time >= lastGrenadeTime + grenadeCooldown)
+                        {
+                            isAimingGrenade = true;
+                            if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
+                            if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
+                            if (innerMarkerLine != null) innerMarkerLine.enabled = true;
+                        }
                     }
                 }
             }
 
+            // ПКМ (Утримання): Оновлюємо маркер та лінію
             if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade)
             {
-                currentThrowForce += chargeRate * Time.deltaTime;
-                if (currentThrowForce > maxThrowForce) currentThrowForce = maxThrowForce;
-                DrawTrajectory();
+                UpdateGrenadeAiming();
             }
 
+            // ПКМ (Відпускання): Кидок
             if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
                 {
-                    isAimingGrenade = false;
-                    savedThrowVelocity = GetThrowVelocity();
-                    if (trajectoryLine != null) trajectoryLine.positionCount = 0;
-
+                    CancelGrenadeAim(); // Ховаємо маркери
                     if (characterController.isGrounded) LockAction("Throw", 0.4f);
-                    else ExecuteThrow();
+                    else ExecuteThrow(); // Якщо в стрибку — кидаємо миттєво
                 }
             }
         }
@@ -546,50 +584,139 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private Vector3 GetThrowVelocity()
+    private void UpdateGrenadeAiming()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        Plane groundPlane = new Plane(Vector3.up, transform.position);
-        Vector3 aimDir = transform.forward;
+        Vector3 hitPoint = transform.position + transform.forward * 5f;
 
-        if (groundPlane.Raycast(ray, out float enter))
+        // Шукаємо курсор на землі
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
         {
-            Vector3 hitPoint = ray.GetPoint(enter);
-            aimDir = (hitPoint - throwPoint.position).normalized;
-            aimDir.y = 0;
-            aimDir.Normalize();
+            hitPoint = hit.point;
+        }
+        else
+        {
+            Plane groundPlane = new Plane(Vector3.up, new Vector3(0, transform.position.y, 0));
+            if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
+        // Обмежуємо дальність
+        Vector3 offset = hitPoint - transform.position;
+        offset.y = 0;
+        if (offset.magnitude > maxThrowDistance)
+        {
+            hitPoint = transform.position + offset.normalized * maxThrowDistance;
+            if (Terrain.activeTerrain != null)
+            {
+                hitPoint.y = Terrain.activeTerrain.SampleHeight(hitPoint) + Terrain.activeTerrain.transform.position.y;
+            }
+        }
+
+        currentGrenadeTarget = hitPoint;
+
+        // Повертаємо гравця в сторону прицілу
+        Vector3 aimDir = (hitPoint - transform.position).normalized;
+        aimDir.y = 0;
         if (aimDir.sqrMagnitude > 0.01f)
         {
-            Quaternion targetRot = Quaternion.LookRotation(aimDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime * 2f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.deltaTime * 3f);
         }
 
-        Vector3 throwDir = (aimDir + Vector3.up * upwardAngle).normalized;
-        return throwDir * currentThrowForce;
+        // Вмикаємо маркери
+        if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
+        if (innerMarkerLine != null) innerMarkerLine.enabled = true;
+
+        DrawPreciseTrajectory(currentGrenadeTarget);
+        DrawAoEMarker(currentGrenadeTarget);
     }
 
-    private void DrawTrajectory()
+    private Vector3 CalculateThrowVelocity(Vector3 target)
     {
-        if (trajectoryLine == null || throwPoint == null) return;
+        Vector3 displacement = target - throwPoint.position;
+        Vector3 displacementXZ = new Vector3(displacement.x, 0, displacement.z);
+        float distanceXZ = displacementXZ.magnitude;
+
+        // МАГІЯ ФІЗИКИ: Час польоту тепер залежить від дальності (швидкий, гнучкий кидок)
+        float dynamicFlightTime = Mathf.Clamp(distanceXZ / grenadeThrowSpeed, 0.25f, 1.2f);
+
+        // Формула кінематики для ідеального попадання
+        float velY = (displacement.y / dynamicFlightTime) - (0.5f * Physics.gravity.y * dynamicFlightTime);
+        Vector3 velXZ = displacementXZ / dynamicFlightTime;
+
+        return velXZ + Vector3.up * velY;
+    }
+
+    private void DrawPreciseTrajectory(Vector3 target)
+    {
+        if (trajectoryLine == null) return;
         trajectoryLine.positionCount = linePoints;
-        Vector3 startPosition = throwPoint.position;
-        Vector3 startVelocity = GetThrowVelocity();
+        Vector3 startPos = throwPoint.position;
+        Vector3 vel = CalculateThrowVelocity(target);
+
+        // Вираховуємо час польоту для малювання лінії
+        Vector3 displacementXZ = new Vector3(target.x - startPos.x, 0, target.z - startPos.z);
+        float flightTime = Mathf.Clamp(displacementXZ.magnitude / grenadeThrowSpeed, 0.25f, 1.2f);
 
         for (int i = 0; i < linePoints; i++)
         {
-            float t = i * timeBetweenPoints;
-            Vector3 point = startPosition + startVelocity * t + Physics.gravity * 0.5f * t * t;
-
-            if (point.y < transform.position.y && i > 3)
-            {
-                trajectoryLine.positionCount = i + 1;
-                trajectoryLine.SetPosition(i, new Vector3(point.x, transform.position.y + 0.1f, point.z));
-                break;
-            }
+            float t = i * (flightTime / (linePoints - 1));
+            Vector3 point = startPos + vel * t + Physics.gravity * 0.5f * t * t;
             trajectoryLine.SetPosition(i, point);
         }
+    }
+
+    private void DrawAoEMarker(Vector3 center)
+    {
+        // 1. Малюємо велике коло (з проекцією на рельєф)
+        if (aoeMarkerLine != null)
+        {
+            int segments = aoeMarkerLine.positionCount;
+            float angle = 0f;
+            for (int i = 0; i < segments; i++)
+            {
+                float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
+                float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
+
+                Vector3 point = center + new Vector3(x, 50f, z); // Беремо точку високо в небі
+                point.y = GetGroundHeight(point) + 0.15f; // Опускаємо на землю + трохи вище
+
+                aoeMarkerLine.SetPosition(i, point);
+                angle += (360f / segments);
+            }
+        }
+
+        // 2. Малюємо маленьке внутрішнє коло (епіцентр)
+        if (innerMarkerLine != null)
+        {
+            float innerRadius = 0.8f;
+            int segments = innerMarkerLine.positionCount;
+            float angle = 0f;
+            for (int i = 0; i < segments; i++)
+            {
+                float x = Mathf.Sin(Mathf.Deg2Rad * angle) * innerRadius;
+                float z = Mathf.Cos(Mathf.Deg2Rad * angle) * innerRadius;
+
+                Vector3 point = center + new Vector3(x, 50f, z);
+                point.y = GetGroundHeight(point) + 0.15f;
+
+                innerMarkerLine.SetPosition(i, point);
+                angle += (360f / segments);
+            }
+        }
+    }
+
+    // Допоміжний метод для пошуку рельєфу
+    private float GetGroundHeight(Vector3 pos)
+    {
+        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
+        {
+            return hit.point.y;
+        }
+        else if (Terrain.activeTerrain != null)
+        {
+            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        }
+        return 0f;
     }
 
     public void ExecuteAttack()
@@ -677,9 +804,13 @@ public class PlayerController : MonoBehaviour
 
             if (rb != null)
             {
-                rb.linearVelocity = savedThrowVelocity;
+                // Закидаємо точно в ціль
+                rb.linearVelocity = CalculateThrowVelocity(currentGrenadeTarget);
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
+
+            // Включаємо кулдаун!
+            lastGrenadeTime = Time.time;
         }
     }
 
@@ -715,7 +846,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            LockAction("Hit", 0.35f); // Блокуємо рух при отриманні удару
+            LockAction("Hit", 0.35f);
         }
     }
 

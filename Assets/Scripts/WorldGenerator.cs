@@ -57,6 +57,7 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseRocks;
     public GameObject[] baseBushes;
     public GameObject[] baseFlowers;
+    public GameObject[] baseMushrooms; // НОВЕ: Масив для грибів!
     public GameObject[] logPrefabs;
 
     [Header("Map Border Mountains (NEW)")]
@@ -120,8 +121,6 @@ public class WorldGenerator : MonoBehaviour
         yield return StartCoroutine(PopulateBiomesRoutine());
         yield return StartCoroutine(SpawnPOIsRoutine());
         yield return StartCoroutine(SpawnExtractionCartsRoutine());
-
-        // ФІКС: Спавнимо гори по краях карти перед тим, як зняти екран завантаження
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
 
         Physics.SyncTransforms();
@@ -419,14 +418,22 @@ public class WorldGenerator : MonoBehaviour
                         ApplyBiomeTexture(obj, currentTreeTexture);
                     }
                 }
-                else if (randomSpawn > 0.35f)
+                // --- ЗМІНЕНО: Більше трави (збільшено шанси та кількість) ---
+                else if (randomSpawn > 0.30f)
                 {
-                    SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 15, 40, 6f, true, slopeRotation, currentFoliageColor);
+                    SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 40, 100, 8f, true, slopeRotation, currentFoliageColor);
                 }
-                else if (randomSpawn > 0.20f)
+                // --- НОВЕ: Більше квітів, кущів та додано ГРИБИ! ---
+                else if (randomSpawn > 0.10f)
                 {
-                    GameObject bushOrFlower = Random.value > 0.5f ? GetRandomPrefab(baseBushes) : GetRandomPrefab(baseFlowers);
-                    SpawnNatureCluster(bushOrFlower, new Vector3(worldX, worldY, worldZ), bushContainer, 3, 8, 3f, true, slopeRotation, currentFoliageColor);
+                    float subRoll = Random.value;
+                    GameObject naturePrefab;
+
+                    if (subRoll > 0.5f) naturePrefab = GetRandomPrefab(baseBushes);
+                    else if (subRoll > 0.2f) naturePrefab = GetRandomPrefab(baseFlowers);
+                    else naturePrefab = GetRandomPrefab(baseMushrooms); // 20% шанс на грибну поляну
+
+                    SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 5, 15, 4.5f, true, slopeRotation, currentFoliageColor);
                 }
             }
             else if (density < 0.3f)
@@ -456,9 +463,10 @@ public class WorldGenerator : MonoBehaviour
                     GameObject log = GetRandomPrefab(logPrefabs);
                     if (log != null) Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0f, 360f), 0), logContainer);
                 }
-                else if (rand > 0.80f)
+                else if (rand > 0.70f)
                 {
-                    SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 3, 7, 2f, true, slopeRotation, currentFoliageColor);
+                    // Рандомна трава поза густими лісами
+                    SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 10, 25, 4f, true, slopeRotation, currentFoliageColor);
                 }
             }
         }
@@ -514,7 +522,6 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // НОВИЙ МЕТОД: Генерація гір по краях карти
     private IEnumerator SpawnBorderMountainsRoutine()
     {
         if (borderMountainPrefabs == null || borderMountainPrefabs.Length == 0) yield break;
@@ -525,7 +532,6 @@ public class WorldGenerator : MonoBehaviour
         float w = terrain.terrainData.size.x;
         float l = terrain.terrainData.size.z;
 
-        // Нижня (z = -offset) та Верхня (z = l + offset) межі
         for (float x = -borderOffset; x <= w + borderOffset; x += borderSpacing)
         {
             SpawnSingleBorderMountain(new Vector3(x, 0, -borderOffset), borderContainer, w, l);
@@ -533,7 +539,6 @@ public class WorldGenerator : MonoBehaviour
             yield return null;
         }
 
-        // Ліва (x = -offset) та Права (x = w + offset) межі
         for (float z = -borderOffset; z <= l + borderOffset; z += borderSpacing)
         {
             SpawnSingleBorderMountain(new Vector3(-borderOffset, 0, z), borderContainer, w, l);
@@ -547,7 +552,6 @@ public class WorldGenerator : MonoBehaviour
         GameObject prefab = GetRandomPrefab(borderMountainPrefabs);
         if (prefab == null) return;
 
-        // Щоб дізнатися висоту, "затискаємо" координати в межах террейну (бо SampleHeight не працює за межами)
         float clampedX = Mathf.Clamp(localPos.x, 0, w);
         float clampedZ = Mathf.Clamp(localPos.z, 0, l);
 
@@ -555,14 +559,11 @@ public class WorldGenerator : MonoBehaviour
         float worldZ = transform.position.z + localPos.z;
 
         float y = terrain.SampleHeight(new Vector3(transform.position.x + clampedX, 0, transform.position.z + clampedZ)) + transform.position.y;
-
-        // Віднімаємо трохи висоти, щоб гора "вросла" в землю
         Vector3 spawnPos = new Vector3(worldX, y - 5f, worldZ);
 
         GameObject mnt = Instantiate(prefab, spawnPos, Quaternion.Euler(0, Random.Range(0f, 360f), 0), container);
         mnt.transform.localScale *= Random.Range(borderMinScale, borderMaxScale);
 
-        // Опціонально: фарбуємо крайові гори в колір скель поточного біому
         float temp = GetTemperature(clampedX / w, clampedZ / l);
         Color rockColor = temp >= 0.65f ? desertRockColor : (temp <= 0.35f ? snowRockColor : forestRockColor);
         ApplyBiomeColor(mnt, rockColor);

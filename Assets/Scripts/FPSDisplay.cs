@@ -25,13 +25,9 @@ public class FPSDisplay : MonoBehaviour
         deltaTime += (Time.unscaledDeltaTime - deltaTime) * 0.1f;
         float fps = 1.0f / deltaTime;
 
-        // Фарбуємо текст залежно від продуктивності
-        string color = "white";
-        if (fps < 30) color = "#FF4444"; // Червоний (погано)
-        else if (fps < 55) color = "#FFD700"; // Жовтий (середньо)
-        else color = "#00FF00"; // Зелений (ідеально)
-
-        fpsText.text = $"<color={color}>{Mathf.CeilToInt(fps)} FPS</color>";
+        // Просто виводимо значення без агресивних HTML-тегів.
+        // Колір тепер налаштовується прямо в Інспекторі Unity!
+        fpsText.text = $"{Mathf.CeilToInt(fps)} FPS";
     }
 
     public void UpdateVisibility()
@@ -39,8 +35,6 @@ public class FPSDisplay : MonoBehaviour
         // Вмикаємо або вимикаємо об'єкт залежно від налаштувань
         bool isEnabled = PlayerPrefs.GetInt("Settings_ShowFPS", 0) == 1;
 
-        // Ми не можемо просто зробити SetActive(false), бо скрипт перестане працювати.
-        // Тому просто вимикаємо рендеринг тексту.
         if (fpsText != null) fpsText.enabled = isEnabled;
     }
 }
