@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.37025982, g: 0.40751266, b: 0.5018867, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -6223,6 +6223,7 @@ MonoBehaviour:
   baseFlowers:
   - {fileID: 4898303536820266227, guid: 9ca830ce22a6cc440862930bce38b1cd, type: 3}
   - {fileID: 4898303536820266227, guid: 14bbde07441624249820ad2b342f9b4d, type: 3}
+  baseMushrooms: []
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
@@ -6510,11 +6511,11 @@ MonoBehaviour:
   lightningLight: {fileID: 2078878344}
   sunColor:
     serializedVersion: 2
-    key0: {r: 0.101960786, g: 0.14509805, b: 0.22745098, a: 1}
-    key1: {r: 1, g: 0.6117647, b: 0.34901962, a: 1}
-    key2: {r: 1, g: 0.9411765, b: 0.81960785, a: 0}
-    key3: {r: 1, g: 0.34117648, b: 0.13333334, a: 0}
-    key4: {r: 0.101960786, g: 0.14509805, b: 0.22745098, a: 0}
+    key0: {r: 0.14509805, g: 0.20784314, b: 0.3019608, a: 1}
+    key1: {r: 1, g: 0.6039216, b: 0.48235294, a: 1}
+    key2: {r: 1, g: 0.9490196, b: 0.83137256, a: 0}
+    key3: {r: 0.8980392, g: 0.35686275, b: 0.23529412, a: 0}
+    key4: {r: 0.14509805, g: 0.20784314, b: 0.3019608, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
@@ -6540,10 +6541,10 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   fogColorClear:
     serializedVersion: 2
-    key0: {r: 0.03137255, g: 0.047058824, b: 0.08627451, a: 1}
-    key1: {r: 0.4, g: 0.41960785, b: 0.52156866, a: 1}
-    key2: {r: 0.6509804, g: 0.78431374, b: 0.9019608, a: 0}
-    key3: {r: 0.48235294, g: 0.36078432, b: 0.4392157, a: 0}
+    key0: {r: 0.043137256, g: 0.07450981, b: 0.1254902, a: 1}
+    key1: {r: 0.30980393, g: 0.22745098, b: 0.29411766, a: 1}
+    key2: {r: 0.41960785, g: 0.5176471, b: 0.61960787, a: 0}
+    key3: {r: 0.32941177, g: 0.19607843, b: 0.19607843, a: 0}
     key4: {r: 0.03137255, g: 0.047058824, b: 0.08627451, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
@@ -6664,17 +6665,17 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: -0.99999994
+      outSlope: -0.99999994
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 0.2
-      value: 1
-      inSlope: -10.000001
-      outSlope: -10.000001
+      value: 0.8
+      inSlope: -8.500001
+      outSlope: -8.500001
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -6682,8 +6683,8 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0.25
       value: 0
-      inSlope: -10.000001
-      outSlope: -10.000001
+      inSlope: -8.000001
+      outSlope: -8.000001
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -6691,17 +6692,17 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0.75
       value: 0
-      inSlope: 9.999998
-      outSlope: 9.999998
+      inSlope: 7.999998
+      outSlope: 7.999998
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 0.8
-      value: 1
-      inSlope: 9.999998
-      outSlope: 9.999998
+      value: 0.8
+      inSlope: 8.499998
+      outSlope: 8.499998
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -6709,8 +6710,8 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: 1
+      outSlope: 1
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -6721,7 +6722,7 @@ MonoBehaviour:
   currentWeather: 0
   weatherChangeInterval: 100
   weatherTransitionSpeed: 0.5
-  clearFogDensity: 0.02
+  clearFogDensity: 0.01
   stormFogDensity: 0.035
   windZone: {fileID: 929118086}
   clearWindMain: 0.2
@@ -17390,7 +17391,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 1
+    m_Strength: 0.75
     m_Bias: 1
     m_NormalBias: 0.1
     m_NearPlane: 0.2
@@ -17467,7 +17468,7 @@ MonoBehaviour:
   m_CustomShadowLayers: 0
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
-  m_SoftShadowQuality: 1
+  m_SoftShadowQuality: 2
   m_RenderingLayersMask:
     serializedVersion: 0
     m_Bits: 1
