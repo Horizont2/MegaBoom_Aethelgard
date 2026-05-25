@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections;
+using System.Collections.Generic;
 
 public class ResourceManager : MonoBehaviour
 {
@@ -49,6 +51,9 @@ public class ResourceManager : MonoBehaviour
     public ResourcePopup foodPopup;
 
     private bool isCamp => SceneManager.GetActiveScene().name == "CampScene";
+
+    // Словник для відстеження активних анімацій тексту, щоб вони не накладались одна на одну
+    private Dictionary<TextMeshProUGUI, Coroutine> activeTextTweens = new Dictionary<TextMeshProUGUI, Coroutine>();
 
     private void Awake()
     {
@@ -147,9 +152,22 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = runStone - oldStone;
         int actualAddedFood = runFood - oldFood;
 
-        if (woodPopup != null && actualAddedWood > 0) woodPopup.ShowChange(actualAddedWood);
-        if (stonePopup != null && actualAddedStone > 0) stonePopup.ShowChange(actualAddedStone);
-        if (foodPopup != null && actualAddedFood > 0) foodPopup.ShowChange(actualAddedFood);
+        // Запускаємо анімації тексту та попапи тільки якщо ресурс дійсно додався
+        if (actualAddedWood > 0)
+        {
+            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            BounceText(woodText);
+        }
+        if (actualAddedStone > 0)
+        {
+            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            BounceText(stoneText);
+        }
+        if (actualAddedFood > 0)
+        {
+            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            BounceText(foodText);
+        }
 
         UpdateUI();
     }
@@ -166,9 +184,21 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = stashStone - oldStone;
         int actualAddedFood = stashFood - oldFood;
 
-        if (woodPopup != null && actualAddedWood > 0) woodPopup.ShowChange(actualAddedWood);
-        if (stonePopup != null && actualAddedStone > 0) stonePopup.ShowChange(actualAddedStone);
-        if (foodPopup != null && actualAddedFood > 0) foodPopup.ShowChange(actualAddedFood);
+        if (actualAddedWood > 0)
+        {
+            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            BounceText(woodText);
+        }
+        if (actualAddedStone > 0)
+        {
+            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            BounceText(stoneText);
+        }
+        if (actualAddedFood > 0)
+        {
+            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            BounceText(foodText);
+        }
 
         SaveStash();
         UpdateUI();
@@ -229,7 +259,6 @@ public class ResourceManager : MonoBehaviour
         if (inventoryTitleText != null)
         {
             inventoryTitleText.text = isCamp ? "CAMP STASH" : "BACKPACK";
-            // Колір тепер не перезаписується і залишається таким, як налаштовано в Інспекторі
         }
 
         if (isCamp)
@@ -248,7 +277,6 @@ public class ResourceManager : MonoBehaviour
             int maxRunStone = GetRunMax("Stone");
             int maxRunFood = GetRunMax("Food");
 
-            // Використовуємо темно-багряний колір для заповненого стану
             string wColor = runWood >= maxRunWood ? "<color=#8B2E2E>" : "";
             string wEnd = runWood >= maxRunWood ? "</color>" : "";
 
@@ -265,6 +293,51 @@ public class ResourceManager : MonoBehaviour
 
         if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
     }
+
+    // --- СИСТЕМА АНІМАЦІЇ UI (JUICE) ---
+
+    private void BounceText(TextMeshProUGUI textElement)
+    {
+        if (textElement == null) return;
+
+        // Перериваємо попередню анімацію, якщо ресурс збирається дуже швидко (спам)
+        if (activeTextTweens.ContainsKey(textElement) && activeTextTweens[textElement] != null)
+        {
+            StopCoroutine(activeTextTweens[textElement]);
+        }
+
+        activeTextTweens[textElement] = StartCoroutine(TextBounceRoutine(textElement));
+    }
+
+    private IEnumerator TextBounceRoutine(TextMeshProUGUI textElement)
+    {
+        Vector3 originalScale = Vector3.one;
+        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // Наскільки сильно збільшується
+        float upDuration = 0.08f; // Швидкість збільшення (дуже швидко)
+        float downDuration = 0.2f; // Швидкість повернення назад (трохи повільніше)
+        float elapsed = 0f;
+
+        // Збільшення
+        while (elapsed < upDuration)
+        {
+            elapsed += Time.deltaTime;
+            textElement.rectTransform.localScale = Vector3.Lerp(originalScale, punchScale, elapsed / upDuration);
+            yield return null;
+        }
+
+        // Повернення
+        elapsed = 0f;
+        while (elapsed < downDuration)
+        {
+            elapsed += Time.deltaTime;
+            textElement.rectTransform.localScale = Vector3.Lerp(punchScale, originalScale, elapsed / downDuration);
+            yield return null;
+        }
+
+        textElement.rectTransform.localScale = originalScale;
+    }
+
+    // ------------------------------------
 
     private void SaveStash()
     {

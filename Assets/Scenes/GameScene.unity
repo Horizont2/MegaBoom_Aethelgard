@@ -15,16 +15,16 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.79622644, g: 0.79622644, b: 0.79622644, a: 1}
-  m_FogMode: 3
+  m_FogColor: {r: 0.78787464, g: 0.87338376, b: 0.90188676, a: 1}
+  m_FogMode: 1
   m_FogDensity: 0.03
-  m_LinearFogStart: 0
-  m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.41960785, g: 0.69803923, b: 0.9647059, a: 1}
+  m_LinearFogStart: 30
+  m_LinearFogEnd: 200
+  m_AmbientSkyColor: {r: 0.5698112, g: 0.14944102, b: 0.51034427, a: 1}
   m_AmbientEquatorColor: {r: 0.75686276, g: 0.7882353, b: 0.8392157, a: 1}
   m_AmbientGroundColor: {r: 0.22745098, g: 0.29411766, b: 0.22745098, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 1
+  m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.37025982, g: 0.40751266, b: 0.5018867, a: 1}
   m_SkyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   m_HaloStrength: 0.5
@@ -93,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: a39cf1b98f017e94486700f646250e9e, type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -6186,7 +6186,7 @@ MonoBehaviour:
   peakSharpness: 2.5
   terraceCount: 24
   edgeMountainMultiplier: 2
-  skyboxMaterial: {fileID: 2100000, guid: a1994d51737e25c4a84fe6cf3fa978d6, type: 2}
+  skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   grassLayer: {fileID: 8574412962073106934, guid: a81995a1b9792014b8df74c003aef209, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
   snowLayer: {fileID: 8574412962073106934, guid: 81e91e370b984c440840e5b9aaba5988, type: 2}
@@ -6200,7 +6200,7 @@ MonoBehaviour:
   forestRockColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
-  spawnAttempts: 20000
+  spawnAttempts: 15000
   clusterScale: 10
   forestThreshold: 0.48
   globalBiomeScale: 2
@@ -6515,11 +6515,11 @@ MonoBehaviour:
   lightningLight: {fileID: 2078878344}
   sunColor:
     serializedVersion: 2
-    key0: {r: 0.14509805, g: 0.20784314, b: 0.3019608, a: 1}
-    key1: {r: 1, g: 0.6039216, b: 0.48235294, a: 1}
-    key2: {r: 1, g: 0.9490196, b: 0.83137256, a: 0}
-    key3: {r: 0.8980392, g: 0.35686275, b: 0.23529412, a: 0}
-    key4: {r: 0.14509805, g: 0.20784314, b: 0.3019608, a: 0}
+    key0: {r: 0.16862746, g: 0.1764706, b: 0.25882354, a: 1}
+    key1: {r: 1, g: 0.61960787, b: 0.4745098, a: 1}
+    key2: {r: 1, g: 0.94509804, b: 0.92156863, a: 0}
+    key3: {r: 1, g: 0.61960787, b: 0.4745098, a: 0}
+    key4: {r: 0.16862746, g: 0.1764706, b: 0.25882354, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
@@ -6545,19 +6545,19 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   fogColorClear:
     serializedVersion: 2
-    key0: {r: 0.043137256, g: 0.07450981, b: 0.1254902, a: 1}
-    key1: {r: 0.30980393, g: 0.22745098, b: 0.29411766, a: 1}
-    key2: {r: 0.41960785, g: 0.5176471, b: 0.61960787, a: 0}
-    key3: {r: 0.32941177, g: 0.19607843, b: 0.19607843, a: 0}
-    key4: {r: 0.03137255, g: 0.047058824, b: 0.08627451, a: 0}
+    key0: {r: 0.11764706, g: 0.12156863, b: 0.18039216, a: 1}
+    key1: {r: 0.91764706, g: 0.70980394, b: 0.8156863, a: 1}
+    key2: {r: 0.11764706, g: 0.12156863, b: 0.18039216, a: 0}
+    key3: {r: 0, g: 0, b: 0, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
     ctime0: 0
-    ctime1: 16384
-    ctime2: 32768
-    ctime3: 49151
-    ctime4: 65535
+    ctime1: 32768
+    ctime2: 65535
+    ctime3: 0
+    ctime4: 0
     ctime5: 0
     ctime6: 0
     ctime7: 0
@@ -6571,23 +6571,23 @@ MonoBehaviour:
     atime7: 0
     m_Mode: 0
     m_ColorSpace: -1
-    m_NumColorKeys: 5
+    m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   fogColorStorm:
     serializedVersion: 2
-    key0: {r: 0.011764706, g: 0.015686275, b: 0.03137255, a: 1}
-    key1: {r: 0.16470589, g: 0.18039216, b: 0.21960784, a: 1}
-    key2: {r: 0.2509804, g: 0.27450982, b: 0.32156864, a: 0}
-    key3: {r: 0.16470589, g: 0.18039216, b: 0.21960784, a: 0}
-    key4: {r: 0.011764706, g: 0.015686275, b: 0.03137255, a: 0}
+    key0: {r: 0.05882353, g: 0.0627451, b: 0.09411765, a: 1}
+    key1: {r: 0.41960785, g: 0.3764706, b: 0.47843137, a: 1}
+    key2: {r: 0.05882353, g: 0.0627451, b: 0.09411765, a: 0}
+    key3: {r: 0, g: 0, b: 0, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
     ctime0: 0
-    ctime1: 16384
-    ctime2: 32768
-    ctime3: 49151
-    ctime4: 65535
+    ctime1: 32768
+    ctime2: 65535
+    ctime3: 0
+    ctime4: 0
     ctime5: 0
     ctime6: 0
     ctime7: 0
@@ -6601,7 +6601,7 @@ MonoBehaviour:
     atime7: 0
     m_Mode: 0
     m_ColorSpace: -1
-    m_NumColorKeys: 5
+    m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   sunIntensity:
     serializedVersion: 2
@@ -6726,8 +6726,8 @@ MonoBehaviour:
   currentWeather: 0
   weatherChangeInterval: 100
   weatherTransitionSpeed: 0.5
-  clearFogDensity: 0.01
-  stormFogDensity: 0.035
+  fogStartDistance: 20
+  fogEndDistance: 500
   windZone: {fileID: 929118086}
   clearWindMain: 0.2
   stormWindMain: 1.5
@@ -12215,7 +12215,7 @@ MonoBehaviour:
     m_Bits: 512
   smoothSpeed: 10
   positionSmoothTime: 0.08
-  mouseSensitivity: 2.5
+  mouseSensitivity: 2
   minYAngle: -30
   maxYAngle: 60
   isCinematicMode: 0
@@ -17440,7 +17440,7 @@ Light:
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
-  m_ColorTemperature: 11940
+  m_ColorTemperature: 5500
   m_UseColorTemperature: 1
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
@@ -17741,8 +17741,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DistanceOptimizer
   player: {fileID: 615663591}
   cullDistance: 200
-  checkInterval: 0.5
-  checksPerFrame: 50
+  checkInterval: 0.4
+  checksPerFrame: 150
 --- !u!4 &507569706
 Transform:
   m_ObjectHideFlags: 0
@@ -35222,7 +35222,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapLootSpawner
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
-  amountToSpawn: 150
+  amountToSpawn: 200
   scatterRadius: 300
 --- !u!4 &1410339861
 Transform:
@@ -35528,6 +35528,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b70ab64d95dcac740b29e98c4fcf8f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MissionInitializer
+  testFallbackRegion: {fileID: 0}
   currentRegionName: 
   currentBiomeIndex: 0
 --- !u!1 &1564901234
@@ -37153,7 +37154,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -2.2404785, y: -0.70318604}
+  m_AnchoredPosition: {x: -2.2404785, y: -0.703125}
   m_SizeDelta: {x: 48.2086, y: 41.7034}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2005627423

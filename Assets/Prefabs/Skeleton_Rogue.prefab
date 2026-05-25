@@ -534,9 +534,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c4e2227c74f94c42a8d7585dfa52021, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
-  maxHealth: 50
-  moveSpeed: 6
+  maxHealth: 35
+  moveSpeed: 5.5
   damage: 20
+  nightMultiplier: 1.25
   isCinematicFrozen: 0
   attackRange: 1.2
   attackCooldown: 0.8
@@ -551,6 +552,7 @@ MonoBehaviour:
   verticalOffset: 0
   repulsionRadius: 1.2
   repulsionForce: 3
+  deathVFXPrefab: {fileID: 0}
   xpRewardMultiplier: 1
   isInvincible: 0
 --- !u!136 &2644413286419312830

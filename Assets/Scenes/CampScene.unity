@@ -66825,7 +66825,7 @@ MonoBehaviour:
     m_Bits: 2049
   smoothSpeed: 10
   positionSmoothTime: 0.08
-  mouseSensitivity: 2.7
+  mouseSensitivity: 2
   minYAngle: -30
   maxYAngle: 50
   isCinematicMode: 0
@@ -71260,8 +71260,8 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 3.687429
-  m_Center: {x: 0.029644169, y: 1.652211, z: 0.10464469}
+  m_Radius: 4.9812684
+  m_Center: {x: 0.029644588, y: 1.6522093, z: 0.9300449}
 --- !u!114 &558687151
 MonoBehaviour:
   m_ObjectHideFlags: 0

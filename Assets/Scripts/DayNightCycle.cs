@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections;
-using UnityEngine.SceneManagement; // НОВЕ: Потрібно для перевірки назви сцени
+using UnityEngine.SceneManagement;
 
 public enum WeatherState { Clear, Precipitation, Storm }
 
@@ -30,9 +30,9 @@ public class DayNightCycle : MonoBehaviour
     public float weatherChangeInterval = 15f;
     public float weatherTransitionSpeed = 0.05f;
 
-    [Header("Fog Densities")]
-    public float clearFogDensity = 0.005f;
-    public float stormFogDensity = 0.02f;
+    [Header("Fog Settings (Linear)")]
+    public float fogStartDistance = 50f;
+    public float fogEndDistance = 800f;
 
     [Header("Standard Wind System")]
     public WindZone windZone;
@@ -42,7 +42,6 @@ public class DayNightCycle : MonoBehaviour
     public float stormWindTurbulence = 1.2f;
     public float windRotationSpeed = 2f;
 
-    private float currentFogDensity;
     private float weatherBlend = 0f;
     private float weatherTimer = 0f;
     private int currentBiome = 0;
@@ -61,16 +60,19 @@ public class DayNightCycle : MonoBehaviour
         currentBiome = PlayerPrefs.GetInt("RegionBiomeType", 0);
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // --- МАГІЯ СИНХРОНІЗАЦІЇ ЧАСУ ---
-        // Зчитуємо час із Табору ТІЛЬКИ якщо це НЕ перший рівень
         if (currentScene != "Lvl_1" && PlayerPrefs.HasKey("SavedTimeOfDay"))
         {
             timeOfDay = PlayerPrefs.GetFloat("SavedTimeOfDay") * 24f;
         }
 
+        // --- ФІКС ТУМАНУ: Тепер він лінійний і керований ---
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
-        currentFogDensity = clearFogDensity;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogStartDistance = fogStartDistance;
+        RenderSettings.fogEndDistance = fogEndDistance;
+
+        // Вмикаємо градієнтне освітлення для кращого контролю
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
         if (lightningLight != null) lightningLight.intensity = 0f;
         if (moonLight != null) moonLight.color = new Color(0.6f, 0.7f, 1f);
@@ -84,8 +86,8 @@ public class DayNightCycle : MonoBehaviour
         if (timeOfDay >= 24f) timeOfDay = 0f;
 
         float timePercent = timeOfDay / 24f;
-
         float sunAngle = ((timeOfDay - 6f) / 12f) * 180f;
+
         if (sunLight != null)
         {
             sunLight.transform.localRotation = Quaternion.Euler(sunAngle, 170f, 0f);
@@ -112,23 +114,32 @@ public class DayNightCycle : MonoBehaviour
         float targetBlend = (currentWeather == WeatherState.Clear) ? 0f : (currentWeather == WeatherState.Storm ? 1f : 0.5f);
         weatherBlend = Mathf.Lerp(weatherBlend, targetBlend, Time.deltaTime * weatherTransitionSpeed);
 
-        currentFogDensity = Mathf.Lerp(clearFogDensity, stormFogDensity, weatherBlend);
+        // Оновлюємо колір туману
         Color clearFog = fogColorClear.Evaluate(timePercent);
         Color stormFog = fogColorStorm.Evaluate(timePercent);
-
-        RenderSettings.fogDensity = currentFogDensity;
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
-        if (RenderSettings.skybox != null)
-        {
-            float exposure = Mathf.Lerp(0.7f, 0.35f, weatherBlend);
-            if (RenderSettings.skybox.HasProperty("_Exposure")) RenderSettings.skybox.SetFloat("_Exposure", exposure);
-            if (RenderSettings.skybox.HasProperty("_Tint")) RenderSettings.skybox.SetColor("_Tint", Color.Lerp(Color.white, new Color(0.4f, 0.4f, 0.45f), weatherBlend));
-        }
+        // --- ФІКС НАВКОЛИШНЬОГО СВІТЛА (ААА Кольори) ---
+        // Вираховуємо "нічний" множник (вдень 1, вночі 0)
+        float dayMultiplier = Mathf.Clamp01(Mathf.Sin(timePercent * Mathf.PI * 2f));
 
-        RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.42f, 0.70f, 0.96f), new Color(0.2f, 0.25f, 0.3f), weatherBlend);
-        RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.76f, 0.79f, 0.84f), new Color(0.15f, 0.2f, 0.25f), weatherBlend);
-        RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.23f, 0.30f, 0.23f), new Color(0.1f, 0.1f, 0.1f), weatherBlend);
+        // Базові стилізовані кольори (Рожевий скайбокс)
+        Color skyColorDay = new Color(0.88f, 0.68f, 0.81f); // Світло-рожевий
+        Color equatorColorDay = new Color(0.53f, 0.45f, 0.61f); // Бузковий
+        Color groundColorDay = new Color(0.12f, 0.18f, 0.13f); // Темно-зелений
+
+        Color skyColorNight = new Color(0.12f, 0.13f, 0.18f);
+        Color equatorColorNight = new Color(0.08f, 0.09f, 0.14f);
+        Color groundColorNight = new Color(0.04f, 0.05f, 0.06f);
+
+        Color targetSky = Color.Lerp(skyColorNight, skyColorDay, dayMultiplier);
+        Color targetEquator = Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier);
+        Color targetGround = Color.Lerp(groundColorNight, groundColorDay, dayMultiplier);
+
+        // Змішуємо з погодою
+        RenderSettings.ambientSkyColor = Color.Lerp(targetSky, new Color(0.2f, 0.22f, 0.27f), weatherBlend);
+        RenderSettings.ambientEquatorColor = Color.Lerp(targetEquator, new Color(0.15f, 0.18f, 0.22f), weatherBlend);
+        RenderSettings.ambientGroundColor = Color.Lerp(targetGround, new Color(0.08f, 0.1f, 0.12f), weatherBlend);
 
         UpdateVFXPositions();
     }
@@ -255,7 +266,6 @@ public class DayNightCycle : MonoBehaviour
     {
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // Зберігаємо час ТІЛЬКИ якщо це не перший рівень, щоб не збити час у таборі після туторіалу
         if (currentScene != "Lvl_1")
         {
             PlayerPrefs.SetFloat("SavedTimeOfDay", timeOfDay / 24f);

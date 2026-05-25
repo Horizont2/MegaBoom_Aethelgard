@@ -92,26 +92,30 @@ public class FadingObject : MonoBehaviour
         {
             if (r == null || r is ParticleSystemRenderer) continue;
 
-            if (r.sharedMaterials != transparentMaterials[r])
+            // БЕЗПЕЧНА ПЕРЕВІРКА: використовуємо TryGetValue, щоб уникнути KeyNotFoundException
+            if (transparentMaterials.TryGetValue(r, out Material[] transMats))
             {
-                r.sharedMaterials = transparentMaterials[r];
-            }
-
-            foreach (Material mat in r.sharedMaterials)
-            {
-                if (mat == null) continue;
-
-                if (mat.HasProperty("_BaseColor"))
+                if (r.sharedMaterials != transMats)
                 {
-                    Color c = mat.GetColor("_BaseColor");
-                    c.a = alpha;
-                    mat.SetColor("_BaseColor", c);
+                    r.sharedMaterials = transMats;
                 }
-                else if (mat.HasProperty("_Color"))
+
+                foreach (Material mat in r.sharedMaterials)
                 {
-                    Color c = mat.GetColor("_Color");
-                    c.a = alpha;
-                    mat.SetColor("_Color", c);
+                    if (mat == null) continue;
+
+                    if (mat.HasProperty("_BaseColor"))
+                    {
+                        Color c = mat.GetColor("_BaseColor");
+                        c.a = alpha;
+                        mat.SetColor("_BaseColor", c);
+                    }
+                    else if (mat.HasProperty("_Color"))
+                    {
+                        Color c = mat.GetColor("_Color");
+                        c.a = alpha;
+                        mat.SetColor("_Color", c);
+                    }
                 }
             }
         }
@@ -121,9 +125,10 @@ public class FadingObject : MonoBehaviour
     {
         foreach (Renderer r in renderers)
         {
-            if (r != null && originalMaterials.ContainsKey(r))
+            // Оптимізована безпечна перевірка
+            if (r != null && originalMaterials.TryGetValue(r, out Material[] origMats))
             {
-                r.sharedMaterials = originalMaterials[r];
+                r.sharedMaterials = origMats;
             }
         }
     }
@@ -175,9 +180,10 @@ public class FadingObject : MonoBehaviour
         {
             foreach (Renderer r in renderers)
             {
-                if (r != null && transparentMaterials.ContainsKey(r))
+                // Оптимізована безпечна перевірка
+                if (r != null && transparentMaterials.TryGetValue(r, out Material[] transMats))
                 {
-                    r.sharedMaterials = transparentMaterials[r];
+                    r.sharedMaterials = transMats;
                 }
             }
         }
