@@ -37,6 +37,9 @@ public class EnemyAI : MonoBehaviour
     public float repulsionRadius = 1.5f;
     public float repulsionForce = 4f;
 
+    [Header("Juice VFX")]
+    public GameObject deathVFXPrefab;
+
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
     public bool isInvincible = false;
@@ -45,6 +48,7 @@ public class EnemyAI : MonoBehaviour
     private float currentHealth;
     private float actualMoveSpeed;
     private float randomOffset;
+    private float strafeDir; // НОВЕ: Напрямок кружляння (-1 або 1)
 
     // Змінні для збереження базових статів перед нічним бафом
     private float baseActualMoveSpeed;
@@ -86,55 +90,48 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.applyRootMotion = false;
 
         randomOffset = Random.Range(0f, 100f);
+        strafeDir = Random.value > 0.5f ? 1f : -1f; // Кожен ворог кружлятиме у свій бік
     }
 
     private void Start()
     {
         if (Camera.main != null) mainCamTransform = Camera.main.transform;
-
-        // Знаходимо годинник сцени
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
-
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
+
+        // --- НОВЕ: СКЕЙЛІНГ ВІД ЧАСУ НА РІВНІ ---
+        // За кожну хвилину, проведену на рівні, вороги стають сильнішими на 5%
+        float minutesInScene = Time.timeSinceLevelLoad / 60f;
+        float timeMultiplier = 1f + (minutesInScene * 0.05f);
 
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
         {
             RegionData region = GameManager.Instance.currentRegion;
-
             int playerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
             int powerDelta = playerPower - region.recommendedPower;
 
             float dynamicMultiplier = 1f;
+            if (powerDelta < 0) dynamicMultiplier = Mathf.Clamp(1f + (Mathf.Abs(powerDelta) * 0.015f), 1f, 4.0f);
+            else if (powerDelta > 0) dynamicMultiplier = Mathf.Clamp(1f - (powerDelta * 0.005f), 0.7f, 1f);
 
-            if (powerDelta < 0)
-            {
-                dynamicMultiplier = 1f + (Mathf.Abs(powerDelta) * 0.015f);
-                dynamicMultiplier = Mathf.Clamp(dynamicMultiplier, 1f, 4.0f);
-            }
-            else if (powerDelta > 0)
-            {
-                dynamicMultiplier = 1f - (powerDelta * 0.005f);
-                dynamicMultiplier = Mathf.Clamp(dynamicMultiplier, 0.7f, 1f);
-            }
-
-            float finalHpMult = region.enemyHpMultiplier * dynamicMultiplier;
-            float finalDmgMult = region.enemyDamageMultiplier * dynamicMultiplier;
+            float finalHpMult = region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier;
+            float finalDmgMult = region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
 
             maxHealth *= finalHpMult;
             damage *= finalDmgMult;
-
-            if (dynamicMultiplier > 1.4f)
-            {
-                actualMoveSpeed *= 1.2f;
-            }
+            if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.2f;
 
             xpRewardMultiplier = finalHpMult * 0.5f;
         }
+        else
+        {
+            // Якщо GameManager немає (наприклад туторіал), все одно застосовуємо скейлінг часу
+            maxHealth *= timeMultiplier;
+            damage *= timeMultiplier;
+        }
 
-        // Зберігаємо фінальні денні стати
         baseActualMoveSpeed = actualMoveSpeed;
         baseDamage = damage;
-
         currentHealth = maxHealth;
         UpdateHealthUI();
 
@@ -144,14 +141,14 @@ public class EnemyAI : MonoBehaviour
             target = playerObj.transform;
             playerController = playerObj.GetComponent<PlayerController>();
         }
+
+        // Рандомізуємо перший удар, щоб вони не били всі в одну мілісекунду
+        lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
     }
 
     private void UpdateHealthUI()
     {
-        if (hpFill != null)
-        {
-            hpFill.fillAmount = currentHealth / maxHealth;
-        }
+        if (hpFill != null) hpFill.fillAmount = currentHealth / maxHealth;
     }
 
     private void Update()
@@ -215,14 +212,32 @@ public class EnemyAI : MonoBehaviour
 
         if (distanceToPlayer <= attackRange)
         {
-            if (animator != null) animator.SetBool("isMoving", false);
             if (directionToPlayer != Vector3.zero)
             {
                 Vector3 lookDir = directionToPlayer;
                 lookDir.y = 0;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), 15f * Time.deltaTime);
             }
-            if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack) StartCoroutine(AttackRoutine());
+
+            if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack)
+            {
+                if (animator != null) animator.SetBool("isMoving", false);
+                StartCoroutine(AttackRoutine());
+            }
+            else if (!isPreparingAttack)
+            {
+                // --- НОВЕ: Логіка кружляння (Strafing) навколо гравця ---
+                if (animator != null) animator.SetBool("isMoving", true);
+
+                Vector3 strafeVector = (transform.right * strafeDir) + (repulsion * repulsionForce * 0.5f);
+                Vector3 nextPos = currentPos + strafeVector.normalized * (actualMoveSpeed * 0.5f) * Time.deltaTime;
+
+                if (Terrain.activeTerrain != null)
+                {
+                    nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                }
+                transform.position = nextPos;
+            }
         }
         else
         {
@@ -242,12 +257,10 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // НОВИЙ МЕТОД: Перевірка і застосування нічного бафу
     private void CheckNightBuff()
     {
-        if (dayNightCycle == null || isEnraged) return; // Не чіпаємо розлючених ворогів (босів)
+        if (dayNightCycle == null || isEnraged) return;
 
-        // За логікою гри, ніч - це час до 5 ранку та після 19 вечора
         bool isNight = dayNightCycle.timeOfDay < 5f || dayNightCycle.timeOfDay > 19f;
 
         if (isNight && !isNightBuffActive)
@@ -255,8 +268,6 @@ public class EnemyAI : MonoBehaviour
             isNightBuffActive = true;
             actualMoveSpeed = baseActualMoveSpeed * nightMultiplier;
             damage = baseDamage * nightMultiplier;
-
-            // Опціонально: можна додати тут ефект (наприклад, червоне світіння очей)
         }
         else if (!isNight && isNightBuffActive)
         {
@@ -270,7 +281,6 @@ public class EnemyAI : MonoBehaviour
     {
         isPreparingAttack = true;
         if (animator != null) animator.SetBool("isMoving", false);
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
         Color tempColor = isEnraged ? Color.black : Color.red;
@@ -284,6 +294,9 @@ public class EnemyAI : MonoBehaviour
             lastAttackTime = Time.time;
             if (animator != null) animator.SetTrigger("Attack");
         }
+
+        // Даємо невеличку паузу після атаки
+        yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
     }
 
@@ -330,12 +343,9 @@ public class EnemyAI : MonoBehaviour
     {
         isInvincible = true;
         isEnraged = true;
-        actualMoveSpeed = moveSpeed * 1.8f; // Перевизначає всі бафи
+        actualMoveSpeed = moveSpeed * 1.8f;
 
-        for (int i = 0; i < originalColors.Length; i++)
-        {
-            originalColors[i] = new Color(0.2f, 0f, 0f);
-        }
+        for (int i = 0; i < originalColors.Length; i++) originalColors[i] = new Color(0.2f, 0f, 0f);
         ResetColor();
     }
 
@@ -369,11 +379,17 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
+        if (deathVFXPrefab != null)
+        {
+            Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        }
+
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position, Quaternion.identity);
-        if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position, Quaternion.identity);
+        // Піднімаємо точку появи на 1 метр вгору
+        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();

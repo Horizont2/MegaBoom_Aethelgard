@@ -10446,7 +10446,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 4.29, z: 0}
-  m_LocalScale: {x: 1.4999999, y: 1.4999999, z: 1.4999999}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3568903127627299364}
@@ -12074,12 +12074,14 @@ MonoBehaviour:
   throwPoint: {fileID: 0}
   trajectoryLine: {fileID: 4637086544979659799}
   linePoints: 30
-  timeBetweenPoints: 0.1
-  minThrowForce: 5
-  maxThrowForce: 30
-  chargeRate: 15
-  upwardAngle: 0.5
+  maxThrowDistance: 18
+  grenadeExplosionRadius: 6
+  grenadeThrowSpeed: 20
+  grenadeCooldown: 5
+  lastGrenadeTime: -100
   damageFlashImage: {fileID: 0}
+  hitVFXPrefab: {fileID: 8004061199188420018, guid: 7a7018ab3efb8694ea96c76b9c16b46f, type: 3}
+  footstepParticles: {fileID: 0}
   hpFill: {fileID: 0}
   xpFill: {fileID: 0}
   dashStaminaFill: {fileID: 0}
@@ -19572,8 +19574,8 @@ MonoBehaviour:
   pivot: {fileID: 809571974800134349}
   baseRotationSpeed: 120
   runRotationMultiplier: 2
-  orbitDistance: 2.5
-  orbitHeight: 0
+  orbitDistance: 1.5
+  orbitHeight: 0.5
   followSpeed: 15
   bobbingAmount: 0.4
   bobbingSpeed: 3

@@ -74,9 +74,13 @@ public class PlayerController : MonoBehaviour
     private LineRenderer aoeMarkerLine; // Велике коло ураження
     private LineRenderer innerMarkerLine; // Маленький центр
 
-    [Header("Visual Effects")]
+    [Header("Visual Effects (Juice)")]
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
+    [Tooltip("Ефект, що вилітає з ворога при ударі мечем (Бризки/Іскри)")]
+    public GameObject hitVFXPrefab;
+    [Tooltip("Пилюка під ногами під час бігу")]
+    public ParticleSystem footstepParticles;
 
     [Header("HUD UI References")]
     public Image hpFill;
@@ -156,7 +160,6 @@ public class PlayerController : MonoBehaviour
 
     private void InitAoEMarker()
     {
-        // 1. Велике коло (Зона ураження)
         GameObject markerObj = new GameObject("GrenadeAoEMarker");
         aoeMarkerLine = markerObj.AddComponent<LineRenderer>();
         aoeMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
@@ -169,7 +172,6 @@ public class PlayerController : MonoBehaviour
         aoeMarkerLine.positionCount = 40;
         aoeMarkerLine.enabled = false;
 
-        // 2. Маленьке коло (Епіцентр/Ціль)
         GameObject innerObj = new GameObject("GrenadeInnerMarker");
         innerMarkerLine = innerObj.AddComponent<LineRenderer>();
         innerMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
@@ -516,6 +518,20 @@ public class PlayerController : MonoBehaviour
             characterController.Move(finalMove * safeDeltaTime);
         }
 
+        // --- НОВЕ: Пилюка з-під ніг ---
+        if (footstepParticles != null)
+        {
+            // Якщо ми на землі, біжимо швидко і не заблоковані
+            if (characterController.isGrounded && currentVelocityMove.magnitude > 2f && !isCurrentlyLocked)
+            {
+                if (!footstepParticles.isEmitting) footstepParticles.Play();
+            }
+            else
+            {
+                if (footstepParticles.isEmitting) footstepParticles.Stop();
+            }
+        }
+
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
@@ -529,7 +545,6 @@ public class PlayerController : MonoBehaviour
             {
                 if (!isCampMode)
                 {
-                    // ЛКМ: Атака АБО скасування кидка
                     if (Input.GetMouseButtonDown(0))
                     {
                         if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
@@ -540,11 +555,10 @@ public class PlayerController : MonoBehaviour
                         }
                         else if (isAimingGrenade)
                         {
-                            CancelGrenadeAim(); // Скасувати прицілювання
+                            CancelGrenadeAim();
                         }
                     }
 
-                    // ПКМ: Почати прицілювання
                     if (Input.GetMouseButtonDown(1))
                     {
                         if (Time.time >= lastGrenadeTime + grenadeCooldown)
@@ -558,20 +572,18 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            // ПКМ (Утримання): Оновлюємо маркер та лінію
             if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade)
             {
                 UpdateGrenadeAiming();
             }
 
-            // ПКМ (Відпускання): Кидок
             if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
                 {
-                    CancelGrenadeAim(); // Ховаємо маркери
+                    CancelGrenadeAim();
                     if (characterController.isGrounded) LockAction("Throw", 0.4f);
-                    else ExecuteThrow(); // Якщо в стрибку — кидаємо миттєво
+                    else ExecuteThrow();
                 }
             }
         }
@@ -589,7 +601,6 @@ public class PlayerController : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         Vector3 hitPoint = transform.position + transform.forward * 5f;
 
-        // Шукаємо курсор на землі
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
         {
             hitPoint = hit.point;
@@ -600,7 +611,6 @@ public class PlayerController : MonoBehaviour
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
-        // Обмежуємо дальність
         Vector3 offset = hitPoint - transform.position;
         offset.y = 0;
         if (offset.magnitude > maxThrowDistance)
@@ -614,7 +624,6 @@ public class PlayerController : MonoBehaviour
 
         currentGrenadeTarget = hitPoint;
 
-        // Повертаємо гравця в сторону прицілу
         Vector3 aimDir = (hitPoint - transform.position).normalized;
         aimDir.y = 0;
         if (aimDir.sqrMagnitude > 0.01f)
@@ -622,7 +631,6 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.deltaTime * 3f);
         }
 
-        // Вмикаємо маркери
         if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
         if (innerMarkerLine != null) innerMarkerLine.enabled = true;
 
@@ -636,10 +644,8 @@ public class PlayerController : MonoBehaviour
         Vector3 displacementXZ = new Vector3(displacement.x, 0, displacement.z);
         float distanceXZ = displacementXZ.magnitude;
 
-        // МАГІЯ ФІЗИКИ: Час польоту тепер залежить від дальності (швидкий, гнучкий кидок)
         float dynamicFlightTime = Mathf.Clamp(distanceXZ / grenadeThrowSpeed, 0.25f, 1.2f);
 
-        // Формула кінематики для ідеального попадання
         float velY = (displacement.y / dynamicFlightTime) - (0.5f * Physics.gravity.y * dynamicFlightTime);
         Vector3 velXZ = displacementXZ / dynamicFlightTime;
 
@@ -653,7 +659,6 @@ public class PlayerController : MonoBehaviour
         Vector3 startPos = throwPoint.position;
         Vector3 vel = CalculateThrowVelocity(target);
 
-        // Вираховуємо час польоту для малювання лінії
         Vector3 displacementXZ = new Vector3(target.x - startPos.x, 0, target.z - startPos.z);
         float flightTime = Mathf.Clamp(displacementXZ.magnitude / grenadeThrowSpeed, 0.25f, 1.2f);
 
@@ -667,7 +672,6 @@ public class PlayerController : MonoBehaviour
 
     private void DrawAoEMarker(Vector3 center)
     {
-        // 1. Малюємо велике коло (з проекцією на рельєф)
         if (aoeMarkerLine != null)
         {
             int segments = aoeMarkerLine.positionCount;
@@ -677,15 +681,14 @@ public class PlayerController : MonoBehaviour
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
 
-                Vector3 point = center + new Vector3(x, 50f, z); // Беремо точку високо в небі
-                point.y = GetGroundHeight(point) + 0.15f; // Опускаємо на землю + трохи вище
+                Vector3 point = center + new Vector3(x, 50f, z);
+                point.y = GetGroundHeight(point) + 0.15f;
 
                 aoeMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
         }
 
-        // 2. Малюємо маленьке внутрішнє коло (епіцентр)
         if (innerMarkerLine != null)
         {
             float innerRadius = 0.8f;
@@ -705,7 +708,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Допоміжний метод для пошуку рельєфу
     private float GetGroundHeight(Vector3 pos)
     {
         if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
@@ -746,6 +748,14 @@ public class PlayerController : MonoBehaviour
                     pushDir.y = 0;
                     enemy.ApplyKnockback(pushDir, isCriticalHit ? 12f : 8f, isCriticalHit ? 0.8f : 0.4f);
                     hitEnemy = true;
+
+                    // --- НОВЕ: Ефект удару (Бризки/Іскри) ---
+                    if (hitVFXPrefab != null)
+                    {
+                        Quaternion hitRotation = Quaternion.LookRotation(pushDir);
+                        GameObject vfx = Instantiate(hitVFXPrefab, enemy.transform.position + Vector3.up * 1f, hitRotation);
+                        if (isCriticalHit) vfx.transform.localScale *= 1.5f;
+                    }
                 }
             }
             else
@@ -804,12 +814,10 @@ public class PlayerController : MonoBehaviour
 
             if (rb != null)
             {
-                // Закидаємо точно в ціль
                 rb.linearVelocity = CalculateThrowVelocity(currentGrenadeTarget);
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
 
-            // Включаємо кулдаун!
             lastGrenadeTime = Time.time;
         }
     }
@@ -827,6 +835,12 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 hitPushDir = transform.forward;
             cameraFollow.TriggerDirectionalShake(hitPushDir, 1.5f, 0.3f, 0.3f);
+        }
+
+        // --- НОВЕ: Сильне трясіння смужки HP при великій шкоді ---
+        if (finalDamage >= maxHealth * 0.15f && hpFill != null)
+        {
+            StartCoroutine(ShakeUIRoutine(hpFill.transform.parent.GetComponent<RectTransform>()));
         }
 
         if (healthVisuals != null) healthVisuals.TriggerHitFlash();
@@ -848,6 +862,20 @@ public class PlayerController : MonoBehaviour
         {
             LockAction("Hit", 0.35f);
         }
+    }
+
+    private System.Collections.IEnumerator ShakeUIRoutine(RectTransform uiElement)
+    {
+        if (uiElement == null) yield break;
+        Vector2 originalPos = uiElement.anchoredPosition;
+        float elapsed = 0f;
+        while (elapsed < 0.25f)
+        {
+            elapsed += Time.deltaTime;
+            uiElement.anchoredPosition = originalPos + new Vector2(Random.Range(-15f, 15f), Random.Range(-10f, 10f));
+            yield return null;
+        }
+        uiElement.anchoredPosition = originalPos;
     }
 
     private System.Collections.IEnumerator FlashRoutine()
@@ -1043,5 +1071,25 @@ public class PlayerController : MonoBehaviour
             PlayerPrefs.SetInt("HasCampSave", 1);
             PlayerPrefs.Save();
         }
+    }
+
+    public void TriggerUIPop()
+    {
+        if (xpFill != null) StartCoroutine(PopUIRoutine(xpFill.transform.parent.GetComponent<RectTransform>()));
+    }
+
+    private System.Collections.IEnumerator PopUIRoutine(RectTransform uiElement)
+    {
+        if (uiElement == null) yield break;
+        Vector3 origScale = Vector3.one;
+        float elapsed = 0f;
+        while (elapsed < 0.15f)
+        {
+            elapsed += Time.deltaTime;
+            float curve = Mathf.Sin((elapsed / 0.15f) * Mathf.PI);
+            uiElement.localScale = origScale + new Vector3(0.15f, 0.15f, 0f) * curve;
+            yield return null;
+        }
+        uiElement.localScale = origScale;
     }
 }

@@ -32,7 +32,6 @@ public class Level1_QuestManager : MonoBehaviour
 
     private int totalSkeletonsW1 = 0;
     private int defeatedSkeletonsW1 = 0;
-
     private bool isDialogueStarted = false;
 
     private void Awake()
@@ -145,19 +144,15 @@ public class Level1_QuestManager : MonoBehaviour
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
     }
 
-    // --- ФІКС: Правильна логіка просування місій ---
     public void AdvanceQuest()
     {
-        // 1. Позначаємо поточну місію як виконану (навіть нульову "Investigate the Outpost")
         if (objectiveUI != null) objectiveUI.CompleteMission();
-
         currentQuestStep++;
 
         if (currentQuestStep == 1 && ResourceManager.Instance != null) startingWood = ResourceManager.Instance.runWood;
         else if (currentQuestStep == 2) StartCoroutine(TriggerAmbushWave1Routine());
         else if (currentQuestStep == 3) StartCoroutine(TriggerHordeAndFleeRoutine());
 
-        // 2. Запускаємо оновлення UI із затримкою, щоб гравець встиг побачити зелений напис (DONE)
         StartCoroutine(DelayedUIUpdateRoutine());
     }
 
@@ -166,7 +161,6 @@ public class Level1_QuestManager : MonoBehaviour
         yield return new WaitForSeconds(1.5f);
         UpdateObjectiveUI();
 
-        // 3. Синхронізуємо прогрес після оновлення тексту
         if (currentQuestStep == 1 && ResourceManager.Instance != null && objectiveUI != null)
         {
             int gatheredWood = ResourceManager.Instance.runWood - startingWood;
@@ -177,7 +171,6 @@ public class Level1_QuestManager : MonoBehaviour
             objectiveUI.UpdateProgress(defeatedSkeletonsW1, totalSkeletonsW1);
         }
     }
-    // ----------------------------------------------
 
     private void Update()
     {
@@ -231,10 +224,10 @@ public class Level1_QuestManager : MonoBehaviour
         }
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
-        StartCoroutine(RiseFromGroundAnim(skeletonsWave1.transform, 2.5f));
+
+        TriggerGroupRise(skeletonsWave1.transform, 2.5f);
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Watch out! They're crawling from the dirt!", 2f));
-
         yield return cameraFly;
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
@@ -282,7 +275,7 @@ public class Level1_QuestManager : MonoBehaviour
             }
         }
 
-        StartCoroutine(RiseFromGroundAnim(skeletonsHordeWave2.transform, 2.5f));
+        TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!", 2f));
 
@@ -315,20 +308,27 @@ public class Level1_QuestManager : MonoBehaviour
         Vector3 startPos = mainCam.transform.position;
         Quaternion startRot = mainCam.transform.rotation;
 
-        float elapsed = 0f;
+        Vector3 midPos = Vector3.Lerp(startPos, targetPosition + new Vector3(0, 8f, -10f), 0.5f);
+        midPos += new Vector3(15f, 5f, 0f);
 
+        Vector3 endPos = targetPosition + new Vector3(8f, 6f, -8f);
+
+        float elapsed = 0f;
         while (elapsed < flyDuration)
         {
             elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0, 1, elapsed / flyDuration);
 
-            Vector3 cinematicPos = targetPosition + new Vector3(0, 10f, -8f);
-            cinematicPos += new Vector3(Mathf.Sin(elapsed) * 3f, 0, Mathf.Cos(elapsed) * 3f);
+            Vector3 m1 = Vector3.Lerp(startPos, midPos, t);
+            Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
+            mainCam.transform.position = Vector3.Lerp(m1, m2, t);
 
-            float t = Mathf.SmoothStep(0, 1, elapsed / 1.5f);
-            mainCam.transform.position = Vector3.Lerp(startPos, cinematicPos, t);
-
-            Quaternion cinematicRot = Quaternion.LookRotation(targetPosition - mainCam.transform.position);
-            mainCam.transform.rotation = Quaternion.Slerp(startRot, cinematicRot, t);
+            Vector3 lookDir = targetPosition - mainCam.transform.position;
+            if (lookDir != Vector3.zero)
+            {
+                Quaternion cinematicRot = Quaternion.LookRotation(lookDir);
+                mainCam.transform.rotation = Quaternion.Slerp(startRot, cinematicRot, t);
+            }
 
             yield return null;
         }
@@ -344,55 +344,73 @@ public class Level1_QuestManager : MonoBehaviour
         SetCinematicMode(false);
     }
 
-    private IEnumerator ShowTutorialHint(string text, float duration)
+    private void TriggerGroupRise(Transform groupParent, float duration)
     {
-        if (subtitleText == null) yield break;
-
-        subtitleText.maxVisibleCharacters = 99999;
-        subtitleText.text = $"<color=#88CCFF>{text}</color>";
-
-        yield return new WaitForSeconds(duration);
-        subtitleText.text = "";
+        foreach (Transform child in groupParent)
+        {
+            if (child.GetComponent<EnemyAI>() != null)
+            {
+                StartCoroutine(RiseSingleAnim(child, duration));
+            }
+        }
     }
 
-    private IEnumerator ShowSubtitleTypewriter(string text, float stayDuration)
+    private IEnumerator RiseSingleAnim(Transform enemy, float duration)
     {
-        if (subtitleText == null) yield break;
-
-        subtitleText.text = text;
-        subtitleText.ForceMeshUpdate();
-        int totalCharacters = subtitleText.textInfo.characterCount;
-        subtitleText.maxVisibleCharacters = 0;
-
-        for (int i = 0; i <= totalCharacters; i++)
+        Vector3 finalPos = enemy.position;
+        if (Terrain.activeTerrain != null)
         {
-            subtitleText.maxVisibleCharacters = i;
-            yield return new WaitForSeconds(typingSpeed);
+            finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y;
         }
 
-        yield return new WaitForSeconds(stayDuration);
-        subtitleText.text = "";
-        subtitleText.maxVisibleCharacters = 99999;
-    }
-
-    private IEnumerator RiseFromGroundAnim(Transform group, float duration)
-    {
-        Vector3 finalPos = group.position;
-        group.position = finalPos - new Vector3(0, 2.5f, 0);
+        enemy.position = finalPos - new Vector3(0, 2.5f, 0);
 
         float elapsed = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
-
             t = t * t * (3f - 2f * t);
 
-            group.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
+            enemy.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
             yield return null;
         }
-        group.position = finalPos;
+        enemy.position = finalPos;
     }
+
+    // --- ВІДНОВЛЕНІ МЕТОДИ ---
+
+    private IEnumerator ShowSubtitleTypewriter(string text, float duration)
+    {
+        if (subtitleText != null)
+        {
+            subtitleText.text = text;
+            subtitleText.ForceMeshUpdate();
+            int totalChars = subtitleText.textInfo.characterCount;
+            subtitleText.maxVisibleCharacters = 0;
+
+            for (int i = 0; i <= totalChars; i++)
+            {
+                subtitleText.maxVisibleCharacters = i;
+                yield return new WaitForSeconds(typingSpeed);
+            }
+
+            yield return new WaitForSeconds(duration);
+            subtitleText.text = "";
+        }
+    }
+
+    private IEnumerator ShowTutorialHint(string text, float duration)
+    {
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.ShowPrompt(text);
+            yield return new WaitForSeconds(duration);
+            GlobalHUD.Instance.HidePrompt();
+        }
+    }
+
+    // -------------------------
 
     private void UpdateObjectiveUI()
     {
@@ -423,13 +441,7 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (subtitleText != null) subtitleText.text = "";
 
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
-        }
-        else
-        {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("Lvl_1");
-        }
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
+        else UnityEngine.SceneManagement.SceneManager.LoadScene("Lvl_1");
     }
 }

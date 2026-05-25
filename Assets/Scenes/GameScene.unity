@@ -6200,7 +6200,7 @@ MonoBehaviour:
   forestRockColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
-  spawnAttempts: 30000
+  spawnAttempts: 20000
   clusterScale: 10
   forestThreshold: 0.48
   globalBiomeScale: 2
@@ -6223,7 +6223,11 @@ MonoBehaviour:
   baseFlowers:
   - {fileID: 4898303536820266227, guid: 9ca830ce22a6cc440862930bce38b1cd, type: 3}
   - {fileID: 4898303536820266227, guid: 14bbde07441624249820ad2b342f9b4d, type: 3}
-  baseMushrooms: []
+  baseMushrooms:
+  - {fileID: 7570405467501425085, guid: 0ab22827d0f3f0b40a97e9430d684283, type: 3}
+  - {fileID: 8954726919292774957, guid: eae42a57b046b1a42a79ae6319bccca3, type: 3}
+  - {fileID: 7749838506462483410, guid: d354c41a99993964baca0254487708d1, type: 3}
+  - {fileID: 3318689441606926373, guid: d3ee913ed32937344b0587e70dc777a2, type: 3}
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
@@ -6245,7 +6249,7 @@ MonoBehaviour:
   maxPOISteepness: 10
   poiClearanceRadius: 6
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
-  extractionCartsAmount: 12
+  extractionCartsAmount: 10
   cartClearanceRadius: 8
 --- !u!154 &240858630
 TerrainCollider:
@@ -7199,6 +7203,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+--- !u!114 &305011163 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6472069156523931267, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+  m_PrefabInstance: {fileID: 305011162}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1 &316599052
 GameObject:
   m_ObjectHideFlags: 0
@@ -12193,7 +12208,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 615663591}
   targetOffset: {x: 0, y: 1.5, z: 0}
-  maxDistance: 4
+  maxDistance: 4.5
   minDistance: 1
   collisionLayers:
     serializedVersion: 2
@@ -18236,6 +18251,10 @@ PrefabInstance:
       propertyPath: throwPoint
       value: 
       objectReference: {fileID: 1058504262}
+    - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: crystalText
+      value: 
+      objectReference: {fileID: 305011163}
     - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
       propertyPath: meleeRadius
       value: 1.5

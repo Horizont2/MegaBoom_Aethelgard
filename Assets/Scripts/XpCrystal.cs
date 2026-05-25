@@ -1,37 +1,29 @@
 using UnityEngine;
+using System.Collections;
 
 public class XpCrystal : MonoBehaviour
 {
     public float xpAmount = 10f;
 
     [Header("Smart Magnet AI")]
-    public float maxMagnetSpeed = 25f;
-    public float acceleration = 12f;
+    public float maxMagnetSpeed = 35f;
+    public float acceleration = 20f;
     public float dropOffMultiplier = 1.8f;
-
-    [Header("Spawn Pop Animation")]
-    public float popRadius = 3f;
-    public float popSpeed = 12f;
-    private Vector3 popTarget;
-    private bool isPopping = true;
+    public float timeBeforeMagnet = 0.8f; // Час, поки кристал розлітається і падає
 
     [Header("Hover Animation")]
-    public float hoverSpeed = 3f;
-    public float hoverHeight = 0.3f;
-    public float rotationSpeed = 100f;
+    public float rotationSpeed = 150f;
 
     private Transform player;
     private PlayerController playerController;
     private bool isMagnetized = false;
+    private bool canBeMagnetized = false;
     private float currentFlySpeed = 0f;
-    private float baseY;
 
-    // --- СУПЕР ОПТИМІЗАЦІЯ ---
-    private static float lastPlayTime = -1f; // Трекер звуку по реальному часу
+    private static float lastPlayTime = -1f;
     private float pickupRadiusSqr;
     private float dropOffRadiusSqr;
 
-    // Кешуємо компоненти, щоб не шукати їх під час гри
     private Collider col;
     private Rigidbody rb;
     private Renderer[] renderers;
@@ -40,7 +32,7 @@ public class XpCrystal : MonoBehaviour
     {
         col = GetComponent<Collider>();
         rb = GetComponent<Rigidbody>();
-        renderers = GetComponentsInChildren<Renderer>(); // Знаходимо всі меші кристала
+        renderers = GetComponentsInChildren<Renderer>();
     }
 
     private void Start()
@@ -50,53 +42,52 @@ public class XpCrystal : MonoBehaviour
         {
             player = p.transform;
             playerController = p.GetComponent<PlayerController>();
-
             pickupRadiusSqr = playerController.pickupRadius * playerController.pickupRadius;
             dropOffRadiusSqr = (playerController.pickupRadius * dropOffMultiplier) * (playerController.pickupRadius * dropOffMultiplier);
         }
 
-        Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(1.5f, popRadius);
-        popTarget = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+        // --- НОВЕ: Фізичний вибух (Фонтан Луту) ---
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            // Кидаємо кристал випадково вгору і вбік
+            Vector3 randomDir = new Vector3(Random.Range(-1f, 1f), Random.Range(1.5f, 2.5f), Random.Range(-1f, 1f)).normalized;
+            rb.AddForce(randomDir * Random.Range(5f, 9f), ForceMode.Impulse);
+            rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
+        }
 
-        if (Terrain.activeTerrain != null)
-            popTarget.y = Terrain.activeTerrain.SampleHeight(popTarget) + Terrain.activeTerrain.transform.position.y + 0.8f;
+        StartCoroutine(WaitBeforeMagnetRoutine());
+    }
+
+    private IEnumerator WaitBeforeMagnetRoutine()
+    {
+        yield return new WaitForSeconds(timeBeforeMagnet);
+        canBeMagnetized = true; // Тепер гравець може їх підібрати
     }
 
     private void Update()
     {
-        if (isPopping)
+        // Якщо ще летить/падає або гравця немає - просто крутимось і чекаємо
+        if (player == null || playerController == null || !canBeMagnetized)
         {
-            transform.position = Vector3.MoveTowards(transform.position, popTarget, popSpeed * Time.deltaTime);
             transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
-
-            if ((transform.position - popTarget).sqrMagnitude < 0.01f)
-            {
-                isPopping = false;
-                baseY = transform.position.y;
-            }
             return;
         }
 
-        if (player == null || playerController == null) return;
-
         float distSqr = (transform.position - player.position).sqrMagnitude;
 
+        // ПЕРЕВІРКА ДИСТАНЦІЇ: Магнітимо тільки якщо гравець підійшов!
         if (!isMagnetized && distSqr <= pickupRadiusSqr)
         {
             isMagnetized = true;
             currentFlySpeed = 0f;
 
-            // ФІКС ФІЗИКИ: Вимикаємо колайдер і Rigidbody!
-            // Тепер кристал "прозорий" для фізичного рушія і не створює лагів при вльоті в гравця.
             if (col != null) col.enabled = false;
             if (rb != null) rb.isKinematic = true;
         }
         else if (isMagnetized && distSqr > dropOffRadiusSqr)
         {
             isMagnetized = false;
-            baseY = transform.position.y;
-
-            // Якщо гравець втік, повертаємо колізію назад
             if (col != null) col.enabled = true;
             if (rb != null) rb.isKinematic = false;
         }
@@ -108,9 +99,8 @@ public class XpCrystal : MonoBehaviour
 
             transform.position = Vector3.MoveTowards(transform.position, targetPos, currentFlySpeed * Time.deltaTime);
 
-            if ((transform.position - targetPos).sqrMagnitude < 0.25f) // Коли кристал торкнувся гравця
+            if ((transform.position - targetPos).sqrMagnitude < 0.25f)
             {
-                // ФІКС АУДІО: Захист 0.05 секунд реального часу, щоб звуки не "нашаровувались"
                 if (Time.time - lastPlayTime > 0.05f)
                 {
                     if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
@@ -118,19 +108,17 @@ public class XpCrystal : MonoBehaviour
                 }
 
                 playerController.GainXP(xpAmount);
+                playerController.TriggerUIPop(); // Анімація UI
 
-                // ФІКС GC (Garbage Collector): 
-                // Замість миттєвого знищення, просто робимо об'єкт невидимим і вимикаємо цей скрипт.
-                // А саме видалення з пам'яті (Destroy) відкладаємо на випадковий час.
                 foreach (Renderer r in renderers) if (r != null) r.enabled = false;
                 this.enabled = false;
-                Destroy(gameObject, Random.Range(0.5f, 2f));
+                Destroy(gameObject, 2f);
             }
-            return;
         }
-
-        transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
-        float newY = baseY + Mathf.Sin(Time.time * hoverSpeed) * hoverHeight;
-        transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+        else
+        {
+            // Лежимо на землі і крутимось
+            transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime, Space.World);
+        }
     }
 }

@@ -9,14 +9,14 @@ public class WorldGenerator : MonoBehaviour
     public static bool IsGenerationDone = false;
 
     [Header("Mountain & Arena Settings")]
-    public float depth = 120f;
+    public float depth = 40f;
     public float scale = 2.5f;
     [Range(1, 6)] public int octaves = 4;
     public float persistence = 0.45f;
     public float lacunarity = 2.5f;
     [Range(1f, 5f)] public float peakSharpness = 2.5f;
-    public int terraceCount = 12;
-    public float edgeMountainMultiplier = 2.5f;
+    public int terraceCount = 24;
+    public float edgeMountainMultiplier = 2f;
 
     private float offsetX;
     private float offsetZ;
@@ -147,7 +147,7 @@ public class WorldGenerator : MonoBehaviour
 
             if (biomeType == 1) { peakSharpness = 1.8f; edgeMountainMultiplier = 1.5f; terraceCount = 0; }
             else if (biomeType == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; terraceCount = 15; }
-            else { peakSharpness = 2.5f; edgeMountainMultiplier = 2.5f; terraceCount = 12; }
+            else { peakSharpness = 2.5f; edgeMountainMultiplier = 2f; terraceCount = 24; }
         }
     }
 
@@ -424,6 +424,7 @@ public class WorldGenerator : MonoBehaviour
                     SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 40, 100, 8f, true, slopeRotation, currentFoliageColor);
                 }
                 // --- ÍÎÂÅ: Á³ëüøå êâ³ò³â, êóù³â òà äîäàíî ÃÐÈÁÈ! ---
+                // --- ÍÎÂÅ: Á³ëüøå êâ³ò³â, êóù³â òà äîäàíî ÃÐÈÁÈ! ---
                 else if (randomSpawn > 0.10f)
                 {
                     float subRoll = Random.value;
@@ -431,9 +432,23 @@ public class WorldGenerator : MonoBehaviour
 
                     if (subRoll > 0.5f) naturePrefab = GetRandomPrefab(baseBushes);
                     else if (subRoll > 0.2f) naturePrefab = GetRandomPrefab(baseFlowers);
-                    else naturePrefab = GetRandomPrefab(baseMushrooms); // 20% øàíñ íà ãðèáíó ïîëÿíó
+                    else
+                    {
+                        // Ñïàâíèìî ãðèáè Ò²ËÜÊÈ ÿêùî öå ë³ñ (íå ïóñòåëÿ ³ íå ñí³ã)
+                        if (localTemp > 0.35f && localTemp < 0.65f)
+                        {
+                            naturePrefab = GetRandomPrefab(baseMushrooms);
+                        }
+                        else
+                        {
+                            naturePrefab = GetRandomPrefab(baseBushes); // Â ³íøèõ á³îìàõ çàì³íþºìî íà êóù
+                        }
+                    }
 
-                    SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 5, 15, 4.5f, true, slopeRotation, currentFoliageColor);
+                    if (naturePrefab != null)
+                    {
+                        SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 5, 15, 4.5f, true, slopeRotation, currentFoliageColor);
+                    }
                 }
             }
             else if (density < 0.3f)

@@ -29,7 +29,7 @@ MonoBehaviour:
   woodReward: 200
   stoneReward: 200
   foodReward: 180
-  diamondReward: 6
+  diamondReward: 140
   upgradeLevels:
   - costWood: 0
     costStone: 0

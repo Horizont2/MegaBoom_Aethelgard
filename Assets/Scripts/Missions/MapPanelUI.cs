@@ -408,6 +408,10 @@ public class MapPanelUI : MonoBehaviour
         if (currentRegion.currentState == RegionState.Available || currentRegion.currentState == RegionState.Conquered)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+            // --- ФІКС: Зберігаємо регіон у СТАТИЧНУ змінну, яка переживе зміну сцени! ---
+            MissionInitializer.PendingMissionRegion = currentRegion;
+
             if (GameManager.Instance != null) GameManager.Instance.currentRegion = currentRegion;
 
             PlayerPrefs.SetInt("IsRegionMission", 1);
