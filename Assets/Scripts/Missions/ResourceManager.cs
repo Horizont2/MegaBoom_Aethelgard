@@ -339,7 +339,7 @@ public class ResourceManager : MonoBehaviour
 
     // ------------------------------------
 
-    private void SaveStash()
+    public void SaveStash()
     {
         PlayerPrefs.SetInt("Stash_Wood", stashWood);
         PlayerPrefs.SetInt("Stash_Stone", stashStone);

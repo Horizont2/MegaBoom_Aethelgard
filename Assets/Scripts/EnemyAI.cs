@@ -16,6 +16,10 @@ public class EnemyAI : MonoBehaviour
     [Header("Cinematic Settings")]
     public bool isCinematicFrozen = false;
 
+    [Header("Spawn Settings")]
+    public GameObject spawnVFXPrefab; // Ефект землі, що розлітається
+    public float spawnDuration = 1.5f; // Як довго ворог вилазить
+
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
     public float attackCooldown = 1.5f;
@@ -44,11 +48,12 @@ public class EnemyAI : MonoBehaviour
 
     public bool isInvincible = false;
     private bool isEnraged = false;
+    private bool isSpawning = false; // НОВЕ: прапорець стану появи
 
     private float currentHealth;
     private float actualMoveSpeed;
     private float randomOffset;
-    private float strafeDir; // НОВЕ: Напрямок кружляння (-1 або 1)
+    private float strafeDir;
 
     // Змінні для збереження базових статів перед нічним бафом
     private float baseActualMoveSpeed;
@@ -90,7 +95,7 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.applyRootMotion = false;
 
         randomOffset = Random.Range(0f, 100f);
-        strafeDir = Random.value > 0.5f ? 1f : -1f; // Кожен ворог кружлятиме у свій бік
+        strafeDir = Random.value > 0.5f ? 1f : -1f;
     }
 
     private void Start()
@@ -99,8 +104,9 @@ public class EnemyAI : MonoBehaviour
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
-        // --- НОВЕ: СКЕЙЛІНГ ВІД ЧАСУ НА РІВНІ ---
-        // За кожну хвилину, проведену на рівні, вороги стають сильнішими на 5%
+        // Ховаємо HP бар при появі
+        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
+
         float minutesInScene = Time.timeSinceLevelLoad / 60f;
         float timeMultiplier = 1f + (minutesInScene * 0.05f);
 
@@ -125,7 +131,6 @@ public class EnemyAI : MonoBehaviour
         }
         else
         {
-            // Якщо GameManager немає (наприклад туторіал), все одно застосовуємо скейлінг часу
             maxHealth *= timeMultiplier;
             damage *= timeMultiplier;
         }
@@ -142,8 +147,46 @@ public class EnemyAI : MonoBehaviour
             playerController = playerObj.GetComponent<PlayerController>();
         }
 
-        // Рандомізуємо перший удар, щоб вони не били всі в одну мілісекунду
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
+
+        // Запускаємо процес вилізання з-під землі
+        StartCoroutine(SpawnRoutine());
+    }
+
+    private IEnumerator SpawnRoutine()
+    {
+        isSpawning = true;
+        if (animator != null) animator.SetBool("isMoving", true); // Можемо відтворити анімацію ходьби під час вилізання
+
+        Vector3 finalPos = transform.position;
+        if (Terrain.activeTerrain != null)
+        {
+            finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+        }
+
+        // Опускаємо ворога під землю на 2.5 метри
+        Vector3 startPos = finalPos - Vector3.up * 2.5f;
+        transform.position = startPos;
+
+        // Спавнимо ефект землі
+        if (spawnVFXPrefab != null)
+        {
+            // Спавнимо на рівні землі, трохи повернувши вгору
+            Instantiate(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
+        }
+
+        float elapsed = 0f;
+        while (elapsed < spawnDuration)
+        {
+            elapsed += Time.deltaTime;
+            // Використовуємо Sin для плавного сповільнення в кінці (Easing out)
+            float t = Mathf.Sin((elapsed / spawnDuration) * Mathf.PI * 0.5f);
+            transform.position = Vector3.Lerp(startPos, finalPos, t);
+            yield return null;
+        }
+
+        transform.position = finalPos;
+        isSpawning = false;
     }
 
     private void UpdateHealthUI()
@@ -157,7 +200,7 @@ public class EnemyAI : MonoBehaviour
 
         CheckNightBuff();
 
-        if (hpCanvas != null && mainCamTransform != null)
+        if (hpCanvas != null && mainCamTransform != null && hpCanvas.gameObject.activeSelf)
         {
             hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
         }
@@ -168,9 +211,10 @@ public class EnemyAI : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
 
-        if (isCinematicFrozen)
+        // Блокуємо дії, якщо ворог ще вилазить або заморожений
+        if (isCinematicFrozen || isSpawning)
         {
-            if (animator != null) animator.SetBool("isMoving", true);
+            if (animator != null && isCinematicFrozen) animator.SetBool("isMoving", true);
             return;
         }
 
@@ -226,7 +270,6 @@ public class EnemyAI : MonoBehaviour
             }
             else if (!isPreparingAttack)
             {
-                // --- НОВЕ: Логіка кружляння (Strafing) навколо гравця ---
                 if (animator != null) animator.SetBool("isMoving", true);
 
                 Vector3 strafeVector = (transform.right * strafeDir) + (repulsion * repulsionForce * 0.5f);
@@ -295,7 +338,6 @@ public class EnemyAI : MonoBehaviour
             if (animator != null) animator.SetTrigger("Attack");
         }
 
-        // Даємо невеличку паузу після атаки
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
     }
@@ -308,7 +350,7 @@ public class EnemyAI : MonoBehaviour
 
     public void ApplyKnockback(Vector3 direction, float force, float stunDuration)
     {
-        if (isDead || isEnraged) return;
+        if (isDead || isEnraged || isSpawning) return; // Не відкидаємо, поки вилазить
         knockbackVelocity = direction * force;
         stunTimer = stunDuration;
         isPreparingAttack = false;
@@ -319,6 +361,12 @@ public class EnemyAI : MonoBehaviour
     public void TakeDamage(float damageAmount, bool isCrit = false)
     {
         if (isDead || isInvincible) return;
+
+        // Показуємо HP бар після першого отримання шкоди
+        if (hpCanvas != null && !hpCanvas.gameObject.activeSelf)
+        {
+            hpCanvas.gameObject.SetActive(true);
+        }
 
         currentHealth -= damageAmount;
         if (currentHealth < 0) currentHealth = 0;
@@ -387,7 +435,6 @@ public class EnemyAI : MonoBehaviour
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // Піднімаємо точку появи на 1 метр вгору
         if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 

@@ -897,8 +897,6 @@ public class PlayerController : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
-        SaveManager.AddCrystals(crystalsCollected);
-
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
@@ -932,6 +930,21 @@ public class PlayerController : MonoBehaviour
     public void GainDiamond(int amount = 1)
     {
         crystalsCollected += amount;
+
+        // --- ФІКС: Зберігаємо діаманти ОДРАЗУ в глобальний склад ---
+        if (ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.diamonds += amount;
+            ResourceManager.Instance.SaveStash();
+            ResourceManager.Instance.UpdateUI();
+        }
+        else
+        {
+            // Якщо ResourceManager ще не завантажився (Fallback)
+            int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0);
+            PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount);
+            PlayerPrefs.Save();
+        }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
         UpdateHUD();
@@ -972,7 +985,13 @@ public class PlayerController : MonoBehaviour
         if (xpFill != null) xpFill.fillAmount = currentXP / xpToNextLevel;
 
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
-        if (crystalText != null) crystalText.text = crystalsCollected.ToString();
+
+        // --- ФІКС: Правильний формат тексту, який синхронізовано з ResourceManager ---
+        if (crystalText != null)
+        {
+            int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected;
+            crystalText.text = $"Diamonds: {displayDiamonds}";
+        }
     }
 
     private System.Collections.IEnumerator DashRoutine(Vector3 direction)

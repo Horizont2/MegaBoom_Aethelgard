@@ -9,24 +9,32 @@ public class DistanceOptimizer : MonoBehaviour
     [Header("Settings")]
     public Transform player;
 
-    [Tooltip("Радіус видимості. Рекомендую збільшити до 100-120")]
-    public float cullDistance = 100f;
+    [Tooltip("На якій відстані об'єкти З'ЯВЛЯЮТЬСЯ")]
+    public float enableDistance = 100f;
+
+    [Tooltip("На якій відстані об'єкти ЗНИКАЮТЬ (Має бути більшим за Enable, щоб уникнути спаму)")]
+    public float disableDistance = 115f;
 
     [Tooltip("Частота перевірки. 0.2 = швидке оновлення 5 разів на секунду")]
     public float checkInterval = 0.2f;
 
-    [Tooltip("Кількість об'єктів за кадр. 1000 - це абсолютно нормально")]
-    public int checksPerFrame = 1000;
+    [Tooltip("Кількість об'єктів за кадр. 500 - золота середина")]
+    public int checksPerFrame = 500;
 
     private List<OptimizedObject> managedObjects = new List<OptimizedObject>();
-    private float sqrCullDistance;
+
+    // Кешовані квадрати дистанцій для надшвидкої математики
+    private float sqrEnableDist;
+    private float sqrDisableDist;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        sqrCullDistance = cullDistance * cullDistance;
+        // Кешуємо квадрати одразу, щоб не множити їх у циклі
+        sqrEnableDist = enableDistance * enableDistance;
+        sqrDisableDist = disableDistance * disableDistance;
     }
 
     private void Start()
@@ -46,30 +54,21 @@ public class DistanceOptimizer : MonoBehaviour
 
     public void RegisterObject(OptimizedObject obj)
     {
-        // ВАЖЛИВО: Ми прибрали !managedObjects.Contains(obj)
-        // Це прибрало 12+ мільйонів зайвих ітерацій при завантаженні сцени!
         managedObjects.Add(obj);
 
-        FindPlayerIfNeeded();
-        InitialCheck(obj);
+        // Відключаємо важкий InitialCheck тут, бо корутина сама все підхопить
+        // і розподілить навантаження рівномірно (без лагів при генерації)
     }
 
     public void UnregisterObject(OptimizedObject obj)
     {
-        managedObjects.Remove(obj);
-    }
-
-    private void InitialCheck(OptimizedObject obj)
-    {
-        if (player == null || obj == null || obj.targetObject == null) return;
-
-        float distSqr = (obj.transform.position - player.position).sqrMagnitude;
-        bool shouldBeActive = distSqr <= sqrCullDistance;
-
-        // Викликаємо SetActive ТІЛЬКИ якщо стан дійсно треба змінити
-        if (obj.targetObject.activeSelf != shouldBeActive)
+        // ВАЖЛИВО ДЛЯ ШВИДКОСТІ:
+        // Замість .Remove() який зсуває весь масив (що дуже повільно для 10k об'єктів),
+        // ми просто зануляємо його. Корутина сама його потім прибере без лагів.
+        int index = managedObjects.IndexOf(obj);
+        if (index != -1)
         {
-            obj.targetObject.SetActive(shouldBeActive);
+            managedObjects[index] = null;
         }
     }
 
@@ -92,6 +91,7 @@ public class DistanceOptimizer : MonoBehaviour
             {
                 OptimizedObject obj = managedObjects[i];
 
+                // Ліниве (швидке) видалення знищених/відреєстрованих об'єктів
                 if (obj == null || obj.targetObject == null)
                 {
                     managedObjects.RemoveAt(i);
@@ -99,11 +99,24 @@ public class DistanceOptimizer : MonoBehaviour
                 }
 
                 float distSqr = (obj.transform.position - playerPos).sqrMagnitude;
-                bool shouldBeActive = distSqr <= sqrCullDistance;
+                bool isActive = obj.targetObject.activeSelf;
 
-                if (obj.targetObject.activeSelf != shouldBeActive)
+                // --- НОВА ЛОГІКА З ГІСТЕРЕЗИСОМ ---
+                if (isActive)
                 {
-                    obj.targetObject.SetActive(shouldBeActive);
+                    // Якщо об'єкт увімкнений, вимикаємо його ТІЛЬКИ якщо він відійшов за disableDistance
+                    if (distSqr > sqrDisableDist)
+                    {
+                        obj.targetObject.SetActive(false);
+                    }
+                }
+                else
+                {
+                    // Якщо об'єкт вимкнений, вмикаємо його ТІЛЬКИ якщо він підійшов ближче enableDistance
+                    if (distSqr <= sqrEnableDist)
+                    {
+                        obj.targetObject.SetActive(true);
+                    }
                 }
 
                 count++;
@@ -111,9 +124,9 @@ public class DistanceOptimizer : MonoBehaviour
                 if (count >= checksPerFrame)
                 {
                     count = 0;
-                    yield return null;
+                    yield return null; // Чекаємо наступного кадру, щоб не фризити гру
 
-                    if (player != null) playerPos = player.position;
+                    if (player != null) playerPos = player.position; // Оновлюємо позицію після кадру
                 }
             }
 

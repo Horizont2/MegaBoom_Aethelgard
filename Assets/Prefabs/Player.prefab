@@ -12061,10 +12061,10 @@ MonoBehaviour:
   maxHealth: 100
   currentHealth: 0
   healthRegenRate: 0
-  pickupRadius: 4
+  pickupRadius: 3
   currentLevel: 1
   currentXP: 0
-  xpToNextLevel: 50
+  xpToNextLevel: 40
   crystalsCollected: 0
   meleeDamage: 25
   meleeRadius: 2
@@ -12093,7 +12093,7 @@ MonoBehaviour:
   dashParticles: {fileID: 0}
   dashSpeed: 25
   dashDuration: 0.4
-  dashCooldown: 2
+  dashCooldown: 2.3
   globalDamageMultiplier: 1
   globalCritChance: 0.05
   damageReduction: 0

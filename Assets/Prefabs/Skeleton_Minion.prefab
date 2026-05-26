@@ -958,7 +958,10 @@ MonoBehaviour:
   maxHealth: 20
   moveSpeed: 4
   damage: 10
+  nightMultiplier: 1.25
   isCinematicFrozen: 0
+  spawnVFXPrefab: {fileID: 9136076963120838541, guid: f276865553c461c47b8986863dd5d668, type: 3}
+  spawnDuration: 1.5
   attackRange: 1
   attackCooldown: 0.8
   attackTelegraphTime: 0.5
@@ -972,6 +975,7 @@ MonoBehaviour:
   verticalOffset: 0
   repulsionRadius: 1.2
   repulsionForce: 3
+  deathVFXPrefab: {fileID: 0}
   xpRewardMultiplier: 1
   isInvincible: 0
 --- !u!136 &2597130611666321287
