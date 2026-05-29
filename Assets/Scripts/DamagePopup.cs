@@ -117,6 +117,6 @@ public class DamagePopup : MonoBehaviour
         }
 
         // Знищуємо об'єкт після завершення анімації
-        Destroy(gameObject);
+        ObjectPoolManager.Instance.ReturnToPool(gameObject);
     }
 }

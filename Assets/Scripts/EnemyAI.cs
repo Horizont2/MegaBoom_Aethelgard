@@ -435,7 +435,9 @@ public class EnemyAI : MonoBehaviour
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        if (xpCrystalPrefab != null) Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (xpCrystalPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+
+        if (diamondPrefab != null && Random.value <= diamondDropChance) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);

@@ -124,13 +124,13 @@ public class LoadingManager : MonoBehaviour
 
         if (worldGen != null)
         {
-            float genProgress = 0f;
             while (!WorldGenerator.IsGenerationDone)
             {
-                float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-                // Фейковий плавний прогрес генерації, який доходить максимум до 99%
-                genProgress = Mathf.MoveTowards(genProgress, 1f, dt * 0.5f);
-                int displayPercent = Mathf.FloorToInt(50f + (genProgress * 49f));
+                // Зчитуємо реальний прогрес з нового WorldGenerator (від 0 до 1)
+                float genProgress = WorldGenerator.CurrentProgress;
+
+                // Переводимо це в 50-100% шкали завантаження
+                int displayPercent = Mathf.FloorToInt(50f + (genProgress * 50f));
 
                 if (loadingText != null) loadingText.text = $"GENERATING WORLD... {displayPercent}%";
                 yield return null;

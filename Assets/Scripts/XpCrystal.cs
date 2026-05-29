@@ -111,8 +111,8 @@ public class XpCrystal : MonoBehaviour
                 playerController.TriggerUIPop(); // Анімація UI
 
                 foreach (Renderer r in renderers) if (r != null) r.enabled = false;
-                this.enabled = false;
-                Destroy(gameObject, 2f);
+                this.enabled = true; // Залишаємо увімкненим для наступного використання
+                ObjectPoolManager.Instance.ReturnToPool(gameObject);
             }
         }
         else

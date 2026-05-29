@@ -5,8 +5,8 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Terrain))]
 public class WorldGenerator : MonoBehaviour
 {
-    // Прапорець для синхронізації з екраном завантаження
     public static bool IsGenerationDone = false;
+    public static float CurrentProgress = 0f; // Справжній прогрес від 0 до 1
 
     [Header("Mountain & Arena Settings")]
     public float depth = 40f;
@@ -57,14 +57,12 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseRocks;
     public GameObject[] baseBushes;
     public GameObject[] baseFlowers;
-    public GameObject[] baseMushrooms; // НОВЕ: Масив для грибів!
+    public GameObject[] baseMushrooms;
     public GameObject[] logPrefabs;
 
-    [Header("Map Border Mountains (NEW)")]
+    [Header("Map Border Mountains")]
     public GameObject[] borderMountainPrefabs;
-    [Tooltip("Відстань між горами по периметру")]
     public float borderSpacing = 40f;
-    [Tooltip("Відступ від краю карти (щоб не красти ігровий простір)")]
     public float borderOffset = 10f;
     public float borderMinScale = 3f;
     public float borderMaxScale = 6f;
@@ -83,9 +81,13 @@ public class WorldGenerator : MonoBehaviour
     private Terrain terrain;
     private Dictionary<string, Material> biomeMaterialsCache = new Dictionary<string, Material>();
 
+    // Ліміт часу на один кадр (15ms = ~60 FPS під час генерації)
+    private const float MAX_FRAME_TIME = 0.015f;
+
     private void Start()
     {
         IsGenerationDone = false;
+        CurrentProgress = 0f;
         terrain = GetComponent<Terrain>();
 
         if (skyboxMaterial != null)
@@ -110,18 +112,25 @@ public class WorldGenerator : MonoBehaviour
 
         AdjustSettingsForBiome();
 
-        terrain.terrainData = GenerateHeights(terrain.terrainData);
-        PaintTerrain(terrain.terrainData);
-
+        // Запускаємо генерацію як єдину корутину
         StartCoroutine(GenerateWorldRoutine());
     }
 
     private IEnumerator GenerateWorldRoutine()
     {
+        yield return StartCoroutine(GenerateHeightsRoutine(terrain.terrainData));
+        CurrentProgress = 0.25f;
+
+        yield return StartCoroutine(PaintTerrainRoutine(terrain.terrainData));
+        CurrentProgress = 0.50f;
+
         yield return StartCoroutine(PopulateBiomesRoutine());
+        CurrentProgress = 0.85f;
+
         yield return StartCoroutine(SpawnPOIsRoutine());
         yield return StartCoroutine(SpawnExtractionCartsRoutine());
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
+        CurrentProgress = 0.95f;
 
         Physics.SyncTransforms();
 
@@ -133,44 +142,19 @@ public class WorldGenerator : MonoBehaviour
         }
 
         yield return new WaitForEndOfFrame();
-        yield return new WaitForEndOfFrame();
 
+        CurrentProgress = 1f;
         IsGenerationDone = true;
     }
 
-    private void AdjustSettingsForBiome()
-    {
-        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
-        if (isRegionMission)
-        {
-            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
-
-            if (biomeType == 1) { peakSharpness = 1.8f; edgeMountainMultiplier = 1.5f; terraceCount = 0; }
-            else if (biomeType == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; terraceCount = 15; }
-            else { peakSharpness = 2.5f; edgeMountainMultiplier = 2f; terraceCount = 24; }
-        }
-    }
-
-    private float GetTemperature(float normX, float normZ)
-    {
-        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
-        if (isRegionMission)
-        {
-            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
-            if (biomeType == 1) return 0.8f;
-            if (biomeType == 2) return 0.2f;
-            return 0.5f;
-        }
-
-        return Mathf.PerlinNoise(normX * globalBiomeScale + offsetX + 500f, normZ * globalBiomeScale + offsetZ + 500f);
-    }
-
-    private TerrainData GenerateHeights(TerrainData terrainData)
+    private IEnumerator GenerateHeightsRoutine(TerrainData terrainData)
     {
         int width = terrainData.heightmapResolution;
         int height = terrainData.heightmapResolution;
         float[,] heights = new float[width, height];
         float centerX = width / 2f; float centerY = height / 2f;
+
+        float startTime = Time.realtimeSinceStartup;
 
         for (int x = 0; x < width; x++)
         {
@@ -197,23 +181,29 @@ public class WorldGenerator : MonoBehaviour
                 float distFromCenter = Vector2.Distance(new Vector2(x, y), new Vector2(centerX, centerY));
                 float edgeWall = Mathf.Pow(distFromCenter / centerX, 4f) * edgeMountainMultiplier;
 
-                float finalHeight = Mathf.Clamp01(sharpenedNoise + edgeWall);
-                heights[x, y] = finalHeight;
+                heights[x, y] = Mathf.Clamp01(sharpenedNoise + edgeWall);
+            }
+
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME)
+            {
+                yield return null;
+                startTime = Time.realtimeSinceStartup;
             }
         }
 
         terrainData.SetHeights(0, 0, heights);
         terrainData.size = new Vector3(terrainData.size.x, depth, terrainData.size.z);
-        return terrainData;
     }
 
-    private void PaintTerrain(TerrainData terrainData)
+    private IEnumerator PaintTerrainRoutine(TerrainData terrainData)
     {
-        if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null) return;
+        if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null) yield break;
 
         terrainData.terrainLayers = new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer };
         int aWidth = terrainData.alphamapWidth; int aHeight = terrainData.alphamapHeight;
         float[,,] splatmapData = new float[aWidth, aHeight, 4];
+
+        float startTime = Time.realtimeSinceStartup;
 
         for (int y = 0; y < aHeight; y++)
         {
@@ -234,110 +224,14 @@ public class WorldGenerator : MonoBehaviour
                 splatmapData[y, x, 0] = weights[0]; splatmapData[y, x, 1] = weights[1];
                 splatmapData[y, x, 2] = weights[2]; splatmapData[y, x, 3] = weights[3];
             }
+
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME)
+            {
+                yield return null;
+                startTime = Time.realtimeSinceStartup;
+            }
         }
         terrainData.SetAlphamaps(0, 0, splatmapData);
-    }
-
-    private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
-    {
-        if (biomeTexture == null) return;
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer rend in renderers)
-        {
-            if (rend is ParticleSystemRenderer) continue;
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
-
-            Material[] currentMaterials = rend.sharedMaterials;
-            bool hasChanged = false;
-
-            for (int i = 0; i < currentMaterials.Length; i++)
-            {
-                Material mat = currentMaterials[i];
-                if (mat == null) continue;
-
-                string cacheKey = mat.name + "_" + biomeTexture.name;
-
-                if (!biomeMaterialsCache.ContainsKey(cacheKey))
-                {
-                    Material newMat = new Material(mat);
-                    if (newMat.HasProperty("_BaseMap")) newMat.SetTexture("_BaseMap", biomeTexture);
-                    if (newMat.HasProperty("_MainTex")) newMat.SetTexture("_MainTex", biomeTexture);
-                    biomeMaterialsCache[cacheKey] = newMat;
-                }
-
-                currentMaterials[i] = biomeMaterialsCache[cacheKey];
-                hasChanged = true;
-            }
-
-            if (hasChanged) rend.sharedMaterials = currentMaterials;
-        }
-    }
-
-    private void ApplyBiomeColor(GameObject obj, Color biomeColor)
-    {
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer rend in renderers)
-        {
-            if (rend is ParticleSystemRenderer) continue;
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
-
-            Material[] currentMaterials = rend.sharedMaterials;
-            bool hasChanged = false;
-
-            for (int i = 0; i < currentMaterials.Length; i++)
-            {
-                Material mat = currentMaterials[i];
-                if (mat == null) continue;
-
-                string cacheKey = mat.name + "_" + biomeColor.ToString();
-
-                if (!biomeMaterialsCache.ContainsKey(cacheKey))
-                {
-                    Material newMat = new Material(mat);
-
-                    if (newMat.HasColor("_Color")) newMat.SetColor("_Color", biomeColor);
-                    if (newMat.HasColor("_BaseColor")) newMat.SetColor("_BaseColor", biomeColor);
-                    if (newMat.HasColor("_Primary_Color")) newMat.SetColor("_Primary_Color", biomeColor);
-                    if (newMat.HasColor("_Secondary_Color")) newMat.SetColor("_Secondary_Color", biomeColor);
-                    if (newMat.HasColor("_Tertiary_Color")) newMat.SetColor("_Tertiary_Color", biomeColor);
-                    if (newMat.HasColor("_TintColor")) newMat.SetColor("_TintColor", biomeColor);
-                    if (newMat.HasColor("_TopColor")) newMat.SetColor("_TopColor", biomeColor);
-
-                    biomeMaterialsCache[cacheKey] = newMat;
-                }
-
-                currentMaterials[i] = biomeMaterialsCache[cacheKey];
-                hasChanged = true;
-            }
-
-            if (hasChanged) rend.sharedMaterials = currentMaterials;
-        }
-    }
-
-    private void SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
-    {
-        if (prefab == null) return;
-        int count = Random.Range(minCount, maxCount + 1);
-        for (int i = 0; i < count; i++)
-        {
-            float ox = Random.Range(-radius, radius);
-            float oz = Random.Range(-radius, radius);
-
-            float cy = terrain.SampleHeight(new Vector3(centerPos.x + ox, 0, centerPos.z + oz)) + transform.position.y;
-
-            Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-            Quaternion baseRot = prefab.transform.rotation;
-            Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * baseRot) : (randomYRot * baseRot);
-
-            GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
-            obj.transform.localScale *= Random.Range(0.7f, 1.3f);
-
-            ApplyBiomeColor(obj, tintColor);
-        }
     }
 
     private IEnumerator PopulateBiomesRoutine()
@@ -351,9 +245,15 @@ public class WorldGenerator : MonoBehaviour
         Transform bushContainer = new GameObject("BushContainer").transform; bushContainer.SetParent(this.transform);
         Transform logContainer = new GameObject("LogsContainer").transform; logContainer.SetParent(this.transform);
 
+        float startTime = Time.realtimeSinceStartup;
+
         for (int i = 0; i < spawnAttempts; i++)
         {
-            if (i % 250 == 0) yield return null;
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME)
+            {
+                yield return null;
+                startTime = Time.realtimeSinceStartup;
+            }
 
             float px = Random.Range(10f, w - 10f); float pz = Random.Range(10f, l - 10f);
             float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
@@ -418,13 +318,10 @@ public class WorldGenerator : MonoBehaviour
                         ApplyBiomeTexture(obj, currentTreeTexture);
                     }
                 }
-                // --- ЗМІНЕНО: Більше трави (збільшено шанси та кількість) ---
                 else if (randomSpawn > 0.30f)
                 {
                     SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 40, 100, 8f, true, slopeRotation, currentFoliageColor);
                 }
-                // --- НОВЕ: Більше квітів, кущів та додано ГРИБИ! ---
-                // --- НОВЕ: Більше квітів, кущів та додано ГРИБИ! ---
                 else if (randomSpawn > 0.10f)
                 {
                     float subRoll = Random.value;
@@ -434,14 +331,13 @@ public class WorldGenerator : MonoBehaviour
                     else if (subRoll > 0.2f) naturePrefab = GetRandomPrefab(baseFlowers);
                     else
                     {
-                        // Спавнимо гриби ТІЛЬКИ якщо це ліс (не пустеля і не сніг)
                         if (localTemp > 0.35f && localTemp < 0.65f)
                         {
                             naturePrefab = GetRandomPrefab(baseMushrooms);
                         }
                         else
                         {
-                            naturePrefab = GetRandomPrefab(baseBushes); // В інших біомах замінюємо на кущ
+                            naturePrefab = GetRandomPrefab(baseBushes);
                         }
                     }
 
@@ -480,7 +376,6 @@ public class WorldGenerator : MonoBehaviour
                 }
                 else if (rand > 0.70f)
                 {
-                    // Рандомна трава поза густими лісами
                     SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 10, 25, 4f, true, slopeRotation, currentFoliageColor);
                 }
             }
@@ -493,9 +388,10 @@ public class WorldGenerator : MonoBehaviour
         Transform poiContainer = new GameObject("POIContainer").transform; poiContainer.SetParent(this.transform);
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
 
+        float startTime = Time.realtimeSinceStartup;
         for (int i = 0; i < 3000; i++)
         {
-            if (i % 250 == 0) yield return null;
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
 
             if (spawnedCount >= maxPOIs) break;
             float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
@@ -517,9 +413,10 @@ public class WorldGenerator : MonoBehaviour
         if (extractionCartPrefab == null) yield break;
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCarts = 0;
 
+        float startTime = Time.realtimeSinceStartup;
         for (int i = 0; i < 5000; i++)
         {
-            if (i % 250 == 0) yield return null;
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
 
             if (spawnedCarts >= extractionCartsAmount) break;
             float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
@@ -540,25 +437,146 @@ public class WorldGenerator : MonoBehaviour
     private IEnumerator SpawnBorderMountainsRoutine()
     {
         if (borderMountainPrefabs == null || borderMountainPrefabs.Length == 0) yield break;
-
         Transform borderContainer = new GameObject("BorderMountainsContainer").transform;
         borderContainer.SetParent(this.transform);
+        float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z;
 
-        float w = terrain.terrainData.size.x;
-        float l = terrain.terrainData.size.z;
+        float startTime = Time.realtimeSinceStartup;
 
         for (float x = -borderOffset; x <= w + borderOffset; x += borderSpacing)
         {
             SpawnSingleBorderMountain(new Vector3(x, 0, -borderOffset), borderContainer, w, l);
             SpawnSingleBorderMountain(new Vector3(x, 0, l + borderOffset), borderContainer, w, l);
-            yield return null;
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
 
         for (float z = -borderOffset; z <= l + borderOffset; z += borderSpacing)
         {
             SpawnSingleBorderMountain(new Vector3(-borderOffset, 0, z), borderContainer, w, l);
             SpawnSingleBorderMountain(new Vector3(w + borderOffset, 0, z), borderContainer, w, l);
-            yield return null;
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
+        }
+    }
+
+    private void AdjustSettingsForBiome()
+    {
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        if (isRegionMission)
+        {
+            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
+            if (biomeType == 1) { peakSharpness = 1.8f; edgeMountainMultiplier = 1.5f; terraceCount = 0; }
+            else if (biomeType == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; terraceCount = 15; }
+            else { peakSharpness = 2.5f; edgeMountainMultiplier = 2f; terraceCount = 24; }
+        }
+    }
+
+    private float GetTemperature(float normX, float normZ)
+    {
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        if (isRegionMission)
+        {
+            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
+            if (biomeType == 1) return 0.8f;
+            if (biomeType == 2) return 0.2f;
+            return 0.5f;
+        }
+        return Mathf.PerlinNoise(normX * globalBiomeScale + offsetX + 500f, normZ * globalBiomeScale + offsetZ + 500f);
+    }
+
+    private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
+    {
+        if (biomeTexture == null) return;
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend is ParticleSystemRenderer) continue;
+            string objName = rend.gameObject.name.ToLower();
+            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+
+            Material[] currentMaterials = rend.sharedMaterials;
+            bool hasChanged = false;
+
+            for (int i = 0; i < currentMaterials.Length; i++)
+            {
+                Material mat = currentMaterials[i];
+                if (mat == null) continue;
+
+                string cacheKey = mat.name + "_" + biomeTexture.name;
+
+                if (!biomeMaterialsCache.ContainsKey(cacheKey))
+                {
+                    Material newMat = new Material(mat);
+                    if (newMat.HasProperty("_BaseMap")) newMat.SetTexture("_BaseMap", biomeTexture);
+                    if (newMat.HasProperty("_MainTex")) newMat.SetTexture("_MainTex", biomeTexture);
+                    biomeMaterialsCache[cacheKey] = newMat;
+                }
+
+                currentMaterials[i] = biomeMaterialsCache[cacheKey];
+                hasChanged = true;
+            }
+
+            if (hasChanged) rend.sharedMaterials = currentMaterials;
+        }
+    }
+
+    private void ApplyBiomeColor(GameObject obj, Color biomeColor)
+    {
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend is ParticleSystemRenderer) continue;
+            string objName = rend.gameObject.name.ToLower();
+            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+
+            Material[] currentMaterials = rend.sharedMaterials;
+            bool hasChanged = false;
+
+            for (int i = 0; i < currentMaterials.Length; i++)
+            {
+                Material mat = currentMaterials[i];
+                if (mat == null) continue;
+
+                string cacheKey = mat.name + "_" + biomeColor.ToString();
+
+                if (!biomeMaterialsCache.ContainsKey(cacheKey))
+                {
+                    Material newMat = new Material(mat);
+
+                    if (newMat.HasProperty("_Color")) newMat.SetColor("_Color", biomeColor);
+                    if (newMat.HasProperty("_BaseColor")) newMat.SetColor("_BaseColor", biomeColor);
+                    if (newMat.HasProperty("_Primary_Color")) newMat.SetColor("_Primary_Color", biomeColor);
+                    if (newMat.HasProperty("_Secondary_Color")) newMat.SetColor("_Secondary_Color", biomeColor);
+                    if (newMat.HasProperty("_Tertiary_Color")) newMat.SetColor("_Tertiary_Color", biomeColor);
+                    if (newMat.HasProperty("_TintColor")) newMat.SetColor("_TintColor", biomeColor);
+                    if (newMat.HasProperty("_TopColor")) newMat.SetColor("_TopColor", biomeColor);
+
+                    biomeMaterialsCache[cacheKey] = newMat;
+                }
+
+                currentMaterials[i] = biomeMaterialsCache[cacheKey];
+                hasChanged = true;
+            }
+
+            if (hasChanged) rend.sharedMaterials = currentMaterials;
+        }
+    }
+
+    private void SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
+    {
+        if (prefab == null) return;
+        int count = Random.Range(minCount, maxCount + 1);
+        for (int i = 0; i < count; i++)
+        {
+            float ox = Random.Range(-radius, radius); float oz = Random.Range(-radius, radius);
+            float cy = terrain.SampleHeight(new Vector3(centerPos.x + ox, 0, centerPos.z + oz)) + transform.position.y;
+            Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+            Quaternion baseRot = prefab.transform.rotation;
+            Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * baseRot) : (randomYRot * baseRot);
+            GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
+            obj.transform.localScale *= Random.Range(0.7f, 1.3f);
+            ApplyBiomeColor(obj, tintColor);
         }
     }
 
@@ -566,19 +584,12 @@ public class WorldGenerator : MonoBehaviour
     {
         GameObject prefab = GetRandomPrefab(borderMountainPrefabs);
         if (prefab == null) return;
-
-        float clampedX = Mathf.Clamp(localPos.x, 0, w);
-        float clampedZ = Mathf.Clamp(localPos.z, 0, l);
-
-        float worldX = transform.position.x + localPos.x;
-        float worldZ = transform.position.z + localPos.z;
-
+        float clampedX = Mathf.Clamp(localPos.x, 0, w); float clampedZ = Mathf.Clamp(localPos.z, 0, l);
+        float worldX = transform.position.x + localPos.x; float worldZ = transform.position.z + localPos.z;
         float y = terrain.SampleHeight(new Vector3(transform.position.x + clampedX, 0, transform.position.z + clampedZ)) + transform.position.y;
         Vector3 spawnPos = new Vector3(worldX, y - 5f, worldZ);
-
         GameObject mnt = Instantiate(prefab, spawnPos, Quaternion.Euler(0, Random.Range(0f, 360f), 0), container);
         mnt.transform.localScale *= Random.Range(borderMinScale, borderMaxScale);
-
         float temp = GetTemperature(clampedX / w, clampedZ / l);
         Color rockColor = temp >= 0.65f ? desertRockColor : (temp <= 0.35f ? snowRockColor : forestRockColor);
         ApplyBiomeColor(mnt, rockColor);
