@@ -887,6 +887,7 @@ GameObject:
   - component: {fileID: 7489123634373202801}
   - component: {fileID: -5074911530213746190}
   - component: {fileID: 2597130611666321287}
+  - component: {fileID: -8669727939888771442}
   m_Layer: 0
   m_Name: Skeleton_Minion
   m_TagString: Enemy
@@ -1001,6 +1002,23 @@ CapsuleCollider:
   m_Height: 2.1626396
   m_Direction: 1
   m_Center: {x: 0, y: 1.0813198, z: 0}
+--- !u!114 &-8669727939888771442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4198843849923204017}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  renderers: []
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
 --- !u!1 &4229068581261606948
 GameObject:
   m_ObjectHideFlags: 0

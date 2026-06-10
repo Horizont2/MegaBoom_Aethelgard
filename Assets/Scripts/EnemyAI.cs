@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
-public class EnemyAI : MonoBehaviour
+public class EnemyAI : MonoBehaviour, IDamageable
 {
     [Header("Base Enemy Stats (Level 1)")]
     public float maxHealth = 20f;
@@ -10,15 +10,14 @@ public class EnemyAI : MonoBehaviour
     public float damage = 10f;
 
     [Header("Night Buff Settings")]
-    [Tooltip("На скільки множиться шкода та швидкість вночі (1.25 = +25%)")]
     public float nightMultiplier = 1.25f;
 
     [Header("Cinematic Settings")]
     public bool isCinematicFrozen = false;
 
     [Header("Spawn Settings")]
-    public GameObject spawnVFXPrefab; // Ефект землі, що розлітається
-    public float spawnDuration = 1.5f; // Як довго ворог вилазить
+    public GameObject spawnVFXPrefab;
+    public float spawnDuration = 1.5f;
 
     [Header("Combat Settings")]
     public float attackRange = 1.6f;
@@ -48,14 +47,13 @@ public class EnemyAI : MonoBehaviour
 
     public bool isInvincible = false;
     private bool isEnraged = false;
-    private bool isSpawning = false; // НОВЕ: прапорець стану появи
+    private bool isSpawning = false;
 
     private float currentHealth;
     private float actualMoveSpeed;
     private float randomOffset;
     private float strafeDir;
 
-    // Змінні для збереження базових статів перед нічним бафом
     private float baseActualMoveSpeed;
     private float baseDamage;
     private bool isNightBuffActive = false;
@@ -63,7 +61,7 @@ public class EnemyAI : MonoBehaviour
 
     private MeshRenderer[] meshRenderers;
     private Color[] originalColors;
-    private PlayerController playerController;
+    private IDamageable playerTarget;
     private Animator animator;
     private bool isDead = false;
 
@@ -104,7 +102,6 @@ public class EnemyAI : MonoBehaviour
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
-        // Ховаємо HP бар при появі
         if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
 
         float minutesInScene = Time.timeSinceLevelLoad / 60f;
@@ -120,14 +117,11 @@ public class EnemyAI : MonoBehaviour
             if (powerDelta < 0) dynamicMultiplier = Mathf.Clamp(1f + (Mathf.Abs(powerDelta) * 0.015f), 1f, 4.0f);
             else if (powerDelta > 0) dynamicMultiplier = Mathf.Clamp(1f - (powerDelta * 0.005f), 0.7f, 1f);
 
-            float finalHpMult = region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier;
-            float finalDmgMult = region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
-
-            maxHealth *= finalHpMult;
-            damage *= finalDmgMult;
+            maxHealth *= region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier;
+            damage *= region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
             if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.2f;
 
-            xpRewardMultiplier = finalHpMult * 0.5f;
+            xpRewardMultiplier = region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier * 0.5f;
         }
         else
         {
@@ -144,19 +138,17 @@ public class EnemyAI : MonoBehaviour
         if (playerObj != null)
         {
             target = playerObj.transform;
-            playerController = playerObj.GetComponent<PlayerController>();
+            playerTarget = playerObj.GetComponent<IDamageable>();
         }
 
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
-
-        // Запускаємо процес вилізання з-під землі
         StartCoroutine(SpawnRoutine());
     }
 
     private IEnumerator SpawnRoutine()
     {
         isSpawning = true;
-        if (animator != null) animator.SetBool("isMoving", true); // Можемо відтворити анімацію ходьби під час вилізання
+        if (animator != null) animator.SetBool("isMoving", true);
 
         Vector3 finalPos = transform.position;
         if (Terrain.activeTerrain != null)
@@ -164,22 +156,15 @@ public class EnemyAI : MonoBehaviour
             finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
         }
 
-        // Опускаємо ворога під землю на 2.5 метри
         Vector3 startPos = finalPos - Vector3.up * 2.5f;
         transform.position = startPos;
 
-        // Спавнимо ефект землі
-        if (spawnVFXPrefab != null)
-        {
-            // Спавнимо на рівні землі, трохи повернувши вгору
-            Instantiate(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
-        }
+        if (spawnVFXPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
 
         float elapsed = 0f;
         while (elapsed < spawnDuration)
         {
             elapsed += Time.deltaTime;
-            // Використовуємо Sin для плавного сповільнення в кінці (Easing out)
             float t = Mathf.Sin((elapsed / spawnDuration) * Mathf.PI * 0.5f);
             transform.position = Vector3.Lerp(startPos, finalPos, t);
             yield return null;
@@ -211,7 +196,6 @@ public class EnemyAI : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
 
-        // Блокуємо дії, якщо ворог ще вилазить або заморожений
         if (isCinematicFrozen || isSpawning)
         {
             if (animator != null && isCinematicFrozen) animator.SetBool("isMoving", true);
@@ -258,8 +242,7 @@ public class EnemyAI : MonoBehaviour
         {
             if (directionToPlayer != Vector3.zero)
             {
-                Vector3 lookDir = directionToPlayer;
-                lookDir.y = 0;
+                Vector3 lookDir = directionToPlayer; lookDir.y = 0;
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), 15f * Time.deltaTime);
             }
 
@@ -275,21 +258,14 @@ public class EnemyAI : MonoBehaviour
                 Vector3 strafeVector = (transform.right * strafeDir) + (repulsion * repulsionForce * 0.5f);
                 Vector3 nextPos = currentPos + strafeVector.normalized * (actualMoveSpeed * 0.5f) * Time.deltaTime;
 
-                if (Terrain.activeTerrain != null)
-                {
-                    nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
-                }
+                if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
                 transform.position = nextPos;
             }
         }
         else
         {
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
-            if (Terrain.activeTerrain != null)
-            {
-                float terrainHeight = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
-                nextPos.y = terrainHeight + verticalOffset;
-            }
+            if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
             transform.position = nextPos;
 
             if (finalDirection != Vector3.zero)
@@ -303,21 +279,10 @@ public class EnemyAI : MonoBehaviour
     private void CheckNightBuff()
     {
         if (dayNightCycle == null || isEnraged) return;
-
         bool isNight = dayNightCycle.timeOfDay < 5f || dayNightCycle.timeOfDay > 19f;
 
-        if (isNight && !isNightBuffActive)
-        {
-            isNightBuffActive = true;
-            actualMoveSpeed = baseActualMoveSpeed * nightMultiplier;
-            damage = baseDamage * nightMultiplier;
-        }
-        else if (!isNight && isNightBuffActive)
-        {
-            isNightBuffActive = false;
-            actualMoveSpeed = baseActualMoveSpeed;
-            damage = baseDamage;
-        }
+        if (isNight && !isNightBuffActive) { isNightBuffActive = true; actualMoveSpeed = baseActualMoveSpeed * nightMultiplier; damage = baseDamage * nightMultiplier; }
+        else if (!isNight && isNightBuffActive) { isNightBuffActive = false; actualMoveSpeed = baseActualMoveSpeed; damage = baseDamage; }
     }
 
     private IEnumerator AttackRoutine()
@@ -326,9 +291,7 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.SetBool("isMoving", false);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        Color tempColor = isEnraged ? Color.black : Color.red;
-        SetColor(tempColor);
-
+        SetColor(isEnraged ? Color.black : Color.red);
         yield return new WaitForSeconds(attackTelegraphTime);
         ResetColor();
 
@@ -337,62 +300,63 @@ public class EnemyAI : MonoBehaviour
             lastAttackTime = Time.time;
             if (animator != null) animator.SetTrigger("Attack");
         }
-
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
     }
 
     public void ExecuteAttackDamage()
     {
-        if (isDead || target == null || playerController == null) return;
-        if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f) playerController.TakeDamage(damage);
+        if (isDead || playerTarget == null) return;
+        if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f)
+        {
+            playerTarget.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward });
+        }
     }
 
-    public void ApplyKnockback(Vector3 direction, float force, float stunDuration)
-    {
-        if (isDead || isEnraged || isSpawning) return; // Не відкидаємо, поки вилазить
-        knockbackVelocity = direction * force;
-        stunTimer = stunDuration;
-        isPreparingAttack = false;
-        ResetColor();
-        if (animator != null) animator.SetTrigger("Hit");
-    }
-
-    public void TakeDamage(float damageAmount, bool isCrit = false)
+    // --- ФІКС СМЕРТІ ТА ВІДКИДАННЯ ---
+    public void TakeDamage(DamageInfo info)
     {
         if (isDead || isInvincible) return;
 
-        // Показуємо HP бар після першого отримання шкоди
-        if (hpCanvas != null && !hpCanvas.gameObject.activeSelf)
-        {
-            hpCanvas.gameObject.SetActive(true);
-        }
+        if (hpCanvas != null && !hpCanvas.gameObject.activeSelf) hpCanvas.gameObject.SetActive(true);
 
-        currentHealth -= damageAmount;
+        currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;
-
         UpdateHealthUI();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
-
         if (damagePopupPrefab != null && showPopups)
         {
-            GameObject popup = Instantiate(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
-            popup.GetComponent<DamagePopup>()?.Setup(damageAmount, isCrit);
+            GameObject popup = ObjectPoolManager.Instance.SpawnFromPool(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
+            popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical);
         }
 
-        if (currentHealth <= 0) Die();
+        // Правильне розділення логіки:
+        if (currentHealth <= 0)
+        {
+            // Якщо помер - просто помираємо, ніякого Hit чи Knockback
+            Die();
+        }
+        else
+        {
+            // Якщо вижив - отримуємо відкидання та відтворюємо анімацію Hit
+            if (!isEnraged && !isSpawning && info.KnockbackForce > 0)
+            {
+                knockbackVelocity = info.PushDirection * info.KnockbackForce;
+                stunTimer = info.StunDuration;
+                isPreparingAttack = false;
+                ResetColor();
+                if (animator != null) animator.SetTrigger("Hit");
+            }
+        }
     }
 
     public void MakeInvincibleAndFurious()
     {
-        isInvincible = true;
-        isEnraged = true;
-        actualMoveSpeed = moveSpeed * 1.8f;
-
+        isInvincible = true; isEnraged = true; actualMoveSpeed = moveSpeed * 1.8f;
         for (int i = 0; i < originalColors.Length; i++) originalColors[i] = new Color(0.2f, 0f, 0f);
         ResetColor();
     }
@@ -423,22 +387,16 @@ public class EnemyAI : MonoBehaviour
         isDead = true;
 
         if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
-
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
-        if (deathVFXPrefab != null)
-        {
-            Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
-        }
+        if (deathVFXPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
         if (xpCrystalPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
-
         if (diamondPrefab != null && Random.value <= diamondDropChance) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
-        if (diamondPrefab != null && Random.value <= diamondDropChance) Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();

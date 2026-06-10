@@ -6,12 +6,11 @@ public class HammerDamage : MonoBehaviour
     [Header("Damage Settings")]
     public float baseDamage = 15f;
     public float knockbackForce = 6f;
-    public float hitCooldown = 0.4f; // Захист від багаторазового влучання в один кадр
+    public float hitCooldown = 0.4f;
 
     private PlayerController player;
     private CameraFollow cameraFollow;
 
-    // Словник для запам'ятовування, коли ми востаннє били конкретного ворога
     private Dictionary<Collider, float> lastHitTimes = new Dictionary<Collider, float>();
 
     private void Start()
@@ -24,43 +23,50 @@ public class HammerDamage : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Enemy"))
+        // --- ФІКС: Молот б'є тільки об'єкти з тегом Enemy ---
+        if (!other.CompareTag("Enemy")) return;
+
+        // Запобіжник, щоб гравець не вдарив сам себе
+        if (player != null && other.gameObject == player.gameObject) return;
+
+        // Перевірка на інтерфейс
+        if (other.TryGetComponent(out IDamageable damageable))
         {
-            // Перевіряємо кулдаун для цього конкретного ворога
             if (lastHitTimes.TryGetValue(other, out float lastTime))
             {
-                if (Time.time < lastTime + hitCooldown) return; // Ще зарано бити знову
+                if (Time.time < lastTime + hitCooldown) return;
             }
 
             lastHitTimes[other] = Time.time;
 
-            EnemyAI enemy = other.GetComponent<EnemyAI>();
-            if (enemy != null)
+            float actualDamage = baseDamage;
+            bool isCrit = false;
+            Vector3 pushDir = Vector3.zero;
+
+            if (player != null)
             {
-                float actualDamage = baseDamage;
-                bool isCrit = false;
+                actualDamage *= player.globalDamageMultiplier;
+                isCrit = Random.value <= player.globalCritChance;
+                if (isCrit) actualDamage *= 2.5f;
 
-                if (player != null)
-                {
-                    actualDamage *= player.globalDamageMultiplier;
-                    isCrit = Random.value <= player.globalCritChance;
-                    if (isCrit) actualDamage *= 2.5f; // Крит завдає 2.5х шкоди
-                }
-
-                enemy.TakeDamage(actualDamage, isCrit);
-
-                // Відкидання від молота (від центру гравця)
-                if (player != null)
-                {
-                    Vector3 pushDir = (enemy.transform.position - player.transform.position).normalized;
-                    pushDir.y = 0;
-                    enemy.ApplyKnockback(pushDir, isCrit ? knockbackForce * 1.5f : knockbackForce, isCrit ? 0.6f : 0.3f);
-                }
-
-                // Візуальна віддача (Соковитість)
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
-                if (cameraFollow != null) cameraFollow.TriggerShake(isCrit ? 0.2f : 0.05f, 0.1f);
+                pushDir = (other.transform.position - player.transform.position).normalized;
+                pushDir.y = 0;
             }
+
+            DamageInfo info = new DamageInfo
+            {
+                Amount = actualDamage,
+                IsCritical = isCrit,
+                PushDirection = pushDir,
+                KnockbackForce = isCrit ? knockbackForce * 1.5f : knockbackForce,
+                StunDuration = isCrit ? 0.6f : 0.3f,
+                HitPoint = other.ClosestPoint(transform.position)
+            };
+
+            damageable.TakeDamage(info);
+
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
+            if (cameraFollow != null) cameraFollow.TriggerShake(isCrit ? 0.2f : 0.05f, 0.1f);
         }
     }
 }

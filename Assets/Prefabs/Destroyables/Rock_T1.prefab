@@ -4762,4 +4762,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
-  targetObject: {fileID: 0}
+  renderers:
+  - {fileID: 3965996804829349195}
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
+--- !u!23 &3965996804829349195 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 7f2a8917e4a916849bb524dc1c7f1155, type: 3}
+  m_PrefabInstance: {fileID: 2363150333155383759}
+  m_PrefabAsset: {fileID: 0}

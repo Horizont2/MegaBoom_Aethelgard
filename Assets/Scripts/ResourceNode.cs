@@ -1,14 +1,14 @@
 using UnityEngine;
 using System.Collections;
 
-public class ResourceNode : MonoBehaviour
+public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 {
     public enum NodeType { Tree, Rock, Barrel }
 
     [Header("Type Settings")]
     public NodeType nodeType = NodeType.Tree;
-    public float minHealth = 50f;  // НОВЕ: Мінімальне ХП
-    public float maxHealth = 200f; // НОВЕ: Максимальне ХП
+    public float minHealth = 50f;
+    public float maxHealth = 200f;
 
     [Header("Drops")]
     public GameObject dropPrefab;
@@ -20,24 +20,23 @@ public class ResourceNode : MonoBehaviour
     public GameObject stumpPrefab;
 
     private float currentHealth;
-    private float actualMaxHealth; // Справжнє ХП цього конкретного об'єкта
+    private float actualMaxHealth;
     private Vector3 originalScale;
     private bool isDead = false;
 
     private void Start()
     {
-        // При старті генеруємо випадкове ХП для цього об'єкта
         actualMaxHealth = Random.Range(minHealth, maxHealth);
         currentHealth = actualMaxHealth;
-
         originalScale = transform.localScale;
     }
 
-    public void TakeDamage(float damageAmount)
+    // ААА-архітектура: Приймаємо структуру замість простої цифри
+    public void TakeDamage(DamageInfo info)
     {
         if (isDead) return;
 
-        currentHealth -= damageAmount;
+        currentHealth -= info.Amount;
 
         // Випускаємо пил/іскри при кожному ударі
         if (hitEffect != null) hitEffect.Play();
@@ -56,7 +55,7 @@ public class ResourceNode : MonoBehaviour
             {
                 // Камінь фізично зменшується
                 float healthPercent = currentHealth / maxHealth;
-                Vector3 targetScale = originalScale * Mathf.Max(0.4f, healthPercent); // Зменшується максимум до 40%
+                Vector3 targetScale = originalScale * Mathf.Max(0.4f, healthPercent);
                 StartCoroutine(SquishRoutine(targetScale));
             }
             else
@@ -89,29 +88,25 @@ public class ResourceNode : MonoBehaviour
 
     private IEnumerator DeathRoutine()
     {
-        // 1. Викидаємо лут
         int dropCount = Random.Range(minDrops, maxDrops + 1);
         for (int i = 0; i < dropCount; i++)
         {
             if (dropPrefab != null) Instantiate(dropPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
         }
 
-        // 2. Анімація смерті
         if (nodeType == NodeType.Tree)
         {
-            // РОЗУМНЕ ПАДІННЯ: Шукаємо найнижчу точку (корінь)
             Vector3 pivotPoint = transform.position;
             Collider col = GetComponentInChildren<Collider>();
             if (col != null) pivotPoint.y = col.bounds.min.y;
 
-            float fallDuration = 0.5f; // Падає півсекунди
-            float fallSpeed = 90f / fallDuration; // Швидкість (90 градусів)
+            float fallDuration = 0.5f;
+            float fallSpeed = 90f / fallDuration;
             float t = 0;
 
             while (t < fallDuration)
             {
                 t += Time.deltaTime;
-                // Крутимо дерево рівно навколо його кореня!
                 transform.RotateAround(pivotPoint, transform.right, fallSpeed * Time.deltaTime);
                 yield return null;
             }
@@ -124,7 +119,6 @@ public class ResourceNode : MonoBehaviour
         }
         else
         {
-            // КАМІНЬ АБО БОЧКА
             if (hitEffect != null) hitEffect.Play();
 
             if (GetComponentInChildren<MeshRenderer>() != null) GetComponentInChildren<MeshRenderer>().enabled = false;

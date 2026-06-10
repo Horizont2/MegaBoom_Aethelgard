@@ -511,6 +511,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bee215d79621f3b44a35fd1f8d6f743c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5810165179307727665}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bee215d79621f3b44a35fd1f8d6f743c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -1080548420191725546}
   m_SourcePrefab: {fileID: 100100000, guid: bee215d79621f3b44a35fd1f8d6f743c, type: 3}
 --- !u!4 &522623627940807004 stripped
 Transform:
@@ -585,6 +588,23 @@ CapsuleCollider:
   m_Height: 2.2729568
   m_Direction: 1
   m_Center: {x: -0.021215439, y: 1.1364784, z: 0}
+--- !u!114 &-1080548420191725546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4104418599950814217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  renderers: []
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
 --- !u!1001 &5815195617539182171
 PrefabInstance:
   m_ObjectHideFlags: 0

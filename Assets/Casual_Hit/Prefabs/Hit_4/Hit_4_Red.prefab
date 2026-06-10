@@ -9817,6 +9817,7 @@ GameObject:
   - component: {fileID: 3100514292109902151}
   - component: {fileID: 323033643871625515}
   - component: {fileID: 3100911937151515493}
+  - component: {fileID: 274100602173436664}
   m_Layer: 0
   m_Name: Hit_4_Red
   m_TagString: Untagged
@@ -14702,3 +14703,15 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!114 &274100602173436664
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8004061199188420018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 704c54fc7b6322b4cadb9d5d5b2bf0ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ReturnToPoolOnStop

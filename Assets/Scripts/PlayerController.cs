@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 {
     [Header("Scene Mode")]
     public bool isCampMode = false;
@@ -56,30 +56,22 @@ public class PlayerController : MonoBehaviour
     public Transform throwPoint;
     public LineRenderer trajectoryLine;
     public int linePoints = 30;
-
-    [Tooltip("Максимальна дальність кидка")]
     public float maxThrowDistance = 18f;
-    [Tooltip("Радіус вибуху (має збігатися з гранатою)")]
     public float grenadeExplosionRadius = 6f;
-    [Tooltip("Базова швидкість польоту гранати (більше = швидше)")]
     public float grenadeThrowSpeed = 20f;
-    [Tooltip("Перезарядка (Кулдаун)")]
     public float grenadeCooldown = 5f;
 
     [HideInInspector] public float lastGrenadeTime = -100f;
     private bool isAimingGrenade = false;
     private Vector3 currentGrenadeTarget;
 
-    // МАРКЕРИ
-    private LineRenderer aoeMarkerLine; // Велике коло ураження
-    private LineRenderer innerMarkerLine; // Маленький центр
+    private LineRenderer aoeMarkerLine;
+    private LineRenderer innerMarkerLine;
 
     [Header("Visual Effects (Juice)")]
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
-    [Tooltip("Ефект, що вилітає з ворога при ударі мечем (Бризки/Іскри)")]
     public GameObject hitVFXPrefab;
-    [Tooltip("Пилюка під ногами під час бігу")]
     public ParticleSystem footstepParticles;
 
     [Header("HUD UI References")]
@@ -187,11 +179,7 @@ public class PlayerController : MonoBehaviour
 
     private void SpawnEquippedWeapon()
     {
-        Transform socket = FindDeepChild(transform, "WeaponSocket");
-        if (socket == null) socket = FindDeepChild(transform, "handslot.r");
-        if (socket == null) socket = FindDeepChild(transform, "hand_r");
-        if (socket == null) socket = FindDeepChild(transform, "hand_R");
-        if (socket == null) socket = FindDeepChild(transform, "RightHand");
+        Transform socket = FindDeepChild(transform, "WeaponSocket") ?? FindDeepChild(transform, "handslot.r") ?? FindDeepChild(transform, "hand_r") ?? FindDeepChild(transform, "hand_R") ?? FindDeepChild(transform, "RightHand");
 
         int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
 
@@ -200,7 +188,6 @@ public class PlayerController : MonoBehaviour
             currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket);
             currentWeapon.transform.localPosition = Vector3.zero;
             currentWeapon.transform.localRotation = Quaternion.identity;
-
             weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
         }
     }
@@ -290,20 +277,11 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                float spawnX = 0f;
-                float spawnZ = 0f;
-                float spawnY = 20f;
-
+                float spawnX = 0f; float spawnZ = 0f; float spawnY = 20f;
                 Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
 
-                if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f))
-                {
-                    spawnY = hit.point.y + 2f;
-                }
-                else if (Terrain.activeTerrain != null)
-                {
-                    spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
-                }
+                if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f)) spawnY = hit.point.y + 2f;
+                else if (Terrain.activeTerrain != null) spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
 
                 transform.position = new Vector3(spawnX, spawnY, spawnZ);
             }
@@ -455,8 +433,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        if (isDashing) return;
-        if (Camera.main == null) return;
+        if (isDashing || Camera.main == null) return;
 
         Vector3 camForward = Camera.main.transform.forward;
         Vector3 camRight = Camera.main.transform.right;
@@ -467,7 +444,6 @@ public class PlayerController : MonoBehaviour
         if (inputDir.magnitude >= 0.1f)
         {
             targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
-
             Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
@@ -513,15 +489,10 @@ public class PlayerController : MonoBehaviour
 
         Vector3 finalMove = movement + velocity;
 
-        if (characterController.enabled)
-        {
-            characterController.Move(finalMove * safeDeltaTime);
-        }
+        if (characterController.enabled) characterController.Move(finalMove * safeDeltaTime);
 
-        // --- НОВЕ: Пилюка з-під ніг ---
         if (footstepParticles != null)
         {
-            // Якщо ми на землі, біжимо швидко і не заблоковані
             if (characterController.isGrounded && currentVelocityMove.magnitude > 2f && !isCurrentlyLocked)
             {
                 if (!footstepParticles.isEmitting) footstepParticles.Play();
@@ -553,10 +524,7 @@ public class PlayerController : MonoBehaviour
                             if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
                             LockAction("Attack", 0.4f);
                         }
-                        else if (isAimingGrenade)
-                        {
-                            CancelGrenadeAim();
-                        }
+                        else if (isAimingGrenade) CancelGrenadeAim();
                     }
 
                     if (Input.GetMouseButtonDown(1))
@@ -572,10 +540,7 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade)
-            {
-                UpdateGrenadeAiming();
-            }
+            if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade) UpdateGrenadeAiming();
 
             if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
@@ -616,10 +581,7 @@ public class PlayerController : MonoBehaviour
         if (offset.magnitude > maxThrowDistance)
         {
             hitPoint = transform.position + offset.normalized * maxThrowDistance;
-            if (Terrain.activeTerrain != null)
-            {
-                hitPoint.y = Terrain.activeTerrain.SampleHeight(hitPoint) + Terrain.activeTerrain.transform.position.y;
-            }
+            if (Terrain.activeTerrain != null) hitPoint.y = Terrain.activeTerrain.SampleHeight(hitPoint) + Terrain.activeTerrain.transform.position.y;
         }
 
         currentGrenadeTarget = hitPoint;
@@ -680,10 +642,8 @@ public class PlayerController : MonoBehaviour
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
-
                 Vector3 point = center + new Vector3(x, 50f, z);
                 point.y = GetGroundHeight(point) + 0.15f;
-
                 aoeMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -698,10 +658,8 @@ public class PlayerController : MonoBehaviour
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * innerRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * innerRadius;
-
                 Vector3 point = center + new Vector3(x, 50f, z);
                 point.y = GetGroundHeight(point) + 0.15f;
-
                 innerMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -710,17 +668,12 @@ public class PlayerController : MonoBehaviour
 
     private float GetGroundHeight(Vector3 pos)
     {
-        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
-        {
-            return hit.point.y;
-        }
-        else if (Terrain.activeTerrain != null)
-        {
-            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-        }
+        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground"))) return hit.point.y;
+        else if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
         return 0f;
     }
 
+    // --- ААА ОПТИМІЗАЦІЯ БОЮ (Без спагетті-перевірок на теги) ---
     public void ExecuteAttack()
     {
         if (meleePoint == null || isCampMode) return;
@@ -728,53 +681,56 @@ public class PlayerController : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
+
         bool hitEnemy = false;
         bool hitResource = false;
         bool isCriticalHit = Random.value <= globalCritChance;
 
+        float finalDmg = meleeDamage * globalDamageMultiplier;
+        if (isCriticalHit) finalDmg *= 2.5f;
+
         foreach (Collider col in hitObjects)
         {
-            if (col.CompareTag("Enemy"))
+            // Перевіряємо чи має об'єкт інтерфейс
+            if (col.TryGetComponent(out IDamageable damageable))
             {
-                EnemyAI enemy = col.GetComponent<EnemyAI>();
-                if (enemy != null)
+                // Запобіжник: щоб гравець не вдарив сам себе
+                if (col.gameObject == this.gameObject) continue;
+
+                Vector3 pushDir = (col.transform.position - transform.position).normalized;
+                pushDir.y = 0;
+
+                // Пакуємо інформацію про удар у структуру
+                DamageInfo hitInfo = new DamageInfo
                 {
-                    float finalDmg = meleeDamage * globalDamageMultiplier;
-                    if (isCriticalHit) finalDmg *= 2.5f;
+                    Amount = finalDmg,
+                    IsCritical = isCriticalHit,
+                    PushDirection = pushDir,
+                    KnockbackForce = isCriticalHit ? 12f : 8f,
+                    StunDuration = isCriticalHit ? 0.8f : 0.4f,
+                    HitPoint = col.ClosestPoint(meleePoint.position)
+                };
 
-                    enemy.TakeDamage(finalDmg, isCriticalHit);
+                damageable.TakeDamage(hitInfo);
 
-                    Vector3 pushDir = (enemy.transform.position - transform.position).normalized;
-                    pushDir.y = 0;
-                    enemy.ApplyKnockback(pushDir, isCriticalHit ? 12f : 8f, isCriticalHit ? 0.8f : 0.4f);
-                    hitEnemy = true;
+                // Отримуємо тип для звуку та віддачі камери
+                if (col.CompareTag("Enemy")) hitEnemy = true;
+                else hitResource = true;
 
-                    // --- НОВЕ: Ефект удару (Бризки/Іскри) ---
-                    if (hitVFXPrefab != null)
-                    {
-                        Quaternion hitRotation = Quaternion.LookRotation(pushDir);
-                        GameObject vfx = Instantiate(hitVFXPrefab, enemy.transform.position + Vector3.up * 1f, hitRotation);
-                        if (isCriticalHit) vfx.transform.localScale *= 1.5f;
-                    }
-                }
-            }
-            else
-            {
-                ResourceNode resource = col.GetComponent<ResourceNode>();
-                if (resource == null) resource = col.GetComponentInParent<ResourceNode>();
-
-                if (resource != null)
+                // VFX Спавн з ОПТИМІЗОВАНОГО ПУЛУ
+                if (hitVFXPrefab != null)
                 {
-                    resource.TakeDamage(meleeDamage * globalDamageMultiplier);
-                    hitResource = true;
+                    Quaternion hitRotation = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;
+                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitVFXPrefab, hitInfo.HitPoint, hitRotation);
+                    if (vfx != null) vfx.transform.localScale = isCriticalHit ? Vector3.one * 1.5f : Vector3.one;
                 }
             }
         }
 
+        // --- Camera Juice & SFX ---
         if (hitEnemy)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
-
             Vector3 recoilDir = -transform.forward;
 
             if (isCriticalHit)
@@ -822,22 +778,23 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void TakeDamage(float damageAmount)
+    // НОВИЙ МЕТОД: Гравця б'ють вороги через DamageInfo
+    public void TakeDamage(DamageInfo info)
     {
         if (isCampMode) return;
 
-        float finalDamage = damageAmount * (1f - damageReduction);
+        float finalDamage = info.Amount * (1f - damageReduction);
         currentHealth -= finalDamage;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
+        // Віддача камери у бік удару!
         if (cameraFollow != null)
         {
-            Vector3 hitPushDir = transform.forward;
-            cameraFollow.TriggerDirectionalShake(hitPushDir, 1.5f, 0.3f, 0.3f);
+            Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : transform.forward;
+            cameraFollow.TriggerDirectionalShake(shakeDir, 1.5f, 0.3f, 0.3f);
         }
 
-        // --- НОВЕ: Сильне трясіння смужки HP при великій шкоді ---
         if (finalDamage >= maxHealth * 0.15f && hpFill != null)
         {
             StartCoroutine(ShakeUIRoutine(hpFill.transform.parent.GetComponent<RectTransform>()));
@@ -903,14 +860,8 @@ public class PlayerController : MonoBehaviour
         string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         GameManager gm = FindFirstObjectByType<GameManager>();
 
-        if (Level1_QuestManager.Instance != null)
-        {
-            Level1_QuestManager.Instance.TriggerGameOver();
-        }
-        else if (gm != null)
-        {
-            gm.TriggerGameOver();
-        }
+        if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.TriggerGameOver();
+        else if (gm != null) gm.TriggerGameOver();
         else if (GlobalHUD.Instance != null)
         {
             if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
@@ -931,7 +882,6 @@ public class PlayerController : MonoBehaviour
     {
         crystalsCollected += amount;
 
-        // --- ФІКС: Зберігаємо діаманти ОДРАЗУ в глобальний склад ---
         if (ResourceManager.Instance != null)
         {
             ResourceManager.Instance.diamonds += amount;
@@ -940,7 +890,6 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Якщо ResourceManager ще не завантажився (Fallback)
             int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0);
             PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount);
             PlayerPrefs.Save();
@@ -949,10 +898,7 @@ public class PlayerController : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
         UpdateHUD();
 
-        if (MissionManager.Instance != null)
-        {
-            MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
-        }
+        if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
     }
 
     private void LevelUp()
@@ -974,19 +920,11 @@ public class PlayerController : MonoBehaviour
         float hpRatio = currentHealth / maxHealth;
 
         if (hpFill != null) hpFill.fillAmount = hpRatio;
-
-        if (hpCatchupFill != null && hpCatchupFill.fillAmount < hpRatio)
-        {
-            hpCatchupFill.fillAmount = hpRatio;
-        }
-
+        if (hpCatchupFill != null && hpCatchupFill.fillAmount < hpRatio) hpCatchupFill.fillAmount = hpRatio;
         if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
-
         if (xpFill != null) xpFill.fillAmount = currentXP / xpToNextLevel;
-
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
 
-        // --- ФІКС: Правильний формат тексту, який синхронізовано з ResourceManager ---
         if (crystalText != null)
         {
             int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected;
@@ -1070,15 +1008,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void StartSwing()
-    {
-        if (weaponTrail != null) weaponTrail.emitting = true;
-    }
-
-    public void EndSwing()
-    {
-        if (weaponTrail != null) weaponTrail.emitting = false;
-    }
+    public void StartSwing() { if (weaponTrail != null) weaponTrail.emitting = true; }
+    public void EndSwing() { if (weaponTrail != null) weaponTrail.emitting = false; }
 
     private void OnDestroy()
     {
@@ -1092,10 +1023,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void TriggerUIPop()
-    {
-        if (xpFill != null) StartCoroutine(PopUIRoutine(xpFill.transform.parent.GetComponent<RectTransform>()));
-    }
+    public void TriggerUIPop() { if (xpFill != null) StartCoroutine(PopUIRoutine(xpFill.transform.parent.GetComponent<RectTransform>())); }
 
     private System.Collections.IEnumerator PopUIRoutine(RectTransform uiElement)
     {

@@ -90,12 +90,6 @@ public class DayNightCycle : MonoBehaviour
 
     private void Update()
     {
-        // Підтримуємо Trilight режим щокадру, щоб інші скрипти його не збили
-        if (RenderSettings.ambientMode != UnityEngine.Rendering.AmbientMode.Trilight)
-        {
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        }
-
         timeOfDay += (Time.deltaTime / dayDurationInSeconds) * 24f;
         if (timeOfDay >= 24f) timeOfDay = 0f;
 

@@ -4804,7 +4804,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
-  targetObject: {fileID: 0}
+  renderers:
+  - {fileID: 245296107700136689}
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
 --- !u!1 &6934116615320548905
 GameObject:
   m_ObjectHideFlags: 0

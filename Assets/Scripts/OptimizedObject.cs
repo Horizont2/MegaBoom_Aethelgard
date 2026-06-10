@@ -2,26 +2,67 @@ using UnityEngine;
 
 public class OptimizedObject : MonoBehaviour
 {
-    [Tooltip("Залиш порожнім, якщо хочеш вимикати весь цей об'єкт. Або перетягни сюди візуальну модель, якщо логіка/колайдер має працювати завжди.")]
-    public GameObject targetObject;
+    [Header("Components to Disable")]
+    public MeshRenderer[] renderers;
+    public Animator animator;
+    public Light[] lights;
+    public ParticleSystem[] particles;
 
-    private void Start()
+    [HideInInspector] public bool isCurrentlyVisible = true;
+
+    private void OnEnable()
     {
-        if (targetObject == null) targetObject = this.gameObject;
-
-        // Реєструємо себе в менеджері
+        // Реєструємось лише якщо Оптимізатор вже існує
         if (DistanceOptimizer.Instance != null)
         {
             DistanceOptimizer.Instance.RegisterObject(this);
         }
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
-        // Видаляємо себе, коли об'єкт знищується
         if (DistanceOptimizer.Instance != null)
         {
             DistanceOptimizer.Instance.UnregisterObject(this);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // Відписуємось при знищенні (наприклад, ворог помер)
+        if (DistanceOptimizer.Instance != null)
+        {
+            DistanceOptimizer.Instance.UnregisterObject(this);
+        }
+    }
+
+    // Замість SetActive(false/true) вимикаємо лише рендер і логіку
+    public void SetVisibility(bool state)
+    {
+        if (isCurrentlyVisible == state) return;
+        isCurrentlyVisible = state;
+
+        if (renderers != null)
+        {
+            for (int i = 0; i < renderers.Length; i++)
+                if (renderers[i] != null) renderers[i].enabled = state;
+        }
+
+        if (animator != null) animator.enabled = state;
+
+        if (lights != null)
+        {
+            for (int i = 0; i < lights.Length; i++)
+                if (lights[i] != null) lights[i].enabled = state;
+        }
+
+        if (particles != null)
+        {
+            for (int i = 0; i < particles.Length; i++)
+            {
+                if (particles[i] == null) continue;
+                if (state) particles[i].Play(); else particles[i].Stop();
+            }
         }
     }
 }

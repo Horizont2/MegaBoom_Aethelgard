@@ -4,7 +4,7 @@ using System.Collections;
 public class GrenadeLogic : MonoBehaviour
 {
     [Header("Explosion Settings")]
-    public float fallbackDelay = 3f; // Запобіжник: якщо нікуди не врізалась, вибухне через 3 сек
+    public float fallbackDelay = 3f;
     public float explosionRadius = 6f;
     public float damage = 200f;
 
@@ -38,12 +38,9 @@ public class GrenadeLogic : MonoBehaviour
         if (countdown <= 0f) Explode();
     }
 
-    // НОВЕ: Вибух при зіткненні з землею або ворогами!
     private void OnCollisionEnter(Collision collision)
     {
         if (hasExploded) return;
-
-        // Ігноруємо самого гравця, щоб граната не вибухнула в руці
         if (!collision.gameObject.CompareTag("Player"))
         {
             Explode();
@@ -55,7 +52,9 @@ public class GrenadeLogic : MonoBehaviour
         hasExploded = true;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
-        if (explosionEffect != null) Instantiate(explosionEffect, transform.position, Quaternion.identity);
+
+        // ОПТИМІЗАЦІЯ: Ефект вибуху беремо з пулу
+        if (explosionEffect != null) ObjectPoolManager.Instance.SpawnFromPool(explosionEffect, transform.position, Quaternion.identity);
 
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);
         int enemyCount = 0;
@@ -80,26 +79,35 @@ public class GrenadeLogic : MonoBehaviour
 
         foreach (Collider nearbyObject in colliders)
         {
-            if (nearbyObject.CompareTag("Enemy"))
+            if (nearbyObject.TryGetComponent(out IDamageable damageable))
             {
-                EnemyAI enemy = nearbyObject.GetComponent<EnemyAI>();
-                if (enemy != null)
+                Vector3 pushDir = (nearbyObject.transform.position - transform.position).normalized;
+                pushDir.y = 0;
+
+                bool isPlayer = nearbyObject.CompareTag("Player");
+                float finalDamage = isPlayer ? 20f : damage;
+
+                DamageInfo info = new DamageInfo
                 {
-                    enemy.TakeDamage(damage);
+                    Amount = finalDamage,
+                    IsCritical = false,
+                    PushDirection = pushDir,
+                    KnockbackForce = isPlayer ? 5f : 15f,
+                    StunDuration = isPlayer ? 0.2f : 1.5f,
+                    HitPoint = nearbyObject.ClosestPoint(transform.position)
+                };
+
+                damageable.TakeDamage(info);
+
+                // Додатковий лут ТІЛЬКИ з ворогів
+                if (!isPlayer && crystalPrefab != null && ObjectPoolManager.Instance != null)
+                {
                     for (int i = 0; i < multiplier - 1; i++)
                     {
-                        if (crystalPrefab != null)
-                        {
-                            Vector3 offset = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f));
-                            Instantiate(crystalPrefab, enemy.transform.position + offset, Quaternion.identity);
-                        }
+                        Vector3 offset = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f));
+                        ObjectPoolManager.Instance.SpawnFromPool(crystalPrefab, nearbyObject.transform.position + offset, Quaternion.identity);
                     }
                 }
-            }
-            else if (nearbyObject.CompareTag("Player"))
-            {
-                PlayerController player = nearbyObject.GetComponent<PlayerController>();
-                if (player != null) player.TakeDamage(20f);
             }
         }
 
