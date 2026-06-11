@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
+public class PlayerController : MonoBehaviour, IDamageable
 {
     [Header("Scene Mode")]
     public bool isCampMode = false;
@@ -50,8 +51,9 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     public Transform meleePoint;
     public float attackCooldown = 0.6f;
     private float lastAttackTime = -100f;
+    private int lastAttackIndex = -1;
 
-    [Header("Grenade (Smart Aim & Cooldown)")]
+    [Header("Grenade Settings")]
     public GameObject grenadePrefab;
     public Transform throwPoint;
     public LineRenderer trajectoryLine;
@@ -60,11 +62,9 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     public float grenadeExplosionRadius = 6f;
     public float grenadeThrowSpeed = 20f;
     public float grenadeCooldown = 5f;
-
     [HideInInspector] public float lastGrenadeTime = -100f;
     private bool isAimingGrenade = false;
     private Vector3 currentGrenadeTarget;
-
     private LineRenderer aoeMarkerLine;
     private LineRenderer innerMarkerLine;
 
@@ -81,8 +81,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI crystalText;
     public TextMeshProUGUI hpText;
-
-    [Header("Juicy UI & Effects")]
     public Image hpCatchupFill;
     public float uiLerpSpeed = 5f;
     private float visualXP = 0f;
@@ -107,6 +105,15 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     [HideInInspector] public int currentStack = 0;
     [HideInInspector] public int currentMultiplier = 1;
 
+    [Header("Perfect Dodge Settings (AAA Feel)")]
+    public float perfectDodgeSlowMoScale = 0.4f;
+    public float perfectDodgeDuration = 1.5f;
+    public GameObject perfectDodgeVFX;
+
+    private float dodgeWindowTimer = 0f;
+    [HideInInspector] public bool isNextAttackGuaranteedCrit = false;
+    private bool isBulletTime = false;
+
     private CameraFollow cameraFollow;
     private HealthVisuals healthVisuals;
     private CharacterController characterController;
@@ -127,7 +134,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
-
         InitAoEMarker();
     }
 
@@ -144,7 +150,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 
         UIIconGlimmer glimmer = FindFirstObjectByType<UIIconGlimmer>();
         if (glimmer != null) glimmer.StartEffect();
-
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
@@ -180,7 +185,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     private void SpawnEquippedWeapon()
     {
         Transform socket = FindDeepChild(transform, "WeaponSocket") ?? FindDeepChild(transform, "handslot.r") ?? FindDeepChild(transform, "hand_r") ?? FindDeepChild(transform, "hand_R") ?? FindDeepChild(transform, "RightHand");
-
         int selectedWeaponID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
 
         if (socket != null && weaponPrefabs != null && weaponPrefabs.Length > selectedWeaponID && weaponPrefabs[selectedWeaponID] != null)
@@ -195,7 +199,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     private void ReconnectUI()
     {
         if (hpFill != null) return;
-
         Image[] images = FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (Image img in images)
         {
@@ -217,7 +220,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         {
             string n = txt.name.ToLower();
             string p = txt.transform.parent != null ? txt.transform.parent.name.ToLower() : "";
-
             bool isHP = n.Contains("hp") || p.Contains("hp");
 
             if (isHP && (n.Contains("text") || n.Contains("val"))) hpText = txt;
@@ -226,7 +228,7 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
     }
 
-    private System.Collections.IEnumerator SpawnSafely()
+    private IEnumerator SpawnSafely()
     {
         if (characterController != null) characterController.enabled = false;
         yield return null;
@@ -237,26 +239,15 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         if (isCampMode)
         {
             bool loadedSave = false;
-
             if (PlayerPrefs.GetInt("HasCampSave", 0) == 1)
             {
                 float cx = PlayerPrefs.GetFloat("CampPosX");
                 float cy = PlayerPrefs.GetFloat("CampPosY");
                 float cz = PlayerPrefs.GetFloat("CampPosZ");
-
-                if (cy > -10f)
-                {
-                    transform.position = new Vector3(cx, cy, cz);
-                    loadedSave = true;
-                }
+                if (cy > -10f) { transform.position = new Vector3(cx, cy, cz); loadedSave = true; }
             }
 
-            if (!loadedSave && spawnPoint != null)
-            {
-                transform.position = spawnPoint.transform.position;
-                transform.rotation = spawnPoint.transform.rotation;
-            }
-
+            if (!loadedSave && spawnPoint != null) { transform.position = spawnPoint.transform.position; transform.rotation = spawnPoint.transform.rotation; }
             if (characterController != null) characterController.enabled = true;
             yield break;
         }
@@ -270,23 +261,16 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
         else
         {
-            if (spawnPoint != null)
-            {
-                transform.position = spawnPoint.transform.position;
-                transform.rotation = spawnPoint.transform.rotation;
-            }
+            if (spawnPoint != null) { transform.position = spawnPoint.transform.position; transform.rotation = spawnPoint.transform.rotation; }
             else
             {
                 float spawnX = 0f; float spawnZ = 0f; float spawnY = 20f;
                 Vector3 skyPos = new Vector3(spawnX, 1000f, spawnZ);
-
                 if (Physics.Raycast(skyPos, Vector3.down, out RaycastHit hit, 2000f)) spawnY = hit.point.y + 2f;
                 else if (Terrain.activeTerrain != null) spawnY = Terrain.activeTerrain.SampleHeight(new Vector3(spawnX, 0, spawnZ)) + Terrain.activeTerrain.transform.position.y + 2f;
-
                 transform.position = new Vector3(spawnX, spawnY, spawnZ);
             }
         }
-
         if (characterController != null) characterController.enabled = true;
     }
 
@@ -326,14 +310,9 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     private void CheckStack()
     {
         if (isCampMode) return;
-
         Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
         currentStack = 0;
-
-        foreach (Collider col in colliders)
-        {
-            if (col.CompareTag("Enemy")) currentStack++;
-        }
+        foreach (Collider col in colliders) { if (col.CompareTag("Enemy")) currentStack++; }
 
         if (currentStack >= 30) currentMultiplier = 5;
         else if (currentStack >= 20) currentMultiplier = 4;
@@ -351,12 +330,13 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 
     private void LockAction(string trigger, float duration)
     {
-        actionLockEndTime = Time.time + duration;
+        actionLockEndTime = Time.unscaledTime + duration;
         currentVelocityMove = Vector3.zero;
 
         if (anim != null)
         {
             anim.SetFloat("Speed", 0f);
+            anim.ResetTrigger(trigger);
             anim.SetTrigger(trigger);
         }
     }
@@ -372,27 +352,23 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     private void Update()
     {
         if (dashStaminaFill != null)
-        {
-            float targetDashProgress = Mathf.Clamp01((Time.time - lastDashTime) / dashCooldown);
-            dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, targetDashProgress, Time.deltaTime * 15f);
-        }
+            dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
 
         float targetHpFill = currentHealth / maxHealth;
-
         if (hpFill != null) hpFill.fillAmount = targetHpFill;
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
-        {
-            hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.deltaTime * uiLerpSpeed);
-        }
+            hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
 
         float targetXpFill = currentXP / xpToNextLevel;
         if (xpFill != null && visualXP < currentXP)
         {
-            visualXP = Mathf.Lerp(visualXP, currentXP, Time.deltaTime * uiLerpSpeed);
+            visualXP = Mathf.Lerp(visualXP, currentXP, Time.unscaledDeltaTime * uiLerpSpeed);
             xpFill.fillAmount = visualXP / xpToNextLevel;
         }
 
         CheckStack();
+
+        if (dodgeWindowTimer > 0) dodgeWindowTimer -= Time.unscaledDeltaTime;
 
         if (Input.GetKeyDown(KeyCode.F10))
         {
@@ -412,24 +388,21 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
             Vector3 ncRight = Camera.main.transform.right;
 
             Vector3 dir = (ncForward * v + ncRight * h + Vector3.up * up).normalized;
-            transform.position += dir * noclipSpeed * Time.deltaTime;
+            transform.position += dir * noclipSpeed * Time.unscaledDeltaTime;
             return;
         }
 
-        bool isCurrentlyLocked = isControlBlocked || Time.time < actionLockEndTime;
-
-        Vector3 movement = Vector3.zero;
+        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime;
         Vector3 inputDir = Vector3.zero;
 
         if (!isCurrentlyLocked)
         {
-            float horizontal = Input.GetAxisRaw("Horizontal");
-            float vertical = Input.GetAxisRaw("Vertical");
-            inputDir = new Vector3(horizontal, 0f, vertical).normalized;
+            inputDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
 
-            if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.time >= lastDashTime + dashCooldown)
+            if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
             {
-                StartCoroutine(DashRoutine(inputDir));
+                if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
+                else StartCoroutine(DashRoutine(inputDir, false));
             }
         }
 
@@ -445,63 +418,23 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         {
             targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
             Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.unscaledDeltaTime);
         }
 
-        float currentAccel = normalAcceleration;
-
-        if (!isCampMode)
-        {
-            if (currentStack >= 30)
-            {
-                currentAccel = dragAcceleration;
-                currentHealth -= criticalDamagePerSec * Time.deltaTime;
-                UpdateHUD();
-                if (currentHealth <= 0) Die();
-            }
-            else if (currentStack >= 15)
-            {
-                currentAccel = dragAcceleration;
-            }
-        }
-
+        float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
 
-        if (inputDir.magnitude >= 0.1f)
-        {
-            Vector3 targetMove = targetMoveDirection * actualSpeed;
-            currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMove, currentAccel * Time.deltaTime);
-        }
-        else
-        {
-            currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * Time.deltaTime);
-        }
+        float dt = isBulletTime ? Time.unscaledDeltaTime : Time.deltaTime;
 
-        movement = currentVelocityMove;
-        float safeDeltaTime = Mathf.Min(Time.deltaTime, 0.05f);
+        if (inputDir.magnitude >= 0.1f) currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMoveDirection * actualSpeed, currentAccel * dt);
+        else currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * dt);
 
+        float safeDeltaTime = Mathf.Min(dt, 0.05f);
         if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
-        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
+        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         velocity.y += gravity * safeDeltaTime;
 
-        Vector3 finalMove = movement + velocity;
-
-        if (characterController.enabled) characterController.Move(finalMove * safeDeltaTime);
-
-        if (footstepParticles != null)
-        {
-            if (characterController.isGrounded && currentVelocityMove.magnitude > 2f && !isCurrentlyLocked)
-            {
-                if (!footstepParticles.isEmitting) footstepParticles.Play();
-            }
-            else
-            {
-                if (footstepParticles.isEmitting) footstepParticles.Stop();
-            }
-        }
+        if (characterController.enabled) characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
 
         if (anim != null)
         {
@@ -518,18 +451,24 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
                 {
                     if (Input.GetMouseButtonDown(0))
                     {
-                        if (!isAimingGrenade && Time.time >= lastAttackTime + attackCooldown)
+                        if (!isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
                         {
-                            lastAttackTime = Time.time;
+                            lastAttackTime = Time.unscaledTime;
                             if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
-                            LockAction("Attack", 0.4f);
+
+                            int randAnim = Random.Range(0, 3);
+                            if (randAnim == lastAttackIndex) randAnim = (randAnim + 1) % 3;
+                            lastAttackIndex = randAnim;
+
+                            if (anim != null) anim.SetInteger("AttackIndex", randAnim);
+                            LockAction("Attack", 0.6f);
                         }
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
 
                     if (Input.GetMouseButtonDown(1))
                     {
-                        if (Time.time >= lastGrenadeTime + grenadeCooldown)
+                        if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
                         {
                             isAimingGrenade = true;
                             if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
@@ -541,7 +480,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
             }
 
             if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade) UpdateGrenadeAiming();
-
             if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
@@ -555,7 +493,7 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 
         if (!isCampMode && currentHealth < maxHealth && healthRegenRate > 0)
         {
-            currentHealth += healthRegenRate * Time.deltaTime;
+            currentHealth += healthRegenRate * dt;
             currentHealth = Mathf.Min(currentHealth, maxHealth);
             UpdateHUD();
         }
@@ -590,7 +528,7 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         aimDir.y = 0;
         if (aimDir.sqrMagnitude > 0.01f)
         {
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.deltaTime * 3f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.unscaledDeltaTime * 3f);
         }
 
         if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
@@ -607,7 +545,6 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         float distanceXZ = displacementXZ.magnitude;
 
         float dynamicFlightTime = Mathf.Clamp(distanceXZ / grenadeThrowSpeed, 0.25f, 1.2f);
-
         float velY = (displacement.y / dynamicFlightTime) - (0.5f * Physics.gravity.y * dynamicFlightTime);
         Vector3 velXZ = displacementXZ / dynamicFlightTime;
 
@@ -673,90 +610,196 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         return 0f;
     }
 
-    // --- ААА ОПТИМІЗАЦІЯ БОЮ (Без спагетті-перевірок на теги) ---
+    public void OpenPerfectDodgeWindow(Transform attacker, float duration)
+    {
+        dodgeWindowTimer = duration;
+    }
+
+    private IEnumerator PerfectDodgeSequence(Vector3 fallbackDirection)
+    {
+        dodgeWindowTimer = 0f;
+        isNextAttackGuaranteedCrit = true;
+        isBulletTime = true;
+
+        Time.timeScale = perfectDodgeSlowMoScale;
+
+        if (anim != null) anim.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+        lastAttackTime = -100f;
+        actionLockEndTime = 0f;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
+        if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(true);
+
+        yield return StartCoroutine(BlinkBehindRoutine(fallbackDirection));
+
+        yield return new WaitForSecondsRealtime(perfectDodgeDuration);
+
+        Time.timeScale = 1f;
+        isBulletTime = false;
+        if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
+        if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(false);
+    }
+
+    private IEnumerator BlinkBehindRoutine(Vector3 fallbackDirection)
+    {
+        isDashing = true;
+        lastDashTime = Time.unscaledTime;
+
+        Transform threat = ThreatUI.Instance != null ? ThreatUI.Instance.GetCurrentThreat() : null;
+        if (threat == null)
+        {
+            yield return StartCoroutine(DashRoutine(fallbackDirection, true));
+            yield break;
+        }
+
+        Vector3 targetPos = threat.position - threat.forward * 2.5f;
+        targetPos.y = GetGroundHeight(targetPos);
+
+        float originalFOV = Camera.main.fieldOfView;
+        Camera.main.fieldOfView = originalFOV + 20f;
+        if (dashParticles != null) dashParticles.Play();
+        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
+
+        characterController.enabled = false;
+
+        float blinkDuration = 0.15f;
+        float elapsed = 0f;
+        Vector3 startPos = transform.position;
+
+        while (elapsed < blinkDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = elapsed / blinkDuration;
+
+            transform.position = Vector3.Lerp(startPos, targetPos, t);
+
+            Vector3 lookDir = (threat.position - transform.position).normalized;
+            lookDir.y = 0;
+            if (lookDir != Vector3.zero) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), t * 15f);
+
+            yield return null;
+        }
+
+        transform.position = targetPos;
+        characterController.enabled = true;
+        isDashing = false;
+
+        elapsed = 0f;
+        while (elapsed < 0.3f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            Camera.main.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
+            yield return null;
+        }
+        Camera.main.fieldOfView = originalFOV;
+    }
+
+    private IEnumerator DashRoutine(Vector3 direction, bool isPerfectDodge = false)
+    {
+        isDashing = true;
+        lastDashTime = Time.unscaledTime;
+        float startTime = Time.realtimeSinceStartup;
+
+        if (AudioManager.Instance != null && !isPerfectDodge) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
+
+        float originalFOV = Camera.main.fieldOfView;
+        float targetFOV = originalFOV + (isPerfectDodge ? 20f : 12f);
+
+        if (dashParticles != null) dashParticles.Play();
+        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
+
+        if (direction == Vector3.zero) direction = transform.forward;
+        else
+        {
+            Vector3 camForward = Camera.main.transform.forward; Vector3 camRight = Camera.main.transform.right;
+            camForward.y = 0f; camRight.y = 0f;
+            direction = (camForward * direction.z + camRight * direction.x).normalized;
+        }
+
+        float currentDashSpeed = isPerfectDodge ? dashSpeed * 1.5f : dashSpeed;
+
+        while (Time.realtimeSinceStartup < startTime + dashDuration)
+        {
+            float normalizedTime = (Time.realtimeSinceStartup - startTime) / dashDuration;
+            float curve = Mathf.Sin(normalizedTime * Mathf.PI);
+
+            characterController.Move(direction * currentDashSpeed * curve * Time.unscaledDeltaTime);
+            Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, normalizedTime);
+
+            yield return null;
+        }
+
+        isDashing = false;
+
+        float elapsed = 0f;
+        while (elapsed < 0.3f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            Camera.main.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / 0.3f);
+            yield return null;
+        }
+        Camera.main.fieldOfView = originalFOV;
+    }
+
     public void ExecuteAttack()
     {
         if (meleePoint == null || isCampMode) return;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
-
-        bool hitEnemy = false;
-        bool hitResource = false;
-        bool isCriticalHit = Random.value <= globalCritChance;
+        bool hitEnemy = false; bool hitResource = false;
+        bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
-        if (isCriticalHit) finalDmg *= 2.5f;
+        if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? 3.5f : 2.5f);
 
         foreach (Collider col in hitObjects)
         {
-            // Перевіряємо чи має об'єкт інтерфейс
             if (col.TryGetComponent(out IDamageable damageable))
             {
-                // Запобіжник: щоб гравець не вдарив сам себе
                 if (col.gameObject == this.gameObject) continue;
 
-                Vector3 pushDir = (col.transform.position - transform.position).normalized;
-                pushDir.y = 0;
+                Vector3 pushDir = (col.transform.position - transform.position).normalized; pushDir.y = 0;
+                float kForce = isCriticalHit ? (isNextAttackGuaranteedCrit ? 20f : 12f) : 8f;
 
-                // Пакуємо інформацію про удар у структуру
                 DamageInfo hitInfo = new DamageInfo
                 {
                     Amount = finalDmg,
                     IsCritical = isCriticalHit,
                     PushDirection = pushDir,
-                    KnockbackForce = isCriticalHit ? 12f : 8f,
-                    StunDuration = isCriticalHit ? 0.8f : 0.4f,
+                    KnockbackForce = kForce,
+                    StunDuration = isCriticalHit ? 1.0f : 0.4f,
                     HitPoint = col.ClosestPoint(meleePoint.position)
                 };
 
                 damageable.TakeDamage(hitInfo);
+                if (col.CompareTag("Enemy")) hitEnemy = true; else hitResource = true;
 
-                // Отримуємо тип для звуку та віддачі камери
-                if (col.CompareTag("Enemy")) hitEnemy = true;
-                else hitResource = true;
-
-                // VFX Спавн з ОПТИМІЗОВАНОГО ПУЛУ
-                if (hitVFXPrefab != null)
+                // ФІКС: Безпечний спавн ефектів
+                if (hitVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
-                    Quaternion hitRotation = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;
-                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitVFXPrefab, hitInfo.HitPoint, hitRotation);
-                    if (vfx != null) vfx.transform.localScale = isCriticalHit ? Vector3.one * 1.5f : Vector3.one;
+                    Quaternion hitRot = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;
+                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitVFXPrefab, hitInfo.HitPoint, hitRot);
+                    if (vfx != null) vfx.transform.localScale = isNextAttackGuaranteedCrit ? Vector3.one * 3f : (isCriticalHit ? Vector3.one * 1.5f : Vector3.one);
                 }
             }
         }
 
-        // --- Camera Juice & SFX ---
+        isNextAttackGuaranteedCrit = false;
+
         if (hitEnemy)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
             Vector3 recoilDir = -transform.forward;
-
-            if (isCriticalHit)
-            {
-                if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.2f, 0.25f, 0.2f);
-                StartCoroutine(HitStopRoutine(0.12f));
-            }
-            else
-            {
-                if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f);
-                StartCoroutine(HitStopRoutine(0.04f));
-            }
+            if (isCriticalHit) { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.5f, 0.3f, 0.2f); StartCoroutine(HitStopRoutine(0.12f)); }
+            else { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f); StartCoroutine(HitStopRoutine(0.04f)); }
         }
         else if (hitResource)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
-            Vector3 recoilDir = -transform.forward;
-            if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.3f, 0.1f, 0.05f);
+            if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(-transform.forward, 0.3f, 0.1f, 0.05f);
         }
-    }
-
-    private System.Collections.IEnumerator HitStopRoutine(float duration)
-    {
-        Time.timeScale = 0.05f;
-        yield return new WaitForSecondsRealtime(duration);
-        Time.timeScale = 1f;
     }
 
     public void ExecuteThrow()
@@ -764,31 +807,26 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
-
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
-
             if (rb != null)
             {
                 rb.linearVelocity = CalculateThrowVelocity(currentGrenadeTarget);
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
-
-            lastGrenadeTime = Time.time;
+            lastGrenadeTime = Time.unscaledTime;
         }
     }
 
-    // НОВИЙ МЕТОД: Гравця б'ють вороги через DamageInfo
     public void TakeDamage(DamageInfo info)
     {
-        if (isCampMode) return;
+        if (isCampMode || isDashing || isBulletTime) return;
 
         float finalDamage = info.Amount * (1f - damageReduction);
         currentHealth -= finalDamage;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
-        // Віддача камери у бік удару!
         if (cameraFollow != null)
         {
             Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : transform.forward;
@@ -796,57 +834,44 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
 
         if (finalDamage >= maxHealth * 0.15f && hpFill != null)
-        {
             StartCoroutine(ShakeUIRoutine(hpFill.transform.parent.GetComponent<RectTransform>()));
-        }
 
         if (healthVisuals != null) healthVisuals.TriggerHitFlash();
-
-        if (damageFlashImage != null)
-        {
-            StopAllCoroutines();
-            StartCoroutine(FlashRoutine());
-        }
+        if (damageFlashImage != null) { StopAllCoroutines(); StartCoroutine(FlashRoutine()); }
 
         UpdateHUD();
 
-        if (currentHealth <= 0)
-        {
-            if (hpCatchupFill != null) hpCatchupFill.fillAmount = 0;
-            Die();
-        }
-        else
-        {
-            LockAction("Hit", 0.35f);
-        }
+        if (currentHealth <= 0) { if (hpCatchupFill != null) hpCatchupFill.fillAmount = 0; Die(); }
+        else { LockAction("Hit", 0.35f); }
     }
 
-    private System.Collections.IEnumerator ShakeUIRoutine(RectTransform uiElement)
+    private IEnumerator ShakeUIRoutine(RectTransform uiElement)
     {
         if (uiElement == null) yield break;
         Vector2 originalPos = uiElement.anchoredPosition;
         float elapsed = 0f;
         while (elapsed < 0.25f)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             uiElement.anchoredPosition = originalPos + new Vector2(Random.Range(-15f, 15f), Random.Range(-10f, 10f));
             yield return null;
         }
         uiElement.anchoredPosition = originalPos;
     }
 
-    private System.Collections.IEnumerator FlashRoutine()
+    private IEnumerator FlashRoutine()
     {
         float t = 0.3f;
-        Color c = damageFlashImage.color;
-        c.a = 0.6f;
-        damageFlashImage.color = c;
-        while (c.a > 0)
-        {
-            c.a -= Time.deltaTime / t;
-            damageFlashImage.color = c;
-            yield return null;
-        }
+        Color c = damageFlashImage.color; c.a = 0.6f; damageFlashImage.color = c;
+        while (c.a > 0) { c.a -= Time.unscaledDeltaTime / t; damageFlashImage.color = c; yield return null; }
+    }
+
+    private IEnumerator HitStopRoutine(float duration)
+    {
+        if (isBulletTime) yield break;
+        Time.timeScale = 0.05f;
+        yield return new WaitForSecondsRealtime(duration);
+        Time.timeScale = 1f;
     }
 
     private void Die()
@@ -871,45 +896,22 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         gameObject.SetActive(false);
     }
 
-    public void GainXP(float amount)
-    {
-        if (isCampMode) return;
-        currentXP += amount;
-        if (currentXP >= xpToNextLevel) LevelUp();
-    }
+    public void GainXP(float amount) { if (isCampMode) return; currentXP += amount; if (currentXP >= xpToNextLevel) LevelUp(); }
 
     public void GainDiamond(int amount = 1)
     {
         crystalsCollected += amount;
-
-        if (ResourceManager.Instance != null)
-        {
-            ResourceManager.Instance.diamonds += amount;
-            ResourceManager.Instance.SaveStash();
-            ResourceManager.Instance.UpdateUI();
-        }
-        else
-        {
-            int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0);
-            PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount);
-            PlayerPrefs.Save();
-        }
-
+        if (ResourceManager.Instance != null) { ResourceManager.Instance.diamonds += amount; ResourceManager.Instance.SaveStash(); ResourceManager.Instance.UpdateUI(); }
+        else { int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0); PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount); PlayerPrefs.Save(); }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
         UpdateHUD();
-
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
     }
 
     private void LevelUp()
     {
-        currentLevel++;
-        currentXP -= xpToNextLevel;
-        xpToNextLevel *= 1.5f;
-        visualXP = 0f;
-
+        currentLevel++; currentXP -= xpToNextLevel; xpToNextLevel *= 1.5f; visualXP = 0f;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
-
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
@@ -918,74 +920,15 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
     public void UpdateHUD()
     {
         float hpRatio = currentHealth / maxHealth;
-
         if (hpFill != null) hpFill.fillAmount = hpRatio;
         if (hpCatchupFill != null && hpCatchupFill.fillAmount < hpRatio) hpCatchupFill.fillAmount = hpRatio;
         if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
         if (xpFill != null) xpFill.fillAmount = currentXP / xpToNextLevel;
         if (levelText != null) levelText.text = "LVL: " + currentLevel;
-
-        if (crystalText != null)
-        {
-            int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected;
-            crystalText.text = $"Diamonds: {displayDiamonds}";
-        }
+        if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = $"Diamonds: {displayDiamonds}"; }
     }
 
-    private System.Collections.IEnumerator DashRoutine(Vector3 direction)
-    {
-        isDashing = true;
-        lastDashTime = Time.time;
-        float startTime = Time.time;
-
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
-
-        float originalFOV = Camera.main.fieldOfView;
-        float targetFOV = originalFOV + 12f;
-
-        if (dashParticles != null) dashParticles.Play();
-        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
-
-        if (direction == Vector3.zero) direction = transform.forward;
-        else
-        {
-            Vector3 camForward = Camera.main.transform.forward;
-            Vector3 camRight = Camera.main.transform.right;
-            camForward.y = 0f; camRight.y = 0f;
-            direction = (camForward * direction.z + camRight * direction.x).normalized;
-        }
-
-        while (Time.time < startTime + dashDuration)
-        {
-            float normalizedTime = (Time.time - startTime) / dashDuration;
-            float curve = Mathf.Sin(normalizedTime * Mathf.PI);
-
-            characterController.Move(direction * dashSpeed * curve * Time.deltaTime);
-            Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, normalizedTime);
-
-            yield return null;
-        }
-
-        isDashing = false;
-
-        float elapsed = 0f;
-        float returnTime = 0.3f;
-        while (elapsed < returnTime)
-        {
-            elapsed += Time.deltaTime;
-            Camera.main.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / returnTime);
-            yield return null;
-        }
-
-        Camera.main.fieldOfView = originalFOV;
-    }
-
-    public void Heal(float amount)
-    {
-        currentHealth += amount;
-        if (currentHealth > maxHealth) currentHealth = maxHealth;
-        UpdateHUD();
-    }
+    public void Heal(float amount) { currentHealth += amount; if (currentHealth > maxHealth) currentHealth = maxHealth; UpdateHUD(); }
 
     private Transform FindDeepChild(Transform parent, string name)
     {
@@ -999,15 +942,7 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         return null;
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (meleePoint != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(meleePoint.position, meleeRadius);
-        }
-    }
-
+    private void OnDrawGizmosSelected() { if (meleePoint != null) { Gizmos.color = Color.red; Gizmos.DrawWireSphere(meleePoint.position, meleeRadius); } }
     public void StartSwing() { if (weaponTrail != null) weaponTrail.emitting = true; }
     public void EndSwing() { if (weaponTrail != null) weaponTrail.emitting = false; }
 
@@ -1025,18 +960,12 @@ public class PlayerController : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
 
     public void TriggerUIPop() { if (xpFill != null) StartCoroutine(PopUIRoutine(xpFill.transform.parent.GetComponent<RectTransform>())); }
 
-    private System.Collections.IEnumerator PopUIRoutine(RectTransform uiElement)
+    private IEnumerator PopUIRoutine(RectTransform uiElement)
     {
         if (uiElement == null) yield break;
         Vector3 origScale = Vector3.one;
         float elapsed = 0f;
-        while (elapsed < 0.15f)
-        {
-            elapsed += Time.deltaTime;
-            float curve = Mathf.Sin((elapsed / 0.15f) * Mathf.PI);
-            uiElement.localScale = origScale + new Vector3(0.15f, 0.15f, 0f) * curve;
-            yield return null;
-        }
+        while (elapsed < 0.15f) { elapsed += Time.unscaledDeltaTime; float curve = Mathf.Sin((elapsed / 0.15f) * Mathf.PI); uiElement.localScale = origScale + new Vector3(0.15f, 0.15f, 0f) * curve; yield return null; }
         uiElement.localScale = origScale;
     }
 }

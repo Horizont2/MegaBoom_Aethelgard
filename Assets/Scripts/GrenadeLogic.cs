@@ -53,7 +53,6 @@ public class GrenadeLogic : MonoBehaviour
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
 
-        // ОПТИМІЗАЦІЯ: Ефект вибуху беремо з пулу
         if (explosionEffect != null) ObjectPoolManager.Instance.SpawnFromPool(explosionEffect, transform.position, Quaternion.identity);
 
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);
@@ -81,6 +80,9 @@ public class GrenadeLogic : MonoBehaviour
         {
             if (nearbyObject.TryGetComponent(out IDamageable damageable))
             {
+                // ФІКС: Граната наносить шкоду ТІЛЬКИ ворогам та гравцю (ігнорує дерева/ресурси)
+                if (!nearbyObject.CompareTag("Enemy") && !nearbyObject.CompareTag("Player")) continue;
+
                 Vector3 pushDir = (nearbyObject.transform.position - transform.position).normalized;
                 pushDir.y = 0;
 
@@ -99,7 +101,6 @@ public class GrenadeLogic : MonoBehaviour
 
                 damageable.TakeDamage(info);
 
-                // Додатковий лут ТІЛЬКИ з ворогів
                 if (!isPlayer && crystalPrefab != null && ObjectPoolManager.Instance != null)
                 {
                     for (int i = 0; i < multiplier - 1; i++)

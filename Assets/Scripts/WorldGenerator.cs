@@ -45,7 +45,6 @@ public class WorldGenerator : MonoBehaviour
     public Color snowRockColor = new Color(0.65f, 0.72f, 0.79f);
 
     [Header("GENERATION BUDGETS (AAA Limits)")]
-    [Tooltip("Максимальна кількість об'єктів. Захист від зависання.")]
     public int spawnAttempts = 40000;
     public int maxTrees = 1500;
     public int maxGrassObjects = 3000;
@@ -89,7 +88,6 @@ public class WorldGenerator : MonoBehaviour
     private MaterialPropertyBlock propBlock;
     private const float MAX_FRAME_TIME = 0.015f;
 
-    // Лічильники
     private int currentTreeCount = 0;
     private int currentGrassCount = 0;
     private int currentBushCount = 0;
@@ -103,8 +101,6 @@ public class WorldGenerator : MonoBehaviour
         propBlock = new MaterialPropertyBlock();
 
         if (skyboxMaterial != null) RenderSettings.skybox = skyboxMaterial;
-
-        // ФІКС: Прибрано DynamicGI.UpdateEnvironment() зі Start, щоб не конфліктував з ініціалізацією URP Volumes
 
         if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
         {
@@ -136,16 +132,14 @@ public class WorldGenerator : MonoBehaviour
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
         CurrentProgress = 0.95f;
 
-        Physics.SyncTransforms(); // Оновлюємо колайдери террейну
+        Physics.SyncTransforms();
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
-            // Беремо висоту террейну в точці гравця
             float groundY = terrain.SampleHeight(player.transform.position) + terrain.transform.position.y;
             Vector3 safePos = new Vector3(player.transform.position.x, groundY + 2f, player.transform.position.z);
 
-            // Правильна телепортація для CharacterController
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null)
             {
@@ -155,13 +149,11 @@ public class WorldGenerator : MonoBehaviour
             }
             else
             {
-                // Якщо використовується інший тип управління
                 player.transform.position = safePos;
-
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
-                    rb.linearVelocity = Vector3.zero; // Зупиняємо падіння, якщо він вже встиг впасти
+                    rb.linearVelocity = Vector3.zero;
                 }
             }
         }
@@ -191,9 +183,13 @@ public class WorldGenerator : MonoBehaviour
                 {
                     float xCoord = (float)x / width * scale * frequency + offsetX;
                     float yCoord = (float)y / height * scale * frequency + offsetZ;
+
                     float perlinValue = Mathf.PerlinNoise(xCoord, yCoord);
-                    perlinValue = 1f - Mathf.Abs(perlinValue * 2f - 1f); perlinValue *= perlinValue;
-                    noiseHeight += perlinValue * amplitude; maxAmplitude += amplitude;
+                    perlinValue = 1f - Mathf.Abs(perlinValue * 2f - 1f);
+                    perlinValue *= perlinValue;
+
+                    noiseHeight += perlinValue * amplitude;
+                    maxAmplitude += amplitude;
                     amplitude *= persistence; frequency *= lacunarity;
                 }
 
@@ -201,6 +197,7 @@ public class WorldGenerator : MonoBehaviour
                 if (terraceCount > 0) normalizedHeight = Mathf.Round(normalizedHeight * terraceCount) / terraceCount;
 
                 float sharpenedNoise = Mathf.Pow(normalizedHeight, peakSharpness);
+
                 float distFromCenter = Vector2.Distance(new Vector2(x, y), new Vector2(centerX, centerY));
                 float edgeWall = Mathf.Pow(distFromCenter / centerX, 4f) * edgeMountainMultiplier;
 
@@ -229,14 +226,24 @@ public class WorldGenerator : MonoBehaviour
             {
                 float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
                 float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
+                float normalizedHeight = terrainData.GetHeight(y, x) / depth;
+
                 float[] weights = new float[4];
 
-                if (temp >= 0.65f) weights[1] = 1f;
-                else if (temp <= 0.35f) weights[2] = 1f;
-                else weights[0] = 1f;
+                if (normalizedHeight > 0.65f)
+                {
+                    weights[2] = 1f;
+                }
+                else
+                {
+                    if (temp >= 0.65f) weights[1] = 1f;
+                    else if (temp <= 0.35f) weights[2] = 1f;
+                    else weights[0] = 1f;
+                }
 
-                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(35f, 45f, steepness));
+                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(30f, 45f, steepness));
                 float remain = 1f - weights[3];
+
                 weights[0] *= remain; weights[1] *= remain; weights[2] *= remain;
 
                 splatmapData[y, x, 0] = weights[0]; splatmapData[y, x, 1] = weights[1];
@@ -261,7 +268,6 @@ public class WorldGenerator : MonoBehaviour
 
         for (int i = 0; i < spawnAttempts; i++)
         {
-            // Жорсткий вихід, якщо всі бюджети заповнені
             if (currentTreeCount >= maxTrees && currentGrassCount >= maxGrassObjects && currentRockCount >= maxRocks && currentBushCount >= maxBushesAndMushroom)
                 break;
 
@@ -327,7 +333,6 @@ public class WorldGenerator : MonoBehaviour
                     }
                     else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.30f)
                     {
-                        // Зменшено кількість у кластері для стабільності
                         currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 3, 8, 5f, true, slopeRotation, currentFoliageColor);
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)

@@ -6178,14 +6178,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12109c5dae5e2e94292c8d524d58a452, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerator
-  depth: 40
+  depth: 50
   scale: 2.5
-  octaves: 4
-  persistence: 0.4
-  lacunarity: 2
-  peakSharpness: 2.5
-  terraceCount: 24
-  edgeMountainMultiplier: 2
+  octaves: 5
+  persistence: 0.45
+  lacunarity: 2.5
+  peakSharpness: 3
+  terraceCount: 0
+  edgeMountainMultiplier: 3
   skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   grassLayer: {fileID: 8574412962073106934, guid: a81995a1b9792014b8df74c003aef209, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
@@ -6201,13 +6201,13 @@ MonoBehaviour:
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
-  maxTrees: 2300
-  maxGrassObjects: 8000
-  maxBushesAndMushroom: 1700
+  maxTrees: 1500
+  maxGrassObjects: 3000
+  maxBushesAndMushroom: 1000
   maxRocks: 800
-  clusterScale: 10
+  clusterScale: 12
   forestThreshold: 0.48
-  globalBiomeScale: 2
+  globalBiomeScale: 2.5
   giantTrees: []
   baseTrees:
   - {fileID: 3996347160322767372, guid: 6153067b74a89fe4e958c5b32b2ecde3, type: 3}
@@ -22581,8 +22581,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DistanceOptimizer
   player: {fileID: 615663591}
-  enableDistance: 250
-  disableDistance: 280
+  enableDistance: 230
+  disableDistance: 250
   checkInterval: 0.05
   checksPerFrame: 800
 --- !u!4 &507569706
@@ -23141,6 +23141,10 @@ PrefabInstance:
       propertyPath: dashStaminaFill
       value: 
       objectReference: {fileID: 1310555524}
+    - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: perfectDodgeVFX
+      value: 
+      objectReference: {fileID: 2656840789729323889, guid: bf9bc06cc47a0424f89c625ea632660c, type: 3}
     - target: {fileID: 767551667635507368, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
       propertyPath: timeBetweenPoints
       value: 0.05

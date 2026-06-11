@@ -34,10 +34,7 @@ public class Level1_QuestManager : MonoBehaviour
     private int defeatedSkeletonsW1 = 0;
     private bool isDialogueStarted = false;
 
-    private void Awake()
-    {
-        Instance = this;
-    }
+    private void Awake() { Instance = this; }
 
     private void Start()
     {
@@ -48,18 +45,9 @@ public class Level1_QuestManager : MonoBehaviour
             objectiveUI.animateAppearance = true;
         }
 
-        if (subtitleText != null)
-        {
-            subtitleText.text = "";
-            subtitleText.maxVisibleCharacters = 99999;
-        }
+        if (subtitleText != null) { subtitleText.text = ""; subtitleText.maxVisibleCharacters = 99999; }
 
-        if (skeletonsWave1 != null)
-        {
-            totalSkeletonsW1 = skeletonsWave1.transform.childCount;
-            skeletonsWave1.SetActive(false);
-        }
-
+        if (skeletonsWave1 != null) { totalSkeletonsW1 = skeletonsWave1.transform.childCount; skeletonsWave1.SetActive(false); }
         if (skeletonsHordeWave2 != null) skeletonsHordeWave2.SetActive(false);
         if (evacuationHorse != null) evacuationHorse.SetActive(false);
 
@@ -70,18 +58,13 @@ public class Level1_QuestManager : MonoBehaviour
             SetCinematicMode(true);
             var brain = Camera.main.GetComponent<CinemachineBrain>();
             if (brain != null) brain.enabled = true;
-
             introDirector.Play();
         }
 
         StartCoroutine(LevelStartRoutine());
     }
 
-    private void FindPlayer()
-    {
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) playerTransform = p.transform;
-    }
+    private void FindPlayer() { GameObject p = GameObject.FindGameObjectWithTag("Player"); if (p != null) playerTransform = p.transform; }
 
     private IEnumerator LevelStartRoutine()
     {
@@ -92,7 +75,6 @@ public class Level1_QuestManager : MonoBehaviour
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
             yield return null;
-
             while (introDirector.state == PlayState.Playing) yield return null;
 
             CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
@@ -108,24 +90,15 @@ public class Level1_QuestManager : MonoBehaviour
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
             SetCinematicMode(false);
-
             var brain = Camera.main.GetComponent<CinemachineBrain>();
             if (brain != null) brain.enabled = false;
 
             UpdateObjectiveUI();
         }
-        else
-        {
-            UpdateObjectiveUI();
-        }
+        else UpdateObjectiveUI();
     }
 
-    public void StartIntroDialogue()
-    {
-        if (isDialogueStarted) return;
-        isDialogueStarted = true;
-        StartCoroutine(IntroDialogueRoutine());
-    }
+    public void StartIntroDialogue() { if (isDialogueStarted) return; isDialogueStarted = true; StartCoroutine(IntroDialogueRoutine()); }
 
     private void SetCinematicMode(bool isCinematic)
     {
@@ -174,13 +147,16 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void Update()
     {
+        // --- ÄÅÁÀÃ: ÏÐÎÏÓÑÊ Ð²ÂÍß ---
+        if (Input.GetKeyDown(KeyCode.F8))
+        {
+            DebugSkipToEscape();
+        }
+
         if (ResourceManager.Instance != null)
         {
             int maxWoodAllowed = startingWood + 20;
-
-            if (ResourceManager.Instance.runWood > maxWoodAllowed)
-                ResourceManager.Instance.runWood = maxWoodAllowed;
-
+            if (ResourceManager.Instance.runWood > maxWoodAllowed) ResourceManager.Instance.runWood = maxWoodAllowed;
             if (ResourceManager.Instance.runStone > 0) ResourceManager.Instance.runStone = 0;
             if (ResourceManager.Instance.runFood > 0) ResourceManager.Instance.runFood = 0;
         }
@@ -191,6 +167,52 @@ public class Level1_QuestManager : MonoBehaviour
             objectiveUI.UpdateProgress(gatheredWood, requiredWood);
             if (gatheredWood >= requiredWood && !isAmbushTriggered) AdvanceQuest();
         }
+    }
+
+    // ÍÎÂÈÉ ÌÅÒÎÄ ÄÅÁÀÃÓ
+    private void DebugSkipToEscape()
+    {
+        StopAllCoroutines(); // Çóïèíÿºìî âñ³ òåêñòè ³ êàò-ñöåíè
+        if (introDirector != null) introDirector.Stop();
+
+        var brain = Camera.main.GetComponent<CinemachineBrain>();
+        if (brain != null) brain.enabled = false;
+        SetCinematicMode(false);
+
+        if (playerTransform != null)
+        {
+            PlayerController pController = playerTransform.GetComponent<PlayerController>();
+            if (pController != null) pController.isControlBlocked = false;
+        }
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+
+        // Õîâàºìî âîðîã³â
+        if (skeletonsWave1 != null) skeletonsWave1.SetActive(false);
+        if (skeletonsHordeWave2 != null) skeletonsHordeWave2.SetActive(false);
+
+        // Âìèêàºìî êîíÿ
+        if (evacuationHorse != null)
+        {
+            evacuationHorse.SetActive(true);
+
+            // Òåëåïîðòóºìî ãðàâöÿ äî êîíÿ
+            if (playerTransform != null)
+            {
+                CharacterController cc = playerTransform.GetComponent<CharacterController>();
+                if (cc != null) cc.enabled = false;
+
+                Vector3 newPos = evacuationHorse.transform.position + evacuationHorse.transform.right * 3f;
+                newPos = GetTerrainPos(newPos);
+                playerTransform.position = newPos;
+
+                if (cc != null) cc.enabled = true;
+            }
+        }
+
+        currentQuestStep = 3;
+        UpdateObjectiveUI();
+        if (subtitleText != null) subtitleText.text = "<color=#FFFF00>[DEBUG] Skipped to Escape Phase</color>";
     }
 
     private Vector3 GetTerrainPos(Vector3 pos)
@@ -209,19 +231,20 @@ public class Level1_QuestManager : MonoBehaviour
 
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
         if (pController != null) pController.isControlBlocked = true;
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         Vector3 spawnPos = playerTransform.position - (playerTransform.forward * spawnDistanceBehind);
         spawnPos = GetTerrainPos(spawnPos);
 
-        skeletonsWave1.transform.position = spawnPos;
-        skeletonsWave1.transform.LookAt(playerTransform);
-        skeletonsWave1.SetActive(true);
-
-        foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
+        foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>(true))
         {
             if (ai != null) ai.isCinematicFrozen = true;
         }
+
+        skeletonsWave1.transform.position = spawnPos;
+        skeletonsWave1.transform.LookAt(playerTransform);
+        skeletonsWave1.SetActive(true);
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
 
@@ -232,10 +255,11 @@ public class Level1_QuestManager : MonoBehaviour
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
         {
-            if (ai != null) ai.isCinematicFrozen = false;
+            if (ai != null) ai.ForceStop();
         }
 
         if (pController != null) pController.isControlBlocked = false;
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
@@ -255,6 +279,7 @@ public class Level1_QuestManager : MonoBehaviour
     {
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
         if (pController != null) pController.isControlBlocked = true;
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
@@ -262,11 +287,7 @@ public class Level1_QuestManager : MonoBehaviour
         Vector3 hordePos = playerTransform.position + (playerTransform.right * spawnDistanceBehind);
         hordePos = GetTerrainPos(hordePos);
 
-        skeletonsHordeWave2.transform.position = hordePos;
-        skeletonsHordeWave2.transform.LookAt(playerTransform);
-        skeletonsHordeWave2.SetActive(true);
-
-        foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>())
+        foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
         {
             if (ai != null)
             {
@@ -274,6 +295,10 @@ public class Level1_QuestManager : MonoBehaviour
                 ai.isCinematicFrozen = true;
             }
         }
+
+        skeletonsHordeWave2.transform.position = hordePos;
+        skeletonsHordeWave2.transform.LookAt(playerTransform);
+        skeletonsHordeWave2.SetActive(true);
 
         TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
@@ -289,10 +314,11 @@ public class Level1_QuestManager : MonoBehaviour
 
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>())
         {
-            if (ai != null) ai.isCinematicFrozen = false;
+            if (ai != null) ai.ForceStop();
         }
 
         if (pController != null) pController.isControlBlocked = false;
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         StartCoroutine(ShowTutorialHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!", 6f));
@@ -321,7 +347,15 @@ public class Level1_QuestManager : MonoBehaviour
 
             Vector3 m1 = Vector3.Lerp(startPos, midPos, t);
             Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
-            mainCam.transform.position = Vector3.Lerp(m1, m2, t);
+            Vector3 camPos = Vector3.Lerp(m1, m2, t);
+
+            if (Terrain.activeTerrain != null)
+            {
+                float minHeight = Terrain.activeTerrain.SampleHeight(camPos) + Terrain.activeTerrain.transform.position.y + 1.5f;
+                if (camPos.y < minHeight) camPos.y = minHeight;
+            }
+
+            mainCam.transform.position = camPos;
 
             Vector3 lookDir = targetPosition - mainCam.transform.position;
             if (lookDir != Vector3.zero)
@@ -378,8 +412,6 @@ public class Level1_QuestManager : MonoBehaviour
         enemy.position = finalPos;
     }
 
-    // --- Â²ÄÍÎÂËÅÍ² ÌÅÒÎÄÈ ---
-
     private IEnumerator ShowSubtitleTypewriter(string text, float duration)
     {
         if (subtitleText != null)
@@ -410,8 +442,6 @@ public class Level1_QuestManager : MonoBehaviour
         }
     }
 
-    // -------------------------
-
     private void UpdateObjectiveUI()
     {
         if (objectiveUI == null) return;
@@ -438,7 +468,6 @@ public class Level1_QuestManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(2.5f);
-
         if (subtitleText != null) subtitleText.text = "";
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");

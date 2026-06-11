@@ -4,6 +4,11 @@ using System.Collections;
 
 public class EnemyAI : MonoBehaviour, IDamageable
 {
+    [Header("Archetype & Poise")]
+    public bool isElite = false;
+    public float maxPoise = 100f;
+    private float currentPoise;
+
     [Header("Base Enemy Stats (Level 1)")]
     public float maxHealth = 20f;
     public float moveSpeed = 4f;
@@ -23,6 +28,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public float attackRange = 1.6f;
     public float attackCooldown = 1.5f;
     public float attackTelegraphTime = 0.5f;
+    public GameObject weaponGlintVFX;
 
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
@@ -61,7 +67,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private MeshRenderer[] meshRenderers;
     private Color[] originalColors;
-    private IDamageable playerTarget;
+    private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
 
@@ -132,13 +138,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         baseActualMoveSpeed = actualMoveSpeed;
         baseDamage = damage;
         currentHealth = maxHealth;
+        currentPoise = maxPoise;
         UpdateHealthUI();
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
         {
             target = playerObj.transform;
-            playerTarget = playerObj.GetComponent<IDamageable>();
+            playerTarget = playerObj.GetComponent<PlayerController>();
         }
 
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
@@ -156,22 +163,33 @@ public class EnemyAI : MonoBehaviour, IDamageable
             finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
         }
 
-        Vector3 startPos = finalPos - Vector3.up * 2.5f;
-        transform.position = startPos;
-
-        if (spawnVFXPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
-
-        float elapsed = 0f;
-        while (elapsed < spawnDuration)
+        // ФІКС: Якщо керує квест-менеджер, ми не чіпаємо координати
+        if (!isCinematicFrozen)
         {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Sin((elapsed / spawnDuration) * Mathf.PI * 0.5f);
-            transform.position = Vector3.Lerp(startPos, finalPos, t);
-            yield return null;
+            Vector3 startPos = finalPos - Vector3.up * 2.5f;
+            transform.position = startPos;
+
+            if (spawnVFXPrefab != null && ObjectPoolManager.Instance != null)
+                ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
+
+            float elapsed = 0f;
+            while (elapsed < spawnDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Sin((elapsed / spawnDuration) * Mathf.PI * 0.5f);
+                transform.position = Vector3.Lerp(startPos, finalPos, t);
+                yield return null;
+            }
+            transform.position = finalPos; // Тільки тут фіксуємо координати
+        }
+        else
+        {
+            yield return new WaitForSecondsRealtime(spawnDuration);
         }
 
-        transform.position = finalPos;
         isSpawning = false;
+
+        if (animator != null) animator.SetBool("isMoving", false);
     }
 
     private void UpdateHealthUI()
@@ -181,9 +199,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void Update()
     {
-        if (isDead || target == null) return;
+        if (target == null && !isDead)
+        {
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+            {
+                target = playerObj.transform;
+                playerTarget = playerObj.GetComponent<PlayerController>();
+            }
+            if (target == null) return;
+        }
 
+        if (isDead) return;
         CheckNightBuff();
+
+        if (currentPoise < maxPoise && stunTimer <= 0) currentPoise += Time.deltaTime * 15f;
 
         if (hpCanvas != null && mainCamTransform != null && hpCanvas.gameObject.activeSelf)
         {
@@ -213,8 +243,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         Vector3 currentPos = transform.position;
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
-
         Vector3 repulsion = Vector3.zero;
+
         Collider[] neighbors = Physics.OverlapSphere(currentPos, repulsionRadius, 1 << 9);
         foreach (Collider neighbor in neighbors)
         {
@@ -229,16 +259,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        float sway = Mathf.PerlinNoise(Time.time * 0.5f, randomOffset) * 2f - 1f;
-        Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
-        Vector3 swayDirection = rightDir * (sway * 0.5f);
-
-        Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce + swayDirection).normalized;
-        finalDirection.y = 0f;
-
         float distanceToPlayer = Vector3.Distance(transform.position, target.position);
 
-        if (distanceToPlayer <= attackRange)
+        if (distanceToPlayer <= attackRange * 1.5f)
         {
             if (directionToPlayer != Vector3.zero)
             {
@@ -246,17 +269,34 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), 15f * Time.deltaTime);
             }
 
-            if (Time.time >= lastAttackTime + attackCooldown && !isPreparingAttack)
+            bool isAttackReady = Time.time >= lastAttackTime + attackCooldown;
+
+            if (isAttackReady && distanceToPlayer <= attackRange)
             {
                 if (animator != null) animator.SetBool("isMoving", false);
                 StartCoroutine(AttackRoutine());
             }
-            else if (!isPreparingAttack)
+            else if (isAttackReady && distanceToPlayer > attackRange)
             {
                 if (animator != null) animator.SetBool("isMoving", true);
 
-                Vector3 strafeVector = (transform.right * strafeDir) + (repulsion * repulsionForce * 0.5f);
-                Vector3 nextPos = currentPos + strafeVector.normalized * (actualMoveSpeed * 0.5f) * Time.deltaTime;
+                Vector3 moveDir = (directionToPlayer + repulsion).normalized;
+                Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
+
+                if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                transform.position = nextPos;
+            }
+            else
+            {
+                if (animator != null) animator.SetBool("isMoving", true);
+
+                Vector3 flankDir = Vector3.Cross(Vector3.up, directionToPlayer) * strafeDir;
+
+                if (distanceToPlayer > attackRange * 0.9f) flankDir += directionToPlayer * 0.4f;
+                else if (distanceToPlayer < attackRange * 0.6f) flankDir -= directionToPlayer * 0.5f;
+
+                Vector3 moveDir = (flankDir + repulsion).normalized;
+                Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.7f) * Time.deltaTime;
 
                 if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
                 transform.position = nextPos;
@@ -264,6 +304,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
         else
         {
+            float sway = Mathf.PerlinNoise(Time.time * 0.5f, randomOffset) * 2f - 1f;
+            Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
+            Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce + (rightDir * sway * 0.5f)).normalized;
+            finalDirection.y = 0f;
+
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
             if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
             transform.position = nextPos;
@@ -291,7 +336,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", false);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        SetColor(isEnraged ? Color.black : Color.red);
+        if (isElite && playerTarget != null)
+        {
+            playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime + 0.6f);
+
+            if (weaponGlintVFX != null && ObjectPoolManager.Instance != null)
+                ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+
+            if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform);
+        }
+
+        SetColor(isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : Color.red));
         yield return new WaitForSeconds(attackTelegraphTime);
         ResetColor();
 
@@ -313,7 +368,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
     }
 
-    // --- ФІКС СМЕРТІ ТА ВІДКИДАННЯ ---
     public void TakeDamage(DamageInfo info)
     {
         if (isDead || isInvincible) return;
@@ -328,28 +382,31 @@ public class EnemyAI : MonoBehaviour, IDamageable
         StartCoroutine(HitFlashRoutine());
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
-        if (damagePopupPrefab != null && showPopups)
+        if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)
         {
             GameObject popup = ObjectPoolManager.Instance.SpawnFromPool(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
             popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical);
         }
 
-        // Правильне розділення логіки:
         if (currentHealth <= 0)
         {
-            // Якщо помер - просто помираємо, ніякого Hit чи Knockback
             Die();
         }
         else
         {
-            // Якщо вижив - отримуємо відкидання та відтворюємо анімацію Hit
-            if (!isEnraged && !isSpawning && info.KnockbackForce > 0)
+            currentPoise -= info.KnockbackForce * 10f;
+
+            if (!isEnraged && !isSpawning)
             {
-                knockbackVelocity = info.PushDirection * info.KnockbackForce;
-                stunTimer = info.StunDuration;
-                isPreparingAttack = false;
-                ResetColor();
-                if (animator != null) animator.SetTrigger("Hit");
+                if (!isElite || currentPoise <= 0 || info.IsCritical)
+                {
+                    knockbackVelocity = info.PushDirection * info.KnockbackForce;
+                    stunTimer = info.StunDuration;
+                    isPreparingAttack = false;
+                    currentPoise = maxPoise;
+                    ResetColor();
+                    if (animator != null) animator.SetTrigger("Hit");
+                }
             }
         }
     }
@@ -381,6 +438,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (meshRenderers[i] != null && meshRenderers[i].material != null) meshRenderers[i].material.color = originalColors[i];
     }
 
+    public void ForceStop()
+    {
+        isCinematicFrozen = false;
+        isSpawning = false;
+        if (animator != null)
+        {
+            animator.SetBool("isMoving", false);
+            animator.Play("Idle", 0, 0f);
+        }
+    }
+
     private void Die()
     {
         if (isDead) return;
@@ -390,13 +458,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
-        if (deathVFXPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (deathVFXPrefab != null && ObjectPoolManager.Instance != null)
+            ObjectPoolManager.Instance.SpawnFromPool(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        if (xpCrystalPrefab != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
-        if (diamondPrefab != null && Random.value <= diamondDropChance) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (xpCrystalPrefab != null && ObjectPoolManager.Instance != null)
+            ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+
+        if (diamondPrefab != null && Random.value <= diamondDropChance && ObjectPoolManager.Instance != null)
+            ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();
