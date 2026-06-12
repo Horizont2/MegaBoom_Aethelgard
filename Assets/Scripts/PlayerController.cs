@@ -468,12 +468,16 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                     if (Input.GetMouseButtonDown(1))
                     {
-                        if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
+                        // --- ФІКС: Забороняємо прицілюватись гранатою на сцені туторіалу ---
+                        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                         {
-                            isAimingGrenade = true;
-                            if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
-                            if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
-                            if (innerMarkerLine != null) innerMarkerLine.enabled = true;
+                            if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
+                            {
+                                isAimingGrenade = true;
+                                if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
+                                if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
+                                if (innerMarkerLine != null) innerMarkerLine.enabled = true;
+                            }
                         }
                     }
                 }
@@ -776,7 +780,6 @@ public class PlayerController : MonoBehaviour, IDamageable
                 damageable.TakeDamage(hitInfo);
                 if (col.CompareTag("Enemy")) hitEnemy = true; else hitResource = true;
 
-                // ФІКС: Безпечний спавн ефектів
                 if (hitVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
                     Quaternion hitRot = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;

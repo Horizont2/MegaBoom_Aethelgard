@@ -9,14 +9,14 @@ public class WorldGenerator : MonoBehaviour
     public static float CurrentProgress = 0f;
 
     [Header("Mountain & Arena Settings")]
-    public float depth = 40f;
+    public float depth = 50f; // ААА Глибина
     public float scale = 2.5f;
-    [Range(1, 6)] public int octaves = 4;
+    [Range(1, 6)] public int octaves = 5;
     public float persistence = 0.45f;
     public float lacunarity = 2.5f;
-    [Range(1f, 5f)] public float peakSharpness = 2.5f;
-    public int terraceCount = 24;
-    public float edgeMountainMultiplier = 2f;
+    [Range(1f, 5f)] public float peakSharpness = 3.0f;
+    public int terraceCount = 0; // За замовчуванням 0
+    public float edgeMountainMultiplier = 3f;
 
     private float offsetX;
     private float offsetZ;
@@ -164,6 +164,38 @@ public class WorldGenerator : MonoBehaviour
 
         CurrentProgress = 1f;
         IsGenerationDone = true;
+    }
+
+    // --- ФІКС: Синхронізація Мапи з новою ААА-генерацією ---
+    private void AdjustSettingsForBiome()
+    {
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        if (isRegionMission)
+        {
+            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
+
+            // Всі регіони тепер використовують Ridged Noise без потворних сходинок
+            terraceCount = 0;
+
+            if (biomeType == 1)
+            {
+                // Пустеля: масивні, але трохи менш гострі скелі
+                peakSharpness = 2.2f;
+                edgeMountainMultiplier = 3.0f;
+            }
+            else if (biomeType == 2)
+            {
+                // Сніг: жорсткі Альпійські хребти
+                peakSharpness = 3.5f;
+                edgeMountainMultiplier = 3.5f;
+            }
+            else
+            {
+                // Ліс: збалансовані гори
+                peakSharpness = 3.0f;
+                edgeMountainMultiplier = 3.0f;
+            }
+        }
     }
 
     private IEnumerator GenerateHeightsRoutine(TerrainData terrainData)
@@ -461,18 +493,6 @@ public class WorldGenerator : MonoBehaviour
             SpawnSingleBorderMountain(new Vector3(-borderOffset, 0, z), borderContainer, w, l);
             SpawnSingleBorderMountain(new Vector3(w + borderOffset, 0, z), borderContainer, w, l);
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
-        }
-    }
-
-    private void AdjustSettingsForBiome()
-    {
-        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
-        if (isRegionMission)
-        {
-            int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
-            if (biomeType == 1) { peakSharpness = 1.8f; edgeMountainMultiplier = 1.5f; terraceCount = 0; }
-            else if (biomeType == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; terraceCount = 15; }
-            else { peakSharpness = 2.5f; edgeMountainMultiplier = 2f; terraceCount = 24; }
         }
     }
 
