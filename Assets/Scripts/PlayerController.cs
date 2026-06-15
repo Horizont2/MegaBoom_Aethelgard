@@ -430,22 +430,44 @@ public class PlayerController : MonoBehaviour, IDamageable
         else currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * dt);
 
         float safeDeltaTime = Mathf.Min(dt, 0.05f);
-        if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
-        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+
+        // --- ФІКС 1: Coyote Time (Прощаючий чек землі перед рухом) ---
+        bool isGroundedForgiving = characterController.isGrounded;
+        if (!isGroundedForgiving && velocity.y <= 0f)
+        {
+            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.6f))
+            {
+                isGroundedForgiving = true;
+            }
+        }
+
+        if (isGroundedForgiving && velocity.y < 0) velocity.y = -2f;
+        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && isGroundedForgiving) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         velocity.y += gravity * safeDeltaTime;
 
         if (characterController.enabled) characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
 
+        // --- ФІКС 2: Візуальний чек землі для ідеальної анімації ---
+        bool isVisuallyGrounded = characterController.isGrounded;
+        if (!isVisuallyGrounded && velocity.y <= 0f)
+        {
+            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.6f))
+            {
+                isVisuallyGrounded = true;
+            }
+        }
+
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
-            anim.SetBool("IsGrounded", characterController.isGrounded);
+            // Передаємо Аніматору згладжений результат замість жорсткого фізичного
+            anim.SetBool("IsGrounded", isVisuallyGrounded);
 
             Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
 
-            if (characterController.isGrounded && !isCurrentlyLocked)
+            if (isGroundedForgiving && !isCurrentlyLocked)
             {
                 if (!isCampMode)
                 {
@@ -468,7 +490,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                     if (Input.GetMouseButtonDown(1))
                     {
-                        // --- ФІКС: Забороняємо прицілюватись гранатою на сцені туторіалу ---
                         if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                         {
                             if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
@@ -489,7 +510,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (isAimingGrenade)
                 {
                     CancelGrenadeAim();
-                    if (characterController.isGrounded) LockAction("Throw", 0.4f);
+                    if (isGroundedForgiving) LockAction("Throw", 0.4f);
                     else ExecuteThrow();
                 }
             }
