@@ -7,9 +7,8 @@ public enum WeatherState { Clear, Precipitation, Storm }
 public class DayNightCycle : MonoBehaviour
 {
     [Header("Time Settings")]
-    [Tooltip("Тривалість однієї ігрової доби в реальних секундах (напр. 300 = 5 хвилин)")]
     public float dayDurationInSeconds = 300f;
-    [Range(0f, 24f)] public float timeOfDay = 12f; // За замовчуванням ставимо день (12:00)
+    [Range(0f, 24f)] public float timeOfDay = 12f;
 
     [Header("Light Sources")]
     public Light sunLight;
@@ -22,7 +21,6 @@ public class DayNightCycle : MonoBehaviour
     public Gradient fogColorStorm;
 
     [Header("Intensity Curves")]
-    [Tooltip("Графік сили сонця: має бути горбиком (0 вночі, 1.5 вдень)")]
     public AnimationCurve sunIntensity;
     public AnimationCurve moonIntensity;
 
@@ -35,18 +33,6 @@ public class DayNightCycle : MonoBehaviour
     public float fogStartDistance = 50f;
     public float fogEndDistance = 800f;
 
-    [Header("Standard Wind System")]
-    public WindZone windZone;
-    public float clearWindMain = 0.2f;
-    public float stormWindMain = 1.5f;
-    public float clearWindTurbulence = 0.1f;
-    public float stormWindTurbulence = 1.2f;
-    public float windRotationSpeed = 2f;
-
-    private float weatherBlend = 0f;
-    private float weatherTimer = 0f;
-    private int currentBiome = 0;
-
     [Header("VFX & Particles")]
     public ParticleSystem starsParticles;
     public GameObject firefliesVFX;
@@ -54,11 +40,19 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem snowVFX;
     public ParticleSystem dustVFX;
 
+    [Header("AAA Storm Effects")]
+    [Tooltip("Префаб блискавки з паку магічних ефектів")]
+    public GameObject lightningVFXPrefab;
+    [Tooltip("Як близько до гравця може вдарити блискавка")]
+    public float lightningSpawnRadius = 60f;
+
+    private float weatherBlend = 0f;
+    private float weatherTimer = 0f;
+    private int currentBiome = 0;
     private Coroutine lightningCoroutine;
 
     private void Start()
     {
-        // Запобіжник: якщо забули призначити сонце, шукаємо його самі
         if (sunLight == null)
         {
             GameObject dirLightObj = GameObject.Find("Directional Light");
@@ -73,13 +67,10 @@ public class DayNightCycle : MonoBehaviour
             timeOfDay = PlayerPrefs.GetFloat("SavedTimeOfDay") * 24f;
         }
 
-        // --- ФІКС ТУМАНУ ТА ОСВІТЛЕННЯ (ААА Візуал) ---
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogStartDistance = fogStartDistance;
         RenderSettings.fogEndDistance = fogEndDistance;
-
-        // ПРИМУСОВО вмикаємо градієнтне освітлення (Trilight), щоб не було "чорної хмари"
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
         if (lightningLight != null) lightningLight.intensity = 0f;
@@ -126,7 +117,6 @@ public class DayNightCycle : MonoBehaviour
         Color stormFog = fogColorStorm.Evaluate(timePercent);
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
-        // --- ДИНАМІЧНІ ТІНІ ---
         float dayMultiplier = Mathf.Clamp01(Mathf.Sin(timePercent * Mathf.PI * 2f));
 
         Color skyColorDay = new Color(0.88f, 0.68f, 0.81f);
@@ -151,7 +141,6 @@ public class DayNightCycle : MonoBehaviour
     private void UpdateVFXPositions()
     {
         if (Camera.main == null) return;
-
         Vector3 camPos = Camera.main.transform.position;
 
         if (starsParticles != null)
@@ -245,25 +234,81 @@ public class DayNightCycle : MonoBehaviour
         }
     }
 
+    // --- ОНОВЛЕНИЙ ААА МЕТОД ГРОЗИ ---
     private IEnumerator LightningRoutine()
     {
         while (currentWeather == WeatherState.Storm)
         {
+            // Випадкова пауза між ударами
             yield return new WaitForSeconds(Random.Range(5f, 15f));
 
+            // 1. Блимаємо небом (глобальне світло)
             if (lightningLight != null)
             {
                 lightningLight.intensity = Random.Range(3f, 6f);
                 yield return new WaitForSeconds(0.05f);
                 lightningLight.intensity = 0f;
                 yield return new WaitForSeconds(0.1f);
-
                 lightningLight.intensity = Random.Range(1f, 3f);
                 yield return new WaitForSeconds(0.05f);
                 lightningLight.intensity = 0f;
             }
+
+            // 2. Спавнимо фізичну блискавку
+            if (lightningVFXPrefab != null && Camera.main != null)
+            {
+                // Шукаємо випадкову точку навколо камери
+                Vector2 randomCircle = Random.insideUnitCircle * lightningSpawnRadius;
+                Vector3 spawnPos = Camera.main.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+
+                // --- ААА РАНДОМІЗАТОР БЛИСКАВКИ ---
+                bool strikeGround = Random.value > 0.4f; // 60% шанс вдарити в землю
+                Quaternion spawnRot = Quaternion.identity;
+
+                if (strikeGround)
+                {
+                    // Удар точно в рельєф
+                    if (Terrain.activeTerrain != null)
+                    {
+                        spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
+                    }
+                }
+                else
+                {
+                    // Блискавка між хмарами (високо в небі)
+                    spawnPos.y = Camera.main.transform.position.y + Random.Range(80f, 150f);
+
+                    // Сильно нахиляємо її по осях X та Z, щоб вона йшла горизонтально/під кутом через небо
+                    spawnRot = Quaternion.Euler(Random.Range(-70f, 70f), Random.Range(0f, 360f), Random.Range(-70f, 70f));
+                }
+
+                GameObject lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
+
+                // Якщо блискавка в небі, робимо її масивнішою, щоб вона розтягнулася на пів екрану
+                if (!strikeGround)
+                {
+                    lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+                }
+
+                Destroy(lightning, 2f);
+
+                // 3. Відкладений звук грому
+                if (AudioManager.Instance != null)
+                {
+                    // Чим далі блискавка (навіть якщо вона високо в небі), тим довше йде звук
+                    float dist = Vector3.Distance(Camera.main.transform.position, spawnPos);
+                    StartCoroutine(PlayThunderSoundDelayed(dist / 30f));
+                }
+            }
         }
         lightningCoroutine = null;
+    }
+
+    private IEnumerator PlayThunderSoundDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        // Тут треба викликати звук грому (додай свій AudioID, якщо є)
+        // AudioManager.Instance.PlaySFX(AudioID.Thunder); 
     }
 
     private void OnDestroy()

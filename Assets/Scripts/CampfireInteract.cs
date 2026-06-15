@@ -10,56 +10,55 @@ public class CampfireInteract : MonoBehaviour
     public ParticleSystem healEffect;
 
     private PlayerController player;
+    private bool isHealing = false;
 
     private void Start()
     {
-        // Ѕагатт€ знаходить гравц€ 1 раз при старт≥ гри (н≥€ких тригер≥в)
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-        if (playerObj != null)
-        {
-            player = playerObj.GetComponent<PlayerController>();
-        }
+        if (playerObj != null) player = playerObj.GetComponent<PlayerController>();
 
         if (healEffect != null) healEffect.Stop();
     }
 
     private void Update()
     {
-        // якщо гравц€ немаЇ - н≥чого не робимо
         if (player == null) return;
 
-        // ћј“≈ћј“» ј: ћ≥р€Їмо точну в≥дстань в≥д багатт€ до гравц€
         float distance = Vector3.Distance(transform.position, player.transform.position);
 
-        // якщо гравець достатньо близько (рад≥ус)
-        if (distance <= healRadius)
+        // ’≥лимо т≥льки €кщо ми в рад≥ус≥ ≤ здоров'€ не повне
+        if (distance <= healRadius && player.currentHealth < player.maxHealth)
         {
-            // 1. Ћ≥куЇмо
             player.Heal(healPerSecond * Time.deltaTime);
 
-            // 2. ѕрив'€зуЇмо в≥зуальний ефект до гравц€
-            if (healEffect != null)
+            if (!isHealing)
             {
-                // ≈фект завжди летить п≥д ноги гравцю
-                healEffect.transform.position = player.transform.position + Vector3.up * 0.2f;
-
-                if (!healEffect.isPlaying)
+                isHealing = true;
+                if (healEffect != null)
                 {
+                    // јјј-‘≥кс: ∆орстко прив'€зуЇмо ефект до гравц€, щоб в≥н ≥деально ходив за ним
+                    healEffect.transform.SetParent(player.transform);
+                    healEffect.transform.localPosition = Vector3.up * 0.1f;
+                    healEffect.transform.localRotation = Quaternion.identity;
                     healEffect.Play();
                 }
             }
         }
         else
         {
-            // √равець в≥д≥йшов в≥д багатт€ - вимикаЇмо ефект
-            if (healEffect != null && healEffect.isPlaying)
+            if (isHealing)
             {
-                healEffect.Stop();
+                isHealing = false;
+                if (healEffect != null)
+                {
+                    healEffect.Stop();
+                    // ћ'€ко в≥дв'€зуЇмо ефект, щоб останн≥ ≥скри залишилис€ в пов≥тр≥, а не телепортувалис€
+                    healEffect.transform.SetParent(null);
+                }
             }
         }
     }
 
-    // ћалюЇмо зелену сферу в редактор≥ Unity, щоб ти м≥г налаштувати healRadius
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;

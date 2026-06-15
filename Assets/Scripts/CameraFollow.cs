@@ -12,8 +12,9 @@ public class CameraFollow : MonoBehaviour
     public LayerMask collisionLayers;
     public float smoothSpeed = 10f;
 
-    [Header("Juice & AAA Feel")]
-    public float positionSmoothTime = 0.08f; // Затримка камери (чим більше, тим "важча" камера)
+    [Header("Dark Fantasy Weight")]
+    public float positionSmoothTime = 0.08f;
+    public float speedLagMultiplier = 0.04f; // Наскільки сильно камера відстає при бігу
     private Vector3 currentTargetPos;
     private Vector3 targetPosVelocity;
 
@@ -48,7 +49,6 @@ public class CameraFollow : MonoBehaviour
     {
         if (isCinematicMode || Time.timeScale == 0f || target == null) return;
 
-        // МАГІЯ ААА-КАМЕРИ: Плавне слідування за позицією гравця (замість жорсткого)
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
@@ -57,8 +57,16 @@ public class CameraFollow : MonoBehaviour
 
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
 
-        // Використовуємо згладжену позицію замість target.position
-        Vector3 lookAtPos = currentTargetPos + targetOffset;
+        // --- ВАЖКА КАМЕРА: Динамічне відставання ---
+        Vector3 dynamicOffset = targetOffset;
+        if (targetPosVelocity.magnitude > 0.5f)
+        {
+            // Камера злегка тягнеться у протилежний від руху бік, підкреслюючи інерцію
+            dynamicOffset -= targetPosVelocity * speedLagMultiplier;
+            dynamicOffset.y = targetOffset.y; // Зберігаємо стабільну висоту
+        }
+
+        Vector3 lookAtPos = currentTargetPos + dynamicOffset;
         Vector3 direction = -(rotation * Vector3.forward);
         Vector3 desiredPosition = lookAtPos + direction * maxDistance;
 
@@ -73,6 +81,7 @@ public class CameraFollow : MonoBehaviour
 
         Vector3 finalPosition = lookAtPos + direction * currentDistance;
 
+        // Обробка тряски камери (Shake)
         if (shakeTimer > 0)
         {
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
@@ -106,8 +115,22 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
-    public void TriggerShake(float duration, float intensity) { /* Залишаємо як було */ }
-    public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity) { /* Залишаємо як було */ }
+    // --- ПОВНОЦІННА РЕАЛІЗАЦІЯ SHAKE ДЛЯ VFX ---
+    public void TriggerShake(float duration, float intensity)
+    {
+        shakeTimer = duration;
+        currentShakeIntensity = intensity;
+        directionalShakeForce = 0f;
+    }
+
+    public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity)
+    {
+        shakeTimer = duration;
+        shakeDirection = direction.normalized;
+        directionalShakeForce = force;
+        currentShakeIntensity = randomIntensity;
+    }
+
     public void StartShake() { TriggerShake(0.2f, 0.3f); }
     public void SyncRotation(float x, float y) { currentX = x; currentY = y; }
 }

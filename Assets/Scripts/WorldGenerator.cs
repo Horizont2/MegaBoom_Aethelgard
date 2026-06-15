@@ -9,13 +9,13 @@ public class WorldGenerator : MonoBehaviour
     public static float CurrentProgress = 0f;
 
     [Header("Mountain & Arena Settings")]
-    public float depth = 50f; // ААА Глибина
+    public float depth = 50f;
     public float scale = 2.5f;
     [Range(1, 6)] public int octaves = 5;
     public float persistence = 0.45f;
     public float lacunarity = 2.5f;
     [Range(1f, 5f)] public float peakSharpness = 3.0f;
-    public int terraceCount = 0; // За замовчуванням 0
+    public int terraceCount = 0;
     public float edgeMountainMultiplier = 3f;
 
     private float offsetX;
@@ -44,12 +44,13 @@ public class WorldGenerator : MonoBehaviour
     public Color desertRockColor = new Color(0.73f, 0.57f, 0.40f);
     public Color snowRockColor = new Color(0.65f, 0.72f, 0.79f);
 
+    // --- ФІКС: Збільшено ліміти для ААА-рослинності ---
     [Header("GENERATION BUDGETS (AAA Limits)")]
-    public int spawnAttempts = 40000;
-    public int maxTrees = 1500;
-    public int maxGrassObjects = 3000;
-    public int maxBushesAndMushroom = 1000;
-    public int maxRocks = 800;
+    public int spawnAttempts = 60000;
+    public int maxTrees = 3000;
+    public int maxGrassObjects = 15000; // Трави стало в 5 разів більше!
+    public int maxBushesAndMushroom = 2500;
+    public int maxRocks = 1200;
 
     [Header("Biome & Cluster Settings")]
     public float clusterScale = 12f;
@@ -166,32 +167,26 @@ public class WorldGenerator : MonoBehaviour
         IsGenerationDone = true;
     }
 
-    // --- ФІКС: Синхронізація Мапи з новою ААА-генерацією ---
     private void AdjustSettingsForBiome()
     {
         bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
         if (isRegionMission)
         {
             int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
-
-            // Всі регіони тепер використовують Ridged Noise без потворних сходинок
             terraceCount = 0;
 
             if (biomeType == 1)
             {
-                // Пустеля: масивні, але трохи менш гострі скелі
                 peakSharpness = 2.2f;
                 edgeMountainMultiplier = 3.0f;
             }
             else if (biomeType == 2)
             {
-                // Сніг: жорсткі Альпійські хребти
                 peakSharpness = 3.5f;
                 edgeMountainMultiplier = 3.5f;
             }
             else
             {
-                // Ліс: збалансовані гори
                 peakSharpness = 3.0f;
                 edgeMountainMultiplier = 3.0f;
             }
@@ -363,15 +358,16 @@ public class WorldGenerator : MonoBehaviour
                             currentTreeCount++;
                         }
                     }
-                    else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.30f)
+                    // --- ОНОВЛЕНО: Більш густі кластери трави ---
+                    else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.15f)
                     {
-                        currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 3, 8, 5f, true, slopeRotation, currentFoliageColor);
+                        currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 8, 16, 8f, true, slopeRotation, currentFoliageColor);
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)
                     {
                         float subRoll = Random.value;
                         GameObject naturePrefab = subRoll > 0.5f ? GetRandomPrefab(baseBushes) : (subRoll > 0.2f ? GetRandomPrefab(baseFlowers) : ((localTemp > 0.35f && localTemp < 0.65f) ? GetRandomPrefab(baseMushrooms) : GetRandomPrefab(baseBushes)));
-                        currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 1, 4, 3f, true, slopeRotation, currentFoliageColor);
+                        currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor);
                     }
                 }
                 else if (density < 0.3f)
@@ -402,9 +398,10 @@ public class WorldGenerator : MonoBehaviour
                         GameObject log = GetRandomPrefab(logPrefabs);
                         if (log != null) { Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0f, 360f), 0), logContainer); currentTreeCount++; }
                     }
-                    else if (currentGrassCount < maxGrassObjects && rand > 0.70f)
+                    // --- ОНОВЛЕНО: Трава поза густим лісом ---
+                    else if (currentGrassCount < maxGrassObjects && rand > 0.50f)
                     {
-                        currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 2, 5, 4f, true, slopeRotation, currentFoliageColor);
+                        currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 5, 10, 6f, true, slopeRotation, currentFoliageColor);
                     }
                 }
             }

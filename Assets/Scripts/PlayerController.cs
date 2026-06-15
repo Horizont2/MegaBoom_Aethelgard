@@ -68,11 +68,17 @@ public class PlayerController : MonoBehaviour, IDamageable
     private LineRenderer aoeMarkerLine;
     private LineRenderer innerMarkerLine;
 
-    [Header("Visual Effects (Juice)")]
+    [Header("Dark Fantasy VFX")]
+    [Tooltip("Пил з-під ніг (керується через Animation Events)")]
+    public ParticleSystem runDustParticles;
+    [Tooltip("Вибух пилу при падінні")]
+    public ParticleSystem hardLandingVFX;
+    [Tooltip("Швидкість падіння, при якій спрацьовує вибух пилу і шейк камери")]
+    public float hardLandingVelocityThreshold = -12f;
+    [Tooltip("Префаб іскор при влучанні")]
+    public GameObject hitSparkVFXPrefab;
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
-    public GameObject hitVFXPrefab;
-    public ParticleSystem footstepParticles;
 
     [Header("HUD UI References")]
     public Image hpFill;
@@ -121,6 +127,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Animator anim;
     private bool isDead = false;
 
+    private Transform visualModel;
+    private bool wasGroundedLastFrame = true;
+
     private void Awake()
     {
         gameObject.layer = 8;
@@ -128,7 +137,11 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         characterController = GetComponent<CharacterController>();
         anim = GetComponentInChildren<Animator>();
-        if (anim != null) anim.applyRootMotion = false;
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;
+            visualModel = anim.transform;
+        }
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
@@ -139,6 +152,21 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void Start()
     {
+        // --- БРОНЕБІЙНИЙ ФІКС ПИЛУ ---
+        // Жорстко вимикаємо автоматичний спавн пилу, щоб Інспектор не міг зламати гру.
+        if (runDustParticles != null)
+        {
+            var em = runDustParticles.emission;
+            em.rateOverTime = 0f;
+            em.rateOverDistance = 0f;
+            runDustParticles.Stop();
+        }
+        if (hardLandingVFX != null)
+        {
+            hardLandingVFX.Stop();
+        }
+        // -------------------------------
+
         isDead = false;
         ReconnectUI();
         SpawnEquippedWeapon();
@@ -154,6 +182,22 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         StartCoroutine(SpawnSafely());
     }
+
+    // ==========================================
+    // --- ААА ІВЕНТИ ДЛЯ АНІМАЦІЙ ---
+    // ==========================================
+    public void TriggerFootstepDust()
+    {
+        if (characterController == null || runDustParticles == null) return;
+
+        // Перевіряємо, чи персонаж реально рухається
+        Vector3 horizontalVel = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
+        if (characterController.isGrounded && horizontalVel.sqrMagnitude > 0.1f)
+        {
+            runDustParticles.Emit(1); // Випускаємо 1 хмарку пилу РІВНО під час кроку
+        }
+    }
+    // ==========================================
 
     private void InitAoEMarker()
     {
@@ -349,6 +393,37 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (innerMarkerLine != null) innerMarkerLine.enabled = false;
     }
 
+    private Transform GetClosestEnemyForFocus(float maxDist, float maxAngle)
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, maxDist);
+        Transform bestTarget = null;
+        float minDist = float.MaxValue;
+
+        Vector3 playerForward = transform.forward;
+        playerForward.y = 0;
+
+        foreach (var hit in hits)
+        {
+            if (hit.CompareTag("Enemy"))
+            {
+                Vector3 dir = hit.transform.position - transform.position;
+                dir.y = 0;
+                float dist = dir.magnitude;
+                float angle = Vector3.Angle(playerForward, dir.normalized);
+
+                if (dist < maxDist && angle < maxAngle)
+                {
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        bestTarget = hit.transform;
+                    }
+                }
+            }
+        }
+        return bestTarget;
+    }
+
     private void Update()
     {
         if (dashStaminaFill != null)
@@ -414,16 +489,30 @@ public class PlayerController : MonoBehaviour, IDamageable
         camForward.Normalize(); camRight.Normalize();
 
         Vector3 targetMoveDirection = Vector3.zero;
+
         if (inputDir.magnitude >= 0.1f)
         {
             targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
             Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.unscaledDeltaTime);
         }
+        else if (!isCurrentlyLocked && !isCampMode)
+        {
+            Transform idleFocusEnemy = GetClosestEnemyForFocus(4f, 60f);
+            if (idleFocusEnemy != null)
+            {
+                Vector3 dirToEnemy = (idleFocusEnemy.position - transform.position).normalized;
+                dirToEnemy.y = 0;
+                if (dirToEnemy.sqrMagnitude > 0.01f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(dirToEnemy);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, (rotationSpeed / 2f) * Time.unscaledDeltaTime);
+                }
+            }
+        }
 
         float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
-
         float dt = isBulletTime ? Time.unscaledDeltaTime : Time.deltaTime;
 
         if (inputDir.magnitude >= 0.1f) currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMoveDirection * actualSpeed, currentAccel * dt);
@@ -431,43 +520,74 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         float safeDeltaTime = Mathf.Min(dt, 0.05f);
 
-        // --- ФІКС 1: Coyote Time (Прощаючий чек землі перед рухом) ---
-        bool isGroundedForgiving = characterController.isGrounded;
-        if (!isGroundedForgiving && velocity.y <= 0f)
+        // --- ЛОГІКА СТРИБКА ---
+        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
-            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.6f))
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        // Зберігаємо швидкість падіння ДО застосування гравітації та переміщення
+        float yVelocityBeforeMove = velocity.y;
+        velocity.y += gravity * safeDeltaTime;
+
+        if (characterController.enabled)
+        {
+            characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
+        }
+
+        // --- ІДЕАЛЬНИЙ ФІЗИЧНИЙ ДЕТЕКТОР ПРИЗЕМЛЕННЯ (МИТТЄВИЙ) ---
+        bool isGroundedNow = characterController.isGrounded;
+
+        if (!wasGroundedLastFrame && isGroundedNow)
+        {
+            // Якщо ми впали зі значної висоти (наприклад, подолали поріг -12f)
+            if (yVelocityBeforeMove <= hardLandingVelocityThreshold)
             {
-                isGroundedForgiving = true;
+                if (hardLandingVFX != null) hardLandingVFX.Play();
+                if (cameraFollow != null) cameraFollow.TriggerShake(0.2f, 0.25f);
+            }
+            else if (yVelocityBeforeMove < -5f)
+            {
+                // Якщо це був звичайний стрибок, даємо невеличкий пил від ніг
+                if (runDustParticles != null) runDustParticles.Emit(2);
             }
         }
 
-        if (isGroundedForgiving && velocity.y < 0) velocity.y = -2f;
-        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && isGroundedForgiving) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        velocity.y += gravity * safeDeltaTime;
+        if (isGroundedNow && velocity.y < 0)
+        {
+            velocity.y = -2f;
+        }
+        wasGroundedLastFrame = isGroundedNow;
 
-        if (characterController.enabled) characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
+        // --- DARK FANTASY LEAN ---
+        if (visualModel != null && visualModel != transform && !isCampMode)
+        {
+            Vector3 localVel = transform.InverseTransformDirection(currentVelocityMove);
+            float leanX = (localVel.z / moveSpeed) * 8f;
+            float leanZ = -(localVel.x / moveSpeed) * 10f;
 
-        // --- ФІКС 2: Візуальний чек землі для ідеальної анімації ---
-        bool isVisuallyGrounded = characterController.isGrounded;
+            Quaternion targetLean = Quaternion.Euler(leanX, 0, leanZ);
+            visualModel.localRotation = Quaternion.Slerp(visualModel.localRotation, targetLean, Time.deltaTime * 18f);
+        }
+
+        // --- ВІЗУАЛЬНЕ ЗГЛАДЖУВАННЯ АНІМАЦІЇ ---
+        bool isVisuallyGrounded = isGroundedNow;
         if (!isVisuallyGrounded && velocity.y <= 0f)
         {
-            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.6f))
-            {
+            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.4f, LayerMask.GetMask("Default", "Terrain", "Ground")))
                 isVisuallyGrounded = true;
-            }
         }
 
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
-            // Передаємо Аніматору згладжений результат замість жорсткого фізичного
             anim.SetBool("IsGrounded", isVisuallyGrounded);
 
             Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
 
-            if (isGroundedForgiving && !isCurrentlyLocked)
+            if (isGroundedNow && !isCurrentlyLocked)
             {
                 if (!isCampMode)
                 {
@@ -476,7 +596,18 @@ public class PlayerController : MonoBehaviour, IDamageable
                         if (!isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.unscaledTime;
-                            if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
+
+                            Transform combatTarget = GetClosestEnemyForFocus(7f, 90f);
+                            if (combatTarget != null)
+                            {
+                                Vector3 attackDir = (combatTarget.position - transform.position).normalized;
+                                attackDir.y = 0;
+                                transform.rotation = Quaternion.LookRotation(attackDir);
+                            }
+                            else if (camForward.sqrMagnitude > 0.01f)
+                            {
+                                transform.rotation = Quaternion.LookRotation(camForward);
+                            }
 
                             int randAnim = Random.Range(0, 3);
                             if (randAnim == lastAttackIndex) randAnim = (randAnim + 1) % 3;
@@ -488,17 +619,14 @@ public class PlayerController : MonoBehaviour, IDamageable
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
 
-                    if (Input.GetMouseButtonDown(1))
+                    if (Input.GetMouseButtonDown(1) && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                     {
-                        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
+                        if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
                         {
-                            if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
-                            {
-                                isAimingGrenade = true;
-                                if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
-                                if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
-                                if (innerMarkerLine != null) innerMarkerLine.enabled = true;
-                            }
+                            isAimingGrenade = true;
+                            if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
+                            if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
+                            if (innerMarkerLine != null) innerMarkerLine.enabled = true;
                         }
                     }
                 }
@@ -510,7 +638,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (isAimingGrenade)
                 {
                     CancelGrenadeAim();
-                    if (isGroundedForgiving) LockAction("Throw", 0.4f);
+                    if (isGroundedNow) LockAction("Throw", 0.4f);
                     else ExecuteThrow();
                 }
             }
@@ -801,10 +929,10 @@ public class PlayerController : MonoBehaviour, IDamageable
                 damageable.TakeDamage(hitInfo);
                 if (col.CompareTag("Enemy")) hitEnemy = true; else hitResource = true;
 
-                if (hitVFXPrefab != null && ObjectPoolManager.Instance != null)
+                if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
                     Quaternion hitRot = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;
-                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitVFXPrefab, hitInfo.HitPoint, hitRot);
+                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitSparkVFXPrefab, hitInfo.HitPoint, hitRot);
                     if (vfx != null) vfx.transform.localScale = isNextAttackGuaranteedCrit ? Vector3.one * 3f : (isCriticalHit ? Vector3.one * 1.5f : Vector3.one);
                 }
             }
