@@ -81,10 +81,14 @@ public class CampBuilding : MonoBehaviour
     private float glimmerCheckTimer = 0f;
     private SmartSeasonManager seasonManager;
     private Coroutine productionCoroutine;
+    private Transform playerTransform;
 
     private void Start()
     {
         seasonManager = FindFirstObjectByType<SmartSeasonManager>();
+
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null) playerTransform = playerObj.transform;
 
         if (aaaPanel != null) aaaPanel.SetActive(false);
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
@@ -177,6 +181,20 @@ public class CampBuilding : MonoBehaviour
             glimmerCheckTimer = 0f;
             UpdateGlimmerState();
             if (isPanelOpen) UpdateUIData();
+        }
+
+        // --- ФІКС ЗАКРИТТЯ ПАНЕЛІ ---
+        // Якщо панель відкрита, жорстко перевіряємо дистанцію до гравця.
+        // Якщо гравець відійшов на 4 метри (навіть якщо OnTriggerExit не спрацював) - закриваємо.
+        if (isPanelOpen && playerTransform != null)
+        {
+            if (Vector3.Distance(transform.position, playerTransform.position) > 4f)
+            {
+                playerInRange = false;
+                ClosePanel();
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+                return;
+            }
         }
 
         if (!playerInRange) return;
@@ -312,7 +330,6 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
-    // --- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ МНОЖНИКА КУЗНІ ---
     private float GetForgeMultiplier(int level)
     {
         switch (level)
@@ -342,7 +359,6 @@ public class CampBuilding : MonoBehaviour
 
         string infoText = "";
 
-        // --- ФІКС: Змінюємо слово Production на Feature для будинку Еліаса ---
         string prodLabel = (buildingID == "ScoutsLodge") ? "Feature" : "Production";
 
         if (currentLevel == 0)
@@ -359,7 +375,6 @@ public class CampBuilding : MonoBehaviour
             if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO UPGRADE";
         }
 
-        // Блок для Кузні
         if (buildingName.ToUpper().Contains("FORGE"))
         {
             float currentMult = GetForgeMultiplier(currentLevel);
@@ -489,7 +504,6 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
-    // --- ВІДНОВЛЕНИЙ МЕТОД ---
     public bool IsVisualsFull()
     {
         if (resourceVisuals == null || resourceVisuals.Length == 0) return false;

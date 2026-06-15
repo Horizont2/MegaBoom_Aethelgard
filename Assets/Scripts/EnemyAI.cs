@@ -48,6 +48,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     [Header("Juice VFX")]
     public GameObject deathVFXPrefab;
+    public ParticleSystem dissolveAshVFX;
 
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
@@ -163,14 +164,22 @@ public class EnemyAI : MonoBehaviour, IDamageable
             finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
         }
 
-        // ‘≤ —: якщо керуЇ квест-менеджер, ми не ч≥паЇмо координати
         if (!isCinematicFrozen)
         {
             Vector3 startPos = finalPos - Vector3.up * 2.5f;
             transform.position = startPos;
 
-            if (spawnVFXPrefab != null && ObjectPoolManager.Instance != null)
-                ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, Quaternion.Euler(-90, 0, 0));
+            // --- ‘≤ — ≈‘≈ “” —ѕј¬Ќ” —”ѕ–ќ“»¬Ќ» ј ---
+            if (spawnVFXPrefab != null)
+            {
+                GameObject vfx = null;
+                if (ObjectPoolManager.Instance != null)
+                    vfx = ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, spawnVFXPrefab.transform.rotation);
+
+                // якщо пулу немаЇ, або префаб туди не додано - створюЇмо його жорстко!
+                if (vfx == null)
+                    Instantiate(spawnVFXPrefab, finalPos, spawnVFXPrefab.transform.rotation);
+            }
 
             float elapsed = 0f;
             while (elapsed < spawnDuration)
@@ -180,7 +189,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 transform.position = Vector3.Lerp(startPos, finalPos, t);
                 yield return null;
             }
-            transform.position = finalPos; // “≥льки тут ф≥ксуЇмо координати
+            transform.position = finalPos;
         }
         else
         {
@@ -211,6 +220,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         if (isDead) return;
+
+        // --- ‘≤ —: я ўќ √–ј¬≈÷№ ћ≈–“¬»…, ¬ќ–ќ√» «”ѕ»Ќяё“№—я ---
+        if (playerTarget != null && playerTarget.currentHealth <= 0)
+        {
+            if (animator != null) animator.SetBool("isMoving", false);
+            return;
+        }
+
         CheckNightBuff();
 
         if (currentPoise < maxPoise && stunTimer <= 0) currentPoise += Time.deltaTime * 15f;
@@ -361,7 +378,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     public void ExecuteAttackDamage()
     {
-        if (isDead || playerTarget == null) return;
+        if (isDead || playerTarget == null || playerTarget.currentHealth <= 0) return;
         if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f)
         {
             playerTarget.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward });
@@ -458,8 +475,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
-        if (deathVFXPrefab != null && ObjectPoolManager.Instance != null)
-            ObjectPoolManager.Instance.SpawnFromPool(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (deathVFXPrefab != null)
+        {
+            GameObject vfx = null;
+            if (ObjectPoolManager.Instance != null) vfx = ObjectPoolManager.Instance.SpawnFromPool(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+            if (vfx == null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        }
 
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
@@ -473,6 +494,34 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();
 
-        Destroy(gameObject, 2f);
+        StartCoroutine(DeathDissolveRoutine());
+    }
+
+    private IEnumerator DeathDissolveRoutine()
+    {
+        yield return new WaitForSeconds(1.5f);
+
+        if (dissolveAshVFX != null) dissolveAshVFX.Play();
+
+        float dissolveDuration = 1.5f;
+        float elapsed = 0f;
+        Vector3 startScale = transform.localScale;
+        Vector3 targetScale = new Vector3(startScale.x, 0.05f, startScale.z);
+        Vector3 startPos = transform.position;
+        Vector3 targetPos = startPos - new Vector3(0, 0.5f, 0);
+
+        while (elapsed < dissolveDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / dissolveDuration;
+
+            transform.localScale = Vector3.Lerp(startScale, targetScale, t);
+            transform.position = Vector3.Lerp(startPos, targetPos, t);
+            SetColor(Color.Lerp(originalColors[0], Color.black, t));
+
+            yield return null;
+        }
+
+        Destroy(gameObject);
     }
 }

@@ -66818,14 +66818,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 1126242359494067578}
   targetOffset: {x: 0, y: 1.5, z: 0}
-  maxDistance: 4
+  idleDistance: 4
+  runDistance: 4
+  combatDistance: 4.5
   minDistance: 1
+  distanceSmoothTime: 0.5
+  idleFOV: 60
+  runFOV: 70
+  combatFOV: 65
+  fovTransitionSpeed: 3
   collisionLayers:
     serializedVersion: 2
     m_Bits: 2049
-  smoothSpeed: 10
   positionSmoothTime: 0.08
-  speedLagMultiplier: 0.04
   mouseSensitivity: 2
   minYAngle: -30
   maxYAngle: 50
@@ -281503,6 +281508,10 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 8dda5232032021542ad468531820ff57, type: 2}
+    - target: {fileID: 3765782706965647456, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: environmentLayer.m_Bits
+      value: 32769
+      objectReference: {fileID: 0}
     - target: {fileID: 4521917599584407488, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
       propertyPath: shopDoorSpawnPoint
       value: 

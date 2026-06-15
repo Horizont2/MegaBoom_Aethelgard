@@ -426,6 +426,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        if (isDead) return;
+
         if (dashStaminaFill != null)
             dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
 
@@ -900,6 +902,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (meleePoint == null || isCampMode) return;
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
+        if (cameraFollow != null) cameraFollow.SetCombatState();
+
         Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
         bool hitEnemy = false; bool hitResource = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
@@ -972,6 +976,9 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamage(DamageInfo info)
     {
+        // --- ФІКС: Ігноруємо шкоду, якщо ми вже мертві ---
+        if (isDead || currentHealth <= 0) return;
+
         if (isCampMode || isDashing || isBulletTime) return;
 
         float finalDamage = info.Amount * (1f - damageReduction);
@@ -1031,21 +1038,40 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        // Ховаємо зброю, щоб вона не висіла в повітрі
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
-        string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        GameManager gm = FindFirstObjectByType<GameManager>();
+        // Жорстко блокуємо будь-який рух та фізику гравця
+        isControlBlocked = true;
+        if (characterController != null) characterController.enabled = false;
 
-        if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.TriggerGameOver();
-        else if (gm != null) gm.TriggerGameOver();
-        else if (GlobalHUD.Instance != null)
+        // Запускаємо анімацію смерті (гравець має впасти на землю)
+        if (anim != null)
         {
-            if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
-            else GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            anim.ResetTrigger("Hit");
+            anim.SetTrigger("Die");
         }
 
-        gameObject.SetActive(false);
+        // Викликаємо наш новий ААА-екран смерті
+        if (DeathCinematicManager.Instance != null)
+        {
+            DeathCinematicManager.Instance.TriggerDeathCinematic();
+        }
+        else
+        {
+            // Якщо забули додати менеджер на сцену, граємо по-старому (Fallback)
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            GameManager gm = FindFirstObjectByType<GameManager>();
+
+            if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.TriggerGameOver();
+            else if (gm != null) gm.TriggerGameOver();
+            else if (GlobalHUD.Instance != null)
+            {
+                if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
+                else GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            }
+        }
     }
 
     public void GainXP(float amount) { if (isCampMode) return; currentXP += amount; if (currentXP >= xpToNextLevel) LevelUp(); }
