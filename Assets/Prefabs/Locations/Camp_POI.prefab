@@ -330,7 +330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df3b1c2358d72e24a91b256b00568a78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CampfireInteract
-  healPerSecond: 0.3
+  healPerSecond: 1
   healRadius: 2.5
   healEffect: {fileID: 220558438331549659}
 --- !u!1001 &3009146781953319003

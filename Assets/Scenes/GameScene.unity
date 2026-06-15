@@ -1308,8 +1308,8 @@ MonoBehaviour:
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
   maxTrees: 1500
-  maxGrassObjects: 5000
-  maxBushesAndMushroom: 1000
+  maxGrassObjects: 6000
+  maxBushesAndMushroom: 1300
   maxRocks: 800
   clusterScale: 12
   forestThreshold: 0.48
@@ -1355,7 +1355,7 @@ MonoBehaviour:
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
-  maxPOIs: 80
+  maxPOIs: 70
   maxPOISteepness: 10
   poiClearanceRadius: 6
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
@@ -35175,7 +35175,7 @@ MonoBehaviour:
     m_Bits: 32768
   obstacleLayer:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 0
   minClearanceRadius: 1.5
   spawnsPerFrame: 10
 --- !u!4 &1410339861
