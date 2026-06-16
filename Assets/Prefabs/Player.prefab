@@ -12102,7 +12102,7 @@ MonoBehaviour:
   globalDamageMultiplier: 1
   globalCritChance: 0.05
   damageReduction: 0
-  stackRadius: 8
+  stackRadius: 12
   stackText: {fileID: 0}
   criticalDamagePerSec: 5
   currentStack: 0

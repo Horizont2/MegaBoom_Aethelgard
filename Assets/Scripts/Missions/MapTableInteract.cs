@@ -4,7 +4,7 @@ using System.Collections;
 public class MapTableInteract : MonoBehaviour
 {
     public static event System.Action OnMapFullyOpened;
-    public static bool IsMapActive = false; // НОВЕ: Надійний глобальний статус мапи
+    public static bool IsMapActive = false; // Надійний глобальний статус мапи
 
     [Header("Camera Flight Target")]
     public Transform mapCameraPosition;
@@ -45,11 +45,6 @@ public class MapTableInteract : MonoBehaviour
         if (player != null) playerController = player.GetComponent<PlayerController>();
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
-    }
-
-    private void OnDestroy()
-    {
-        IsMapActive = false; // Страховка при виході зі сцени
     }
 
     private void Update()
@@ -204,5 +199,15 @@ public class MapTableInteract : MonoBehaviour
         cg.alpha = targetAlpha;
 
         if (targetAlpha < 0.5f) { cg.blocksRaycasts = false; cg.interactable = false; }
+    }
+
+    private void OnDestroy()
+    {
+        IsMapActive = false;
+    }
+
+    private void OnDisable()
+    {
+        IsMapActive = false;
     }
 }

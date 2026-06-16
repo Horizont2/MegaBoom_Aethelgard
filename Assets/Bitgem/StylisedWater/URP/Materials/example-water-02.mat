@@ -71,7 +71,7 @@ Material:
     m_Ints: []
     m_Floats:
     - Vector1_17E53C12: 0.77
-    - Vector1_244B0600: 0.1
+    - Vector1_244B0600: 0.01
     - Vector1_34CF798A: 1.75
     - Vector1_36E8227: 0
     - Vector1_3D886DA1: 0.05
@@ -107,7 +107,7 @@ Material:
     - _Surface: 0
     - _WaveFrequency: 2.75
     - _WaveScale: 0.05
-    - _WaveSpeed: 0.1
+    - _WaveSpeed: 0.01
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:

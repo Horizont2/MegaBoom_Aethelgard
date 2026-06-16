@@ -1,4 +1,4 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
@@ -66,14 +66,32 @@ public class GlobalHUD : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); return; }
+            // Р‘РµР·РїРµС‡РЅР° РїРµСЂРµРІС–СЂРєР° SettingsUI
+            if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
+            {
+                SettingsUI.Instance.CloseSettings();
+                return;
+            }
 
+            // Р‘РµР·РїРµС‡РЅР° РїРµСЂРµРІС–СЂРєР° Р”РѕС€РєРё РћРіРѕР»РѕС€РµРЅСЊ
             NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
-            if (noticeBoard != null && noticeBoard.isBoardOpen) { noticeBoard.CloseBoard(); return; }
+            if (noticeBoard != null && noticeBoard.isBoardOpen)
+            {
+                noticeBoard.CloseBoard();
+                return;
+            }
 
+            // РЇРєС‰Рѕ РјР°РїР° РІС–РґРєСЂРёС‚Р° С‡РµСЂРµР· СЃС‚С–Р», HUD РїСЂРѕСЃС‚Рѕ С–РіРЅРѕСЂСѓС” ESC, 
+            // РґР°СЋС‡Рё СЃРєСЂРёРїС‚Сѓ РјР°РїРё РјРѕР¶Р»РёРІС–СЃС‚СЊ Р·Р°РєСЂРёС‚РёСЃСЏ СЃР°РјРѕСЃС‚С–Р№РЅРѕ.
             if (MapTableInteract.IsMapActive) return;
+
+            // РЇРєС‰Рѕ РјР°РїР° РІС–РґРєСЂРёС‚Р° С‡РµСЂРµР· С–РЅС‚РµСЂС„РµР№СЃ
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
-            if (mapPanel != null && mapPanel.IsPanelOpen()) return;
+            if (mapPanel != null && mapPanel.IsPanelOpen())
+            {
+                mapPanel.ClosePanel();
+                return;
+            }
 
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1")
@@ -214,7 +232,15 @@ public class GlobalHUD : MonoBehaviour
     public void TogglePause()
     {
         if (pausePanelGroup == null) return;
-        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel.activeInHierarchy) { SettingsUI.Instance.CloseSettings(); }
+
+        // Р“Р°СЂР°РЅС‚СѓС”РјРѕ, С‰Рѕ Canvas С‚РѕС‡РЅРѕ СѓРІС–РјРєРЅРµРЅРёР№
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas != null && !canvas.enabled) canvas.enabled = true;
+
+        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
+        {
+            SettingsUI.Instance.CloseSettings();
+        }
 
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
@@ -242,12 +268,9 @@ public class GlobalHUD : MonoBehaviour
 
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // Кнопка видима ЗАВЖДИ
         if (giveUpButtonGroup != null)
         {
             giveUpButtonGroup.gameObject.SetActive(true);
-
-            // Задаємо текст залежно від сцени
             if (giveUpText != null)
             {
                 giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
@@ -293,13 +316,11 @@ public class GlobalHUD : MonoBehaviour
         {
             isConfirmingGiveUp = true;
 
-            // Змінюємо текст підтвердження ПРЯМО НА ЦІЙ КНОПЦІ
             if (giveUpText != null)
             {
                 giveUpText.text = (currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?";
             }
 
-            // Затемнюємо інші кнопки
             foreach (var btn in pauseButtonGroups)
             {
                 if (btn != null && btn != giveUpButtonGroup)
@@ -311,7 +332,6 @@ public class GlobalHUD : MonoBehaviour
         }
         else
         {
-            // Виконуємо перехід
             if (currentScene == "GameScene")
             {
                 if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
@@ -329,13 +349,11 @@ public class GlobalHUD : MonoBehaviour
         isConfirmingGiveUp = false;
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // Відновлюємо початковий текст
         if (giveUpText != null)
         {
             giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
         }
 
-        // Повертаємо кнопкам видимість
         foreach (var btn in pauseButtonGroups)
         {
             if (btn != null)
