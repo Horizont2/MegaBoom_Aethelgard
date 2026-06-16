@@ -176,41 +176,44 @@ public class DayNightCycle : MonoBehaviour
         if (newSkyboxMat == null) yield break;
 
         Material currentMat = RenderSettings.skybox;
+        Color currentFogColor = RenderSettings.fogColor; // Беремо поточний колір атмосфери
 
         if (currentMat != null)
         {
-            // Створюємо тимчасовий екземпляр матеріалу, щоб не перезаписати оригінал у файлах проекту
+            // Створюємо тимчасовий матеріал для переходу
             Material tempOutMat = new Material(currentMat);
             RenderSettings.skybox = tempOutMat;
 
             Color startTint = tempOutMat.HasProperty("_Tint") ? tempOutMat.GetColor("_Tint") : Color.gray;
-            Color darkTint = Color.black;
 
             float t = 0;
             while (t < 1f)
             {
                 t += Time.deltaTime * skyboxFadeSpeed;
-                if (tempOutMat.HasProperty("_Tint")) tempOutMat.SetColor("_Tint", Color.Lerp(startTint, darkTint, t));
+                // ФІКС: Плавно зливаємо небо з туманом (замість чорного кольору)
+                if (tempOutMat.HasProperty("_Tint"))
+                    tempOutMat.SetColor("_Tint", Color.Lerp(startTint, currentFogColor, t));
                 yield return null;
             }
         }
 
-        // Міняємо небо, поки воно повністю чорне
+        // Міняємо небо, поки воно злилося з туманом
         Material tempInMat = new Material(newSkyboxMat);
         RenderSettings.skybox = tempInMat;
 
         Color originalNewTint = newSkyboxMat.HasProperty("_Tint") ? newSkyboxMat.GetColor("_Tint") : Color.gray;
-        if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.black);
+        if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", currentFogColor);
 
         float fadeInTimer = 0;
         while (fadeInTimer < 1f)
         {
             fadeInTimer += Time.deltaTime * skyboxFadeSpeed;
-            if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.Lerp(Color.black, originalNewTint, fadeInTimer));
+            // Проявляємо нове небо з імли
+            if (tempInMat.HasProperty("_Tint"))
+                tempInMat.SetColor("_Tint", Color.Lerp(currentFogColor, originalNewTint, fadeInTimer));
             yield return null;
         }
 
-        // Повертаємо оригінальний матеріал після переходу
         RenderSettings.skybox = newSkyboxMat;
     }
 

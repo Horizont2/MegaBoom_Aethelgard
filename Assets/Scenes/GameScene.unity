@@ -1981,10 +1981,10 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   currentWeather: 0
-  weatherChangeInterval: 100
+  weatherChangeInterval: 130
   weatherTransitionSpeed: 0.5
   fogStartDistance: 30
-  fogEndDistance: 250
+  fogEndDistance: 300
   starsParticles: {fileID: 0}
   firefliesVFX: {fileID: 763814132}
   rainVFX: {fileID: 919215059}
