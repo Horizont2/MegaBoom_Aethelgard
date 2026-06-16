@@ -539,13 +539,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
   isElite: 0
   maxPoise: 100
-  maxHealth: 35
-  moveSpeed: 5.5
-  damage: 20
-  nightMultiplier: 1.25
+  maxHealth: 30
+  moveSpeed: 5
+  damage: 15
+  nightMultiplier: 1.2
   isCinematicFrozen: 0
   spawnVFXPrefab: {fileID: 9136076963120838541, guid: f276865553c461c47b8986863dd5d668, type: 3}
-  spawnDuration: 1.5
+  spawnDuration: 1.7
   attackRange: 1.2
   attackCooldown: 0.8
   attackTelegraphTime: 0.5
@@ -561,6 +561,7 @@ MonoBehaviour:
   repulsionRadius: 1
   repulsionForce: 3
   deathVFXPrefab: {fileID: 0}
+  dissolveAshVFX: {fileID: 0}
   xpRewardMultiplier: 1
   isInvincible: 0
 --- !u!136 &2644413286419312830

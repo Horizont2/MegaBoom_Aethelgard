@@ -68,14 +68,14 @@ public class PlayerController : MonoBehaviour, IDamageable
     private LineRenderer aoeMarkerLine;
     private LineRenderer innerMarkerLine;
 
+    [Header("Grenade AAA Feel")]
+    public float aimSlowMotion = 0.25f;
+    public float aimAssistRadius = 3.5f;
+
     [Header("Dark Fantasy VFX")]
-    [Tooltip("Пил з-під ніг (керується через Animation Events)")]
     public ParticleSystem runDustParticles;
-    [Tooltip("Вибух пилу при падінні")]
     public ParticleSystem hardLandingVFX;
-    [Tooltip("Швидкість падіння, при якій спрацьовує вибух пилу і шейк камери")]
     public float hardLandingVelocityThreshold = -12f;
-    [Tooltip("Префаб іскор при влучанні")]
     public GameObject hitSparkVFXPrefab;
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
@@ -147,13 +147,12 @@ public class PlayerController : MonoBehaviour, IDamageable
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+
         InitAoEMarker();
     }
 
     private void Start()
     {
-        // --- БРОНЕБІЙНИЙ ФІКС ПИЛУ ---
-        // Жорстко вимикаємо автоматичний спавн пилу, щоб Інспектор не міг зламати гру.
         if (runDustParticles != null)
         {
             var em = runDustParticles.emission;
@@ -161,11 +160,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             em.rateOverDistance = 0f;
             runDustParticles.Stop();
         }
-        if (hardLandingVFX != null)
-        {
-            hardLandingVFX.Stop();
-        }
-        // -------------------------------
+        if (hardLandingVFX != null) hardLandingVFX.Stop();
 
         isDead = false;
         ReconnectUI();
@@ -183,29 +178,20 @@ public class PlayerController : MonoBehaviour, IDamageable
         StartCoroutine(SpawnSafely());
     }
 
-    // ==========================================
-    // --- ААА ІВЕНТИ ДЛЯ АНІМАЦІЙ ---
-    // ==========================================
     public void TriggerFootstepDust()
     {
         if (characterController == null || runDustParticles == null) return;
-
-        // Перевіряємо, чи персонаж реально рухається
         Vector3 horizontalVel = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
-        if (characterController.isGrounded && horizontalVel.sqrMagnitude > 0.1f)
-        {
-            runDustParticles.Emit(1); // Випускаємо 1 хмарку пилу РІВНО під час кроку
-        }
+        if (characterController.isGrounded && horizontalVel.sqrMagnitude > 0.1f) runDustParticles.Emit(1);
     }
-    // ==========================================
 
     private void InitAoEMarker()
     {
         GameObject markerObj = new GameObject("GrenadeAoEMarker");
         aoeMarkerLine = markerObj.AddComponent<LineRenderer>();
         aoeMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
-        aoeMarkerLine.startColor = new Color(1f, 0.2f, 0.2f, 0.4f);
-        aoeMarkerLine.endColor = new Color(1f, 0.2f, 0.2f, 0.4f);
+        aoeMarkerLine.startColor = new Color(0f, 0.8f, 1f, 0.8f);
+        aoeMarkerLine.endColor = new Color(0f, 0.8f, 1f, 0.8f);
         aoeMarkerLine.startWidth = 0.25f;
         aoeMarkerLine.endWidth = 0.25f;
         aoeMarkerLine.useWorldSpace = true;
@@ -216,8 +202,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         GameObject innerObj = new GameObject("GrenadeInnerMarker");
         innerMarkerLine = innerObj.AddComponent<LineRenderer>();
         innerMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
-        innerMarkerLine.startColor = new Color(1f, 0.1f, 0.1f, 0.8f);
-        innerMarkerLine.endColor = new Color(1f, 0.1f, 0.1f, 0.8f);
+        innerMarkerLine.startColor = new Color(0f, 0.8f, 1f, 0.8f);
+        innerMarkerLine.endColor = new Color(0f, 0.8f, 1f, 0.8f);
         innerMarkerLine.startWidth = 0.15f;
         innerMarkerLine.endWidth = 0.15f;
         innerMarkerLine.useWorldSpace = true;
@@ -248,7 +234,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             string n = img.name.ToLower();
             string p = img.transform.parent != null ? img.transform.parent.name.ToLower() : "";
-
             bool isHP = n.Contains("hp") || p.Contains("hp");
             bool isXP = n.Contains("xp") || p.Contains("xp");
             bool isStamina = n.Contains("stamina") || n.Contains("dash") || p.Contains("stamina") || p.Contains("dash");
@@ -346,7 +331,6 @@ public class PlayerController : MonoBehaviour, IDamageable
             case 3: forgeDamageBonus = 0.08f; break;
             case 4: forgeDamageBonus = 0.11f; break;
             case 5: forgeDamageBonus = 0.15f; break;
-            default: forgeDamageBonus = 0f; break;
         }
         globalDamageMultiplier += forgeDamageBonus;
     }
@@ -388,6 +372,13 @@ public class PlayerController : MonoBehaviour, IDamageable
     private void CancelGrenadeAim()
     {
         isAimingGrenade = false;
+
+        if (!isBulletTime)
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = 0.02f;
+        }
+
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
         if (aoeMarkerLine != null) aoeMarkerLine.enabled = false;
         if (innerMarkerLine != null) innerMarkerLine.enabled = false;
@@ -413,11 +404,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                 if (dist < maxDist && angle < maxAngle)
                 {
-                    if (dist < minDist)
-                    {
-                        minDist = dist;
-                        bestTarget = hit.transform;
-                    }
+                    if (dist < minDist) { minDist = dist; bestTarget = hit.transform; }
                 }
             }
         }
@@ -478,8 +465,12 @@ public class PlayerController : MonoBehaviour, IDamageable
 
             if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
             {
-                if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
-                else StartCoroutine(DashRoutine(inputDir, false));
+                // ФІКС: Блокуємо використання Dash під час прицілювання гранати
+                if (!isAimingGrenade)
+                {
+                    if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
+                    else StartCoroutine(DashRoutine(inputDir, false));
+                }
             }
         }
 
@@ -515,20 +506,18 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
-        float dt = isBulletTime ? Time.unscaledDeltaTime : Time.deltaTime;
+        float dt = isBulletTime || isAimingGrenade ? Time.unscaledDeltaTime : Time.deltaTime;
 
         if (inputDir.magnitude >= 0.1f) currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMoveDirection * actualSpeed, currentAccel * dt);
         else currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * dt);
 
         float safeDeltaTime = Mathf.Min(dt, 0.05f);
 
-        // --- ЛОГІКА СТРИБКА ---
         if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        // Зберігаємо швидкість падіння ДО застосування гравітації та переміщення
         float yVelocityBeforeMove = velocity.y;
         velocity.y += gravity * safeDeltaTime;
 
@@ -537,12 +526,10 @@ public class PlayerController : MonoBehaviour, IDamageable
             characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
         }
 
-        // --- ІДЕАЛЬНИЙ ФІЗИЧНИЙ ДЕТЕКТОР ПРИЗЕМЛЕННЯ (МИТТЄВИЙ) ---
         bool isGroundedNow = characterController.isGrounded;
 
         if (!wasGroundedLastFrame && isGroundedNow)
         {
-            // Якщо ми впали зі значної висоти (наприклад, подолали поріг -12f)
             if (yVelocityBeforeMove <= hardLandingVelocityThreshold)
             {
                 if (hardLandingVFX != null) hardLandingVFX.Play();
@@ -550,18 +537,13 @@ public class PlayerController : MonoBehaviour, IDamageable
             }
             else if (yVelocityBeforeMove < -5f)
             {
-                // Якщо це був звичайний стрибок, даємо невеличкий пил від ніг
                 if (runDustParticles != null) runDustParticles.Emit(2);
             }
         }
 
-        if (isGroundedNow && velocity.y < 0)
-        {
-            velocity.y = -2f;
-        }
+        if (isGroundedNow && velocity.y < 0) velocity.y = -2f;
         wasGroundedLastFrame = isGroundedNow;
 
-        // --- DARK FANTASY LEAN ---
         if (visualModel != null && visualModel != transform && !isCampMode)
         {
             Vector3 localVel = transform.InverseTransformDirection(currentVelocityMove);
@@ -572,7 +554,6 @@ public class PlayerController : MonoBehaviour, IDamageable
             visualModel.localRotation = Quaternion.Slerp(visualModel.localRotation, targetLean, Time.deltaTime * 18f);
         }
 
-        // --- ВІЗУАЛЬНЕ ЗГЛАДЖУВАННЯ АНІМАЦІЇ ---
         bool isVisuallyGrounded = isGroundedNow;
         if (!isVisuallyGrounded && velocity.y <= 0f)
         {
@@ -626,6 +607,13 @@ public class PlayerController : MonoBehaviour, IDamageable
                         if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
                         {
                             isAimingGrenade = true;
+
+                            if (!isBulletTime)
+                            {
+                                Time.timeScale = aimSlowMotion;
+                                Time.fixedDeltaTime = 0.02f * Time.timeScale;
+                            }
+
                             if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
                             if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
                             if (innerMarkerLine != null) innerMarkerLine.enabled = true;
@@ -669,6 +657,28 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
+        // --- ФІКС: М'який магнетизм прицілу ---
+        Collider[] magnetHits = Physics.OverlapSphere(hitPoint, aimAssistRadius);
+        Transform bestTarget = null;
+        float minDist = float.MaxValue;
+
+        foreach (var mHit in magnetHits)
+        {
+            if (mHit.CompareTag("Enemy"))
+            {
+                float d = Vector3.Distance(hitPoint, mHit.transform.position);
+                if (d < minDist) { minDist = d; bestTarget = mHit.transform; }
+            }
+        }
+
+        if (bestTarget != null)
+        {
+            // Притягуємо курсор до ворога лише на 40%. Гравець все ще зберігає контроль!
+            Vector3 magneticTarget = bestTarget.position;
+            magneticTarget.y = hitPoint.y;
+            hitPoint = Vector3.Lerp(hitPoint, magneticTarget, 0.4f);
+        }
+
         Vector3 offset = hitPoint - transform.position;
         offset.y = 0;
         if (offset.magnitude > maxThrowDistance)
@@ -679,24 +689,35 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         currentGrenadeTarget = hitPoint;
 
-        Vector3 aimDir = (hitPoint - transform.position).normalized;
+        // Колір: синій за замовчуванням, червоний якщо в зоні є ворог
+        Collider[] blastHits = Physics.OverlapSphere(currentGrenadeTarget, grenadeExplosionRadius);
+        bool enemyInBlast = false;
+        foreach (var bHit in blastHits)
+        {
+            if (bHit.CompareTag("Enemy")) { enemyInBlast = true; break; }
+        }
+
+        Color currentAimColor = enemyInBlast ? new Color(1f, 0.1f, 0.1f, 0.8f) : new Color(0f, 0.8f, 1f, 0.8f);
+
+        if (trajectoryLine != null)
+        {
+            trajectoryLine.startColor = currentAimColor;
+            trajectoryLine.endColor = currentAimColor;
+            trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
+        }
+
+        // Повернено старі кола, але з динамічним кольором
+        if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
+        if (innerMarkerLine != null) { innerMarkerLine.startColor = currentAimColor; innerMarkerLine.endColor = currentAimColor; }
+
+        DrawAoEMarker(currentGrenadeTarget);
+        DrawPreciseTrajectory(currentGrenadeTarget);
+
+        Vector3 aimDir = (currentGrenadeTarget - transform.position).normalized;
         aimDir.y = 0;
         if (aimDir.sqrMagnitude > 0.01f)
         {
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.unscaledDeltaTime * 3f);
-        }
-
-        if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
-        if (innerMarkerLine != null) innerMarkerLine.enabled = true;
-
-        DrawPreciseTrajectory(currentGrenadeTarget);
-        DrawAoEMarker(currentGrenadeTarget);
-
-        // --- НОВЕ: Анімація лінії прицілювання (ефект руху енергії) ---
-        if (trajectoryLine != null && trajectoryLine.material != null)
-        {
-            // Текстура буде неперервно повзти вперед
-            trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
         }
     }
 
@@ -797,7 +818,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         yield return new WaitForSecondsRealtime(perfectDodgeDuration);
 
-        Time.timeScale = 1f;
+        if (!isAimingGrenade) Time.timeScale = 1f;
         isBulletTime = false;
         if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
         if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(false);
@@ -967,6 +988,12 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void ExecuteThrow()
     {
+        if (!isBulletTime)
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = 0.02f;
+        }
+
         if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
@@ -983,9 +1010,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamage(DamageInfo info)
     {
-        // --- ФІКС: Ігноруємо шкоду, якщо ми вже мертві ---
         if (isDead || currentHealth <= 0) return;
-
         if (isCampMode || isDashing || isBulletTime) return;
 
         float finalDamage = info.Amount * (1f - damageReduction);
@@ -1045,29 +1070,24 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
-        // Ховаємо зброю, щоб вона не висіла в повітрі
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
-        // Жорстко блокуємо будь-який рух та фізику гравця
         isControlBlocked = true;
         if (characterController != null) characterController.enabled = false;
 
-        // Запускаємо анімацію смерті (гравець має впасти на землю)
         if (anim != null)
         {
             anim.ResetTrigger("Hit");
             anim.SetTrigger("Die");
         }
 
-        // Викликаємо наш новий ААА-екран смерті
         if (DeathCinematicManager.Instance != null)
         {
             DeathCinematicManager.Instance.TriggerDeathCinematic();
         }
         else
         {
-            // Якщо забули додати менеджер на сцену, граємо по-старому (Fallback)
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             GameManager gm = FindFirstObjectByType<GameManager>();
 
