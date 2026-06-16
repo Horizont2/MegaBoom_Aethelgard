@@ -24,6 +24,23 @@ public class WorldGenerator : MonoBehaviour
     [Header("Environment & Sky")]
     public Material skyboxMaterial;
 
+    [Header("Dark Fantasy: Water (BITGEM)")]
+    [Tooltip("Висота (від 0 до 1), нижче якої генерується вода")]
+    public float waterLevel = 0.12f;
+
+    // ФІКС: Тепер ми беремо напряму матеріал і меш із папки Bitgem
+    [Tooltip("Матеріал з папки Bitgem/StylisedWater/URP/Materials")]
+    public Material waterMaterial;
+    [Tooltip("Меш з папки Bitgem/StylisedWater/URP/Meshes (або залиш пустим)")]
+    public Mesh waterMesh;
+
+    [Header("Dark Fantasy: Ecosystem Logic")]
+    public float meadowScale = 3f;
+    [Range(0f, 1f)] public float meadowThreshold = 0.65f;
+
+    public float veinScale = 8f;
+    [Range(0f, 1f)] public float veinThreshold = 0.75f;
+
     [Header("Biome Textures (Terrain Layers)")]
     public TerrainLayer grassLayer;
     public TerrainLayer sandLayer;
@@ -35,7 +52,7 @@ public class WorldGenerator : MonoBehaviour
     public Texture2D desertTreeTexture;
     public Texture2D snowTreeTexture;
 
-    [Header("Biome Colors")]
+    [Header("Biome Colors (Base)")]
     public Color forestFoliageColor = new Color(0.17f, 0.30f, 0.12f);
     public Color desertFoliageColor = new Color(0.65f, 0.55f, 0.26f);
     public Color snowFoliageColor = new Color(0.40f, 0.55f, 0.70f);
@@ -44,11 +61,10 @@ public class WorldGenerator : MonoBehaviour
     public Color desertRockColor = new Color(0.73f, 0.57f, 0.40f);
     public Color snowRockColor = new Color(0.65f, 0.72f, 0.79f);
 
-    // --- ФІКС: Збільшено ліміти для ААА-рослинності ---
     [Header("GENERATION BUDGETS (AAA Limits)")]
     public int spawnAttempts = 60000;
     public int maxTrees = 3000;
-    public int maxGrassObjects = 15000; // Трави стало в 5 разів більше!
+    public int maxGrassObjects = 15000;
     public int maxBushesAndMushroom = 2500;
     public int maxRocks = 1200;
 
@@ -66,6 +82,11 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseFlowers;
     public GameObject[] baseMushrooms;
     public GameObject[] logPrefabs;
+
+    [Header("Storytelling & Detail Prefabs")]
+    public GameObject[] ruinPrefabs;
+    public GameObject[] groundClutterPrefabs;
+    public GameObject giantTreeVFXPrefab;
 
     [Header("Map Border Mountains")]
     public GameObject[] borderMountainPrefabs;
@@ -125,6 +146,8 @@ public class WorldGenerator : MonoBehaviour
         yield return StartCoroutine(PaintTerrainRoutine(terrain.terrainData));
         CurrentProgress = 0.50f;
 
+        SpawnWaterPlane();
+
         yield return StartCoroutine(PopulateBiomesRoutine());
         CurrentProgress = 0.85f;
 
@@ -138,31 +161,36 @@ public class WorldGenerator : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
-            float groundY = terrain.SampleHeight(player.transform.position) + terrain.transform.position.y;
-            Vector3 safePos = new Vector3(player.transform.position.x, groundY + 2f, player.transform.position.z);
+            float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
+            Vector3 safePos = player.transform.position;
+            bool foundSafeSpot = false;
 
-            CharacterController cc = player.GetComponent<CharacterController>();
-            if (cc != null)
+            // Шукаємо випадкову безпечну точку на карті (суху)
+            for (int i = 0; i < 200; i++)
             {
-                cc.enabled = false;
-                player.transform.position = safePos;
-                cc.enabled = true;
-            }
-            else
-            {
-                player.transform.position = safePos;
-                Rigidbody rb = player.GetComponent<Rigidbody>();
-                if (rb != null)
+                float px = Random.Range(terrain.terrainData.size.x * 0.2f, terrain.terrainData.size.x * 0.8f);
+                float pz = Random.Range(terrain.terrainData.size.z * 0.2f, terrain.terrainData.size.z * 0.8f);
+                float worldX = transform.position.x + px;
+                float worldZ = transform.position.z + pz;
+                float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
+
+                if (worldY > absoluteWaterHeight + 1.5f && terrain.terrainData.GetSteepness(px / terrain.terrainData.size.x, pz / terrain.terrainData.size.z) < 20f)
                 {
-                    rb.linearVelocity = Vector3.zero;
+                    safePos = new Vector3(worldX, worldY + 2f, worldZ);
+                    foundSafeSpot = true;
+                    break;
                 }
             }
+
+            if (!foundSafeSpot) safePos.y += 5f; // Запобіжник
+
+            CharacterController cc = player.GetComponent<CharacterController>();
+            if (cc != null) { cc.enabled = false; player.transform.position = safePos; cc.enabled = true; }
+            else { player.transform.position = safePos; Rigidbody rb = player.GetComponent<Rigidbody>(); if (rb != null) rb.linearVelocity = Vector3.zero; }
         }
 
         yield return new WaitForEndOfFrame();
-
         DynamicGI.UpdateEnvironment();
-
         CurrentProgress = 1f;
         IsGenerationDone = true;
     }
@@ -174,23 +202,47 @@ public class WorldGenerator : MonoBehaviour
         {
             int biomeType = PlayerPrefs.GetInt("RegionBiomeType", 0);
             terraceCount = 0;
-
-            if (biomeType == 1)
-            {
-                peakSharpness = 2.2f;
-                edgeMountainMultiplier = 3.0f;
-            }
-            else if (biomeType == 2)
-            {
-                peakSharpness = 3.5f;
-                edgeMountainMultiplier = 3.5f;
-            }
-            else
-            {
-                peakSharpness = 3.0f;
-                edgeMountainMultiplier = 3.0f;
-            }
+            if (biomeType == 1) { peakSharpness = 2.2f; edgeMountainMultiplier = 3.0f; }
+            else if (biomeType == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; }
+            else { peakSharpness = 3.0f; edgeMountainMultiplier = 3.0f; }
         }
+    }
+
+    // --- ОНОВЛЕНО ДЛЯ BITGEM WATER ---
+    private void SpawnWaterPlane()
+    {
+        if (waterMaterial == null) return;
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+        float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
+
+        GameObject waterObj = new GameObject("Bitgem_WaterPlane");
+        waterObj.transform.SetParent(this.transform);
+        waterObj.transform.position = new Vector3(transform.position.x + w / 2, absoluteWaterHeight, transform.position.z + l / 2);
+
+        MeshFilter mf = waterObj.AddComponent<MeshFilter>();
+        MeshRenderer mr = waterObj.AddComponent<MeshRenderer>();
+
+        // Вода не повинна відкидати тіні
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.material = waterMaterial;
+
+        // Якщо в Bitgem є спеціальний меш (для хвиль), використовуємо його
+        if (waterMesh != null)
+        {
+            mf.mesh = waterMesh;
+        }
+        else
+        {
+            // Якщо ні - створюємо стандартний
+            GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            mf.mesh = primitive.GetComponent<MeshFilter>().sharedMesh;
+            Destroy(primitive);
+        }
+
+        // Розтягуємо воду на весь світ
+        waterObj.transform.localScale = new Vector3(w / 5f, 1f, l / 5f);
     }
 
     private IEnumerator GenerateHeightsRoutine(TerrainData terrainData)
@@ -228,7 +280,14 @@ public class WorldGenerator : MonoBehaviour
                 float distFromCenter = Vector2.Distance(new Vector2(x, y), new Vector2(centerX, centerY));
                 float edgeWall = Mathf.Pow(distFromCenter / centerX, 4f) * edgeMountainMultiplier;
 
-                heights[x, y] = Mathf.Clamp01(sharpenedNoise + edgeWall);
+                float finalHeight = Mathf.Clamp01(sharpenedNoise + edgeWall);
+
+                if (finalHeight < waterLevel)
+                {
+                    finalHeight = Mathf.Lerp(finalHeight, waterLevel * 0.8f, 0.5f);
+                }
+
+                heights[x, y] = finalHeight;
             }
 
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
@@ -257,10 +316,8 @@ public class WorldGenerator : MonoBehaviour
 
                 float[] weights = new float[4];
 
-                if (normalizedHeight > 0.65f)
-                {
-                    weights[2] = 1f;
-                }
+                if (normalizedHeight > 0.65f) weights[2] = 1f;
+                else if (normalizedHeight <= waterLevel + 0.02f) weights[1] = 1f;
                 else
                 {
                     if (temp >= 0.65f) weights[1] = 1f;
@@ -307,6 +364,7 @@ public class WorldGenerator : MonoBehaviour
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
                 float normalizedX = px / w; float normalizedZ = pz / l;
+                float normalizedHeight = (worldY - transform.position.y) / depth;
                 float steepness = terrain.terrainData.GetSteepness(normalizedX, normalizedZ);
                 float localTemp = GetTemperature(normalizedX, normalizedZ);
 
@@ -317,48 +375,57 @@ public class WorldGenerator : MonoBehaviour
                 if (localTemp >= 0.65f) { currentTreeTexture = desertTreeTexture; currentFoliageColor = desertFoliageColor; currentRockColor = desertRockColor; }
                 else if (localTemp <= 0.35f) { currentTreeTexture = snowTreeTexture; currentFoliageColor = snowFoliageColor; currentRockColor = snowRockColor; }
 
-                if (steepness > 45f)
+                // ФІКС ОПТИМІЗАЦІЇ: Повністю забороняємо генерацію об'єктів під водою
+                if (normalizedHeight <= waterLevel + 0.03f) continue;
+
+                if (steepness > 40f)
                 {
-                    if (currentRockCount < maxRocks && Random.value > 0.98f)
+                    if (currentRockCount < maxRocks && Random.value > 0.95f)
                     {
                         GameObject rockPrefab = GetRandomPrefab(baseRocks);
-                        if (rockPrefab != null)
-                        {
-                            GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, Random.Range(0, 360f), 0) * rockPrefab.transform.rotation, rockContainer);
-                            obj.transform.localScale *= Random.Range(1.5f, 3f);
-                            ApplyBiomeColor(obj, currentRockColor);
-                            currentRockCount++;
-                        }
+                        GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, Random.Range(0, 360f), 0), rockContainer);
+                        obj.transform.localScale *= Random.Range(1.5f, 3f);
+                        ApplyBiomeColor(obj, currentRockColor, true);
+                        currentRockCount++;
                     }
                     continue;
                 }
 
                 float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
 
+                float meadowNoise = Mathf.PerlinNoise(normalizedX * meadowScale + offsetX + 1000f, normalizedZ * meadowScale + offsetZ + 1000f);
+                float veinNoise = Mathf.PerlinNoise(normalizedX * veinScale + offsetX + 2000f, normalizedZ * veinScale + offsetZ + 2000f);
+
+                bool isMeadow = meadowNoise > meadowThreshold;
+                bool isVein = veinNoise > veinThreshold;
+
+                if (isMeadow) density = 0f;
+
+                float randomSpawn = Random.value;
+
                 if (density > forestThreshold && steepness <= 25f)
                 {
-                    float randomSpawn = Random.value;
-
                     if (currentTreeCount < maxTrees && density > forestThreshold + 0.2f && randomSpawn > 0.85f && giantTrees != null && giantTrees.Length > 0)
                     {
                         GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
-                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0) * giantTreePrefab.transform.rotation, treeContainer);
+                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0), treeContainer);
                         obj.transform.localScale *= Random.Range(1.0f, 1.4f);
                         ApplyBiomeTexture(obj, currentTreeTexture);
+                        ApplyBiomeColor(obj, currentFoliageColor, true);
                         currentTreeCount++;
+
+                        if (giantTreeVFXPrefab != null) Instantiate(giantTreeVFXPrefab, obj.transform.position + Vector3.up * 5f, Quaternion.identity, obj.transform);
+                        if (groundClutterPrefabs != null && groundClutterPrefabs.Length > 0) SpawnNatureCluster(GetRandomPrefab(groundClutterPrefabs), obj.transform.position, bushContainer, 3, 6, 3f, true, slopeRotation, currentRockColor);
                     }
                     else if (currentTreeCount < maxTrees && randomSpawn > 0.65f)
                     {
                         GameObject treePrefab = GetRandomPrefab(baseTrees);
-                        if (treePrefab != null)
-                        {
-                            GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0) * treePrefab.transform.rotation, treeContainer);
-                            obj.transform.localScale *= Random.Range(0.8f, 1.1f);
-                            ApplyBiomeTexture(obj, currentTreeTexture);
-                            currentTreeCount++;
-                        }
+                        GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0), treeContainer);
+                        obj.transform.localScale *= Random.Range(0.8f, 1.1f);
+                        ApplyBiomeTexture(obj, currentTreeTexture);
+                        ApplyBiomeColor(obj, currentFoliageColor, true);
+                        currentTreeCount++;
                     }
-                    // --- ОНОВЛЕНО: Більш густі кластери трави ---
                     else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.15f)
                     {
                         currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 8, 16, 8f, true, slopeRotation, currentFoliageColor);
@@ -370,36 +437,45 @@ public class WorldGenerator : MonoBehaviour
                         currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor);
                     }
                 }
-                else if (density < 0.3f)
+                else if (density < 0.3f || isMeadow)
                 {
-                    if (currentRockCount < maxRocks && Random.value > 0.93f)
+                    if (isVein && currentRockCount < maxRocks && randomSpawn > 0.7f)
                     {
                         GameObject rockBase = GetRandomPrefab(baseRocks);
-                        if (rockBase != null)
+                        int clusterSize = Random.Range(3, 6);
+                        for (int c = 0; c < clusterSize; c++)
                         {
-                            int clusterSize = Random.Range(1, 3);
-                            for (int c = 0; c < clusterSize; c++)
-                            {
-                                float ox = Random.Range(-3f, 3f); float oz = Random.Range(-3f, 3f);
-                                float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
-                                GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), slopeRotation * Quaternion.Euler(0, Random.Range(0f, 360f), 0) * rockBase.transform.rotation, rockContainer);
-                                obj.transform.localScale *= Random.Range(0.5f, 1.5f);
-                                ApplyBiomeColor(obj, currentRockColor);
-                                currentRockCount++;
-                            }
+                            float ox = Random.Range(-4f, 4f); float oz = Random.Range(-4f, 4f);
+                            float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
+                            GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), slopeRotation * Quaternion.Euler(0, Random.Range(0f, 360f), 0), rockContainer);
+                            obj.transform.localScale *= Random.Range(0.5f, 1.2f);
+                            ApplyBiomeColor(obj, currentRockColor, true);
+                            currentRockCount++;
                         }
+                    }
+                    else if (currentRockCount < maxRocks && randomSpawn > 0.95f)
+                    {
+                        bool isRuin = ruinPrefabs != null && ruinPrefabs.Length > 0 && Random.value > 0.8f;
+                        GameObject targetPrefab = isRuin ? GetRandomPrefab(ruinPrefabs) : GetRandomPrefab(baseRocks);
+
+                        GameObject obj = Instantiate(targetPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, Random.Range(0f, 360f), 0), rockContainer);
+                        if (!isRuin) ApplyBiomeColor(obj, currentRockColor, true);
+                        currentRockCount++;
+                    }
+
+                    if (isMeadow && currentGrassCount < maxGrassObjects && randomSpawn > 0.3f)
+                    {
+                        currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 10, 20, 6f, true, slopeRotation, currentFoliageColor);
                     }
                 }
                 else
                 {
-                    float rand = Random.value;
-                    if (currentTreeCount < maxTrees && rand > 0.95f)
+                    if (currentTreeCount < maxTrees && randomSpawn > 0.95f)
                     {
                         GameObject log = GetRandomPrefab(logPrefabs);
                         if (log != null) { Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0f, 360f), 0), logContainer); currentTreeCount++; }
                     }
-                    // --- ОНОВЛЕНО: Трава поза густим лісом ---
-                    else if (currentGrassCount < maxGrassObjects && rand > 0.50f)
+                    else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.50f)
                     {
                         currentGrassCount += SpawnNatureCluster(GetRandomPrefab(baseGrass), new Vector3(worldX, worldY, worldZ), grassContainer, 5, 10, 6f, true, slopeRotation, currentFoliageColor);
                     }
@@ -407,6 +483,72 @@ public class WorldGenerator : MonoBehaviour
             }
             catch (System.Exception e) { Debug.LogError($"[Помилка генерації префабу]: {e.Message}"); }
         }
+    }
+
+    private void ApplyBiomeColor(GameObject obj, Color baseColor, bool randomize = false)
+    {
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+        Color finalColor = baseColor;
+
+        if (randomize)
+        {
+            Color.RGBToHSV(baseColor, out float h, out float s, out float v);
+            h = Mathf.Repeat(h + Random.Range(-0.04f, 0.04f), 1f);
+            s = Mathf.Clamp01(s * Random.Range(0.8f, 1.1f));
+            v = Mathf.Clamp01(v * Random.Range(0.6f, 1.1f));
+            finalColor = Color.HSVToRGB(h, s, v);
+        }
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend is ParticleSystemRenderer) continue;
+            string objName = rend.gameObject.name.ToLower();
+            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+
+            rend.GetPropertyBlock(propBlock);
+            propBlock.SetColor("_Color", finalColor); propBlock.SetColor("_BaseColor", finalColor);
+            propBlock.SetColor("_Primary_Color", finalColor); propBlock.SetColor("_Secondary_Color", finalColor);
+            propBlock.SetColor("_TopColor", finalColor);
+            rend.SetPropertyBlock(propBlock);
+        }
+    }
+
+    private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
+    {
+        if (biomeTexture == null) return;
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend is ParticleSystemRenderer) continue;
+            string objName = rend.gameObject.name.ToLower();
+            if (objName.Contains("vfx")) continue;
+
+            rend.GetPropertyBlock(propBlock);
+            propBlock.SetTexture("_BaseMap", biomeTexture); propBlock.SetTexture("_MainTex", biomeTexture);
+            rend.SetPropertyBlock(propBlock);
+        }
+    }
+
+    private int SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
+    {
+        if (prefab == null) return 0;
+        int count = Random.Range(minCount, maxCount + 1);
+        int spawned = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            float ox = Random.Range(-radius, radius); float oz = Random.Range(-radius, radius);
+            float cy = terrain.SampleHeight(new Vector3(centerPos.x + ox, 0, centerPos.z + oz)) + transform.position.y;
+            Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+            Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * prefab.transform.rotation) : (randomYRot * prefab.transform.rotation);
+
+            GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
+            obj.transform.localScale *= Random.Range(0.7f, 1.3f);
+            ApplyBiomeColor(obj, tintColor, true);
+            spawned++;
+        }
+        return spawned;
     }
 
     private IEnumerator SpawnPOIsRoutine()
@@ -425,6 +567,9 @@ public class WorldGenerator : MonoBehaviour
             {
                 float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
                 if (terrain.terrainData.GetSteepness(px / w, pz / l) > maxPOISteepness) continue;
+
+                float normHeight = terrain.terrainData.GetHeight((int)(pz / l * terrain.terrainData.heightmapResolution), (int)(px / w * terrain.terrainData.heightmapResolution)) / depth;
+                if (normHeight < waterLevel + 0.05f) continue;
 
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
@@ -456,6 +601,9 @@ public class WorldGenerator : MonoBehaviour
                 float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
                 if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f)
                 {
+                    float normHeight = terrain.terrainData.GetHeight((int)(pz / l * terrain.terrainData.heightmapResolution), (int)(px / w * terrain.terrainData.heightmapResolution)) / depth;
+                    if (normHeight < waterLevel + 0.02f) continue;
+
                     float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                     float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
                     Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
@@ -505,63 +653,6 @@ public class WorldGenerator : MonoBehaviour
         return Mathf.PerlinNoise(normX * globalBiomeScale + offsetX + 500f, normZ * globalBiomeScale + offsetZ + 500f);
     }
 
-    private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
-    {
-        if (biomeTexture == null) return;
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer rend in renderers)
-        {
-            if (rend is ParticleSystemRenderer) continue;
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
-
-            rend.GetPropertyBlock(propBlock);
-            propBlock.SetTexture("_BaseMap", biomeTexture); propBlock.SetTexture("_MainTex", biomeTexture);
-            rend.SetPropertyBlock(propBlock);
-        }
-    }
-
-    private void ApplyBiomeColor(GameObject obj, Color biomeColor)
-    {
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer rend in renderers)
-        {
-            if (rend is ParticleSystemRenderer) continue;
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
-
-            rend.GetPropertyBlock(propBlock);
-            propBlock.SetColor("_Color", biomeColor); propBlock.SetColor("_BaseColor", biomeColor);
-            propBlock.SetColor("_Primary_Color", biomeColor); propBlock.SetColor("_Secondary_Color", biomeColor);
-            propBlock.SetColor("_Tertiary_Color", biomeColor); propBlock.SetColor("_TintColor", biomeColor);
-            propBlock.SetColor("_TopColor", biomeColor);
-            rend.SetPropertyBlock(propBlock);
-        }
-    }
-
-    private int SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
-    {
-        if (prefab == null) return 0;
-        int count = Random.Range(minCount, maxCount + 1);
-        int spawned = 0;
-
-        for (int i = 0; i < count; i++)
-        {
-            float ox = Random.Range(-radius, radius); float oz = Random.Range(-radius, radius);
-            float cy = terrain.SampleHeight(new Vector3(centerPos.x + ox, 0, centerPos.z + oz)) + transform.position.y;
-            Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-            Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * prefab.transform.rotation) : (randomYRot * prefab.transform.rotation);
-
-            GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
-            obj.transform.localScale *= Random.Range(0.7f, 1.3f);
-            ApplyBiomeColor(obj, tintColor);
-            spawned++;
-        }
-        return spawned;
-    }
-
     private void SpawnSingleBorderMountain(Vector3 localPos, Transform container, float w, float l)
     {
         GameObject prefab = GetRandomPrefab(borderMountainPrefabs);
@@ -577,7 +668,7 @@ public class WorldGenerator : MonoBehaviour
 
             float temp = GetTemperature(clampedX / w, clampedZ / l);
             Color rockColor = temp >= 0.65f ? desertRockColor : (temp <= 0.35f ? snowRockColor : forestRockColor);
-            ApplyBiomeColor(mnt, rockColor);
+            ApplyBiomeColor(mnt, rockColor, true);
         }
         catch (System.Exception) { }
     }

@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.37025982, g: 0.40751266, b: 0.5018867, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 67950864b84c5db4f9eee7ca51c85571, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -1426,6 +1426,13 @@ MonoBehaviour:
   terraceCount: 0
   edgeMountainMultiplier: 3
   skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
+  waterLevel: 0.12
+  waterMaterial: {fileID: 2100000, guid: fb659c98d6ac4db41b88596ff2c4e2e1, type: 2}
+  waterMesh: {fileID: -5495902117074765545, guid: 55638e09f83bd764b9c7be381da6e240, type: 3}
+  meadowScale: 3
+  meadowThreshold: 0.65
+  veinScale: 8
+  veinThreshold: 0.75
   grassLayer: {fileID: 8574412962073106934, guid: a81995a1b9792014b8df74c003aef209, type: 2}
   sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
   snowLayer: {fileID: 8574412962073106934, guid: 81e91e370b984c440840e5b9aaba5988, type: 2}
@@ -1474,6 +1481,9 @@ MonoBehaviour:
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
+  ruinPrefabs: []
+  groundClutterPrefabs: []
+  giantTreeVFXPrefab: {fileID: 0}
   borderMountainPrefabs:
   - {fileID: 1147869740234516963, guid: 6df1c0432730406409fa1777e38a2b1a, type: 3}
   - {fileID: 7585476220307772028, guid: bab1d03c1216ca24a93cae9cd2246e04, type: 3}
@@ -1753,6 +1763,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DayNightCycle
   dayDurationInSeconds: 1200
   timeOfDay: 10
+  daySkybox: {fileID: 2100000, guid: 67950864b84c5db4f9eee7ca51c85571, type: 2}
+  nightSkybox: {fileID: 2100000, guid: 1cc6e6796f833a94f94e6d794ca654c3, type: 2}
+  stormSkybox: {fileID: 2100000, guid: b5a27fa4b11bfb24cbc6daff3802c229, type: 2}
+  skyboxFadeSpeed: 0.8
   sunLight: {fileID: 410087040}
   moonLight: {fileID: 790339834}
   lightningLight: {fileID: 2078878344}
@@ -35480,13 +35494,11 @@ MonoBehaviour:
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   amountToSpawn: 200
   scatterRadius: 300
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 32768
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 0
   minClearanceRadius: 1.5
+  absoluteWaterHeight: -999
   spawnsPerFrame: 10
 --- !u!4 &1410339861
 Transform:

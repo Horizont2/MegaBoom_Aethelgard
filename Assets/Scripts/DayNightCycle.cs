@@ -10,6 +10,13 @@ public class DayNightCycle : MonoBehaviour
     public float dayDurationInSeconds = 300f;
     [Range(0f, 24f)] public float timeOfDay = 12f;
 
+    [Header("AAA Skyboxes")]
+    public Material daySkybox;
+    public Material nightSkybox;
+    public Material stormSkybox;
+    [Tooltip("Швидкість затемнення неба при зміні скайбоксу")]
+    public float skyboxFadeSpeed = 0.8f;
+
     [Header("Light Sources")]
     public Light sunLight;
     public Light moonLight;
@@ -41,15 +48,18 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem dustVFX;
 
     [Header("AAA Storm Effects")]
-    [Tooltip("Префаб блискавки з паку магічних ефектів")]
     public GameObject lightningVFXPrefab;
-    [Tooltip("Як близько до гравця може вдарити блискавка")]
     public float lightningSpawnRadius = 60f;
 
     private float weatherBlend = 0f;
     private float weatherTimer = 0f;
     private int currentBiome = 0;
     private Coroutine lightningCoroutine;
+
+    // Змінні для плавного переходу неба
+    private enum SkyboxType { None, Day, Night, Storm }
+    private SkyboxType activeSkyboxType = SkyboxType.None;
+    private Coroutine skyboxBlendCoroutine;
 
     private void Start()
     {
@@ -77,6 +87,7 @@ public class DayNightCycle : MonoBehaviour
         if (moonLight != null) moonLight.color = new Color(0.6f, 0.7f, 1f);
 
         UpdateWeatherVFX();
+        CheckAndUpdateSkybox();
     }
 
     private void Update()
@@ -110,6 +121,8 @@ public class DayNightCycle : MonoBehaviour
             weatherTimer = 0f;
         }
 
+        CheckAndUpdateSkybox();
+
         float targetBlend = (currentWeather == WeatherState.Clear) ? 0f : (currentWeather == WeatherState.Storm ? 1f : 0.5f);
         weatherBlend = Mathf.Lerp(weatherBlend, targetBlend, Time.deltaTime * weatherTransitionSpeed);
 
@@ -136,6 +149,69 @@ public class DayNightCycle : MonoBehaviour
         RenderSettings.ambientGroundColor = Color.Lerp(targetGround, new Color(0.08f, 0.1f, 0.12f), weatherBlend);
 
         UpdateVFXPositions();
+    }
+
+    private void CheckAndUpdateSkybox()
+    {
+        SkyboxType targetSkybox = SkyboxType.Day;
+
+        if (currentWeather == WeatherState.Storm) targetSkybox = SkyboxType.Storm;
+        else if (timeOfDay < 5.5f || timeOfDay > 18.5f) targetSkybox = SkyboxType.Night;
+
+        if (targetSkybox != activeSkyboxType)
+        {
+            activeSkyboxType = targetSkybox;
+            Material targetMat = daySkybox;
+
+            if (targetSkybox == SkyboxType.Night) targetMat = nightSkybox;
+            else if (targetSkybox == SkyboxType.Storm) targetMat = stormSkybox;
+
+            if (skyboxBlendCoroutine != null) StopCoroutine(skyboxBlendCoroutine);
+            skyboxBlendCoroutine = StartCoroutine(TransitionSkyboxRoutine(targetMat));
+        }
+    }
+
+    private IEnumerator TransitionSkyboxRoutine(Material newSkyboxMat)
+    {
+        if (newSkyboxMat == null) yield break;
+
+        Material currentMat = RenderSettings.skybox;
+
+        if (currentMat != null)
+        {
+            // Створюємо тимчасовий екземпляр матеріалу, щоб не перезаписати оригінал у файлах проекту
+            Material tempOutMat = new Material(currentMat);
+            RenderSettings.skybox = tempOutMat;
+
+            Color startTint = tempOutMat.HasProperty("_Tint") ? tempOutMat.GetColor("_Tint") : Color.gray;
+            Color darkTint = Color.black;
+
+            float t = 0;
+            while (t < 1f)
+            {
+                t += Time.deltaTime * skyboxFadeSpeed;
+                if (tempOutMat.HasProperty("_Tint")) tempOutMat.SetColor("_Tint", Color.Lerp(startTint, darkTint, t));
+                yield return null;
+            }
+        }
+
+        // Міняємо небо, поки воно повністю чорне
+        Material tempInMat = new Material(newSkyboxMat);
+        RenderSettings.skybox = tempInMat;
+
+        Color originalNewTint = newSkyboxMat.HasProperty("_Tint") ? newSkyboxMat.GetColor("_Tint") : Color.gray;
+        if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.black);
+
+        float fadeInTimer = 0;
+        while (fadeInTimer < 1f)
+        {
+            fadeInTimer += Time.deltaTime * skyboxFadeSpeed;
+            if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.Lerp(Color.black, originalNewTint, fadeInTimer));
+            yield return null;
+        }
+
+        // Повертаємо оригінальний матеріал після переходу
+        RenderSettings.skybox = newSkyboxMat;
     }
 
     private void UpdateVFXPositions()
@@ -234,15 +310,12 @@ public class DayNightCycle : MonoBehaviour
         }
     }
 
-    // --- ОНОВЛЕНИЙ ААА МЕТОД ГРОЗИ ---
     private IEnumerator LightningRoutine()
     {
         while (currentWeather == WeatherState.Storm)
         {
-            // Випадкова пауза між ударами
             yield return new WaitForSeconds(Random.Range(5f, 15f));
 
-            // 1. Блимаємо небом (глобальне світло)
             if (lightningLight != null)
             {
                 lightningLight.intensity = Random.Range(3f, 6f);
@@ -254,20 +327,16 @@ public class DayNightCycle : MonoBehaviour
                 lightningLight.intensity = 0f;
             }
 
-            // 2. Спавнимо фізичну блискавку
             if (lightningVFXPrefab != null && Camera.main != null)
             {
-                // Шукаємо випадкову точку навколо камери
                 Vector2 randomCircle = Random.insideUnitCircle * lightningSpawnRadius;
                 Vector3 spawnPos = Camera.main.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
 
-                // --- ААА РАНДОМІЗАТОР БЛИСКАВКИ ---
-                bool strikeGround = Random.value > 0.4f; // 60% шанс вдарити в землю
+                bool strikeGround = Random.value > 0.4f;
                 Quaternion spawnRot = Quaternion.identity;
 
                 if (strikeGround)
                 {
-                    // Удар точно в рельєф
                     if (Terrain.activeTerrain != null)
                     {
                         spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
@@ -275,16 +344,12 @@ public class DayNightCycle : MonoBehaviour
                 }
                 else
                 {
-                    // Блискавка між хмарами (високо в небі)
                     spawnPos.y = Camera.main.transform.position.y + Random.Range(80f, 150f);
-
-                    // Сильно нахиляємо її по осях X та Z, щоб вона йшла горизонтально/під кутом через небо
                     spawnRot = Quaternion.Euler(Random.Range(-70f, 70f), Random.Range(0f, 360f), Random.Range(-70f, 70f));
                 }
 
                 GameObject lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
 
-                // Якщо блискавка в небі, робимо її масивнішою, щоб вона розтягнулася на пів екрану
                 if (!strikeGround)
                 {
                     lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
@@ -292,10 +357,8 @@ public class DayNightCycle : MonoBehaviour
 
                 Destroy(lightning, 2f);
 
-                // 3. Відкладений звук грому
                 if (AudioManager.Instance != null)
                 {
-                    // Чим далі блискавка (навіть якщо вона високо в небі), тим довше йде звук
                     float dist = Vector3.Distance(Camera.main.transform.position, spawnPos);
                     StartCoroutine(PlayThunderSoundDelayed(dist / 30f));
                 }
@@ -307,8 +370,6 @@ public class DayNightCycle : MonoBehaviour
     private IEnumerator PlayThunderSoundDelayed(float delay)
     {
         yield return new WaitForSeconds(delay);
-        // Тут треба викликати звук грому (додай свій AudioID, якщо є)
-        // AudioManager.Instance.PlaySFX(AudioID.Thunder); 
     }
 
     private void OnDestroy()

@@ -5,26 +5,21 @@ public class MapLootSpawner : MonoBehaviour
 {
     [Header("Loot Settings")]
     public GameObject xpCrystalPrefab;
-    public int amountToSpawn = 150;
-    public float scatterRadius = 150f;
+    public int amountToSpawn = 200;
+    public float scatterRadius = 300f;
 
     [Header("AAA Placement Settings")]
-    [Tooltip("Шар землі, на який можна класти лут")]
-    public LayerMask groundLayer;
     [Tooltip("Шари перешкод (дерева, каміння), щоб лут не спавнився в них")]
     public LayerMask obstacleLayer;
-    [Tooltip("Мінімальна відстань між кристалами/перешкодами")]
     public float minClearanceRadius = 1.5f;
+    [Tooltip("Мінімальна висота (абсолютна), нижче якої лут не спавниться (Вода)")]
+    public float absoluteWaterHeight = -999f;
 
     [Header("Performance")]
-    [Tooltip("Скільки об'єктів створювати за один кадр (щоб не було лагів)")]
-    public int spawnsPerFrame = 5;
+    public int spawnsPerFrame = 10;
 
     private void Start()
     {
-        // За замовчуванням беремо базові шари, якщо забув налаштувати
-        if (groundLayer == 0) groundLayer = LayerMask.GetMask("Default", "Terrain", "Ground");
-
         StartCoroutine(SpawnLootAsync());
     }
 
@@ -32,61 +27,55 @@ public class MapLootSpawner : MonoBehaviour
     {
         if (xpCrystalPrefab == null) yield break;
 
-        // Чекаємо секунду, щоб ландшафт і дерева 100% встигли згенеруватися
-        yield return new WaitForSeconds(1f);
+        // Чекаємо, поки WorldGenerator закінчить роботу, щоб знати рівень води
+        while (!WorldGenerator.IsGenerationDone) yield return null;
+
+        WorldGenerator wg = FindFirstObjectByType<WorldGenerator>();
+        if (wg != null) absoluteWaterHeight = wg.transform.position.y + (wg.depth * wg.waterLevel);
 
         int successfullySpawned = 0;
         int currentFrameSpawns = 0;
-        int maxAttemptsPerItem = 10; // Захист від вічного циклу
+        int maxAttemptsPerItem = 10;
 
         for (int i = 0; i < amountToSpawn; i++)
         {
             for (int attempt = 0; attempt < maxAttemptsPerItem; attempt++)
             {
-                // Шукаємо випадкову точку на площині
                 Vector2 randomPoint = Random.insideUnitCircle * scatterRadius;
-                // Пускаємо промінь високо з неба вниз
-                Vector3 rayStart = transform.position + new Vector3(randomPoint.x, 500f, randomPoint.y);
+                Vector3 worldPos = transform.position + new Vector3(randomPoint.x, 0, randomPoint.y);
 
-                if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 1000f, groundLayer))
+                if (Terrain.activeTerrain != null)
                 {
-                    // 1. Захист від стрімких скель (не спавнимо на схилах більше 40 градусів)
-                    if (Vector3.Angle(Vector3.up, hit.normal) > 40f) continue;
+                    // Читаємо висоту землі НАПРЯМУ (без лагів від Raycast)
+                    worldPos.y = Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y;
 
-                    Vector3 spawnPos = hit.point + Vector3.up * 0.4f;
+                    // 1. Захист від води (не спавнимо на дні озера)
+                    if (worldPos.y <= absoluteWaterHeight + 0.5f) continue;
 
-                    // 2. Захист від накладання: перевіряємо, чи немає поруч дерева або іншого луту
+                    // 2. Захист від стрімких скель
+                    float normX = (worldPos.x - Terrain.activeTerrain.transform.position.x) / Terrain.activeTerrain.terrainData.size.x;
+                    float normZ = (worldPos.z - Terrain.activeTerrain.transform.position.z) / Terrain.activeTerrain.terrainData.size.z;
+                    if (Terrain.activeTerrain.terrainData.GetSteepness(normX, normZ) > 40f) continue;
+
+                    Vector3 spawnPos = worldPos + Vector3.up * 0.4f;
+
+                    // 3. Захист від накладання на дерева/каміння
                     if (!Physics.CheckSphere(spawnPos, minClearanceRadius, obstacleLayer))
                     {
-                        // Рандомізуємо поворот по осі Y, щоб лут не стояв "як солдати"
-                        Quaternion randomRot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-
-                        GameObject loot = Instantiate(xpCrystalPrefab, spawnPos, randomRot);
-
-                        // Ховаємо лут у батьківський об'єкт для чистоти Ієрархії
+                        GameObject loot = Instantiate(xpCrystalPrefab, spawnPos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
                         loot.transform.SetParent(transform);
-
                         successfullySpawned++;
-                        break; // Успішно заспавнили, переходимо до наступного
+                        break;
                     }
                 }
             }
 
-            // Розподіляємо навантаження на процесор (Time-Slicing)
             currentFrameSpawns++;
             if (currentFrameSpawns >= spawnsPerFrame)
             {
                 currentFrameSpawns = 0;
-                yield return null; // Передаємо керування рушію до наступного кадру
+                yield return null;
             }
         }
-
-        Debug.Log($"[MapLootSpawner] Успішно розкидано луту: {successfullySpawned}/{amountToSpawn} (Без лагів)");
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0f, 1f, 0f, 0.2f);
-        Gizmos.DrawWireSphere(transform.position, scatterRadius);
     }
 }

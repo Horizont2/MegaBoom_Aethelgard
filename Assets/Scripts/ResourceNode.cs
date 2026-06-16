@@ -37,10 +37,7 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         if (isDead) return;
 
         currentHealth -= info.Amount;
-
-        // Випускаємо пил/іскри при кожному ударі
         if (hitEffect != null) hitEffect.Play();
-
         StopAllCoroutines();
 
         if (currentHealth <= 0)
@@ -50,17 +47,17 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
         else
         {
-            // РОЗУМНА АНІМАЦІЯ ЗАЛЕЖНО ВІД ТИПУ
             if (nodeType == NodeType.Rock)
             {
-                // Камінь фізично зменшується
-                float healthPercent = currentHealth / maxHealth;
+                // ФІКС: Тепер камінь зменшується рівномірно відносно свого справжнього ХП
+                float healthPercent = currentHealth / actualMaxHealth;
+
+                // Камінь не може стати меншим ніж 40% від свого початкового розміру
                 Vector3 targetScale = originalScale * Mathf.Max(0.4f, healthPercent);
                 StartCoroutine(SquishRoutine(targetScale));
             }
             else
             {
-                // Дерева і бочки хитаються від удару
                 StartCoroutine(WobbleRoutine());
             }
         }
