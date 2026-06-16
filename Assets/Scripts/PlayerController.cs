@@ -1173,4 +1173,57 @@ public class PlayerController : MonoBehaviour, IDamageable
         while (elapsed < 0.15f) { elapsed += Time.unscaledDeltaTime; float curve = Mathf.Sin((elapsed / 0.15f) * Mathf.PI); uiElement.localScale = origScale + new Vector3(0.15f, 0.15f, 0f) * curve; yield return null; }
         uiElement.localScale = origScale;
     }
+
+    // ==========================================
+    // --- AAA HAND IK (Інверсна кінематика) ---
+    // ==========================================
+    private float handIKWeight = 0f;
+    private Vector3 handIKTarget;
+
+    private void OnAnimatorIK(int layerIndex)
+    {
+        if (anim == null || isCampMode) return;
+
+        // Шукаємо об'єкти трохи в більшому радіусі, щоб встигнути зреагувати
+        Collider[] nearbyItems = Physics.OverlapSphere(transform.position, 5f);
+        Transform targetItem = null;
+        float minDist = float.MaxValue;
+
+        foreach (var item in nearbyItems)
+        {
+            bool isValidTarget = false;
+
+            XpCrystal crystal = item.GetComponent<XpCrystal>();
+            if (crystal != null && crystal.IsMagnetized) isValidTarget = true;
+
+            DiamondPickup diamond = item.GetComponent<DiamondPickup>();
+            if (diamond != null && diamond.IsMagnetized) isValidTarget = true;
+
+            // ФІКС: Видалили LootChest, тепер гравець тягне руку ТІЛЬКИ до луту
+
+            if (isValidTarget)
+            {
+                float d = Vector3.Distance(transform.position, item.transform.position);
+                if (d < minDist)
+                {
+                    minDist = d;
+                    targetItem = item.transform;
+                }
+            }
+        }
+
+        if (targetItem != null)
+        {
+            handIKWeight = Mathf.Lerp(handIKWeight, 0.8f, Time.deltaTime * 8f);
+            // Простягаємо руку трохи нижче центру кристалу
+            handIKTarget = Vector3.Lerp(handIKTarget, targetItem.position + Vector3.down * 0.2f, Time.deltaTime * 15f);
+        }
+        else
+        {
+            handIKWeight = Mathf.Lerp(handIKWeight, 0f, Time.deltaTime * 6f);
+        }
+
+        anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, handIKWeight);
+        anim.SetIKPosition(AvatarIKGoal.LeftHand, handIKTarget);
+    }
 }

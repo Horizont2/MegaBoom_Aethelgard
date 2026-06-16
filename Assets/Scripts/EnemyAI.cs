@@ -169,14 +169,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 startPos = finalPos - Vector3.up * 2.5f;
             transform.position = startPos;
 
-            // --- Ô²ÊÑ ÅÔÅÊÒÓ ÑÏÀÂÍÓ ÑÓÏĞÎÒÈÂÍÈÊÀ ---
             if (spawnVFXPrefab != null)
             {
                 GameObject vfx = null;
                 if (ObjectPoolManager.Instance != null)
                     vfx = ObjectPoolManager.Instance.SpawnFromPool(spawnVFXPrefab, finalPos, spawnVFXPrefab.transform.rotation);
 
-                // ßêùî ïóëó íåìàº, àáî ïğåôàá òóäè íå äîäàíî - ñòâîğşºìî éîãî æîğñòêî!
                 if (vfx == null)
                     Instantiate(spawnVFXPrefab, finalPos, spawnVFXPrefab.transform.rotation);
             }
@@ -221,7 +219,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isDead) return;
 
-        // --- Ô²ÊÑ: ßÊÙÎ ÃĞÀÂÅÖÜ ÌÅĞÒÂÈÉ, ÂÎĞÎÃÈ ÇÓÏÈÍßŞÒÜÑß ---
         if (playerTarget != null && playerTarget.currentHealth <= 0)
         {
             if (animator != null) animator.SetBool("isMoving", false);
@@ -485,11 +482,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        if (xpCrystalPrefab != null && ObjectPoolManager.Instance != null)
-            ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        // --- ÁĞÎÍÅÁ²ÉÍÈÉ Ô²ÊÑ ÑÏÀÂÍÓ ËÓÒÓ (²ãíîğóºìî Pool) ---
+        if (xpCrystalPrefab != null)
+        {
+            Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        }
 
-        if (diamondPrefab != null && Random.value <= diamondDropChance && ObjectPoolManager.Instance != null)
-            ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        if (diamondPrefab != null && Random.value <= diamondDropChance)
+        {
+            Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+        }
+        // ------------------------------------
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();

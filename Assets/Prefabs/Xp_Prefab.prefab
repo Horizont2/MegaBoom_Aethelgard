@@ -107,11 +107,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XpCrystal
   xpAmount: 5
+  initialBurstForce: 8
+  magnetAcceleration: 45
   maxMagnetSpeed: 35
-  acceleration: 20
-  dropOffMultiplier: 1.8
   timeBeforeMagnet: 0.8
-  rotationSpeed: 100
 --- !u!54 &-3839265721965048156
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -172,7 +171,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
-  renderers: []
+  renderers:
+  - {fileID: 4742072957177026893}
   animator: {fileID: 0}
   lights: []
   particles: []

@@ -209,6 +209,7 @@ public class WorldGenerator : MonoBehaviour
     }
 
     // --- ОНОВЛЕНО ДЛЯ BITGEM WATER ---
+    // --- ОНОВЛЕНО ДЛЯ BITGEM WATER ---
     private void SpawnWaterPlane()
     {
         if (waterMaterial == null) return;
@@ -217,32 +218,25 @@ public class WorldGenerator : MonoBehaviour
         float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
-        GameObject waterObj = new GameObject("Bitgem_WaterPlane");
+        // ФІКС: Завжди використовуємо стандартний рівний Plane від Unity
+        GameObject waterObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        waterObj.name = "Bitgem_WaterPlane";
         waterObj.transform.SetParent(this.transform);
+
+        // Жорстко скидаємо всі нахили, щоб вода була ідеально горизонтальною
         waterObj.transform.position = new Vector3(transform.position.x + w / 2, absoluteWaterHeight, transform.position.z + l / 2);
+        waterObj.transform.localRotation = Quaternion.identity;
 
-        MeshFilter mf = waterObj.AddComponent<MeshFilter>();
-        MeshRenderer mr = waterObj.AddComponent<MeshRenderer>();
+        // Розтягуємо стандартний Plane (який має розмір 10x10)
+        waterObj.transform.localScale = new Vector3(w / 10f, 1f, l / 10f);
 
-        // Вода не повинна відкидати тіні
-        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        MeshRenderer mr = waterObj.GetComponent<MeshRenderer>();
         mr.material = waterMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        // Якщо в Bitgem є спеціальний меш (для хвиль), використовуємо його
-        if (waterMesh != null)
-        {
-            mf.mesh = waterMesh;
-        }
-        else
-        {
-            // Якщо ні - створюємо стандартний
-            GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            mf.mesh = primitive.GetComponent<MeshFilter>().sharedMesh;
-            Destroy(primitive);
-        }
-
-        // Розтягуємо воду на весь світ
-        waterObj.transform.localScale = new Vector3(w / 5f, 1f, l / 5f);
+        // Видаляємо колайдер, щоб він не заважав
+        Collider col = waterObj.GetComponent<Collider>();
+        if (col != null) Destroy(col);
     }
 
     private IEnumerator GenerateHeightsRoutine(TerrainData terrainData)
