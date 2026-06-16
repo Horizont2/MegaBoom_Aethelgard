@@ -12109,7 +12109,7 @@ MonoBehaviour:
   currentMultiplier: 1
   perfectDodgeSlowMoScale: 0.2
   perfectDodgeDuration: 1.5
-  perfectDodgeVFX: {fileID: 0}
+  perfectDodgeVFX: {fileID: 2656840789729323889, guid: bf9bc06cc47a0424f89c625ea632660c, type: 3}
   isNextAttackGuaranteedCrit: 0
 --- !u!54 &655461266166395312
 Rigidbody:
@@ -12164,7 +12164,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 228fc1317f61ac4408d84a68ea9822d3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -12227,21 +12227,21 @@ LineRenderer:
       ctime6: 0
       ctime7: 0
       atime0: 0
-      atime1: 65535
-      atime2: 0
+      atime1: 694
+      atime2: 65535
       atime3: 0
       atime4: 0
       atime5: 0
       atime6: 0
       atime7: 0
       m_Mode: 0
-      m_ColorSpace: -1
+      m_ColorSpace: 0
       m_NumColorKeys: 2
-      m_NumAlphaKeys: 2
+      m_NumAlphaKeys: 3
     numCornerVertices: 0
     numCapVertices: 0
     alignment: 0
-    textureMode: 0
+    textureMode: 1
     textureScale: {x: 1, y: 1}
     shadowBias: 0.5
     generateLightingData: 0
@@ -12279,9 +12279,13 @@ MonoBehaviour:
   environmentLayer:
     serializedVersion: 2
     m_Bits: 4294967295
-  pelvisOffset: 0
   footYOffset: 0.1
-  ikWeight: 1
+  maxStepHeight: 0.45
+  maxSlopeAngle: 45
+  adjustPelvis: 1
+  pelvisSpeed: 10
+  maxPelvisDrop: 0.6
+  maxIkWeight: 1
   smoothSpeed: 15
 --- !u!1 &2953466781697178271
 GameObject:

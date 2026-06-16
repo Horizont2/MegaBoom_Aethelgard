@@ -691,6 +691,13 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         DrawPreciseTrajectory(currentGrenadeTarget);
         DrawAoEMarker(currentGrenadeTarget);
+
+        // --- НОВЕ: Анімація лінії прицілювання (ефект руху енергії) ---
+        if (trajectoryLine != null && trajectoryLine.material != null)
+        {
+            // Текстура буде неперервно повзти вперед
+            trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
+        }
     }
 
     private Vector3 CalculateThrowVelocity(Vector3 target)

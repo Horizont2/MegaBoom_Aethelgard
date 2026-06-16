@@ -186,9 +186,11 @@ public class CampBuilding : MonoBehaviour
         // --- ФІКС ЗАКРИТТЯ ПАНЕЛІ ---
         // Якщо панель відкрита, жорстко перевіряємо дистанцію до гравця.
         // Якщо гравець відійшов на 4 метри (навіть якщо OnTriggerExit не спрацював) - закриваємо.
+        // --- ФІКС ЗАКРИТТЯ ПАНЕЛІ ---
         if (isPanelOpen && playerTransform != null)
         {
-            if (Vector3.Distance(transform.position, playerTransform.position) > 4f)
+            // Збільшили радіус до 12f, бо центр будівлі може бути далеко від краю колайдера
+            if (Vector3.Distance(transform.position, playerTransform.position) > 12f)
             {
                 playerInRange = false;
                 ClosePanel();
