@@ -25,13 +25,8 @@ public class WorldGenerator : MonoBehaviour
     public Material skyboxMaterial;
 
     [Header("Dark Fantasy: Water (BITGEM)")]
-    [Tooltip("Висота (від 0 до 1), нижче якої генерується вода")]
     public float waterLevel = 0.12f;
-
-    // ФІКС: Тепер ми беремо напряму матеріал і меш із папки Bitgem
-    [Tooltip("Матеріал з папки Bitgem/StylisedWater/URP/Materials")]
     public Material waterMaterial;
-    [Tooltip("Меш з папки Bitgem/StylisedWater/URP/Meshes (або залиш пустим)")]
     public Mesh waterMesh;
 
     [Header("Dark Fantasy: Ecosystem Logic")]
@@ -148,15 +143,23 @@ public class WorldGenerator : MonoBehaviour
 
         SpawnWaterPlane();
 
+        // ========================================================================
+        // 1. СПОЧАТКУ СПАВНИМО ТАБІР БОСА (Щоб дерева його оминали)
+        // ========================================================================
+        yield return StartCoroutine(SpawnRegionTotemRoutine());
+        CurrentProgress = 0.60f;
+
+        // 2. ТІЛЬКИ ТЕПЕР висаджуємо ліс і природу
         yield return StartCoroutine(PopulateBiomesRoutine());
         CurrentProgress = 0.85f;
 
         yield return StartCoroutine(SpawnPOIsRoutine());
         yield return StartCoroutine(SpawnExtractionCartsRoutine());
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
+
         CurrentProgress = 0.95f;
 
-        Physics.SyncTransforms();
+        Physics.SyncTransforms(); // Оновлюємо колізії після генерації
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
@@ -165,7 +168,6 @@ public class WorldGenerator : MonoBehaviour
             Vector3 safePos = player.transform.position;
             bool foundSafeSpot = false;
 
-            // Шукаємо випадкову безпечну точку на карті (суху)
             for (int i = 0; i < 200; i++)
             {
                 float px = Random.Range(terrain.terrainData.size.x * 0.2f, terrain.terrainData.size.x * 0.8f);
@@ -182,7 +184,7 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
 
-            if (!foundSafeSpot) safePos.y += 5f; // Запобіжник
+            if (!foundSafeSpot) safePos.y += 5f;
 
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null) { cc.enabled = false; player.transform.position = safePos; cc.enabled = true; }
@@ -193,6 +195,84 @@ public class WorldGenerator : MonoBehaviour
         DynamicGI.UpdateEnvironment();
         CurrentProgress = 1f;
         IsGenerationDone = true;
+    }
+
+    // ==========================================
+    // --- ПЕРФЕКТНИЙ СПАВН ВЕЛИКОЇ ЛОКАЦІЇ ---
+    // ==========================================
+    private IEnumerator SpawnRegionTotemRoutine()
+    {
+        GameObject totemPrefab = null;
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+        {
+            totemPrefab = GameManager.Instance.currentRegion.regionTotemPrefab;
+        }
+
+        if (totemPrefab == null) yield break;
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+        float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
+
+        Vector3 bestPos = Vector3.zero;
+        bool found = false;
+
+        // Шукаємо рівну площу (30х30 метрів) замість однієї точки
+        for (int i = 0; i < 500; i++)
+        {
+            float px = Random.Range(w * 0.3f, w * 0.7f); // Тільки центральна частина мапи
+            float pz = Random.Range(l * 0.3f, l * 0.7f);
+
+            bool isFlatArea = true;
+            float checkRadius = 15f; // Радіус перевірки 15 метрів (30м діаметр)
+
+            for (float ox = -checkRadius; ox <= checkRadius; ox += 10f)
+            {
+                for (float oz = -checkRadius; oz <= checkRadius; oz += 10f)
+                {
+                    float checkX = (px + ox) / w;
+                    float checkZ = (pz + oz) / l;
+
+                    // Перевіряємо, чи немає сильного нахилу в цій зоні
+                    if (terrain.terrainData.GetSteepness(checkX, checkZ) > 6f)
+                    {
+                        isFlatArea = false;
+                        break;
+                    }
+                }
+                if (!isFlatArea) break;
+            }
+
+            if (isFlatArea)
+            {
+                float worldX = transform.position.x + px;
+                float worldZ = transform.position.z + pz;
+                float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
+
+                if (worldY > absoluteWaterHeight + 3f) // Захист від спавну біля самої води
+                {
+                    bestPos = new Vector3(worldX, worldY, worldZ);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (found)
+        {
+            GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
+            camp.transform.SetParent(this.transform);
+        }
+        else
+        {
+            Debug.LogWarning("[WorldGenerator] Не знайдено рівної площі для табору. Спавнимо в центрі з ризиком нахилу.");
+            Vector3 center = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2);
+            center.y = terrain.SampleHeight(center) + transform.position.y;
+            GameObject camp = Instantiate(totemPrefab, center, Quaternion.identity);
+            camp.transform.SetParent(this.transform);
+        }
+
+        yield return null;
     }
 
     private void AdjustSettingsForBiome()
@@ -208,8 +288,6 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // --- ОНОВЛЕНО ДЛЯ BITGEM WATER ---
-    // --- ОНОВЛЕНО ДЛЯ BITGEM WATER ---
     private void SpawnWaterPlane()
     {
         if (waterMaterial == null) return;
@@ -218,23 +296,19 @@ public class WorldGenerator : MonoBehaviour
         float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
-        // ФІКС: Завжди використовуємо стандартний рівний Plane від Unity
         GameObject waterObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
         waterObj.name = "Bitgem_WaterPlane";
         waterObj.transform.SetParent(this.transform);
 
-        // Жорстко скидаємо всі нахили, щоб вода була ідеально горизонтальною
         waterObj.transform.position = new Vector3(transform.position.x + w / 2, absoluteWaterHeight, transform.position.z + l / 2);
         waterObj.transform.localRotation = Quaternion.identity;
 
-        // Розтягуємо стандартний Plane (який має розмір 10x10)
         waterObj.transform.localScale = new Vector3(w / 10f, 1f, l / 10f);
 
         MeshRenderer mr = waterObj.GetComponent<MeshRenderer>();
         mr.material = waterMaterial;
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        // Видаляємо колайдер, щоб він не заважав
         Collider col = waterObj.GetComponent<Collider>();
         if (col != null) Destroy(col);
     }
@@ -369,8 +443,10 @@ public class WorldGenerator : MonoBehaviour
                 if (localTemp >= 0.65f) { currentTreeTexture = desertTreeTexture; currentFoliageColor = desertFoliageColor; currentRockColor = desertRockColor; }
                 else if (localTemp <= 0.35f) { currentTreeTexture = snowTreeTexture; currentFoliageColor = snowFoliageColor; currentRockColor = snowRockColor; }
 
-                // ФІКС ОПТИМІЗАЦІЇ: Повністю забороняємо генерацію об'єктів під водою
                 if (normalizedHeight <= waterLevel + 0.03f) continue;
+
+                // Перевірка колізій - якщо тут вже стоїть табір боса, нічого не спавнимо!
+                if (!IsPositionClear(new Vector3(worldX, worldY, worldZ), 1.5f)) continue;
 
                 if (steepness > 40f)
                 {
@@ -552,6 +628,9 @@ public class WorldGenerator : MonoBehaviour
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
         float startTime = Time.realtimeSinceStartup;
 
+        // ФІКС: Беремо абсолютну світову висоту води
+        float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
+
         for (int i = 0; i < 3000; i++)
         {
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
@@ -562,11 +641,12 @@ public class WorldGenerator : MonoBehaviour
                 float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
                 if (terrain.terrainData.GetSteepness(px / w, pz / l) > maxPOISteepness) continue;
 
-                float normHeight = terrain.terrainData.GetHeight((int)(pz / l * terrain.terrainData.heightmapResolution), (int)(px / w * terrain.terrainData.heightmapResolution)) / depth;
-                if (normHeight < waterLevel + 0.05f) continue;
-
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
+
+                // Надійна перевірка: щоб руїни та об'єкти були вище води хоча б на 1.5 метра
+                if (worldY <= absoluteWaterHeight + 1.5f) continue;
+
                 Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
 
                 if (IsPositionClear(spawnPos, poiClearanceRadius))
@@ -585,6 +665,9 @@ public class WorldGenerator : MonoBehaviour
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCarts = 0;
         float startTime = Time.realtimeSinceStartup;
 
+        // ФІКС: Беремо абсолютну світову висоту води
+        float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
+
         for (int i = 0; i < 5000; i++)
         {
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
@@ -593,13 +676,14 @@ public class WorldGenerator : MonoBehaviour
             try
             {
                 float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
-                if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f)
+                if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f) // Шукаємо рівну землю
                 {
-                    float normHeight = terrain.terrainData.GetHeight((int)(pz / l * terrain.terrainData.heightmapResolution), (int)(px / w * terrain.terrainData.heightmapResolution)) / depth;
-                    if (normHeight < waterLevel + 0.02f) continue;
-
                     float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                     float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
+
+                    // Надійна перевірка: кінь/віз має стояти мінімум на 2 метри ВИЩЕ рівня води
+                    if (worldY <= absoluteWaterHeight + 2f) continue;
+
                     Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
 
                     if (IsPositionClear(spawnPos, cartClearanceRadius))
@@ -672,6 +756,7 @@ public class WorldGenerator : MonoBehaviour
         Collider[] colliders = Physics.OverlapSphere(position + Vector3.up * 1.5f, radius);
         foreach (Collider col in colliders)
         {
+            // Ігноруємо колізії землі та тригери (якщо ти забув вимкнути IsTrigger)
             if (col.GetComponent<TerrainCollider>() != null || col.GetComponent<Terrain>() != null || col.isTrigger) continue;
             return false;
         }

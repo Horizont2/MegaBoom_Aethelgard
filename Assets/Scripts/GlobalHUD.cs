@@ -23,6 +23,20 @@ public class GlobalHUD : MonoBehaviour
     public CanvasGroup objectivePanelGroup;
     public TextMeshProUGUI objectiveText;
 
+    [Header("Boss UI (AAA Style)")]
+    public CanvasGroup bossUIGroup;
+    public TextMeshProUGUI bossNameText;
+    public Image bossHpFill;
+    public Image bossHpCatchupFill;
+
+    private float targetBossHpRatio = 1f;
+    private Coroutine bossUIFadeRoutine;
+
+    [Header("Cinematic Bars (Auto-Generated)")]
+    private RectTransform topCinematicBar;
+    private RectTransform bottomCinematicBar;
+    private Coroutine barsRoutine;
+
     [Header("Pause Menu Settings")]
     public CanvasGroup pausePanelGroup;
     public GameObject[] pauseButtons;
@@ -37,7 +51,6 @@ public class GlobalHUD : MonoBehaviour
 
     private Coroutine promptFadeCoroutine;
     private Coroutine promptTypingCoroutine;
-
     private RenderMode defaultRenderMode;
 
     private void Awake()
@@ -64,16 +77,23 @@ public class GlobalHUD : MonoBehaviour
     {
         if (LoadingManager.Instance != null && LoadingManager.Instance.isLoading) return;
 
+        if (bossUIGroup != null && bossUIGroup.alpha > 0f)
+        {
+            if (bossHpFill != null)
+                bossHpFill.fillAmount = Mathf.Lerp(bossHpFill.fillAmount, targetBossHpRatio, Time.deltaTime * 10f);
+
+            if (bossHpCatchupFill != null && bossHpCatchupFill.fillAmount > targetBossHpRatio)
+                bossHpCatchupFill.fillAmount = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
+        }
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // Безпечна перевірка SettingsUI
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
                 return;
             }
 
-            // Безпечна перевірка Дошки Оголошень
             NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
             if (noticeBoard != null && noticeBoard.isBoardOpen)
             {
@@ -81,11 +101,8 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
-            // Якщо мапа відкрита через стіл, HUD просто ігнорує ESC, 
-            // даючи скрипту мапи можливість закритися самостійно.
             if (MapTableInteract.IsMapActive) return;
 
-            // Якщо мапа відкрита через інтерфейс
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
             if (mapPanel != null && mapPanel.IsPanelOpen())
             {
@@ -101,6 +118,113 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
+    // ==========================================
+    // --- CINEMATIC BARS LOGIC ---
+    // ==========================================
+    private void CreateCinematicBarsIfNeeded()
+    {
+        if (topCinematicBar != null && bottomCinematicBar != null) return;
+
+        GameObject barsContainer = new GameObject("CinematicBars_Auto");
+        barsContainer.transform.SetParent(this.transform, false);
+        barsContainer.transform.SetAsLastSibling();
+
+        GameObject topObj = new GameObject("TopBar", typeof(RectTransform), typeof(Image));
+        topObj.transform.SetParent(barsContainer.transform, false);
+        topObj.GetComponent<Image>().color = Color.black;
+        topCinematicBar = topObj.GetComponent<RectTransform>();
+        topCinematicBar.anchorMin = new Vector2(0, 1);
+        topCinematicBar.anchorMax = new Vector2(1, 1);
+        topCinematicBar.pivot = new Vector2(0.5f, 0);
+        topCinematicBar.sizeDelta = new Vector2(0, 150);
+        topCinematicBar.anchoredPosition = new Vector2(0, 150);
+
+        GameObject botObj = new GameObject("BottomBar", typeof(RectTransform), typeof(Image));
+        botObj.transform.SetParent(barsContainer.transform, false);
+        botObj.GetComponent<Image>().color = Color.black;
+        bottomCinematicBar = botObj.GetComponent<RectTransform>();
+        bottomCinematicBar.anchorMin = new Vector2(0, 0);
+        bottomCinematicBar.anchorMax = new Vector2(1, 0);
+        bottomCinematicBar.pivot = new Vector2(0.5f, 1);
+        bottomCinematicBar.sizeDelta = new Vector2(0, 150);
+        bottomCinematicBar.anchoredPosition = new Vector2(0, -150);
+    }
+
+    public void ShowCinematicBars()
+    {
+        CreateCinematicBarsIfNeeded();
+        if (barsRoutine != null) StopCoroutine(barsRoutine);
+        barsRoutine = StartCoroutine(AnimateBars(0f));
+    }
+
+    public void HideCinematicBars()
+    {
+        CreateCinematicBarsIfNeeded();
+        if (barsRoutine != null) StopCoroutine(barsRoutine);
+        barsRoutine = StartCoroutine(AnimateBars(150f));
+    }
+
+    private IEnumerator AnimateBars(float targetY)
+    {
+        if (topCinematicBar == null || bottomCinematicBar == null) yield break;
+
+        float currentTopY = topCinematicBar.anchoredPosition.y;
+        float currentBottomY = bottomCinematicBar.anchoredPosition.y;
+        float elapsed = 0f;
+
+        while (elapsed < 0.4f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / 0.4f);
+
+            topCinematicBar.anchoredPosition = new Vector2(0, Mathf.Lerp(currentTopY, targetY, t));
+            bottomCinematicBar.anchoredPosition = new Vector2(0, Mathf.Lerp(currentBottomY, -targetY, t));
+            yield return null;
+        }
+
+        topCinematicBar.anchoredPosition = new Vector2(0, targetY);
+        bottomCinematicBar.anchoredPosition = new Vector2(0, -targetY);
+    }
+
+    // ==========================================
+    // --- BOSS UI LOGIC ---
+    // ==========================================
+    public void ShowBossUI(string bossName, float currentHp, float maxHp)
+    {
+        if (bossUIGroup == null) return;
+        if (bossNameText != null) bossNameText.text = bossName;
+        targetBossHpRatio = currentHp / maxHp;
+        if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
+        if (bossHpCatchupFill != null) bossHpCatchupFill.fillAmount = targetBossHpRatio;
+        if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
+        bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(1f));
+    }
+
+    public void UpdateBossHealth(float currentHp, float maxHp)
+    {
+        targetBossHpRatio = currentHp / maxHp;
+    }
+
+    public void HideBossUI()
+    {
+        if (bossUIGroup == null) return;
+        if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
+        bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(0f));
+    }
+
+    private IEnumerator FadeBossUIRoutine(float targetAlpha)
+    {
+        while (Mathf.Abs(bossUIGroup.alpha - targetAlpha) > 0.01f)
+        {
+            bossUIGroup.alpha = Mathf.MoveTowards(bossUIGroup.alpha, targetAlpha, Time.deltaTime * 2f);
+            yield return null;
+        }
+        bossUIGroup.alpha = targetAlpha;
+    }
+
+    // ==========================================
+    // --- STANDARD UI LOGIC ---
+    // ==========================================
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
@@ -114,14 +238,8 @@ public class GlobalHUD : MonoBehaviour
             {
                 if (panel != null)
                 {
-                    if (isTutorial && (panel.name == "Resources" || panel.name == "MissionUIParent"))
-                    {
-                        panel.SetActive(false);
-                    }
-                    else
-                    {
-                        panel.SetActive(showGameplayUI);
-                    }
+                    if (isTutorial && (panel.name == "Resources" || panel.name == "MissionUIParent")) panel.SetActive(false);
+                    else panel.SetActive(showGameplayUI);
                 }
             }
         }
@@ -130,12 +248,12 @@ public class GlobalHUD : MonoBehaviour
         {
             Transform res = transform.Find("Resources");
             if (res != null) res.gameObject.SetActive(false);
-
             Transform campMissions = transform.Find("MissionUIParent");
             if (campMissions != null) campMissions.gameObject.SetActive(false);
         }
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
+        HideBossUI();
 
         if (isPaused)
         {
@@ -232,8 +350,6 @@ public class GlobalHUD : MonoBehaviour
     public void TogglePause()
     {
         if (pausePanelGroup == null) return;
-
-        // Гарантуємо, що Canvas точно увімкнений
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null && !canvas.enabled) canvas.enabled = true;
 
@@ -265,16 +381,12 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.gameObject.SetActive(true);
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
-
         string currentScene = SceneManager.GetActiveScene().name;
 
         if (giveUpButtonGroup != null)
         {
             giveUpButtonGroup.gameObject.SetActive(true);
-            if (giveUpText != null)
-            {
-                giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
-            }
+            if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
         }
 
         foreach (var btn in pauseButtons) if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
@@ -315,20 +427,8 @@ public class GlobalHUD : MonoBehaviour
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;
-
-            if (giveUpText != null)
-            {
-                giveUpText.text = (currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?";
-            }
-
-            foreach (var btn in pauseButtonGroups)
-            {
-                if (btn != null && btn != giveUpButtonGroup)
-                {
-                    btn.alpha = 0.3f;
-                    btn.interactable = false;
-                }
-            }
+            if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?";
+            foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
         }
         else
         {
@@ -337,10 +437,7 @@ public class GlobalHUD : MonoBehaviour
                 if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
                 FadeAndLoadScene("CampScene");
             }
-            else
-            {
-                FadeAndLoadScene("Menu");
-            }
+            else FadeAndLoadScene("Menu");
         }
     }
 
@@ -348,20 +445,8 @@ public class GlobalHUD : MonoBehaviour
     {
         isConfirmingGiveUp = false;
         string currentScene = SceneManager.GetActiveScene().name;
-
-        if (giveUpText != null)
-        {
-            giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
-        }
-
-        foreach (var btn in pauseButtonGroups)
-        {
-            if (btn != null)
-            {
-                btn.alpha = 1f;
-                btn.interactable = true;
-            }
-        }
+        if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
+        foreach (var btn in pauseButtonGroups) { if (btn != null) { btn.alpha = 1f; btn.interactable = true; } }
     }
 
     public void SetLevelObjective(string message) { if (objectiveText != null) objectiveText.text = message; if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f; }

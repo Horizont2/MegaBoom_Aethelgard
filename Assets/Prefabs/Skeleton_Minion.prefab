@@ -1020,9 +1020,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
   renderers: []
-  animator: {fileID: 0}
+  animator: {fileID: 7489123634373202801}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 4639509076422919597}
+  - {fileID: 6867747440997005975}
   isCurrentlyVisible: 1
 --- !u!1 &4229068581261606948
 GameObject:
@@ -2386,7 +2388,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.09
+      value: 1.84
       objectReference: {fileID: 0}
     - target: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2446,9 +2448,19 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
   m_PrefabInstance: {fileID: 3468276135830079863}
   m_PrefabAsset: {fileID: 0}
+--- !u!198 &4639509076422919597 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 8089329325465029850, guid: f276865553c461c47b8986863dd5d668, type: 3}
+  m_PrefabInstance: {fileID: 3468276135830079863}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5685820174141210362 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 9136076963120838541, guid: f276865553c461c47b8986863dd5d668, type: 3}
+  m_PrefabInstance: {fileID: 3468276135830079863}
+  m_PrefabAsset: {fileID: 0}
+--- !u!198 &6867747440997005975 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 8029611561652106208, guid: f276865553c461c47b8986863dd5d668, type: 3}
   m_PrefabInstance: {fileID: 3468276135830079863}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6817375021589974035

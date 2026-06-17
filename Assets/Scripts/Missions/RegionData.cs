@@ -41,6 +41,13 @@ public class RegionData : ScriptableObject
     public float enemyHpMultiplier = 1f;
     public float enemyDamageMultiplier = 1f;
 
+    // --- НОВИЙ БЛОК: СИСТЕМА БОСІВ ТА КВЕСТІВ ---
+    [Header("Region Objective (Totem & Bosses)")]
+    [Tooltip("Префаб Тотему/Обеліска, який гравець має знайти на локації")]
+    public GameObject regionTotemPrefab;
+    [Tooltip("Список босів, які заспавняться під час активації Тотему")]
+    public GameObject[] regionBossPrefabs;
+
     [Header("One-Time Rewards (За проходження)")]
     public int woodReward = 100;
     public int stoneReward = 50;

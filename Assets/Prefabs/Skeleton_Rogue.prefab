@@ -603,13 +603,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
   renderers: []
-  animator: {fileID: 0}
+  animator: {fileID: 4699927739094781787}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 6477312594260176626}
+  - {fileID: 5100874658166624712}
   isCurrentlyVisible: 1
 --- !u!4 &2533251199688377038 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -5515783359193845756, guid: dd6c271ef3bd821428d01870ece268d4, type: 3}
+  m_PrefabInstance: {fileID: 1176542078386008778}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4699927739094781787 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: dd6c271ef3bd821428d01870ece268d4, type: 3}
   m_PrefabInstance: {fileID: 1176542078386008778}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3930200260255554834
@@ -626,11 +633,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.09
+      value: 1.78
       objectReference: {fileID: 0}
     - target: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.24082223
+      value: 0.04
       objectReference: {fileID: 0}
     - target: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_LocalRotation.w
@@ -686,9 +693,19 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4230411635692688710, guid: f276865553c461c47b8986863dd5d668, type: 3}
   m_PrefabInstance: {fileID: 3930200260255554834}
   m_PrefabAsset: {fileID: 0}
+--- !u!198 &5100874658166624712 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 8089329325465029850, guid: f276865553c461c47b8986863dd5d668, type: 3}
+  m_PrefabInstance: {fileID: 3930200260255554834}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5207073521290472095 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 9136076963120838541, guid: f276865553c461c47b8986863dd5d668, type: 3}
+  m_PrefabInstance: {fileID: 3930200260255554834}
+  m_PrefabAsset: {fileID: 0}
+--- !u!198 &6477312594260176626 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 8029611561652106208, guid: f276865553c461c47b8986863dd5d668, type: 3}
   m_PrefabInstance: {fileID: 3930200260255554834}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4195535996781381570
