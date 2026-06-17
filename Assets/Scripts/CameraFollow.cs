@@ -205,4 +205,16 @@ public class CameraFollow : MonoBehaviour
 
     // ФІКС СИНХРОНІЗАЦІЇ
     public void SyncRotation(float x, float y) { currentX = x; currentY = y; }
+
+    // Миттєво переміщує камеру до цілі (використовується після телепортацій/завантажень)
+    public void SnapToTarget()
+    {
+        if (target != null)
+        {
+            currentTargetPos = target.position;
+            lastTargetPos = target.position;
+            currentDistance = targetDistance;
+            actualCollisionDistance = targetDistance;
+        }
+    }
 }

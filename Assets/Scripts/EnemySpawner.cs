@@ -6,21 +6,21 @@ using System.Collections.Generic;
 public class SpawnableEnemy
 {
     public GameObject enemyPrefab;
-    [Tooltip("З якої хвилини цей ворог почне з'являтися")]
     public float spawnAtMinute = 0f;
 }
 
 public class EnemySpawner : MonoBehaviour
 {
+    // --- НОВЕ: Флаг для блокування спавну під час катсцен ---
+    public static bool IsSpawningBlocked = false;
+
     [Header("Spawner Settings")]
     public SpawnableEnemy[] enemyPool;
     public Transform player;
     public float baseSpawnInterval = 1.5f;
 
     [Header("Spawn Area")]
-    [Tooltip("Мінімальна відстань від гравця (безпечна зона)")]
     public float minSpawnRadius = 10f;
-    [Tooltip("Максимальна відстань від гравця")]
     public float maxSpawnRadius = 20f;
 
     private float timer;
@@ -28,15 +28,15 @@ public class EnemySpawner : MonoBehaviour
 
     private void Start()
     {
-        // Знаходимо генератор світу при старті (якщо він є на сцені)
+        IsSpawningBlocked = false; // Скидаємо при запуску рівня
         worldGen = FindFirstObjectByType<WorldGenerator>();
     }
 
     private void Update()
     {
-        // --- ФІКС ЗАВАНТАЖЕННЯ: Чекаємо, поки світ повністю побудується ---
-        if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
+        if (IsSpawningBlocked) return; // ФІКС: Блокуємо спавн під час катсцен
 
+        if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
         if (player == null || enemyPool == null || enemyPool.Length == 0) return;
 
         timer += Time.deltaTime;
@@ -64,7 +64,6 @@ public class EnemySpawner : MonoBehaviour
 
         if (availableEnemies.Count == 0) return;
 
-        // Спавн у кільці (не впритул, і не занадто далеко)
         float randomDist = Random.Range(minSpawnRadius, maxSpawnRadius);
         Vector2 randomCircle = Random.insideUnitCircle.normalized * randomDist;
 
@@ -94,26 +93,25 @@ public class EnemySpawner : MonoBehaviour
             enemyScript.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
         }
 
-        // АНІМАЦІЯ ПОЯВИ З-ПІД ЗЕМЛІ
         StartCoroutine(RiseFromGroundRoutine(newEnemy));
     }
 
     private IEnumerator RiseFromGroundRoutine(GameObject enemy)
     {
         EnemyAI ai = enemy.GetComponent<EnemyAI>();
-        if (ai != null) ai.isCinematicFrozen = true; // Заморожуємо ШІ
+        if (ai != null) ai.isCinematicFrozen = true;
 
         Vector3 finalPos = enemy.transform.position;
-        enemy.transform.position = finalPos - new Vector3(0, 2.5f, 0); // Ставимо під землю
+        enemy.transform.position = finalPos - new Vector3(0, 2.5f, 0);
 
-        float duration = 1.5f; // Скільки секунд вилазить
+        float duration = 1.5f;
         float elapsed = 0f;
 
         while (elapsed < duration && enemy != null)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
-            t = t * t * (3f - 2f * t); // SmoothStep для плавності
+            t = t * t * (3f - 2f * t);
 
             enemy.transform.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
             yield return null;
@@ -122,7 +120,7 @@ public class EnemySpawner : MonoBehaviour
         if (enemy != null)
         {
             enemy.transform.position = finalPos;
-            if (ai != null) ai.isCinematicFrozen = false; // Розморожуємо, тепер може бити
+            if (ai != null) ai.isCinematicFrozen = false;
         }
     }
 }

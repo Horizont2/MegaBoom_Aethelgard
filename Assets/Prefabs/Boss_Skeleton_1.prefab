@@ -849,9 +849,9 @@ MonoBehaviour:
   bossName: SKELETON OVERLORD
   maxHealth: 500
   moveSpeed: 2
-  damage: 25
+  damage: 10
   staggerHealthThreshold: 0.15
-  attackRange: 3.5
+  attackRange: 2.5
   attackCooldown: 3
   attackTelegraphTime: 1.2
   bossWeapon: {fileID: 5934978669388820802}

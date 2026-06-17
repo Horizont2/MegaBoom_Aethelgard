@@ -4,7 +4,7 @@ using System.Collections;
 public class MapTableInteract : MonoBehaviour
 {
     public static event System.Action OnMapFullyOpened;
-    public static bool IsMapActive = false; // Надійний глобальний статус мапи
+    public static bool IsMapActive = false;
 
     [Header("Camera Flight Target")]
     public Transform mapCameraPosition;
@@ -12,7 +12,6 @@ public class MapTableInteract : MonoBehaviour
     [Header("UI & Scene Objects")]
     public CanvasGroup mapCanvasGroup;
     public MapPanelUI mapPanelUI;
-    [Tooltip("Перетягніть сюди літаючу іконку над столом")]
     public GameObject floatingIcon;
 
     [Header("Flight Settings (Juice)")]
@@ -30,9 +29,9 @@ public class MapTableInteract : MonoBehaviour
     private Quaternion savedCamRot;
     private Coroutine activeSequence;
 
-    private void Start()
+    private IEnumerator Start()
     {
-        IsMapActive = false; // Завжди вимкнено на старті
+        IsMapActive = false;
         if (mapCanvasGroup != null)
         {
             mapCanvasGroup.alpha = 0f;
@@ -45,6 +44,17 @@ public class MapTableInteract : MonoBehaviour
         if (player != null) playerController = player.GetComponent<PlayerController>();
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
+
+        // --- НОВЕ: АВТОМАТИЧНЕ ВІДКРИТТЯ МАПИ ПІСЛЯ ЗАХОПЛЕННЯ РЕГІОНУ ---
+        if (PlayerPrefs.GetInt("AutoOpenMap", 0) == 1)
+        {
+            PlayerPrefs.SetInt("AutoOpenMap", 0);
+            PlayerPrefs.Save();
+
+            // Чекаємо, поки сцена та UI остаточно завантажаться
+            yield return new WaitForSeconds(1.5f);
+            activeSequence = StartCoroutine(OpenMapSequence());
+        }
     }
 
     private void Update()
@@ -92,7 +102,7 @@ public class MapTableInteract : MonoBehaviour
 
     private IEnumerator OpenMapSequence()
     {
-        IsMapActive = true; // МАПА ВІДКРИТА
+        IsMapActive = true;
         isTransitioning = true;
         isMapOpen = true;
 
@@ -109,8 +119,13 @@ public class MapTableInteract : MonoBehaviour
         if (cameraFollow != null) cameraFollow.isCinematicMode = true;
 
         Transform mainCam = Camera.main.transform;
-        savedCamPos = mainCam.position;
-        savedCamRot = mainCam.rotation;
+
+        // Зберігаємо позицію камери ТІЛЬКИ якщо вона ще не збережена з минулого разу (якщо ми авто-відкрили мапу з повітря, це краще не перезаписувати нулями)
+        if (savedCamPos == Vector3.zero)
+        {
+            savedCamPos = mainCam.position;
+            savedCamRot = mainCam.rotation;
+        }
 
         float elapsed = 0f;
         while (elapsed < flightDuration)
@@ -147,10 +162,9 @@ public class MapTableInteract : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Чекаємо тільки поки зникне інтерфейс мапи
         yield return StartCoroutine(FadeCanvas(mapCanvasGroup, 0f, uiFadeDuration));
 
-        IsMapActive = false; // МАПУ ПРИХОВАНО (Одразу дозволяємо паузу!)
+        IsMapActive = false;
 
         if (floatingIcon != null) floatingIcon.SetActive(true);
 
@@ -201,13 +215,6 @@ public class MapTableInteract : MonoBehaviour
         if (targetAlpha < 0.5f) { cg.blocksRaycasts = false; cg.interactable = false; }
     }
 
-    private void OnDestroy()
-    {
-        IsMapActive = false;
-    }
-
-    private void OnDisable()
-    {
-        IsMapActive = false;
-    }
+    private void OnDestroy() { IsMapActive = false; }
+    private void OnDisable() { IsMapActive = false; }
 }

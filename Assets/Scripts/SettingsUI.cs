@@ -16,9 +16,9 @@ public class SettingsUI : MonoBehaviour
     public float animationSpeed = 10f;
 
     [Header("Tabs Navigation")]
-    public RectTransform underline; // Сюди перетягни лінію
-    public TextMeshProUGUI[] tabTexts; // 0: Audio, 1: Display, 2: Controls
-    public GameObject[] tabPanels; // 0: AudioPanel, 1: DisplayPanel, 2: ControlsPanel
+    public RectTransform underline;
+    public TextMeshProUGUI[] tabTexts;
+    public GameObject[] tabPanels;
 
     private int currentTabIndex = 0;
     private float targetLineLocalX;
@@ -92,27 +92,23 @@ public class SettingsUI : MonoBehaviour
     {
         if (settingsPanel != null && settingsPanel.activeInHierarchy)
         {
-            // Анімація галочок
             AnimateCheckmark(damageCheckmark, damagePopupsToggle.isOn);
             AnimateCheckmark(screenShakeCheckmark, screenShakeToggle.isOn);
             AnimateCheckmark(fpsLimitCheckmark, limitFPSToggle.isOn);
             AnimateCheckmark(showFPSCheckmark, showFPSToggle.isOn);
 
-            // --- НОВЕ: Плавна анімація лінії вкладок та прозорості тексту ---
             if (underline != null && tabTexts != null && tabTexts.Length > 0)
             {
-                // Рухаємо лінію до вибраної вкладки
                 Vector3 localPos = underline.localPosition;
                 localPos.x = Mathf.Lerp(localPos.x, targetLineLocalX, Time.unscaledDeltaTime * 15f);
                 underline.localPosition = localPos;
 
-                // Змінюємо прозорість текстів
                 for (int i = 0; i < tabTexts.Length; i++)
                 {
                     if (tabTexts[i] != null)
                     {
                         Color c = tabTexts[i].color;
-                        float targetAlpha = (i == currentTabIndex) ? 0.7f : 1f; // 0.7 = 30% прозорість
+                        float targetAlpha = (i == currentTabIndex) ? 0.7f : 1f;
                         c.a = Mathf.Lerp(c.a, targetAlpha, Time.unscaledDeltaTime * 15f);
                         tabTexts[i].color = c;
                     }
@@ -121,7 +117,6 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
-    // --- НОВЕ: Метод перемикання вкладок ---
     public void SelectTab(int index)
     {
         if (tabTexts == null || index < 0 || index >= tabTexts.Length) return;
@@ -130,12 +125,10 @@ public class SettingsUI : MonoBehaviour
             AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         currentTabIndex = index;
-        // Надійний розрахунок через світові координати
         Vector3 targetWorldPos = tabTexts[index].rectTransform.position;
         Vector3 targetLocalPos = underline.parent.InverseTransformPoint(targetWorldPos);
         targetLineLocalX = targetLocalPos.x;
 
-        // Вмикаємо/вимикаємо потрібні панелі
         if (tabPanels != null)
         {
             for (int i = 0; i < tabPanels.Length; i++)
@@ -168,7 +161,6 @@ public class SettingsUI : MonoBehaviour
         settingsPanel.SetActive(true);
         settingsPanel.transform.SetAsLastSibling();
 
-        // --- НОВЕ: Скидання на першу вкладку (AUDIO) при відкритті ---
         if (tabTexts != null && tabTexts.Length > 0 && tabPanels != null && tabPanels.Length > 0)
         {
             currentTabIndex = 0;
@@ -242,7 +234,10 @@ public class SettingsUI : MonoBehaviour
 
         PlayerPrefs.Save();
 
-        Application.targetFrameRate = (limitFPSToggle != null && limitFPSToggle.isOn) ? 60 : -1;
+        // --- ФІКС FPS: Зберігаємо і розблоковуємо VSync разом із лімітом ---
+        bool isLimited = limitFPSToggle != null && limitFPSToggle.isOn;
+        QualitySettings.vSyncCount = isLimited ? 1 : 0;
+        Application.targetFrameRate = isLimited ? 60 : -1;
 
         if (FPSDisplay.Instance != null)
         {
@@ -360,7 +355,14 @@ public class SettingsUI : MonoBehaviour
 
     private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
     private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
-    private void OnFPSLimitChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); Application.targetFrameRate = isOn ? 60 : -1; }
+
+    private void OnFPSLimitChanged(bool isOn)
+    {
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        // --- ФІКС FPS: Змінюємо разом із галочкою ---
+        QualitySettings.vSyncCount = isOn ? 1 : 0;
+        Application.targetFrameRate = isOn ? 60 : -1;
+    }
 
     private void OnShowFPSChanged(bool isOn)
     {

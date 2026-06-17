@@ -14,7 +14,6 @@ public class DayNightCycle : MonoBehaviour
     public Material daySkybox;
     public Material nightSkybox;
     public Material stormSkybox;
-    [Tooltip("Швидкість затемнення неба при зміні скайбоксу")]
     public float skyboxFadeSpeed = 0.8f;
 
     [Header("Light Sources")]
@@ -35,6 +34,7 @@ public class DayNightCycle : MonoBehaviour
     public WeatherState currentWeather = WeatherState.Clear;
     public float weatherChangeInterval = 15f;
     public float weatherTransitionSpeed = 0.05f;
+    [HideInInspector] public bool isWeatherLocked = false;
 
     [Header("Fog Settings (Linear)")]
     public float fogStartDistance = 50f;
@@ -56,10 +56,14 @@ public class DayNightCycle : MonoBehaviour
     private int currentBiome = 0;
     private Coroutine lightningCoroutine;
 
-    // Змінні для плавного переходу неба
     private enum SkyboxType { None, Day, Night, Storm }
     private SkyboxType activeSkyboxType = SkyboxType.None;
     private Coroutine skyboxBlendCoroutine;
+
+    // Зберігаємо початкову інтенсивність частинок для плавного згасання
+    private float initialRainRate = 0f;
+    private float initialSnowRate = 0f;
+    private float initialDustRate = 0f;
 
     private void Start()
     {
@@ -73,9 +77,7 @@ public class DayNightCycle : MonoBehaviour
         string currentScene = SceneManager.GetActiveScene().name;
 
         if (currentScene != "Lvl_1" && PlayerPrefs.HasKey("SavedTimeOfDay"))
-        {
             timeOfDay = PlayerPrefs.GetFloat("SavedTimeOfDay") * 24f;
-        }
 
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
@@ -86,7 +88,11 @@ public class DayNightCycle : MonoBehaviour
         if (lightningLight != null) lightningLight.intensity = 0f;
         if (moonLight != null) moonLight.color = new Color(0.6f, 0.7f, 1f);
 
-        UpdateWeatherVFX();
+        // Запам'ятовуємо стандартну кількість опадів
+        if (rainVFX != null) initialRainRate = rainVFX.emission.rateOverTimeMultiplier;
+        if (snowVFX != null) initialSnowRate = snowVFX.emission.rateOverTimeMultiplier;
+        if (dustVFX != null) initialDustRate = dustVFX.emission.rateOverTimeMultiplier;
+
         CheckAndUpdateSkybox();
     }
 
@@ -131,30 +137,39 @@ public class DayNightCycle : MonoBehaviour
         RenderSettings.fogColor = Color.Lerp(clearFog, stormFog, weatherBlend);
 
         float dayMultiplier = Mathf.Clamp01(Mathf.Sin(timePercent * Mathf.PI * 2f));
-
         Color skyColorDay = new Color(0.88f, 0.68f, 0.81f);
         Color equatorColorDay = new Color(0.53f, 0.45f, 0.61f);
         Color groundColorDay = new Color(0.12f, 0.18f, 0.13f);
-
         Color skyColorNight = new Color(0.12f, 0.13f, 0.18f);
         Color equatorColorNight = new Color(0.08f, 0.09f, 0.14f);
         Color groundColorNight = new Color(0.04f, 0.05f, 0.06f);
 
-        Color targetSky = Color.Lerp(skyColorNight, skyColorDay, dayMultiplier);
-        Color targetEquator = Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier);
-        Color targetGround = Color.Lerp(groundColorNight, groundColorDay, dayMultiplier);
-
-        RenderSettings.ambientSkyColor = Color.Lerp(targetSky, new Color(0.2f, 0.22f, 0.27f), weatherBlend);
-        RenderSettings.ambientEquatorColor = Color.Lerp(targetEquator, new Color(0.15f, 0.18f, 0.22f), weatherBlend);
-        RenderSettings.ambientGroundColor = Color.Lerp(targetGround, new Color(0.08f, 0.1f, 0.12f), weatherBlend);
+        RenderSettings.ambientSkyColor = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend);
+        RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend);
+        RenderSettings.ambientGroundColor = Color.Lerp(Color.Lerp(groundColorNight, groundColorDay, dayMultiplier), new Color(0.08f, 0.1f, 0.12f), weatherBlend);
 
         UpdateVFXPositions();
+
+        // --- ААА ФІКС: Плавна емісія погоди ---
+        SmoothVFX(rainVFX, initialRainRate, currentBiome == 0 ? weatherBlend : 0f);
+        SmoothVFX(dustVFX, initialDustRate, currentBiome == 1 ? weatherBlend : 0f);
+        SmoothVFX(snowVFX, initialSnowRate, currentBiome == 2 ? weatherBlend : 0f);
+    }
+
+    private void SmoothVFX(ParticleSystem ps, float baseRate, float blend)
+    {
+        if (ps == null) return;
+
+        var em = ps.emission;
+        em.rateOverTimeMultiplier = baseRate * blend * (currentWeather == WeatherState.Storm ? 1.5f : 1f);
+
+        if (blend > 0.02f && !ps.gameObject.activeSelf) ps.gameObject.SetActive(true);
+        else if (blend <= 0.02f && ps.gameObject.activeSelf) ps.gameObject.SetActive(false);
     }
 
     private void CheckAndUpdateSkybox()
     {
         SkyboxType targetSkybox = SkyboxType.Day;
-
         if (currentWeather == WeatherState.Storm) targetSkybox = SkyboxType.Storm;
         else if (timeOfDay < 5.5f || timeOfDay > 18.5f) targetSkybox = SkyboxType.Night;
 
@@ -162,7 +177,6 @@ public class DayNightCycle : MonoBehaviour
         {
             activeSkyboxType = targetSkybox;
             Material targetMat = daySkybox;
-
             if (targetSkybox == SkyboxType.Night) targetMat = nightSkybox;
             else if (targetSkybox == SkyboxType.Storm) targetMat = stormSkybox;
 
@@ -174,33 +188,26 @@ public class DayNightCycle : MonoBehaviour
     private IEnumerator TransitionSkyboxRoutine(Material newSkyboxMat)
     {
         if (newSkyboxMat == null) yield break;
-
         Material currentMat = RenderSettings.skybox;
-        Color currentFogColor = RenderSettings.fogColor; // Беремо поточний колір атмосфери
+        Color currentFogColor = RenderSettings.fogColor;
 
         if (currentMat != null)
         {
-            // Створюємо тимчасовий матеріал для переходу
             Material tempOutMat = new Material(currentMat);
             RenderSettings.skybox = tempOutMat;
-
             Color startTint = tempOutMat.HasProperty("_Tint") ? tempOutMat.GetColor("_Tint") : Color.gray;
 
             float t = 0;
             while (t < 1f)
             {
                 t += Time.deltaTime * skyboxFadeSpeed;
-                // ФІКС: Плавно зливаємо небо з туманом (замість чорного кольору)
-                if (tempOutMat.HasProperty("_Tint"))
-                    tempOutMat.SetColor("_Tint", Color.Lerp(startTint, currentFogColor, t));
+                if (tempOutMat.HasProperty("_Tint")) tempOutMat.SetColor("_Tint", Color.Lerp(startTint, currentFogColor, t));
                 yield return null;
             }
         }
 
-        // Міняємо небо, поки воно злилося з туманом
         Material tempInMat = new Material(newSkyboxMat);
         RenderSettings.skybox = tempInMat;
-
         Color originalNewTint = newSkyboxMat.HasProperty("_Tint") ? newSkyboxMat.GetColor("_Tint") : Color.gray;
         if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", currentFogColor);
 
@@ -208,12 +215,9 @@ public class DayNightCycle : MonoBehaviour
         while (fadeInTimer < 1f)
         {
             fadeInTimer += Time.deltaTime * skyboxFadeSpeed;
-            // Проявляємо нове небо з імли
-            if (tempInMat.HasProperty("_Tint"))
-                tempInMat.SetColor("_Tint", Color.Lerp(currentFogColor, originalNewTint, fadeInTimer));
+            if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.Lerp(currentFogColor, originalNewTint, fadeInTimer));
             yield return null;
         }
-
         RenderSettings.skybox = newSkyboxMat;
     }
 
@@ -259,8 +263,9 @@ public class DayNightCycle : MonoBehaviour
 
     private void ChangeWeatherRandomly()
     {
-        float roll = Random.value;
+        if (isWeatherLocked) return;
 
+        float roll = Random.value;
         if (currentWeather == WeatherState.Clear)
         {
             if (roll < 0.4f) currentWeather = WeatherState.Precipitation;
@@ -273,8 +278,18 @@ public class DayNightCycle : MonoBehaviour
             else currentWeather = WeatherState.Precipitation;
         }
 
-        UpdateWeatherVFX();
+        HandleLightning();
+    }
 
+    public void ForceWeather(WeatherState state)
+    {
+        currentWeather = state;
+        CheckAndUpdateSkybox();
+        HandleLightning();
+    }
+
+    private void HandleLightning()
+    {
         if (currentWeather == WeatherState.Storm && currentBiome == 0)
         {
             if (lightningCoroutine == null) lightningCoroutine = StartCoroutine(LightningRoutine());
@@ -282,34 +297,6 @@ public class DayNightCycle : MonoBehaviour
         else
         {
             if (lightningCoroutine != null) { StopCoroutine(lightningCoroutine); lightningCoroutine = null; }
-        }
-    }
-
-    private void UpdateWeatherVFX()
-    {
-        if (rainVFX != null) rainVFX.gameObject.SetActive(false);
-        if (snowVFX != null) snowVFX.gameObject.SetActive(false);
-        if (dustVFX != null) dustVFX.gameObject.SetActive(false);
-
-        if (currentWeather != WeatherState.Clear)
-        {
-            float emissionMultiplier = (currentWeather == WeatherState.Storm) ? 2f : 1f;
-
-            if (currentBiome == 0 && rainVFX != null)
-            {
-                rainVFX.gameObject.SetActive(true);
-                var em = rainVFX.emission; em.rateOverTimeMultiplier *= emissionMultiplier;
-            }
-            else if (currentBiome == 1 && dustVFX != null)
-            {
-                dustVFX.gameObject.SetActive(true);
-                var em = dustVFX.emission; em.rateOverTimeMultiplier *= emissionMultiplier;
-            }
-            else if (currentBiome == 2 && snowVFX != null)
-            {
-                snowVFX.gameObject.SetActive(true);
-                var em = snowVFX.emission; em.rateOverTimeMultiplier *= emissionMultiplier;
-            }
         }
     }
 
@@ -341,9 +328,7 @@ public class DayNightCycle : MonoBehaviour
                 if (strikeGround)
                 {
                     if (Terrain.activeTerrain != null)
-                    {
                         spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
-                    }
                 }
                 else
                 {
@@ -352,33 +337,17 @@ public class DayNightCycle : MonoBehaviour
                 }
 
                 GameObject lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
-
-                if (!strikeGround)
-                {
-                    lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
-                }
+                if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
 
                 Destroy(lightning, 2f);
-
-                if (AudioManager.Instance != null)
-                {
-                    float dist = Vector3.Distance(Camera.main.transform.position, spawnPos);
-                    StartCoroutine(PlayThunderSoundDelayed(dist / 30f));
-                }
             }
         }
         lightningCoroutine = null;
     }
 
-    private IEnumerator PlayThunderSoundDelayed(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-    }
-
     private void OnDestroy()
     {
         string currentScene = SceneManager.GetActiveScene().name;
-
         if (currentScene != "Lvl_1")
         {
             PlayerPrefs.SetFloat("SavedTimeOfDay", timeOfDay / 24f);

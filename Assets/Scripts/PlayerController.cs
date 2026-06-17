@@ -803,9 +803,18 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private float GetGroundHeight(Vector3 pos)
     {
-        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground"))) return hit.point.y;
-        else if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-        return 0f;
+        // ФІКС: З маски прибрано "Default", тепер маркер ігнорує об'єкти та малюється лише на землі
+        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Terrain", "Ground")))
+        {
+            return hit.point.y;
+        }
+        else if (Terrain.activeTerrain != null)
+        {
+            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        }
+
+        // Запобіжник: якщо земля не знайдена, залишаємо на висоті цілі
+        return pos.y - 50f;
     }
 
     public void OpenPerfectDodgeWindow(Transform attacker, float duration)
@@ -1035,8 +1044,12 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (cameraFollow != null)
         {
-            Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : transform.forward;
-            cameraFollow.TriggerDirectionalShake(shakeDir, 1.5f, 0.3f, 0.3f);
+            // --- ААА ФІКС ТРЯСКИ КАМЕРИ ---
+            // Тривалість: 0.15с (дуже коротка). 
+            // Рандомний шум: 0.08f (камера майже не вібрує, а просто різко зміщується).
+            // Напрямок: Якщо ворог не передав напрямок, відкидаємо камеру строго НАЗАД (-transform.forward).
+            Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : -transform.forward;
+            cameraFollow.TriggerDirectionalShake(shakeDir, 1.2f, 0.15f, 0.08f);
         }
 
         if (finalDamage >= maxHealth * 0.15f && hpFill != null)

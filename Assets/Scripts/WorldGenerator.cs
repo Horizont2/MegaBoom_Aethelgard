@@ -189,6 +189,13 @@ public class WorldGenerator : MonoBehaviour
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null) { cc.enabled = false; player.transform.position = safePos; cc.enabled = true; }
             else { player.transform.position = safePos; Rigidbody rb = player.GetComponent<Rigidbody>(); if (rb != null) rb.linearVelocity = Vector3.zero; }
+
+            // --- ФІКС: Змушуємо камеру миттєво телепортуватися за гравцем ---
+            if (Camera.main != null)
+            {
+                CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
+                if (camFollow != null) camFollow.SnapToTarget();
+            }
         }
 
         yield return new WaitForEndOfFrame();
@@ -199,6 +206,9 @@ public class WorldGenerator : MonoBehaviour
 
     // ==========================================
     // --- ПЕРФЕКТНИЙ СПАВН ВЕЛИКОЇ ЛОКАЦІЇ ---
+    // ==========================================
+    // ==========================================
+    // --- ПЕРФЕКТНИЙ СПАВН З ВИРІВНЮВАННЯМ ЗЕМЛІ ---
     // ==========================================
     private IEnumerator SpawnRegionTotemRoutine()
     {
@@ -217,39 +227,19 @@ public class WorldGenerator : MonoBehaviour
         Vector3 bestPos = Vector3.zero;
         bool found = false;
 
-        // Шукаємо рівну площу (30х30 метрів) замість однієї точки
+        // Шукаємо просто ділянку без екстремальних скель
         for (int i = 0; i < 500; i++)
         {
-            float px = Random.Range(w * 0.3f, w * 0.7f); // Тільки центральна частина мапи
-            float pz = Random.Range(l * 0.3f, l * 0.7f);
+            float px = Random.Range(w * 0.2f, w * 0.8f);
+            float pz = Random.Range(l * 0.2f, l * 0.8f);
 
-            bool isFlatArea = true;
-            float checkRadius = 15f; // Радіус перевірки 15 метрів (30м діаметр)
-
-            for (float ox = -checkRadius; ox <= checkRadius; ox += 10f)
-            {
-                for (float oz = -checkRadius; oz <= checkRadius; oz += 10f)
-                {
-                    float checkX = (px + ox) / w;
-                    float checkZ = (pz + oz) / l;
-
-                    // Перевіряємо, чи немає сильного нахилу в цій зоні
-                    if (terrain.terrainData.GetSteepness(checkX, checkZ) > 6f)
-                    {
-                        isFlatArea = false;
-                        break;
-                    }
-                }
-                if (!isFlatArea) break;
-            }
-
-            if (isFlatArea)
+            if (terrain.terrainData.GetSteepness(px / w, pz / l) < 20f)
             {
                 float worldX = transform.position.x + px;
                 float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
-                if (worldY > absoluteWaterHeight + 3f) // Захист від спавну біля самої води
+                if (worldY > absoluteWaterHeight + 5f)
                 {
                     bestPos = new Vector3(worldX, worldY, worldZ);
                     found = true;
@@ -258,21 +248,93 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
-        if (found)
+        if (!found)
         {
-            GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
-            camp.transform.SetParent(this.transform);
-        }
-        else
-        {
-            Debug.LogWarning("[WorldGenerator] Не знайдено рівної площі для табору. Спавнимо в центрі з ризиком нахилу.");
-            Vector3 center = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2);
-            center.y = terrain.SampleHeight(center) + transform.position.y;
-            GameObject camp = Instantiate(totemPrefab, center, Quaternion.identity);
-            camp.transform.SetParent(this.transform);
+            bestPos = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2);
+            bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
         }
 
+        // 1. СПОЧАТКУ спавнимо локацію (поки що криво, щоб просто отримати її розміри)
+        GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
+        camp.transform.SetParent(this.transform);
+
+        // 2. ДИНАМІЧНО вимірюємо її розмір через її власний колайдер
+        Collider campCol = camp.GetComponent<Collider>();
+        float dynamicRadius = 20f; // Запобіжник за замовчуванням
+
+        if (campCol != null)
+        {
+            // Беремо найбільший вимір (ширину або довжину префабу)
+            float maxSize = Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z);
+            dynamicRadius = (maxSize / 2f) + 3f; // Радіус + 3 метри запасу для паркану/каміння
+        }
+
+        // 3. Копаємо землю ідеально під розмір ЦІЄЇ локації
+        FlattenTerrainAt(bestPos, dynamicRadius, 15f);
+
+        // 4. Оновлюємо висоту після розкопок і ставимо табір рівно на ідеальну землю
+        bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
+        camp.transform.position = bestPos;
+
         yield return null;
+    }
+
+    private void FlattenTerrainAt(Vector3 worldPos, float flatRadius, float blendRadius)
+    {
+        TerrainData td = terrain.terrainData;
+        int hRes = td.heightmapResolution;
+
+        // Переводимо світові координати в координати TerrainData
+        float normX = (worldPos.x - transform.position.x) / td.size.x;
+        float normZ = (worldPos.z - transform.position.z) / td.size.z;
+
+        int centerX = Mathf.RoundToInt(normX * (hRes - 1));
+        int centerZ = Mathf.RoundToInt(normZ * (hRes - 1));
+
+        int flatRadiusSamples = Mathf.RoundToInt((flatRadius / td.size.x) * hRes);
+        int blendRadiusSamples = Mathf.RoundToInt((blendRadius / td.size.x) * hRes);
+        int totalRadiusSamples = flatRadiusSamples + blendRadiusSamples;
+
+        int startX = Mathf.Clamp(centerX - totalRadiusSamples, 0, hRes - 1);
+        int endX = Mathf.Clamp(centerX + totalRadiusSamples, 0, hRes - 1);
+        int startZ = Mathf.Clamp(centerZ - totalRadiusSamples, 0, hRes - 1);
+        int endZ = Mathf.Clamp(centerZ + totalRadiusSamples, 0, hRes - 1);
+
+        int width = endX - startX + 1;
+        int length = endZ - startZ + 1;
+
+        // Беремо масив висот саме для нашої зони
+        float[,] heights = td.GetHeights(startX, startZ, width, length);
+
+        // Цільова висота (висота центру)
+        float targetHeightNorm = (worldPos.y - transform.position.y) / td.size.y;
+
+        for (int z = 0; z < length; z++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int mapX = startX + x;
+                int mapZ = startZ + z;
+
+                float dist = Vector2.Distance(new Vector2(mapX, mapZ), new Vector2(centerX, centerZ));
+
+                if (dist <= flatRadiusSamples)
+                {
+                    // Ідеально пласка зона
+                    heights[z, x] = targetHeightNorm;
+                }
+                else if (dist <= totalRadiusSamples)
+                {
+                    // Плавний перехід (Smoothstep) від рівної землі до пагорба
+                    float t = (dist - flatRadiusSamples) / blendRadiusSamples;
+                    float smoothT = t * t * (3f - 2f * t);
+                    heights[z, x] = Mathf.Lerp(targetHeightNorm, heights[z, x], smoothT);
+                }
+            }
+        }
+
+        // Застосовуємо "перекопану" землю назад на карту
+        td.SetHeights(startX, startZ, heights);
     }
 
     private void AdjustSettingsForBiome()
@@ -575,10 +637,20 @@ public class WorldGenerator : MonoBehaviour
             string objName = rend.gameObject.name.ToLower();
             if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
 
+            // ФІКС: Обов'язково очищаємо блок, щоб кольори не змішувалися з попередніми об'єктами
+            propBlock.Clear();
             rend.GetPropertyBlock(propBlock);
-            propBlock.SetColor("_Color", finalColor); propBlock.SetColor("_BaseColor", finalColor);
-            propBlock.SetColor("_Primary_Color", finalColor); propBlock.SetColor("_Secondary_Color", finalColor);
+
+            // Розширений список властивостей для ВСІХ популярних шейдерів
+            propBlock.SetColor("_Color", finalColor);
+            propBlock.SetColor("_BaseColor", finalColor);
+            propBlock.SetColor("_Primary_Color", finalColor);
+            propBlock.SetColor("_Secondary_Color", finalColor);
             propBlock.SetColor("_TopColor", finalColor);
+            propBlock.SetColor("_BottomColor", finalColor);
+            propBlock.SetColor("_Tint", finalColor);
+            propBlock.SetColor("_TintColor", finalColor);
+
             rend.SetPropertyBlock(propBlock);
         }
     }
@@ -756,9 +828,18 @@ public class WorldGenerator : MonoBehaviour
         Collider[] colliders = Physics.OverlapSphere(position + Vector3.up * 1.5f, radius);
         foreach (Collider col in colliders)
         {
-            // Ігноруємо колізії землі та тригери (якщо ти забув вимкнути IsTrigger)
-            if (col.GetComponent<TerrainCollider>() != null || col.GetComponent<Terrain>() != null || col.isTrigger) continue;
-            return false;
+            if (col.GetComponent<TerrainCollider>() != null || col.GetComponent<Terrain>() != null) continue;
+
+            if (col.isTrigger)
+            {
+                // Замість магічних чисел: якщо ми наткнулися на колайдер нашої локації - забороняємо спавн дерев!
+                if (col.GetComponentInParent<RegionTotem>() != null) return false;
+
+                // Інші дрібні тригери (лут, зона атаки) ігноруємо
+                continue;
+            }
+
+            return false; // Якщо це твердий об'єкт (камінь, стіна) - блокуємо спавн
         }
         return true;
     }

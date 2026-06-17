@@ -42,7 +42,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     private void Awake()
     {
-        gameObject.layer = 9;
+        gameObject.layer = 9; // Шар ворогів
         animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
 
@@ -52,8 +52,19 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         {
             originalColors[i] = meshRenderers[i].material.color;
         }
+    }
 
+    // Ініціалізація ХП відбувається з RegionTotem перед тим, як показати UI
+    public void InitializeBoss(float hpMultiplier, float dmgMultiplier)
+    {
+        maxHealth *= hpMultiplier;
+        damage *= dmgMultiplier;
         currentHealth = maxHealth;
+
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
+        }
     }
 
     private void Start()
@@ -65,11 +76,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             playerTarget = playerObj.GetComponent<PlayerController>();
         }
 
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
-        }
-
         lastAttackTime = Time.time;
     }
 
@@ -77,7 +83,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         if (isDead || target == null || playerTarget.currentHealth <= 0) return;
 
-        // --- ЛОГІКА ДОБИВАННЯ (GLORY KILL) ---
         if (isStaggered)
         {
             float distToPlayer = Vector3.Distance(transform.position, target.position);
@@ -119,7 +124,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             dir.y = 0;
 
             Vector3 nextPos = transform.position + dir * moveSpeed * Time.deltaTime;
-            if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
+
+            // Тримаємо боса на рівні землі
+            if (Terrain.activeTerrain != null)
+                nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
+
             transform.position = nextPos;
 
             if (dir != Vector3.zero)
@@ -149,6 +158,9 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (playerTarget != null) playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime);
 
+        // Викликаємо оновлений ThreatUI із правильним часом замаху
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
+
         yield return new WaitForSeconds(attackTelegraphTime);
         ResetColor();
 
@@ -162,6 +174,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isPreparingAttack = false;
     }
 
+    // Викликається через Animation Event під час удару боса
     public void ExecuteAttackDamage()
     {
         if (isDead || isStaggered || playerTarget == null || playerTarget.currentHealth <= 0) return;
@@ -204,6 +217,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isStaggered = true;
         isPreparingAttack = false;
 
+        SnapToGround(); // Притискаємо до землі перед стаггером
+
         if (animator != null)
         {
             animator.SetBool("isMoving", false);
@@ -211,24 +226,32 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             animator.speed = 1f;
         }
 
+        // Викидаємо зброю
         if (bossWeapon != null)
         {
             bossWeapon.transform.SetParent(null);
-
             Rigidbody weaponRb = bossWeapon.GetComponent<Rigidbody>();
             if (weaponRb == null) weaponRb = bossWeapon.gameObject.AddComponent<Rigidbody>();
-
             Collider weaponCol = bossWeapon.GetComponent<Collider>();
             if (weaponCol == null) weaponCol = bossWeapon.gameObject.AddComponent<BoxCollider>();
 
             weaponRb.isKinematic = false;
             weaponRb.useGravity = true;
-
             weaponRb.AddForce(transform.forward * 3f + transform.up * 2f, ForceMode.Impulse);
             weaponRb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
         }
 
         StartCoroutine(StaggerPulseRoutine());
+    }
+
+    private void SnapToGround()
+    {
+        if (Terrain.activeTerrain != null)
+        {
+            Vector3 groundPos = transform.position;
+            groundPos.y = Terrain.activeTerrain.SampleHeight(groundPos) + Terrain.activeTerrain.transform.position.y;
+            transform.position = groundPos;
+        }
     }
 
     private IEnumerator StaggerPulseRoutine()
@@ -242,10 +265,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    // ==========================================================
+    // --- ЕПІЧНА КАТСЦЕНА ДОБИВАННЯ (GLORY KILL) ---
+    // ==========================================================
     private IEnumerator GloryKillRoutine()
     {
         isDead = true;
         isStaggered = false;
+        SnapToGround(); // Фінальне притискання перед смертю
 
         if (GlobalHUD.Instance != null)
         {
@@ -262,73 +289,71 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (camFollow != null) camFollow.isCinematicMode = true;
 
-        // =========================================================
-        // --- ВДОСКОНАЛЕНА КАМЕРА (Зйомка збоку в Профіль) ---
-        // =========================================================
         Vector3 playerPos = playerTarget.transform.position;
         Vector3 bossPos = transform.position;
         Vector3 midPoint = Vector3.Lerp(playerPos, bossPos, 0.5f);
 
-        // Рахуємо вектор вбік від битви
         Vector3 dirToPlayer = (playerPos - bossPos).normalized; dirToPlayer.y = 0;
         Vector3 sideDir = Vector3.Cross(Vector3.up, dirToPlayer).normalized;
 
-        // Камера стоїть в 6 метрах збоку і дивиться точно на удар
-        Vector3 cinematicCamPos = midPoint + sideDir * 6f + Vector3.up * 0.8f;
-        Vector3 lookAtTarget = midPoint + Vector3.up * 1.5f;
+        // Позиції камери для ефекту Dutch Angle
+        Vector3 startCinematicCamPos = midPoint + sideDir * 5f + Vector3.up * 1f;
 
-        // Сповільнюємо світ майже до нуля
-        Time.timeScale = 0.05f;
+        // Вмикаємо сповільнення для початку замаху
+        Time.timeScale = 0.1f;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
-        // ВАЖЛИВО: Гравець рухається швидко (в реальному часі)
         Animator playerAnim = playerTarget.GetComponentInChildren<Animator>();
         if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
         if (playerAnim != null) playerAnim.SetTrigger("Attack");
 
-        // 1. Наїзд камери (триває 0.4 секунди РЕАЛЬНОГО часу, поки йде замах)
+        // --- 1. ШВИДКИЙ НАЇЗД КАМЕРИ (Синхронізація з мечем) ---
         float elapsed = 0f;
-        float cinematicDuration = 0.4f;
+        float cinematicDuration = 0.55f; // Ідеально збігається з моментом удару мечем
+
         while (elapsed < cinematicDuration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float t = elapsed / cinematicDuration;
-            float curveT = 1f - Mathf.Pow(1f - t, 3f); // Плавне гальмування камери
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / cinematicDuration);
 
-            mainCam.transform.position = Vector3.Lerp(originalCamPos, cinematicCamPos, curveT);
-            mainCam.fieldOfView = Mathf.Lerp(originalFOV, 35f, curveT); // Сильний зум
-            mainCam.transform.rotation = Quaternion.Slerp(originalCamRot, Quaternion.LookRotation(lookAtTarget - mainCam.transform.position), curveT);
+            mainCam.transform.position = Vector3.Lerp(originalCamPos, startCinematicCamPos, t);
+            mainCam.fieldOfView = Mathf.Lerp(originalFOV, 35f, t);
+
+            // Завалюємо горизонт на 8 градусів
+            Quaternion targetRotation = Quaternion.LookRotation((bossPos + Vector3.up * 1.2f) - mainCam.transform.position) * Quaternion.Euler(0, 0, 8f);
+            mainCam.transform.rotation = Quaternion.Slerp(originalCamRot, targetRotation, t);
 
             yield return null;
         }
 
-        // =========================================================
-        // --- 2. МОМЕНТ УДАРУ (HIT STOP) ---
-        // =========================================================
-        if (camFollow != null) camFollow.TriggerShake(1.5f, 0.4f); // Дуже сильна тряска
+        // --- 2. МАСИВНИЙ HIT STOP (Заморожуємо час у момент удару) ---
+        Time.timeScale = 0.005f;
+
+        // Короткий і різкий удар камери
+        if (camFollow != null) camFollow.TriggerShake(0.2f, 0.35f);
 
         if (animator != null)
         {
             animator.speed = 1f;
-            animator.updateMode = AnimatorUpdateMode.UnscaledTime; // Щоб впав епічно
+            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
             animator.SetTrigger("Die");
         }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
-        if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
+        if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
 
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // 3. ФОНТАН ЛУТУ
+        // Спавн луту фонтаном
         if (xpCrystalPrefab != null)
         {
             for (int i = 0; i < xpCrystalsToDrop; i++)
             {
-                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
-                else Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
+                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+                else Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
             }
         }
 
@@ -336,17 +361,27 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         {
             for (int i = 0; i < diamondsToDrop; i++)
             {
-                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
-                else Instantiate(diamondPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
+                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+                else Instantiate(diamondPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
             }
         }
 
-        // 4. МИЛУЄМОСЯ СМЕРТЮ В СПОВІЛЬНЕННІ
-        yield return new WaitForSecondsRealtime(1.2f); // Камера зависає на секунду!
+        // Тримаємо Hit Stop
+        yield return new WaitForSecondsRealtime(0.4f);
 
-        // =========================================================
-        // --- ПОВЕРНЕННЯ ЧАСУ І КЕРУВАННЯ ---
-        // =========================================================
+        // --- 3. ФОЛЛОУ-ТРУ (Трохи відпускаємо час, щоб показати падіння) ---
+        Time.timeScale = 0.2f;
+
+        Vector3 pushCamPos = startCinematicCamPos + dirToPlayer * 1.5f;
+        elapsed = 0f;
+        while (elapsed < 1.0f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            mainCam.transform.position = Vector3.Lerp(startCinematicCamPos, pushCamPos, elapsed / 1.0f);
+            yield return null;
+        }
+
+        // --- ПОВЕРНЕННЯ ---
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
 
@@ -355,8 +390,9 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (camFollow != null)
         {
+            mainCam.transform.rotation = originalCamRot;
             mainCam.fieldOfView = originalFOV;
-            camFollow.isCinematicMode = false; // Камера різко стрибає назад
+            camFollow.isCinematicMode = false;
         }
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideCinematicBars();

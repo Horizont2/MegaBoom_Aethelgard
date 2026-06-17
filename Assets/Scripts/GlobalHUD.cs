@@ -68,6 +68,25 @@ public class GlobalHUD : MonoBehaviour
 
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) defaultRenderMode = canvas.renderMode;
+
+        // --- ФІКС FPS: Примусово застосовуємо збережені налаштування при старті ---
+        ApplySavedSettings();
+    }
+
+    private void ApplySavedSettings()
+    {
+        bool isLimited = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
+
+        if (isLimited)
+        {
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = 60;
+        }
+        else
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+        }
     }
 
     private void OnEnable() { SceneManager.sceneLoaded += OnSceneLoaded; }
@@ -118,9 +137,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // ==========================================
-    // --- CINEMATIC BARS LOGIC ---
-    // ==========================================
     private void CreateCinematicBarsIfNeeded()
     {
         if (topCinematicBar != null && bottomCinematicBar != null) return;
@@ -186,9 +202,6 @@ public class GlobalHUD : MonoBehaviour
         bottomCinematicBar.anchoredPosition = new Vector2(0, -targetY);
     }
 
-    // ==========================================
-    // --- BOSS UI LOGIC ---
-    // ==========================================
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
         if (bossUIGroup == null) return;
@@ -222,9 +235,6 @@ public class GlobalHUD : MonoBehaviour
         bossUIGroup.alpha = targetAlpha;
     }
 
-    // ==========================================
-    // --- STANDARD UI LOGIC ---
-    // ==========================================
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());

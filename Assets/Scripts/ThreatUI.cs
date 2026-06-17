@@ -11,7 +11,7 @@ public class ThreatUI : MonoBehaviour
 
     private Transform playerTrans;
     private Camera mainCam;
-    private Transform currentAttacker; // Зберігаємо ворога, який зараз атакує
+    private Transform currentAttacker;
 
     private void Awake()
     {
@@ -29,17 +29,18 @@ public class ThreatUI : MonoBehaviour
         if (p != null) playerTrans = p.transform;
     }
 
-    public void ShowThreat(Transform attacker)
+    // ФІКС: Додали параметр duration, щоб бос міг передавати свій attackTelegraphTime
+    public void ShowThreat(Transform attacker, float duration = 0.8f)
     {
         if (threatIndicatorImage == null || playerTrans == null) return;
 
-        currentAttacker = attacker; // Запам'ятовуємо ціль для ідеального ухилення
+        currentAttacker = attacker;
+        displayDuration = duration;
 
         StopAllCoroutines();
         StartCoroutine(ThreatRoutine(attacker));
     }
 
-    // Метод для PlayerController, щоб отримати координати цілі
     public Transform GetCurrentThreat()
     {
         return currentAttacker;
@@ -47,8 +48,12 @@ public class ThreatUI : MonoBehaviour
 
     private IEnumerator ThreatRoutine(Transform attacker)
     {
-        threatIndicatorImage.color = new Color(1f, 0.8f, 0f, 1f);
         float elapsed = 0f;
+        Color warningColor = new Color(1f, 0.4f, 0f, 1f); // Яскраво-помаранчевий
+        threatIndicatorImage.color = warningColor;
+
+        // Ефект пульсації при появі
+        Vector3 startScale = Vector3.one * 1.3f;
 
         while (elapsed < displayDuration)
         {
@@ -63,17 +68,29 @@ public class ThreatUI : MonoBehaviour
                 playerForward.y = 0;
 
                 float angle = Vector3.SignedAngle(playerForward, directionToEnemy, Vector3.up);
-
                 transform.localRotation = Quaternion.Euler(0, 0, -angle);
             }
 
-            float alpha = Mathf.Lerp(1f, 0f, elapsed / displayDuration);
-            threatIndicatorImage.color = new Color(1f, 0.8f, 0f, alpha);
+            float t = elapsed / displayDuration;
+
+            // Анімація зменшення на початку (Punch In)
+            if (t < 0.2f) transform.localScale = Vector3.Lerp(startScale, Vector3.one, t / 0.2f);
+
+            // ФІКС: Тримаємо яскравість до кінця, і лише в останні 20% часу різко червоніємо і ховаємося
+            if (t > 0.8f)
+            {
+                float fadeT = (t - 0.8f) / 0.2f;
+                threatIndicatorImage.color = Color.Lerp(warningColor, new Color(1f, 0f, 0f, 0f), fadeT);
+            }
+            else
+            {
+                threatIndicatorImage.color = warningColor;
+            }
 
             yield return null;
         }
 
-        threatIndicatorImage.color = new Color(1f, 0.8f, 0f, 0f);
-        currentAttacker = null; // Очищаємо ціль, коли час вийшов
+        threatIndicatorImage.color = new Color(1f, 0f, 0f, 0f);
+        currentAttacker = null;
     }
 }
