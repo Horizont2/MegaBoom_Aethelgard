@@ -130,6 +130,13 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Transform visualModel;
     private bool wasGroundedLastFrame = true;
 
+    // ФІКСИ ОПТИМІЗАЦІЇ
+    private float stackCheckTimer = 0f;
+    private float ikCheckTimer = 0f;
+    private float focusCheckTimer = 0f;
+    private Transform ikTargetItem = null;
+    private Transform currentFocusEnemy = null;
+
     private void Awake()
     {
         gameObject.layer = 8;
@@ -335,9 +342,15 @@ public class PlayerController : MonoBehaviour, IDamageable
         globalDamageMultiplier += forgeDamageBonus;
     }
 
+    // ФІКС ОПТИМІЗАЦІЇ: Таймер для перевірки натовпу
     private void CheckStack()
     {
         if (isCampMode) return;
+
+        stackCheckTimer -= Time.deltaTime;
+        if (stackCheckTimer > 0f) return;
+        stackCheckTimer = 0.25f;
+
         Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
         currentStack = 0;
         foreach (Collider col in colliders) { if (col.CompareTag("Enemy")) currentStack++; }
@@ -465,7 +478,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
             if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
             {
-                // ФІКС: Блокуємо використання Dash під час прицілювання гранати
                 if (!isAimingGrenade)
                 {
                     if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
@@ -491,10 +503,17 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
         else if (!isCurrentlyLocked && !isCampMode)
         {
-            Transform idleFocusEnemy = GetClosestEnemyForFocus(4f, 60f);
-            if (idleFocusEnemy != null)
+            // ФІКС ОПТИМІЗАЦІЇ: Шукаємо ворога для фокусу не кожен кадр
+            focusCheckTimer -= Time.unscaledDeltaTime;
+            if (focusCheckTimer <= 0f)
             {
-                Vector3 dirToEnemy = (idleFocusEnemy.position - transform.position).normalized;
+                focusCheckTimer = 0.2f;
+                currentFocusEnemy = GetClosestEnemyForFocus(4f, 60f);
+            }
+
+            if (currentFocusEnemy != null)
+            {
+                Vector3 dirToEnemy = (currentFocusEnemy.position - transform.position).normalized;
                 dirToEnemy.y = 0;
                 if (dirToEnemy.sqrMagnitude > 0.01f)
                 {
@@ -657,7 +676,6 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
-        // --- ФІКС: М'який магнетизм прицілу ---
         Collider[] magnetHits = Physics.OverlapSphere(hitPoint, aimAssistRadius);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
@@ -673,7 +691,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (bestTarget != null)
         {
-            // Притягуємо курсор до ворога лише на 40%. Гравець все ще зберігає контроль!
             Vector3 magneticTarget = bestTarget.position;
             magneticTarget.y = hitPoint.y;
             hitPoint = Vector3.Lerp(hitPoint, magneticTarget, 0.4f);
@@ -689,7 +706,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         currentGrenadeTarget = hitPoint;
 
-        // Колір: синій за замовчуванням, червоний якщо в зоні є ворог
         Collider[] blastHits = Physics.OverlapSphere(currentGrenadeTarget, grenadeExplosionRadius);
         bool enemyInBlast = false;
         foreach (var bHit in blastHits)
@@ -706,7 +722,6 @@ public class PlayerController : MonoBehaviour, IDamageable
             trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
         }
 
-        // Повернено старі кола, але з динамічним кольором
         if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
         if (innerMarkerLine != null) { innerMarkerLine.startColor = currentAimColor; innerMarkerLine.endColor = currentAimColor; }
 
@@ -1174,9 +1189,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         uiElement.localScale = origScale;
     }
 
-    // ==========================================
-    // --- AAA HAND IK (Інверсна кінематика) ---
-    // ==========================================
     private float handIKWeight = 0f;
     private Vector3 handIKTarget;
 
@@ -1184,39 +1196,41 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (anim == null || isCampMode) return;
 
-        // Шукаємо об'єкти трохи в більшому радіусі, щоб встигнути зреагувати
-        Collider[] nearbyItems = Physics.OverlapSphere(transform.position, 5f);
-        Transform targetItem = null;
-        float minDist = float.MaxValue;
-
-        foreach (var item in nearbyItems)
+        // ФІКС ОПТИМІЗАЦІЇ: Таймер для IK пошуку
+        ikCheckTimer -= Time.deltaTime;
+        if (ikCheckTimer <= 0f)
         {
-            bool isValidTarget = false;
+            ikCheckTimer = 0.2f;
+            ikTargetItem = null;
+            Collider[] nearbyItems = Physics.OverlapSphere(transform.position, 5f);
+            float minDist = float.MaxValue;
 
-            XpCrystal crystal = item.GetComponent<XpCrystal>();
-            if (crystal != null && crystal.IsMagnetized) isValidTarget = true;
-
-            DiamondPickup diamond = item.GetComponent<DiamondPickup>();
-            if (diamond != null && diamond.IsMagnetized) isValidTarget = true;
-
-            // ФІКС: Видалили LootChest, тепер гравець тягне руку ТІЛЬКИ до луту
-
-            if (isValidTarget)
+            foreach (var item in nearbyItems)
             {
-                float d = Vector3.Distance(transform.position, item.transform.position);
-                if (d < minDist)
+                bool isValidTarget = false;
+
+                XpCrystal crystal = item.GetComponent<XpCrystal>();
+                if (crystal != null && crystal.IsMagnetized) isValidTarget = true;
+
+                DiamondPickup diamond = item.GetComponent<DiamondPickup>();
+                if (diamond != null && diamond.IsMagnetized) isValidTarget = true;
+
+                if (isValidTarget)
                 {
-                    minDist = d;
-                    targetItem = item.transform;
+                    float d = Vector3.Distance(transform.position, item.transform.position);
+                    if (d < minDist)
+                    {
+                        minDist = d;
+                        ikTargetItem = item.transform;
+                    }
                 }
             }
         }
 
-        if (targetItem != null)
+        if (ikTargetItem != null)
         {
             handIKWeight = Mathf.Lerp(handIKWeight, 0.8f, Time.deltaTime * 8f);
-            // Простягаємо руку трохи нижче центру кристалу
-            handIKTarget = Vector3.Lerp(handIKTarget, targetItem.position + Vector3.down * 0.2f, Time.deltaTime * 15f);
+            handIKTarget = Vector3.Lerp(handIKTarget, ikTargetItem.position + Vector3.down * 0.2f, Time.deltaTime * 15f);
         }
         else
         {

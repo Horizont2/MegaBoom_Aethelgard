@@ -65,7 +65,6 @@ public class CampNPC_Elias : MonoBehaviour
 
     private void UpdateNPCState()
     {
-        // ПОВЕРНЕНО: Стіл вмикається СТРОГО від рівня будівлі, діалог на нього не впливає
         int lodgeLevel = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
         if (mapTableObject != null)
         {
@@ -119,10 +118,13 @@ public class CampNPC_Elias : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         if (exclamationMark != null) exclamationMark.SetActive(false);
 
-        Transform player = GameObject.FindGameObjectWithTag("Player").transform;
-        Vector3 lookPos = player.position - transform.position;
-        lookPos.y = 0;
-        transform.rotation = Quaternion.LookRotation(lookPos);
+        // ФІКС ОПТИМІЗАЦІЇ: Використовуємо вже збережений playerTransform
+        if (playerTransform != null)
+        {
+            Vector3 lookPos = playerTransform.position - transform.position;
+            lookPos.y = 0;
+            transform.rotation = Quaternion.LookRotation(lookPos);
+        }
 
         int lodgeLvl = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
         int conqueredCount = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
@@ -133,8 +135,6 @@ public class CampNPC_Elias : MonoBehaviour
             yield return StartCoroutine(ShowSubtitle("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.", 4.5f));
             yield return StartCoroutine(ShowSubtitle("Elias: Centuries ago, the Ashen Blight ruined this kingdom. We must reclaim the 24 lost provinces.", 5f));
             yield return StartCoroutine(ShowSubtitle("Elias: Build me a drafting table here later, and I will chart a safe path to the forests.", 4.5f));
-
-            // Тільки кажемо грі, що інтро пройдено
             PlayerPrefs.SetInt("Elias_Intro", 1);
         }
         else if (lodgeLvl >= 2 && PlayerPrefs.GetInt("Elias_TableBuilt", 0) == 0)
@@ -191,7 +191,6 @@ public class CampNPC_Elias : MonoBehaviour
         isTalking = false;
         UpdateNPCState();
 
-        // Оновлюємо маркер дошки місій напряму, якщо вона зараз активна на сцені
         MissionBoardMarker board = FindFirstObjectByType<MissionBoardMarker>();
         if (board != null) board.UpdateMarkerState();
 

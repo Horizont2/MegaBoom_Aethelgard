@@ -9426,5 +9426,7 @@ MonoBehaviour:
   - {fileID: 4383447207554740552}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 2242552578410995923}
+  - {fileID: 3686377821802567084}
   isCurrentlyVisible: 1

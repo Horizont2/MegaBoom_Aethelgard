@@ -24,7 +24,10 @@ public abstract class AnimalAI : MonoBehaviour
 
     protected NavMeshAgent agent;
     protected Animator anim;
+
+    // ФІКС ОПТИМІЗАЦІЇ: Кешуємо гравця і його контролер один раз!
     protected Transform player;
+    protected CharacterController playerCC;
 
     protected float stateTimer;
     protected Vector3 startPosition;
@@ -36,26 +39,28 @@ public abstract class AnimalAI : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
 
-        // Шукаємо аніматор у дитині префабу
         anim = GetComponentInChildren<Animator>();
         if (anim != null) anim.applyRootMotion = false;
 
         startPosition = transform.position;
         lastPosition = transform.position;
 
-        // Налаштування для ААА-плавності
-        agent.updateRotation = false; // Ми самі крутимо модельку плавно
-        agent.autoTraverseOffMeshLink = false; // Самі обробляємо стрибки
+        agent.updateRotation = false;
+        agent.autoTraverseOffMeshLink = false;
         agent.acceleration = 12f;
-        agent.angularSpeed = 0f; // Вимикаємо стандартний поворот
+        agent.angularSpeed = 0f;
 
+        // Отримуємо компоненти гравця раз і назавжди
         GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) player = p.transform;
+        if (p != null)
+        {
+            player = p.transform;
+            playerCC = p.GetComponent<CharacterController>();
+        }
     }
 
     protected virtual void Start()
     {
-        // Завантажуємо позицію при старті, якщо є збереження
         if (shouldSavePosition && !string.IsNullOrEmpty(uniqueID))
         {
             LoadAnimalPosition();
@@ -64,14 +69,12 @@ public abstract class AnimalAI : MonoBehaviour
 
     protected virtual void Update()
     {
-        // Якщо ми в польоті — не перериваємо стрибок іншими станами
         if (currentState != AnimalState.Jumping)
         {
             HandleAnimations();
             HandleSmoothRotation();
         }
 
-        // Перевірка на Off-Mesh Link (автоматичний паркур)
         if (agent.isOnOffMeshLink && currentState != AnimalState.Jumping)
         {
             StartCoroutine(HandleJumpRoutine());
@@ -82,7 +85,6 @@ public abstract class AnimalAI : MonoBehaviour
 
         CheckPlayerPresence();
 
-        // Логіка станів
         switch (currentState)
         {
             case AnimalState.Idle: UpdateIdle(); break;
@@ -93,7 +95,6 @@ public abstract class AnimalAI : MonoBehaviour
         }
     }
 
-    // Методи, які кожна тварина (Cat/Chicken) реалізує по-своєму
     protected abstract void UpdateIdle();
     protected abstract void UpdateWander();
     protected abstract void UpdateFlee();
@@ -112,7 +113,6 @@ public abstract class AnimalAI : MonoBehaviour
         if (anim != null)
         {
             float currentSpeed = agent.velocity.magnitude;
-            // Згладжуємо швидкість для плавних переходів у Blend Tree
             smoothedSpeed = Mathf.Lerp(smoothedSpeed, currentSpeed, Time.deltaTime * 10f);
 
             if (smoothedSpeed < 0.1f) smoothedSpeed = 0f;
@@ -132,13 +132,11 @@ public abstract class AnimalAI : MonoBehaviour
         }
     }
 
-    // Розумний стрибок через перешкоди (паркани, столи)
     private IEnumerator HandleJumpRoutine()
     {
         AnimalState previousState = currentState;
         ChangeState(AnimalState.Jumping);
 
-        // Вмикаємо анімацію "польоту" (через швидкість бігу)
         if (anim != null) anim.SetFloat("Speed", 4.5f);
 
         OffMeshLinkData data = agent.currentOffMeshLinkData;
@@ -154,7 +152,6 @@ public abstract class AnimalAI : MonoBehaviour
             time += Time.deltaTime;
             float t = time / duration;
 
-            // Математична парабола для дуги стрибка
             float yOffset = Mathf.Sin(t * Mathf.PI) * Mathf.Max(0.6f, jumpDistance * 0.4f);
             transform.position = Vector3.Lerp(startPos, endPos, t) + Vector3.up * yOffset;
 
@@ -192,7 +189,7 @@ public abstract class AnimalAI : MonoBehaviour
             float z = PlayerPrefs.GetFloat(uniqueID + "_PosZ");
             float rotY = PlayerPrefs.GetFloat(uniqueID + "_RotY");
 
-            agent.enabled = false; // Вимикаємо агент для миттєвого переміщення
+            agent.enabled = false;
             transform.position = new Vector3(x, y, z);
             transform.rotation = Quaternion.Euler(0, rotY, 0);
             agent.enabled = true;

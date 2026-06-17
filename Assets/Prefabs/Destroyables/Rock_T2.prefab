@@ -4778,7 +4778,8 @@ MonoBehaviour:
   - {fileID: 964249021273521635}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 2426404073247421201}
   isCurrentlyVisible: 1
 --- !u!4 &2101667809818396300 stripped
 Transform:

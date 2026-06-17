@@ -20,7 +20,6 @@ public class ChickenAI : AnimalAI
         agent.speed = walkSpeed;
     }
 
-    // --- —“¿Õ: —“ŒØ“‹ («¿Ã≤—“‹  Àﬁ¬¿ÕÕﬂ œ–Œ—“Œ IDLE) ---
     protected override void UpdateIdle()
     {
         agent.speed = 0f;
@@ -35,7 +34,6 @@ public class ChickenAI : AnimalAI
         }
     }
 
-    // --- —“¿Õ: √”Àﬂ™ œŒ “¿¡Œ–” ---
     protected override void UpdateWander()
     {
         if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
@@ -44,8 +42,6 @@ public class ChickenAI : AnimalAI
         }
     }
 
-    // --- —“¿Õ: œ¿Õ≤ ¿ (“≤ ¿™ ¬≤ƒ √–¿¬÷ﬂ) ---
-    // --- —“¿Õ: œ¿Õ≤ ¿ (“≤ ¿™ ¬≤ƒ √–¿¬÷ﬂ) ---
     protected override void UpdateFlee()
     {
         if (!isPanicking)
@@ -65,9 +61,7 @@ public class ChickenAI : AnimalAI
                 isPanicking = false;
                 panicTimer = 0f;
 
-                // --- ¬»œ–¿¬À≈ÕÕﬂ: «ÛÔËÌˇ∫ÏÓ ÂÙÂÍÚ Ô≥'ˇ, ÍÓÎË ÍÛÍ‡ Á‡ÒÔÓÍÓøÎ‡Ò¸ ---
                 if (featherParticles != null) featherParticles.Stop();
-
                 ChangeState(AnimalState.Idle);
             }
             else
@@ -81,8 +75,6 @@ public class ChickenAI : AnimalAI
     protected override void UpdateMoveToPOI() { }
     protected override void UpdateInteractPOI() { }
 
-    // --- —≈Õ—Œ–: –≈¿ ÷≤ﬂ Õ¿ √–¿¬÷ﬂ ---
-    // --- —≈Õ—Œ–: –≈¿ ÷≤ﬂ Õ¿ √–¿¬÷ﬂ ---
     protected override void CheckPlayerPresence()
     {
         if (player == null || currentState == AnimalState.Jumping || currentState == AnimalState.Flee) return;
@@ -91,10 +83,7 @@ public class ChickenAI : AnimalAI
 
         if (dist < panicDistance)
         {
-            // ŒÚËÏÛ∫ÏÓ Ù≥ÁË˜ÌËÈ ÍÓÌÚÓÎÂ —¿Ã≈ √–¿¬÷ﬂ
-            CharacterController playerCC = player.GetComponent<CharacterController>();
-
-            // œÂÂ‚≥ˇ∫ÏÓ, ˜Ë „‡‚Âˆ¸ Ûı‡∫Ú¸Òˇ ¯‚Ë‰ÍÓ (¯‚Ë‰Í≥ÒÚ¸ > 2)
+            // ‘≤ — Œœ“»Ã≤«¿÷≤Ø: ¬ËÍÓËÒÚÓ‚Û∫ÏÓ ÍÂ¯Ó‚‡ÌËÈ playerCC
             if (playerCC != null && playerCC.velocity.magnitude > 2f)
             {
                 Vector3 runDirection = (transform.position - player.position).normalized;

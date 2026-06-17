@@ -4808,7 +4808,9 @@ MonoBehaviour:
   - {fileID: 5604614537702280292}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 1565756016322884437}
+  - {fileID: 9127472498350802507}
   isCurrentlyVisible: 1
 --- !u!1 &4326599246691624536
 GameObject:

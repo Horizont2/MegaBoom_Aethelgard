@@ -84,6 +84,16 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: -6106089992416799755}
   m_SourcePrefab: {fileID: 100100000, guid: a189051357bf54a43942d1245131be17, type: 3}
+--- !u!23 &1281328358471402740 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -2381527244621636266, guid: a189051357bf54a43942d1245131be17, type: 3}
+  m_PrefabInstance: {fileID: 5709206210230294946}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &1433645176903340303 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -2531453458486294355, guid: a189051357bf54a43942d1245131be17, type: 3}
+  m_PrefabInstance: {fileID: 5709206210230294946}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &4898303536820266227 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a189051357bf54a43942d1245131be17, type: 3}
@@ -101,4 +111,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
-  targetObject: {fileID: 0}
+  renderers:
+  - {fileID: 1281328358471402740}
+  - {fileID: 1433645176903340303}
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1

@@ -4766,7 +4766,8 @@ MonoBehaviour:
   - {fileID: 3965996804829349195}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 1252896314514197149}
   isCurrentlyVisible: 1
 --- !u!23 &3965996804829349195 stripped
 MeshRenderer:
