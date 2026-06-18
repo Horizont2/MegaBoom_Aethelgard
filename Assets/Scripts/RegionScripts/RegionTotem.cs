@@ -1,87 +1,90 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+public enum EncounterType { Boss, Swarm }
+
 public class RegionTotem : MonoBehaviour
 {
-    [Header("Region Link")]
-    public RegionData currentRegion;
+    [HideInInspector] public RegionManager manager;
+
+    [Header("Encounter Settings")]
+    public EncounterType encounterType = EncounterType.Boss;
+
+    [Header("If Swarm: Setup Mobs")]
+    public GameObject[] weakPrefabs;
+    public int weakCount = 10;
+    public GameObject[] mediumPrefabs;
+    public int mediumCount = 5;
+    public GameObject[] elitePrefabs;
+    public int eliteCount = 2;
 
     [Header("Visuals & Cinematic")]
     public ParticleSystem idleCorruptionVFX;
-
-    [Tooltip("∆Ó‚ÚËÈ Ï‡„≥˜ÌËÈ ˘ËÚ (ÔË ‡ÍÚË‚‡ˆ≥ø)")]
     public ParticleSystem activationShieldVFX;
-
-    [Tooltip("◊Â‚ÓÌËÈ ‚Ë·Ûı (Red Energy Explosion)")]
-    public ParticleSystem purifyExplosionVFX;
-
-    [Tooltip("—ÚÓ‚Ô Ò‚≥ÚÎ‡ ‚ ÌÂ·Ó")]
     public ParticleSystem skyBeamVFX;
-
     public Light totemLight;
 
     [Header("Interaction")]
     public float interactionRadius = 8f;
+
+    [HideInInspector] public bool isPurified = false;
+
+    private bool isLocked = false;
     private bool isActivated = false;
-    private bool isPurified = false;
     private bool isPromptShowing = false;
 
-    private List<GameObject> activeBosses = new List<GameObject>();
+    private List<GameObject> activeEnemies = new List<GameObject>();
     private Transform player;
-    private PlayerController playerController;
 
     private void Start()
     {
         FindPlayer();
-
         if (totemLight != null) totemLight.color = Color.red;
-
-        // --- ‘≤ —: œËÏÛÒÓ‚Ó ıÓ‚‡∫ÏÓ ˘ËÚ Ì‡ ÒÚ‡Ú≥ ---
-        if (activationShieldVFX != null)
-        {
-            activationShieldVFX.Stop();
-            activationShieldVFX.gameObject.SetActive(false);
-        }
-
-        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
-        if (dnc != null)
-        {
-            dnc.isWeatherLocked = true;
-            dnc.weatherTransitionSpeed = 10f;
-            dnc.ForceWeather(WeatherState.Storm);
-        }
+        if (activationShieldVFX != null) { activationShieldVFX.Stop(); activationShieldVFX.gameObject.SetActive(false); }
     }
 
     private void FindPlayer()
     {
         GameObject pObj = GameObject.FindGameObjectWithTag("Player");
-        if (pObj != null)
+        if (pObj != null) player = pObj.transform;
+    }
+
+    public void LockTotem(bool locked)
+    {
+        isLocked = locked;
+        if (idleCorruptionVFX != null)
         {
-            player = pObj.transform;
-            playerController = pObj.GetComponent<PlayerController>();
+            if (locked) idleCorruptionVFX.Stop();
+            else if (!isPurified) idleCorruptionVFX.Play();
         }
+    }
+
+    public void PlayCorruptionFlare()
+    {
+        if (idleCorruptionVFX != null) idleCorruptionVFX.Emit(50);
+        if (totemLight != null) { totemLight.intensity *= 3f; StartCoroutine(DimLightRoutine()); }
+    }
+
+    private IEnumerator DimLightRoutine()
+    {
+        float start = totemLight.intensity;
+        float elapsed = 0f;
+        while (elapsed < 1f) { elapsed += Time.deltaTime; totemLight.intensity = Mathf.Lerp(start, start / 3f, elapsed); yield return null; }
     }
 
     private void Update()
     {
-        if (isPurified || isActivated) return;
+        if (isPurified || isActivated || isLocked) return;
+        if (player == null) { FindPlayer(); if (player == null) return; }
 
-        if (player == null)
-        {
-            FindPlayer();
-            if (player == null) return;
-        }
-
-        Vector2 totemPosXZ = new Vector2(transform.position.x, transform.position.z);
-        Vector2 playerPosXZ = new Vector2(player.position.x, player.position.z);
-        float dist = Vector2.Distance(totemPosXZ, playerPosXZ);
+        float dist = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(player.position.x, player.position.z));
 
         if (dist <= interactionRadius)
         {
-            if (!isPromptShowing)
+            if (!isPromptShowing && GlobalHUD.Instance != null)
             {
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[F] PURIFY TOTEM");
+                GlobalHUD.Instance.ShowPrompt("[F] PURIFY TOTEM");
                 isPromptShowing = true;
             }
 
@@ -89,229 +92,135 @@ public class RegionTotem : MonoBehaviour
             {
                 if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
                 isPromptShowing = false;
+
+                if (manager != null) manager.OnTotemActivated(this);
+
                 StartCoroutine(ActivationEventRoutine());
             }
         }
-        else
+        else if (isPromptShowing && GlobalHUD.Instance != null)
         {
-            if (isPromptShowing)
-            {
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
-                isPromptShowing = false;
-            }
+            GlobalHUD.Instance.HidePrompt();
+            isPromptShowing = false;
         }
     }
 
     private IEnumerator ActivationEventRoutine()
     {
         isActivated = true;
+        EnemySpawner.IsSpawningBlocked = true;
 
-        // --- ¿ “»¬¿÷≤ﬂ Ÿ»“¿ ---
-        if (activationShieldVFX != null)
-        {
-            activationShieldVFX.gameObject.SetActive(true);
-            activationShieldVFX.Play();
-        }
-
-        // Ã'ˇÍËÈ ÔÓ¯ÚÓ‚ı ÔË ÔÓˇ‚≥ ˘ËÚ‡
+        if (activationShieldVFX != null) { activationShieldVFX.gameObject.SetActive(true); activationShieldVFX.Play(); }
         if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.3f, 0.1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        if (GlobalHUD.Instance != null)
-            GlobalHUD.Instance.SetLevelObjective("SLAY THE REGION BOSSES!");
-
-        EnemySpawner.IsSpawningBlocked = true;
-
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetLevelObjective(encounterType == EncounterType.Boss ? "SLAY THE OVERLORD!" : "SURVIVE THE SWARM!");
         yield return new WaitForSeconds(2f);
 
         int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
-        float difficultyMultiplier = Mathf.Clamp(1f + (Mathf.Abs(playerPower - currentRegion.recommendedPower) * 0.02f), 0.7f, 3.0f);
+        float recommendedPower = manager.currentRegion != null ? manager.currentRegion.recommendedPower : 100;
+        float hpMultBase = manager.currentRegion != null ? manager.currentRegion.enemyHpMultiplier : 1f;
+        float dmgMultBase = manager.currentRegion != null ? manager.currentRegion.enemyDamageMultiplier : 1f;
 
-        float finalHpMult = currentRegion.enemyHpMultiplier * difficultyMultiplier;
-        float finalDmgMult = currentRegion.enemyDamageMultiplier * difficultyMultiplier;
+        float difficultyMult = Mathf.Clamp(1f + (Mathf.Abs(playerPower - recommendedPower) * 0.02f), 0.7f, 3.0f);
+        float finalHpMult = hpMultBase * difficultyMult;
+        float finalDmgMult = dmgMultBase * difficultyMult;
 
-        for (int i = 0; i < currentRegion.regionBossPrefabs.Length; i++)
+        if (encounterType == EncounterType.Boss && manager.currentRegion != null)
         {
-            Vector3 spawnPos = transform.position + (Vector3)(Random.insideUnitCircle.normalized * 8f);
-            spawnPos.y = GetGroundHeight(spawnPos);
-
-            GameObject bossObj = Instantiate(currentRegion.regionBossPrefabs[i], spawnPos, Quaternion.identity);
-
-            TutorialBossAI bossAI = bossObj.GetComponent<TutorialBossAI>();
-            if (bossAI != null)
+            // –§–Ü–ö–°: –ë—Ä–æ–Ω–µ–±—ñ–π–Ω–∏–π –∑–∞—Ö–∏—Å—Ç –≤—ñ–¥ –ø—É—Å—Ç–æ–≥–æ —Å–ø–∏—Å–∫—É –±–æ—Å—ñ–≤
+            if (manager.currentRegion.regionBossPrefabs == null || manager.currentRegion.regionBossPrefabs.Length == 0)
             {
-                bossAI.InitializeBoss(finalHpMult, finalDmgMult);
+                Debug.LogError("üö® –ü–û–ú–ò–õ–ö–ê: –¢–∏ –∑–∞–±—É–≤ –¥–æ–¥–∞—Ç–∏ –ø—Ä–µ—Ñ–∞–± –ë–æ—Å–∞ –≤ 'Region Boss Prefabs' –≤ RegionData —Ü—å–æ–≥–æ —Ä–µ–≥—ñ–æ–Ω—É!");
+                yield break; // –ó—É–ø–∏–Ω—è—î–º–æ —Å–∫—Ä–∏–ø—Ç, —â–æ–± –Ω–µ –±—É–ª–æ –º–∏—Ç—Ç—î–≤–æ—ó –ø–µ—Ä–µ–º–æ–≥–∏
             }
 
-            activeBosses.Add(bossObj);
-
-            // ÀÂ„Í‡ ‚≥·‡ˆ≥ˇ ÔË Ô‡‰≥ÌÌ≥ ÍÓÊÌÓ„Ó ·ÓÒ‡
-            if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
-
-            yield return new WaitForSeconds(0.8f);
+            for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
+            {
+                SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult, true);
+                yield return new WaitForSeconds(0.8f);
+            }
+        }
+        else
+        {
+            yield return StartCoroutine(SpawnSwarmRoutine(weakPrefabs, weakCount, finalHpMult * 0.8f, finalDmgMult * 0.8f));
+            yield return StartCoroutine(SpawnSwarmRoutine(mediumPrefabs, mediumCount, finalHpMult, finalDmgMult));
+            yield return StartCoroutine(SpawnSwarmRoutine(elitePrefabs, eliteCount, finalHpMult * 1.5f, finalDmgMult * 1.2f));
         }
 
-        StartCoroutine(MonitorBossesRoutine());
+        StartCoroutine(MonitorCombatRoutine());
     }
 
-    private IEnumerator MonitorBossesRoutine()
+    private IEnumerator SpawnSwarmRoutine(GameObject[] prefabs, int count, float hpMult, float dmgMult)
+    {
+        if (prefabs == null || prefabs.Length == 0 || count <= 0) yield break;
+        for (int i = 0; i < count; i++)
+        {
+            SpawnEntity(prefabs[Random.Range(0, prefabs.Length)], hpMult, dmgMult, false);
+            yield return new WaitForSeconds(0.15f);
+        }
+    }
+
+    private void SpawnEntity(GameObject prefab, float hpMult, float dmgMult, bool isBoss)
+    {
+        Vector3 spawnPos = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(6f, 12f));
+        spawnPos.y = GetGroundHeight(spawnPos);
+
+        GameObject entity = Instantiate(prefab, spawnPos, Quaternion.identity);
+        activeEnemies.Add(entity);
+
+        if (isBoss)
+        {
+            TutorialBossAI bossAI = entity.GetComponent<TutorialBossAI>();
+            if (bossAI != null) bossAI.InitializeBoss(hpMult, dmgMult);
+        }
+        else
+        {
+            EnemyAI enemyAI = entity.GetComponent<EnemyAI>();
+            if (enemyAI != null)
+            {
+                enemyAI.maxHealth *= hpMult;
+                enemyAI.damage *= dmgMult;
+            }
+        }
+
+        if (Camera.main != null && isBoss) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
+    }
+
+    private IEnumerator MonitorCombatRoutine()
     {
         while (true)
         {
-            activeBosses.RemoveAll(item => item == null);
+            activeEnemies.RemoveAll(item => item == null);
 
-            if (activeBosses.Count == 0)
+            if (activeEnemies.Count == 0)
             {
-                // ƒ‡∫ÏÓ ˜‡Ò Á≥·‡ÚË ÎÛÚ Ô≥ÒÎˇ ‚·Ë‚ÒÚ‚‡
-                yield return new WaitForSeconds(4f);
-                StartCoroutine(PurifyCinematicRoutine());
+                yield return new WaitForSeconds(3f);
+                LocalPurify();
                 break;
             }
             yield return new WaitForSeconds(1f);
         }
     }
 
-    private IEnumerator PurifyCinematicRoutine()
+    private void LocalPurify()
     {
         isPurified = true;
-
-        EnemyAI[] remainingEnemies = FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
-        foreach (var enemy in remainingEnemies)
-        {
-            if (enemy != null && !enemy.isInvincible)
-                enemy.TakeDamage(new DamageInfo { Amount = 99999f, KnockbackForce = 0f });
-        }
-
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.HideLevelObjective();
-            GlobalHUD.Instance.ShowCinematicBars();
-            GlobalHUD.Instance.SetGameplayPanelsActive(false);
-        }
-
-        if (playerController != null) playerController.isControlBlocked = true;
 
         if (activationShieldVFX != null) activationShieldVFX.Stop();
         if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();
 
-        Camera mainCam = Camera.main;
-        CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
-        if (camFollow != null) camFollow.isCinematicMode = true;
+        if (skyBeamVFX != null) { skyBeamVFX.gameObject.SetActive(true); skyBeamVFX.Play(); }
+        if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }
+        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.4f, 0.1f);
 
-        // =========================================================
-        // --- ‘≤ —: œŒ◊»Õ¿™ÃŒ Œ◊»Ÿ≈ÕÕﬂ œŒ√Œƒ» Œƒ–¿«” «≤ —“¿–“” ---
-        // =========================================================
-        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
-        if (dnc != null)
-        {
-            dnc.isWeatherLocked = true;
-            dnc.weatherTransitionSpeed = 0.5f; // œÎ‡‚ÌËÈ ÔÂÂı≥‰ Ì‡ ‚Ò≥ 7 ÒÂÍÛÌ‰ Í‡ÚÒˆÂÌË
-            dnc.skyboxFadeSpeed = 0.5f;
-            dnc.ForceWeather(WeatherState.Clear);
-        }
-
-        float mapScale = 200f;
-        if (Terrain.activeTerrain != null) mapScale = Terrain.activeTerrain.terrainData.size.x;
-
-        float camHeight = Mathf.Clamp(mapScale * 0.15f, 35f, 60f);
-
-        Vector3 apexCamPos = transform.position + new Vector3(0f, camHeight, -camHeight * 0.8f);
-        Vector3 endPanPos = apexCamPos + new Vector3(30f, 0f, 10f);
-        Vector3 lookAtTarget = transform.position;
-
-        // 1. «À≤“
-        float elapsed = 0f;
-        while (elapsed < 2.5f)
-        {
-            elapsed += Time.deltaTime;
-            float t = 1f - Mathf.Pow(1f - (elapsed / 2.5f), 3f);
-
-            mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, apexCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(mainCam.fieldOfView, 70f, t);
-            mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, Quaternion.LookRotation(lookAtTarget - mainCam.transform.position), t);
-            yield return null;
-        }
-
-        if (purifyExplosionVFX != null)
-        {
-            purifyExplosionVFX.gameObject.SetActive(true);
-            purifyExplosionVFX.Play();
-        }
-
-        yield return new WaitForSeconds(0.4f);
-
-        if (camFollow != null) camFollow.TriggerShake(0.6f, 0.15f);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
-
-        if (skyBeamVFX != null)
-        {
-            skyBeamVFX.gameObject.SetActive(true);
-            skyBeamVFX.Play();
-        }
-        if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 5f; }
-
-        float initialFogStart = RenderSettings.fogStartDistance;
-        float initialFogEnd = RenderSettings.fogEndDistance;
-        float targetFogStart = initialFogStart + mapScale;
-        float targetFogEnd = initialFogEnd + (mapScale * 1.5f);
-        Color initialAmbient = RenderSettings.ambientLight;
-
-        // 2. œ¿ÕŒ–¿Ã¿ “¿ ¬≤ƒ—“”œ “”Ã¿Õ”
-        elapsed = 0f;
-        while (elapsed < 4.5f)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / 4.5f;
-            float smoothT = t * t * (3f - 2f * t);
-
-            mainCam.transform.position = Vector3.Lerp(apexCamPos, endPanPos, t);
-            mainCam.transform.rotation = Quaternion.LookRotation(lookAtTarget - mainCam.transform.position);
-
-            RenderSettings.fogStartDistance = Mathf.Lerp(initialFogStart, targetFogStart, smoothT);
-            RenderSettings.fogEndDistance = Mathf.Lerp(initialFogEnd, targetFogEnd, smoothT);
-            RenderSettings.ambientLight = Color.Lerp(initialAmbient, new Color(initialAmbient.r + 0.3f, initialAmbient.g + 0.3f, initialAmbient.b + 0.3f), t);
-
-            yield return null;
-        }
-
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("REGION CONQUERED!");
-
-        yield return new WaitForSeconds(3f);
-
-        if (camFollow != null)
-        {
-            mainCam.fieldOfView = 60f; // ¬≥‰ÌÓ‚Î˛∫ÏÓ FOV
-            camFollow.isCinematicMode = false;
-        }
-        if (playerController != null) playerController.isControlBlocked = false;
-
-        currentRegion.currentState = RegionState.Conquered;
-        PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
-        PlayerPrefs.SetInt("AutoOpenMap", 1);
-        PlayerPrefs.Save();
-
-        if (ResourceManager.Instance != null)
-        {
-            ResourceManager.Instance.AddStashResources(currentRegion.woodReward, currentRegion.stoneReward, currentRegion.foodReward);
-            ResourceManager.Instance.diamonds += currentRegion.diamondReward;
-            ResourceManager.Instance.UpdateUI();
-        }
-
-        if (dnc != null) dnc.isWeatherLocked = false;
-
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.HidePrompt();
-            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
-        }
+        if (manager != null) manager.OnTotemPurified(this);
     }
 
     private float GetGroundHeight(Vector3 pos)
     {
-        if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
-            return hit.point.y;
-        if (Terrain.activeTerrain != null)
-            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground"))) return hit.point.y;
+        if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
         return pos.y;
     }
 }

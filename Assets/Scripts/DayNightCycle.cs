@@ -14,7 +14,6 @@ public class DayNightCycle : MonoBehaviour
     public Material daySkybox;
     public Material nightSkybox;
     public Material stormSkybox;
-    [Tooltip("Швидкість затемнення неба при зміні скайбоксу")]
     public float skyboxFadeSpeed = 0.8f;
 
     [Header("Light Sources")]
@@ -61,7 +60,6 @@ public class DayNightCycle : MonoBehaviour
     private SkyboxType activeSkyboxType = SkyboxType.None;
     private Coroutine skyboxBlendCoroutine;
 
-    // Зберігаємо початкову густоту опадів для плавного розсіювання
     private float initialRainRate = 0f;
     private float initialSnowRate = 0f;
     private float initialDustRate = 0f;
@@ -89,7 +87,6 @@ public class DayNightCycle : MonoBehaviour
         if (lightningLight != null) lightningLight.intensity = 0f;
         if (moonLight != null) moonLight.color = new Color(0.6f, 0.7f, 1f);
 
-        // Кешуємо кількість частинок зі старту
         if (rainVFX != null) initialRainRate = rainVFX.emission.rateOverTimeMultiplier;
         if (snowVFX != null) initialSnowRate = snowVFX.emission.rateOverTimeMultiplier;
         if (dustVFX != null) initialDustRate = dustVFX.emission.rateOverTimeMultiplier;
@@ -130,7 +127,6 @@ public class DayNightCycle : MonoBehaviour
 
         CheckAndUpdateSkybox();
 
-        // Плавний перехід погоди
         float targetBlend = (currentWeather == WeatherState.Clear) ? 0f : (currentWeather == WeatherState.Storm ? 1f : 0.5f);
         weatherBlend = Mathf.Lerp(weatherBlend, targetBlend, Time.deltaTime * weatherTransitionSpeed);
 
@@ -152,7 +148,6 @@ public class DayNightCycle : MonoBehaviour
 
         UpdateVFXPositions();
 
-        // --- ААА ФІКС: Плавне розсіювання опадів ---
         SmoothVFX(rainVFX, initialRainRate, currentBiome == 0 ? weatherBlend : 0f);
         SmoothVFX(dustVFX, initialDustRate, currentBiome == 1 ? weatherBlend : 0f);
         SmoothVFX(snowVFX, initialSnowRate, currentBiome == 2 ? weatherBlend : 0f);
@@ -162,11 +157,8 @@ public class DayNightCycle : MonoBehaviour
     {
         if (ps == null) return;
         var em = ps.emission;
-
-        // Змінюємо густоту дощу плавно
         em.rateOverTimeMultiplier = baseRate * blend * (currentWeather == WeatherState.Storm ? 1.5f : 1f);
 
-        // Вмикаємо/вимикаємо об'єкт лише коли він повністю невидимий
         if (blend > 0.05f && !ps.gameObject.activeSelf) ps.gameObject.SetActive(true);
         else if (blend <= 0.05f && ps.gameObject.activeSelf) ps.gameObject.SetActive(false);
     }
@@ -174,8 +166,12 @@ public class DayNightCycle : MonoBehaviour
     private void CheckAndUpdateSkybox()
     {
         SkyboxType targetSkybox = SkyboxType.Day;
-        if (currentWeather == WeatherState.Storm) targetSkybox = SkyboxType.Storm;
-        else if (timeOfDay < 5.5f || timeOfDay > 18.5f) targetSkybox = SkyboxType.Night;
+
+        // ФІКС: І в Storm, і в Precipitation небо залишається похмурим!
+        if (currentWeather == WeatherState.Storm || currentWeather == WeatherState.Precipitation)
+            targetSkybox = SkyboxType.Storm;
+        else if (timeOfDay < 5.5f || timeOfDay > 18.5f)
+            targetSkybox = SkyboxType.Night;
 
         if (targetSkybox != activeSkyboxType)
         {
@@ -228,16 +224,29 @@ public class DayNightCycle : MonoBehaviour
     private void UpdateVFXPositions()
     {
         if (Camera.main == null) return;
+
         Vector3 camPos = Camera.main.transform.position;
 
-        if (starsParticles != null) { starsParticles.transform.position = camPos; starsParticles.transform.rotation = Quaternion.identity; }
+        // Беремо напрямок камери, але ігноруємо нахил вгору/вниз
+        Vector3 camForward = Camera.main.transform.forward;
+        camForward.y = 0;
+        camForward.Normalize();
+
+        if (starsParticles != null)
+        {
+            starsParticles.transform.position = camPos;
+            starsParticles.transform.rotation = Quaternion.identity;
+        }
 
         ParticleSystem[] weatherVFX = { rainVFX, snowVFX, dustVFX };
         foreach (var vfx in weatherVFX)
         {
             if (vfx != null && vfx.gameObject.activeSelf)
             {
-                vfx.transform.position = camPos + Vector3.up * 12f;
+                // ФІКС ОПТИМІЗАЦІЇ: Зсуваємо погоду на 15м вгору і на 12м ВПЕРЕД від камери!
+                vfx.transform.position = camPos + (Vector3.up * 15f) + (camForward * 12f);
+
+                // Фіксуємо обертання, щоб дощ падав рівно вниз
                 vfx.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             }
         }
@@ -328,11 +337,5 @@ public class DayNightCycle : MonoBehaviour
             }
         }
         lightningCoroutine = null;
-    }
-
-    private void OnDestroy()
-    {
-        string currentScene = SceneManager.GetActiveScene().name;
-        if (currentScene != "Lvl_1") { PlayerPrefs.SetFloat("SavedTimeOfDay", timeOfDay / 24f); PlayerPrefs.Save(); }
     }
 }

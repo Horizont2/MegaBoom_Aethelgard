@@ -11,7 +11,6 @@ public class SpawnableEnemy
 
 public class EnemySpawner : MonoBehaviour
 {
-    // --- НОВЕ: Флаг для блокування спавну під час катсцен ---
     public static bool IsSpawningBlocked = false;
 
     [Header("Spawner Settings")]
@@ -28,13 +27,18 @@ public class EnemySpawner : MonoBehaviour
 
     private void Start()
     {
-        IsSpawningBlocked = false; // Скидаємо при запуску рівня
+        IsSpawningBlocked = false;
         worldGen = FindFirstObjectByType<WorldGenerator>();
     }
 
     private void Update()
     {
-        if (IsSpawningBlocked) return; // ФІКС: Блокуємо спавн під час катсцен
+        // ФІКС: Не просто повертаємось, а й скидаємо таймер!
+        if (IsSpawningBlocked)
+        {
+            timer = 0f;
+            return;
+        }
 
         if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
         if (player == null || enemyPool == null || enemyPool.Length == 0) return;

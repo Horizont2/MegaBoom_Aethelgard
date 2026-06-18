@@ -25,13 +25,23 @@ public class ThreatUI : MonoBehaviour
     private void Start()
     {
         mainCam = Camera.main;
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) playerTrans = p.transform;
+        // Гравця може ще не бути (він генерується), тому знайдемо його пізніше!
+        FindPlayerIfNeeded();
     }
 
-    // ФІКС: Додали параметр duration, щоб бос міг передавати свій attackTelegraphTime
+    private void FindPlayerIfNeeded()
+    {
+        if (playerTrans == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerTrans = p.transform;
+        }
+    }
+
     public void ShowThreat(Transform attacker, float duration = 0.8f)
     {
+        FindPlayerIfNeeded(); // ФІКС: Шукаємо гравця кожен раз, якщо він загубився
+
         if (threatIndicatorImage == null || playerTrans == null) return;
 
         currentAttacker = attacker;
@@ -49,10 +59,9 @@ public class ThreatUI : MonoBehaviour
     private IEnumerator ThreatRoutine(Transform attacker)
     {
         float elapsed = 0f;
-        Color warningColor = new Color(1f, 0.4f, 0f, 1f); // Яскраво-помаранчевий
+        Color warningColor = new Color(1f, 0.4f, 0f, 1f);
         threatIndicatorImage.color = warningColor;
 
-        // Ефект пульсації при появі
         Vector3 startScale = Vector3.one * 1.3f;
 
         while (elapsed < displayDuration)
@@ -73,10 +82,8 @@ public class ThreatUI : MonoBehaviour
 
             float t = elapsed / displayDuration;
 
-            // Анімація зменшення на початку (Punch In)
             if (t < 0.2f) transform.localScale = Vector3.Lerp(startScale, Vector3.one, t / 0.2f);
 
-            // ФІКС: Тримаємо яскравість до кінця, і лише в останні 20% часу різко червоніємо і ховаємося
             if (t > 0.8f)
             {
                 float fadeT = (t - 0.8f) / 0.2f;

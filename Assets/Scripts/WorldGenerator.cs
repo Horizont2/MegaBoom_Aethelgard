@@ -110,6 +110,19 @@ public class WorldGenerator : MonoBehaviour
     private int currentBushCount = 0;
     private int currentRockCount = 0;
 
+    // --- ІЗОЛЬОВАНИЙ ГЕНЕРАТОР (ДЛЯ ДЕТЕРМІНОВАНОСТІ) ---
+    private System.Random prng;
+
+    private float GetRandomFloat() => (float)prng.NextDouble();
+    private float GetRandomRange(float min, float max) => Mathf.Lerp(min, max, (float)prng.NextDouble());
+    private int GetRandomRangeInt(int min, int max) => prng.Next(min, max);
+
+    private void Awake()
+    {
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+    }
+
     private void Start()
     {
         IsGenerationDone = false;
@@ -119,15 +132,58 @@ public class WorldGenerator : MonoBehaviour
 
         if (skyboxMaterial != null) RenderSettings.skybox = skyboxMaterial;
 
-        if (PlayerPrefs.GetInt("IsContinuing", 0) == 1)
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
         {
-            offsetX = PlayerPrefs.GetFloat("MapSeedX", 0f); offsetZ = PlayerPrefs.GetFloat("MapSeedZ", 0f);
+            CharacterController cc = player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+
+            Rigidbody rb = player.GetComponent<Rigidbody>();
+            if (rb != null) { rb.isKinematic = true; rb.linearVelocity = Vector3.zero; }
+
+            player.transform.position = new Vector3(transform.position.x + terrain.terrainData.size.x / 2f, 1000f, transform.position.z + terrain.terrainData.size.z / 2f);
+        }
+
+        // =================================================================
+        // ЛОГІКА ЗБЕРЕЖЕННЯ І ЗАВАНТАЖЕННЯ УНІКАЛЬНОГО СІДУ
+        // =================================================================
+        RegionData curRegion = null;
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) curRegion = GameManager.Instance.currentRegion;
+        if (curRegion == null && MissionInitializer.PendingMissionRegion != null) curRegion = MissionInitializer.PendingMissionRegion;
+
+        bool isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1;
+        int mapSeed = 0;
+
+        if (isRegionMission && curRegion != null)
+        {
+            if (curRegion.currentState == RegionState.Conquered)
+            {
+                // ЗАХОПЛЕНИЙ: Беремо збережений seed, щоб мапа була ІДЕНТИЧНОЮ
+                mapSeed = PlayerPrefs.GetInt("RegionSeed_" + curRegion.regionID, UnityEngine.Random.Range(0, 999999));
+            }
+            else
+            {
+                // НЕ ЗАХОПЛЕНИЙ: Генеруємо новий seed. Якщо захопимо - він назавжди лишиться в пам'яті
+                mapSeed = UnityEngine.Random.Range(0, 999999);
+                PlayerPrefs.SetInt("RegionSeed_" + curRegion.regionID, mapSeed);
+                PlayerPrefs.Save();
+            }
         }
         else
         {
-            offsetX = Random.Range(0f, 9999f); offsetZ = Random.Range(0f, 9999f);
-            PlayerPrefs.SetFloat("MapSeedX", offsetX); PlayerPrefs.SetFloat("MapSeedZ", offsetZ); PlayerPrefs.Save();
+            if (PlayerPrefs.GetInt("IsContinuing", 0) == 1) mapSeed = PlayerPrefs.GetInt("MapSeed", UnityEngine.Random.Range(0, 999999));
+            else
+            {
+                mapSeed = UnityEngine.Random.Range(0, 999999);
+                PlayerPrefs.SetInt("MapSeed", mapSeed);
+                PlayerPrefs.Save();
+            }
         }
+
+        // Ініціалізуємо рулетку!
+        prng = new System.Random(mapSeed);
+        offsetX = GetRandomRange(0f, 9999f);
+        offsetZ = GetRandomRange(0f, 9999f);
 
         AdjustSettingsForBiome();
         StartCoroutine(GenerateWorldRoutine());
@@ -143,13 +199,9 @@ public class WorldGenerator : MonoBehaviour
 
         SpawnWaterPlane();
 
-        // ========================================================================
-        // 1. СПОЧАТКУ СПАВНИМО ТАБІР БОСА (Щоб дерева його оминали)
-        // ========================================================================
         yield return StartCoroutine(SpawnRegionTotemRoutine());
         CurrentProgress = 0.60f;
 
-        // 2. ТІЛЬКИ ТЕПЕР висаджуємо ліс і природу
         yield return StartCoroutine(PopulateBiomesRoutine());
         CurrentProgress = 0.85f;
 
@@ -159,7 +211,7 @@ public class WorldGenerator : MonoBehaviour
 
         CurrentProgress = 0.95f;
 
-        Physics.SyncTransforms(); // Оновлюємо колізії після генерації
+        Physics.SyncTransforms();
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
@@ -170,8 +222,8 @@ public class WorldGenerator : MonoBehaviour
 
             for (int i = 0; i < 200; i++)
             {
-                float px = Random.Range(terrain.terrainData.size.x * 0.2f, terrain.terrainData.size.x * 0.8f);
-                float pz = Random.Range(terrain.terrainData.size.z * 0.2f, terrain.terrainData.size.z * 0.8f);
+                float px = GetRandomRange(terrain.terrainData.size.x * 0.2f, terrain.terrainData.size.x * 0.8f);
+                float pz = GetRandomRange(terrain.terrainData.size.z * 0.2f, terrain.terrainData.size.z * 0.8f);
                 float worldX = transform.position.x + px;
                 float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
@@ -188,9 +240,8 @@ public class WorldGenerator : MonoBehaviour
 
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null) { cc.enabled = false; player.transform.position = safePos; cc.enabled = true; }
-            else { player.transform.position = safePos; Rigidbody rb = player.GetComponent<Rigidbody>(); if (rb != null) rb.linearVelocity = Vector3.zero; }
+            else { player.transform.position = safePos; Rigidbody rb = player.GetComponent<Rigidbody>(); if (rb != null) { rb.isKinematic = false; rb.linearVelocity = Vector3.zero; } }
 
-            // --- ФІКС: Змушуємо камеру миттєво телепортуватися за гравцем ---
             if (Camera.main != null)
             {
                 CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
@@ -204,19 +255,14 @@ public class WorldGenerator : MonoBehaviour
         IsGenerationDone = true;
     }
 
-    // ==========================================
-    // --- ПЕРФЕКТНИЙ СПАВН ВЕЛИКОЇ ЛОКАЦІЇ ---
-    // ==========================================
-    // ==========================================
-    // --- ПЕРФЕКТНИЙ СПАВН З ВИРІВНЮВАННЯМ ЗЕМЛІ ---
-    // ==========================================
     private IEnumerator SpawnRegionTotemRoutine()
     {
         GameObject totemPrefab = null;
+
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
-        {
             totemPrefab = GameManager.Instance.currentRegion.regionTotemPrefab;
-        }
+        else if (MissionInitializer.PendingMissionRegion != null)
+            totemPrefab = MissionInitializer.PendingMissionRegion.regionTotemPrefab;
 
         if (totemPrefab == null) yield break;
 
@@ -227,11 +273,10 @@ public class WorldGenerator : MonoBehaviour
         Vector3 bestPos = Vector3.zero;
         bool found = false;
 
-        // Шукаємо просто ділянку без екстремальних скель
         for (int i = 0; i < 500; i++)
         {
-            float px = Random.Range(w * 0.2f, w * 0.8f);
-            float pz = Random.Range(l * 0.2f, l * 0.8f);
+            float px = GetRandomRange(w * 0.2f, w * 0.8f);
+            float pz = GetRandomRange(l * 0.2f, l * 0.8f);
 
             if (terrain.terrainData.GetSteepness(px / w, pz / l) < 20f)
             {
@@ -254,25 +299,20 @@ public class WorldGenerator : MonoBehaviour
             bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
         }
 
-        // 1. СПОЧАТКУ спавнимо локацію (поки що криво, щоб просто отримати її розміри)
-        GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
+        GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
         camp.transform.SetParent(this.transform);
 
-        // 2. ДИНАМІЧНО вимірюємо її розмір через її власний колайдер
         Collider campCol = camp.GetComponent<Collider>();
-        float dynamicRadius = 20f; // Запобіжник за замовчуванням
+        float dynamicRadius = 20f;
 
         if (campCol != null)
         {
-            // Беремо найбільший вимір (ширину або довжину префабу)
             float maxSize = Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z);
-            dynamicRadius = (maxSize / 2f) + 3f; // Радіус + 3 метри запасу для паркану/каміння
+            dynamicRadius = (maxSize / 2f) + 3f;
         }
 
-        // 3. Копаємо землю ідеально під розмір ЦІЄЇ локації
         FlattenTerrainAt(bestPos, dynamicRadius, 15f);
 
-        // 4. Оновлюємо висоту після розкопок і ставимо табір рівно на ідеальну землю
         bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
         camp.transform.position = bestPos;
 
@@ -284,7 +324,6 @@ public class WorldGenerator : MonoBehaviour
         TerrainData td = terrain.terrainData;
         int hRes = td.heightmapResolution;
 
-        // Переводимо світові координати в координати TerrainData
         float normX = (worldPos.x - transform.position.x) / td.size.x;
         float normZ = (worldPos.z - transform.position.z) / td.size.z;
 
@@ -303,10 +342,7 @@ public class WorldGenerator : MonoBehaviour
         int width = endX - startX + 1;
         int length = endZ - startZ + 1;
 
-        // Беремо масив висот саме для нашої зони
         float[,] heights = td.GetHeights(startX, startZ, width, length);
-
-        // Цільова висота (висота центру)
         float targetHeightNorm = (worldPos.y - transform.position.y) / td.size.y;
 
         for (int z = 0; z < length; z++)
@@ -318,22 +354,15 @@ public class WorldGenerator : MonoBehaviour
 
                 float dist = Vector2.Distance(new Vector2(mapX, mapZ), new Vector2(centerX, centerZ));
 
-                if (dist <= flatRadiusSamples)
-                {
-                    // Ідеально пласка зона
-                    heights[z, x] = targetHeightNorm;
-                }
+                if (dist <= flatRadiusSamples) heights[z, x] = targetHeightNorm;
                 else if (dist <= totalRadiusSamples)
                 {
-                    // Плавний перехід (Smoothstep) від рівної землі до пагорба
                     float t = (dist - flatRadiusSamples) / blendRadiusSamples;
                     float smoothT = t * t * (3f - 2f * t);
                     heights[z, x] = Mathf.Lerp(targetHeightNorm, heights[z, x], smoothT);
                 }
             }
         }
-
-        // Застосовуємо "перекопану" землю назад на карту
         td.SetHeights(startX, startZ, heights);
     }
 
@@ -364,7 +393,6 @@ public class WorldGenerator : MonoBehaviour
 
         waterObj.transform.position = new Vector3(transform.position.x + w / 2, absoluteWaterHeight, transform.position.z + l / 2);
         waterObj.transform.localRotation = Quaternion.identity;
-
         waterObj.transform.localScale = new Vector3(w / 10f, 1f, l / 10f);
 
         MeshRenderer mr = waterObj.GetComponent<MeshRenderer>();
@@ -412,10 +440,7 @@ public class WorldGenerator : MonoBehaviour
 
                 float finalHeight = Mathf.Clamp01(sharpenedNoise + edgeWall);
 
-                if (finalHeight < waterLevel)
-                {
-                    finalHeight = Mathf.Lerp(finalHeight, waterLevel * 0.8f, 0.5f);
-                }
+                if (finalHeight < waterLevel) finalHeight = Mathf.Lerp(finalHeight, waterLevel * 0.8f, 0.5f);
 
                 heights[x, y] = finalHeight;
             }
@@ -489,7 +514,7 @@ public class WorldGenerator : MonoBehaviour
 
             try
             {
-                float px = Random.Range(10f, w - 10f); float pz = Random.Range(10f, l - 10f);
+                float px = GetRandomRange(10f, w - 10f); float pz = GetRandomRange(10f, l - 10f);
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
@@ -506,17 +531,15 @@ public class WorldGenerator : MonoBehaviour
                 else if (localTemp <= 0.35f) { currentTreeTexture = snowTreeTexture; currentFoliageColor = snowFoliageColor; currentRockColor = snowRockColor; }
 
                 if (normalizedHeight <= waterLevel + 0.03f) continue;
-
-                // Перевірка колізій - якщо тут вже стоїть табір боса, нічого не спавнимо!
                 if (!IsPositionClear(new Vector3(worldX, worldY, worldZ), 1.5f)) continue;
 
                 if (steepness > 40f)
                 {
-                    if (currentRockCount < maxRocks && Random.value > 0.95f)
+                    if (currentRockCount < maxRocks && GetRandomFloat() > 0.95f)
                     {
                         GameObject rockPrefab = GetRandomPrefab(baseRocks);
-                        GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, Random.Range(0, 360f), 0), rockContainer);
-                        obj.transform.localScale *= Random.Range(1.5f, 3f);
+                        GameObject obj = Instantiate(rockPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
+                        obj.transform.localScale *= GetRandomRange(1.5f, 3f);
                         ApplyBiomeColor(obj, currentRockColor, true);
                         currentRockCount++;
                     }
@@ -524,7 +547,6 @@ public class WorldGenerator : MonoBehaviour
                 }
 
                 float density = Mathf.PerlinNoise(normalizedX * clusterScale + offsetX, normalizedZ * clusterScale + offsetZ);
-
                 float meadowNoise = Mathf.PerlinNoise(normalizedX * meadowScale + offsetX + 1000f, normalizedZ * meadowScale + offsetZ + 1000f);
                 float veinNoise = Mathf.PerlinNoise(normalizedX * veinScale + offsetX + 2000f, normalizedZ * veinScale + offsetZ + 2000f);
 
@@ -533,15 +555,15 @@ public class WorldGenerator : MonoBehaviour
 
                 if (isMeadow) density = 0f;
 
-                float randomSpawn = Random.value;
+                float randomSpawn = GetRandomFloat();
 
                 if (density > forestThreshold && steepness <= 25f)
                 {
                     if (currentTreeCount < maxTrees && density > forestThreshold + 0.2f && randomSpawn > 0.85f && giantTrees != null && giantTrees.Length > 0)
                     {
                         GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
-                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0), treeContainer);
-                        obj.transform.localScale *= Random.Range(1.0f, 1.4f);
+                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                        obj.transform.localScale *= GetRandomRange(1.0f, 1.4f);
                         ApplyBiomeTexture(obj, currentTreeTexture);
                         ApplyBiomeColor(obj, currentFoliageColor, true);
                         currentTreeCount++;
@@ -552,8 +574,8 @@ public class WorldGenerator : MonoBehaviour
                     else if (currentTreeCount < maxTrees && randomSpawn > 0.65f)
                     {
                         GameObject treePrefab = GetRandomPrefab(baseTrees);
-                        GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0, 360f), 0), treeContainer);
-                        obj.transform.localScale *= Random.Range(0.8f, 1.1f);
+                        GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                        obj.transform.localScale *= GetRandomRange(0.8f, 1.1f);
                         ApplyBiomeTexture(obj, currentTreeTexture);
                         ApplyBiomeColor(obj, currentFoliageColor, true);
                         currentTreeCount++;
@@ -564,7 +586,7 @@ public class WorldGenerator : MonoBehaviour
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)
                     {
-                        float subRoll = Random.value;
+                        float subRoll = GetRandomFloat();
                         GameObject naturePrefab = subRoll > 0.5f ? GetRandomPrefab(baseBushes) : (subRoll > 0.2f ? GetRandomPrefab(baseFlowers) : ((localTemp > 0.35f && localTemp < 0.65f) ? GetRandomPrefab(baseMushrooms) : GetRandomPrefab(baseBushes)));
                         currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor);
                     }
@@ -574,23 +596,23 @@ public class WorldGenerator : MonoBehaviour
                     if (isVein && currentRockCount < maxRocks && randomSpawn > 0.7f)
                     {
                         GameObject rockBase = GetRandomPrefab(baseRocks);
-                        int clusterSize = Random.Range(3, 6);
+                        int clusterSize = GetRandomRangeInt(3, 6);
                         for (int c = 0; c < clusterSize; c++)
                         {
-                            float ox = Random.Range(-4f, 4f); float oz = Random.Range(-4f, 4f);
+                            float ox = GetRandomRange(-4f, 4f); float oz = GetRandomRange(-4f, 4f);
                             float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
-                            GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), slopeRotation * Quaternion.Euler(0, Random.Range(0f, 360f), 0), rockContainer);
-                            obj.transform.localScale *= Random.Range(0.5f, 1.2f);
+                            GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
+                            obj.transform.localScale *= GetRandomRange(0.5f, 1.2f);
                             ApplyBiomeColor(obj, currentRockColor, true);
                             currentRockCount++;
                         }
                     }
                     else if (currentRockCount < maxRocks && randomSpawn > 0.95f)
                     {
-                        bool isRuin = ruinPrefabs != null && ruinPrefabs.Length > 0 && Random.value > 0.8f;
+                        bool isRuin = ruinPrefabs != null && ruinPrefabs.Length > 0 && GetRandomFloat() > 0.8f;
                         GameObject targetPrefab = isRuin ? GetRandomPrefab(ruinPrefabs) : GetRandomPrefab(baseRocks);
 
-                        GameObject obj = Instantiate(targetPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, Random.Range(0f, 360f), 0), rockContainer);
+                        GameObject obj = Instantiate(targetPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
                         if (!isRuin) ApplyBiomeColor(obj, currentRockColor, true);
                         currentRockCount++;
                     }
@@ -605,7 +627,7 @@ public class WorldGenerator : MonoBehaviour
                     if (currentTreeCount < maxTrees && randomSpawn > 0.95f)
                     {
                         GameObject log = GetRandomPrefab(logPrefabs);
-                        if (log != null) { Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, Random.Range(0f, 360f), 0), logContainer); currentTreeCount++; }
+                        if (log != null) { Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), logContainer); currentTreeCount++; }
                     }
                     else if (currentGrassCount < maxGrassObjects && randomSpawn > 0.50f)
                     {
@@ -625,9 +647,9 @@ public class WorldGenerator : MonoBehaviour
         if (randomize)
         {
             Color.RGBToHSV(baseColor, out float h, out float s, out float v);
-            h = Mathf.Repeat(h + Random.Range(-0.04f, 0.04f), 1f);
-            s = Mathf.Clamp01(s * Random.Range(0.8f, 1.1f));
-            v = Mathf.Clamp01(v * Random.Range(0.6f, 1.1f));
+            h = Mathf.Repeat(h + GetRandomRange(-0.04f, 0.04f), 1f);
+            s = Mathf.Clamp01(s * GetRandomRange(0.8f, 1.1f));
+            v = Mathf.Clamp01(v * GetRandomRange(0.6f, 1.1f));
             finalColor = Color.HSVToRGB(h, s, v);
         }
 
@@ -637,14 +659,15 @@ public class WorldGenerator : MonoBehaviour
             string objName = rend.gameObject.name.ToLower();
             if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
 
-            // ФІКС: Обов'язково очищаємо блок, щоб кольори не змішувалися з попередніми об'єктами
             propBlock.Clear();
             rend.GetPropertyBlock(propBlock);
 
-            // Розширений список властивостей для ВСІХ популярних шейдерів
             propBlock.SetColor("_Color", finalColor);
+            propBlock.SetColor("Color", finalColor);
             propBlock.SetColor("_BaseColor", finalColor);
+            propBlock.SetColor("_PrimaryColor", finalColor);
             propBlock.SetColor("_Primary_Color", finalColor);
+            propBlock.SetColor("PrimaryColor", finalColor);
             propBlock.SetColor("_Secondary_Color", finalColor);
             propBlock.SetColor("_TopColor", finalColor);
             propBlock.SetColor("_BottomColor", finalColor);
@@ -675,18 +698,18 @@ public class WorldGenerator : MonoBehaviour
     private int SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor)
     {
         if (prefab == null) return 0;
-        int count = Random.Range(minCount, maxCount + 1);
+        int count = GetRandomRangeInt(minCount, maxCount + 1);
         int spawned = 0;
 
         for (int i = 0; i < count; i++)
         {
-            float ox = Random.Range(-radius, radius); float oz = Random.Range(-radius, radius);
+            float ox = GetRandomRange(-radius, radius); float oz = GetRandomRange(-radius, radius);
             float cy = terrain.SampleHeight(new Vector3(centerPos.x + ox, 0, centerPos.z + oz)) + transform.position.y;
-            Quaternion randomYRot = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+            Quaternion randomYRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
             Quaternion finalRot = alignToSlope ? (slopeRotation * randomYRot * prefab.transform.rotation) : (randomYRot * prefab.transform.rotation);
 
             GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
-            obj.transform.localScale *= Random.Range(0.7f, 1.3f);
+            obj.transform.localScale *= GetRandomRange(0.7f, 1.3f);
             ApplyBiomeColor(obj, tintColor, true);
             spawned++;
         }
@@ -700,7 +723,6 @@ public class WorldGenerator : MonoBehaviour
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
         float startTime = Time.realtimeSinceStartup;
 
-        // ФІКС: Беремо абсолютну світову висоту води
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
         for (int i = 0; i < 3000; i++)
@@ -710,20 +732,19 @@ public class WorldGenerator : MonoBehaviour
 
             try
             {
-                float px = Random.Range(20f, w - 20f); float pz = Random.Range(20f, l - 20f);
+                float px = GetRandomRange(20f, w - 20f); float pz = GetRandomRange(20f, l - 20f);
                 if (terrain.terrainData.GetSteepness(px / w, pz / l) > maxPOISteepness) continue;
 
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
-                // Надійна перевірка: щоб руїни та об'єкти були вище води хоча б на 1.5 метра
                 if (worldY <= absoluteWaterHeight + 1.5f) continue;
 
                 Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
 
                 if (IsPositionClear(spawnPos, poiClearanceRadius))
                 {
-                    Instantiate(GetRandomPrefab(poiPrefabs), spawnPos, Quaternion.Euler(0, Random.Range(0f, 360f), 0), poiContainer);
+                    Instantiate(GetRandomPrefab(poiPrefabs), spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), poiContainer);
                     spawnedCount++;
                 }
             }
@@ -737,7 +758,6 @@ public class WorldGenerator : MonoBehaviour
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCarts = 0;
         float startTime = Time.realtimeSinceStartup;
 
-        // ФІКС: Беремо абсолютну світову висоту води
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
         for (int i = 0; i < 5000; i++)
@@ -747,20 +767,19 @@ public class WorldGenerator : MonoBehaviour
 
             try
             {
-                float px = Random.Range(30f, w - 30f); float pz = Random.Range(30f, l - 30f);
-                if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f) // Шукаємо рівну землю
+                float px = GetRandomRange(30f, w - 30f); float pz = GetRandomRange(30f, l - 30f);
+                if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f)
                 {
                     float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                     float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
-                    // Надійна перевірка: кінь/віз має стояти мінімум на 2 метри ВИЩЕ рівня води
                     if (worldY <= absoluteWaterHeight + 2f) continue;
 
                     Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
 
                     if (IsPositionClear(spawnPos, cartClearanceRadius))
                     {
-                        Instantiate(extractionCartPrefab, spawnPos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
+                        Instantiate(extractionCartPrefab, spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
                         spawnedCarts++;
                     }
                 }
@@ -813,8 +832,8 @@ public class WorldGenerator : MonoBehaviour
             float worldX = transform.position.x + localPos.x; float worldZ = transform.position.z + localPos.z;
             float y = terrain.SampleHeight(new Vector3(transform.position.x + clampedX, 0, transform.position.z + clampedZ)) + transform.position.y;
 
-            GameObject mnt = Instantiate(prefab, new Vector3(worldX, y - 5f, worldZ), Quaternion.Euler(0, Random.Range(0f, 360f), 0), container);
-            mnt.transform.localScale *= Random.Range(borderMinScale, borderMaxScale);
+            GameObject mnt = Instantiate(prefab, new Vector3(worldX, y - 5f, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), container);
+            mnt.transform.localScale *= GetRandomRange(borderMinScale, borderMaxScale);
 
             float temp = GetTemperature(clampedX / w, clampedZ / l);
             Color rockColor = temp >= 0.65f ? desertRockColor : (temp <= 0.35f ? snowRockColor : forestRockColor);
@@ -832,17 +851,14 @@ public class WorldGenerator : MonoBehaviour
 
             if (col.isTrigger)
             {
-                // Замість магічних чисел: якщо ми наткнулися на колайдер нашої локації - забороняємо спавн дерев!
-                if (col.GetComponentInParent<RegionTotem>() != null) return false;
-
-                // Інші дрібні тригери (лут, зона атаки) ігноруємо
+                if (col.GetComponentInParent<RegionManager>() != null) return false;
                 continue;
             }
 
-            return false; // Якщо це твердий об'єкт (камінь, стіна) - блокуємо спавн
+            return false;
         }
         return true;
     }
 
-    private GameObject GetRandomPrefab(GameObject[] array) => (array == null || array.Length == 0) ? null : array[Random.Range(0, array.Length)];
+    private GameObject GetRandomPrefab(GameObject[] array) => (array == null || array.Length == 0) ? null : array[GetRandomRangeInt(0, array.Length)];
 }
