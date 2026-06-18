@@ -1,5 +1,6 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class TutorialBossAI : MonoBehaviour, IDamageable
 {
@@ -18,14 +19,17 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     [Header("Stagger & Weapon Drop")]
     public GameObject bossWeapon;
 
-    [Header("Glory Kill & Loot")]
+    [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
+    public GameObject damagePopupPrefab; // Р¤Р†РљРЎ: РџСЂРµС„Р°Р± С‚РµРєСЃС‚Сѓ СѓСЂРѕРЅСѓ
     public GameObject deathVFXPrefab;
     public ParticleSystem dissolveAshVFX;
 
     public int xpCrystalsToDrop = 40;
     public int diamondsToDrop = 5;
+
+    public bool isInvincible = false;
 
     private float currentHealth;
     private bool isDead = false;
@@ -37,16 +41,26 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private Transform target;
     private PlayerController playerTarget;
     private Animator animator;
-    private MeshRenderer[] meshRenderers;
+
+    private Renderer[] meshRenderers;
     private Color[] originalColors;
 
     private void Awake()
     {
-        gameObject.layer = 9; // Шар ворогів
+        gameObject.layer = 9;
         animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
 
-        meshRenderers = GetComponentsInChildren<MeshRenderer>();
+        // Р¤Р†РљРЎ: Р†РіРЅРѕСЂСѓС”РјРѕ ParticleSystemRenderer, С‰РѕР± РЅРµ Р»Р°РјР°С‚Рё РµС„РµРєС‚Рё
+        Renderer[] allRenderers = GetComponentsInChildren<Renderer>();
+        List<Renderer> validRenderers = new List<Renderer>();
+        foreach (var r in allRenderers)
+        {
+            if (r is ParticleSystemRenderer) continue;
+            if (r.material.HasProperty("_Color")) validRenderers.Add(r);
+        }
+
+        meshRenderers = validRenderers.ToArray();
         originalColors = new Color[meshRenderers.Length];
         for (int i = 0; i < meshRenderers.Length; i++)
         {
@@ -54,7 +68,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
-    // Ініціалізація ХП відбувається з RegionTotem перед тим, як показати UI
     public void InitializeBoss(float hpMultiplier, float dmgMultiplier)
     {
         maxHealth *= hpMultiplier;
@@ -125,7 +138,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
             Vector3 nextPos = transform.position + dir * moveSpeed * Time.deltaTime;
 
-            // Тримаємо боса на рівні землі
             if (Terrain.activeTerrain != null)
                 nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y;
 
@@ -157,8 +169,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         SetColor(new Color(1f, 0.4f, 0f));
 
         if (playerTarget != null) playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime);
-
-        // Викликаємо оновлений ThreatUI із правильним часом замаху
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
 
         yield return new WaitForSeconds(attackTelegraphTime);
@@ -174,7 +184,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isPreparingAttack = false;
     }
 
-    // Викликається через Animation Event під час удару боса
     public void ExecuteAttackDamage()
     {
         if (isDead || isStaggered || playerTarget == null || playerTarget.currentHealth <= 0) return;
@@ -192,12 +201,22 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     public void TakeDamage(DamageInfo info)
     {
-        if (isDead || isStaggered) return;
+        if (isDead || isStaggered || isInvincible) return;
 
         currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(currentHealth, maxHealth);
+
+        // ==========================================
+        // рџ›‘ Р¤Р†РљРЎ: РЎРџРђР’Рќ РўР•РљРЎРўРЈ РЈР РћРќРЈ рџ›‘
+        // ==========================================
+        bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
+        if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)
+        {
+            GameObject popup = ObjectPoolManager.Instance.SpawnFromPool(damagePopupPrefab, transform.position + Vector3.up * 2f, Quaternion.identity);
+            popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical);
+        }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
@@ -217,7 +236,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isStaggered = true;
         isPreparingAttack = false;
 
-        SnapToGround(); // Притискаємо до землі перед стаггером
+        SnapToGround();
 
         if (animator != null)
         {
@@ -226,7 +245,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             animator.speed = 1f;
         }
 
-        // Викидаємо зброю
         if (bossWeapon != null)
         {
             bossWeapon.transform.SetParent(null);
@@ -265,14 +283,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
-    // ==========================================================
-    // --- ЕПІЧНА КАТСЦЕНА ДОБИВАННЯ (GLORY KILL) ---
-    // ==========================================================
     private IEnumerator GloryKillRoutine()
     {
         isDead = true;
         isStaggered = false;
-        SnapToGround(); // Фінальне притискання перед смертю
 
         if (GlobalHUD.Instance != null)
         {
@@ -282,64 +296,64 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         Camera mainCam = Camera.main;
         CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
-
-        Vector3 originalCamPos = mainCam.transform.position;
-        Quaternion originalCamRot = mainCam.transform.rotation;
-        float originalFOV = mainCam.fieldOfView;
-
         if (camFollow != null) camFollow.isCinematicMode = true;
 
-        Vector3 playerPos = playerTarget.transform.position;
+        CharacterController playerCC = playerTarget.GetComponent<CharacterController>();
+        if (playerCC != null) playerCC.enabled = false;
+
+        Vector3 playerStartPos = playerTarget.transform.position;
+        Quaternion playerStartRot = playerTarget.transform.rotation;
+
         Vector3 bossPos = transform.position;
-        Vector3 midPoint = Vector3.Lerp(playerPos, bossPos, 0.5f);
+        Vector3 dirToPlayer = (playerStartPos - bossPos).normalized;
+        dirToPlayer.y = 0;
 
-        Vector3 dirToPlayer = (playerPos - bossPos).normalized; dirToPlayer.y = 0;
+        Vector3 idealPlayerPos = bossPos + dirToPlayer * 1.5f;
+        if (Terrain.activeTerrain != null)
+            idealPlayerPos.y = Terrain.activeTerrain.SampleHeight(idealPlayerPos) + Terrain.activeTerrain.transform.position.y;
+
+        Quaternion idealPlayerRot = Quaternion.LookRotation((bossPos - idealPlayerPos).normalized);
+        idealPlayerRot.x = 0; idealPlayerRot.z = 0;
+
         Vector3 sideDir = Vector3.Cross(Vector3.up, dirToPlayer).normalized;
+        Vector3 midPoint = Vector3.Lerp(idealPlayerPos, bossPos, 0.5f);
 
-        // Позиції камери для ефекту Dutch Angle
-        Vector3 startCinematicCamPos = midPoint + sideDir * 5f + Vector3.up * 1f;
+        Vector3 startCamPos = mainCam.transform.position;
+        Vector3 cinematicCamPos = midPoint + sideDir * 4f + Vector3.up * 1f;
 
-        // Вмикаємо сповільнення для початку замаху
         Time.timeScale = 0.1f;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
         Animator playerAnim = playerTarget.GetComponentInChildren<Animator>();
         if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
-        if (playerAnim != null) playerAnim.SetTrigger("Attack");
+        playerAnim?.SetTrigger("Attack");
 
-        // --- 1. ШВИДКИЙ НАЇЗД КАМЕРИ (Синхронізація з мечем) ---
         float elapsed = 0f;
-        float cinematicDuration = 0.55f; // Ідеально збігається з моментом удару мечем
+        float cinematicDuration = 0.55f;
 
         while (elapsed < cinematicDuration)
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.SmoothStep(0f, 1f, elapsed / cinematicDuration);
 
-            mainCam.transform.position = Vector3.Lerp(originalCamPos, startCinematicCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(originalFOV, 35f, t);
+            playerTarget.transform.position = Vector3.Lerp(playerStartPos, idealPlayerPos, t);
+            playerTarget.transform.rotation = Quaternion.Slerp(playerStartRot, idealPlayerRot, t);
 
-            // Завалюємо горизонт на 8 градусів
+            mainCam.transform.position = Vector3.Lerp(startCamPos, cinematicCamPos, t);
+            mainCam.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, 35f, t);
+
             Quaternion targetRotation = Quaternion.LookRotation((bossPos + Vector3.up * 1.2f) - mainCam.transform.position) * Quaternion.Euler(0, 0, 8f);
-            mainCam.transform.rotation = Quaternion.Slerp(originalCamRot, targetRotation, t);
+            mainCam.transform.rotation = Quaternion.Slerp(Camera.main.transform.rotation, targetRotation, t);
 
             yield return null;
         }
 
-        // --- 2. МАСИВНИЙ HIT STOP (Заморожуємо час у момент удару) ---
         Time.timeScale = 0.005f;
+        camFollow?.TriggerShake(0.2f, 0.35f);
 
-        // Короткий і різкий удар камери
-        if (camFollow != null) camFollow.TriggerShake(0.2f, 0.35f);
-
-        if (animator != null)
-        {
-            animator.speed = 1f;
-            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
-            animator.SetTrigger("Die");
-        }
+        animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+        animator.SetTrigger("Die");
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
         if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
@@ -347,7 +361,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // Спавн луту фонтаном
         if (xpCrystalPrefab != null)
         {
             for (int i = 0; i < xpCrystalsToDrop; i++)
@@ -366,36 +379,17 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             }
         }
 
-        // Тримаємо Hit Stop
         yield return new WaitForSecondsRealtime(0.4f);
 
-        // --- 3. ФОЛЛОУ-ТРУ (Трохи відпускаємо час, щоб показати падіння) ---
-        Time.timeScale = 0.2f;
-
-        Vector3 pushCamPos = startCinematicCamPos + dirToPlayer * 1.5f;
-        elapsed = 0f;
-        while (elapsed < 1.0f)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            mainCam.transform.position = Vector3.Lerp(startCinematicCamPos, pushCamPos, elapsed / 1.0f);
-            yield return null;
-        }
-
-        // --- ПОВЕРНЕННЯ ---
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
 
+        if (playerCC != null) playerCC.enabled = true;
         if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.Normal;
         if (animator != null) animator.updateMode = AnimatorUpdateMode.Normal;
 
-        if (camFollow != null)
-        {
-            mainCam.transform.rotation = originalCamRot;
-            mainCam.fieldOfView = originalFOV;
-            camFollow.isCinematicMode = false;
-        }
-
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideCinematicBars();
+        if (camFollow != null) camFollow.isCinematicMode = false;
+        GlobalHUD.Instance?.HideCinematicBars();
 
         StartCoroutine(DeathDissolveRoutine());
     }
@@ -410,14 +404,21 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private void SetColor(Color c)
     {
         if (meshRenderers == null) return;
-        foreach (var r in meshRenderers) if (r != null && r.material != null) r.material.color = c;
+        foreach (var r in meshRenderers)
+        {
+            if (r != null && r.material != null && r.material.HasProperty("_Color"))
+                r.material.color = c;
+        }
     }
 
     private void ResetColor()
     {
         if (meshRenderers == null || originalColors == null) return;
         for (int i = 0; i < meshRenderers.Length; i++)
-            if (meshRenderers[i] != null && meshRenderers[i].material != null) meshRenderers[i].material.color = originalColors[i];
+        {
+            if (meshRenderers[i] != null && meshRenderers[i].material != null && meshRenderers[i].material.HasProperty("_Color"))
+                meshRenderers[i].material.color = originalColors[i];
+        }
     }
 
     private IEnumerator DeathDissolveRoutine()
@@ -440,7 +441,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
             transform.localScale = Vector3.Lerp(startScale, targetScale, t);
             transform.position = Vector3.Lerp(startPos, targetPos, t);
-            SetColor(Color.Lerp(originalColors[0], Color.black, t));
+
+            if (meshRenderers != null && meshRenderers.Length > 0 && meshRenderers[0] != null && meshRenderers[0].material.HasProperty("_Color"))
+            {
+                SetColor(Color.Lerp(originalColors[0], Color.black, t));
+            }
 
             yield return null;
         }

@@ -857,10 +857,12 @@ MonoBehaviour:
   bossWeapon: {fileID: 5934978669388820802}
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   diamondPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
+  damagePopupPrefab: {fileID: 2253435216451658149, guid: 5b744f29cb75ed84a869ee92bd84278b, type: 3}
   deathVFXPrefab: {fileID: 0}
   dissolveAshVFX: {fileID: 0}
   xpCrystalsToDrop: 40
   diamondsToDrop: 5
+  isInvincible: 0
 --- !u!1 &4229068581261606948
 GameObject:
   m_ObjectHideFlags: 0

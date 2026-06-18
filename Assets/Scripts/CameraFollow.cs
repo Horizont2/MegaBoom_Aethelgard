@@ -13,13 +13,13 @@ public class CameraFollow : MonoBehaviour
     public float minDistance = 0.5f;
 
     [Tooltip("Наскільки плавно камера змінює дистанцію (SmoothDamp Time)")]
-    public float distanceSmoothTime = 0.5f; // ФІКС ПЛАВНОСТІ: Тепер це час пружини
+    public float distanceSmoothTime = 0.5f;
 
     [Header("Dynamic FOV")]
     public float idleFOV = 60f;
     public float runFOV = 68f;
     public float combatFOV = 65f;
-    public float fovTransitionSpeed = 2.5f; // Трохи пом'якшили зум
+    public float fovTransitionSpeed = 2.5f;
 
     [Header("Collision & Smoothing")]
     public LayerMask collisionLayers;
@@ -27,26 +27,23 @@ public class CameraFollow : MonoBehaviour
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
-    // ФІКС МИШІ: Прибрали желейність, миша тепер миттєва, згладжується лише сама камера
     public float minYAngle = -20f;
     public float maxYAngle = 80f;
 
     [Header("Cinematic Bridge")]
     public bool isCinematicMode = false;
 
-    // Внутрішні змінні
     private float shakeTimer;
     private float currentShakeIntensity;
     private Vector3 shakeDirection;
     private float directionalShakeForce;
 
-    // Обертання камери
     private float currentX = 0f;
     private float currentY = 45f;
 
     private float targetDistance;
     private float currentDistance;
-    private float distanceVelocity; // Для SmoothDamp
+    private float distanceVelocity;
     private float actualCollisionDistance;
 
     private float targetFOVValue;
@@ -84,15 +81,18 @@ public class CameraFollow : MonoBehaviour
     {
         if (isCinematicMode || Time.timeScale == 0f || target == null) return;
 
+        float dt = Time.deltaTime;
+        if (dt < 0.0001f) return; // ФІКС: Захист від ділення на нуль при лагах
+
         // 1. Стабільне обчислення швидкості гравця
-        float currentFrameSpeed = (target.position - lastTargetPos).magnitude / Time.deltaTime;
-        smoothedPlayerSpeed = Mathf.Lerp(smoothedPlayerSpeed, currentFrameSpeed, Time.deltaTime * 5f);
+        float currentFrameSpeed = (target.position - lastTargetPos).magnitude / dt;
+        smoothedPlayerSpeed = Mathf.Lerp(smoothedPlayerSpeed, currentFrameSpeed, dt * 5f);
         lastTargetPos = target.position;
 
-        // 2. Слідування за гравцем (трохи м'якше)
+        // 2. Слідування за гравцем
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
-        // 3. ФІКС МИШІ: Миттєве, точне керування без желе
+        // 3. Миттєве, точне керування без желе
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
@@ -100,12 +100,11 @@ public class CameraFollow : MonoBehaviour
 
         UpdateCameraState();
 
-        // 4. ФІКС ПЛАВНОСТІ КАМЕРИ: Використовуємо SmoothDamp для ефекту м'якої пружини
         currentDistance = Mathf.SmoothDamp(currentDistance, targetDistance, ref distanceVelocity, distanceSmoothTime);
 
         if (camComponent != null)
         {
-            camComponent.fieldOfView = Mathf.Lerp(camComponent.fieldOfView, targetFOVValue, Time.deltaTime * fovTransitionSpeed);
+            camComponent.fieldOfView = Mathf.Lerp(camComponent.fieldOfView, targetFOVValue, dt * fovTransitionSpeed);
         }
 
         Vector3 dynamicOffset = targetOffset;
@@ -114,20 +113,19 @@ public class CameraFollow : MonoBehaviour
         Vector3 lookAtPos = currentTargetPos + dynamicOffset;
         Vector3 direction = -(rotation * Vector3.forward);
 
-        // 5. Колізії (SphereCast)
+        // 4. Колізії (ФІКС ФПС: Радіус 0.1f замість 0.25f, щоб не чіпляти кожну травинку)
         float hitDistance = currentDistance;
-        if (Physics.SphereCast(lookAtPos, 0.25f, direction, out RaycastHit hit, currentDistance, collisionLayers))
+        if (Physics.SphereCast(lookAtPos, 0.1f, direction, out RaycastHit hit, currentDistance, collisionLayers))
         {
             hitDistance = Mathf.Clamp(hit.distance, minDistance, currentDistance);
         }
 
-        // Якщо камера вдарилась - наближаємо миттєво. Якщо віддаляється від стіни - робимо це плавно.
         if (hitDistance < actualCollisionDistance) actualCollisionDistance = hitDistance;
-        else actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, hitDistance, Time.deltaTime * 4f);
+        else actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, hitDistance, dt * 4f);
 
         Vector3 finalPosition = lookAtPos + direction * actualCollisionDistance;
 
-        // 6. Тряска
+        // 5. Тряска
         if (shakeTimer > 0)
         {
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
@@ -146,17 +144,19 @@ public class CameraFollow : MonoBehaviour
         transform.position = finalPosition;
         transform.LookAt(lookAtPos);
 
-        // 7. Захист від Terrain
+        // 6. Захист від Terrain (ФІКС ФПС: Камера більше не стрибає і не ламає тіні)
         if (Terrain.activeTerrain != null)
         {
             float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
-            float minCameraHeight = terrainHeight + 1.2f;
 
-            if (transform.position.y < minCameraHeight)
+            if (transform.position.y < terrainHeight + 0.3f)
             {
                 Vector3 safePos = transform.position;
-                safePos.y = minCameraHeight;
+                safePos.y = terrainHeight + 0.3f;
                 transform.position = safePos;
+
+                // Змушуємо колізію плавно підтягнутися, замість агресивного телепорту
+                actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, minDistance, dt * 8f);
             }
         }
     }
@@ -203,10 +203,8 @@ public class CameraFollow : MonoBehaviour
 
     public void StartShake() { TriggerShake(0.2f, 0.3f); }
 
-    // ФІКС СИНХРОНІЗАЦІЇ
     public void SyncRotation(float x, float y) { currentX = x; currentY = y; }
 
-    // Миттєво переміщує камеру до цілі (використовується після телепортацій/завантажень)
     public void SnapToTarget()
     {
         if (target != null)

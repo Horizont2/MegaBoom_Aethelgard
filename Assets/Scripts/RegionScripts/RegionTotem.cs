@@ -9,7 +9,16 @@ public class RegionTotem : MonoBehaviour
 
     [Header("Visuals & Cinematic")]
     public ParticleSystem idleCorruptionVFX;
+
+    [Tooltip("Жовтий магічний щит (при активації)")]
+    public ParticleSystem activationShieldVFX;
+
+    [Tooltip("Червоний вибух (Red Energy Explosion)")]
     public ParticleSystem purifyExplosionVFX;
+
+    [Tooltip("Стовп світла в небо")]
+    public ParticleSystem skyBeamVFX;
+
     public Light totemLight;
 
     [Header("Interaction")]
@@ -27,6 +36,13 @@ public class RegionTotem : MonoBehaviour
         FindPlayer();
 
         if (totemLight != null) totemLight.color = Color.red;
+
+        // --- ФІКС: Примусово ховаємо щит на старті ---
+        if (activationShieldVFX != null)
+        {
+            activationShieldVFX.Stop();
+            activationShieldVFX.gameObject.SetActive(false);
+        }
 
         DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
         if (dnc != null)
@@ -90,7 +106,15 @@ public class RegionTotem : MonoBehaviour
     {
         isActivated = true;
 
-        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.4f, 0.1f);
+        // --- АКТИВАЦІЯ ЩИТА ---
+        if (activationShieldVFX != null)
+        {
+            activationShieldVFX.gameObject.SetActive(true);
+            activationShieldVFX.Play();
+        }
+
+        // М'який поштовх при появі щита
+        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.3f, 0.1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
         if (GlobalHUD.Instance != null)
@@ -101,26 +125,29 @@ public class RegionTotem : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
-        int powerDelta = playerPower - currentRegion.recommendedPower;
-        float difficultyMultiplier = powerDelta < 0 ? Mathf.Clamp(1f + (Mathf.Abs(powerDelta) * 0.02f), 1f, 3.0f) : Mathf.Clamp(1f - (powerDelta * 0.005f), 0.7f, 1f);
+        float difficultyMultiplier = Mathf.Clamp(1f + (Mathf.Abs(playerPower - currentRegion.recommendedPower) * 0.02f), 0.7f, 3.0f);
 
         float finalHpMult = currentRegion.enemyHpMultiplier * difficultyMultiplier;
         float finalDmgMult = currentRegion.enemyDamageMultiplier * difficultyMultiplier;
 
         for (int i = 0; i < currentRegion.regionBossPrefabs.Length; i++)
         {
-            Vector2 randomCircle = Random.insideUnitCircle.normalized * 8f;
-            Vector3 spawnPos = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+            Vector3 spawnPos = transform.position + (Vector3)(Random.insideUnitCircle.normalized * 8f);
             spawnPos.y = GetGroundHeight(spawnPos);
 
             GameObject bossObj = Instantiate(currentRegion.regionBossPrefabs[i], spawnPos, Quaternion.identity);
 
             TutorialBossAI bossAI = bossObj.GetComponent<TutorialBossAI>();
-            if (bossAI != null) bossAI.InitializeBoss(finalHpMult, finalDmgMult);
+            if (bossAI != null)
+            {
+                bossAI.InitializeBoss(finalHpMult, finalDmgMult);
+            }
 
             activeBosses.Add(bossObj);
 
-            if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.15f);
+            // Легка вібрація при падінні кожного боса
+            if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
+
             yield return new WaitForSeconds(0.8f);
         }
 
@@ -135,6 +162,7 @@ public class RegionTotem : MonoBehaviour
 
             if (activeBosses.Count == 0)
             {
+                // Даємо час зібрати лут після вбивства
                 yield return new WaitForSeconds(4f);
                 StartCoroutine(PurifyCinematicRoutine());
                 break;
@@ -163,85 +191,77 @@ public class RegionTotem : MonoBehaviour
 
         if (playerController != null) playerController.isControlBlocked = true;
 
+        if (activationShieldVFX != null) activationShieldVFX.Stop();
+        if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();
+
         Camera mainCam = Camera.main;
         CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
-
-        Vector3 originalCamPos = mainCam.transform.position;
-        Quaternion originalCamRot = mainCam.transform.rotation;
-        float originalFOV = mainCam.fieldOfView;
-
         if (camFollow != null) camFollow.isCinematicMode = true;
 
         // =========================================================
-        // --- ААА ЕФЕКТ: СУПЕР-ДРОН (Огляд всього регіону) ---
+        // --- ФІКС: ПОЧИНАЄМО ОЧИЩЕННЯ ПОГОДИ ОДРАЗУ ЗІ СТАРТУ ---
         // =========================================================
-        Vector3 terrainCenter = transform.position;
-        float mapScale = 200f;
-        if (Terrain.activeTerrain != null)
+        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
+        if (dnc != null)
         {
-            Vector3 tPos = Terrain.activeTerrain.transform.position;
-            Vector3 tSize = Terrain.activeTerrain.terrainData.size;
-            terrainCenter = tPos + new Vector3(tSize.x / 2f, 0f, tSize.z / 2f);
-            mapScale = tSize.x;
+            dnc.isWeatherLocked = true;
+            dnc.weatherTransitionSpeed = 0.5f; // Плавний перехід на всі 7 секунд катсцени
+            dnc.skyboxFadeSpeed = 0.5f;
+            dnc.ForceWeather(WeatherState.Clear);
         }
 
-        // ФІКС 1: Жорстко обмежуємо висоту польоту (від 35 до 70 метрів максимум)
-        float camHeight = Mathf.Clamp(mapScale * 0.15f, 35f, 70f);
-        Vector3 apexCamPos = terrainCenter + new Vector3(0f, camHeight, -camHeight * 0.8f);
-        Vector3 endPanPos = apexCamPos + new Vector3(camHeight * 0.5f, 0f, camHeight * 0.2f);
-        Vector3 lookAtTarget = terrainCenter;
+        float mapScale = 200f;
+        if (Terrain.activeTerrain != null) mapScale = Terrain.activeTerrain.terrainData.size.x;
 
-        // 1. ШВИДКИЙ ЗЛІТ У НЕБО
+        float camHeight = Mathf.Clamp(mapScale * 0.15f, 35f, 60f);
+
+        Vector3 apexCamPos = transform.position + new Vector3(0f, camHeight, -camHeight * 0.8f);
+        Vector3 endPanPos = apexCamPos + new Vector3(30f, 0f, 10f);
+        Vector3 lookAtTarget = transform.position;
+
+        // 1. ЗЛІТ
         float elapsed = 0f;
-        float riseDuration = 2.5f;
-        while (elapsed < riseDuration)
+        while (elapsed < 2.5f)
         {
             elapsed += Time.deltaTime;
-            float t = 1f - Mathf.Pow(1f - (elapsed / riseDuration), 3f);
+            float t = 1f - Mathf.Pow(1f - (elapsed / 2.5f), 3f);
 
-            mainCam.transform.position = Vector3.Lerp(originalCamPos, apexCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(originalFOV, 70f, t);
-            mainCam.transform.rotation = Quaternion.Slerp(originalCamRot, Quaternion.LookRotation(lookAtTarget - mainCam.transform.position), t);
+            mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, apexCamPos, t);
+            mainCam.fieldOfView = Mathf.Lerp(mainCam.fieldOfView, 70f, t);
+            mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, Quaternion.LookRotation(lookAtTarget - mainCam.transform.position), t);
             yield return null;
         }
 
-        // --- ЕПІЧНИЙ ВИБУХ СВІТЛА ---
-        if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();
         if (purifyExplosionVFX != null)
         {
             purifyExplosionVFX.gameObject.SetActive(true);
             purifyExplosionVFX.Play();
         }
-        if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 5f; }
 
-        if (camFollow != null) camFollow.TriggerShake(0.6f, 0.25f);
+        yield return new WaitForSeconds(0.4f);
+
+        if (camFollow != null) camFollow.TriggerShake(0.6f, 0.15f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
-        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
-        if (dnc != null)
+        if (skyBeamVFX != null)
         {
-            // ФІКС 2: ЗАЛИШАЄМО ПОГОДУ ЗАБЛОКОВАНОЮ! Щоб не почався рандомний дощ
-            dnc.isWeatherLocked = true;
-            dnc.weatherTransitionSpeed = 4.0f;
-            dnc.skyboxFadeSpeed = 3.0f;
-            dnc.ForceWeather(WeatherState.Clear);
+            skyBeamVFX.gameObject.SetActive(true);
+            skyBeamVFX.Play();
         }
+        if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 5f; }
 
         float initialFogStart = RenderSettings.fogStartDistance;
         float initialFogEnd = RenderSettings.fogEndDistance;
-
         float targetFogStart = initialFogStart + mapScale;
         float targetFogEnd = initialFogEnd + (mapScale * 1.5f);
-
         Color initialAmbient = RenderSettings.ambientLight;
 
-        // 2. ПЛАВНА ПАНОРАМА ТА ВІДСТУП ТУМАНУ
+        // 2. ПАНОРАМА ТА ВІДСТУП ТУМАНУ
         elapsed = 0f;
-        float clearDuration = 4.5f;
-        while (elapsed < clearDuration)
+        while (elapsed < 4.5f)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / clearDuration;
+            float t = elapsed / 4.5f;
             float smoothT = t * t * (3f - 2f * t);
 
             mainCam.transform.position = Vector3.Lerp(apexCamPos, endPanPos, t);
@@ -258,10 +278,9 @@ public class RegionTotem : MonoBehaviour
 
         yield return new WaitForSeconds(3f);
 
-        // --- ПОВЕРНЕННЯ ---
         if (camFollow != null)
         {
-            mainCam.fieldOfView = originalFOV;
+            mainCam.fieldOfView = 60f; // Відновлюємо FOV
             camFollow.isCinematicMode = false;
         }
         if (playerController != null) playerController.isControlBlocked = false;
@@ -277,6 +296,8 @@ public class RegionTotem : MonoBehaviour
             ResourceManager.Instance.diamonds += currentRegion.diamondReward;
             ResourceManager.Instance.UpdateUI();
         }
+
+        if (dnc != null) dnc.isWeatherLocked = false;
 
         if (GlobalHUD.Instance != null)
         {

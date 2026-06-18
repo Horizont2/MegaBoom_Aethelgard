@@ -12,13 +12,15 @@ public class ActiveBuildWidget : MonoBehaviour
     public Image buildingIcon;
     public RectTransform hammerIcon;
 
+    private string buildingID;
     private DateTime endTime;
     private float totalDuration;
     private bool isActive = false;
-    private bool isAnimatingExit = false; // Блокування подвійного виклику
+    private bool isAnimatingExit = false;
 
-    public void Setup(string bName, Sprite bIcon, DateTime targetTime, float duration)
+    public void Setup(string bId, string bName, Sprite bIcon, DateTime targetTime, float duration)
     {
+        buildingID = bId;
         if (titleText != null) titleText.text = bName;
         if (buildingIcon != null && bIcon != null) buildingIcon.sprite = bIcon;
 
@@ -37,12 +39,27 @@ public class ActiveBuildWidget : MonoBehaviour
         if (remainingSeconds <= 0 && !isAnimatingExit)
         {
             isActive = false;
-            StartCoroutine(ExitAnimationRoutine()); // Запускаємо анімацію замість Destroy
+
+            // 1. Повідомляємо глобальній системі та будівлі, що час вийшов
+            PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 0);
+            PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 1);
+            PlayerPrefs.Save();
+
+            // 2. Прибираємо себе з пам'яті HUD і показуємо текст
+            if (GlobalHUD.Instance != null)
+            {
+                GlobalHUD.Instance.RemoveUpgradeFromList(buildingID);
+                if (titleText != null)
+                    GlobalHUD.Instance.ShowPrompt(titleText.text + " UPGRADED!");
+            }
+
+            // 3. Відтворюємо твою анімацію виходу
+            StartCoroutine(ExitAnimationRoutine());
             return;
         }
 
-        if (timerText != null) timerText.text = string.Format("{0:00}:{1:00}", remaining.Minutes, remaining.Seconds);
-        if (progressSlider != null) progressSlider.value = 1f - (remainingSeconds / totalDuration);
+        if (timerText != null) timerText.text = string.Format("{0:00}:{1:00}", Mathf.Max(0, remaining.Minutes), Mathf.Max(0, remaining.Seconds));
+        if (progressSlider != null) progressSlider.value = 1f - (Mathf.Max(0, remainingSeconds) / totalDuration);
 
         if (hammerIcon != null)
         {
@@ -57,7 +74,6 @@ public class ActiveBuildWidget : MonoBehaviour
         RectTransform rect = GetComponent<RectTransform>();
         Vector2 startPos = rect.anchoredPosition;
 
-        // 1. Відтяжка (Anticipation) - трохи вліво до центру
         float t = 0;
         while (t < 1f)
         {
@@ -67,16 +83,14 @@ public class ActiveBuildWidget : MonoBehaviour
             yield return null;
         }
 
-        // 2. Стрімкий виліт вправо за екран
         t = 0;
         Vector2 midPos = rect.anchoredPosition;
         while (t < 1f)
         {
             t += Time.deltaTime * 3f;
-            float curve = t * t * t; // Експоненційне прискорення
+            float curve = t * t * t;
             rect.anchoredPosition = Vector2.Lerp(midPos, midPos + new Vector2(600f, 0), curve);
 
-            // Плавно робимо прозорим
             CanvasGroup cg = GetComponent<CanvasGroup>();
             if (cg == null) cg = gameObject.AddComponent<CanvasGroup>();
             cg.alpha = 1f - t;

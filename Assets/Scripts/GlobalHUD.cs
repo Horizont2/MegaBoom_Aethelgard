@@ -3,8 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using System;
 
 public class GlobalHUD : MonoBehaviour
 {
@@ -32,7 +34,7 @@ public class GlobalHUD : MonoBehaviour
     private float targetBossHpRatio = 1f;
     private Coroutine bossUIFadeRoutine;
 
-    [Header("Cinematic Bars (Auto-Generated)")]
+    [Header("Cinematic Bars")]
     private RectTransform topCinematicBar;
     private RectTransform bottomCinematicBar;
     private Coroutine barsRoutine;
@@ -44,6 +46,11 @@ public class GlobalHUD : MonoBehaviour
     public CanvasGroup giveUpButtonGroup;
     public TextMeshProUGUI giveUpText;
     public float buttonDelay = 0.05f;
+
+    // --- СИСТЕМА ВІДЖЕТІВ БУДІВНИЦТВА ---
+    [Header("Global Upgrade Tracking")]
+    public GameObject buildWidgetPrefab; // СЮДИ ПЕРЕТЯГНИ ПРЕФАБ СВОЄЇ ПЛАШКИ
+    public Transform widgetContainer;    // СЮДИ ПЕРЕТЯГНИ PARENT КОНТЕЙНЕР (Vertical Layout Group)
 
     private bool isPaused = false;
     private bool isConfirmingGiveUp = false;
@@ -69,8 +76,15 @@ public class GlobalHUD : MonoBehaviour
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) defaultRenderMode = canvas.renderMode;
 
-        // --- ФІКС FPS: Примусово застосовуємо збережені налаштування при старті ---
         ApplySavedSettings();
+        CheckActiveUpgradesOnLoad();
+
+        if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
+        if (objectivePanelGroup != null) objectivePanelGroup.alpha = 0f;
+        if (bossUIGroup != null) bossUIGroup.alpha = 0f;
+        if (pausePanelGroup != null) pausePanelGroup.gameObject.SetActive(false);
+
+        CreateCinematicBarsIfNeeded();
     }
 
     private void ApplySavedSettings()
@@ -94,8 +108,6 @@ public class GlobalHUD : MonoBehaviour
 
     private void Update()
     {
-        if (LoadingManager.Instance != null && LoadingManager.Instance.isLoading) return;
-
         if (bossUIGroup != null && bossUIGroup.alpha > 0f)
         {
             if (bossHpFill != null)
@@ -110,13 +122,6 @@ public class GlobalHUD : MonoBehaviour
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
-                return;
-            }
-
-            NoticeBoardManager noticeBoard = FindFirstObjectByType<NoticeBoardManager>();
-            if (noticeBoard != null && noticeBoard.isBoardOpen)
-            {
-                noticeBoard.CloseBoard();
                 return;
             }
 
@@ -137,10 +142,95 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
+    // ==========================================
+    // --- МЕНЕДЖЕР СПАВНУ ВІДЖЕТІВ ---
+    // ==========================================
+    public void StartTrackingUpgrade(string buildingID, string buildingName, Sprite bIcon, float duration, long startTimeBinary)
+    {
+        string list = PlayerPrefs.GetString("ActiveUpgradesList", "");
+        if (!list.Contains(buildingID))
+        {
+            list += (string.IsNullOrEmpty(list) ? "" : ",") + buildingID;
+            PlayerPrefs.SetString("ActiveUpgradesList", list);
+        }
+
+        PlayerPrefs.SetString("UpgName_" + buildingID, buildingName);
+        PlayerPrefs.SetFloat("UpgDur_" + buildingID, duration);
+        PlayerPrefs.SetString("UpgStart_" + buildingID, startTimeBinary.ToString());
+        PlayerPrefs.Save();
+
+        if (buildWidgetPrefab != null && widgetContainer != null)
+        {
+            GameObject banner = Instantiate(buildWidgetPrefab, widgetContainer);
+            ActiveBuildWidget tracker = banner.GetComponent<ActiveBuildWidget>();
+            if (tracker != null)
+            {
+                DateTime startTime = DateTime.FromBinary(startTimeBinary);
+                DateTime targetTime = startTime.AddSeconds(duration);
+                tracker.Setup(buildingID, buildingName, bIcon, targetTime, duration);
+            }
+        }
+    }
+
+    public void RemoveUpgradeFromList(string buildingID)
+    {
+        string list = PlayerPrefs.GetString("ActiveUpgradesList", "");
+        if (!string.IsNullOrEmpty(list))
+        {
+            List<string> ids = new List<string>(list.Split(','));
+            if (ids.Contains(buildingID))
+            {
+                ids.Remove(buildingID);
+                PlayerPrefs.SetString("ActiveUpgradesList", string.Join(",", ids));
+                PlayerPrefs.Save();
+            }
+        }
+    }
+
+    private void CheckActiveUpgradesOnLoad()
+    {
+        string list = PlayerPrefs.GetString("ActiveUpgradesList", "");
+        if (string.IsNullOrEmpty(list)) return;
+
+        string[] ids = list.Split(',');
+        foreach (string id in ids)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+
+            if (PlayerPrefs.GetInt("IsUpgrading_" + id, 0) == 1)
+            {
+                string bName = PlayerPrefs.GetString("UpgName_" + id, "Building");
+                float dur = PlayerPrefs.GetFloat("UpgDur_" + id, 10f);
+                string startStr = PlayerPrefs.GetString("UpgStart_" + id, "0");
+
+                if (long.TryParse(startStr, out long startBin))
+                {
+                    if (buildWidgetPrefab != null && widgetContainer != null)
+                    {
+                        GameObject banner = Instantiate(buildWidgetPrefab, widgetContainer);
+                        ActiveBuildWidget tracker = banner.GetComponent<ActiveBuildWidget>();
+                        if (tracker != null)
+                        {
+                            DateTime targetTime = DateTime.FromBinary(startBin).AddSeconds(dur);
+                            // Під час відновлення іконка може бути null, але плашка працюватиме ідеально
+                            tracker.Setup(id, bName, null, targetTime, dur);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                RemoveUpgradeFromList(id);
+            }
+        }
+    }
+
+    // ==========================================
+    // --- ІНШИЙ UI (Пауза, Підказки, Боси) ---
+    // ==========================================
     private void CreateCinematicBarsIfNeeded()
     {
         if (topCinematicBar != null && bottomCinematicBar != null) return;
-
         GameObject barsContainer = new GameObject("CinematicBars_Auto");
         barsContainer.transform.SetParent(this.transform, false);
         barsContainer.transform.SetAsLastSibling();
@@ -183,7 +273,6 @@ public class GlobalHUD : MonoBehaviour
     private IEnumerator AnimateBars(float targetY)
     {
         if (topCinematicBar == null || bottomCinematicBar == null) yield break;
-
         float currentTopY = topCinematicBar.anchoredPosition.y;
         float currentBottomY = bottomCinematicBar.anchoredPosition.y;
         float elapsed = 0f;
@@ -192,14 +281,10 @@ public class GlobalHUD : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.SmoothStep(0f, 1f, elapsed / 0.4f);
-
             topCinematicBar.anchoredPosition = new Vector2(0, Mathf.Lerp(currentTopY, targetY, t));
             bottomCinematicBar.anchoredPosition = new Vector2(0, Mathf.Lerp(currentBottomY, -targetY, t));
             yield return null;
         }
-
-        topCinematicBar.anchoredPosition = new Vector2(0, targetY);
-        bottomCinematicBar.anchoredPosition = new Vector2(0, -targetY);
     }
 
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
@@ -213,10 +298,7 @@ public class GlobalHUD : MonoBehaviour
         bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(1f));
     }
 
-    public void UpdateBossHealth(float currentHp, float maxHp)
-    {
-        targetBossHpRatio = currentHp / maxHp;
-    }
+    public void UpdateBossHealth(float currentHp, float maxHp) { targetBossHpRatio = currentHp / maxHp; }
 
     public void HideBossUI()
     {
@@ -254,14 +336,6 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        if (isTutorial)
-        {
-            Transform res = transform.Find("Resources");
-            if (res != null) res.gameObject.SetActive(false);
-            Transform campMissions = transform.Find("MissionUIParent");
-            if (campMissions != null) campMissions.gameObject.SetActive(false);
-        }
-
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
         HideBossUI();
 
@@ -269,11 +343,7 @@ public class GlobalHUD : MonoBehaviour
         {
             isPaused = false;
             Time.timeScale = 1f;
-            if (pausePanelGroup != null)
-            {
-                pausePanelGroup.alpha = 0f;
-                pausePanelGroup.gameObject.SetActive(false);
-            }
+            if (pausePanelGroup != null) { pausePanelGroup.alpha = 0f; pausePanelGroup.gameObject.SetActive(false); }
         }
     }
 
@@ -285,7 +355,6 @@ public class GlobalHUD : MonoBehaviour
         {
             canvas.renderMode = defaultRenderMode;
             canvas.sortingOrder = 50;
-
             if (defaultRenderMode == RenderMode.ScreenSpaceCamera)
             {
                 Camera cam = Camera.main;
@@ -297,14 +366,11 @@ public class GlobalHUD : MonoBehaviour
         Volume[] allVolumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
         foreach (Volume v in allVolumes)
         {
-            if (v.isGlobal && v.profile != null)
+            if (v.isGlobal && v.profile != null && v.profile.TryGet(out dofEffect))
             {
-                if (v.profile.TryGet(out dofEffect))
-                {
-                    bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
-                    dofEffect.active = isShop || isPaused;
-                    break;
-                }
+                bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
+                dofEffect.active = isShop || isPaused;
+                break;
             }
         }
     }
@@ -312,8 +378,15 @@ public class GlobalHUD : MonoBehaviour
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();
-        if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(sceneName);
-        else SceneManager.LoadScene(sceneName);
+
+        if (LoadingManager.Instance != null)
+        {
+            LoadingManager.Instance.LoadScene(sceneName);
+        }
+        else
+        {
+            SceneManager.LoadScene(sceneName);
+        }
     }
 
     public void ShowPrompt(string message)
@@ -362,11 +435,6 @@ public class GlobalHUD : MonoBehaviour
         if (pausePanelGroup == null) return;
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null && !canvas.enabled) canvas.enabled = true;
-
-        if (isPaused && SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
-        {
-            SettingsUI.Instance.CloseSettings();
-        }
 
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;

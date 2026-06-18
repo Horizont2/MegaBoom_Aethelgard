@@ -331,7 +331,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CampfireInteract
   healPerSecond: 1
-  healRadius: 2.5
+  healRadius: 3
   healEffect: {fileID: 220558438331549659}
 --- !u!1001 &3009146781953319003
 PrefabInstance:

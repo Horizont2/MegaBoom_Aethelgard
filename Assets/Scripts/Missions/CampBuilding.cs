@@ -83,6 +83,18 @@ public class CampBuilding : MonoBehaviour
     private Coroutine productionCoroutine;
     private Transform playerTransform;
 
+    private Vector3 originalModelPos;
+    private Vector3 originalModelScale;
+
+    private void Awake()
+    {
+        if (realModel != null)
+        {
+            originalModelPos = realModel.transform.localPosition;
+            originalModelScale = realModel.transform.localScale;
+        }
+    }
+
     private void Start()
     {
         seasonManager = FindFirstObjectByType<SmartSeasonManager>();
@@ -94,47 +106,24 @@ public class CampBuilding : MonoBehaviour
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
         if (progressTMP != null) progressTMP.text = "0%";
 
-        StopDustEffect();
         HideAllVisualResources();
 
         currentLevel = PlayerPrefs.GetInt("SaveBld_" + buildingID, 0);
-        bool isUpgrading = PlayerPrefs.GetInt("SaveBld_Upg_" + buildingID, 0) == 1;
 
-        if (isUpgrading && levels != null && currentLevel < levels.Length)
+        if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
         {
-            string timeStr = PlayerPrefs.GetString("SaveBld_Time_" + buildingID, "");
-            if (DateTime.TryParse(timeStr, out DateTime targetTime))
-            {
-                double remainingSeconds = (targetTime - DateTime.UtcNow).TotalSeconds;
-
-                if (remainingSeconds <= 0)
-                {
-                    CompleteUpgradeOffline();
-                }
-                else
-                {
-                    float totalTime = levels[currentLevel].buildTime;
-
-                    if (ActiveBuildManager.Instance != null)
-                    {
-                        ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, targetTime, totalTime);
-                    }
-
-                    StartCoroutine(BuildSequence((float)remainingSeconds, totalTime, currentLevel + 1));
-                }
-            }
-            else
-            {
-                PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
-                SetupVisualsForCurrentLevel();
-                if (currentLevel > 0) ApplyBuildingEffects();
-            }
+            PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
+            currentLevel++;
+            PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
+            PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 0);
+            PlayerPrefs.Save();
         }
-        else
-        {
-            SetupVisualsForCurrentLevel();
-            if (currentLevel > 0) ApplyBuildingEffects();
-        }
+
+        SetupVisualsForCurrentLevel();
+        if (currentLevel > 0) ApplyBuildingEffects();
+
+        if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1) StartDustEffect();
+        else StopDustEffect();
 
         UpdateGlimmerState();
     }
@@ -150,18 +139,8 @@ public class CampBuilding : MonoBehaviour
         {
             ghostModel.SetActive(false);
             realModel.SetActive(true);
+            realModel.transform.localPosition = originalModelPos;
         }
-    }
-
-    private void CompleteUpgradeOffline()
-    {
-        currentLevel++;
-        PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
-        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
-        PlayerPrefs.Save();
-
-        SetupVisualsForCurrentLevel();
-        ApplyBuildingEffects();
     }
 
     private void Update()
@@ -175,6 +154,52 @@ public class CampBuilding : MonoBehaviour
 
         if (isAnimating) return;
 
+        // --- 1. ПЕРЕВІРКА ЗАВЕРШЕННЯ АПГРЕЙДУ ---
+        if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
+        {
+            PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
+            StartCoroutine(CompleteUpgradeSequence(currentLevel + 1));
+            return;
+        }
+
+        // --- 2. ДИНАМІЧНИЙ РУХ БУДІВЛІ ПІД ЧАС АПГРЕЙДУ ---
+        if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1)
+        {
+            if (isPanelOpen) ClosePanel();
+
+            if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
+
+            // Жорстко вимикаємо Glimmer під час будівництва
+            if (upgradeGlimmer != null && upgradeGlimmer.activeSelf)
+                upgradeGlimmer.SetActive(false);
+
+            string startTimeStr = PlayerPrefs.GetString("UpgradeStart_" + buildingID, "");
+            if (long.TryParse(startTimeStr, out long startTimeBin))
+            {
+                // Використовуємо UtcNow для ідеальної синхронізації з віджетом
+                DateTime startTime = DateTime.FromBinary(startTimeBin);
+                float elapsed = (float)(DateTime.UtcNow - startTime).TotalSeconds;
+
+                if (currentLevel < levels.Length)
+                {
+                    float totalTime = levels[currentLevel].buildTime;
+
+                    if (totalTime > 0)
+                    {
+                        float progress = Mathf.Clamp01(elapsed / totalTime);
+
+                        // Для БУДЬ-ЯКОГО апгрейду показуємо Ghost, а Real виїжджає знизу
+                        if (!ghostModel.activeSelf) ghostModel.SetActive(true);
+                        if (!realModel.activeSelf) realModel.SetActive(true);
+
+                        Vector3 startPos = originalModelPos - new Vector3(0, spawnDepth, 0);
+                        realModel.transform.localPosition = Vector3.Lerp(startPos, originalModelPos, progress);
+                    }
+                }
+            }
+            return;
+        }
+
         glimmerCheckTimer += Time.deltaTime;
         if (glimmerCheckTimer >= 1f)
         {
@@ -183,13 +208,8 @@ public class CampBuilding : MonoBehaviour
             if (isPanelOpen) UpdateUIData();
         }
 
-        // --- ФІКС ЗАКРИТТЯ ПАНЕЛІ ---
-        // Якщо панель відкрита, жорстко перевіряємо дистанцію до гравця.
-        // Якщо гравець відійшов на 4 метри (навіть якщо OnTriggerExit не спрацював) - закриваємо.
-        // --- ФІКС ЗАКРИТТЯ ПАНЕЛІ ---
         if (isPanelOpen && playerTransform != null)
         {
-            // Збільшили радіус до 12f, бо центр будівлі може бути далеко від краю колайдера
             if (Vector3.Distance(transform.position, playerTransform.position) > 12f)
             {
                 playerInRange = false;
@@ -233,18 +253,18 @@ public class CampBuilding : MonoBehaviour
 
                     ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
 
-                    PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 1);
-                    DateTime endTime = DateTime.UtcNow.AddSeconds(nextLevelData.buildTime);
-                    PlayerPrefs.SetString("SaveBld_Time_" + buildingID, endTime.ToString("o"));
+                    long startTimeBinary = DateTime.UtcNow.ToBinary();
+                    PlayerPrefs.SetString("UpgradeStart_" + buildingID, startTimeBinary.ToString());
+                    PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 1);
                     PlayerPrefs.Save();
 
-                    if (ActiveBuildManager.Instance != null)
-                    {
-                        ActiveBuildManager.Instance.AddBuildTask(buildingName, buildingIconSprite, endTime, nextLevelData.buildTime);
-                    }
+                    StartDustEffect();
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
+
+                    if (GlobalHUD.Instance != null)
+                        GlobalHUD.Instance.StartTrackingUpgrade(buildingID, buildingName, buildingIconSprite, nextLevelData.buildTime, startTimeBinary);
 
                     ClosePanel();
-                    StartCoroutine(BuildSequence(nextLevelData.buildTime, nextLevelData.buildTime, currentLevel + 1));
                 }
             }
             else
@@ -267,7 +287,7 @@ public class CampBuilding : MonoBehaviour
         if (other.CompareTag("Player") && levels != null && currentLevel < levels.Length && !isAnimating)
         {
             playerInRange = true;
-            if (GlobalHUD.Instance != null && !isPanelOpen)
+            if (GlobalHUD.Instance != null && !isPanelOpen && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
             {
                 GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
             }
@@ -280,20 +300,14 @@ public class CampBuilding : MonoBehaviour
         {
             playerInRange = false;
             ClosePanel();
-
-            if (GlobalHUD.Instance != null)
-            {
-                GlobalHUD.Instance.HidePrompt();
-            }
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         }
     }
 
     private void OpenPanel()
     {
         isPanelOpen = true;
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
         UpdateUIData();
 
         if (aaaPanel != null)
@@ -301,7 +315,6 @@ public class CampBuilding : MonoBehaviour
             aaaPanel.SetActive(true);
             StartCoroutine(PopUpUI(aaaPanel.transform));
         }
-
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
     }
 
@@ -314,7 +327,7 @@ public class CampBuilding : MonoBehaviour
 
         if (aaaPanel != null) aaaPanel.SetActive(false);
 
-        if (playerInRange && GlobalHUD.Instance != null && currentLevel < levels.Length && !isAnimating)
+        if (playerInRange && GlobalHUD.Instance != null && currentLevel < levels.Length && !isAnimating && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
         {
             GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
         }
@@ -355,12 +368,9 @@ public class CampBuilding : MonoBehaviour
         if (descTMP) descTMP.text = description;
 
         if (buildingIconImage != null && buildingIconSprite != null)
-        {
             buildingIconImage.sprite = buildingIconSprite;
-        }
 
         string infoText = "";
-
         string prodLabel = (buildingID == "ScoutsLodge") ? "Feature" : "Production";
 
         if (currentLevel == 0)
@@ -401,7 +411,7 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
-    private IEnumerator BuildSequence(float remainingTime, float totalTime, int targetLevel)
+    private IEnumerator CompleteUpgradeSequence(int targetLevel)
     {
         isAnimating = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
@@ -413,68 +423,29 @@ public class CampBuilding : MonoBehaviour
             productionCoroutine = null;
         }
 
-        StartDustEffect();
+        ghostModel.SetActive(false);
+        realModel.SetActive(true);
+        realModel.transform.localPosition = originalModelPos;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
+        float popTimer = 0f;
+        float popDuration = 0.5f;
+        Vector3 bounceScale = originalModelScale * upgradeBounceAmount;
 
-        float timer = totalTime - remainingTime;
-        Vector3 finalPos = realModel.transform.localPosition;
-        Vector3 originalScale = realModel.transform.localScale;
-
-        if (targetLevel == 1)
+        while (popTimer < popDuration)
         {
-            ghostModel.SetActive(false);
-            realModel.SetActive(true);
-            Vector3 startPos = finalPos - new Vector3(0, spawnDepth, 0);
-
-            while (timer < totalTime)
-            {
-                timer += Time.deltaTime;
-                float progress = timer / totalTime;
-                realModel.transform.localPosition = Vector3.Lerp(startPos, finalPos, Mathf.SmoothStep(0f, 1f, progress));
-
-                if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
-                yield return null;
-            }
-            realModel.transform.localPosition = finalPos;
+            popTimer += Time.deltaTime;
+            float progress = popTimer / popDuration;
+            float scaleCurve = Mathf.PingPong(progress * 2f, 1f);
+            realModel.transform.localScale = Vector3.Lerp(originalModelScale, bounceScale, Mathf.SmoothStep(0f, 1f, scaleCurve));
+            yield return null;
         }
-        else
-        {
-            ghostModel.SetActive(true);
-            realModel.SetActive(false);
-
-            while (timer < totalTime)
-            {
-                timer += Time.deltaTime;
-                if (buildDustVFX != null && !buildDustVFX.isPlaying) buildDustVFX.Play();
-                yield return null;
-            }
-
-            ghostModel.SetActive(false);
-            realModel.SetActive(true);
-
-            float popTimer = 0f;
-            float popDuration = 0.5f;
-            Vector3 bounceScale = originalScale * upgradeBounceAmount;
-
-            while (popTimer < popDuration)
-            {
-                popTimer += Time.deltaTime;
-                float progress = popTimer / popDuration;
-                float scaleCurve = Mathf.PingPong(progress * 2f, 1f);
-                realModel.transform.localScale = Vector3.Lerp(originalScale, bounceScale, Mathf.SmoothStep(0f, 1f, scaleCurve));
-                yield return null;
-            }
-            realModel.transform.localScale = originalScale;
-        }
+        realModel.transform.localScale = originalModelScale;
 
         StopDustEffect();
-
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
 
         currentLevel = targetLevel;
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
-        PlayerPrefs.SetInt("SaveBld_Upg_" + buildingID, 0);
         PlayerPrefs.Save();
 
         ApplyBuildingEffects();
@@ -516,10 +487,7 @@ public class CampBuilding : MonoBehaviour
     {
         currentVisualIndex = 0;
         if (resourceVisuals == null) return;
-        foreach (var vis in resourceVisuals)
-        {
-            if (vis != null) vis.SetActive(false);
-        }
+        foreach (var vis in resourceVisuals) if (vis != null) vis.SetActive(false);
     }
 
     private void ApplyBuildingEffects()
@@ -578,13 +546,17 @@ public class CampBuilding : MonoBehaviour
         {
             if (levels == null || levels.Length == 0) return;
 
-            bool canBeUpgraded = (currentLevel > 0 && currentLevel < levels.Length && !isAnimating);
+            bool canBeUpgraded = (currentLevel < levels.Length && !isAnimating);
             bool hasResources = false;
+
+            if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1) canBeUpgraded = false;
+
             if (canBeUpgraded && ResourceManager.Instance != null)
             {
                 BuildingLevel nextLevelData = levels[currentLevel];
                 hasResources = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             }
+
             upgradeGlimmer.SetActive(canBeUpgraded && hasResources);
         }
     }
