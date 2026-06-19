@@ -25,13 +25,16 @@ public class RegionTotem : MonoBehaviour
     public ParticleSystem skyBeamVFX;
     public Light totemLight;
 
+    [Tooltip("Ефект, який працює як маяк і показує, що з тотемом можна взаємодіяти")]
+    public GameObject interactHintVFX;
+
     [Header("Interaction")]
     public float interactionRadius = 8f;
 
     [HideInInspector] public bool isPurified = false;
 
     private bool isLocked = false;
-    private bool isActivated = false;
+    [HideInInspector] public bool isActivated = false;
     private bool isPromptShowing = false;
 
     private List<GameObject> activeEnemies = new List<GameObject>();
@@ -42,6 +45,9 @@ public class RegionTotem : MonoBehaviour
         FindPlayer();
         if (totemLight != null) totemLight.color = Color.red;
         if (activationShieldVFX != null) { activationShieldVFX.Stop(); activationShieldVFX.gameObject.SetActive(false); }
+
+        // Вмикаємо маяк на старті (він світитиметься здалеку)
+        if (interactHintVFX != null) interactHintVFX.SetActive(true);
     }
 
     private void FindPlayer()
@@ -58,6 +64,9 @@ public class RegionTotem : MonoBehaviour
             if (locked) idleCorruptionVFX.Stop();
             else if (!isPurified) idleCorruptionVFX.Play();
         }
+
+        // Якщо тотем заблокований менеджером - ховаємо маяк. Якщо розблокований - показуємо.
+        if (interactHintVFX != null) interactHintVFX.SetActive(!locked && !isPurified);
     }
 
     public void PlayCorruptionFlare()
@@ -80,6 +89,7 @@ public class RegionTotem : MonoBehaviour
 
         float dist = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(player.position.x, player.position.z));
 
+        // Логіка тільки для тексту [F], ефект більше не чіпаємо по дистанції
         if (dist <= interactionRadius)
         {
             if (!isPromptShowing && GlobalHUD.Instance != null)
@@ -92,6 +102,9 @@ public class RegionTotem : MonoBehaviour
             {
                 if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
                 isPromptShowing = false;
+
+                // Гравець активував тотем - ВИМИКАЄМО маяк назавжди
+                if (interactHintVFX != null) interactHintVFX.SetActive(false);
 
                 if (manager != null) manager.OnTotemActivated(this);
 
@@ -128,11 +141,10 @@ public class RegionTotem : MonoBehaviour
 
         if (encounterType == EncounterType.Boss && manager.currentRegion != null)
         {
-            // ФІКС: Бронебійний захист від пустого списку босів
             if (manager.currentRegion.regionBossPrefabs == null || manager.currentRegion.regionBossPrefabs.Length == 0)
             {
                 Debug.LogError("🚨 ПОМИЛКА: Ти забув додати префаб Боса в 'Region Boss Prefabs' в RegionData цього регіону!");
-                yield break; // Зупиняємо скрипт, щоб не було миттєвої перемоги
+                yield break;
             }
 
             for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
@@ -209,6 +221,7 @@ public class RegionTotem : MonoBehaviour
 
         if (activationShieldVFX != null) activationShieldVFX.Stop();
         if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();
+        if (interactHintVFX != null) interactHintVFX.SetActive(false); // Запобіжник
 
         if (skyBeamVFX != null) { skyBeamVFX.gameObject.SetActive(true); skyBeamVFX.Play(); }
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }

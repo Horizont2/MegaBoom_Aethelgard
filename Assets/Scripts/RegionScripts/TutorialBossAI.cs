@@ -22,7 +22,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
-    public GameObject damagePopupPrefab; // ФІКС: Префаб тексту урону
+    public GameObject damagePopupPrefab;
     public GameObject deathVFXPrefab;
     public ParticleSystem dissolveAshVFX;
 
@@ -51,7 +51,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
 
-        // ФІКС: Ігноруємо ParticleSystemRenderer, щоб не ламати ефекти
         Renderer[] allRenderers = GetComponentsInChildren<Renderer>();
         List<Renderer> validRenderers = new List<Renderer>();
         foreach (var r in allRenderers)
@@ -166,15 +165,31 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isPreparingAttack = true;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
-        SetColor(new Color(1f, 0.4f, 0f));
+
+        // HDR Колір (буде світитися, якщо є Bloom)
+        SetColor(new Color(2f, 0.5f, 0f));
 
         if (playerTarget != null) playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime);
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
 
-        yield return new WaitForSeconds(attackTelegraphTime);
+        // СМАРТ-ТРЕКІНГ: Бос плавно повертається за гравцем 70% часу замаху, потім фіксується
+        float timer = 0f;
+        while (timer < attackTelegraphTime)
+        {
+            timer += Time.deltaTime;
+            if (timer < attackTelegraphTime * 0.7f && target != null && !isStaggered && !isDead)
+            {
+                Vector3 dir = (target.position - transform.position).normalized;
+                dir.y = 0;
+                if (dir != Vector3.zero)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 8f * Time.deltaTime);
+            }
+            yield return null;
+        }
+
         ResetColor();
 
-        if (!isStaggered && !isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 1f)
+        if (!isStaggered && !isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 1.5f)
         {
             lastAttackTime = Time.time;
             if (animator != null) animator.SetTrigger("Attack");
@@ -187,6 +202,13 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     public void ExecuteAttackDamage()
     {
         if (isDead || isStaggered || playerTarget == null || playerTarget.currentHealth <= 0) return;
+
+        // Ледь помітний мікро-поштовх (або можеш взагалі закоментувати цей блок)
+        if (Camera.main != null)
+        {
+            CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
+            if (cam != null) cam.TriggerShake(0.15f, 0.08f); // Було (0.35f, 0.4f)
+        }
 
         if (Vector3.Distance(transform.position, target.position) <= attackRange + 1.5f)
         {
@@ -208,9 +230,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(currentHealth, maxHealth);
 
-        // ==========================================
-        // 🛑 ФІКС: СПАВН ТЕКСТУ УРОНУ 🛑
-        // ==========================================
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
         if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)
         {
@@ -219,7 +238,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
+
         StartCoroutine(HitFlashRoutine());
+
+        // ХІТ-СТОП: Завмирання часу при критичному ударі
+        if (info.IsCritical && !isStaggered && !isDead)
+        {
+            StartCoroutine(HitStopRoutine(0.06f));
+        }
 
         if (currentHealth <= maxHealth * staggerHealthThreshold)
         {
@@ -231,10 +257,22 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    // Соковитий Хіт-Стоп
+    private IEnumerator HitStopRoutine(float duration)
+    {
+        Time.timeScale = 0.1f;
+        yield return new WaitForSecondsRealtime(duration);
+        if (!isStaggered && !isDead && !playerTarget.isControlBlocked)
+        {
+            Time.timeScale = 1f;
+        }
+    }
+
     private void EnterStaggerState()
     {
         isStaggered = true;
         isPreparingAttack = false;
+        Time.timeScale = 1f; // Відновлюємо час, якщо був хіт-стоп
 
         SnapToGround();
 

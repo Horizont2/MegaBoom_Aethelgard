@@ -200,6 +200,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5267676387686947276}
+  - component: {fileID: 3610519967113895153}
   m_Layer: 0
   m_Name: Camp_POI
   m_TagString: Untagged
@@ -226,6 +227,27 @@ Transform:
   - {fileID: 8704065481537715019}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &3610519967113895153
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4196578333971713651}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 4.191088, y: 1.1703203, z: 3.9387112}
+  m_Center: {x: 0.15092468, y: 0.60613537, z: 0.8723564}
 --- !u!1 &9212952561292515356
 GameObject:
   m_ObjectHideFlags: 0

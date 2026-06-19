@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -110,7 +110,9 @@ public class WorldGenerator : MonoBehaviour
     private int currentBushCount = 0;
     private int currentRockCount = 0;
 
-    // --- ����������� ��������� (��� �����̲�������Ҳ) ---
+    // --- ЗМІННА ДЛЯ ЗБЕРЕЖЕННЯ ПОЗИЦІЇ ГОЛОВНОГО ТОТЕМУ ---
+    private Vector3 spawnedTotemPos = Vector3.zero;
+
     private System.Random prng;
 
     private float GetRandomFloat() => (float)prng.NextDouble();
@@ -144,9 +146,6 @@ public class WorldGenerator : MonoBehaviour
             player.transform.position = new Vector3(transform.position.x + terrain.terrainData.size.x / 2f, 1000f, transform.position.z + terrain.terrainData.size.z / 2f);
         }
 
-        // =================================================================
-        // ��ò�� ���������� � ������������ �Ͳ�������� Ѳ��
-        // =================================================================
         RegionData curRegion = null;
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) curRegion = GameManager.Instance.currentRegion;
         if (curRegion == null && MissionInitializer.PendingMissionRegion != null) curRegion = MissionInitializer.PendingMissionRegion;
@@ -158,12 +157,10 @@ public class WorldGenerator : MonoBehaviour
         {
             if (curRegion.currentState == RegionState.Conquered)
             {
-                // ����������: ������ ���������� seed, ��� ���� ���� ����������
                 mapSeed = PlayerPrefs.GetInt("RegionSeed_" + curRegion.regionID, UnityEngine.Random.Range(0, 999999));
             }
             else
             {
-                // �� ����������: �������� ����� seed. ���� �������� - �� �������� �������� � ���'��
                 mapSeed = UnityEngine.Random.Range(0, 999999);
                 PlayerPrefs.SetInt("RegionSeed_" + curRegion.regionID, mapSeed);
                 PlayerPrefs.Save();
@@ -180,7 +177,6 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
-        // ����������� �������!
         prng = new System.Random(mapSeed);
         offsetX = GetRandomRange(0f, 9999f);
         offsetZ = GetRandomRange(0f, 9999f);
@@ -195,17 +191,24 @@ public class WorldGenerator : MonoBehaviour
         CurrentProgress = 0.25f;
 
         yield return StartCoroutine(PaintTerrainRoutine(terrain.terrainData));
-        CurrentProgress = 0.50f;
+        CurrentProgress = 0.40f;
 
         SpawnWaterPlane();
 
+        // 1. Спочатку Тотем (створює рівну зону)
         yield return StartCoroutine(SpawnRegionTotemRoutine());
-        CurrentProgress = 0.60f;
+        Physics.SyncTransforms(); // Оновлюємо фізику після спавну
+        CurrentProgress = 0.50f;
 
+        // 2. ПОТІМ спавнимо POI (Намети) - вони теж роблять рівну зону під собою
+        yield return StartCoroutine(SpawnPOIsRoutine());
+        Physics.SyncTransforms();
+        CurrentProgress = 0.65f;
+
+        // 3. І ТІЛЬКИ ПОТІМ ліс і каміння (вони не будуть рости на вирівняних місцях)
         yield return StartCoroutine(PopulateBiomesRoutine());
         CurrentProgress = 0.85f;
 
-        yield return StartCoroutine(SpawnPOIsRoutine());
         yield return StartCoroutine(SpawnExtractionCartsRoutine());
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
 
@@ -220,22 +223,34 @@ public class WorldGenerator : MonoBehaviour
             Vector3 safePos = player.transform.position;
             bool foundSafeSpot = false;
 
-            for (int i = 0; i < 200; i++)
+            float mapWidth = terrain.terrainData.size.x;
+            float mapLength = terrain.terrainData.size.z;
+
+            // ФІКС 1: Мінімальна дистанція від Тотему (30% від ширини мапи)
+            float minSpawnDistance = Mathf.Min(mapWidth, mapLength) * 0.30f;
+
+            for (int i = 0; i < 500; i++)
             {
-                float px = GetRandomRange(terrain.terrainData.size.x * 0.2f, terrain.terrainData.size.x * 0.8f);
-                float pz = GetRandomRange(terrain.terrainData.size.z * 0.2f, terrain.terrainData.size.z * 0.8f);
+                // Шукаємо по всій мапі (від 10% до 90% країв)
+                float px = GetRandomRange(mapWidth * 0.1f, mapWidth * 0.9f);
+                float pz = GetRandomRange(mapLength * 0.1f, mapLength * 0.9f);
                 float worldX = transform.position.x + px;
                 float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
-                if (worldY > absoluteWaterHeight + 1.5f && terrain.terrainData.GetSteepness(px / terrain.terrainData.size.x, pz / terrain.terrainData.size.z) < 20f)
+                if (worldY > absoluteWaterHeight + 1.5f && terrain.terrainData.GetSteepness(px / mapWidth, pz / mapLength) < 20f)
                 {
-                    safePos = new Vector3(worldX, worldY + 2f, worldZ);
-                    foundSafeSpot = true;
-                    break;
+                    // Перевіряємо, чи ми достатньо далеко від головного Тотему!
+                    if (Vector3.Distance(new Vector3(worldX, worldY, worldZ), spawnedTotemPos) > minSpawnDistance)
+                    {
+                        safePos = new Vector3(worldX, worldY + 2f, worldZ);
+                        foundSafeSpot = true;
+                        break;
+                    }
                 }
             }
 
+            // Запасний план, якщо мапа надто маленька
             if (!foundSafeSpot) safePos.y += 5f;
 
             CharacterController cc = player.GetComponent<CharacterController>();
@@ -315,6 +330,9 @@ public class WorldGenerator : MonoBehaviour
 
         bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
         camp.transform.position = bestPos;
+
+        // Запам'ятовуємо позицію для віддаленого спавну гравця
+        spawnedTotemPos = bestPos;
 
         yield return null;
     }
@@ -635,13 +653,15 @@ public class WorldGenerator : MonoBehaviour
                     }
                 }
             }
-            catch (System.Exception e) { Debug.LogError($"[������� ��������� �������]: {e.Message}"); }
+            catch (System.Exception e) { Debug.LogError($"[Помилка генерації префабу]: {e.Message}"); }
         }
     }
 
     private void ApplyBiomeColor(GameObject obj, Color baseColor, bool randomize = false)
     {
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+        // 🛑 МАГІЧНИЙ ФІКС: 'true' змушує Unity шукати рендерери навіть у вимкнених LOD'ах!
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
+
         Color finalColor = baseColor;
 
         if (randomize)
@@ -665,6 +685,7 @@ public class WorldGenerator : MonoBehaviour
             propBlock.SetColor("_Color", finalColor);
             propBlock.SetColor("Color", finalColor);
             propBlock.SetColor("_BaseColor", finalColor);
+            propBlock.SetColor("_Base_Color", finalColor);
             propBlock.SetColor("_PrimaryColor", finalColor);
             propBlock.SetColor("_Primary_Color", finalColor);
             propBlock.SetColor("PrimaryColor", finalColor);
@@ -673,6 +694,11 @@ public class WorldGenerator : MonoBehaviour
             propBlock.SetColor("_BottomColor", finalColor);
             propBlock.SetColor("_Tint", finalColor);
             propBlock.SetColor("_TintColor", finalColor);
+
+            propBlock.SetColor("_FoliageColor", finalColor);
+            propBlock.SetColor("_LeafColor", finalColor);
+            propBlock.SetColor("_Color1", finalColor);
+            propBlock.SetColor("_Color2", finalColor);
 
             rend.SetPropertyBlock(propBlock);
         }
@@ -744,7 +770,27 @@ public class WorldGenerator : MonoBehaviour
 
                 if (IsPositionClear(spawnPos, poiClearanceRadius))
                 {
-                    Instantiate(GetRandomPrefab(poiPrefabs), spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), poiContainer);
+                    GameObject prefab = GetRandomPrefab(poiPrefabs);
+                    GameObject poi = Instantiate(prefab, spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), poiContainer);
+
+                    // ФІКС 2: Вирівнюємо землю під наметами і таборами
+                    Collider col = poi.GetComponent<Collider>();
+                    float dynamicRadius = 8f;
+                    if (col != null)
+                    {
+                        float maxSize = Mathf.Max(col.bounds.size.x, col.bounds.size.z);
+                        dynamicRadius = (maxSize / 2f) + 2f;
+                    }
+
+                    // Згладжуємо землю, щоб скрині і вогнища не висіли
+                    FlattenTerrainAt(spawnPos, dynamicRadius, 6f);
+
+                    // Після згладжування землі, перераховуємо висоту для самого намету
+                    spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
+                    poi.transform.position = spawnPos;
+
+                    // Оновлюємо фізику одразу, щоб дерева не росли крізь намет
+                    Physics.SyncTransforms();
                     spawnedCount++;
                 }
             }

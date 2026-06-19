@@ -6,8 +6,10 @@ public class CameraOcclusion : MonoBehaviour
     [Header("Target & Scanning")]
     public Transform playerTarget;
     public LayerMask foliageLayer;
+
+    // ФІКС 2: Радіус став 0.1, щоб промінь був "тонким" і не чіпляв об'єкти збоку від гравця
     [Tooltip("Зменшений радіус, щоб не чіпляти зайве")]
-    public float raycastRadius = 0.5f;
+    public float raycastRadius = 0.1f;
 
     [Header("Fade Settings")]
     [Range(0f, 1f)] public float fadeAlpha = 0.25f;
@@ -37,11 +39,12 @@ public class CameraOcclusion : MonoBehaviour
         Vector3 dir = (endPos - startPos).normalized;
         float dist = Vector3.Distance(startPos, endPos);
 
-        RaycastHit[] hits = Physics.SphereCastAll(startPos, raycastRadius, dir, dist - 0.5f, foliageLayer);
+        // ФІКС 2: Віднімаємо 1.5 метра від дистанції. Промінь зупиняється ПЕРЕД гравцем!
+        float checkDistance = Mathf.Max(0f, dist - 1.5f);
+        RaycastHit[] hits = Physics.SphereCastAll(startPos, raycastRadius, dir, checkDistance, foliageLayer);
 
         foreach (RaycastHit hit in hits)
         {
-            // КРИТИЧНИЙ ФІКС FPS: Жорстко ігноруємо землю та траву!
             if (hit.collider.GetComponent<Terrain>() != null) continue;
             if (hit.collider.name.ToLower().Contains("grass")) continue;
 
@@ -49,7 +52,6 @@ public class CameraOcclusion : MonoBehaviour
 
             if (fader == null)
             {
-                // Додаємо скрипт прозорості тільки якщо об'єкт реально має текстуру (MeshRenderer)
                 if (hit.collider.GetComponentInParent<MeshRenderer>() != null)
                 {
                     fader = hit.collider.gameObject.AddComponent<FadingObject>();

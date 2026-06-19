@@ -10,13 +10,17 @@ public class RegionManager : MonoBehaviour
     public List<RegionTotem> totems;
 
     [Header("Cinematic VFX")]
-    public GameObject corruptionTransferVFXPrefab;
+    [Tooltip("Перетягни сюди об'єкт ефекту, який вже лежить у префабі цієї Арени")]
+    public GameObject corruptionTransferVFX;
 
     private int currentTotemIndex = 0;
     private PlayerController playerController;
 
     private void Start()
     {
+        // Вимикаємо ефект на самому початку гри
+        if (corruptionTransferVFX != null) corruptionTransferVFX.SetActive(false);
+
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
         {
             currentRegion = GameManager.Instance.currentRegion;
@@ -72,18 +76,12 @@ public class RegionManager : MonoBehaviour
         GameObject pObjStart = GameObject.FindGameObjectWithTag("Player");
         if (pObjStart != null) playerController = pObjStart.GetComponent<PlayerController>();
 
-        // ==========================================
-        // ЗАПУСКАЄМО КІНЕМАТОГРАФІЧНЕ ІНТРО
-        // ==========================================
         StartCoroutine(IntroRoutine());
     }
 
     private IEnumerator IntroRoutine()
     {
-        // Чекаємо, поки WorldGenerator розставить всі дерева і відпустить гравця
         while (!WorldGenerator.IsGenerationDone) yield return null;
-
-        // Даємо гравцю 1 секунду роздивитися шторм
         yield return new WaitForSeconds(1f);
 
         string regionName = currentRegion != null ? currentRegion.regionName : "UNKNOWN REGION";
@@ -160,9 +158,20 @@ public class RegionManager : MonoBehaviour
     {
         yield return new WaitForSeconds(2f);
 
-        GameObject transferVFX = null;
-        if (corruptionTransferVFXPrefab != null)
-            transferVFX = Instantiate(corruptionTransferVFXPrefab, startPos + Vector3.up * 2f, Quaternion.identity);
+        if (corruptionTransferVFX != null)
+        {
+            // Ставимо ефект над очищеним тотемом і вмикаємо його
+            corruptionTransferVFX.transform.position = startPos + Vector3.up * 2f;
+            corruptionTransferVFX.SetActive(true);
+
+            // Перезапускаємо всі частинки, щоб вони почали малюватися з нуля
+            ParticleSystem[] pSystems = corruptionTransferVFX.GetComponentsInChildren<ParticleSystem>();
+            foreach (var ps in pSystems)
+            {
+                ps.Stop();
+                ps.Play();
+            }
+        }
 
         if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.4f, 0.15f);
 
@@ -176,15 +185,16 @@ public class RegionManager : MonoBehaviour
             float t = elapsed / duration;
 
             Vector3 currentPos = Vector3.Lerp(startPos, targetPos, t);
-            currentPos.y += Mathf.Sin(t * Mathf.PI) * 8f;
+            currentPos.y += Mathf.Sin(t * Mathf.PI) * 8f; // Дуга польоту
 
-            if (transferVFX != null) transferVFX.transform.position = currentPos;
+            if (corruptionTransferVFX != null) corruptionTransferVFX.transform.position = currentPos;
             if (Camera.main != null && Random.value > 0.8f) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.1f, 0.05f);
 
             yield return null;
         }
 
-        if (transferVFX != null) Destroy(transferVFX);
+        // Вимикаємо ефект, коли він долетів
+        if (corruptionTransferVFX != null) corruptionTransferVFX.SetActive(false);
 
         if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.5f, 0.3f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
@@ -269,9 +279,6 @@ public class RegionManager : MonoBehaviour
             yield return null;
         }
 
-        // ==========================================
-        // ЗАПУСКАЄМО КІНЕМАТОГРАФІЧНЕ АУТРО ПЕРЕМОГИ
-        // ==========================================
         if (CinematicTitleUI.Instance != null)
         {
             CinematicTitleUI.Instance.ShowTitle("REGION CONQUERED", "THE CURSE HAS BEEN LIFTED", true);
@@ -281,7 +288,6 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.ShowPrompt("REGION CONQUERED!");
         }
 
-        // Чекаємо трохи довше, щоб гравець встиг прочитати епічний напис
         yield return new WaitForSeconds(5f);
 
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }

@@ -1832,7 +1832,9 @@ MonoBehaviour:
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
-  ruinPrefabs: []
+  ruinPrefabs:
+  - {fileID: 3414317473238138344, guid: a758c9966af9e45ab9f4f272a35a2e08, type: 3}
+  - {fileID: 6368552768545127503, guid: 871c34634d3fd4159ac7d149e826b61a, type: 3}
   groundClutterPrefabs: []
   giantTreeVFXPrefab: {fileID: 0}
   borderMountainPrefabs:
@@ -12477,7 +12479,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 800
+  far clip plane: 900
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -21973,6 +21975,7 @@ GameObject:
   - component: {fileID: 1567755698}
   - component: {fileID: 1567755697}
   - component: {fileID: 1567755696}
+  - component: {fileID: 1567755699}
   m_Layer: 5
   m_Name: Mask
   m_TagString: Untagged
@@ -22052,6 +22055,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1567755694}
   m_CullTransparentMesh: 1
+--- !u!114 &1567755699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567755694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e09587f9e18d5ea47aa840e4ddcfac79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TotemMinimapTracker
+  minimapRect: {fileID: 1567755695}
+  totemIconPrefab: {fileID: 656254518586107693, guid: 47d8354fc9f4df7469b961b912a8203e, type: 3}
+  minimapCamera: {fileID: 90100287}
+  iconMargin: 12
 --- !u!1 &1583374380
 GameObject:
   m_ObjectHideFlags: 0

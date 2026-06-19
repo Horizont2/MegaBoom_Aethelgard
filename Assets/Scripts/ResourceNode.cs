@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
+public class ResourceNode : MonoBehaviour, IDamageable
 {
     public enum NodeType { Tree, Rock, Barrel }
 
@@ -31,13 +31,21 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         originalScale = transform.localScale;
     }
 
-    // ААА-архітектура: Приймаємо структуру замість простої цифри
     public void TakeDamage(DamageInfo info)
     {
         if (isDead) return;
 
         currentHealth -= info.Amount;
-        if (hitEffect != null) hitEffect.Play();
+
+        // ==========================================
+        // ФІКС 1: Вмикаємо об'єкт ефекту перед програванням
+        // ==========================================
+        if (hitEffect != null)
+        {
+            if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+            hitEffect.Play();
+        }
+
         StopAllCoroutines();
 
         if (currentHealth <= 0)
@@ -49,10 +57,7 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         {
             if (nodeType == NodeType.Rock)
             {
-                // ФІКС: Тепер камінь зменшується рівномірно відносно свого справжнього ХП
                 float healthPercent = currentHealth / actualMaxHealth;
-
-                // Камінь не може стати меншим ніж 40% від свого початкового розміру
                 Vector3 targetScale = originalScale * Mathf.Max(0.4f, healthPercent);
                 StartCoroutine(SquishRoutine(targetScale));
             }
@@ -108,7 +113,12 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
                 yield return null;
             }
 
-            if (hitEffect != null) hitEffect.Play();
+            if (hitEffect != null)
+            {
+                if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+                hitEffect.Play();
+            }
+
             if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, transform.rotation);
 
             yield return new WaitForSeconds(0.5f);
@@ -116,7 +126,11 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
         else
         {
-            if (hitEffect != null) hitEffect.Play();
+            if (hitEffect != null)
+            {
+                if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+                hitEffect.Play();
+            }
 
             if (GetComponentInChildren<MeshRenderer>() != null) GetComponentInChildren<MeshRenderer>().enabled = false;
             if (GetComponent<Collider>() != null) GetComponent<Collider>().enabled = false;
