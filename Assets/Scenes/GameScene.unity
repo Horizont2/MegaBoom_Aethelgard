@@ -1850,7 +1850,7 @@ MonoBehaviour:
   bushWinterMaterial: {fileID: 2100000, guid: ae6ab00cef3b3314382f0d8d6b72bd3d, type: 2}
   forestFoliageColor: {r: 0.22612882, g: 0.4867924, b: 0.13134207, a: 1}
   desertFoliageColor: {r: 0.554717, g: 0.45784596, b: 0.17897472, a: 1}
-  snowFoliageColor: {r: 0.85660374, g: 0.85660374, b: 0.85660374, a: 1}
+  snowFoliageColor: {r: 0.7584905, g: 0.7584905, b: 0.7584905, a: 1}
   forestRockColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
