@@ -14974,6 +14974,92 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 877864313}
   m_CullTransparentMesh: 1
+--- !u!1 &885327410
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 885327413}
+  - component: {fileID: 885327412}
+  - component: {fileID: 885327411}
+  m_Layer: 0
+  m_Name: Region_Director
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &885327411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 885327410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf0241f3b165da9408efd0ba2aad9092, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldEncounterDirector
+  enemyPrefabs:
+  - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+  - {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
+  - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
+  patrolGroupSize: 3
+  campGroupSize: 4
+  encounterCount: 10
+  minSeparation: 28
+  minDistanceFromPlayer: 35
+  minDistanceFromTotems: 20
+  terrainEdgePadding: 15
+  winterCampRatio: 0.6
+  defaultCampRatio: 0.15
+  campfirePrefab: {fileID: 1333987346965480676, guid: a0cb97213f1da8142b799feda15700c6, type: 3}
+  patrolWaypointCount: 3
+  patrolRouteRadius: 12
+  aggroRange: 14
+  roamRadius: 3.5
+  blockRandomSpawnerOnStart: 1
+  logPlacements: 0
+--- !u!114 &885327412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 885327410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1272c6fc5cedc64c98f8df3844f5d8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RegionObjectiveDirector
+  beaconHeight: 90
+  beaconRadius: 0.7
+  activeBeaconColor: {r: 1, g: 0.25, b: 0.15, a: 0.85}
+  beaconMaterialTemplate: {fileID: 0}
+  pulseStrength: 0.35
+  pulseSpeed: 1.6
+  addCompassMarkers: 1
+  searchTimeout: 30
+  visibilityScanInterval: 0.4
+--- !u!4 &885327413
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 885327410}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 159.66075, y: 9.20253, z: 128.27774}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &893641097
 GameObject:
   m_ObjectHideFlags: 0
@@ -24518,3 +24604,4 @@ SceneRoots:
   - {fileID: 265003116}
   - {fileID: 856243524}
   - {fileID: 31505564}
+  - {fileID: 885327413}
