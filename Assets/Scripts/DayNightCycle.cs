@@ -65,6 +65,7 @@ public class DayNightCycle : MonoBehaviour
     private float initialDustRate = 0f;
 
     private Camera mainCam;
+    private ParticleSystem[] weatherVFXCache;
 
     private void Start()
     {
@@ -94,6 +95,8 @@ public class DayNightCycle : MonoBehaviour
         if (rainVFX != null) initialRainRate = rainVFX.emission.rateOverTimeMultiplier;
         if (snowVFX != null) initialSnowRate = snowVFX.emission.rateOverTimeMultiplier;
         if (dustVFX != null) initialDustRate = dustVFX.emission.rateOverTimeMultiplier;
+
+        weatherVFXCache = new ParticleSystem[] { rainVFX, snowVFX, dustVFX };
 
         CheckAndUpdateSkybox();
     }
@@ -239,13 +242,16 @@ public class DayNightCycle : MonoBehaviour
             starsParticles.transform.rotation = Quaternion.identity;
         }
 
-        ParticleSystem[] weatherVFX = { rainVFX, snowVFX, dustVFX };
-        foreach (var vfx in weatherVFX)
+        if (weatherVFXCache != null)
         {
-            if (vfx != null && vfx.gameObject.activeSelf)
+            for (int i = 0; i < weatherVFXCache.Length; i++)
             {
-                vfx.transform.position = camPos + (Vector3.up * 15f) + (camForward * 12f);
-                vfx.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+                ParticleSystem vfx = weatherVFXCache[i];
+                if (vfx != null && vfx.gameObject.activeSelf)
+                {
+                    vfx.transform.position = camPos + (Vector3.up * 15f) + (camForward * 12f);
+                    vfx.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+                }
             }
         }
     }

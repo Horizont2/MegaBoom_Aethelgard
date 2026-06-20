@@ -20,6 +20,9 @@ public class XpCrystal : MonoBehaviour
 
     public bool IsMagnetized { get { return isMagnetized; } }
 
+    private static Transform s_cachedPlayer;
+    private static PlayerController s_cachedPlayerController;
+
     private Transform player;
     private PlayerController playerController;
     private bool isMagnetized = false;
@@ -59,12 +62,17 @@ public class XpCrystal : MonoBehaviour
 
         foreach (Renderer r in renderers) if (r != null) r.enabled = true;
 
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null)
+        if (s_cachedPlayer == null || s_cachedPlayerController == null)
         {
-            player = p.transform;
-            playerController = p.GetComponent<PlayerController>();
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null)
+            {
+                s_cachedPlayer = p.transform;
+                s_cachedPlayerController = p.GetComponent<PlayerController>();
+            }
         }
+        player = s_cachedPlayer;
+        playerController = s_cachedPlayerController;
 
         StartCoroutine(PopSpawnRoutine());
     }
@@ -102,7 +110,7 @@ public class XpCrystal : MonoBehaviour
         canBeMagnetized = true;
     }
 
-    // --- т╡йя: 100% мюд╡имхи оньсй гелк╡ ---
+    // --- т╡О©╫О©╫: 100% О©╫О©╫д╡О©╫О©╫О©╫О©╫ О©╫О©╫О©╫О©╫О©╫ О©╫О©╫О©╫к╡ ---
     private float GetGroundHeight(Vector3 pos)
     {
         if (Terrain.activeTerrain != null)

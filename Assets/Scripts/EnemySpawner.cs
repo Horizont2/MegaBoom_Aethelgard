@@ -24,6 +24,7 @@ public class EnemySpawner : MonoBehaviour
 
     private float timer;
     private WorldGenerator worldGen;
+    private readonly List<GameObject> availableEnemiesCache = new List<GameObject>(16);
 
     private void Start()
     {
@@ -56,16 +57,17 @@ public class EnemySpawner : MonoBehaviour
 
     private void SpawnEnemy(float minutesSurvived)
     {
-        List<GameObject> availableEnemies = new List<GameObject>();
-        foreach (SpawnableEnemy se in enemyPool)
+        availableEnemiesCache.Clear();
+        for (int i = 0; i < enemyPool.Length; i++)
         {
+            SpawnableEnemy se = enemyPool[i];
             if (minutesSurvived >= se.spawnAtMinute)
             {
-                availableEnemies.Add(se.enemyPrefab);
+                availableEnemiesCache.Add(se.enemyPrefab);
             }
         }
 
-        if (availableEnemies.Count == 0) return;
+        if (availableEnemiesCache.Count == 0) return;
 
         float randomDist = Random.Range(minSpawnRadius, maxSpawnRadius);
         Vector2 randomCircle = Random.insideUnitCircle.normalized * randomDist;
@@ -82,8 +84,8 @@ public class EnemySpawner : MonoBehaviour
 
         Vector3 spawnPos = new Vector3(spawnX, spawnY, spawnZ);
 
-        int randomIndex = Random.Range(0, availableEnemies.Count);
-        GameObject selectedPrefab = availableEnemies[randomIndex];
+        int randomIndex = Random.Range(0, availableEnemiesCache.Count);
+        GameObject selectedPrefab = availableEnemiesCache[randomIndex];
 
         GameObject newEnemy;
         if (ObjectPoolManager.Instance != null)

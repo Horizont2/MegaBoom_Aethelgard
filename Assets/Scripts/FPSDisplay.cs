@@ -6,6 +6,8 @@ public class FPSDisplay : MonoBehaviour
     public static FPSDisplay Instance;
     private TextMeshProUGUI fpsText;
     private float deltaTime = 0.0f;
+    private float displayTimer = 0f;
+    private const float DisplayInterval = 0.25f;
 
     private void Awake()
     {
@@ -15,24 +17,28 @@ public class FPSDisplay : MonoBehaviour
 
     private void Start()
     {
-        // Перевіряємо стан при завантаженні сцени
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         UpdateVisibility();
     }
 
     private void Update()
     {
-        // Розрахунок FPS через незмінений час (працює на паузі)
+        // Smooth FPS calculation
         deltaTime += (Time.unscaledDeltaTime - deltaTime) * 0.1f;
-        float fps = 1.0f / deltaTime;
 
-        // Просто виводимо значення без агресивних HTML-тегів.
-        // Колір тепер налаштовується прямо в Інспекторі Unity!
+        // Throttle text update to 4 times per second (avoids costly TMP rebuild every frame)
+        displayTimer += Time.unscaledDeltaTime;
+        if (displayTimer < DisplayInterval) return;
+        displayTimer = 0f;
+
+        if (fpsText == null || !fpsText.enabled) return;
+        float fps = 1.0f / deltaTime;
         fpsText.text = $"{Mathf.CeilToInt(fps)} FPS";
     }
 
     public void UpdateVisibility()
     {
-        // Вмикаємо або вимикаємо об'єкт залежно від налаштувань
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         bool isEnabled = PlayerPrefs.GetInt("Settings_ShowFPS", 0) == 1;
 
         if (fpsText != null) fpsText.enabled = isEnabled;

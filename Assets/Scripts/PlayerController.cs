@@ -130,7 +130,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Transform visualModel;
     private bool wasGroundedLastFrame = true;
 
-    // ФІКСИ ОПТИМІЗАЦІЇ
+    private static readonly Collider[] s_overlapBuffer = new Collider[64];
+
+    // ФІпїЅпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ
     private float stackCheckTimer = 0f;
     private float ikCheckTimer = 0f;
     private float focusCheckTimer = 0f;
@@ -342,7 +344,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         globalDamageMultiplier += forgeDamageBonus;
     }
 
-    // ФІКС ОПТИМІЗАЦІЇ: Таймер для перевірки натовпу
+    // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private void CheckStack()
     {
         if (isCampMode) return;
@@ -351,9 +353,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (stackCheckTimer > 0f) return;
         stackCheckTimer = 0.25f;
 
-        Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
+        int count = Physics.OverlapSphereNonAlloc(transform.position, stackRadius, s_overlapBuffer, 1 << 9);
         currentStack = 0;
-        foreach (Collider col in colliders) { if (col.CompareTag("Enemy")) currentStack++; }
+        for (int i = 0; i < count; i++) { if (s_overlapBuffer[i].CompareTag("Enemy")) currentStack++; }
 
         if (currentStack >= 30) currentMultiplier = 5;
         else if (currentStack >= 20) currentMultiplier = 4;
@@ -399,15 +401,16 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private Transform GetClosestEnemyForFocus(float maxDist, float maxAngle)
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, maxDist);
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, maxDist, s_overlapBuffer);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
 
         Vector3 playerForward = transform.forward;
         playerForward.y = 0;
 
-        foreach (var hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider hit = s_overlapBuffer[i];
             if (hit.CompareTag("Enemy"))
             {
                 Vector3 dir = hit.transform.position - transform.position;
@@ -503,7 +506,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
         else if (!isCurrentlyLocked && !isCampMode)
         {
-            // ФІКС ОПТИМІЗАЦІЇ: Шукаємо ворога для фокусу не кожен кадр
+            // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             focusCheckTimer -= Time.unscaledDeltaTime;
             if (focusCheckTimer <= 0f)
             {
@@ -676,12 +679,13 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
-        Collider[] magnetHits = Physics.OverlapSphere(hitPoint, aimAssistRadius);
+        int magnetCount = Physics.OverlapSphereNonAlloc(hitPoint, aimAssistRadius, s_overlapBuffer);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
 
-        foreach (var mHit in magnetHits)
+        for (int mi = 0; mi < magnetCount; mi++)
         {
+            Collider mHit = s_overlapBuffer[mi];
             if (mHit.CompareTag("Enemy"))
             {
                 float d = Vector3.Distance(hitPoint, mHit.transform.position);
@@ -706,11 +710,11 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         currentGrenadeTarget = hitPoint;
 
-        Collider[] blastHits = Physics.OverlapSphere(currentGrenadeTarget, grenadeExplosionRadius);
+        int blastCount = Physics.OverlapSphereNonAlloc(currentGrenadeTarget, grenadeExplosionRadius, s_overlapBuffer);
         bool enemyInBlast = false;
-        foreach (var bHit in blastHits)
+        for (int bi = 0; bi < blastCount; bi++)
         {
-            if (bHit.CompareTag("Enemy")) { enemyInBlast = true; break; }
+            if (s_overlapBuffer[bi].CompareTag("Enemy")) { enemyInBlast = true; break; }
         }
 
         Color currentAimColor = enemyInBlast ? new Color(1f, 0.1f, 0.1f, 0.8f) : new Color(0f, 0.8f, 1f, 0.8f);
@@ -803,7 +807,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private float GetGroundHeight(Vector3 pos)
     {
-        // ФІКС: З маски прибрано "Default", тепер маркер ігнорує об'єкти та малюється лише на землі
+        // ФІпїЅпїЅ: пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "Default", пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
         if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Terrain", "Ground")))
         {
             return hit.point.y;
@@ -813,7 +817,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
         }
 
-        // Запобіжник: якщо земля не знайдена, залишаємо на висоті цілі
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         return pos.y - 50f;
     }
 
@@ -956,15 +960,16 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (cameraFollow != null) cameraFollow.SetCombatState();
 
-        Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
+        int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
         if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? 3.5f : 2.5f);
 
-        foreach (Collider col in hitObjects)
+        for (int idx = 0; idx < hitCount; idx++)
         {
+            Collider col = s_overlapBuffer[idx];
             if (col.TryGetComponent(out IDamageable damageable))
             {
                 if (col.gameObject == this.gameObject) continue;
@@ -1044,10 +1049,10 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (cameraFollow != null)
         {
-            // --- ААА ФІКС ТРЯСКИ КАМЕРИ ---
-            // Тривалість: 0.15с (дуже коротка). 
-            // Рандомний шум: 0.08f (камера майже не вібрує, а просто різко зміщується).
-            // Напрямок: Якщо ворог не передав напрямок, відкидаємо камеру строго НАЗАД (-transform.forward).
+            // --- пїЅпїЅпїЅ ФІпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ---
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: 0.15пїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ). 
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ: 0.08f (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (-transform.forward).
             Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : -transform.forward;
             cameraFollow.TriggerDirectionalShake(shakeDir, 1.2f, 0.15f, 0.08f);
         }
@@ -1209,17 +1214,18 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (anim == null || isCampMode) return;
 
-        // ФІКС ОПТИМІЗАЦІЇ: Таймер для IK пошуку
+        // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ IK пїЅпїЅпїЅпїЅпїЅпїЅ
         ikCheckTimer -= Time.deltaTime;
         if (ikCheckTimer <= 0f)
         {
             ikCheckTimer = 0.2f;
             ikTargetItem = null;
-            Collider[] nearbyItems = Physics.OverlapSphere(transform.position, 5f);
+            int nearbyCount = Physics.OverlapSphereNonAlloc(transform.position, 5f, s_overlapBuffer);
             float minDist = float.MaxValue;
 
-            foreach (var item in nearbyItems)
+            for (int ni = 0; ni < nearbyCount; ni++)
             {
+                Collider item = s_overlapBuffer[ni];
                 bool isValidTarget = false;
 
                 XpCrystal crystal = item.GetComponent<XpCrystal>();

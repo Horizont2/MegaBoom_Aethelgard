@@ -20,6 +20,9 @@ public class DiamondPickup : MonoBehaviour
 
     public bool IsMagnetized { get { return isMagnetized; } }
 
+    private static Transform s_cachedPlayer;
+    private static PlayerController s_cachedPlayerController;
+
     private Transform player;
     private PlayerController playerController;
     private bool isMagnetized = false;
@@ -52,18 +55,23 @@ public class DiamondPickup : MonoBehaviour
         trail.endWidth = 0f;
         trail.emitting = false;
         trail.material = new Material(Shader.Find("Sprites/Default"));
-        trail.startColor = new Color(0.8f, 0.2f, 1f, 0.7f); // Діаманти мають фіолетовий слід
+        trail.startColor = new Color(0.8f, 0.2f, 1f, 0.7f); // ДіпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         trail.endColor = new Color(0.8f, 0.2f, 1f, 0f);
     }
 
     private void Start()
     {
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null)
+        if (s_cachedPlayer == null || s_cachedPlayerController == null)
         {
-            player = p.transform;
-            playerController = p.GetComponent<PlayerController>();
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null)
+            {
+                s_cachedPlayer = p.transform;
+                s_cachedPlayerController = p.GetComponent<PlayerController>();
+            }
         }
+        player = s_cachedPlayer;
+        playerController = s_cachedPlayerController;
 
         StartCoroutine(PopSpawnRoutine());
     }
