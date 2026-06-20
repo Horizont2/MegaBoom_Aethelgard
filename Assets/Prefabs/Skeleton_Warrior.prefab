@@ -547,14 +547,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
   isElite: 1
   maxPoise: 100
-  maxHealth: 45
-  moveSpeed: 6
-  damage: 20
+  maxHealth: 35
+  moveSpeed: 5.2
+  damage: 17
   nightMultiplier: 1.2
   isCinematicFrozen: 0
   spawnVFXPrefab: {fileID: 589510543358746487}
   spawnDuration: 2
-  attackRange: 1.4
+  attackRange: 1
   attackCooldown: 0.8
   attackTelegraphTime: 0.5
   weaponGlintVFX: {fileID: 0}
@@ -572,6 +572,14 @@ MonoBehaviour:
   dissolveAshVFX: {fileID: 0}
   xpRewardMultiplier: 1
   isInvincible: 0
+  startPassive: 0
+  anchorPoint: {x: 0, y: 0, z: 0}
+  anchorTransform: {fileID: 0}
+  roamRadius: 3.5
+  aggroRange: 14
+  parentGroup: {fileID: 0}
+  roamWhilePassive: 1
+  faceAnchorWhenIdle: 0
 --- !u!136 &5810165179307727665
 CapsuleCollider:
   m_ObjectHideFlags: 0

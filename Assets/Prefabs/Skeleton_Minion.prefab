@@ -961,7 +961,7 @@ MonoBehaviour:
   maxPoise: 100
   maxHealth: 20
   moveSpeed: 4
-  damage: 10
+  damage: 9
   nightMultiplier: 1.2
   isCinematicFrozen: 0
   spawnVFXPrefab: {fileID: 5685820174141210362}
@@ -984,6 +984,14 @@ MonoBehaviour:
   dissolveAshVFX: {fileID: 0}
   xpRewardMultiplier: 1
   isInvincible: 0
+  startPassive: 0
+  anchorPoint: {x: 0, y: 0, z: 0}
+  anchorTransform: {fileID: 0}
+  roamRadius: 3.5
+  aggroRange: 14
+  parentGroup: {fileID: 0}
+  roamWhilePassive: 1
+  faceAnchorWhenIdle: 0
 --- !u!136 &2597130611666321287
 CapsuleCollider:
   m_ObjectHideFlags: 0
