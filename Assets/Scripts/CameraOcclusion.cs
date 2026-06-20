@@ -12,14 +12,11 @@ public class CameraOcclusion : MonoBehaviour
     [Range(0f, 1f)] public float fadeAlpha = 0.25f;
     public float fadeSpeed = 4f;
 
-    private HashSet<FadingObject> currentlyFaded = new HashSet<FadingObject>();
-    private HashSet<FadingObject> hitsThisFrame = new HashSet<FadingObject>();
-    private List<FadingObject> faderRemovalCache = new List<FadingObject>();
+    private List<FadingObject> currentlyFaded = new List<FadingObject>();
+    private List<FadingObject> hitsThisFrame = new List<FadingObject>();
 
-    // GetComponent cache so we don't pay the lookup cost per ray hit per frame
+    // СУПЕР-ОПТИМІЗАЦІЯ: Кешуємо всі дерева, щоб не викликати GetComponent при русі камери
     private Dictionary<Collider, FadingObject> faderCache = new Dictionary<Collider, FadingObject>();
-
-    private static readonly RaycastHit[] s_hitBuffer = new RaycastHit[32];
 
     private void Start()
     {
@@ -32,7 +29,7 @@ public class CameraOcclusion : MonoBehaviour
 
     private void Update()
     {
-        if (playerTarget == null || Time.frameCount < 10) return; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        if (playerTarget == null || Time.frameCount < 10) return; // Чекаємо кілька кадрів після завантаження
 
         hitsThisFrame.Clear();
 
@@ -43,48 +40,50 @@ public class CameraOcclusion : MonoBehaviour
         float dist = Vector3.Distance(startPos, endPos);
         float checkDistance = Mathf.Max(0f, dist - 1.5f);
 
-        int hitCount = Physics.SphereCastNonAlloc(startPos, raycastRadius, dir, s_hitBuffer, checkDistance, foliageLayer);
+        RaycastHit[] hits = Physics.SphereCastAll(startPos, raycastRadius, dir, checkDistance, foliageLayer);
 
-        for (int i = 0; i < hitCount; i++)
+        foreach (RaycastHit hit in hits)
         {
-            RaycastHit hit = s_hitBuffer[i];
-            Collider col = hit.collider;
-            if (col == null) continue;
-            if (col is TerrainCollider) continue;
+            // Швидкі відсіювання
+            if (hit.collider is TerrainCollider) continue;
 
-            FadingObject fader;
+            FadingObject fader = null;
 
-            if (!faderCache.TryGetValue(col, out fader))
+            // Перевіряємо кеш (Миттєво)
+            if (faderCache.TryGetValue(hit.collider, out FadingObject cachedFader))
             {
-                fader = col.GetComponentInParent<FadingObject>();
-                if (fader == null && col.GetComponentInParent<MeshRenderer>() != null)
+                fader = cachedFader;
+            }
+            else
+            {
+                // Якщо об'єкта немає в кеші - шукаємо один раз і запам'ятовуємо назавжди
+                fader = hit.collider.GetComponentInParent<FadingObject>();
+                if (fader == null && hit.collider.GetComponentInParent<MeshRenderer>() != null)
                 {
-                    fader = col.gameObject.AddComponent<FadingObject>();
+                    fader = hit.collider.gameObject.AddComponent<FadingObject>();
                     fader.Initialize(fadeAlpha, fadeSpeed);
                 }
 
-                faderCache[col] = fader;
+                faderCache[hit.collider] = fader; // Записуємо в кеш
             }
 
             if (fader == null) continue;
 
             hitsThisFrame.Add(fader);
             fader.FadeOut();
-            currentlyFaded.Add(fader);
+
+            if (!currentlyFaded.Contains(fader)) currentlyFaded.Add(fader);
         }
 
-        // Restore objects that are no longer occluded
-        faderRemovalCache.Clear();
-        foreach (FadingObject fader in currentlyFaded)
+        // Повертаємо непрозорість тим, на кого більше не дивимось
+        for (int i = currentlyFaded.Count - 1; i >= 0; i--)
         {
-            if (!hitsThisFrame.Contains(fader)) faderRemovalCache.Add(fader);
-        }
-
-        for (int i = 0; i < faderRemovalCache.Count; i++)
-        {
-            FadingObject fader = faderRemovalCache[i];
-            if (fader != null) fader.FadeIn();
-            currentlyFaded.Remove(fader);
+            FadingObject fader = currentlyFaded[i];
+            if (!hitsThisFrame.Contains(fader))
+            {
+                if (fader != null) fader.FadeIn();
+                currentlyFaded.RemoveAt(i);
+            }
         }
     }
 }

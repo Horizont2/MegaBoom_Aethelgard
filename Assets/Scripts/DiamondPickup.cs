@@ -59,8 +59,19 @@ public class DiamondPickup : MonoBehaviour
         trail.endColor = new Color(0.8f, 0.2f, 1f, 0f);
     }
 
-    private void Start()
+    private void OnEnable()
     {
+        // Reset pickup state on every spawn (matters for pool reuse — without this
+        // a re-spawned diamond stays magnetized=true and never picks up)
+        isMagnetized = false;
+        canBeMagnetized = false;
+        if (trail != null) trail.emitting = false;
+        if (renderers != null)
+        {
+            for (int i = 0; i < renderers.Length; i++)
+                if (renderers[i] != null) renderers[i].enabled = true;
+        }
+
         if (s_cachedPlayer == null || s_cachedPlayerController == null)
         {
             GameObject p = GameObject.FindGameObjectWithTag("Player");
