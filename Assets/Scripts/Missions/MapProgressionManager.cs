@@ -11,30 +11,38 @@ public class MapProgressionManager : MonoBehaviour
 
     public static event Action OnMapStateChanged;
 
+    // ОПТИМІЗАЦІЯ: Кешування ключів для PlayerPrefs, щоб не створювати сміття в пам'яті (Garbage)
+    private Dictionary<int, string> regionStateKeys = new Dictionary<int, string>();
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        SyncMapStatesWithSaves(); // Завантажуємо збереження під час запуску сцени!
+        // Генеруємо всі ключі ОДИН раз
+        if (allRegionsInGame != null)
+        {
+            foreach (var region in allRegionsInGame)
+            {
+                if (region != null)
+                    regionStateKeys[region.regionID] = "RegionState_" + region.regionID;
+            }
+        }
+
+        SyncMapStatesWithSaves();
     }
 
     public void SyncMapStatesWithSaves()
     {
         bool needsSave = false;
 
-        // 1. Завантажуємо стани всіх регіонів з PlayerPrefs
         foreach (var region in allRegionsInGame)
         {
-            // Беремо дефолтне значення, щоб не зламати стартовий стан першого регіону
             int defaultState = (int)region.currentState;
-            int savedState = PlayerPrefs.GetInt("RegionState_" + region.regionID, defaultState);
+            int savedState = PlayerPrefs.GetInt(regionStateKeys[region.regionID], defaultState);
             region.currentState = (RegionState)savedState;
         }
 
-        // 2. АВТОМАТИЧНО відкриваємо сусідів для ВСІХ захоплених регіонів.
-        // Це необхідно, бо захоплення відбувається в GameScene (де немає цього скрипта),
-        // і коли гравець повертається в табір, ми маємо перевірити, чи не треба відкрити нові землі.
         foreach (var region in allRegionsInGame)
         {
             if (region.currentState == RegionState.Conquered)
@@ -44,8 +52,13 @@ public class MapProgressionManager : MonoBehaviour
                     if (neighbor.currentState == RegionState.Locked)
                     {
                         neighbor.currentState = RegionState.Available;
-                        neighbor.isNewlyUnlocked = true; // Тригерить анімацію розсіювання бурі
-                        PlayerPrefs.SetInt("RegionState_" + neighbor.regionID, (int)RegionState.Available);
+                        neighbor.isNewlyUnlocked = true;
+
+                        // Використовуємо закешований ключ замість "RegionState_" + ID
+                        if (regionStateKeys.ContainsKey(neighbor.regionID))
+                        {
+                            PlayerPrefs.SetInt(regionStateKeys[neighbor.regionID], (int)RegionState.Available);
+                        }
                         needsSave = true;
                     }
                 }
@@ -60,13 +73,12 @@ public class MapProgressionManager : MonoBehaviour
         if (conqueredRegion.currentState == RegionState.Conquered) return;
 
         conqueredRegion.currentState = RegionState.Conquered;
-        PlayerPrefs.SetInt("RegionState_" + conqueredRegion.regionID, (int)RegionState.Conquered);
+        PlayerPrefs.SetInt(regionStateKeys[conqueredRegion.regionID], (int)RegionState.Conquered);
 
         int currentConquered = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
         PlayerPrefs.SetInt("TotalConqueredRegions", currentConquered + 1);
         PlayerPrefs.Save();
 
-        // Перевіряємо та відкриваємо сусідів
         SyncMapStatesWithSaves();
         OnMapStateChanged?.Invoke();
     }

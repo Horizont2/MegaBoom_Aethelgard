@@ -312,13 +312,13 @@ Material:
     - _Color_Tint: {r: 0.3227066, g: 0.6037736, b: 0, a: 1}
     - _Color_Top: {r: 0.32314324, g: 0.60382754, b: 0, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _Emissive: {r: 0.5411765, g: 0.27058825, b: 0.05490196, a: 0}
+    - _Emissive: {r: 0.3433962, g: 0.17646864, b: 0.043410454, a: 0}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 0}
     - _FoliageColorBottom: {r: 0.29356545, g: 0.46226418, b: 0.006541462, a: 1}
     - _FoliageColorTop: {r: 0.40962893, g: 0.5283019, b: 0.12709148, a: 1}
     - _FoliageEmissiveColor: {r: 0, g: 0, b: 0, a: 0}
-    - _Foliage_Color_Bottom: {r: 0.5411765, g: 0.27058825, b: 0.05490196, a: 1}
-    - _Foliage_Color_Top: {r: 0.5411765, g: 0.27058825, b: 0.05490196, a: 1}
+    - _Foliage_Color_Bottom: {r: 0.3886792, g: 0.1964746, b: 0.043268032, a: 1}
+    - _Foliage_Color_Top: {r: 0.3584906, g: 0.18422553, b: 0.045318615, a: 1}
     - _Speed: {r: 0.16, g: 0.29, b: 0, a: 0}
     - _Sway_Wind_Direction: {r: 0, g: 0, b: 0, a: 0}
     - _WindSwayDirection: {r: 1, g: 0, b: 0, a: 0}

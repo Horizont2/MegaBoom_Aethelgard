@@ -60,7 +60,9 @@ public class DistanceOptimizer : MonoBehaviour
         int index = managedObjects.IndexOf(obj);
         if (index != -1)
         {
-            managedObjects[index] = null; // Зануляємо для швидкого видалення в корутині
+            // O(1) видалення зі списку для оптимізації CPU
+            managedObjects[index] = managedObjects[managedObjects.Count - 1];
+            managedObjects.RemoveAt(managedObjects.Count - 1);
         }
     }
 
@@ -86,7 +88,8 @@ public class DistanceOptimizer : MonoBehaviour
 
                 if (obj == null)
                 {
-                    managedObjects.RemoveAt(i);
+                    managedObjects[i] = managedObjects[managedObjects.Count - 1];
+                    managedObjects.RemoveAt(managedObjects.Count - 1);
                     continue;
                 }
 

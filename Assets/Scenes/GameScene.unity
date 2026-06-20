@@ -1856,8 +1856,8 @@ MonoBehaviour:
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
   maxTrees: 1400
-  maxBushesAndMushroom: 900
-  maxRocks: 600
+  maxBushesAndMushroom: 800
+  maxRocks: 500
   clusterScale: 12
   forestThreshold: 0.48
   globalBiomeScale: 2.5

@@ -5,10 +5,25 @@ using System.Collections.Generic;
 public class CampEconomyManager : MonoBehaviour
 {
     [Header("Economy Settings")]
-    public float resourceTickInterval = 60f; // Збирати ресурси кожні 60 секунд
+    public float resourceTickInterval = 60f;
+
+    // ОПТИМІЗАЦІЯ: Кешування ключів
+    private Dictionary<int, string> regionLevelKeys = new Dictionary<int, string>();
 
     private void Start()
     {
+        // Ініціалізуємо ключі
+        if (MapProgressionManager.Instance != null && MapProgressionManager.Instance.allRegionsInGame != null)
+        {
+            foreach (var region in MapProgressionManager.Instance.allRegionsInGame)
+            {
+                if (region != null)
+                {
+                    regionLevelKeys[region.regionID] = "RegionLevel_" + region.regionID;
+                }
+            }
+        }
+
         StartCoroutine(EconomyTickRoutine());
     }
 
@@ -27,15 +42,15 @@ public class CampEconomyManager : MonoBehaviour
 
         int totalWood = 0, totalStone = 0, totalFood = 0, totalDiamonds = 0;
 
-        // Рахуємо дохід тільки з захоплених територій
         foreach (RegionData region in MapProgressionManager.Instance.allRegionsInGame)
         {
             if (region.currentState == RegionState.Conquered)
             {
-                // --- ФІКС: Зчитуємо рівень регіону і беремо дані з масиву upgradeLevels ---
-                int currentLevel = PlayerPrefs.GetInt("RegionLevel_" + region.regionID, 1);
+                // Використовуємо кешований рядок без аллокації
+                string key = regionLevelKeys.ContainsKey(region.regionID) ? regionLevelKeys[region.regionID] : "RegionLevel_" + region.regionID;
 
-                // Захист від помилок (якщо масив в інспекторі раптом не заповнено)
+                int currentLevel = PlayerPrefs.GetInt(key, 1);
+
                 if (region.upgradeLevels != null && region.upgradeLevels.Length >= currentLevel)
                 {
                     RegionLevelData levelData = region.upgradeLevels[currentLevel - 1];

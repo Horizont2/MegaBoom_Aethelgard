@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 1844897081636829024}
   - component: {fileID: 1844897081637631808}
   - component: {fileID: 1844897081638729088}
-  - component: {fileID: 1844897081642812896}
   m_Layer: 15
   m_Name: Birch_01_LOD2
   m_TagString: Untagged
@@ -92,28 +91,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1844897081642812896
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1844897081636531008}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: 97662451c4a683a4aba6a95c251bbd9b, type: 3}
 --- !u!1 &1844897081636531010
 GameObject:
   m_ObjectHideFlags: 0
@@ -125,7 +102,6 @@ GameObject:
   - component: {fileID: 1844897081636829026}
   - component: {fileID: 1844897081637631810}
   - component: {fileID: 1844897081638729090}
-  - component: {fileID: 1844897081642812898}
   m_Layer: 15
   m_Name: Birch_01_LOD3
   m_TagString: Untagged
@@ -207,28 +183,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1844897081642812898
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1844897081636531010}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300002, guid: 97662451c4a683a4aba6a95c251bbd9b, type: 3}
 --- !u!1 &1844897081636531012
 GameObject:
   m_ObjectHideFlags: 0
@@ -240,7 +194,6 @@ GameObject:
   - component: {fileID: 1844897081636829028}
   - component: {fileID: 1844897081637631812}
   - component: {fileID: 1844897081638729092}
-  - component: {fileID: 522844364060268631}
   m_Layer: 15
   m_Name: Birch_01_LOD0
   m_TagString: Untagged
@@ -322,29 +275,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!136 &522844364060268631
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1844897081636531012}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.36
-  m_Height: 10.8
-  m_Direction: 1
-  m_Center: {x: 0.01, y: 5.2, z: -0.019579768}
 --- !u!1 &1844897081636531014
 GameObject:
   m_ObjectHideFlags: 0
@@ -356,7 +286,6 @@ GameObject:
   - component: {fileID: 1844897081636829030}
   - component: {fileID: 1844897081637631814}
   - component: {fileID: 1844897081638729094}
-  - component: {fileID: 1844897081642812902}
   m_Layer: 15
   m_Name: Birch_01_LOD1
   m_TagString: Untagged
@@ -437,28 +366,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1844897081642812902
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1844897081636531014}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300006, guid: 97662451c4a683a4aba6a95c251bbd9b, type: 3}
 --- !u!1 &1844897081636531020
 GameObject:
   m_ObjectHideFlags: 0

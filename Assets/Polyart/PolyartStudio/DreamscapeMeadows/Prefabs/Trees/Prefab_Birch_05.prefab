@@ -9574,7 +9574,6 @@ GameObject:
   - component: {fileID: 5194611686949468350}
   - component: {fileID: 5194611686946076830}
   - component: {fileID: 5194611686947043934}
-  - component: {fileID: 3220241587609800421}
   m_Layer: 15
   m_Name: Birch_06_LOD0
   m_TagString: Untagged
@@ -9655,26 +9654,3 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!136 &3220241587609800421
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5194611686949037214}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.36
-  m_Height: 10.8
-  m_Direction: 1
-  m_Center: {x: 0.01, y: 5.2, z: -0.019579768}

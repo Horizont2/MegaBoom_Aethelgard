@@ -64,8 +64,12 @@ public class DayNightCycle : MonoBehaviour
     private float initialSnowRate = 0f;
     private float initialDustRate = 0f;
 
+    private Camera mainCam;
+
     private void Start()
     {
+        mainCam = Camera.main;
+
         if (sunLight == null)
         {
             GameObject dirLightObj = GameObject.Find("Directional Light");
@@ -167,7 +171,6 @@ public class DayNightCycle : MonoBehaviour
     {
         SkyboxType targetSkybox = SkyboxType.Day;
 
-        // ФІКС: І в Storm, і в Precipitation небо залишається похмурим!
         if (currentWeather == WeatherState.Storm || currentWeather == WeatherState.Precipitation)
             targetSkybox = SkyboxType.Storm;
         else if (timeOfDay < 5.5f || timeOfDay > 18.5f)
@@ -223,12 +226,10 @@ public class DayNightCycle : MonoBehaviour
 
     private void UpdateVFXPositions()
     {
-        if (Camera.main == null) return;
+        if (mainCam == null) return;
 
-        Vector3 camPos = Camera.main.transform.position;
-
-        // Беремо напрямок камери, але ігноруємо нахил вгору/вниз
-        Vector3 camForward = Camera.main.transform.forward;
+        Vector3 camPos = mainCam.transform.position;
+        Vector3 camForward = mainCam.transform.forward;
         camForward.y = 0;
         camForward.Normalize();
 
@@ -243,10 +244,7 @@ public class DayNightCycle : MonoBehaviour
         {
             if (vfx != null && vfx.gameObject.activeSelf)
             {
-                // ФІКС ОПТИМІЗАЦІЇ: Зсуваємо погоду на 15м вгору і на 12м ВПЕРЕД від камери!
                 vfx.transform.position = camPos + (Vector3.up * 15f) + (camForward * 12f);
-
-                // Фіксуємо обертання, щоб дощ падав рівно вниз
                 vfx.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             }
         }
@@ -255,7 +253,7 @@ public class DayNightCycle : MonoBehaviour
     private void ManageNightVFX(float timePercent)
     {
         bool isNight = timeOfDay < 5f || timeOfDay > 19f;
-        if (starsParticles != null && Camera.main != null)
+        if (starsParticles != null && mainCam != null)
         {
             var main = starsParticles.main;
             float starAlpha = isNight ? (1f - weatherBlend) : 0f;
@@ -316,10 +314,10 @@ public class DayNightCycle : MonoBehaviour
                 lightningLight.intensity = 0f;
             }
 
-            if (lightningVFXPrefab != null && Camera.main != null)
+            if (lightningVFXPrefab != null && mainCam != null)
             {
                 Vector2 randomCircle = Random.insideUnitCircle * lightningSpawnRadius;
-                Vector3 spawnPos = Camera.main.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+                Vector3 spawnPos = mainCam.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
                 bool strikeGround = Random.value > 0.4f;
                 Quaternion spawnRot = Quaternion.identity;
 
@@ -327,15 +325,32 @@ public class DayNightCycle : MonoBehaviour
                     spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
                 else
                 {
-                    spawnPos.y = Camera.main.transform.position.y + Random.Range(80f, 150f);
+                    spawnPos.y = mainCam.transform.position.y + Random.Range(80f, 150f);
                     spawnRot = Quaternion.Euler(Random.Range(-70f, 70f), Random.Range(0f, 360f), Random.Range(-70f, 70f));
                 }
 
-                GameObject lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
-                if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
-                Destroy(lightning, 2f);
+                GameObject lightning;
+                if (ObjectPoolManager.Instance != null)
+                {
+                    lightning = ObjectPoolManager.Instance.SpawnFromPool(lightningVFXPrefab, spawnPos, spawnRot);
+                    if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+                    StartCoroutine(ReturnToPoolAfterDelay(lightning, 2f));
+                }
+                else
+                {
+                    lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
+                    if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+                    Destroy(lightning, 2f);
+                }
             }
         }
         lightningCoroutine = null;
+    }
+
+    private IEnumerator ReturnToPoolAfterDelay(GameObject obj, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (obj != null && ObjectPoolManager.Instance != null)
+            ObjectPoolManager.Instance.ReturnToPool(obj);
     }
 }

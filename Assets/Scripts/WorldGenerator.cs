@@ -1685,19 +1685,15 @@ public class WorldGenerator : MonoBehaviour
         foreach (Renderer rend in renderers)
         {
             if (rend is ParticleSystemRenderer) continue;
-
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+            if (IsVFX(rend.gameObject.name)) continue;
 
             for (int i = 0; i < rend.sharedMaterials.Length; i++)
             {
                 Material mat = rend.sharedMaterials[i];
                 if (mat == null) continue;
 
-                string matName = mat.name.ToLower();
-
-                if (objName.Contains("trunk") || objName.Contains("wood") || objName.Contains("bark") || objName.Contains("branch") ||
-                    matName.Contains("trunk") || matName.Contains("wood") || matName.Contains("bark") || matName.Contains("branch"))
+                // Більше ніяких .ToLower(), це економить МЕГАБАЙТИ оперативної пам'яті
+                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mat.name))
                 {
                     continue;
                 }
@@ -1729,22 +1725,14 @@ public class WorldGenerator : MonoBehaviour
         foreach (Renderer rend in renderers)
         {
             if (rend is ParticleSystemRenderer) continue;
-
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+            if (IsVFX(rend.gameObject.name)) continue;
 
             for (int i = 0; i < rend.sharedMaterials.Length; i++)
             {
                 Material mat = rend.sharedMaterials[i];
                 if (mat == null) continue;
 
-                string matName = mat.name.ToLower();
-
-                if (objName.Contains("trunk") || objName.Contains("wood") || objName.Contains("bark") || objName.Contains("branch") ||
-                    matName.Contains("trunk") || matName.Contains("wood") || matName.Contains("bark") || matName.Contains("branch"))
-                {
-                    continue;
-                }
+                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mat.name)) continue;
 
                 propBlock.Clear();
                 rend.GetPropertyBlock(propBlock, i);
@@ -1766,9 +1754,7 @@ public class WorldGenerator : MonoBehaviour
         foreach (Renderer rend in renderers)
         {
             if (rend is ParticleSystemRenderer) continue;
-
-            string objName = rend.gameObject.name.ToLower();
-            if (objName.Contains("vfx") || objName.Contains("smoke") || objName.Contains("effect")) continue;
+            if (IsVFX(rend.gameObject.name)) continue;
 
             Material[] mats = rend.sharedMaterials;
             bool changed = false;
@@ -1776,13 +1762,7 @@ public class WorldGenerator : MonoBehaviour
             for (int i = 0; i < mats.Length; i++)
             {
                 if (mats[i] == null) continue;
-                string matName = mats[i].name.ToLower();
-
-                if (objName.Contains("trunk") || objName.Contains("wood") || objName.Contains("bark") || objName.Contains("branch") ||
-                    matName.Contains("trunk") || matName.Contains("wood") || matName.Contains("bark") || matName.Contains("branch"))
-                {
-                    continue;
-                }
+                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mats[i].name)) continue;
 
                 mats[i] = foliageMat;
                 changed = true;
@@ -1949,16 +1929,34 @@ public class WorldGenerator : MonoBehaviour
         catch (System.Exception) { }
     }
 
+    private static Collider[] overlapResults = new Collider[20];
+
     private bool IsPositionClear(Vector3 position, float radius)
     {
-        Collider[] colliders = Physics.OverlapSphere(position + Vector3.up * 1.5f, radius);
-        foreach (Collider col in colliders)
+        int count = Physics.OverlapSphereNonAlloc(position + Vector3.up * 1.5f, radius, overlapResults);
+        for (int i = 0; i < count; i++)
         {
+            Collider col = overlapResults[i];
             if (col.GetComponent<TerrainCollider>() != null || col.GetComponent<Terrain>() != null) continue;
             if (col.isTrigger) { if (col.GetComponentInParent<RegionManager>() != null) return false; continue; }
             return false;
         }
         return true;
+    }
+
+    private bool IsWoodOrTrunk(string name)
+    {
+        return name.IndexOf("trunk", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("wood", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("bark", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("branch", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool IsVFX(string name)
+    {
+        return name.IndexOf("vfx", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("smoke", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("effect", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private GameObject GetRandomPrefab(GameObject[] array) => (array == null || array.Length == 0) ? null : array[GetRandomRangeInt(0, array.Length)];

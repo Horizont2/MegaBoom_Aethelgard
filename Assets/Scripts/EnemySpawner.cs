@@ -33,7 +33,6 @@ public class EnemySpawner : MonoBehaviour
 
     private void Update()
     {
-        // ФІКС: Не просто повертаємось, а й скидаємо таймер!
         if (IsSpawningBlocked)
         {
             timer = 0f;
@@ -86,7 +85,11 @@ public class EnemySpawner : MonoBehaviour
         int randomIndex = Random.Range(0, availableEnemies.Count);
         GameObject selectedPrefab = availableEnemies[randomIndex];
 
-        GameObject newEnemy = Instantiate(selectedPrefab, spawnPos, Quaternion.identity);
+        GameObject newEnemy;
+        if (ObjectPoolManager.Instance != null)
+            newEnemy = ObjectPoolManager.Instance.SpawnFromPool(selectedPrefab, spawnPos, Quaternion.identity);
+        else
+            newEnemy = Instantiate(selectedPrefab, spawnPos, Quaternion.identity);
 
         EnemyAI enemyScript = newEnemy.GetComponent<EnemyAI>();
         if (enemyScript != null)
@@ -111,7 +114,7 @@ public class EnemySpawner : MonoBehaviour
         float duration = 1.5f;
         float elapsed = 0f;
 
-        while (elapsed < duration && enemy != null)
+        while (elapsed < duration && enemy != null && enemy.activeInHierarchy)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
@@ -121,7 +124,7 @@ public class EnemySpawner : MonoBehaviour
             yield return null;
         }
 
-        if (enemy != null)
+        if (enemy != null && enemy.activeInHierarchy)
         {
             enemy.transform.position = finalPos;
             if (ai != null) ai.isCinematicFrozen = false;

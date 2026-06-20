@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public enum Season { Summer, EarlyAutumn, Autumn, LateAutumn, Winter, Spring }
 
@@ -38,6 +39,13 @@ public class SmartSeasonManager : MonoBehaviour
     public Texture2D winterTexture;
     public Texture2D springTexture;
 
+    [Header("Foliage Materials (AAA Swapping)")]
+    [Tooltip("Перетягни сюди папки (контейнери) з усіма деревами та кущами табору")]
+    public Transform[] natureRoots;
+    public Material foliageSummerMat;
+    public Material foliageAutumnMat;
+    public Material foliageWinterMat;
+
     [Header("Lighting - Sun (Base Colors)")]
     public Light directionalLight;
     public Color sunSummer = new Color(1f, 0.95f, 0.8f);
@@ -75,14 +83,87 @@ public class SmartSeasonManager : MonoBehaviour
     public float transitionDuration = 12f;
     private Coroutine transitionCoroutine;
 
+    // ОПТИМІЗАЦІЯ: Кешовані масиви для уникнення Garbage Collection
+    private ParticleSystem[] cachedWeatherVFX;
+    private List<Renderer> cachedFoliageRenderers = new List<Renderer>();
+    private Camera mainCam;
+
     private void Start()
     {
+        mainCam = Camera.main;
         totalSecondsPerSeason = minutesPerSeason * 60f;
         if (directionalLight != null) defaultSunIntensity = directionalLight.intensity;
 
+        // Кешуємо VFX один раз
+        cachedWeatherVFX = new ParticleSystem[] {
+            rainParticles != null ? rainParticles.GetComponent<ParticleSystem>() : null,
+            snowParticles != null ? snowParticles.GetComponent<ParticleSystem>() : null,
+            dustParticles != null ? dustParticles.GetComponent<ParticleSystem>() : null
+        };
+
         LoadProgress();
+        CacheFoliageRenderers();
         InvokeRepeating("UpdateDynamicWeather", 10f, 180f);
         ApplySeason(currentSeason);
+    }
+
+    private void CacheFoliageRenderers()
+    {
+        if (natureRoots == null || natureRoots.Length == 0) return;
+
+        foreach (Transform root in natureRoots)
+        {
+            if (root == null) continue;
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer rend in renderers)
+            {
+                if (rend is ParticleSystemRenderer) continue;
+                if (IsVFX(rend.gameObject.name)) continue;
+                cachedFoliageRenderers.Add(rend);
+            }
+        }
+    }
+
+    private bool IsWoodOrTrunk(string name)
+    {
+        return name.IndexOf("trunk", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("wood", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("bark", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("branch", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool IsVFX(string name)
+    {
+        return name.IndexOf("vfx", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("smoke", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+               name.IndexOf("effect", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private void UpdateFoliageMaterials(Season season)
+    {
+        Material targetMat = foliageSummerMat;
+        if (season == Season.Autumn || season == Season.EarlyAutumn || season == Season.LateAutumn) targetMat = foliageAutumnMat;
+        else if (season == Season.Winter) targetMat = foliageWinterMat;
+        else targetMat = foliageSummerMat;
+
+        if (targetMat == null || cachedFoliageRenderers.Count == 0) return;
+
+        foreach (Renderer rend in cachedFoliageRenderers)
+        {
+            if (rend == null) continue;
+            Material[] mats = rend.sharedMaterials;
+            bool changed = false;
+
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null) continue;
+                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mats[i].name)) continue;
+
+                mats[i] = targetMat;
+                changed = true;
+            }
+            if (changed) rend.sharedMaterials = mats;
+        }
     }
 
     private void Update()
@@ -166,6 +247,9 @@ public class SmartSeasonManager : MonoBehaviour
         if (winterProps) winterProps.SetActive(false);
         if (autumnProps) autumnProps.SetActive(false);
         if (playerFootprints) playerFootprints.SetActive(targetSeason == Season.Winter);
+
+        // ЗМІНА МАТЕРІАЛІВ ДЕРЕВ
+        UpdateFoliageMaterials(targetSeason);
 
         Color targetSun = Color.white;
         Color targetFog = Color.white;
