@@ -264,11 +264,11 @@ Material:
     - _Color_Tint: {r: 0.32940996, g: 0.5943396, b: 0.025231387, a: 1}
     - _Color_Top: {r: 0.34259343, g: 0.6037736, b: 0.042719822, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _Emissive: {r: 0.3584906, g: 0.18113919, b: 0.037201814, a: 0}
+    - _Emissive: {r: 0, g: 0, b: 0, a: 0}
     - _FoliageColorBottom: {r: 0.29356545, g: 0.46226418, b: 0.006541462, a: 1}
     - _FoliageColorTop: {r: 0.40962893, g: 0.5283019, b: 0.12709148, a: 1}
-    - _Foliage_Color_Bottom: {r: 0.3207547, g: 0.1634863, b: 0.03812743, a: 1}
-    - _Foliage_Color_Top: {r: 0.2905661, g: 0.1468791, b: 0.032346014, a: 1}
+    - _Foliage_Color_Bottom: {r: 0.7735849, g: 0.40787542, b: 0.11530785, a: 1}
+    - _Foliage_Color_Top: {r: 0.89433956, g: 0.4449965, b: 0.09280872, a: 1}
     - _Speed: {r: 0.16, g: 0.29, b: 0, a: 0}
     - _Sway_Wind_Direction: {r: 0, g: 0, b: 0, a: 0}
     - _WindSwayDirection: {r: 1, g: 0, b: 0, a: 0}
