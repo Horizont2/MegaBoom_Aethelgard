@@ -28,7 +28,7 @@ public class LevelUpManager : MonoBehaviour
     public List<UpgradeData> allPossibleUpgrades;
 
     [Header("AAA VFX")]
-    [Tooltip("Ефект, який програється на гравцеві після вибору апгрейду")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
     public GameObject playerUpgradeVFXPrefab;
 
     private PlayerController player;
@@ -59,6 +59,10 @@ public class LevelUpManager : MonoBehaviour
         if (randomButton != null) randomButton.interactable = true;
 
         GenerateRandomChoices();
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("LevelUp",
+                "Each level lets you pick one of three upgrades. Hover a card to read its effect, click to commit.", 6f);
     }
 
     private void GenerateRandomChoices()
@@ -173,13 +177,13 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeType.HealthRegen: if (player != null) player.healthRegenRate += upgrade.amount; break;
         }
 
-        // --- ВІДТВОРЕННЯ ЕФЕКТУ АПГРЕЙДУ (З ПЛАВНИМ ЗГАСАННЯМ) ---
+        // --- ВІпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) ---
         if (playerUpgradeVFXPrefab != null && player != null)
         {
             GameObject vfx = Instantiate(playerUpgradeVFXPrefab, player.transform.position, Quaternion.identity);
             vfx.transform.SetParent(player.transform);
 
-            // Запускаємо корутину для повільного згасання (наприклад, ефект діє 2 секунди)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ діє 2 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             StartCoroutine(FadeOutVFX(vfx, 2f));
         }
 
@@ -187,25 +191,25 @@ public class LevelUpManager : MonoBehaviour
         ResumeGame();
     }
 
-    // НОВИЙ МЕТОД: Плавно зупиняє Particle System замість жорсткого видалення
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Particle System пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private IEnumerator FadeOutVFX(GameObject vfx, float activeTime)
     {
-        // 1. Чекаємо, поки ефект "працює"
+        // 1. пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ"
         yield return new WaitForSeconds(activeTime);
 
         if (vfx != null)
         {
-            // 2. Знаходимо всі системи частинок всередині префабу і зупиняємо їх м'яко
+            // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ'пїЅпїЅпїЅ
             ParticleSystem[] pSystems = vfx.GetComponentsInChildren<ParticleSystem>();
             foreach (var ps in pSystems)
             {
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             }
 
-            // 3. Чекаємо ще 3 секунди, щоб старі іскри встигли розсіятися в повітрі
+            // 3. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 3 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
             yield return new WaitForSeconds(3f);
 
-            // 4. Тільки тепер видаляємо "пустий" об'єкт
+            // 4. ТіпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ'пїЅпїЅпїЅ
             if (vfx != null) Destroy(vfx);
         }
     }

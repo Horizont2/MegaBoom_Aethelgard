@@ -112,6 +112,10 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Shop",
+                "Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.", 7f);
+
         if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
         if (!PlayerPrefs.HasKey("SelectedWeaponID"))
         {

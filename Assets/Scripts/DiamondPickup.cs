@@ -188,6 +188,10 @@ public class DiamondPickup : MonoBehaviour
 
         playerController.GainDiamond(diamondAmount);
 
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("DiamondPickup",
+                "Diamonds are persistent currency. Carry them out alive — they're spent in the Shop on weapons, armor, and meta-upgrades.", 5f);
+
         foreach (Renderer r in renderers) if (r != null) r.enabled = false;
         this.enabled = false;
 

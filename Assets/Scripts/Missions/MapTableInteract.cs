@@ -45,13 +45,13 @@ public class MapTableInteract : MonoBehaviour
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
 
-        // --- НОВЕ: АВТОМАТИЧНЕ ВІДКРИТТЯ МАПИ ПІСЛЯ ЗАХОПЛЕННЯ РЕГІОНУ ---
+        // --- пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ВІпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ ПІпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅГІпїЅпїЅпїЅ ---
         if (PlayerPrefs.GetInt("AutoOpenMap", 0) == 1)
         {
             PlayerPrefs.SetInt("AutoOpenMap", 0);
             PlayerPrefs.Save();
 
-            // Чекаємо, поки сцена та UI остаточно завантажаться
+            // пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             yield return new WaitForSeconds(1.5f);
             activeSequence = StartCoroutine(OpenMapSequence());
         }
@@ -106,6 +106,10 @@ public class MapTableInteract : MonoBehaviour
         isTransitioning = true;
         isMapOpen = true;
 
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Map",
+                "Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.", 6f);
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
         if (GlobalHUD.Instance != null)
         {
@@ -120,7 +124,7 @@ public class MapTableInteract : MonoBehaviour
 
         Transform mainCam = Camera.main.transform;
 
-        // Зберігаємо позицію камери ТІЛЬКИ якщо вона ще не збережена з минулого разу (якщо ми авто-відкрили мапу з повітря, це краще не перезаписувати нулями)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ТІпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         if (savedCamPos == Vector3.zero)
         {
             savedCamPos = mainCam.position;

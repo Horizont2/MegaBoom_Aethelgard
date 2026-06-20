@@ -186,6 +186,10 @@ public class XpCrystal : MonoBehaviour
         playerController.GainXP(xpAmount);
         playerController.TriggerUIPop();
 
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("XpPickup",
+                "Enemies drop XP shards. Fill the XP bar to level up and pick a new upgrade.", 5f);
+
         if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.ReturnToPool(gameObject);
         else Destroy(gameObject);
     }

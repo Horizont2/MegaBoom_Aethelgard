@@ -382,6 +382,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         else if (currentStack >= 15) currentMultiplier = 2;
         else currentMultiplier = 1;
 
+        if (currentMultiplier > 1 && TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Stack",
+                "STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.", 6f);
+
         if (stackText != null)
         {
             stackText.text = "STACK: " + currentStack + "  |  x" + currentMultiplier;
@@ -844,6 +848,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     public void OpenPerfectDodgeWindow(Transform attacker, float duration)
     {
         dodgeWindowTimer = duration;
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("PerfectDodge",
+                "ELITE windup detected. Dash (<b>SHIFT</b>) right as their flash peaks to trigger Perfect Dodge — guaranteed crit + slow-mo.", 6f);
     }
 
     private IEnumerator PerfectDodgeSequence(Vector3 fallbackDirection)
@@ -977,6 +985,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (meleePoint == null || isCampMode) return;
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Attack",
+                "Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.", 6f);
 
         if (cameraFollow != null) cameraFollow.SetCombatState();
 
