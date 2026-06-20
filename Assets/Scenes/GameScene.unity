@@ -21315,7 +21315,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapLootSpawner
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
-  amountToSpawn: 500
+  amountToSpawn: 700
 --- !u!4 &1410339861
 Transform:
   m_ObjectHideFlags: 0

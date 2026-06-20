@@ -192,6 +192,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2118840309929652341}
   - component: {fileID: 2118840309912462549}
+  - component: {fileID: 420337419445653855}
   m_Layer: 15
   m_Name: Prefab_TreeLarge_01
   m_TagString: Untagged
@@ -249,6 +250,27 @@ LODGroup:
     renderers:
     - renderer: {fileID: 2118840309927883411}
   m_Enabled: 1
+--- !u!114 &420337419445653855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2118840309929815125}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  renderers:
+  - {fileID: 2118840309927883413}
+  - {fileID: 2118840309927883415}
+  - {fileID: 2118840309927883409}
+  - {fileID: 2118840309927883411}
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
 --- !u!1 &2118840309929815127
 GameObject:
   m_ObjectHideFlags: 0

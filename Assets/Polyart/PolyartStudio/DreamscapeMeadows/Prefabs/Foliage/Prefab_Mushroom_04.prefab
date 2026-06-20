@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 7886865815107608338}
   - component: {fileID: 7886865815106838322}
   - component: {fileID: 7886865815105707506}
+  - component: {fileID: 1131906567782787059}
   m_Layer: 0
   m_Name: Prefab_Mushroom_04
   m_TagString: Untagged
@@ -90,3 +91,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &1131906567782787059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7886865815107961650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5070ee6e3b994c4cb34c2fe7d3dc02a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
+  renderers:
+  - {fileID: 7886865815105707506}
+  animator: {fileID: 0}
+  lights: []
+  particles: []
+  isCurrentlyVisible: 1
