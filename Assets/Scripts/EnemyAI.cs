@@ -4,10 +4,6 @@ using System.Collections;
 
 public class EnemyAI : MonoBehaviour, IDamageable
 {
-    private static Transform s_cachedPlayer;
-    private static PlayerController s_cachedPlayerController;
-    private static readonly Collider[] s_neighborBuffer = new Collider[32];
-
     [Header("Archetype & Poise")]
     public bool isElite = false;
     public float maxPoise = 100f;
@@ -146,7 +142,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         currentPoise = maxPoise;
         UpdateHealthUI();
 
-        TryAcquirePlayer();
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            target = playerObj.transform;
+            playerTarget = playerObj.GetComponent<PlayerController>();
+        }
 
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
         StartCoroutine(SpawnRoutine());
@@ -203,30 +204,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (hpFill != null) hpFill.fillAmount = currentHealth / maxHealth;
     }
 
-    private void TryAcquirePlayer()
-    {
-        if (s_cachedPlayer == null || s_cachedPlayerController == null)
-        {
-            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null)
-            {
-                s_cachedPlayer = playerObj.transform;
-                s_cachedPlayerController = playerObj.GetComponent<PlayerController>();
-            }
-        }
-
-        if (s_cachedPlayer != null)
-        {
-            target = s_cachedPlayer;
-            playerTarget = s_cachedPlayerController;
-        }
-    }
-
     private void Update()
     {
         if (target == null && !isDead)
         {
-            TryAcquirePlayer();
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+            {
+                target = playerObj.transform;
+                playerTarget = playerObj.GetComponent<PlayerController>();
+            }
             if (target == null) return;
         }
 
@@ -272,10 +259,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
         Vector3 repulsion = Vector3.zero;
 
-        int neighborCount = Physics.OverlapSphereNonAlloc(currentPos, repulsionRadius, s_neighborBuffer, 1 << 9);
-        for (int i = 0; i < neighborCount; i++)
+        Collider[] neighbors = Physics.OverlapSphere(currentPos, repulsionRadius, 1 << 9);
+        foreach (Collider neighbor in neighbors)
         {
-            Collider neighbor = s_neighborBuffer[i];
             if (neighbor.gameObject != gameObject && !neighbor.isTrigger)
             {
                 Vector3 pushDir = currentPos - neighbor.transform.position;
@@ -496,24 +482,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // --- Drop loot through pool when available, fallback to Instantiate ---
-        Vector3 dropPos = transform.position + Vector3.up * 1f;
+        // --- ¡–ŒÕ≈¡≤…Õ»… ‘≤ — —œ¿¬Õ” À”“” (≤„ÌÓÛ∫ÏÓ Pool) ---
         if (xpCrystalPrefab != null)
         {
-            GameObject xp = null;
-            if (ObjectPoolManager.Instance != null)
-                xp = ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, dropPos, Quaternion.identity);
-            if (xp == null)
-                Instantiate(xpCrystalPrefab, dropPos, Quaternion.identity);
+            Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         }
 
         if (diamondPrefab != null && Random.value <= diamondDropChance)
         {
-            GameObject dia = null;
-            if (ObjectPoolManager.Instance != null)
-                dia = ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, dropPos, Quaternion.identity);
-            if (dia == null)
-                Instantiate(diamondPrefab, dropPos, Quaternion.identity);
+            Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         }
         // ------------------------------------
 

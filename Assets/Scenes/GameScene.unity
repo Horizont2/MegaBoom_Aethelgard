@@ -1789,7 +1789,7 @@ MonoBehaviour:
   terrainSmoothWidth: 20
   terrainSmoothStrength: 0.5
   allowFlatlandRivers: 1
-  waterDepthRatio: 0.2
+  waterDepthRatio: 0.5
   lakeDepthMultiplier: 2
   waterfallChance: 0
   sculptWaterfallCliffs: 1
