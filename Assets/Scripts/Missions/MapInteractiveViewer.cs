@@ -29,6 +29,22 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         mapRect = GetComponent<RectTransform>();
         parentViewport = transform.parent.GetComponent<RectTransform>();
         targetPosition = mapRect.anchoredPosition;
+
+        // Drag/scroll handlers need a Graphic with raycastTarget on the same
+        // GameObject вЂ” otherwise the pointer can fall through gaps between
+        // region buttons and dragging fails to start. Add a transparent
+        // Image as a safety net if no Graphic is wired.
+        Graphic existing = GetComponent<Graphic>();
+        if (existing == null)
+        {
+            Image img = gameObject.AddComponent<Image>();
+            img.color = new Color(0f, 0f, 0f, 0f);
+            img.raycastTarget = true;
+        }
+        else if (!existing.raycastTarget)
+        {
+            existing.raycastTarget = true;
+        }
     }
 
     private void OnEnable()
@@ -55,7 +71,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
 
     private void Update()
     {
-        // 1. ДИНАМІЧНИЙ МІНІМАЛЬНИЙ ЗУМ (не дозволяємо мапі бути меншою за екран)
+        // 1. пїЅпїЅпїЅпїЅМІпїЅпїЅпїЅпїЅ МІНІпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
         float viewWidth = parentViewport.rect.width;
         float viewHeight = parentViewport.rect.height;
         float minZoomX = viewWidth / mapRect.rect.width;
@@ -64,8 +80,8 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
 
         targetZoom = Mathf.Clamp(targetZoom, dynamicMinZoom, maxZoom);
 
-        // 2. ОБМЕЖЕННЯ ЦІЛЬОВОЇ ПОЗИЦІЇ (Target Position)
-        // Розраховуємо межі для ЦІЛЬОВОГО зуму, щоб при віддаленні мапа одразу стягувалась до центру
+        // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ЦІпїЅпїЅпїЅпїЅОЇ пїЅпїЅпїЅпїЅЦІпїЅ (Target Position)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ ЦІпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         float targetMapWidth = mapRect.rect.width * targetZoom;
         float targetMapHeight = mapRect.rect.height * targetZoom;
         float maxTargetX = Mathf.Max(0, (targetMapWidth - viewWidth) / 2f);
@@ -74,14 +90,14 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         targetPosition.x = Mathf.Clamp(targetPosition.x, -maxTargetX, maxTargetX);
         targetPosition.y = Mathf.Clamp(targetPosition.y, -maxTargetY, maxTargetY);
 
-        // 3. ПЛАВНИЙ ЗУМ ТА РУХ
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
         float currentZoom = Mathf.Lerp(mapRect.localScale.x, targetZoom, Time.unscaledDeltaTime * smoothZoomSpeed);
         mapRect.localScale = new Vector3(currentZoom, currentZoom, 1f);
 
         mapRect.anchoredPosition = Vector2.Lerp(mapRect.anchoredPosition, targetPosition, Time.unscaledDeltaTime * smoothDragSpeed);
 
-        // 4. ЖОРСТКЕ ОБМЕЖЕННЯ ФАКТИЧНОЇ ПОЗИЦІЇ (Current Position)
-        // Щоб навіть під час надшвидкого скролу краї мапи не "відставали" від екрану і не показували сцену
+        // 4. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅОЇ пїЅпїЅпїЅпїЅЦІпїЅ (Current Position)
+        // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         float currentMapWidth = mapRect.rect.width * currentZoom;
         float currentMapHeight = mapRect.rect.height * currentZoom;
         float maxCurrentX = Mathf.Max(0, (currentMapWidth - viewWidth) / 2f);
@@ -92,7 +108,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         clampedPos.y = Mathf.Clamp(clampedPos.y, -maxCurrentY, maxCurrentY);
         mapRect.anchoredPosition = clampedPos;
 
-        // 5. ПАРАЛАКС
+        // 5. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (parallaxLayer != null)
         {
             parallaxLayer.anchoredPosition = mapRect.anchoredPosition * parallaxStrength;
@@ -125,7 +141,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         {
             mapRect.localScale = new Vector3(targetZoom, targetZoom, 1f);
             mapRect.anchoredPosition = targetPosition;
-            // Наступний кадр Update() сам математично ідеально затисне цільові та фактичні координати
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ Update() пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
     }
 

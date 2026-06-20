@@ -56,6 +56,14 @@ public class WorldEncounterDirector : MonoBehaviour
     [Tooltip("Блокувати радіальний EnemySpawner, щоб не було безглуздих спавнів навколо гравця")]
     public bool blockRandomSpawnerOnStart = true;
 
+    [Header("Conquered Regions")]
+    [Tooltip("Чи спавнити патрулі у вже захопленому регіоні (для атмосфери/farming)")]
+    public bool spawnInConqueredRegion = true;
+    [Tooltip("Множник кількості енкаунтерів у захопленому регіоні (0.3 = 30% від звичайного)")]
+    [Range(0f, 1f)] public float conqueredCountMultiplier = 0.4f;
+    [Tooltip("У захоплених регіонах вимикаємо табори (атмосфера 'зачистили' — лиш дрібні патрулі)")]
+    public bool conqueredPatrolsOnly = true;
+
     [Header("Diagnostics")]
     public bool logPlacements = false;
 
@@ -76,35 +84,48 @@ public class WorldEncounterDirector : MonoBehaviour
         // testFallbackRegion even when PlayerPrefs was clean).
         yield return null;
 
-        if (!IsActiveRegionMission())
+        if (!IsAnyRegionMode())
+        {
+            enabled = false;
+            yield break;
+        }
+
+        bool conquered = IsConqueredRegion();
+        if (conquered && !spawnInConqueredRegion)
         {
             enabled = false;
             yield break;
         }
 
         if (blockRandomSpawnerOnStart) EnemySpawner.IsSpawningBlocked = true;
-        yield return StartCoroutine(RunDirectorRoutine());
+        yield return StartCoroutine(RunDirectorRoutine(conquered));
     }
 
-    public static bool IsActiveRegionMission()
+    /// <summary>True when in a region mission flow (active OR conquered).</summary>
+    public static bool IsAnyRegionMode()
     {
         if (PlayerPrefs.GetInt("IsRegionMission", 0) != 1) return false;
-
-        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
-        {
-            if (GameManager.Instance.currentRegion.currentState == RegionState.Conquered)
-                return false;
-        }
-        else if (MissionInitializer.PendingMissionRegion == null)
-        {
-            // No region data wired up — refuse rather than spawn into a blank slate.
-            return false;
-        }
-
-        return true;
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) return true;
+        if (MissionInitializer.PendingMissionRegion != null) return true;
+        return false;
     }
 
-    private IEnumerator RunDirectorRoutine()
+    /// <summary>True when the region has already been purified.</summary>
+    public static bool IsConqueredRegion()
+    {
+        RegionData r = (GameManager.Instance != null) ? GameManager.Instance.currentRegion : null;
+        if (r == null) r = MissionInitializer.PendingMissionRegion;
+        return r != null && r.currentState == RegionState.Conquered;
+    }
+
+    /// <summary>Legacy gate: active (non-conquered) region mission only.</summary>
+    public static bool IsActiveRegionMission()
+    {
+        if (!IsAnyRegionMode()) return false;
+        return !IsConqueredRegion();
+    }
+
+    private IEnumerator RunDirectorRoutine(bool conqueredMode)
     {
         float deadline = Time.unscaledTime + 30f;
         while (!WorldGenerator.IsGenerationDone && Time.unscaledTime < deadline)
@@ -129,32 +150,43 @@ public class WorldEncounterDirector : MonoBehaviour
         bool isWinter = ResolveIsWinter();
         RegionTotem[] totems = FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
 
+        int targetCount = conqueredMode
+            ? Mathf.Max(1, Mathf.RoundToInt(encounterCount * conqueredCountMultiplier))
+            : encounterCount;
+
         int placed = 0;
         int attempts = 0;
-        int maxAttempts = encounterCount * 12;
+        int maxAttempts = targetCount * 12;
 
-        while (placed < encounterCount && attempts < maxAttempts)
+        while (placed < targetCount && attempts < maxAttempts)
         {
             attempts++;
             Vector3 candidate = SampleCandidatePosition();
             if (!IsValidPlacement(candidate, totems)) continue;
 
-            float campRatio = isWinter ? winterCampRatio : defaultCampRatio;
-            bool isCamp = Random.value < campRatio && campfirePrefab != null;
+            bool isCamp;
+            if (conqueredMode && conqueredPatrolsOnly)
+            {
+                isCamp = false;
+            }
+            else
+            {
+                float campRatio = isWinter ? winterCampRatio : defaultCampRatio;
+                isCamp = Random.value < campRatio && campfirePrefab != null;
+            }
 
             SpawnEncounter(candidate, isCamp);
             placedPositions.Add(candidate);
             placed++;
 
             if (logPlacements)
-                Debug.Log($"[WorldEncounter] Placed {(isCamp ? "camp" : "patrol")} at {candidate} ({placed}/{encounterCount})");
+                Debug.Log($"[WorldEncounter] Placed {(isCamp ? "camp" : "patrol")} at {candidate} ({placed}/{targetCount}) {(conqueredMode ? "[conquered]" : "")}");
 
-            // Spread cost across frames to keep startup smooth
             if ((placed % 3) == 0) yield return null;
         }
 
-        if (placed < encounterCount)
-            Debug.LogWarning($"[WorldEncounter] Only placed {placed}/{encounterCount} encounters (attempts={attempts}). Reduce minSeparation or encounterCount.");
+        if (placed < targetCount)
+            Debug.LogWarning($"[WorldEncounter] Only placed {placed}/{targetCount} encounters (attempts={attempts}). Reduce minSeparation or encounterCount.");
     }
 
     private bool ResolveIsWinter()

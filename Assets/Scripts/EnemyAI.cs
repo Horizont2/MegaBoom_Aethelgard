@@ -127,22 +127,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
 
-        float minutesInScene = Time.timeSinceLevelLoad / 60f;
-        float timeMultiplier = 1f + (minutesInScene * 0.05f);
+        float timeMultiplier = PowerSystemManager.CalculateTimeMultiplier(Time.timeSinceLevelLoad);
 
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
         {
             RegionData region = GameManager.Instance.currentRegion;
-            int playerPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
-            int powerDelta = playerPower - region.recommendedPower;
+            int playerPower = PowerSystemManager.Instance != null
+                ? PowerSystemManager.Instance.CalculatePlayerPower()
+                : PlayerPrefs.GetInt("PlayerTotalPower", 50);
 
-            float dynamicMultiplier = 1f;
-            if (powerDelta < 0) dynamicMultiplier = Mathf.Clamp(1f + (Mathf.Abs(powerDelta) * 0.015f), 1f, 4.0f);
-            else if (powerDelta > 0) dynamicMultiplier = Mathf.Clamp(1f - (powerDelta * 0.005f), 0.7f, 1f);
+            float dynamicMultiplier = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, region.recommendedPower);
 
             maxHealth *= region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier;
             damage *= region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
-            if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.2f;
+            if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.15f;
 
             xpRewardMultiplier = region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier * 0.5f;
         }
@@ -469,18 +467,37 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", false);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
+        // Threat indicator: trigger for every attacker, not just elites.
+        // It's the single best readability cue the player has for off-screen
+        // hits, so we always raise it during the windup.
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
+
         if (isElite && playerTarget != null)
         {
             playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime + 0.6f);
 
             if (weaponGlintVFX != null && ObjectPoolManager.Instance != null)
                 ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
-
-            if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform);
         }
 
-        SetColor(isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : Color.red));
-        yield return new WaitForSeconds(attackTelegraphTime);
+        // First-time combat tutorial — fires once the very first attack any
+        // enemy ever telegraphs against the player.
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("CombatTelegraph",
+                "TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.", 5f);
+
+        // Pulse the color across the windup instead of holding a static
+        // red — the flicker makes the windup readable even mid-melee chaos.
+        Color baseTele = isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f));
+        Color flashTele = Color.white;
+        float elapsed = 0f;
+        while (elapsed < attackTelegraphTime)
+        {
+            elapsed += Time.deltaTime;
+            float pulse = Mathf.PingPong(elapsed * 8f, 1f);
+            SetColor(Color.Lerp(baseTele, flashTele, pulse));
+            yield return null;
+        }
         ResetColor();
 
         if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.5f)

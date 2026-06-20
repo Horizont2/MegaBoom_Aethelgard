@@ -94,7 +94,15 @@ public class RegionTotem : MonoBehaviour
         {
             if (!isPromptShowing && GlobalHUD.Instance != null)
             {
-                GlobalHUD.Instance.ShowPrompt("[F] PURIFY TOTEM");
+                if (TutorialHints.Instance != null && !TutorialHints.Instance.HasSeen("Totem"))
+                {
+                    TutorialHints.Instance.ShowIfNew("Totem",
+                        "Stand on the corrupted totem and press <b>F</b> to purify it. A wave of enemies will spawn — survive to claim the region.", 6f);
+                }
+                else
+                {
+                    GlobalHUD.Instance.ShowPrompt("[F] PURIFY TOTEM");
+                }
                 isPromptShowing = true;
             }
 
@@ -131,11 +139,15 @@ public class RegionTotem : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
-        float recommendedPower = manager.currentRegion != null ? manager.currentRegion.recommendedPower : 100;
+        int recommendedPower = manager.currentRegion != null ? manager.currentRegion.recommendedPower : 100;
         float hpMultBase = manager.currentRegion != null ? manager.currentRegion.enemyHpMultiplier : 1f;
         float dmgMultBase = manager.currentRegion != null ? manager.currentRegion.enemyDamageMultiplier : 1f;
 
-        float difficultyMult = Mathf.Clamp(1f + (Mathf.Abs(playerPower - recommendedPower) * 0.02f), 0.7f, 3.0f);
+        // Old formula used Mathf.Abs which made the curve symmetric, so being
+        // OVER-recommended also scaled difficulty UP — the stronger you got,
+        // the harder totems became. Use the shared helper that floors at 0.7x
+        // for over-leveled and caps at 2x for under-leveled.
+        float difficultyMult = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, recommendedPower);
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
 

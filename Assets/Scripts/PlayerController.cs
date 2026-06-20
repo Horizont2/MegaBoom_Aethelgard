@@ -185,6 +185,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
+
+        if (!isCampMode) StartCoroutine(FireOnboardingHints());
     }
 
     public void TriggerFootstepDust()
@@ -310,6 +312,24 @@ public class PlayerController : MonoBehaviour, IDamageable
             }
         }
         if (characterController != null) characterController.enabled = true;
+    }
+
+    private IEnumerator FireOnboardingHints()
+    {
+        // Give the world a beat to settle so the very first prompt doesn't fight
+        // the title cinematic / region name reveal.
+        yield return new WaitForSecondsRealtime(2.5f);
+        if (TutorialHints.Instance == null) yield break;
+
+        TutorialHints.Instance.ShowIfNew("Move",
+            "WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.");
+
+        if (grenadePrefab != null)
+        {
+            yield return new WaitForSecondsRealtime(8f);
+            TutorialHints.Instance.ShowIfNew("Grenade",
+                "Hold <b>G</b> to aim a grenade — releases when you let go. Slows time while aiming.");
+        }
     }
 
     private void ApplyMetaUpgrades()

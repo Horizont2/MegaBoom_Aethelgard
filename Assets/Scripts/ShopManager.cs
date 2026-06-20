@@ -581,7 +581,12 @@ public class ShopManager : MonoBehaviour
 
         PlayerPrefs.SetFloat("EquippedArmorHealth", totalArmorHealth);
         PlayerPrefs.SetFloat("EquippedArmorReduction", totalArmorReduction);
+        // baseTotal is the GEAR-only power score (weapon + armor). Persist it
+        // separately so PowerSystemManager can fold meta-upgrades and the
+        // forge in on top without double-counting.
+        PlayerPrefs.SetInt("PlayerTotalPower_Gear", baseTotal);
         PlayerPrefs.SetInt("PlayerTotalPower", baseTotal);
+        if (PowerSystemManager.Instance != null) PowerSystemManager.Instance.RefreshAndSave();
     }
 
     private void SpawnDummyHero()
@@ -613,7 +618,7 @@ public class ShopManager : MonoBehaviour
         if (currentWeaponModel != null) DestroyImmediate(currentWeaponModel);
         if (currentHeroModel == null || w.shopPrefab == null) return;
 
-        // ФІКС: Шукаємо наш ідеальний сокет першим!
+        // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!
         Transform socket = FindDeepChild(currentHeroModel.transform, "WeaponSocket");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "handslot.r");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_r");
@@ -664,7 +669,7 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // ФІКС: Повернуто підтримку GlobalHUD.Instance!
+        // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ GlobalHUD.Instance!
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);

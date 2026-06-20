@@ -25,7 +25,6 @@ public class ThreatUI : MonoBehaviour
     private void Start()
     {
         mainCam = Camera.main;
-        // Гравця може ще не бути (він генерується), тому знайдемо його пізніше!
         FindPlayerIfNeeded();
     }
 
@@ -36,13 +35,21 @@ public class ThreatUI : MonoBehaviour
             GameObject p = GameObject.FindGameObjectWithTag("Player");
             if (p != null) playerTrans = p.transform;
         }
+        // Camera.main can be null when HUD_Canvas loads before the gameplay
+        // camera, in which case ThreatRoutine would NRE on mainCam.transform.
+        if (mainCam == null) mainCam = Camera.main;
     }
 
     public void ShowThreat(Transform attacker, float duration = 0.8f)
     {
-        FindPlayerIfNeeded(); // ФІКС: Шукаємо гравця кожен раз, якщо він загубився
+        FindPlayerIfNeeded();
 
-        if (threatIndicatorImage == null || playerTrans == null) return;
+        if (threatIndicatorImage == null)
+        {
+            Debug.LogWarning("[ThreatUI] threatIndicatorImage isn't wired in the inspector вЂ” threat icon will never display.");
+            return;
+        }
+        if (playerTrans == null) return;
 
         currentAttacker = attacker;
         displayDuration = duration;
@@ -68,7 +75,7 @@ public class ThreatUI : MonoBehaviour
         {
             elapsed += Time.deltaTime;
 
-            if (attacker != null)
+            if (attacker != null && mainCam != null)
             {
                 Vector3 directionToEnemy = attacker.position - playerTrans.position;
                 directionToEnemy.y = 0;
@@ -78,6 +85,11 @@ public class ThreatUI : MonoBehaviour
 
                 float angle = Vector3.SignedAngle(playerForward, directionToEnemy, Vector3.up);
                 transform.localRotation = Quaternion.Euler(0, 0, -angle);
+            }
+            else if (mainCam == null)
+            {
+                // Camera came online late (HUD loaded first). Re-acquire.
+                mainCam = Camera.main;
             }
 
             float t = elapsed / displayDuration;
