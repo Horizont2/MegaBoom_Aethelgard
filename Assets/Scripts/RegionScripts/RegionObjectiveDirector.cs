@@ -1,30 +1,42 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 
 public class RegionObjectiveDirector : MonoBehaviour
 {
     [Header("Sky Beacon")]
     [Tooltip("Висота світлового стовпа над тотемом (м)")]
-    public float beaconHeight = 90f;
+    public float beaconHeight = 120f;
     [Tooltip("Діаметр світлового стовпа (м)")]
-    public float beaconRadius = 0.7f;
-    [Tooltip("Колір стовпа на цілі, на яку зараз треба йти")]
+    public float beaconDiameter = 0.5f;
+    [Tooltip("Колір стовпа на активному тотемі")]
     public Color activeBeaconColor = new Color(1f, 0.25f, 0.15f, 0.85f);
     [Tooltip("Опціональний кастомний матеріал. Якщо null — створюється на льоту з URP/Unlit")]
     public Material beaconMaterialTemplate;
     [Tooltip("Сила пульсації стовпа (0 = без пульсу)")]
     [Range(0f, 1f)] public float pulseStrength = 0.35f;
     public float pulseSpeed = 1.6f;
+    [Tooltip("Вертикальний підйом основи стовпа над тотемом (м)")]
+    public float beaconBaseOffset = 4f;
 
     [Header("Compass Integration")]
-    [Tooltip("Додати CompassMarkerItem до тотемів, щоб вони з'являлись на компасі гравця")]
     public bool addCompassMarkers = true;
 
+    [Header("Distance Label (Worldspace TMP)")]
+    [Tooltip("Показувати worldspace плашку дистанції над найближчим тотемом")]
+    public bool showDistanceLabel = true;
+    [Tooltip("Розмір шрифту 3D TMP (5-12 — норм)")]
+    public float labelFontSize = 7f;
+    [Tooltip("Висота плашки над тотемом (м)")]
+    public float labelHeight = 6f;
+    [Tooltip("Текст-префікс перед дистанцією")]
+    public string labelPrefix = "PURIFY TOTEM";
+    [Tooltip("TMP_FontAsset. Якщо null — пробує LiberationSans SDF (за замовчуванням у TMP Essentials)")]
+    public TMP_FontAsset labelFontAsset;
+
     [Header("Search Timing")]
-    [Tooltip("Скільки секунд чекати на появу тотемів у сцені")]
     public float searchTimeout = 30f;
-    [Tooltip("Інтервал оновлення видимості маяків")]
     public float visibilityScanInterval = 0.4f;
 
     private class BeaconHandle
@@ -38,6 +50,12 @@ public class RegionObjectiveDirector : MonoBehaviour
     private readonly List<BeaconHandle> beacons = new List<BeaconHandle>();
     private float scanTimer = 0f;
     private bool initialized = false;
+    private Transform player;
+
+    // Distance label (single instance, follows the closest active totem)
+    private GameObject distanceLabel;
+    private TextMeshPro distanceText;
+    private Transform mainCamTransform;
 
     private void Start()
     {
@@ -46,9 +64,7 @@ public class RegionObjectiveDirector : MonoBehaviour
 
     private IEnumerator InitRoutine()
     {
-        // Wait one frame so MissionInitializer.Start can set the region-mission
-        // flag (otherwise non-mission survival mode would still get beacons +
-        // a compass marker overlay).
+        // Let MissionInitializer.Start() flip the flag first
         yield return null;
 
         if (!WorldEncounterDirector.IsActiveRegionMission())
@@ -76,10 +92,14 @@ public class RegionObjectiveDirector : MonoBehaviour
         {
             CreateBeacon(found[i]);
             if (addCompassMarkers && found[i].GetComponent<CompassMarkerItem>() == null)
-            {
                 found[i].gameObject.AddComponent<CompassMarkerItem>();
-            }
         }
+
+        if (showDistanceLabel) CreateDistanceLabel();
+
+        GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+        if (pObj != null) player = pObj.transform;
+        if (Camera.main != null) mainCamTransform = Camera.main.transform;
 
         initialized = true;
     }
@@ -94,11 +114,14 @@ public class RegionObjectiveDirector : MonoBehaviour
         Collider col = beacon.GetComponent<Collider>();
         if (col != null) Destroy(col);
 
-        beacon.transform.SetParent(totem.transform, false);
-        beacon.transform.localPosition = Vector3.up * (beaconHeight * 0.5f + 3f);
-        beacon.transform.localRotation = Quaternion.identity;
-        // Cylinder primitive is 2m tall by default => scale Y by half-height
-        beacon.transform.localScale = new Vector3(beaconRadius * 2f, beaconHeight * 0.5f, beaconRadius * 2f);
+        // Don't parent — totem may carry weird rotation/scale that would
+        // tip the pillar over or stretch it sideways. Place in world space.
+        beacon.transform.SetParent(null);
+        beacon.transform.position = totem.transform.position + Vector3.up * (beaconHeight * 0.5f + beaconBaseOffset);
+        beacon.transform.rotation = Quaternion.identity;
+        // Unity's cylinder primitive is 1m diameter and 2m tall at scale (1,1,1),
+        // so to get world (diameter, height) we use scale (diameter, height/2, diameter).
+        beacon.transform.localScale = new Vector3(beaconDiameter, beaconHeight * 0.5f, beaconDiameter);
 
         Material mat = BuildBeaconMaterial();
         Renderer rend = beacon.GetComponent<Renderer>();
@@ -133,7 +156,6 @@ public class RegionObjectiveDirector : MonoBehaviour
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", activeBeaconColor);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", activeBeaconColor);
 
-        // URP transparent surface
         if (mat.HasProperty("_Surface"))
         {
             mat.SetFloat("_Surface", 1f);
@@ -156,6 +178,30 @@ public class RegionObjectiveDirector : MonoBehaviour
         return mat;
     }
 
+    private void CreateDistanceLabel()
+    {
+        distanceLabel = new GameObject("ObjectiveDistanceLabel");
+        distanceText = distanceLabel.AddComponent<TextMeshPro>();
+
+        // Try wired-up font first, then fall back to TMP's default LiberationSans
+        if (labelFontAsset != null) distanceText.font = labelFontAsset;
+        else
+        {
+            TMP_FontAsset fallback = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (fallback != null) distanceText.font = fallback;
+        }
+
+        distanceText.fontSize = labelFontSize;
+        distanceText.alignment = TextAlignmentOptions.Center;
+        distanceText.color = activeBeaconColor;
+        distanceText.text = labelPrefix;
+        distanceText.fontStyle = FontStyles.Bold;
+        distanceText.outlineWidth = 0.2f;
+        distanceText.outlineColor = Color.black;
+
+        distanceLabel.SetActive(false);
+    }
+
     private void Update()
     {
         if (!initialized || beacons.Count == 0) return;
@@ -166,21 +212,66 @@ public class RegionObjectiveDirector : MonoBehaviour
 
         float pulse = pulseStrength > 0f ? 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseStrength : 1f;
 
+        BeaconHandle closestActive = null;
+        float closestDistSqr = float.MaxValue;
+        Vector3 playerPos = player != null ? player.position : transform.position;
+
         for (int i = 0; i < beacons.Count; i++)
         {
             BeaconHandle h = beacons[i];
             if (h.totem == null || h.beacon == null) continue;
 
-            if (runScan)
-            {
-                bool shouldShow = ShouldBeaconBeVisible(h.totem);
-                if (h.beacon.activeSelf != shouldShow) h.beacon.SetActive(shouldShow);
-            }
+            bool shouldShow = ShouldBeaconBeVisible(h.totem);
+
+            if (runScan && h.beacon.activeSelf != shouldShow)
+                h.beacon.SetActive(shouldShow);
 
             if (h.beacon.activeSelf && pulseStrength > 0f && h.material != null && h.material.HasProperty("_EmissionColor"))
-            {
                 h.material.SetColor("_EmissionColor", h.baseColor * (5f * pulse));
+
+            if (shouldShow && player != null)
+            {
+                float dsq = (h.totem.transform.position - playerPos).sqrMagnitude;
+                if (dsq < closestDistSqr)
+                {
+                    closestDistSqr = dsq;
+                    closestActive = h;
+                }
             }
+        }
+
+        UpdateDistanceLabel(closestActive, closestDistSqr);
+    }
+
+    private void UpdateDistanceLabel(BeaconHandle closestActive, float closestDistSqr)
+    {
+        if (distanceLabel == null) return;
+
+        if (closestActive == null || player == null)
+        {
+            if (distanceLabel.activeSelf) distanceLabel.SetActive(false);
+            return;
+        }
+
+        if (!distanceLabel.activeSelf) distanceLabel.SetActive(true);
+
+        Vector3 totemPos = closestActive.totem.transform.position;
+        distanceLabel.transform.position = totemPos + Vector3.up * labelHeight;
+
+        if (mainCamTransform == null && Camera.main != null) mainCamTransform = Camera.main.transform;
+        if (mainCamTransform != null)
+        {
+            // Billboard — face away from camera so text reads upright from the player's view.
+            Vector3 fwd = distanceLabel.transform.position - mainCamTransform.position;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude > 0.01f)
+                distanceLabel.transform.rotation = Quaternion.LookRotation(fwd.normalized);
+        }
+
+        if (distanceText != null)
+        {
+            float dist = Mathf.Sqrt(closestDistSqr);
+            distanceText.text = $"{labelPrefix}\n<size={labelFontSize * 1.3f}>{Mathf.CeilToInt(dist)} m</size>";
         }
     }
 
@@ -188,8 +279,6 @@ public class RegionObjectiveDirector : MonoBehaviour
     {
         if (totem.isPurified) return false;
         if (totem.isActivated) return false;
-        // Mirror RegionManager logic: while interactHintVFX is wired up, follow its visibility.
-        // Otherwise fall back to a sensible default (visible whenever totem is unpurified+inactive).
         if (totem.interactHintVFX != null) return totem.interactHintVFX.activeSelf;
         return true;
     }

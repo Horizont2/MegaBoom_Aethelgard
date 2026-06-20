@@ -81,9 +81,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // --- Passive / Encounter Group Mode (configured by EnemyEncounterGroup) ---
     [HideInInspector] public bool startPassive = false;
     [HideInInspector] public Vector3 anchorPoint;
+    [HideInInspector] public Transform anchorTransform;
     [HideInInspector] public float roamRadius = 3.5f;
     [HideInInspector] public float aggroRange = 14f;
     [HideInInspector] public EnemyEncounterGroup parentGroup;
+    [HideInInspector] public bool roamWhilePassive = true;
+    [HideInInspector] public bool faceAnchorWhenIdle = false;
     private bool isAggroed = false;
     private Vector3 currentRoamTarget;
     private float nextRoamPickTime;
@@ -356,8 +359,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void UpdatePassiveBehavior()
     {
-        Vector3 anchor = parentGroup != null ? parentGroup.transform.position : anchorPoint;
+        Vector3 anchor = anchorTransform != null ? anchorTransform.position : anchorPoint;
 
+        // Aggro check (every 200ms)
         passiveAggroCheckTimer -= Time.deltaTime;
         if (passiveAggroCheckTimer <= 0f && target != null)
         {
@@ -371,43 +375,83 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        if (Time.time >= nextRoamPickTime || Vector3.SqrMagnitude(transform.position - currentRoamTarget) < 0.6f)
+        // Pick wander target. When roamWhilePassive is false (camp guards) we
+        // stick to our personal anchor so nobody walks circles around the fire.
+        if (roamWhilePassive)
         {
-            Vector2 r = Random.insideUnitCircle * roamRadius;
-            currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
-            if (Terrain.activeTerrain != null)
+            if (Time.time >= nextRoamPickTime || Vector3.SqrMagnitude(transform.position - currentRoamTarget) < 0.6f)
             {
-                currentRoamTarget.y = Terrain.activeTerrain.SampleHeight(currentRoamTarget) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                Vector2 r = Random.insideUnitCircle * roamRadius;
+                currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
+                if (Terrain.activeTerrain != null)
+                    currentRoamTarget.y = Terrain.activeTerrain.SampleHeight(currentRoamTarget) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
             }
-            nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
+        }
+        else
+        {
+            currentRoamTarget = anchor;
         }
 
         Vector3 toTarget = currentRoamTarget - transform.position;
         toTarget.y = 0f;
         float distXZ = toTarget.magnitude;
 
-        if (distXZ > 0.2f)
+        // Stationary deadband for camp guards is larger so they don't twitch
+        // every frame to "correct" their position by a few cm.
+        float standThreshold = roamWhilePassive ? 0.2f : 0.6f;
+
+        if (distXZ > standThreshold)
         {
             Vector3 moveDir = toTarget / distXZ;
-            Vector3 nextPos = transform.position + moveDir * (actualMoveSpeed * 0.4f) * Time.deltaTime;
+            float passiveSpeed = actualMoveSpeed * 0.4f;
+            Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
             if (Terrain.activeTerrain != null)
-            {
                 nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
-            }
             transform.position = nextPos;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
-            if (animator != null) animator.SetBool("isMoving", true);
+            SetMovingAnim(true, passiveSpeed);
         }
         else
         {
-            if (animator != null) animator.SetBool("isMoving", false);
+            // Standing — optionally turn to face the anchor (campfire) for
+            // a natural "huddling around the fire" look.
+            if (faceAnchorWhenIdle)
+            {
+                Vector3 lookAt = anchor - transform.position;
+                lookAt.y = 0f;
+                if (lookAt.sqrMagnitude > 0.01f)
+                {
+                    Quaternion target = Quaternion.LookRotation(lookAt.normalized);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, target, 2f * Time.deltaTime);
+                }
+            }
+            SetMovingAnim(false, 0f);
         }
+    }
+
+    private void SetMovingAnim(bool moving, float speed)
+    {
+        if (animator == null || !animator.enabled) return;
+        animator.SetBool("isMoving", moving);
+        // Defensive: some skeleton controllers drive blend trees off a Speed float.
+        // SetFloat silently no-ops when the parameter doesn't exist.
+        animator.SetFloat("Speed", moving ? speed : 0f);
     }
 
     public void Aggro()
     {
         if (isAggroed) return;
         isAggroed = true;
+
+        // Snap to face the player so the reaction reads instantly.
+        if (target != null)
+        {
+            Vector3 look = target.position - transform.position;
+            look.y = 0f;
+            if (look.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(look.normalized);
+        }
     }
 
     private void CheckNightBuff()

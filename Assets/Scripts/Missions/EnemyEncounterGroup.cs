@@ -12,49 +12,44 @@ public class EnemyEncounterGroup : MonoBehaviour
     [Header("Enemy Setup")]
     public GameObject[] enemyPrefabs;
     [Range(1, 8)] public int enemyCount = 3;
-    [Tooltip("Радіус, у якому вороги розставляються відносно центру групи на спавні")]
+    [Tooltip("Радіус, у якому вороги розставляються відносно центру групи. Для кампу — радіус кільця навколо вогнища")]
     public float spawnSpread = 2.5f;
 
     [Header("Passive Behavior")]
-    [Tooltip("Радіус, у якому вороги блукають навколо центру групи")]
+    [Tooltip("Радіус блукання навколо anchor у патрулі. Для кампу не використовується (камп-стражі стоять)")]
     public float roamRadius = 3.5f;
-    [Tooltip("Дистанція, на якій група агриться на гравця")]
+    [Tooltip("Дистанція, на якій група агриться")]
     public float aggroRange = 14f;
 
     [Header("Patrol (Style=Patrol)")]
-    [Tooltip("Якщо передано — група циклічно ходить по цих точках. Інакше WorldEncounterDirector сам генерує waypoints")]
+    [Tooltip("Якщо передано — група циклічно ходить по точках. Інакше WorldEncounterDirector згенерує їх")]
     public Transform[] patrolPoints;
-    [Tooltip("Скільки секунд група стоїть на кожному waypoint перед переходом")]
+    [Tooltip("Скільки секунд група стоїть на кожному waypoint")]
     public float waypointPauseDuration = 6f;
-    [Tooltip("Швидкість руху групи між waypoints")]
+    [Tooltip("Швидкість руху центру групи між waypoints")]
     public float patrolMoveSpeed = 1.6f;
 
     [Header("Camp (Style=Camp)")]
-    [Tooltip("Префаб вогнища у центрі табору. Якщо null — нічого не спавнить")]
+    [Tooltip("Префаб вогнища у центрі табору. Якщо null — без вогнища")]
     public GameObject campfirePrefab;
+    [Tooltip("Чи мають вороги повертатися обличчям до вогнища, коли стоять")]
+    public bool campGuardsFaceFire = true;
 
     [Header("Lifecycle")]
-    [Tooltip("Якщо true — група сама спавнить ворогів на Start(). Інакше викличте SpawnGroup() ззовні")]
     public bool autoStart = true;
+    [Tooltip("Винагорода, що випадає на місці групи, коли всіх вбили. Звичайно XP кристал")]
+    public GameObject clearedRewardPrefab;
+    [Tooltip("Скільки штук винагороди упасти при зачистці")]
+    [Range(0, 8)] public int clearedRewardCount = 3;
 
     private readonly List<EnemyAI> spawnedEnemies = new List<EnemyAI>(8);
     private int currentPatrolIndex = 0;
     private bool spawned = false;
+    private bool clearedFired = false;
     private GameObject spawnedCampfire;
+    private float clearedCheckTimer = 0f;
 
     public IReadOnlyList<EnemyAI> SpawnedEnemies => spawnedEnemies;
-    public bool AllAggroed
-    {
-        get
-        {
-            for (int i = 0; i < spawnedEnemies.Count; i++)
-            {
-                EnemyAI e = spawnedEnemies[i];
-                if (e != null && !e.IsAggroed) return false;
-            }
-            return true;
-        }
-    }
 
     private void Start()
     {
@@ -66,9 +61,16 @@ public class EnemyEncounterGroup : MonoBehaviour
         if (spawned) return;
         spawned = true;
 
+        Vector3 groupCenter = GroundedCenter(transform.position);
+        transform.position = groupCenter;
+
         if (style == EncounterStyle.Camp && campfirePrefab != null)
         {
-            spawnedCampfire = Instantiate(campfirePrefab, transform.position, Quaternion.identity, transform);
+            // Preserve the prefab's own rotation so meshes don't end up sideways.
+            // Don't parent under the (randomly-rotated) group root either —
+            // worldPositionStays would still drag scale from the parent.
+            spawnedCampfire = Instantiate(campfirePrefab, groupCenter, campfirePrefab.transform.rotation);
+            spawnedCampfire.transform.SetParent(transform, true);
         }
 
         if (enemyPrefabs == null || enemyPrefabs.Length == 0) return;
@@ -78,33 +80,55 @@ public class EnemyEncounterGroup : MonoBehaviour
             GameObject prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
             if (prefab == null) continue;
 
-            Vector2 off = Random.insideUnitCircle * spawnSpread;
-            Vector3 pos = transform.position + new Vector3(off.x, 0f, off.y);
-            if (Terrain.activeTerrain != null)
-                pos.y = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+            Vector3 spawnPos;
+            Quaternion spawnRot;
 
-            // Face campfire (camp) or random direction (patrol)
-            Quaternion rot;
             if (style == EncounterStyle.Camp)
             {
-                Vector3 toCenter = transform.position - pos;
-                toCenter.y = 0f;
-                rot = toCenter.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toCenter) : Quaternion.identity;
+                // Even ring around the fire so it reads as a council, not a mob.
+                float angle = (i / (float)enemyCount) * Mathf.PI * 2f + Random.Range(-0.15f, 0.15f);
+                spawnPos = groupCenter + new Vector3(Mathf.Cos(angle) * spawnSpread, 0f, Mathf.Sin(angle) * spawnSpread);
+                spawnPos = GroundedCenter(spawnPos);
+
+                Vector3 inward = groupCenter - spawnPos;
+                inward.y = 0f;
+                spawnRot = inward.sqrMagnitude > 0.01f ? Quaternion.LookRotation(inward.normalized) : Quaternion.identity;
             }
             else
             {
-                rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                Vector2 off = Random.insideUnitCircle * spawnSpread;
+                spawnPos = groupCenter + new Vector3(off.x, 0f, off.y);
+                spawnPos = GroundedCenter(spawnPos);
+                spawnRot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             }
 
-            GameObject obj = Instantiate(prefab, pos, rot);
+            GameObject obj = Instantiate(prefab, spawnPos, spawnRot);
             EnemyAI ai = obj.GetComponent<EnemyAI>();
             if (ai != null)
             {
                 ai.startPassive = true;
                 ai.parentGroup = this;
-                ai.anchorPoint = transform.position;
-                ai.roamRadius = roamRadius;
                 ai.aggroRange = aggroRange;
+
+                if (style == EncounterStyle.Camp)
+                {
+                    // Each camp guard stays put at its own spot. The fire is the anchor only
+                    // for facing direction.
+                    ai.anchorPoint = spawnPos;
+                    ai.anchorTransform = null;
+                    ai.roamRadius = 0.2f;
+                    ai.roamWhilePassive = false;
+                    ai.faceAnchorWhenIdle = campGuardsFaceFire;
+                }
+                else
+                {
+                    // Patrol enemies follow the group center, which the patrol routine moves.
+                    ai.anchorTransform = transform;
+                    ai.roamRadius = roamRadius;
+                    ai.roamWhilePassive = true;
+                    ai.faceAnchorWhenIdle = false;
+                }
+
                 spawnedEnemies.Add(ai);
             }
         }
@@ -115,14 +139,29 @@ public class EnemyEncounterGroup : MonoBehaviour
         }
     }
 
+    private Vector3 GroundedCenter(Vector3 pos)
+    {
+        // Raycast wins (handles non-terrain ground) with terrain SampleHeight as fallback.
+        if (Physics.Raycast(pos + Vector3.up * 60f, Vector3.down, out RaycastHit hit, 200f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            pos.y = hit.point.y;
+            return pos;
+        }
+        if (Terrain.activeTerrain != null)
+        {
+            pos.y = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        }
+        return pos;
+    }
+
     private IEnumerator PatrolRoutine()
     {
-        // Wait a moment so spawned enemies finish their rise-from-ground animation
+        // Let spawned enemies finish their rise-from-ground animation before
+        // we start dragging the group center.
         yield return new WaitForSeconds(2f);
 
         while (true)
         {
-            // Stop moving the group as soon as anyone aggroed — the chase logic takes over
             if (AnyAggroed())
             {
                 yield return new WaitForSeconds(1f);
@@ -157,6 +196,45 @@ public class EnemyEncounterGroup : MonoBehaviour
 
             yield return new WaitForSeconds(waypointPauseDuration);
             currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
+        }
+    }
+
+    private void Update()
+    {
+        // Cleanup check — fires the cleared reward once when everyone is dead/null.
+        if (!spawned || clearedFired || spawnedEnemies.Count == 0) return;
+
+        clearedCheckTimer -= Time.deltaTime;
+        if (clearedCheckTimer > 0f) return;
+        clearedCheckTimer = 1f;
+
+        for (int i = 0; i < spawnedEnemies.Count; i++)
+        {
+            if (spawnedEnemies[i] != null) return; // someone alive
+        }
+
+        clearedFired = true;
+        OnGroupCleared();
+    }
+
+    private void OnGroupCleared()
+    {
+        if (clearedRewardPrefab == null || clearedRewardCount <= 0) return;
+
+        Vector3 center = transform.position;
+        if (Terrain.activeTerrain != null)
+            center.y = Terrain.activeTerrain.SampleHeight(center) + Terrain.activeTerrain.transform.position.y;
+
+        for (int i = 0; i < clearedRewardCount; i++)
+        {
+            Vector2 off = Random.insideUnitCircle * 1.2f;
+            Vector3 pos = center + new Vector3(off.x, 0.5f, off.y);
+
+            GameObject reward = null;
+            if (ObjectPoolManager.Instance != null)
+                reward = ObjectPoolManager.Instance.SpawnFromPool(clearedRewardPrefab, pos, Quaternion.identity);
+            if (reward == null)
+                Instantiate(clearedRewardPrefab, pos, Quaternion.identity);
         }
     }
 

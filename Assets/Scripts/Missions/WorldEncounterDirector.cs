@@ -44,6 +44,14 @@ public class WorldEncounterDirector : MonoBehaviour
     public float aggroRange = 14f;
     public float roamRadius = 3.5f;
 
+    [Header("Clear Reward")]
+    [Tooltip("Префаб, що випадає у центрі групи, коли всю групу вбили. Зазвичай XP кристал")]
+    public GameObject clearedRewardPrefab;
+    [Tooltip("Скільки одиниць винагороди впаде, коли патруль зачищений")]
+    [Range(0, 8)] public int patrolClearReward = 3;
+    [Tooltip("Скільки одиниць винагороди впаде, коли табір зачищений (більший куш)")]
+    [Range(0, 12)] public int campClearReward = 5;
+
     [Header("Spawner Integration")]
     [Tooltip("Блокувати радіальний EnemySpawner, щоб не було безглуздих спавнів навколо гравця")]
     public bool blockRandomSpawnerOnStart = true;
@@ -190,8 +198,10 @@ public class WorldEncounterDirector : MonoBehaviour
     private void SpawnEncounter(Vector3 position, bool isCamp)
     {
         GameObject groupObj = new GameObject(isCamp ? "Encounter_Camp" : "Encounter_Patrol");
+        // Camps stay axis-aligned so the ring around the fire reads symmetric.
+        // Patrols get a random facing because their group center moves anyway.
         groupObj.transform.position = position;
-        groupObj.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        groupObj.transform.rotation = isCamp ? Quaternion.identity : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
         groupObj.transform.SetParent(transform);
 
         EnemyEncounterGroup eeg = groupObj.AddComponent<EnemyEncounterGroup>();
@@ -201,6 +211,8 @@ public class WorldEncounterDirector : MonoBehaviour
         eeg.roamRadius = roamRadius;
         eeg.aggroRange = aggroRange;
         eeg.campfirePrefab = isCamp ? campfirePrefab : null;
+        eeg.clearedRewardPrefab = clearedRewardPrefab;
+        eeg.clearedRewardCount = isCamp ? campClearReward : patrolClearReward;
         eeg.autoStart = true;
 
         if (!isCamp)
