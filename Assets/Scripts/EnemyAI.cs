@@ -78,6 +78,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool isPreparingAttack = false;
     private Transform mainCamTransform;
 
+    // --- Passive / Encounter Group Mode (configured by EnemyEncounterGroup) ---
+    [HideInInspector] public bool startPassive = false;
+    [HideInInspector] public Vector3 anchorPoint;
+    [HideInInspector] public float roamRadius = 3.5f;
+    [HideInInspector] public float aggroRange = 14f;
+    [HideInInspector] public EnemyEncounterGroup parentGroup;
+    private bool isAggroed = false;
+    private Vector3 currentRoamTarget;
+    private float nextRoamPickTime;
+    private float passiveAggroCheckTimer;
+
+    public bool IsAggroed => isAggroed;
+
     private void Awake()
     {
         gameObject.layer = 9;
@@ -255,6 +268,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isPreparingAttack) return;
 
+        if (startPassive && !isAggroed)
+        {
+            UpdatePassiveBehavior();
+            return;
+        }
+
         Vector3 currentPos = transform.position;
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
         Vector3 repulsion = Vector3.zero;
@@ -335,6 +354,62 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
     }
 
+    private void UpdatePassiveBehavior()
+    {
+        Vector3 anchor = parentGroup != null ? parentGroup.transform.position : anchorPoint;
+
+        passiveAggroCheckTimer -= Time.deltaTime;
+        if (passiveAggroCheckTimer <= 0f && target != null)
+        {
+            passiveAggroCheckTimer = 0.2f;
+            float distSqr = (target.position - transform.position).sqrMagnitude;
+            if (distSqr <= aggroRange * aggroRange)
+            {
+                Aggro();
+                if (parentGroup != null) parentGroup.AlertAll();
+                return;
+            }
+        }
+
+        if (Time.time >= nextRoamPickTime || Vector3.SqrMagnitude(transform.position - currentRoamTarget) < 0.6f)
+        {
+            Vector2 r = Random.insideUnitCircle * roamRadius;
+            currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
+            if (Terrain.activeTerrain != null)
+            {
+                currentRoamTarget.y = Terrain.activeTerrain.SampleHeight(currentRoamTarget) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+            }
+            nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
+        }
+
+        Vector3 toTarget = currentRoamTarget - transform.position;
+        toTarget.y = 0f;
+        float distXZ = toTarget.magnitude;
+
+        if (distXZ > 0.2f)
+        {
+            Vector3 moveDir = toTarget / distXZ;
+            Vector3 nextPos = transform.position + moveDir * (actualMoveSpeed * 0.4f) * Time.deltaTime;
+            if (Terrain.activeTerrain != null)
+            {
+                nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+            }
+            transform.position = nextPos;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
+            if (animator != null) animator.SetBool("isMoving", true);
+        }
+        else
+        {
+            if (animator != null) animator.SetBool("isMoving", false);
+        }
+    }
+
+    public void Aggro()
+    {
+        if (isAggroed) return;
+        isAggroed = true;
+    }
+
     private void CheckNightBuff()
     {
         if (dayNightCycle == null || isEnraged) return;
@@ -385,6 +460,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public void TakeDamage(DamageInfo info)
     {
         if (isDead || isInvincible) return;
+
+        if (startPassive && !isAggroed)
+        {
+            Aggro();
+            if (parentGroup != null) parentGroup.AlertAll();
+        }
 
         if (hpCanvas != null && !hpCanvas.gameObject.activeSelf) hpCanvas.gameObject.SetActive(true);
 
@@ -482,7 +563,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // --- ÁÐÎÍÅÁ²ÉÍÈÉ Ô²ÊÑ ÑÏÀÂÍÓ ËÓÒÓ (²ãíîðóºìî Pool) ---
+        // --- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ô²ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Pool) ---
         if (xpCrystalPrefab != null)
         {
             Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
