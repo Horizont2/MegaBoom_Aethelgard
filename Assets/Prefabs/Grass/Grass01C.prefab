@@ -104,19 +104,17 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 16
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedComponents:
+    - {fileID: 4742473837712756890, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
+    m_RemovedGameObjects:
+    - {fileID: -2286766238418656374, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
+    - {fileID: 8106092211303176571, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5589635102252911646}
   m_SourcePrefab: {fileID: 100100000, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
---- !u!23 &411267815048424038 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 3860048096056171828, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
-  m_PrefabInstance: {fileID: 3469100664722487122}
-  m_PrefabAsset: {fileID: 0}
 --- !u!23 &4006801957775203722 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 558373281239739096, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
@@ -141,14 +139,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
   renderers:
   - {fileID: 4006801957775203722}
-  - {fileID: 9062878935984537496}
-  - {fileID: 411267815048424038}
+  - {fileID: 0}
+  - {fileID: 0}
   animator: {fileID: 0}
   lights: []
   particles: []
   isCurrentlyVisible: 1
---- !u!23 &9062878935984537496 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: -3611490197849470774, guid: 7ad463f77f9c3a042965fe9478919259, type: 3}
-  m_PrefabInstance: {fileID: 3469100664722487122}
-  m_PrefabAsset: {fileID: 0}

@@ -34,6 +34,9 @@ public class RegionManager : MonoBehaviour
 
         if (isConquered)
         {
+            // ЗАПОБІЖНИК: Блокуємо спавн ворогів у вже захопленому регіоні
+            EnemySpawner.IsSpawningBlocked = true;
+
             DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
             if (dnc != null)
             {
@@ -210,6 +213,25 @@ public class RegionManager : MonoBehaviour
 
     private IEnumerator FinalRegionPurificationRoutine(Vector3 finalTotemPos)
     {
+        // ---------------------------------------------------------
+        // ЗАПОБІЖНИК ВІД СМЕРТІ В КАТСЦЕНІ
+        // Блокуємо спавн і вбиваємо всіх залишкових ворогів на мапі
+        // ---------------------------------------------------------
+        EnemySpawner.IsSpawningBlocked = true;
+
+        EnemyAI[] remainingEnemies = Object.FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
+        foreach (EnemyAI enemy in remainingEnemies)
+        {
+            if (enemy != null) Destroy(enemy.gameObject);
+        }
+
+        TutorialBossAI[] remainingBosses = Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None);
+        foreach (TutorialBossAI boss in remainingBosses)
+        {
+            if (boss != null) Destroy(boss.gameObject);
+        }
+        // ---------------------------------------------------------
+
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HideLevelObjective();

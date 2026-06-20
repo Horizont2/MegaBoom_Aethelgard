@@ -745,9 +745,17 @@ PrefabInstance:
       propertyPath: looping
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8029611561652106208, guid: f276865553c461c47b8986863dd5d668, type: 3}
+      propertyPath: moveWithTransform
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8089329325465029850, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: looping
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8089329325465029850, guid: f276865553c461c47b8986863dd5d668, type: 3}
+      propertyPath: moveWithTransform
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9136076963120838541, guid: f276865553c461c47b8986863dd5d668, type: 3}
       propertyPath: m_Name

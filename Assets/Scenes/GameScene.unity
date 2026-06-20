@@ -1778,8 +1778,56 @@ MonoBehaviour:
   edgeMountainMultiplier: 3
   skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   waterLevel: 0.12
-  waterMaterial: {fileID: 2100000, guid: fb659c98d6ac4db41b88596ff2c4e2e1, type: 2}
-  waterMesh: {fileID: -5495902117074765545, guid: 55638e09f83bd764b9c7be381da6e240, type: 3}
+  waterMaterial: {fileID: 2100000, guid: 77a7c1b497cc0524ab6136a1c2508e63, type: 2}
+  riverCount: 2
+  riverWidth: 8
+  waterMeshWidthMultiplier: 1.3
+  riverBankWidth: 15
+  riverDepthCarve: 0.8
+  lakeRadius: 30
+  smoothTerrainAlongRiver: 1
+  terrainSmoothWidth: 20
+  terrainSmoothStrength: 0.5
+  allowFlatlandRivers: 1
+  waterDepthRatio: 0.2
+  lakeDepthMultiplier: 2
+  waterfallChance: 0
+  sculptWaterfallCliffs: 1
+  minWaterfallDrop: 10
+  maxWaterfallDrop: 14
+  waterfallYawOffset: 90
+  waterfallPitchOffset: 0
+  minWaterfallEdgeHeight: 8
+  minRiverSeparation: 80
+  minPathSeparation: 25
+  spawnLakePrefab: 0
+  spawnWaterfallBasin: 0
+  splineRiverMaterial: {fileID: 2100000, guid: 77a7c1b497cc0524ab6136a1c2508e63, type: 2}
+  riverLakePrefab: {fileID: 3593693710694803282, guid: 9e07e81fe6664ed44a479288857d4fc0, type: 3}
+  riverWaterfallPrefabs:
+  - {fileID: 8087146570348667094, guid: 1789e3f75681b0f4caaeb931b5738c84, type: 3}
+  riverFoamEdgePrefabs:
+  - {fileID: 3104309226492670533, guid: 1241a5cb9aff2ac4588e2b413f071c55, type: 3}
+  riverFoamTopPrefabs:
+  - {fileID: 8236971258163547277, guid: 035b5d89dc834d44da040247348c7083, type: 3}
+  riverFoamBottomPrefabs:
+  - {fileID: 429333122227109712, guid: 05c711fdd119cc547b4031fefdcbd817, type: 3}
+  riverRockPrefabs:
+  - {fileID: 6787951649393729316, guid: 86cfc2758dbf6c0408bba77213b26cfd, type: 3}
+  - {fileID: 2473057495033781582, guid: a11a4906288398248a504cfc6ceca0d7, type: 3}
+  - {fileID: 9032936889209960353, guid: cd18cfb16ddc57e4784ad9f03c155cea, type: 3}
+  cliffPrefabs:
+  - {fileID: 6299899493707373080, guid: 7f673df2de98f354ca69d8d4571871d3, type: 3}
+  - {fileID: 8709076328338050862, guid: 318cd40688c3c714ea0bc6151138b9e9, type: 3}
+  - {fileID: 2464843867196060693, guid: 966dbb131254b764da9c8aec1b056832, type: 3}
+  - {fileID: 2921132140309449108, guid: ca21edac250d713449ce116707447d89, type: 3}
+  waterfallPrefabs:
+  - {fileID: 8087146570348667094, guid: 1789e3f75681b0f4caaeb931b5738c84, type: 3}
+  cliffSteepnessThreshold: 40
+  maxGrassDensity: 8
+  waterPlantsPrefabs: []
+  deadTreesPrefabs: []
+  ambientVFXPrefabs: []
   meadowScale: 3
   meadowThreshold: 0.65
   veinScale: 8
@@ -1788,9 +1836,18 @@ MonoBehaviour:
   sandLayer: {fileID: 8574412962073106934, guid: b0bff560aeb461f4ab4c2c556d09ce73, type: 2}
   snowLayer: {fileID: 8574412962073106934, guid: 81e91e370b984c440840e5b9aaba5988, type: 2}
   rockLayer: {fileID: 8574412962073106934, guid: 3ffb748fce1b62b438d7803f36f13b83, type: 2}
+  riverSandWidthMul: 0.7
+  lakeSandRadiusMul: 1.2
+  sandEdgeSoftness: 0.3
   forestTreeTexture: {fileID: 2800000, guid: 0bb174f69c9851a48b09bf7d8180c39e, type: 3}
   desertTreeTexture: {fileID: 2800000, guid: 9ce620aa1cda14240816a569547c421b, type: 3}
   snowTreeTexture: {fileID: 2800000, guid: 2f7987a9c45e0e2438e599c84cbbd754, type: 3}
+  baseTreeAutumnMaterial: {fileID: 2100000, guid: 1251ce58afc80454182235c9f2d71870, type: 2}
+  baseTreeWinterMaterial: {fileID: 2100000, guid: 08610cc87ea99de43af15db40be109e3, type: 2}
+  giantTreeAutumnMaterial: {fileID: 2100000, guid: 0b3bd83d54291f949a9e9fddeb1568f1, type: 2}
+  giantTreeWinterMaterial: {fileID: 2100000, guid: 5d4fd7268af94814a82d2866af7009fd, type: 2}
+  bushAutumnMaterial: {fileID: 2100000, guid: ca1c4340271187c408e2976fcf2a0988, type: 2}
+  bushWinterMaterial: {fileID: 2100000, guid: ae6ab00cef3b3314382f0d8d6b72bd3d, type: 2}
   forestFoliageColor: {r: 0.22612882, g: 0.4867924, b: 0.13134207, a: 1}
   desertFoliageColor: {r: 0.554717, g: 0.45784596, b: 0.17897472, a: 1}
   snowFoliageColor: {r: 0.85660374, g: 0.85660374, b: 0.85660374, a: 1}
@@ -1798,45 +1855,64 @@ MonoBehaviour:
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
-  maxTrees: 1500
-  maxGrassObjects: 6000
-  maxBushesAndMushroom: 1300
-  maxRocks: 800
+  maxTrees: 1400
+  maxBushesAndMushroom: 900
+  maxRocks: 600
   clusterScale: 12
   forestThreshold: 0.48
   globalBiomeScale: 2.5
-  giantTrees: []
+  giantTrees:
+  - {fileID: 2118840309929815125, guid: bb5ef018996d1c842a3fda7ef67595e9, type: 3}
+  - {fileID: 6021622013396635853, guid: 10b4c149ea70f1347a52ea09807bfb56, type: 3}
+  - {fileID: 1886321769886341428, guid: d5791b48d5a368745ab610ece80216ea, type: 3}
+  - {fileID: 5226316510126817088, guid: dbe24c59355c97e44a773f2bea8a279f, type: 3}
   baseTrees:
-  - {fileID: 3996347160322767372, guid: 6153067b74a89fe4e958c5b32b2ecde3, type: 3}
-  - {fileID: 6147316610173666459, guid: a77968b0dc05d644a89903d2fd03cbbb, type: 3}
-  - {fileID: 3014813734061652239, guid: 0b74e51898bafb9458f000e3ec598e33, type: 3}
-  - {fileID: 6164718011109765826, guid: ea249874850a8bc42ac6097ccf6019b6, type: 3}
-  baseGrass:
-  - {fileID: 4388143748066298371, guid: 571770eccaa8c9147be0f0810affa3e1, type: 3}
-  - {fileID: 4388143748066298371, guid: 96f9b5f287fafbd4c93c66322b357164, type: 3}
-  - {fileID: 4388143748066298371, guid: c01058ce063c5dd41909448e644dad38, type: 3}
+  - {fileID: 1844897081636531020, guid: 2832e458df8616d459183adb0dfa9083, type: 3}
+  - {fileID: 1374899979308285549, guid: 32d3db38af308cc4a86540a04c1e129f, type: 3}
+  - {fileID: 3438365831924901988, guid: c847f36ff465f9d4687850c1982d3683, type: 3}
+  - {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
+  - {fileID: 5194611686949037208, guid: 61bdbc13522514f4e9095e7fec63a76e, type: 3}
   baseRocks:
   - {fileID: 3173614303439725726, guid: ae390e1c956557b43851c43417dcc52e, type: 3}
   - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
   - {fileID: 8420380102451872740, guid: 8b34c79fdcb7b19478732cb21ad6e224, type: 3}
   baseBushes:
-  - {fileID: 626541880792361729, guid: a84014ab78d3b5e448d1fae7964f03e8, type: 3}
-  baseFlowers:
-  - {fileID: 4898303536820266227, guid: 9ca830ce22a6cc440862930bce38b1cd, type: 3}
-  - {fileID: 4898303536820266227, guid: 14bbde07441624249820ad2b342f9b4d, type: 3}
+  - {fileID: 4974463672623675875, guid: 33ecd0ef342d8ee4188c82a8b5761ab5, type: 3}
+  - {fileID: 5648544150296794767, guid: f1acfe97b07f9f54ca6dc5555723aba1, type: 3}
+  - {fileID: 1051078274315369266, guid: ed60867ab2e84f944925106afee949be, type: 3}
+  - {fileID: 670874559337680958, guid: b6f67e2e39eab454aa8991c03fd91f74, type: 3}
+  - {fileID: 8855610802054320117, guid: e64815a86fd04214387fa259b5adef59, type: 3}
+  - {fileID: 1283415360739682107, guid: 752776313c610ce429f1f8072f07382f, type: 3}
+  - {fileID: 4823874436024003252, guid: d72db45a64746e14394ae0221fec26a2, type: 3}
+  - {fileID: 9159089234338995534, guid: 3093ea523ac57e34cb17a006b681ef37, type: 3}
+  - {fileID: 6792446814445589992, guid: d8664121402fc7e4eb288123eb4c0d4c, type: 3}
+  - {fileID: 1309650656118924589, guid: 566789fc5b3761b4ab285935d3af27a7, type: 3}
   baseMushrooms:
-  - {fileID: 7570405467501425085, guid: 0ab22827d0f3f0b40a97e9430d684283, type: 3}
-  - {fileID: 8954726919292774957, guid: eae42a57b046b1a42a79ae6319bccca3, type: 3}
-  - {fileID: 7749838506462483410, guid: d354c41a99993964baca0254487708d1, type: 3}
-  - {fileID: 3318689441606926373, guid: d3ee913ed32937344b0587e70dc777a2, type: 3}
+  - {fileID: 7803077713549878110, guid: 9b72d40f06150c446b5fa1ab56177a13, type: 3}
+  - {fileID: 8296128869887216991, guid: 4da8664a45f76584fb3a20f25c744872, type: 3}
+  - {fileID: 9017279377667439527, guid: 18d14ec2115db6a4083825dbdcd9d7ff, type: 3}
+  - {fileID: 7886865815107961650, guid: a1c6857e5400cff40a9b90d8c54a2544, type: 3}
+  - {fileID: 6014058737199555822, guid: 029a438a1c9fa9f42aca194d882c553d, type: 3}
+  - {fileID: 1296085670021301474, guid: f386126a8005fa348bccd7bac0cb0d48, type: 3}
   logPrefabs:
   - {fileID: 1255758057252634, guid: 0761e9c9debdfd34fa20f5859c6f08ff, type: 3}
   - {fileID: 1330862079685384, guid: 7c1b7eb3905d5694688d9bb9fe2c0d47, type: 3}
+  - {fileID: 100000, guid: 5affa7e903710d24b94e5df319d5c1a1, type: 3}
+  - {fileID: 100000, guid: 76a4663a496d6584ab5fb3442baf5ef5, type: 3}
   ruinPrefabs:
   - {fileID: 3414317473238138344, guid: a758c9966af9e45ab9f4f272a35a2e08, type: 3}
   - {fileID: 6368552768545127503, guid: 871c34634d3fd4159ac7d149e826b61a, type: 3}
+  - {fileID: 2921669142860546498, guid: 62827684f2773b04c9a21b55023bf41b, type: 3}
+  - {fileID: 2921669142860546498, guid: e55a16918fb405a43bf39954caa1ce88, type: 3}
+  - {fileID: 280050219226227683, guid: 0690f32c926b83b4dbc9e51bef8ac978, type: 3}
+  - {fileID: 4897498599330501561, guid: 35eeaa12b44b511428f3ab81043a1b92, type: 3}
+  - {fileID: 1871128528075666237, guid: eac652f44811d1b46b811d983099ee31, type: 3}
+  - {fileID: 7514323389622038029, guid: 89664d2e1552089479a3e61205f19c13, type: 3}
+  - {fileID: 5422831372402764909, guid: 6ec48fcecdab6aa43a1d05b8c3ab480b, type: 3}
   groundClutterPrefabs: []
-  giantTreeVFXPrefab: {fileID: 0}
+  giantTreeVFXForest: {fileID: 2467110274612402409, guid: 6a079d104435a2e448ca336987d17d77, type: 3}
+  giantTreeVFXAutumn: {fileID: 2467110274612402409, guid: 401044a7359281b48ab1099c264d7b4b, type: 3}
+  giantTreeVFXWinter: {fileID: 8276873220488390461, guid: ba5b9caf621520846a7613f88f27ea82, type: 3}
   borderMountainPrefabs:
   - {fileID: 1147869740234516963, guid: 6df1c0432730406409fa1777e38a2b1a, type: 3}
   - {fileID: 7585476220307772028, guid: bab1d03c1216ca24a93cae9cd2246e04, type: 3}
@@ -1891,7 +1967,7 @@ Terrain:
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
-  m_DetailObjectDistance: 80
+  m_DetailObjectDistance: 200
   m_DetailObjectDensity: 1
   m_HeightmapPixelError: 5
   m_SplatMapDistance: 1000

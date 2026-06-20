@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: dc70a153913eac841a082307a00ca3eb
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 625f186215c104763be7675aa2d941aa, type: 3}
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186894
+  packageName: 'Dreamscape Nature : Meadows : Stylized Open World Environment'
+  packageVersion: 2.2
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/ShaderGraph/Master Materials/Foliage/GrowingFoliage.shadergraph
+  uploadId: 866086

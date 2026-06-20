@@ -37,9 +37,6 @@ public class ResourceNode : MonoBehaviour, IDamageable
 
         currentHealth -= info.Amount;
 
-        // ==========================================
-        // ФІКС 1: Вмикаємо об'єкт ефекту перед програванням
-        // ==========================================
         if (hitEffect != null)
         {
             if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
@@ -99,8 +96,21 @@ public class ResourceNode : MonoBehaviour, IDamageable
         if (nodeType == NodeType.Tree)
         {
             Vector3 pivotPoint = transform.position;
-            Collider col = GetComponentInChildren<Collider>();
-            if (col != null) pivotPoint.y = col.bounds.min.y;
+            Collider[] cols = GetComponentsInChildren<Collider>();
+
+            // Знаходимо найнижчу точку (корінь) для осі обертання
+            if (cols.Length > 0 && cols[0] != null) pivotPoint.y = cols[0].bounds.min.y;
+
+            // ==========================================
+            // ФІКС 2: Одразу вимикаємо всі колайдери дерева, щоб воно не вдавлювало гравця
+            // ==========================================
+            foreach (Collider c in cols)
+            {
+                if (c != null) c.enabled = false;
+            }
+
+            // ЗБЕРІГАЄМО ПОЧАТКОВУ РОТАЦІЮ ДЕРЕВА ДО ТОГО ЯК ВОНО ВПАДЕ
+            Quaternion initialRotation = transform.rotation;
 
             float fallDuration = 0.5f;
             float fallSpeed = 90f / fallDuration;
@@ -119,7 +129,8 @@ public class ResourceNode : MonoBehaviour, IDamageable
                 hitEffect.Play();
             }
 
-            if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, transform.rotation);
+            // ВИКОРИСТОВУЄМО ПОЧАТКОВУ РОТАЦІЮ ДЛЯ ПЕНЬКА
+            if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, initialRotation);
 
             yield return new WaitForSeconds(0.5f);
             Destroy(gameObject);

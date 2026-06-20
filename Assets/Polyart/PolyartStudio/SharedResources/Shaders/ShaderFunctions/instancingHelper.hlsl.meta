@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a62f9ff63beebae4c821383fa0c8c612
+ShaderIncludeImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186894
+  packageName: 'Dreamscape Nature : Meadows : Stylized Open World Environment'
+  packageVersion: 2.2
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Shaders/ShaderFunctions/instancingHelper.hlsl
+  uploadId: 866086

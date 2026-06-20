@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4f1e42d21322e804b8eda55c703873f7
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317546
+  packageName: 'Farmlands : Ultimate Stylized Farm Environment'
+  packageVersion: 1.1
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Prefabs/Harvesting/CropSpawner.prefab
+  uploadId: 752582

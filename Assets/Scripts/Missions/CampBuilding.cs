@@ -86,6 +86,9 @@ public class CampBuilding : MonoBehaviour
     private Vector3 originalModelPos;
     private Vector3 originalModelScale;
 
+    // КЕШУВАННЯ СХОВИЩА ДЛЯ ОПТИМІЗАЦІЇ
+    private static CampBuilding storageBuildingCached;
+
     private void Awake()
     {
         if (realModel != null)
@@ -154,7 +157,6 @@ public class CampBuilding : MonoBehaviour
 
         if (isAnimating) return;
 
-        // --- 1. ПЕРЕВІРКА ЗАВЕРШЕННЯ АПГРЕЙДУ ---
         if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
         {
             PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
@@ -162,21 +164,18 @@ public class CampBuilding : MonoBehaviour
             return;
         }
 
-        // --- 2. ДИНАМІЧНИЙ РУХ БУДІВЛІ ПІД ЧАС АПГРЕЙДУ ---
         if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1)
         {
             if (isPanelOpen) ClosePanel();
 
             if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
 
-            // Жорстко вимикаємо Glimmer під час будівництва
             if (upgradeGlimmer != null && upgradeGlimmer.activeSelf)
                 upgradeGlimmer.SetActive(false);
 
             string startTimeStr = PlayerPrefs.GetString("UpgradeStart_" + buildingID, "");
             if (long.TryParse(startTimeStr, out long startTimeBin))
             {
-                // Використовуємо UtcNow для ідеальної синхронізації з віджетом
                 DateTime startTime = DateTime.FromBinary(startTimeBin);
                 float elapsed = (float)(DateTime.UtcNow - startTime).TotalSeconds;
 
@@ -188,7 +187,6 @@ public class CampBuilding : MonoBehaviour
                     {
                         float progress = Mathf.Clamp01(elapsed / totalTime);
 
-                        // Для БУДЬ-ЯКОГО апгрейду показуємо Ghost, а Real виїжджає знизу
                         if (!ghostModel.activeSelf) ghostModel.SetActive(true);
                         if (!realModel.activeSelf) realModel.SetActive(true);
 
@@ -535,8 +533,17 @@ public class CampBuilding : MonoBehaviour
 
     private CampBuilding FindStorageBuilding()
     {
+        if (storageBuildingCached != null) return storageBuildingCached;
+
         CampBuilding[] all = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
-        foreach (var b in all) if (b.isStorageVault) return b;
+        foreach (var b in all)
+        {
+            if (b.isStorageVault)
+            {
+                storageBuildingCached = b;
+                return b;
+            }
+        }
         return null;
     }
 

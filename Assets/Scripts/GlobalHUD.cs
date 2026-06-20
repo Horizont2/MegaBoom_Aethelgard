@@ -47,10 +47,9 @@ public class GlobalHUD : MonoBehaviour
     public TextMeshProUGUI giveUpText;
     public float buttonDelay = 0.05f;
 
-    // --- СИСТЕМА ВІДЖЕТІВ БУДІВНИЦТВА ---
     [Header("Global Upgrade Tracking")]
-    public GameObject buildWidgetPrefab; // СЮДИ ПЕРЕТЯГНИ ПРЕФАБ СВОЄЇ ПЛАШКИ
-    public Transform widgetContainer;    // СЮДИ ПЕРЕТЯГНИ PARENT КОНТЕЙНЕР (Vertical Layout Group)
+    public GameObject buildWidgetPrefab;
+    public Transform widgetContainer;
 
     private bool isPaused = false;
     private bool isConfirmingGiveUp = false;
@@ -142,9 +141,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // ==========================================
-    // --- МЕНЕДЖЕР СПАВНУ ВІДЖЕТІВ ---
-    // ==========================================
     public void StartTrackingUpgrade(string buildingID, string buildingName, Sprite bIcon, float duration, long startTimeBinary)
     {
         string list = PlayerPrefs.GetString("ActiveUpgradesList", "");
@@ -212,7 +208,6 @@ public class GlobalHUD : MonoBehaviour
                         if (tracker != null)
                         {
                             DateTime targetTime = DateTime.FromBinary(startBin).AddSeconds(dur);
-                            // Під час відновлення іконка може бути null, але плашка працюватиме ідеально
                             tracker.Setup(id, bName, null, targetTime, dur);
                         }
                     }
@@ -225,9 +220,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // ==========================================
-    // --- ІНШИЙ UI (Пауза, Підказки, Боси) ---
-    // ==========================================
     private void CreateCinematicBarsIfNeeded()
     {
         if (topCinematicBar != null && bottomCinematicBar != null) return;
@@ -349,7 +341,8 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator SyncCameraAndVolumeRoutine()
     {
-        yield return null;
+        yield return new WaitForSeconds(0.5f); // Чекаємо півсекунди, щоб уникнути фрізу при завантаженні
+
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null)
         {
@@ -372,6 +365,7 @@ public class GlobalHUD : MonoBehaviour
                 dofEffect.active = isShop || isPaused;
                 break;
             }
+            yield return null; // Розподіляємо навантаження на кілька кадрів
         }
     }
 

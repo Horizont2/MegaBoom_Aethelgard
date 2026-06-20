@@ -6,9 +6,6 @@ public class CameraOcclusion : MonoBehaviour
     [Header("Target & Scanning")]
     public Transform playerTarget;
     public LayerMask foliageLayer;
-
-    // ФІКС 2: Радіус став 0.1, щоб промінь був "тонким" і не чіпляв об'єкти збоку від гравця
-    [Tooltip("Зменшений радіус, щоб не чіпляти зайве")]
     public float raycastRadius = 0.1f;
 
     [Header("Fade Settings")]
@@ -17,6 +14,9 @@ public class CameraOcclusion : MonoBehaviour
 
     private List<FadingObject> currentlyFaded = new List<FadingObject>();
     private List<FadingObject> hitsThisFrame = new List<FadingObject>();
+
+    // СУПЕР-ОПТИМІЗАЦІЯ: Кешуємо всі дерева, щоб не викликати GetComponent при русі камери
+    private Dictionary<Collider, FadingObject> faderCache = new Dictionary<Collider, FadingObject>();
 
     private void Start()
     {
@@ -29,7 +29,7 @@ public class CameraOcclusion : MonoBehaviour
 
     private void Update()
     {
-        if (playerTarget == null) return;
+        if (playerTarget == null || Time.frameCount < 10) return; // Чекаємо кілька кадрів після завантаження
 
         hitsThisFrame.Clear();
 
@@ -38,27 +38,36 @@ public class CameraOcclusion : MonoBehaviour
 
         Vector3 dir = (endPos - startPos).normalized;
         float dist = Vector3.Distance(startPos, endPos);
-
-        // ФІКС 2: Віднімаємо 1.5 метра від дистанції. Промінь зупиняється ПЕРЕД гравцем!
         float checkDistance = Mathf.Max(0f, dist - 1.5f);
+
         RaycastHit[] hits = Physics.SphereCastAll(startPos, raycastRadius, dir, checkDistance, foliageLayer);
 
         foreach (RaycastHit hit in hits)
         {
-            if (hit.collider.GetComponent<Terrain>() != null) continue;
-            if (hit.collider.name.ToLower().Contains("grass")) continue;
+            // Швидкі відсіювання
+            if (hit.collider is TerrainCollider) continue;
 
-            FadingObject fader = hit.collider.GetComponentInParent<FadingObject>();
+            FadingObject fader = null;
 
-            if (fader == null)
+            // Перевіряємо кеш (Миттєво)
+            if (faderCache.TryGetValue(hit.collider, out FadingObject cachedFader))
             {
-                if (hit.collider.GetComponentInParent<MeshRenderer>() != null)
+                fader = cachedFader;
+            }
+            else
+            {
+                // Якщо об'єкта немає в кеші - шукаємо один раз і запам'ятовуємо назавжди
+                fader = hit.collider.GetComponentInParent<FadingObject>();
+                if (fader == null && hit.collider.GetComponentInParent<MeshRenderer>() != null)
                 {
                     fader = hit.collider.gameObject.AddComponent<FadingObject>();
                     fader.Initialize(fadeAlpha, fadeSpeed);
                 }
-                else continue;
+
+                faderCache[hit.collider] = fader; // Записуємо в кеш
             }
+
+            if (fader == null) continue;
 
             hitsThisFrame.Add(fader);
             fader.FadeOut();
@@ -66,6 +75,7 @@ public class CameraOcclusion : MonoBehaviour
             if (!currentlyFaded.Contains(fader)) currentlyFaded.Add(fader);
         }
 
+        // Повертаємо непрозорість тим, на кого більше не дивимось
         for (int i = currentlyFaded.Count - 1; i >= 0; i--)
         {
             FadingObject fader = currentlyFaded[i];
