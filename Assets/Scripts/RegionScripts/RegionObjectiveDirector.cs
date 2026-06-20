@@ -46,6 +46,17 @@ public class RegionObjectiveDirector : MonoBehaviour
 
     private IEnumerator InitRoutine()
     {
+        // Wait one frame so MissionInitializer.Start can set the region-mission
+        // flag (otherwise non-mission survival mode would still get beacons +
+        // a compass marker overlay).
+        yield return null;
+
+        if (!WorldEncounterDirector.IsActiveRegionMission())
+        {
+            enabled = false;
+            yield break;
+        }
+
         float deadline = Time.unscaledTime + searchTimeout;
         RegionTotem[] found = null;
         while (Time.unscaledTime < deadline)

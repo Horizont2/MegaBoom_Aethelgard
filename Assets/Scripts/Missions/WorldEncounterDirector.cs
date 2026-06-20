@@ -58,8 +58,42 @@ public class WorldEncounterDirector : MonoBehaviour
 
     private void Start()
     {
+        StartCoroutine(GateAndRun());
+    }
+
+    private IEnumerator GateAndRun()
+    {
+        // Wait one frame so MissionInitializer.Start() runs first and gets
+        // a chance to set the IsRegionMission flag (it can flip on through
+        // testFallbackRegion even when PlayerPrefs was clean).
+        yield return null;
+
+        if (!IsActiveRegionMission())
+        {
+            enabled = false;
+            yield break;
+        }
+
         if (blockRandomSpawnerOnStart) EnemySpawner.IsSpawningBlocked = true;
-        StartCoroutine(RunDirectorRoutine());
+        yield return StartCoroutine(RunDirectorRoutine());
+    }
+
+    public static bool IsActiveRegionMission()
+    {
+        if (PlayerPrefs.GetInt("IsRegionMission", 0) != 1) return false;
+
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+        {
+            if (GameManager.Instance.currentRegion.currentState == RegionState.Conquered)
+                return false;
+        }
+        else if (MissionInitializer.PendingMissionRegion == null)
+        {
+            // No region data wired up — refuse rather than spawn into a blank slate.
+            return false;
+        }
+
+        return true;
     }
 
     private IEnumerator RunDirectorRoutine()
