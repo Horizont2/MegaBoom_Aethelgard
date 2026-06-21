@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_8
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Elite Hunt
-  missionDescription: Eliminate enemies on the rocky slopes.
-  missionType: 0
-  targetAmount: 15
-  woodReward: 0
-  stoneReward: 25
-  foodReward: 5
-  diamondReward: 20
+  missionName: Camp Expansion
+  missionDescription: Lay the first stones for a new outpost. The wood comes from your hand.
+  missionType: 3
+  targetAmount: 1
+  woodReward: 80
+  stoneReward: 50
+  foodReward: 25
+  diamondReward: 15

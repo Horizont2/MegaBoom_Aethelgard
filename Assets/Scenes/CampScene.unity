@@ -22448,6 +22448,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3b247e825fbffb4488626611ad2e2333, type: 2}
   - {fileID: 11400000, guid: f510d01e45e10384ea789cfa598f9f42, type: 2}
   - {fileID: 11400000, guid: 6dcc0b076143f8b4cbe3bed47f8b8cd2, type: 2}
+  - {fileID: 11400000, guid: 2280b38d72ee11a6f99e9270709f8884, type: 2}
+  - {fileID: 11400000, guid: 1f8d5469e11501b0133011acff3ab408, type: 2}
+  - {fileID: 11400000, guid: d5e292906c861dc5ee2b4097a1739742, type: 2}
+  - {fileID: 11400000, guid: 1475fe0ea849f8e11a2cd0f5c025d265, type: 2}
+  - {fileID: 11400000, guid: c2cc2a7bc7bb5874e83418d02acdf5d2, type: 2}
+  - {fileID: 11400000, guid: 00b49ead6634a1ac334ab81379cd69fe, type: 2}
   maxMissionsOnBoard: 3
   restockTimeMinutes: 20
   isBoardOpen: 0

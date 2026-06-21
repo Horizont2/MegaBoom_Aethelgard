@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
-  m_Name: Mission_12
+  m_Name: Mission_19
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Rush
-  missionDescription: The aetherwells are bleeding. Reap what they leak before the corruption seals them.
-  missionType: 1
-  targetAmount: 70
-  woodReward: 50
-  stoneReward: 50
+  missionName: Captain Hunt
+  missionDescription: Five captains in the field tonight. Bring back proof of all five.
+  missionType: 0
+  targetAmount: 50
+  woodReward: 60
+  stoneReward: 150
   foodReward: 40
-  diamondReward: 55
+  diamondReward: 120

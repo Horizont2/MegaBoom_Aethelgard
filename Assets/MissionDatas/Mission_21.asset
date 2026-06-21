@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
-  m_Name: Mission_12
+  m_Name: Mission_21
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Rush
-  missionDescription: The aetherwells are bleeding. Reap what they leak before the corruption seals them.
-  missionType: 1
-  targetAmount: 70
-  woodReward: 50
-  stoneReward: 50
-  foodReward: 40
-  diamondReward: 55
+  missionName: Final Stand
+  missionDescription: 'The last contract on the board. Hold the wall until the bells of dawn. Then live, if you can.'
+  missionType: 2
+  targetAmount: 400
+  woodReward: 200
+  stoneReward: 200
+  foodReward: 200
+  diamondReward: 200

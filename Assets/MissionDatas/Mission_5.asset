@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_5
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Forest Patrol
-  missionDescription: Clear the path for our woodcutters.
-  missionType: 0
-  targetAmount: 40
-  woodReward: 20
-  stoneReward: 5
-  foodReward: 0
-  diamondReward: 0
+  missionName: Crystal Vein
+  missionDescription: A cluster surfaced near the old shrine. Strip it before the mist returns.
+  missionType: 1
+  targetAmount: 25
+  woodReward: 30
+  stoneReward: 30
+  foodReward: 15
+  diamondReward: 20

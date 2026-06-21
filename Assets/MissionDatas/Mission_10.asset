@@ -12,12 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_10
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Rush
-  missionDescription: Secure a massive deposit of shiny gems before the undead swarm
-    overwhelms you.
-  missionType: 1
-  targetAmount: 100
-  woodReward: 18
-  stoneReward: 10
-  foodReward: 5
-  diamondReward: 40
+  missionName: Elite Hunt
+  missionDescription: An iron-marked captain leads the next patrol. End him and his honor guard.
+  missionType: 0
+  targetAmount: 22
+  woodReward: 30
+  stoneReward: 65
+  foodReward: 20
+  diamondReward: 50

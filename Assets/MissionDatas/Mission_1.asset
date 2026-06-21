@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_1
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Clearcutting
-  missionDescription: Clear the area of basic skeletons to secure the perimeter.
+  missionName: Skeleton Cull
+  missionDescription: Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.
   missionType: 0
-  targetAmount: 50
-  woodReward: 12
-  stoneReward: 5
-  foodReward: 2
-  diamondReward: 0
+  targetAmount: 20
+  woodReward: 25
+  stoneReward: 10
+  foodReward: 5
+  diamondReward: 5

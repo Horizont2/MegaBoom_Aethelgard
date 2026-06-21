@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
-  m_Name: Mission_12
+  m_Name: Mission_20
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Rush
-  missionDescription: The aetherwells are bleeding. Reap what they leak before the corruption seals them.
-  missionType: 1
-  targetAmount: 70
-  woodReward: 50
-  stoneReward: 50
-  foodReward: 40
-  diamondReward: 55
+  missionName: Master Architect
+  missionDescription: 'Three pillars. Stone, wood, and patience. The camp must endure.'
+  missionType: 3
+  targetAmount: 3
+  woodReward: 250
+  stoneReward: 200
+  foodReward: 100
+  diamondReward: 85

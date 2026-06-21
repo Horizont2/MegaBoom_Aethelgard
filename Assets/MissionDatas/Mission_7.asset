@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_7
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Camp Expansion
-  missionDescription: Improve our base infrastructure.
-  missionType: 3
-  targetAmount: 1
-  woodReward: 30
-  stoneReward: 20
-  foodReward: 10
-  diamondReward: 0
+  missionName: Hold the Line
+  missionDescription: Three runners are crossing the bog. Hold here until the signal-fire lights.
+  missionType: 2
+  targetAmount: 90
+  woodReward: 25
+  stoneReward: 40
+  foodReward: 20
+  diamondReward: 15

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_9
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Scavenger
-  missionDescription: Find gems near the mountain river.
+  missionName: Wildcrop Harvest
+  missionDescription: Bring in enough aether shards to refill the war-stores.
   missionType: 1
-  targetAmount: 30
-  woodReward: 5
-  stoneReward: 15
-  foodReward: 5
-  diamondReward: 15
+  targetAmount: 50
+  woodReward: 40
+  stoneReward: 40
+  foodReward: 30
+  diamondReward: 35

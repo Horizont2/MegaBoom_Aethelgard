@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_14
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Highland Purge
-  missionDescription: Total cleanup of the mountain entrance.
-  missionType: 0
-  targetAmount: 100
-  woodReward: 20
-  stoneReward: 35
-  foodReward: 10
-  diamondReward: 0
+  missionName: Engineering Mastery
+  missionDescription: 'Two more structures, and the camp will hold a winter.'
+  missionType: 3
+  targetAmount: 2
+  woodReward: 150
+  stoneReward: 100
+  foodReward: 60
+  diamondReward: 45

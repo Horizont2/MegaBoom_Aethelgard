@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_4
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Hold the Line
-  missionDescription: Survive the incoming horde until reinforcements arrive.
-  missionType: 2
-  targetAmount: 120
-  woodReward: 20
-  stoneReward: 5
-  foodReward: 3
-  diamondReward: 0
+  missionName: Bone Tide
+  missionDescription: The hollowed dead drift in waves now. Break the next one before it reaches the palisade.
+  missionType: 0
+  targetAmount: 45
+  woodReward: 45
+  stoneReward: 25
+  foodReward: 15
+  diamondReward: 15
