@@ -121,6 +121,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     private bool isBulletTime = false;
 
     private CameraFollow cameraFollow;
+    private Camera mainCameraCached;
+    private Transform mainCameraTransformCached;
     private HealthVisuals healthVisuals;
     private CharacterController characterController;
     private Vector3 velocity;
@@ -152,7 +154,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             visualModel = anim.transform;
         }
 
-        if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
+        // Cache Camera.main + its transform — each Camera.main call iterates all
+        // tagged cameras in the scene, and PlayerController reads it ~16 times.
+        mainCameraCached = Camera.main;
+        if (mainCameraCached != null)
+        {
+            mainCameraTransformCached = mainCameraCached.transform;
+            cameraFollow = mainCameraCached.GetComponent<CameraFollow>();
+        }
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
@@ -497,8 +506,8 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (Input.GetKey(KeyCode.Space)) up = 1f;
             if (Input.GetKey(KeyCode.LeftControl)) up = -1f;
 
-            Vector3 ncForward = Camera.main.transform.forward;
-            Vector3 ncRight = Camera.main.transform.right;
+            Vector3 ncForward = mainCameraTransformCached.forward;
+            Vector3 ncRight = mainCameraTransformCached.right;
 
             Vector3 dir = (ncForward * v + ncRight * h + Vector3.up * up).normalized;
             transform.position += dir * noclipSpeed * Time.unscaledDeltaTime;
@@ -522,10 +531,10 @@ public class PlayerController : MonoBehaviour, IDamageable
             }
         }
 
-        if (isDashing || Camera.main == null) return;
+        if (isDashing || mainCameraTransformCached == null) return;
 
-        Vector3 camForward = Camera.main.transform.forward;
-        Vector3 camRight = Camera.main.transform.right;
+        Vector3 camForward = mainCameraTransformCached.forward;
+        Vector3 camRight = mainCameraTransformCached.right;
         camForward.y = 0f; camRight.y = 0f;
         camForward.Normalize(); camRight.Normalize();
 
@@ -699,7 +708,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void UpdateGrenadeAiming()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = mainCameraCached.ScreenPointToRay(Input.mousePosition);
         Vector3 hitPoint = transform.position + transform.forward * 5f;
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
@@ -906,8 +915,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         Vector3 targetPos = threat.position - threat.forward * 2.5f;
         targetPos.y = GetGroundHeight(targetPos);
 
-        float originalFOV = Camera.main.fieldOfView;
-        Camera.main.fieldOfView = originalFOV + 20f;
+        float originalFOV = mainCameraCached.fieldOfView;
+        mainCameraCached.fieldOfView = originalFOV + 20f;
         if (dashParticles != null) dashParticles.Play();
         if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
 
@@ -939,10 +948,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         while (elapsed < 0.3f)
         {
             elapsed += Time.unscaledDeltaTime;
-            Camera.main.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
+            mainCameraCached.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
             yield return null;
         }
-        Camera.main.fieldOfView = originalFOV;
+        mainCameraCached.fieldOfView = originalFOV;
     }
 
     private IEnumerator DashRoutine(Vector3 direction, bool isPerfectDodge = false)
@@ -953,7 +962,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (AudioManager.Instance != null && !isPerfectDodge) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
 
-        float originalFOV = Camera.main.fieldOfView;
+        float originalFOV = mainCameraCached.fieldOfView;
         float targetFOV = originalFOV + (isPerfectDodge ? 20f : 12f);
 
         if (dashParticles != null) dashParticles.Play();
@@ -962,7 +971,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (direction == Vector3.zero) direction = transform.forward;
         else
         {
-            Vector3 camForward = Camera.main.transform.forward; Vector3 camRight = Camera.main.transform.right;
+            Vector3 camForward = mainCameraTransformCached.forward; Vector3 camRight = mainCameraTransformCached.right;
             camForward.y = 0f; camRight.y = 0f;
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
@@ -975,7 +984,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             float curve = Mathf.Sin(normalizedTime * Mathf.PI);
 
             characterController.Move(direction * currentDashSpeed * curve * Time.unscaledDeltaTime);
-            Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, normalizedTime);
+            mainCameraCached.fieldOfView = Mathf.Lerp(mainCameraCached.fieldOfView, targetFOV, normalizedTime);
 
             yield return null;
         }
@@ -986,10 +995,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         while (elapsed < 0.3f)
         {
             elapsed += Time.unscaledDeltaTime;
-            Camera.main.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / 0.3f);
+            mainCameraCached.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / 0.3f);
             yield return null;
         }
-        Camera.main.fieldOfView = originalFOV;
+        mainCameraCached.fieldOfView = originalFOV;
     }
 
     public void ExecuteAttack()

@@ -78,6 +78,74 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool isPreparingAttack = false;
     private Transform mainCamTransform;
 
+    // ---- Scene-wide caches (shared by every EnemyAI in the scene) ----
+    private static Transform s_player;
+    private static PlayerController s_playerController;
+    private static Terrain s_terrain;
+    private static float s_terrainOriginY;
+    private static readonly Collider[] s_overlapBuffer = new Collider[32];
+
+    private static bool TryGetPlayer(out Transform t, out PlayerController pc)
+    {
+        if (s_player != null && s_playerController != null) { t = s_player; pc = s_playerController; return true; }
+        GameObject p = GameObject.FindGameObjectWithTag("Player");
+        if (p != null)
+        {
+            s_player = p.transform;
+            s_playerController = p.GetComponent<PlayerController>();
+            t = s_player; pc = s_playerController; return true;
+        }
+        t = null; pc = null; return false;
+    }
+
+    private static Terrain CachedTerrain
+    {
+        get
+        {
+            if (s_terrain == null)
+            {
+                s_terrain = Terrain.activeTerrain;
+                if (s_terrain != null) s_terrainOriginY = s_terrain.transform.position.y;
+            }
+            return s_terrain;
+        }
+    }
+
+    private static float SampleTerrainHeight(Vector3 worldPos)
+    {
+        Terrain t = CachedTerrain;
+        if (t == null) return worldPos.y;
+        return t.SampleHeight(worldPos) + s_terrainOriginY;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticsOnDomainReload()
+    {
+        s_player = null;
+        s_playerController = null;
+        s_terrain = null;
+        s_terrainOriginY = 0f;
+    }
+
+    private void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
+    }
+
+    private void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+    }
+
+    private static void OnActiveSceneChanged(UnityEngine.SceneManagement.Scene a, UnityEngine.SceneManagement.Scene b)
+    {
+        // Reset shared caches so the next scene doesn't read stale references.
+        s_player = null;
+        s_playerController = null;
+        s_terrain = null;
+        s_terrainOriginY = 0f;
+    }
+
     // --- Passive / Encounter Group Mode (configured by EnemyEncounterGroup) ---
     [HideInInspector] public bool startPassive = false;
     [HideInInspector] public Vector3 anchorPoint;
@@ -156,11 +224,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         currentPoise = maxPoise;
         UpdateHealthUI();
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-        if (playerObj != null)
+        if (TryGetPlayer(out Transform startT, out PlayerController startPC))
         {
-            target = playerObj.transform;
-            playerTarget = playerObj.GetComponent<PlayerController>();
+            target = startT;
+            playerTarget = startPC;
         }
 
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
@@ -173,10 +240,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", true);
 
         Vector3 finalPos = transform.position;
-        if (Terrain.activeTerrain != null)
-        {
-            finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
-        }
+        finalPos.y = SampleTerrainHeight(finalPos) + verticalOffset;
 
         if (!isCinematicFrozen)
         {
@@ -222,11 +286,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         if (target == null && !isDead)
         {
-            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null)
+            // Use the shared static cache so 30 enemies don't each fire a
+            // FindGameObjectWithTag every frame they have no target.
+            if (TryGetPlayer(out Transform pt, out PlayerController pc))
             {
-                target = playerObj.transform;
-                playerTarget = playerObj.GetComponent<PlayerController>();
+                target = pt;
+                playerTarget = pc;
             }
             if (target == null) return;
         }
@@ -279,9 +344,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
         Vector3 repulsion = Vector3.zero;
 
-        Collider[] neighbors = Physics.OverlapSphere(currentPos, repulsionRadius, 1 << 9);
-        foreach (Collider neighbor in neighbors)
+        int neighborCount = Physics.OverlapSphereNonAlloc(currentPos, repulsionRadius, s_overlapBuffer, 1 << 9);
+        for (int i = 0; i < neighborCount; i++)
         {
+            Collider neighbor = s_overlapBuffer[i];
             if (neighbor.gameObject != gameObject && !neighbor.isTrigger)
             {
                 Vector3 pushDir = currentPos - neighbor.transform.position;
@@ -317,7 +383,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 Vector3 moveDir = (directionToPlayer + repulsion).normalized;
                 Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
 
-                if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                 transform.position = nextPos;
             }
             else
@@ -332,7 +398,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 Vector3 moveDir = (flankDir + repulsion).normalized;
                 Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.7f) * Time.deltaTime;
 
-                if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+                nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                 transform.position = nextPos;
             }
         }
@@ -344,7 +410,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             finalDirection.y = 0f;
 
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
-            if (Terrain.activeTerrain != null) nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
+            nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             transform.position = nextPos;
 
             if (finalDirection != Vector3.zero)
@@ -381,9 +447,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 Vector2 r = Random.insideUnitCircle * roamRadius;
                 currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
-                if (Terrain.activeTerrain != null)
-                    currentRoamTarget.y = Terrain.activeTerrain.SampleHeight(currentRoamTarget) + Terrain.activeTerrain.transform.position.y + verticalOffset;
-                nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
+                currentRoamTarget.y = SampleTerrainHeight(currentRoamTarget) + verticalOffset;nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
             }
         }
         else
@@ -404,9 +468,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 moveDir = toTarget / distXZ;
             float passiveSpeed = actualMoveSpeed * 0.4f;
             Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
-            if (Terrain.activeTerrain != null)
-                nextPos.y = Terrain.activeTerrain.SampleHeight(nextPos) + Terrain.activeTerrain.transform.position.y + verticalOffset;
-            transform.position = nextPos;
+            nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;transform.position = nextPos;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
             SetMovingAnim(true, passiveSpeed);
         }

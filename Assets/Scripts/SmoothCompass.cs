@@ -113,9 +113,9 @@ public class SmoothCompass : MonoBehaviour
         for (int i = 0; i < activeMarkers.Count; i++)
         {
             Vector3 dirToTarget = activeMarkers[i].position - mainCamera.position;
-            dirToTarget.y = 0f;
-
-            float targetAngle = Quaternion.LookRotation(dirToTarget).eulerAngles.y;
+            // Skip Quaternion.LookRotation+eulerAngles (expensive matrix math)
+            // for a single yaw angle that Atan2 gives us directly.
+            float targetAngle = Mathf.Atan2(dirToTarget.x, dirToTarget.z) * Mathf.Rad2Deg;
             float angleDiff = Mathf.DeltaAngle(camAngle, targetAngle);
 
             if (Mathf.Abs(angleDiff) <= compassViewAngle)

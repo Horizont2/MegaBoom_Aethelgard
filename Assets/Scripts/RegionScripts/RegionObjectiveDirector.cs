@@ -202,6 +202,8 @@ public class RegionObjectiveDirector : MonoBehaviour
         distanceLabel.SetActive(false);
     }
 
+    private static readonly int s_emissionColorID = Shader.PropertyToID("_EmissionColor");
+
     private void Update()
     {
         if (!initialized || beacons.Count == 0) return;
@@ -210,7 +212,10 @@ public class RegionObjectiveDirector : MonoBehaviour
         bool runScan = scanTimer <= 0f;
         if (runScan) scanTimer = visibilityScanInterval;
 
-        float pulse = pulseStrength > 0f ? 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseStrength : 1f;
+        // Pulse only matters visually if it changes — skip the entire emission
+        // write when pulseStrength is zero.
+        bool pulseEnabled = pulseStrength > 0f;
+        float pulse = pulseEnabled ? 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseStrength : 1f;
 
         BeaconHandle closestActive = null;
         float closestDistSqr = float.MaxValue;
@@ -226,8 +231,8 @@ public class RegionObjectiveDirector : MonoBehaviour
             if (runScan && h.beacon.activeSelf != shouldShow)
                 h.beacon.SetActive(shouldShow);
 
-            if (h.beacon.activeSelf && pulseStrength > 0f && h.material != null && h.material.HasProperty("_EmissionColor"))
-                h.material.SetColor("_EmissionColor", h.baseColor * (5f * pulse));
+            if (h.beacon.activeSelf && pulseEnabled && h.material != null)
+                h.material.SetColor(s_emissionColorID, h.baseColor * (5f * pulse));
 
             if (shouldShow && player != null)
             {

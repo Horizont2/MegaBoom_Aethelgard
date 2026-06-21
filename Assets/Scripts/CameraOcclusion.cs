@@ -12,11 +12,18 @@ public class CameraOcclusion : MonoBehaviour
     [Range(0f, 1f)] public float fadeAlpha = 0.25f;
     public float fadeSpeed = 4f;
 
-    private List<FadingObject> currentlyFaded = new List<FadingObject>();
-    private List<FadingObject> hitsThisFrame = new List<FadingObject>();
+    // Conservative-NonAlloc path: keep List<FadingObject> (Contains is O(N) but N is
+    // tiny вЂ” a couple of trees max), use SphereCastNonAlloc to skip the per-frame
+    // RaycastHit[] allocation, and throttle to ~30 Hz instead of every frame.
+    private readonly List<FadingObject> currentlyFaded = new List<FadingObject>(8);
+    private readonly List<FadingObject> hitsThisFrame = new List<FadingObject>(8);
+    private readonly Dictionary<Collider, FadingObject> faderCache = new Dictionary<Collider, FadingObject>(32);
+    private static readonly RaycastHit[] s_hitBuffer = new RaycastHit[16];
 
-    // СУПЕР-ОПТИМІЗАЦІЯ: Кешуємо всі дерева, щоб не викликати GetComponent при русі камери
-    private Dictionary<Collider, FadingObject> faderCache = new Dictionary<Collider, FadingObject>();
+    [Header("Performance")]
+    [Tooltip("РЎРєС–Р»СЊРєРё СЂР°Р·С–РІ РЅР° СЃРµРєСѓРЅРґСѓ РїРµСЂРµРІС–СЂСЏС‚Рё РѕРєР»СЋР·С–СЋ. 30 Hz РїСЂР°РєС‚РёС‡РЅРѕ РЅРµРІС–РґСЂС–Р·РЅРёРјРѕ РІС–Рґ 60 Hz, Р°Р»Рµ РІРґРІС–С‡С– РґРµС€РµРІС€Рµ")]
+    [Range(15f, 60f)] public float scansPerSecond = 30f;
+    private float nextScanTime = 0f;
 
     private void Start()
     {
@@ -29,7 +36,11 @@ public class CameraOcclusion : MonoBehaviour
 
     private void Update()
     {
-        if (playerTarget == null || Time.frameCount < 10) return; // Чекаємо кілька кадрів після завантаження
+        if (playerTarget == null || Time.frameCount < 10) return;
+
+        // Throttle to scansPerSecond so we don't re-spherecast every render frame
+        if (Time.time < nextScanTime) return;
+        nextScanTime = Time.time + (1f / Mathf.Max(15f, scansPerSecond));
 
         hitsThisFrame.Clear();
 
@@ -40,42 +51,33 @@ public class CameraOcclusion : MonoBehaviour
         float dist = Vector3.Distance(startPos, endPos);
         float checkDistance = Mathf.Max(0f, dist - 1.5f);
 
-        RaycastHit[] hits = Physics.SphereCastAll(startPos, raycastRadius, dir, checkDistance, foliageLayer);
+        int hitCount = Physics.SphereCastNonAlloc(startPos, raycastRadius, dir, s_hitBuffer, checkDistance, foliageLayer);
 
-        foreach (RaycastHit hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
-            // Швидкі відсіювання
-            if (hit.collider is TerrainCollider) continue;
+            Collider col = s_hitBuffer[i].collider;
+            if (col == null) continue;
+            if (col is TerrainCollider) continue;
 
-            FadingObject fader = null;
-
-            // Перевіряємо кеш (Миттєво)
-            if (faderCache.TryGetValue(hit.collider, out FadingObject cachedFader))
+            FadingObject fader;
+            if (!faderCache.TryGetValue(col, out fader))
             {
-                fader = cachedFader;
-            }
-            else
-            {
-                // Якщо об'єкта немає в кеші - шукаємо один раз і запам'ятовуємо назавжди
-                fader = hit.collider.GetComponentInParent<FadingObject>();
-                if (fader == null && hit.collider.GetComponentInParent<MeshRenderer>() != null)
+                fader = col.GetComponentInParent<FadingObject>();
+                if (fader == null && col.GetComponentInParent<MeshRenderer>() != null)
                 {
-                    fader = hit.collider.gameObject.AddComponent<FadingObject>();
+                    fader = col.gameObject.AddComponent<FadingObject>();
                     fader.Initialize(fadeAlpha, fadeSpeed);
                 }
-
-                faderCache[hit.collider] = fader; // Записуємо в кеш
+                faderCache[col] = fader;
             }
 
             if (fader == null) continue;
 
             hitsThisFrame.Add(fader);
             fader.FadeOut();
-
             if (!currentlyFaded.Contains(fader)) currentlyFaded.Add(fader);
         }
 
-        // Повертаємо непрозорість тим, на кого більше не дивимось
         for (int i = currentlyFaded.Count - 1; i >= 0; i--)
         {
             FadingObject fader = currentlyFaded[i];
