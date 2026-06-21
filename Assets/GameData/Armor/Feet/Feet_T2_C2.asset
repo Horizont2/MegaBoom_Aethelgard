@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 194
   armorName: Mercenary Boots (Sturdy)
-  description: A reliable boots forged for a mercenary warrior. Provides decent protection
-    in battle.
+  description: Worn boots that have walked from the Bone Coast to the Hollow Pass.
   category: 5
   prefabIndex: 4
   icon: {fileID: 21300000, guid: 0efc78c7b671c9c4992a941c5d67c4b9, type: 3}
-  price: 1300
+  price: 400
   maxUpgradeLevel: 5
   basePower: 50
   baseHealthBonus: 40

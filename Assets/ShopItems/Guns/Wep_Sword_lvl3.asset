@@ -16,16 +16,15 @@ MonoBehaviour:
   weaponName: Iron Oathkeeper
   category: 0
   icon: {fileID: 21300000, guid: 2e6644d95d419504ba7643bd6521e297, type: 3}
-  description: Forged in the fires of the capital. A standard-issue broadsword used
-    by the King's guard. Reliable, balanced, and deadly.
-  price: 800
+  description: Forged in the Royal Smithy. What a knight receives at his vigil — plain steel, perfect balance.
+  price: 500
   shopPrefab: {fileID: 4292794119454397175, guid: 0e62603268aa13a468fb711d3737de96, type: 3}
   inGamePrefab: {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
   basePower: 100
   powerPerLevel: 20
   maxUpgradeLevel: 10
-  baseUpgradeCost: 150
-  upgradeCostMultiplier: 1.35
+  baseUpgradeCost: 100
+  upgradeCostMultiplier: 1.25
   damageBonus: 25
   attackSpeed: 1.8
   critChance: 0.2

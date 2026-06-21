@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 185
   armorName: Royal Greaves (Sturdy)
-  description: A reliable greaves forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Royal leggings, the steel scoured by ash to a near-black sheen.
   category: 4
   prefabIndex: 13
   icon: {fileID: 21300000, guid: ec679770ab7ad364fa1d66e2911b3793, type: 3}
-  price: 6550
+  price: 1800
   maxUpgradeLevel: 5
   basePower: 110
   baseHealthBonus: 85

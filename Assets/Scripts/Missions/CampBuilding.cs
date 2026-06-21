@@ -229,6 +229,19 @@ public class CampBuilding : MonoBehaviour
         {
             if (isPanelOpen) ClosePanel();
             else OpenPanel();
+
+            if (!isPanelOpen && TutorialHints.Instance != null)
+            {
+                string hintKey = currentLevel == 0 ? "BuildBuilding" : "UpgradeBuilding";
+                TutorialHints.Instance.ShowIfNew(hintKey,
+                    currentLevel == 0
+                        ? "Hold <b>E</b> to start construction. Resources are spent immediately and the build runs even when you're away."
+                        : "Hold <b>E</b> to start an upgrade. Each tier raises production and unlocks better tooltip text.", 6f);
+
+                // Per-building flavor (only once per building type)
+                TutorialHints.Instance.ShowIfNew(buildingID,
+                    $"<b>{buildingName}</b>: see the panel for what this building produces.", 5f);
+            }
         }
 
         if (isPanelOpen)

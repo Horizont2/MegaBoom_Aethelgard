@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 127
   armorName: Paladin Chestplate
-  description: A reliable chestplate forged for a paladin warrior. Provides decent
-    protection in battle.
+  description: Paladin's chestplate. It hums faintly when corruption draws near.
   category: 1
   prefabIndex: 9
   icon: {fileID: 21300000, guid: 812202bfa287366458551861c5445f6d, type: 3}
-  price: 4150
+  price: 1100
   maxUpgradeLevel: 5
   basePower: 85
   baseHealthBonus: 65

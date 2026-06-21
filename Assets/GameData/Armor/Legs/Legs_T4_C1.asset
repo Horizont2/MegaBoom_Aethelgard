@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 181
   armorName: Paladin Greaves
-  description: A reliable greaves forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Sanctified leggings. They never tire the knee, neither in prayer nor in charge.
   category: 4
   prefabIndex: 9
   icon: {fileID: 21300000, guid: 7d1fb39bb30d1f444a7848a61ba802b7, type: 3}
-  price: 4150
+  price: 1100
   maxUpgradeLevel: 5
   basePower: 85
   baseHealthBonus: 65

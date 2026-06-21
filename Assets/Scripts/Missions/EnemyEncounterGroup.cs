@@ -219,6 +219,10 @@ public class EnemyEncounterGroup : MonoBehaviour
 
     private void OnGroupCleared()
     {
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("EncounterCleared",
+                "Cleared encounter — bonus loot dropped at the camp center. Wipe more groups to stack rewards.", 5f);
+
         if (clearedRewardPrefab == null || clearedRewardCount <= 0) return;
 
         Vector3 center = transform.position;

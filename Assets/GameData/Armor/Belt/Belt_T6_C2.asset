@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 170
   armorName: Abyssal Belt (Sturdy)
-  description: A reliable belt forged for a abyssal warrior. Provides decent protection
-    in battle.
+  description: Abyssal belt. Its clasp is shaped as something old, and never quite still.
   category: 3
   prefabIndex: 16
   icon: {fileID: 21300000, guid: 682421f4f9df72b4b97a6bf1c5bf45a2, type: 3}
-  price: 9300
+  price: 2600
   maxUpgradeLevel: 5
   basePower: 130
   baseHealthBonus: 100

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 136
   armorName: Novice Gauntlets
-  description: A reliable gauntlets forged for a novice warrior. Provides decent
-    protection in battle.
+  description: Drill-yard gauntlets. The grip is sturdy; the knuckles, untested.
   category: 2
   prefabIndex: 0
   icon: {fileID: 21300000, guid: d2850e01c01001a4ebc554b0900db476, type: 3}

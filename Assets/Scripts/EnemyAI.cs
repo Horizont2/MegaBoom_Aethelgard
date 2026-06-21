@@ -632,7 +632,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (diamondPrefab != null && Random.value <= diamondDropChance)
         {
-            Instantiate(diamondPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+            // Elite kills drop a small cluster (2-3 diamonds) so they read as
+            // worthwhile fights, not "same loot as a minion."
+            int dropCount = isElite ? Random.Range(2, 4) : 1;
+            for (int d = 0; d < dropCount; d++)
+            {
+                Vector2 spread = Random.insideUnitCircle * 0.6f;
+                Vector3 pos = transform.position + new Vector3(spread.x, 1f, spread.y);
+                Instantiate(diamondPrefab, pos, Quaternion.identity);
+            }
         }
         // ------------------------------------
 

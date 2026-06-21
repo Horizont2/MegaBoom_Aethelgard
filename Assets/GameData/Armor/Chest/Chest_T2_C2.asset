@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 122
   armorName: Mercenary Chestplate (Sturdy)
-  description: A reliable chestplate forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: A sellsword's chestplate, repainted twice over a different sigil each campaign.
   category: 1
   prefabIndex: 4
   icon: {fileID: 21300000, guid: 783ea4ea615b03745ba034eba726945b, type: 3}
-  price: 1300
+  price: 400
   maxUpgradeLevel: 5
   basePower: 50
   baseHealthBonus: 40

@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 197
   armorName: Knight Boots (Sturdy)
-  description: A reliable boots forged for a knight warrior. Provides decent protection
-    in battle.
+  description: Knight's boots, weighted for the saddle and slow on broken ground.
   category: 5
   prefabIndex: 7
   icon: {fileID: 21300000, guid: 4f7ed194de957884e9a8d48fafec3769, type: 3}
-  price: 2550
+  price: 800
   maxUpgradeLevel: 5
   basePower: 70
   baseHealthBonus: 55

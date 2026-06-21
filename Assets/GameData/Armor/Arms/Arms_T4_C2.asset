@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 146
   armorName: Paladin Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a paladin warrior. Provides decent
-    protection in battle.
+  description: Gauntlets blessed at the Hollow Sun chapel. Filigree of holy runes.
   category: 2
   prefabIndex: 10
   icon: {fileID: 21300000, guid: 389661487b02e774ea557208ed9f801a, type: 3}
-  price: 4300
+  price: 1200
   maxUpgradeLevel: 5
   basePower: 90
   baseHealthBonus: 70

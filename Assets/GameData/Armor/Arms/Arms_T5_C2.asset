@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 149
   armorName: Royal Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Gauntlets fitted by the Royal Master Smith. The plates whisper when fingers close.
   category: 2
   prefabIndex: 13
   icon: {fileID: 21300000, guid: 3ea8388400b35244c9de2273998e2d89, type: 3}
-  price: 6550
+  price: 1800
   maxUpgradeLevel: 5
   basePower: 110
   baseHealthBonus: 85

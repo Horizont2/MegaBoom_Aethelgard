@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 125
   armorName: Knight Chestplate (Sturdy)
-  description: A reliable chestplate forged for a knight warrior. Provides decent
-    protection in battle.
+  description: A knight's chestplate, fluted in the old style of the capital.
   category: 1
   prefabIndex: 7
   icon: {fileID: 21300000, guid: 950e146ece3ee3a459c4a5fc6cd771e4, type: 3}
-  price: 2550
+  price: 800
   maxUpgradeLevel: 5
   basePower: 70
   baseHealthBonus: 55

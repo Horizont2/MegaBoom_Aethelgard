@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 134
   armorName: Abyssal Chestplate (Sturdy)
-  description: A reliable chestplate forged for a abyssal warrior. Provides decent
-    protection in battle.
+  description: Abyssal chestplate. It does not rust. It does not warm. It does not breathe with the wearer.
   category: 1
   prefabIndex: 16
   icon: {fileID: 21300000, guid: a5114cbdd80ce34419cc083d43f00960, type: 3}
-  price: 9300
+  price: 2600
   maxUpgradeLevel: 5
   basePower: 130
   baseHealthBonus: 100

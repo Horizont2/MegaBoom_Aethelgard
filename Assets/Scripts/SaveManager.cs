@@ -36,13 +36,13 @@ public static class SaveManager
     // Gets the current level of a specific upgrade (e.g., "MetaHealth")
     public static int GetUpgradeLevel(string upgradeID)
     {
-        return PlayerPrefs.GetInt("Upgrade_" + upgradeID, 0); // Default level is 0
+        return PlayerPrefs.GetInt("UpgradeLevel_" + upgradeID, 0); // Default level is 0
     }
 
     // Increases the level of a specific upgrade and saves it
     public static void SetUpgradeLevel(string upgradeID, int level)
     {
-        PlayerPrefs.SetInt("Upgrade_" + upgradeID, level);
+        PlayerPrefs.SetInt("UpgradeLevel_" + upgradeID, level);
         PlayerPrefs.Save();
     }
 }

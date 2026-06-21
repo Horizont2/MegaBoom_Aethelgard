@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 201
   armorName: Paladin Boots (Elite)
-  description: A reliable boots forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Boots of the Hollow Sun. Each step is said to drive a foot deeper into hallowed soil.
   category: 5
   prefabIndex: 11
   icon: {fileID: 21300000, guid: 1dc3e8b2baf1c2448a4f092cd44b412e, type: 3}
-  price: 4450
+  price: 1300
   maxUpgradeLevel: 5
   basePower: 95
   baseHealthBonus: 75

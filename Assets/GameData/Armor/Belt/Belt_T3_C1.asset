@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 160
   armorName: Knight Belt
-  description: A reliable belt forged for a knight warrior. Provides decent protection
-    in battle.
+  description: Belt of a Royal Order knight. The buckle is shaped as a falcon mid-strike.
   category: 3
   prefabIndex: 6
   icon: {fileID: 21300000, guid: 0e9bcc741efd2c840a7d30ca5b203846, type: 3}
-  price: 2400
+  price: 700
   maxUpgradeLevel: 5
   basePower: 65
   baseHealthBonus: 50

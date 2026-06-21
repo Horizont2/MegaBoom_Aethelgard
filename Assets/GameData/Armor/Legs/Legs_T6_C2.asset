@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 188
   armorName: Abyssal Greaves (Sturdy)
-  description: A reliable greaves forged for a abyssal warrior. Provides decent protection
-    in battle.
+  description: Abyssal leggings. Cold metal that takes no scratch and casts the wrong shadow.
   category: 4
   prefabIndex: 16
   icon: {fileID: 21300000, guid: cce4da2de8e6eb649aa20614e2204737, type: 3}
-  price: 9300
+  price: 2600
   maxUpgradeLevel: 5
   basePower: 130
   baseHealthBonus: 100

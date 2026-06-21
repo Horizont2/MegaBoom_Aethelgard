@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 166
   armorName: Royal Belt
-  description: A reliable belt forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Belt of the Royal Sash. Bears the bear-spirit clasp passed from sworn-brother to sworn-brother.
   category: 3
   prefabIndex: 12
   icon: {fileID: 21300000, guid: 80c30958ff9eda14d8cb5114f5a6aac7, type: 3}
-  price: 6400
+  price: 1700
   maxUpgradeLevel: 5
   basePower: 105
   baseHealthBonus: 80

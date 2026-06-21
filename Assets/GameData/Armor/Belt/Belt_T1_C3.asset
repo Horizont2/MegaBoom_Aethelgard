@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 156
   armorName: Novice Belt (Elite)
-  description: A reliable belt forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Plain leather belt of the foot militia. Bears a single dull buckle.
   category: 3
   prefabIndex: 2
   icon: {fileID: 21300000, guid: 8e73d3702150a9a4fa2da6bf12beb629, type: 3}
-  price: 700
+  price: 200
   maxUpgradeLevel: 5
   basePower: 35
   baseHealthBonus: 30

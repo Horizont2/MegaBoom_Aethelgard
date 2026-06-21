@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 178
   armorName: Knight Greaves
-  description: A reliable greaves forged for a knight warrior. Provides decent protection
-    in battle.
+  description: Articulated plate leggings, oiled against the rain of the borderlands.
   category: 4
   prefabIndex: 6
   icon: {fileID: 21300000, guid: 100b09ba88d49ac4e8bd6d8ee29c614b, type: 3}
-  price: 2400
+  price: 700
   maxUpgradeLevel: 5
   basePower: 65
   baseHealthBonus: 50

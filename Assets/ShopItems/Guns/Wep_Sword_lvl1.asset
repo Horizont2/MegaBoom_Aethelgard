@@ -16,16 +16,15 @@ MonoBehaviour:
   weaponName: Rusty Peasant Sword
   category: 0
   icon: {fileID: 21300000, guid: 085bca1a79ef33642ba6c6367acfea6e, type: 3}
-  description: A chipped, weathered blade found near the old Aethelgard ruins. Barely
-    holds an edge, but better than fighting with bare hands.
+  description: Pulled from the cellar of a torched farm in the Aethelgard ruins. Edge chipped, balance gone — but it still bites.
   price: 0
   shopPrefab: {fileID: 8149005041056945625, guid: 7591ca8f7cf77a64588fe74f1c1f7eaa, type: 3}
   inGamePrefab: {fileID: 7088815401364905542, guid: 4d45a24d65b3c8c4485c1f5d71764490, type: 3}
   basePower: 20
   powerPerLevel: 10
   maxUpgradeLevel: 5
-  baseUpgradeCost: 50
-  upgradeCostMultiplier: 1.3
+  baseUpgradeCost: 30
+  upgradeCostMultiplier: 1.2
   damageBonus: 15
   attackSpeed: 1
   critChance: 0.05

@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 130
   armorName: Royal Chestplate
-  description: A reliable chestplate forged for a royal warrior. Provides decent
-    protection in battle.
+  description: Royal chestplate of the King's Inner Guard. Lined with crimson, weighted for ceremony and killing.
   category: 1
   prefabIndex: 12
   icon: {fileID: 21300000, guid: 7f5346f9f0f02fc4d80864bbcbb43805, type: 3}
-  price: 6400
+  price: 1700
   maxUpgradeLevel: 5
   basePower: 105
   baseHealthBonus: 80

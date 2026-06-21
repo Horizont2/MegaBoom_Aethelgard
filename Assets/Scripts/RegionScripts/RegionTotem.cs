@@ -131,6 +131,10 @@ public class RegionTotem : MonoBehaviour
         isActivated = true;
         EnemySpawner.IsSpawningBlocked = true;
 
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("PurifyWave",
+                "Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it — the next totem unlocks afterward.", 6f);
+
         if (activationShieldVFX != null) { activationShieldVFX.gameObject.SetActive(true); activationShieldVFX.Play(); }
         if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.3f, 0.1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);

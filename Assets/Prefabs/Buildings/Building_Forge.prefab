@@ -285,29 +285,29 @@ MonoBehaviour:
   isStorageVault: 0
   currentLevel: 0
   levels:
-  - costWood: 150
-    costStone: 150
-    costFood: 50
+  - costWood: 112
+    costStone: 112
+    costFood: 38
     productionValue: 2
     productionDescription: +2% WEAPON DMG
-  - costWood: 280
-    costStone: 280
-    costFood: 100
+  - costWood: 210
+    costStone: 210
+    costFood: 75
     productionValue: 5
     productionDescription: +5% WEAPON DMG
-  - costWood: 450
-    costStone: 450
-    costFood: 180
+  - costWood: 338
+    costStone: 338
+    costFood: 135
     productionValue: 8
     productionDescription: +8% WEAPON DMG
-  - costWood: 750
-    costStone: 750
-    costFood: 300
+  - costWood: 562
+    costStone: 562
+    costFood: 225
     productionValue: 11
     productionDescription: +11% WEAPON DMG
-  - costWood: 1200
-    costStone: 1200
-    costFood: 500
+  - costWood: 900
+    costStone: 900
+    costFood: 375
     productionValue: 15
     productionDescription: +15% WEAPON DMG
   holdTimeRequired: 3

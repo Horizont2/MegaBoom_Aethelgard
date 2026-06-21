@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 110
   armorName: Paladin Helm (Sturdy)
-  description: A reliable helm forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Helm of the Hollow Sun. The seer's prayer is etched along the cheekguard.
   category: 0
   prefabIndex: 10
   icon: {fileID: 21300000, guid: e93bb5b1e44673642b28f55328ba7aeb, type: 3}
-  price: 4300
+  price: 1200
   maxUpgradeLevel: 5
   basePower: 90
   baseHealthBonus: 70

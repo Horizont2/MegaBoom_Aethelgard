@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 184
   armorName: Royal Greaves
-  description: A reliable greaves forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Royal leggings, the steel scoured by ash to a near-black sheen.
   category: 4
   prefabIndex: 12
   icon: {fileID: 21300000, guid: 03e093b98c04b3a4cb6ccd70e400bb2a, type: 3}
-  price: 6400
+  price: 1700
   maxUpgradeLevel: 5
   basePower: 105
   baseHealthBonus: 80

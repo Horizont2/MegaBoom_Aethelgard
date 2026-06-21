@@ -187,6 +187,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         StartCoroutine(SpawnSafely());
 
         if (!isCampMode) StartCoroutine(FireOnboardingHints());
+        else StartCoroutine(FireCampHints());
     }
 
     public void TriggerFootstepDust()
@@ -312,6 +313,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             }
         }
         if (characterController != null) characterController.enabled = true;
+    }
+
+    private IEnumerator FireCampHints()
+    {
+        yield return new WaitForSecondsRealtime(2.5f);
+        if (TutorialHints.Instance == null) yield break;
+        TutorialHints.Instance.ShowIfNew("CampOverview",
+            "Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.");
     }
 
     private IEnumerator FireOnboardingHints()

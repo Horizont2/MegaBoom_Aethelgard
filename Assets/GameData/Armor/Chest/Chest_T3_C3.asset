@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 126
   armorName: Knight Chestplate (Elite)
-  description: A reliable chestplate forged for a knight warrior. Provides decent
-    protection in battle.
+  description: A knight's chestplate, fluted in the old style of the capital.
   category: 1
   prefabIndex: 8
   icon: {fileID: 21300000, guid: 81174c8263fc75d47a8d69e86c1bcfdf, type: 3}
-  price: 2700
+  price: 900
   maxUpgradeLevel: 5
   basePower: 75
   baseHealthBonus: 60

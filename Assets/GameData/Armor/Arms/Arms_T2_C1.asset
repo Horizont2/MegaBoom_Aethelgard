@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 139
   armorName: Mercenary Gauntlets
-  description: A reliable gauntlets forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: Mercenary gauntlets, polished only where coin is counted.
   category: 2
   prefabIndex: 3
   icon: {fileID: 21300000, guid: 1895d9a9f8c34454489f6e5d4c7bc5a1, type: 3}
-  price: 1150
+  price: 300
   maxUpgradeLevel: 5
   basePower: 45
   baseHealthBonus: 35

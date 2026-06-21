@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 207
   armorName: Abyssal Boots (Elite)
-  description: A reliable boots forged for a abyssal warrior. Provides decent protection
-    in battle.
+  description: Abyssal boots. The wearer's footprints, faint at first, deepen over miles. Why is unknown.
   category: 5
   prefabIndex: 17
   icon: {fileID: 21300000, guid: fe1f4d811c3d34e458fa9caf2ab3d910, type: 3}
-  price: 9450
+  price: 2700
   maxUpgradeLevel: 5
   basePower: 135
   baseHealthBonus: 105

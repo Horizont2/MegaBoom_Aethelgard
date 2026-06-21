@@ -77,31 +77,31 @@ MonoBehaviour:
   isStorageVault: 1
   currentLevel: 0
   levels:
-  - costWood: 120
-    costStone: 80
-    costFood: 20
-    productionValue: 100
-    productionDescription: +100 MAX CAPACITY
-  - costWood: 220
-    costStone: 150
-    costFood: 40
-    productionValue: 220
-    productionDescription: +220 MAX CAPACITY
-  - costWood: 380
-    costStone: 280
-    costFood: 80
-    productionValue: 400
-    productionDescription: +400 MAX CAPACITY
-  - costWood: 600
-    costStone: 450
-    costFood: 150
-    productionValue: 600
-    productionDescription: +600 MAX CAPACITY
-  - costWood: 900
-    costStone: 700
-    costFood: 250
-    productionValue: 1000
-    productionDescription: +1000 MAX CAPACITY
+  - costWood: 90
+    costStone: 60
+    costFood: 15
+    productionValue: 125
+    productionDescription: +125 MAX CAPACITY
+  - costWood: 165
+    costStone: 112
+    costFood: 30
+    productionValue: 275
+    productionDescription: +275 MAX CAPACITY
+  - costWood: 285
+    costStone: 210
+    costFood: 60
+    productionValue: 500
+    productionDescription: +500 MAX CAPACITY
+  - costWood: 450
+    costStone: 338
+    costFood: 112
+    productionValue: 750
+    productionDescription: +750 MAX CAPACITY
+  - costWood: 675
+    costStone: 525
+    costFood: 188
+    productionValue: 1250
+    productionDescription: +1250 MAX CAPACITY
   holdTimeRequired: 3
   uiCanvas: {fileID: 2424843414473500971}
   holdFillImage: {fileID: 4957621718778036129}

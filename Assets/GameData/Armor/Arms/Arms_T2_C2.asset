@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 140
   armorName: Mercenary Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: Mercenary gauntlets, polished only where coin is counted.
   category: 2
   prefabIndex: 4
   icon: {fileID: 21300000, guid: ffa3ab7137e34074990b52f6c203bb29, type: 3}
-  price: 1300
+  price: 400
   maxUpgradeLevel: 5
   basePower: 50
   baseHealthBonus: 40

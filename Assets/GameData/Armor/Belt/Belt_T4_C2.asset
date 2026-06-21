@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 164
   armorName: Paladin Belt (Sturdy)
-  description: A reliable belt forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Cord-and-plate belt of the Order. Three silver bells warn the wearer of curses.
   category: 3
   prefabIndex: 10
   icon: {fileID: 21300000, guid: 44166be010daa244e80af02f40d53e58, type: 3}
-  price: 4300
+  price: 1200
   maxUpgradeLevel: 5
   basePower: 90
   baseHealthBonus: 70
