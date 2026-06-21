@@ -84,6 +84,11 @@ public class Level1_QuestManager : MonoBehaviour
                 float pitchX = currentRot.x;
                 if (pitchX > 180f) pitchX -= 360f;
                 cf.SyncRotation(currentRot.y, pitchX);
+
+                // Smoothly blend from wherever Cinemachine left the camera into
+                // CameraFollow's natural orbit. Without this the camera snapped
+                // on frame 0 of gameplay and felt jarring.
+                cf.BeginHandoffBlend(0.7f);
             }
 
             if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
@@ -147,7 +152,7 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void Update()
     {
-        // --- ДЕБАГ: ПРОПУСК РІВНЯ ---
+        // --- пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ РІпїЅпїЅпїЅ ---
         if (Input.GetKeyDown(KeyCode.F8))
         {
             DebugSkipToEscape();
@@ -169,10 +174,10 @@ public class Level1_QuestManager : MonoBehaviour
         }
     }
 
-    // НОВИЙ МЕТОД ДЕБАГУ
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     private void DebugSkipToEscape()
     {
-        StopAllCoroutines(); // Зупиняємо всі тексти і кат-сцени
+        StopAllCoroutines(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ
         if (introDirector != null) introDirector.Stop();
 
         var brain = Camera.main.GetComponent<CinemachineBrain>();
@@ -187,16 +192,16 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        // Ховаємо ворогів
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (skeletonsWave1 != null) skeletonsWave1.SetActive(false);
         if (skeletonsHordeWave2 != null) skeletonsHordeWave2.SetActive(false);
 
-        // Вмикаємо коня
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         if (evacuationHorse != null)
         {
             evacuationHorse.SetActive(true);
 
-            // Телепортуємо гравця до коня
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
             if (playerTransform != null)
             {
                 CharacterController cc = playerTransform.GetComponent<CharacterController>();
