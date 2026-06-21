@@ -740,7 +740,7 @@ public class GlobalHUD : MonoBehaviour
         rt.anchorMin = new Vector2(0f, 0f);
         rt.anchorMax = new Vector2(0f, 0f);
         rt.pivot = new Vector2(0f, 0f);
-        rt.anchoredPosition = new Vector2(60f, 200f);
+        rt.anchoredPosition = new Vector2(60f, 270f);
         rt.sizeDelta = new Vector2(400f, 300f);
         pickupPopupContainer = rt;
     }
