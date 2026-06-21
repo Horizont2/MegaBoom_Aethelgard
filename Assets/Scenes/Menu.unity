@@ -641,7 +641,7 @@ MonoBehaviour:
   pulseAmplitude: 0.05
   pulseSpeed: 2.5
   backgroundFrame: {fileID: 0}
-  dismissKey: 32
+  dismissKey: 27
 --- !u!1001 &91480484
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9652,7 +9652,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 3b5a712fea4c0f9469c9e596ab86df3a, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8b4bf69bc929ca847918088e16e34b86, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
