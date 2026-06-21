@@ -1063,6 +1063,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void DrawAoEMarker(Vector3 center)
     {
+        int blockerMask = GetGrenadeBlockerMask();
+
         if (aoeMarkerLine != null)
         {
             int segments = aoeMarkerLine.positionCount;
@@ -1071,8 +1073,15 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
-                Vector3 point = center + new Vector3(x, 50f, z);
-                point.y = GetGroundHeight(point) + 0.15f;
+
+                // ФІКС: Пускаємо промінь лише на 2 метри вище центру, а не на 20, 
+                // щоб коло не малювалось на деревах або дахах будівель!
+                Vector3 point = center + new Vector3(x, 2f, z);
+                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
+                    point.y = hit.point.y + 0.15f;
+                else
+                    point.y = center.y + 0.15f;
+
                 aoeMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -1087,8 +1096,13 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * innerRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * innerRadius;
-                Vector3 point = center + new Vector3(x, 50f, z);
-                point.y = GetGroundHeight(point) + 0.15f;
+
+                Vector3 point = center + new Vector3(x, 2f, z);
+                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
+                    point.y = hit.point.y + 0.15f;
+                else
+                    point.y = center.y + 0.15f;
+
                 innerMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -1097,8 +1111,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private float GetGroundHeight(Vector3 pos)
     {
-        // Բ��: � ����� �������� "Default", ����� ������ ������ ��'���� �� ��������� ���� �� ����
-        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Terrain", "Ground")))
+        // ФІКС: Скануємо лише на 1 метр вгору і 5 вниз, щоб не хапати дахи та гілки!
+        if (Physics.Raycast(pos + Vector3.up * 1f, Vector3.down, out RaycastHit hit, 5f, GetGrenadeBlockerMask()))
         {
             return hit.point.y;
         }
@@ -1107,8 +1121,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
         }
 
-        // ���������: ���� ����� �� ��������, �������� �� ����� ���
-        return pos.y - 50f;
+        return pos.y;
     }
 
     public void OpenPerfectDodgeWindow(Transform attacker, float duration)
@@ -1338,9 +1351,21 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
+
+            // === ФІКС ФІЗИКИ 1: Щоб граната не врізалась у самого гравця при спавні і не відбивалась під ноги ===
+            Collider grenadeCol = grenade.GetComponent<Collider>();
+            Collider playerCol = GetComponent<Collider>();
+            if (grenadeCol != null && playerCol != null)
+            {
+                Physics.IgnoreCollision(grenadeCol, playerCol, true);
+            }
+
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
             if (rb != null)
             {
+                // === ФІКС ФІЗИКИ 2: Вимикаємо опір повітря (Drag), бо він гальмує політ і ламає математичну траєкторію ===
+                rb.linearDamping = 0f;
+
                 rb.linearVelocity = CalculateThrowVelocity(currentGrenadeTarget);
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
