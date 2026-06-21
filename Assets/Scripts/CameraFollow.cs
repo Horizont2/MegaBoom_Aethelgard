@@ -142,8 +142,13 @@ public class CameraFollow : MonoBehaviour
             directionalShakeForce = 0f;
         }
 
+        // Compute the natural target rotation (matches transform.LookAt below),
+        // then blend toward it from the snapshot we took when the cutscene ended.
+        Quaternion finalRotation = Quaternion.LookRotation(lookAtPos - finalPosition);
+        ApplyHandoffBlendIfActive(ref finalPosition, ref finalRotation, dt);
+
         transform.position = finalPosition;
-        transform.LookAt(lookAtPos);
+        transform.rotation = finalRotation;
 
         // 6. Захист від Terrain
         if (Terrain.activeTerrain != null)
@@ -214,5 +219,50 @@ public class CameraFollow : MonoBehaviour
             currentDistance = targetDistance;
             actualCollisionDistance = targetDistance;
         }
+    }
+
+    // ---- Cinematic handoff blend ----
+    // BeginHandoffBlend captures the camera's current world position + rotation
+    // (e.g. wherever Cinemachine left them) and smoothly interpolates the final
+    // transform.position/rotation toward whatever CameraFollow computes over the
+    // given duration. While the blend is running, every other system in
+    // LateUpdate works as normal, and the snap that used to happen on the first
+    // post-cutscene frame is gone.
+    private bool isHandoffBlending = false;
+    private float handoffBlendT;
+    private float handoffBlendDuration;
+    private Vector3 handoffStartPos;
+    private Quaternion handoffStartRot;
+
+    public bool IsHandoffBlending => isHandoffBlending;
+
+    public void BeginHandoffBlend(float duration = 0.6f)
+    {
+        if (duration <= 0f) { isHandoffBlending = false; return; }
+        handoffStartPos = transform.position;
+        handoffStartRot = transform.rotation;
+        handoffBlendDuration = duration;
+        handoffBlendT = 0f;
+        isHandoffBlending = true;
+
+        // SnapToTarget so the target-follow numbers (currentTargetPos, distance)
+        // start from the player's current state — otherwise the destination
+        // we're blending toward would itself be drifting.
+        SnapToTarget();
+    }
+
+    private void ApplyHandoffBlendIfActive(ref Vector3 finalPosition, ref Quaternion finalRotation, float dt)
+    {
+        if (!isHandoffBlending) return;
+
+        handoffBlendT += dt;
+        float k = Mathf.Clamp01(handoffBlendT / handoffBlendDuration);
+        // ease-in-out cubic so the blend feels organic, not linear
+        float ease = k < 0.5f ? 4f * k * k * k : 1f - Mathf.Pow(-2f * k + 2f, 3f) / 2f;
+
+        finalPosition = Vector3.Lerp(handoffStartPos, finalPosition, ease);
+        finalRotation = Quaternion.Slerp(handoffStartRot, finalRotation, ease);
+
+        if (k >= 1f) isHandoffBlending = false;
     }
 }
