@@ -54340,7 +54340,9 @@ MonoBehaviour:
   foliageLayer:
     serializedVersion: 2
     m_Bits: 32768
-  raycastRadius: 1.5
+  raycastRadius: 0.5
+  playerProximityIgnore: 1.6
+  cameraProximityIgnore: 0.4
   fadeAlpha: 0.25
   fadeSpeed: 3
 --- !u!1001 &524003176

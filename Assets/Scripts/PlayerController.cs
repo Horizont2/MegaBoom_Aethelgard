@@ -175,12 +175,27 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    private float lastGroundedRealTime = -1f;
+    // Window during which we still treat the player as grounded even if the
+    // CharacterController briefly reports false. This kills the "stumbles on
+    // a 5cm rock" bug where the animator flickered into Fall/T-pose for a
+    // single frame each time the CC pushed over a small bump.
+    private const float COYOTE_GROUND_WINDOW = 0.12f;
+
     private void Awake()
     {
         gameObject.layer = 8;
         Physics.IgnoreLayerCollision(8, 9, true);
 
         characterController = GetComponent<CharacterController>();
+        if (characterController != null)
+        {
+            // Default prefab value is 0.3, which is too short for the terrain
+            // detail in the levels — the CC tripped over roots and small
+            // boulders instead of auto-stepping over them. 0.45 covers typical
+            // knee-height bumps without letting the player walk up cliffs.
+            if (characterController.stepOffset < 0.45f) characterController.stepOffset = 0.45f;
+        }
         anim = GetComponentInChildren<Animator>();
         if (anim != null)
         {
@@ -555,11 +570,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             inputDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
 
-            if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
+            if (Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
             {
                 if (!isAimingGrenade)
                 {
-                    if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
+                    // PerfectDodge needs a live threat window which never opens
+                    // in camp, so skip it there and go straight to a normal dash.
+                    if (!isCampMode && dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
                     else StartCoroutine(DashRoutine(inputDir, false));
                 }
             }
@@ -624,7 +641,16 @@ public class PlayerController : MonoBehaviour, IDamageable
             characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
         }
 
-        bool isGroundedNow = characterController.isGrounded;
+        bool ccGroundedThisFrame = characterController.isGrounded;
+        if (ccGroundedThisFrame) lastGroundedRealTime = Time.unscaledTime;
+
+        // Coyote-grounded: keep the player "grounded" for ~120ms after the CC
+        // last touched ground, as long as they're not actively rising (i.e.
+        // genuine jumps still register as airborne). This matches what
+        // animation typically wants and stops the IsGrounded param from
+        // flickering when the CC steps up over micro-bumps.
+        bool isGroundedNow = ccGroundedThisFrame
+            || (Time.unscaledTime - lastGroundedRealTime < COYOTE_GROUND_WINDOW && velocity.y <= 0.5f);
 
         if (!wasGroundedLastFrame && isGroundedNow)
         {
@@ -640,6 +666,19 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         if (isGroundedNow && velocity.y < 0) velocity.y = -2f;
+
+        // Ground-snap: if we're descending slowly and ground is right below
+        // (within ~0.5m), pin the vertical velocity. This prevents the player
+        // from "floating" off the top of small bumps for a few frames after a
+        // step-up, which is what usually triggered the fall/T-pose animation.
+        if (!ccGroundedThisFrame && velocity.y < 0f && velocity.y > -8f)
+        {
+            if (Physics.SphereCast(transform.position + Vector3.up * 0.4f, 0.2f, Vector3.down, out RaycastHit groundHit, 0.7f, GetGrenadeBlockerMask(), QueryTriggerInteraction.Ignore))
+            {
+                if (!groundHit.collider.CompareTag("Player")) velocity.y = -2f;
+            }
+        }
+
         wasGroundedLastFrame = isGroundedNow;
 
         if (visualModel != null && visualModel != transform && !isCampMode)
@@ -740,12 +779,38 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    // Layer mask used to detect both aim-raycast and trajectory collisions.
+    // Cached so we don't rebuild it every frame while aiming.
+    private static int s_grenadeAimMask = -1;
+    private static int s_grenadeBlockerMask = -1;
+
+    private static int GetGrenadeAimMask()
+    {
+        if (s_grenadeAimMask == -1)
+            s_grenadeAimMask = LayerMask.GetMask("Default", "Terrain", "Ground");
+        return s_grenadeAimMask;
+    }
+
+    private static int GetGrenadeBlockerMask()
+    {
+        if (s_grenadeBlockerMask == -1)
+        {
+            // GrenadeLogic explodes on collision with anything tagged non-Player,
+            // which in practice means the Default/Terrain/Ground layers plus enemy
+            // bodies. The trajectory simulation has to mirror that to land where
+            // the grenade actually will.
+            s_grenadeBlockerMask = LayerMask.GetMask("Default", "Terrain", "Ground");
+        }
+        return s_grenadeBlockerMask;
+    }
+
     private void UpdateGrenadeAiming()
     {
         Ray ray = mainCameraCached.ScreenPointToRay(Input.mousePosition);
         Vector3 hitPoint = transform.position + transform.forward * 5f;
+        int aimMask = GetGrenadeAimMask();
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, aimMask))
         {
             hitPoint = hit.point;
         }
@@ -755,42 +820,55 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
+        // Soft aim-magnet to nearby enemy — but keep the magnet purely horizontal
+        // so the predicted landing stays grounded. The old code carried the
+        // enemy's elevated Y into the target, which is half the reason the
+        // marker drifted away from the real explosion.
         int magnetCount = Physics.OverlapSphereNonAlloc(hitPoint, aimAssistRadius, s_overlapBuffer);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
-
         for (int mi = 0; mi < magnetCount; mi++)
         {
             Collider mHit = s_overlapBuffer[mi];
-            if (mHit.CompareTag("Enemy"))
+            if (mHit != null && mHit.CompareTag("Enemy"))
             {
                 float d = Vector3.Distance(hitPoint, mHit.transform.position);
                 if (d < minDist) { minDist = d; bestTarget = mHit.transform; }
             }
         }
-
         if (bestTarget != null)
         {
-            Vector3 magneticTarget = bestTarget.position;
-            magneticTarget.y = hitPoint.y;
+            Vector3 magneticTarget = new Vector3(bestTarget.position.x, hitPoint.y, bestTarget.position.z);
             hitPoint = Vector3.Lerp(hitPoint, magneticTarget, 0.4f);
         }
 
+        // Clamp to throw range in XZ.
         Vector3 offset = hitPoint - transform.position;
         offset.y = 0;
         if (offset.magnitude > maxThrowDistance)
         {
             hitPoint = transform.position + offset.normalized * maxThrowDistance;
-            if (Terrain.activeTerrain != null) hitPoint.y = Terrain.activeTerrain.SampleHeight(hitPoint) + Terrain.activeTerrain.transform.position.y;
         }
 
-        currentGrenadeTarget = hitPoint;
+        // Snap target to actual ground at that XZ — fixes the case where the
+        // raycast hit was an enemy collider in mid-air (or a sky-plane fallback
+        // at the player's elevation), which used to leave the AoE marker
+        // floating above the real landing.
+        hitPoint = ProjectAimToGround(hitPoint);
+
+        // Now simulate the throw with that target as the requested apex, then
+        // replace currentGrenadeTarget with where the grenade actually lands.
+        // This means the visual prediction is unconditionally correct: the line
+        // ends, the AoE rings sit, and the throw resolves all at the same point.
+        Vector3 simulatedLanding;
+        int simulatedCount = SimulateTrajectoryToLanding(hitPoint, out simulatedLanding);
+        currentGrenadeTarget = simulatedLanding;
 
         int blastCount = Physics.OverlapSphereNonAlloc(currentGrenadeTarget, grenadeExplosionRadius, s_overlapBuffer);
         bool enemyInBlast = false;
         for (int bi = 0; bi < blastCount; bi++)
         {
-            if (s_overlapBuffer[bi].CompareTag("Enemy")) { enemyInBlast = true; break; }
+            if (s_overlapBuffer[bi] != null && s_overlapBuffer[bi].CompareTag("Enemy")) { enemyInBlast = true; break; }
         }
 
         Color currentAimColor = enemyInBlast ? new Color(1f, 0.1f, 0.1f, 0.8f) : new Color(0f, 0.8f, 1f, 0.8f);
@@ -799,14 +877,14 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             trajectoryLine.startColor = currentAimColor;
             trajectoryLine.endColor = currentAimColor;
-            trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
+            trajectoryLine.positionCount = simulatedCount;
+            if (trajectoryLine.material != null) trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
         }
 
         if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
         if (innerMarkerLine != null) { innerMarkerLine.startColor = currentAimColor; innerMarkerLine.endColor = currentAimColor; }
 
         DrawAoEMarker(currentGrenadeTarget);
-        DrawPreciseTrajectory(currentGrenadeTarget);
 
         Vector3 aimDir = (currentGrenadeTarget - transform.position).normalized;
         aimDir.y = 0;
@@ -814,6 +892,23 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.unscaledDeltaTime * 3f);
         }
+    }
+
+    // Snaps an XZ aim point to whatever ground is directly below it. Falls back
+    // to terrain height, then to the original point if nothing was found.
+    private Vector3 ProjectAimToGround(Vector3 worldPoint)
+    {
+        Vector3 from = worldPoint + Vector3.up * 30f;
+        if (Physics.Raycast(from, Vector3.down, out RaycastHit groundHit, 100f, GetGrenadeBlockerMask()))
+        {
+            return groundHit.point;
+        }
+        if (Terrain.activeTerrain != null)
+        {
+            float ty = Terrain.activeTerrain.SampleHeight(worldPoint) + Terrain.activeTerrain.transform.position.y;
+            return new Vector3(worldPoint.x, ty, worldPoint.z);
+        }
+        return worldPoint;
     }
 
     private Vector3 CalculateThrowVelocity(Vector3 target)
@@ -829,22 +924,70 @@ public class PlayerController : MonoBehaviour, IDamageable
         return velXZ + Vector3.up * velY;
     }
 
-    private void DrawPreciseTrajectory(Vector3 target)
+    // Physics-accurate trajectory simulation that mirrors what the live grenade
+    // will do: it ballisticly steps with gravity, sphere-casts each segment
+    // against terrain/world geometry, and writes the actual flight path into
+    // trajectoryLine. Returns the final point count.
+    //
+    // Returning the simulated landing instead of just drawing it lets callers
+    // realign the AoE marker (and the throw itself) so visuals can never lie
+    // about where the grenade lands.
+    private int SimulateTrajectoryToLanding(Vector3 requestedTarget, out Vector3 landing)
     {
-        if (trajectoryLine == null) return;
-        trajectoryLine.positionCount = linePoints;
-        Vector3 startPos = throwPoint.position;
-        Vector3 vel = CalculateThrowVelocity(target);
+        Vector3 start = throwPoint != null ? throwPoint.position : transform.position + Vector3.up;
+        Vector3 vel = CalculateThrowVelocity(requestedTarget);
 
-        Vector3 displacementXZ = new Vector3(target.x - startPos.x, 0, target.z - startPos.z);
-        float flightTime = Mathf.Clamp(displacementXZ.magnitude / grenadeThrowSpeed, 0.25f, 1.2f);
+        const int MAX_STEPS = 64;
+        const float STEP_TIME = 0.04f;
+        const float COLLISION_RADIUS = 0.15f;
 
-        for (int i = 0; i < linePoints; i++)
+        int blockerMask = GetGrenadeBlockerMask();
+        Vector3 prev = start;
+
+        // Pre-size the line buffer so SetPosition() calls don't fail; caller
+        // will trim positionCount down to the actual writtenPoints below.
+        if (trajectoryLine != null && trajectoryLine.positionCount < MAX_STEPS)
+            trajectoryLine.positionCount = MAX_STEPS;
+
+        // First point is the throw origin.
+        if (trajectoryLine != null) trajectoryLine.SetPosition(0, prev);
+
+        int writtenPoints = 1;
+        for (int i = 1; i < MAX_STEPS; i++)
         {
-            float t = i * (flightTime / (linePoints - 1));
-            Vector3 point = startPos + vel * t + Physics.gravity * 0.5f * t * t;
-            trajectoryLine.SetPosition(i, point);
+            float t = i * STEP_TIME;
+            Vector3 next = start + vel * t + Physics.gravity * 0.5f * t * t;
+
+            Vector3 segDir = next - prev;
+            float segDist = segDir.magnitude;
+            if (segDist > 0.0001f)
+            {
+                if (Physics.SphereCast(prev, COLLISION_RADIUS, segDir / segDist, out RaycastHit hit, segDist, blockerMask, QueryTriggerInteraction.Ignore))
+                {
+                    // Only terminate on non-player blockers; otherwise we'd
+                    // collide with the player's own collider standing under
+                    // the throw origin.
+                    if (!hit.collider.CompareTag("Player"))
+                    {
+                        if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, hit.point);
+                        writtenPoints++;
+                        landing = hit.point;
+                        return writtenPoints;
+                    }
+                }
+            }
+
+            if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, next);
+            writtenPoints++;
+            prev = next;
+
+            // Hard safety: if we somehow drop way below the throw origin (deep
+            // pit or off-map), stop here so we don't trace into the void.
+            if (next.y < start.y - 50f) { landing = next; return writtenPoints; }
         }
+
+        landing = prev;
+        return writtenPoints;
     }
 
     private void DrawAoEMarker(Vector3 center)
