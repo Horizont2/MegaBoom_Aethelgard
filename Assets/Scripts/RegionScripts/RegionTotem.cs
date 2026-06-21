@@ -111,8 +111,9 @@ public class RegionTotem : MonoBehaviour
                 if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
                 isPromptShowing = false;
 
-                // Гравець активував тотем - ВИМИКАЄМО маяк назавжди
                 if (interactHintVFX != null) interactHintVFX.SetActive(false);
+
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Totem_Activate);
 
                 if (manager != null) manager.OnTotemActivated(this);
 

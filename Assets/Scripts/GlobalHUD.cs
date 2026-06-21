@@ -39,6 +39,11 @@ public class GlobalHUD : MonoBehaviour
     private RectTransform bottomCinematicBar;
     private Coroutine barsRoutine;
 
+    [Header("Cinematic Skip Prompt")]
+    private CanvasGroup skipPromptGroup;
+    private TextMeshProUGUI skipPromptText;
+    private Coroutine skipPromptRoutine;
+
     [Header("Pause Menu Settings")]
     public CanvasGroup pausePanelGroup;
     public GameObject[] pauseButtons;
@@ -223,29 +228,128 @@ public class GlobalHUD : MonoBehaviour
     private void CreateCinematicBarsIfNeeded()
     {
         if (topCinematicBar != null && bottomCinematicBar != null) return;
-        GameObject barsContainer = new GameObject("CinematicBars_Auto");
-        barsContainer.transform.SetParent(this.transform, false);
-        barsContainer.transform.SetAsLastSibling();
 
-        GameObject topObj = new GameObject("TopBar", typeof(RectTransform), typeof(Image));
-        topObj.transform.SetParent(barsContainer.transform, false);
-        topObj.GetComponent<Image>().color = Color.black;
+        // Important: parent directly to the GlobalHUD canvas (RectTransform). The
+        // previous version created a plain GameObject ("CinematicBars_Auto") and
+        // parented Image children to its non-RectTransform — RectTransform anchors
+        // don't work properly when an ancestor in the chain isn't a RectTransform,
+        // which is why the bars never showed up on cutscenes.
+        Transform parent = this.transform;
+
+        GameObject topObj = new GameObject("CinematicBar_Top", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         topCinematicBar = topObj.GetComponent<RectTransform>();
+        topCinematicBar.SetParent(parent, false);
         topCinematicBar.anchorMin = new Vector2(0, 1);
         topCinematicBar.anchorMax = new Vector2(1, 1);
         topCinematicBar.pivot = new Vector2(0.5f, 0);
         topCinematicBar.sizeDelta = new Vector2(0, 150);
         topCinematicBar.anchoredPosition = new Vector2(0, 150);
+        Image topImg = topObj.GetComponent<Image>();
+        topImg.color = Color.black;
+        topImg.raycastTarget = false;
 
-        GameObject botObj = new GameObject("BottomBar", typeof(RectTransform), typeof(Image));
-        botObj.transform.SetParent(barsContainer.transform, false);
-        botObj.GetComponent<Image>().color = Color.black;
+        GameObject botObj = new GameObject("CinematicBar_Bottom", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         bottomCinematicBar = botObj.GetComponent<RectTransform>();
+        bottomCinematicBar.SetParent(parent, false);
         bottomCinematicBar.anchorMin = new Vector2(0, 0);
         bottomCinematicBar.anchorMax = new Vector2(1, 0);
         bottomCinematicBar.pivot = new Vector2(0.5f, 1);
         bottomCinematicBar.sizeDelta = new Vector2(0, 150);
         bottomCinematicBar.anchoredPosition = new Vector2(0, -150);
+        Image botImg = botObj.GetComponent<Image>();
+        botImg.color = Color.black;
+        botImg.raycastTarget = false;
+
+        topCinematicBar.SetAsLastSibling();
+        bottomCinematicBar.SetAsLastSibling();
+    }
+
+    private void CreateSkipPromptIfNeeded()
+    {
+        if (skipPromptGroup != null) return;
+
+        GameObject host = new GameObject("CinematicSkipPrompt", typeof(RectTransform), typeof(CanvasGroup));
+        RectTransform hostRect = host.GetComponent<RectTransform>();
+        hostRect.SetParent(this.transform, false);
+        hostRect.anchorMin = new Vector2(0.5f, 0);
+        hostRect.anchorMax = new Vector2(0.5f, 0);
+        hostRect.pivot = new Vector2(0.5f, 0);
+        hostRect.sizeDelta = new Vector2(420f, 60f);
+        hostRect.anchoredPosition = new Vector2(0, 40f);
+
+        skipPromptGroup = host.GetComponent<CanvasGroup>();
+        skipPromptGroup.alpha = 0f;
+        skipPromptGroup.interactable = false;
+        skipPromptGroup.blocksRaycasts = false;
+
+        GameObject txtObj = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer));
+        RectTransform txtRect = txtObj.GetComponent<RectTransform>();
+        txtRect.SetParent(hostRect, false);
+        txtRect.anchorMin = Vector2.zero;
+        txtRect.anchorMax = Vector2.one;
+        txtRect.offsetMin = Vector2.zero;
+        txtRect.offsetMax = Vector2.zero;
+
+        skipPromptText = txtObj.AddComponent<TextMeshProUGUI>();
+        skipPromptText.text = "Press <b>SPACE</b> to Skip";
+        skipPromptText.fontSize = 24f;
+        skipPromptText.alignment = TextAlignmentOptions.Center;
+        skipPromptText.color = new Color(1f, 0.92f, 0.72f, 0.9f);
+        skipPromptText.fontStyle = FontStyles.Normal;
+        skipPromptText.outlineWidth = 0.2f;
+        skipPromptText.outlineColor = Color.black;
+        skipPromptText.raycastTarget = false;
+
+        hostRect.SetAsLastSibling();
+    }
+
+    public void ShowSkipPrompt(string customText = null)
+    {
+        CreateSkipPromptIfNeeded();
+        if (skipPromptGroup == null) return;
+        if (!string.IsNullOrEmpty(customText) && skipPromptText != null)
+            skipPromptText.text = customText;
+        if (skipPromptRoutine != null) StopCoroutine(skipPromptRoutine);
+        skipPromptRoutine = StartCoroutine(SkipPromptRoutine());
+    }
+
+    public void HideSkipPrompt()
+    {
+        if (skipPromptRoutine != null) StopCoroutine(skipPromptRoutine);
+        if (skipPromptGroup != null) StartCoroutine(FadeSkipPromptOut());
+    }
+
+    private IEnumerator SkipPromptRoutine()
+    {
+        // Fade in once, then breathe alpha forever until HideSkipPrompt() stops us.
+        float fadeIn = 0.5f;
+        float t = 0f;
+        while (t < fadeIn)
+        {
+            t += Time.unscaledDeltaTime;
+            skipPromptGroup.alpha = Mathf.Lerp(0f, 1f, t / fadeIn);
+            yield return null;
+        }
+        while (true)
+        {
+            // breathe: sin wave 0.55 → 1.0 → 0.55 each ~1.4s
+            float k = (Mathf.Sin(Time.unscaledTime * 4.5f) + 1f) * 0.5f;
+            skipPromptGroup.alpha = Mathf.Lerp(0.55f, 1f, k);
+            yield return null;
+        }
+    }
+
+    private IEnumerator FadeSkipPromptOut()
+    {
+        float startAlpha = skipPromptGroup.alpha;
+        float t = 0f;
+        while (t < 0.3f)
+        {
+            t += Time.unscaledDeltaTime;
+            skipPromptGroup.alpha = Mathf.Lerp(startAlpha, 0f, t / 0.3f);
+            yield return null;
+        }
+        skipPromptGroup.alpha = 0f;
     }
 
     public void ShowCinematicBars()

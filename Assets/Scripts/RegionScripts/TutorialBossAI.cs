@@ -18,6 +18,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     [Header("Stagger & Weapon Drop")]
     public GameObject bossWeapon;
+    [Tooltip("Колір кругу під ногами боса в стейтджері (procedural)")]
+    public Color staggerRingColor = new Color(1f, 0.65f, 0.1f, 0.8f);
+    [Tooltip("Радіус кругу-маркера під босом у стагері")]
+    public float staggerRingRadius = 3.5f;
 
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
@@ -44,6 +48,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     private Renderer[] meshRenderers;
     private Color[] originalColors;
+    private GameObject staggerRing;
+    private float staggerRumbleTimer;
 
     private void Awake()
     {
@@ -77,6 +83,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         {
             GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
         }
+
+        // Boss arrival roar so the player KNOWS the fight has begun
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
+
+        // Trigger combat music if the music system supports it
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
     }
 
     private void Start()
@@ -272,7 +284,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         isStaggered = true;
         isPreparingAttack = false;
-        Time.timeScale = 1f; // Відновлюємо час, якщо був хіт-стоп
+        Time.timeScale = 1f; // restore in case hit-stop was active
 
         SnapToGround();
 
@@ -297,7 +309,97 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             weaponRb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
         }
 
+        // Audio cue for stagger entry — weapon clatter + boss groan baked into one ID
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Stagger);
+
+        // Camera punch — boss is reeling, the camera should feel it too
+        if (Camera.main != null)
+        {
+            CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
+            if (cam != null) cam.TriggerShake(0.45f, 0.25f);
+        }
+
+        SpawnStaggerRing();
         StartCoroutine(StaggerPulseRoutine());
+        StartCoroutine(StaggerBreathingRoutine());
+    }
+
+    private void SpawnStaggerRing()
+    {
+        if (staggerRing != null) return;
+
+        staggerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        staggerRing.name = "BossStaggerRing";
+        Collider col = staggerRing.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+
+        staggerRing.transform.SetParent(null);
+        Vector3 ringPos = transform.position;
+        if (Terrain.activeTerrain != null)
+            ringPos.y = Terrain.activeTerrain.SampleHeight(ringPos) + Terrain.activeTerrain.transform.position.y + 0.05f;
+        staggerRing.transform.position = ringPos;
+        // Flatten a unit cylinder into a thin disc the size we want
+        staggerRing.transform.localScale = new Vector3(staggerRingRadius * 2f, 0.02f, staggerRingRadius * 2f);
+
+        Material mat = BuildRingMaterial(staggerRingColor);
+        Renderer rend = staggerRing.GetComponent<Renderer>();
+        rend.sharedMaterial = mat;
+        rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        rend.receiveShadows = false;
+    }
+
+    private Material BuildRingMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Standard");
+        Material mat = new Material(shader);
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+        if (mat.HasProperty("_Surface"))
+        {
+            mat.SetFloat("_Surface", 1f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+        if (mat.HasProperty("_EmissionColor"))
+        {
+            mat.SetColor("_EmissionColor", color * 4f);
+            mat.EnableKeyword("_EMISSION");
+        }
+        return mat;
+    }
+
+    private IEnumerator StaggerBreathingRoutine()
+    {
+        Vector3 baseScale = transform.localScale;
+        while (isStaggered && !isDead)
+        {
+            float pulse = (Mathf.Sin(Time.time * 2.4f) + 1f) * 0.5f;
+            transform.localScale = baseScale + new Vector3(0f, baseScale.y * 0.04f * pulse, 0f);
+
+            // Ring pulse — alpha + slight scale
+            if (staggerRing != null)
+            {
+                float ringPulse = 1f + Mathf.Sin(Time.time * 5f) * 0.06f;
+                staggerRing.transform.localScale = new Vector3(
+                    staggerRingRadius * 2f * ringPulse, 0.02f, staggerRingRadius * 2f * ringPulse);
+            }
+
+            // Low rumble approximately every 0.8s
+            staggerRumbleTimer -= Time.deltaTime;
+            if (staggerRumbleTimer <= 0f)
+            {
+                staggerRumbleTimer = 0.8f;
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Stagger);
+            }
+
+            yield return null;
+        }
+        transform.localScale = baseScale;
     }
 
     private void SnapToGround()
@@ -326,6 +428,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isDead = true;
         isStaggered = false;
 
+        if (staggerRing != null) Destroy(staggerRing);
+
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HideBossUI();
@@ -339,6 +443,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         CharacterController playerCC = playerTarget.GetComponent<CharacterController>();
         if (playerCC != null) playerCC.enabled = false;
 
+        // ------ Compute geometry ------
         Vector3 playerStartPos = playerTarget.transform.position;
         Quaternion playerStartRot = playerTarget.transform.rotation;
 
@@ -359,75 +464,109 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         Vector3 startCamPos = mainCam.transform.position;
         Vector3 cinematicCamPos = midPoint + sideDir * 4f + Vector3.up * 1f;
 
-        Time.timeScale = 0.1f;
-        Time.fixedDeltaTime = 0.02f * Time.timeScale;
-
+        // ------ Snapshot for restoration (try/finally style) ------
+        float savedTimeScale = Time.timeScale;
+        float savedFixedDelta = Time.fixedDeltaTime;
         Animator playerAnim = playerTarget.GetComponentInChildren<Animator>();
-        if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
+        AnimatorUpdateMode savedPlayerAnimMode = playerAnim != null ? playerAnim.updateMode : AnimatorUpdateMode.Normal;
+        AnimatorUpdateMode savedBossAnimMode = animator != null ? animator.updateMode : AnimatorUpdateMode.Normal;
 
-        playerAnim?.SetTrigger("Attack");
-
-        float elapsed = 0f;
-        float cinematicDuration = 0.55f;
-
-        while (elapsed < cinematicDuration)
+        try
         {
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / cinematicDuration);
+            // ------ Phase 1: camera glides into position, player slides to mark ------
+            // No Attack trigger yet — the player is just being PLACED.
+            Time.timeScale = 0.1f;
+            Time.fixedDeltaTime = 0.02f * Time.timeScale;
+            if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
 
-            playerTarget.transform.position = Vector3.Lerp(playerStartPos, idealPlayerPos, t);
-            playerTarget.transform.rotation = Quaternion.Slerp(playerStartRot, idealPlayerRot, t);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
 
-            mainCam.transform.position = Vector3.Lerp(startCamPos, cinematicCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, 35f, t);
+            float elapsed = 0f;
+            const float cinematicDuration = 0.55f;
+            while (elapsed < cinematicDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / cinematicDuration);
 
-            Quaternion targetRotation = Quaternion.LookRotation((bossPos + Vector3.up * 1.2f) - mainCam.transform.position) * Quaternion.Euler(0, 0, 8f);
-            mainCam.transform.rotation = Quaternion.Slerp(Camera.main.transform.rotation, targetRotation, t);
+                playerTarget.transform.position = Vector3.Lerp(playerStartPos, idealPlayerPos, t);
+                playerTarget.transform.rotation = Quaternion.Slerp(playerStartRot, idealPlayerRot, t);
 
-            yield return null;
-        }
+                mainCam.transform.position = Vector3.Lerp(startCamPos, cinematicCamPos, t);
+                mainCam.fieldOfView = Mathf.Lerp(mainCam.fieldOfView, 35f, t);
 
-        Time.timeScale = 0.005f;
-        camFollow?.TriggerShake(0.2f, 0.35f);
+                Quaternion targetRotation =
+                    Quaternion.LookRotation((bossPos + Vector3.up * 1.2f) - mainCam.transform.position)
+                    * Quaternion.Euler(0, 0, 8f);
+                mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, targetRotation, t);
 
-        animator.updateMode = AnimatorUpdateMode.UnscaledTime;
-        animator.SetTrigger("Die");
+                yield return null;
+            }
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
-        if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+            // ------ Phase 2: IMPACT MOMENT — strike + boss death triggers fire on the SAME frame ------
+            Time.timeScale = 0.005f;
+            if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
 
-        foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
-        ResetColor();
+            playerAnim?.SetTrigger("Attack");
+            // tiny pause so the windup of the swing reads before contact
+            yield return new WaitForSecondsRealtime(0.18f);
 
-        if (xpCrystalPrefab != null)
-        {
+            // CONTACT — the killing blow lands
+            if (animator != null) animator.SetTrigger("Die");
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
+                AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
+            }
+            camFollow?.TriggerShake(0.45f, 0.45f);
+            SetColor(Color.white); // bloom flash
+            if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+
+            yield return new WaitForSecondsRealtime(0.08f);
+            ResetColor();
+
+            // ------ Phase 3: hold the slow-mo to let the death pose read ------
+            foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
+
+            // Loot bursts out radially as ash settles
+            Vector3 dropOrigin = transform.position + Vector3.up * 1.5f;
             for (int i = 0; i < xpCrystalsToDrop; i++)
             {
-                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
-                else Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+                Vector2 off = Random.insideUnitCircle * 1.2f;
+                Vector3 pos = dropOrigin + new Vector3(off.x, 0.3f, off.y);
+                if (xpCrystalPrefab != null)
+                {
+                    if (ObjectPoolManager.Instance != null)
+                        ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, pos, Quaternion.identity);
+                    else
+                        Instantiate(xpCrystalPrefab, pos, Quaternion.identity);
+                }
             }
-        }
-
-        if (diamondPrefab != null)
-        {
             for (int i = 0; i < diamondsToDrop; i++)
             {
-                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
-                else Instantiate(diamondPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+                Vector2 off = Random.insideUnitCircle * 1.4f;
+                Vector3 pos = dropOrigin + new Vector3(off.x, 0.4f, off.y);
+                if (diamondPrefab != null)
+                {
+                    if (ObjectPoolManager.Instance != null)
+                        ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, pos, Quaternion.identity);
+                    else
+                        Instantiate(diamondPrefab, pos, Quaternion.identity);
+                }
             }
+
+            yield return new WaitForSecondsRealtime(0.55f);
         }
-
-        yield return new WaitForSecondsRealtime(0.4f);
-
-        Time.timeScale = 1f;
-        Time.fixedDeltaTime = 0.02f;
-
-        if (playerCC != null) playerCC.enabled = true;
-        if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.Normal;
-        if (animator != null) animator.updateMode = AnimatorUpdateMode.Normal;
-
-        if (camFollow != null) camFollow.isCinematicMode = false;
-        GlobalHUD.Instance?.HideCinematicBars();
+        finally
+        {
+            // ALWAYS restore — even if the player dies mid-cinematic or scene unloads
+            Time.timeScale = savedTimeScale > 0f ? savedTimeScale : 1f;
+            Time.fixedDeltaTime = savedFixedDelta > 0f ? savedFixedDelta : 0.02f;
+            if (playerAnim != null) playerAnim.updateMode = savedPlayerAnimMode;
+            if (animator != null) animator.updateMode = savedBossAnimMode;
+            if (playerCC != null) playerCC.enabled = true;
+            if (camFollow != null) camFollow.isCinematicMode = false;
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideCinematicBars();
+        }
 
         StartCoroutine(DeathDissolveRoutine());
     }

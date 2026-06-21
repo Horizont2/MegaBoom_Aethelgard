@@ -41,6 +41,19 @@ public static class AudioID
     public const string Animal_CatMeow = "Animal_CatMeow";
     public const string Animal_Chicken = "Animal_Chicken";
 
+    // === Region mission + boss cinematic ===
+    public const string Boss_Roar = "Boss_Roar";
+    public const string Boss_Stagger = "Boss_Stagger";
+    public const string Boss_Execute = "Boss_Execute";
+    public const string Region_VictoryStinger = "Region_VictoryStinger";
+    public const string Region_Shockwave = "Region_Shockwave";
+    public const string Cinematic_Whoosh = "Cinematic_Whoosh";
+
+    // === Gameplay feel ===
+    public const string Encounter_Cleared = "Encounter_Cleared";
+    public const string Totem_Activate = "Totem_Activate";
+    public const string Player_PerfectDodge = "Player_PerfectDodge";
+
     public const string Music_Camp = "Music_Camp";
     public const string Music_Battle = "Music_Battle";
 }
@@ -73,6 +86,12 @@ public class AudioManager : MonoBehaviour
     [Header("=== ANIMALS ===")]
     public SoundGroup animalCatMeow, animalChicken;
 
+    [Header("=== REGION + BOSS CINEMATIC ===")]
+    public SoundGroup bossRoar, bossStagger, bossExecute, regionVictoryStinger, regionShockwave, cinematicWhoosh;
+
+    [Header("=== GAMEPLAY FEEL ===")]
+    public SoundGroup encounterCleared, totemActivate, playerPerfectDodge;
+
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp, musicBattle;
 
@@ -83,7 +102,7 @@ public class AudioManager : MonoBehaviour
     [HideInInspector] public float globalMusicVolume = 1f;
     [HideInInspector] public float globalSFXVolume = 1f;
 
-    // Внутрішні компоненти (більше не треба налаштовувати в Інспекторі)
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
     private AudioSource musicSource;
     private AudioSource uiSource;
     private AudioSource[] sfxSources;
@@ -91,7 +110,7 @@ public class AudioManager : MonoBehaviour
     private Dictionary<string, SoundGroup> sfxDictionary, uiDictionary, musicDictionary;
     private Coroutine musicFadeCoroutine;
 
-    // Змінні для анти-спаму (захист від дублювання звуків)
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
     private float lastUIPlayTime;
     private string lastUIPlaySound;
 
@@ -117,7 +136,7 @@ public class AudioManager : MonoBehaviour
 
     private void CreateAudioSources()
     {
-        // Автоматично створюємо і ховаємо всі динаміки
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         musicSource = gameObject.AddComponent<AudioSource>();
         musicSource.loop = true;
         musicSource.hideFlags = HideFlags.HideInInspector;
@@ -146,7 +165,7 @@ public class AudioManager : MonoBehaviour
 
     private void LoadAudioSettings()
     {
-        // ЖОРСТКИЙ ЗАХИСТ: Mathf.Clamp не дасть гучності стати більшою за 1 (100%)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: Mathf.Clamp пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1 (100%)
         globalMusicVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MusicVol", 1f), 0f, 1f);
         globalSFXVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_SFXVol", 1f), 0f, 1f);
 
@@ -201,6 +220,19 @@ public class AudioManager : MonoBehaviour
         // Animals
         sfxDictionary.Add(AudioID.Animal_CatMeow, animalCatMeow); sfxDictionary.Add(AudioID.Animal_Chicken, animalChicken);
 
+        // Region + Boss cinematic
+        sfxDictionary.Add(AudioID.Boss_Roar, bossRoar);
+        sfxDictionary.Add(AudioID.Boss_Stagger, bossStagger);
+        sfxDictionary.Add(AudioID.Boss_Execute, bossExecute);
+        sfxDictionary.Add(AudioID.Region_VictoryStinger, regionVictoryStinger);
+        sfxDictionary.Add(AudioID.Region_Shockwave, regionShockwave);
+        sfxDictionary.Add(AudioID.Cinematic_Whoosh, cinematicWhoosh);
+
+        // Gameplay feel
+        sfxDictionary.Add(AudioID.Encounter_Cleared, encounterCleared);
+        sfxDictionary.Add(AudioID.Totem_Activate, totemActivate);
+        sfxDictionary.Add(AudioID.Player_PerfectDodge, playerPerfectDodge);
+
         // Music
         musicDictionary.Add(AudioID.Music_Camp, musicCamp); musicDictionary.Add(AudioID.Music_Battle, musicBattle);
     }
@@ -222,7 +254,7 @@ public class AudioManager : MonoBehaviour
 
     public void PlayUI(string soundName)
     {
-        // АНТИ-СПАМ: Забороняємо грати абсолютно той самий звук, якщо з минулого виклику пройшло менше 0.05 секунди
+        // пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 0.05 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (soundName == lastUIPlaySound && Time.unscaledTime - lastUIPlayTime < 0.05f) return;
 
         lastUIPlaySound = soundName;

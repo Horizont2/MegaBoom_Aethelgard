@@ -869,6 +869,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         isNextAttackGuaranteedCrit = true;
         isBulletTime = true;
 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
+
         Time.timeScale = perfectDodgeSlowMoScale;
 
         if (anim != null) anim.updateMode = AnimatorUpdateMode.UnscaledTime;

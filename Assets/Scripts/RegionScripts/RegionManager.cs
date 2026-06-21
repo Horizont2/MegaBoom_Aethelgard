@@ -213,30 +213,23 @@ public class RegionManager : MonoBehaviour
 
     private IEnumerator FinalRegionPurificationRoutine(Vector3 finalTotemPos)
     {
-        // ---------------------------------------------------------
-        // ЗАПОБІЖНИК ВІД СМЕРТІ В КАТСЦЕНІ
-        // Блокуємо спавн і вбиваємо всіх залишкових ворогів на мапі
-        // ---------------------------------------------------------
+        // Lock down: stop random spawns + clean lingering bosses so nothing kills
+        // the player mid-victory. Regular EnemyAI will be cleared visually by a
+        // shockwave below, not yanked from the world.
         EnemySpawner.IsSpawningBlocked = true;
-
-        EnemyAI[] remainingEnemies = Object.FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
-        foreach (EnemyAI enemy in remainingEnemies)
-        {
-            if (enemy != null) Destroy(enemy.gameObject);
-        }
 
         TutorialBossAI[] remainingBosses = Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None);
         foreach (TutorialBossAI boss in remainingBosses)
         {
             if (boss != null) Destroy(boss.gameObject);
         }
-        // ---------------------------------------------------------
 
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HideLevelObjective();
             GlobalHUD.Instance.ShowCinematicBars();
             GlobalHUD.Instance.SetGameplayPanelsActive(false);
+            GlobalHUD.Instance.ShowSkipPrompt("Press <b>SPACE</b> to Skip");
         }
 
         if (playerController != null) playerController.isControlBlocked = true;
@@ -259,48 +252,88 @@ public class RegionManager : MonoBehaviour
         float camHeight = Mathf.Clamp(mapScale * 0.15f, 35f, 60f);
 
         Vector3 apexCamPos = finalTotemPos + new Vector3(0f, camHeight, -camHeight * 0.8f);
-        Vector3 endPanPos = apexCamPos + new Vector3(30f, 0f, 10f);
+
+        // === PHASE 1: shockwave purifies the world (1.2 s) ===========================
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Region_Shockwave);
+        if (camFollow != null) camFollow.TriggerShake(0.5f, 0.4f);
+
+        // Procedural corruption-departure beam — black/dark plume rising from the totem
+        GameObject corruptionBeam = CreateCorruptionBeam(finalTotemPos);
+
+        // Schedule every lingering EnemyAI to "evaporate" in a radial wave from the totem
+        StartCoroutine(CleanseEnemiesWaveRoutine(finalTotemPos));
+
+        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
+        yield return WaitOrSkip(1.2f);
+
+        // === PHASE 2: camera glides up to apex (1.5 s) ==============================
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
+
+        Vector3 startCamPos = mainCam.transform.position;
+        Quaternion startCamRot = mainCam.transform.rotation;
+        float startFov = mainCam.fieldOfView;
 
         float elapsed = 0f;
-        while (elapsed < 2.5f)
+        while (elapsed < 1.5f)
         {
+            if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
             elapsed += Time.deltaTime;
-            float t = 1f - Mathf.Pow(1f - (elapsed / 2.5f), 3f);
-
-            mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, apexCamPos, t);
-            mainCam.fieldOfView = Mathf.Lerp(mainCam.fieldOfView, 70f, t);
-            mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, Quaternion.LookRotation(finalTotemPos - mainCam.transform.position), t);
+            float t = 1f - Mathf.Pow(1f - (elapsed / 1.5f), 3f);
+            mainCam.transform.position = Vector3.Lerp(startCamPos, apexCamPos, t);
+            mainCam.fieldOfView = Mathf.Lerp(startFov, 70f, t);
+            mainCam.transform.rotation = Quaternion.Slerp(startCamRot,
+                Quaternion.LookRotation(finalTotemPos - apexCamPos), t);
             yield return null;
         }
 
-        yield return new WaitForSeconds(0.4f);
+        // Quest-complete sting at apex
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
+            AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+        }
+        if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
 
-        if (camFollow != null) camFollow.TriggerShake(0.6f, 0.15f);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
-
+        // === PHASE 3: orbit camera around totem (2.5 s) =============================
         float initialFogStart = RenderSettings.fogStartDistance;
         float initialFogEnd = RenderSettings.fogEndDistance;
         float targetFogStart = initialFogStart + mapScale;
         float targetFogEnd = initialFogEnd + (mapScale * 1.5f);
         Color initialAmbient = RenderSettings.ambientLight;
 
+        Vector3 toApex = apexCamPos - finalTotemPos;
+        float orbitRadius = new Vector2(toApex.x, toApex.z).magnitude;
+        float orbitHeight = toApex.y;
+        float baseAngle = Mathf.Atan2(toApex.z, toApex.x);
+
         elapsed = 0f;
-        while (elapsed < 4.5f)
+        const float orbitDuration = 2.5f;
+        while (elapsed < orbitDuration)
         {
+            if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
             elapsed += Time.deltaTime;
-            float t = elapsed / 4.5f;
+            float t = elapsed / orbitDuration;
             float smoothT = t * t * (3f - 2f * t);
 
-            mainCam.transform.position = Vector3.Lerp(apexCamPos, endPanPos, t);
-            mainCam.transform.rotation = Quaternion.LookRotation(finalTotemPos - mainCam.transform.position);
+            float angle = baseAngle + Mathf.Lerp(0f, 30f * Mathf.Deg2Rad, smoothT);
+            Vector3 orbitPos = finalTotemPos + new Vector3(
+                Mathf.Cos(angle) * orbitRadius,
+                orbitHeight + Mathf.Sin(elapsed * 0.6f) * 1.5f,
+                Mathf.Sin(angle) * orbitRadius);
+            mainCam.transform.position = orbitPos;
+            mainCam.transform.rotation = Quaternion.LookRotation(finalTotemPos - orbitPos);
 
             RenderSettings.fogStartDistance = Mathf.Lerp(initialFogStart, targetFogStart, smoothT);
             RenderSettings.fogEndDistance = Mathf.Lerp(initialFogEnd, targetFogEnd, smoothT);
-            RenderSettings.ambientLight = Color.Lerp(initialAmbient, new Color(initialAmbient.r + 0.3f, initialAmbient.g + 0.3f, initialAmbient.b + 0.3f), t);
+            RenderSettings.ambientLight = Color.Lerp(initialAmbient,
+                new Color(initialAmbient.r + 0.3f, initialAmbient.g + 0.3f, initialAmbient.b + 0.3f), t);
 
             yield return null;
         }
 
+        if (corruptionBeam != null) Destroy(corruptionBeam);
+
+        // === PHASE 4: title card + reward summary (3 s) =============================
         if (CinematicTitleUI.Instance != null)
         {
             CinematicTitleUI.Instance.ShowTitle("REGION CONQUERED", "THE CURSE HAS BEEN LIFTED", true);
@@ -310,8 +343,20 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.ShowPrompt("REGION CONQUERED!");
         }
 
-        yield return new WaitForSeconds(5f);
+        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
+        yield return WaitOrSkip(1.5f);
 
+        // Reward summary card via GlobalHUD prompt (fast + readable)
+        if (currentRegion != null && GlobalHUD.Instance != null)
+        {
+            string summary = BuildRewardSummary(currentRegion);
+            GlobalHUD.Instance.ShowPrompt(summary);
+        }
+
+        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
+        yield return WaitOrSkip(1.5f);
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideSkipPrompt();
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) playerController.isControlBlocked = false;
 
@@ -336,5 +381,136 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.HidePrompt();
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
+    }
+
+    // ============================================================
+    // Cinematic helpers
+    // ============================================================
+
+    private static bool CheckSkipRequested()
+    {
+        return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Escape);
+    }
+
+    private IEnumerator WaitOrSkip(float seconds)
+    {
+        float t = 0f;
+        while (t < seconds)
+        {
+            if (CheckSkipRequested()) yield break;
+            t += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    private IEnumerator EarlyExitRoutine()
+    {
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.HideSkipPrompt();
+            GlobalHUD.Instance.HidePrompt();
+        }
+
+        Camera mainCam = Camera.main;
+        CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
+        if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
+        if (playerController != null) playerController.isControlBlocked = false;
+
+        if (currentRegion != null)
+        {
+            currentRegion.currentState = RegionState.Conquered;
+            PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
+            PlayerPrefs.SetInt("AutoOpenMap", 1);
+            PlayerPrefs.Save();
+
+            if (ResourceManager.Instance != null)
+            {
+                ResourceManager.Instance.AddStashResources(currentRegion.woodReward, currentRegion.stoneReward, currentRegion.foodReward);
+                ResourceManager.Instance.diamonds += currentRegion.diamondReward;
+                ResourceManager.Instance.UpdateUI();
+            }
+        }
+
+        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
+        if (dnc != null) dnc.isWeatherLocked = false;
+
+        if (GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.HideCinematicBars();
+            GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        }
+        yield break;
+    }
+
+    private GameObject CreateCorruptionBeam(Vector3 totemPos)
+    {
+        GameObject beam = new GameObject("CorruptionDeparture");
+        beam.transform.position = totemPos + Vector3.up * 2f;
+
+        LineRenderer lr = beam.AddComponent<LineRenderer>();
+        lr.positionCount = 2;
+        lr.SetPosition(0, totemPos + Vector3.up * 1.5f);
+        lr.SetPosition(1, totemPos + Vector3.up * 80f);
+        lr.startWidth = 1.8f;
+        lr.endWidth = 0.6f;
+        lr.useWorldSpace = true;
+        lr.numCapVertices = 4;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Sprites/Default");
+        Material mat = new Material(shader);
+        Color dark = new Color(0.1f, 0.05f, 0.15f, 0.85f);
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", dark);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", dark);
+        if (mat.HasProperty("_Surface"))
+        {
+            mat.SetFloat("_Surface", 1f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+        lr.material = mat;
+        lr.startColor = dark;
+        lr.endColor = new Color(dark.r, dark.g, dark.b, 0f);
+
+        return beam;
+    }
+
+    private IEnumerator CleanseEnemiesWaveRoutine(Vector3 origin)
+    {
+        EnemyAI[] enemies = Object.FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
+        if (enemies == null || enemies.Length == 0) yield break;
+
+        // Sort by distance so close ones go first — feels like a real shockwave
+        System.Array.Sort(enemies, (a, b) =>
+        {
+            float da = a == null ? float.MaxValue : (a.transform.position - origin).sqrMagnitude;
+            float db = b == null ? float.MaxValue : (b.transform.position - origin).sqrMagnitude;
+            return da.CompareTo(db);
+        });
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            EnemyAI enemy = enemies[i];
+            if (enemy == null) continue;
+
+            // Spawn a quick puff at the enemy's location, then destroy them.
+            // Using Destroy keeps the existing 'they're gone' semantic; the
+            // staggered timing is what sells the wave.
+            Destroy(enemy.gameObject);
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
+    private string BuildRewardSummary(RegionData region)
+    {
+        return $"<b>REGION REWARDS</b>\n" +
+               $"<color=#A0E0FF>+{region.diamondReward}</color> Diamonds   " +
+               $"<color=#D4B07A>+{region.woodReward}</color> Wood\n" +
+               $"<color=#B0B0B0>+{region.stoneReward}</color> Stone   " +
+               $"<color=#E0C260>+{region.foodReward}</color> Food";
     }
 }

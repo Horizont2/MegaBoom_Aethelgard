@@ -223,6 +223,8 @@ public class EnemyEncounterGroup : MonoBehaviour
             TutorialHints.Instance.ShowIfNew("EncounterCleared",
                 "Cleared encounter — bonus loot dropped at the camp center. Wipe more groups to stack rewards.", 5f);
 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Encounter_Cleared);
+
         if (clearedRewardPrefab == null || clearedRewardCount <= 0) return;
 
         Vector3 center = transform.position;
