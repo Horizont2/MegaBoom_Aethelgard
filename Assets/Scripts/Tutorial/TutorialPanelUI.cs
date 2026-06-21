@@ -50,6 +50,11 @@ public class TutorialPanelUI : MonoBehaviour
     private Color frameBaseColor;
     private bool hasCachedFrameColor;
 
+    // Pause bookkeeping — restore previous timeScale on hide so we don't fight
+    // existing pause systems (e.g. the level-up menu also uses timeScale=0).
+    private float savedTimeScale = 1f;
+    private bool isPaused = false;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -88,7 +93,11 @@ public class TutorialPanelUI : MonoBehaviour
     public void Show(TutorialHintData data)
     {
         if (data == null) return;
-        if (activeRoutine != null) StopCoroutine(activeRoutine);
+        if (activeRoutine != null)
+        {
+            StopCoroutine(activeRoutine);
+            RestorePause(); // don't leak timeScale=0 across a hint swap
+        }
         gameObject.SetActive(true);
         activeRoutine = StartCoroutine(ShowRoutine(data));
     }
@@ -96,7 +105,21 @@ public class TutorialPanelUI : MonoBehaviour
     public void Hide()
     {
         if (activeRoutine != null) StopCoroutine(activeRoutine);
+        RestorePause();
         activeRoutine = StartCoroutine(HideRoutine());
+    }
+
+    private void OnDisable()
+    {
+        // Belt-and-suspenders: never leave the game frozen if the panel goes away.
+        RestorePause();
+    }
+
+    private void RestorePause()
+    {
+        if (!isPaused) return;
+        Time.timeScale = savedTimeScale;
+        isPaused = false;
     }
 
     private IEnumerator ShowRoutine(TutorialHintData data)
@@ -106,7 +129,17 @@ public class TutorialPanelUI : MonoBehaviour
         if (data.showSound != null && audioSource != null)
             audioSource.PlayOneShot(data.showSound);
 
-        // Fade + slide in
+        // Pause the world so the player can read in peace. Capture the
+        // previous timeScale rather than assuming 1 — other systems (level-up
+        // menu, settings) may already have it at 0.
+        if (data.pauseGameWhileShown)
+        {
+            savedTimeScale = Time.timeScale;
+            isPaused = true;
+            if (Time.timeScale > 0f) Time.timeScale = 0f;
+        }
+
+        // Fade + slide in (uses unscaled time so the animation runs while paused)
         if (contentRect != null) contentRect.anchoredPosition = contentBasePos + slideFrom;
         if (canvasGroup != null) canvasGroup.alpha = 0f;
 
@@ -124,25 +157,41 @@ public class TutorialPanelUI : MonoBehaviour
         if (canvasGroup != null) canvasGroup.alpha = 1f;
         if (contentRect != null) contentRect.anchoredPosition = contentBasePos;
 
-        // Hold (timer or input)
-        if (data.waitForInput)
+        // Hold phase: any-key skip with release-then-press safeguard.
+        //
+        // If the player was already holding a key when the panel appeared
+        // (e.g. W to walk, LMB to attack), we don't want the same press to
+        // accidentally dismiss the tip the player hasn't even read yet.
+        // So we wait for ALL keys to release first; only after that, the
+        // NEXT fresh press counts as skip.
+        //
+        // If waitForInput is false, the duration timer also dismisses on
+        // its own — so a player who keeps holding a key forever still
+        // gets the panel away after `data.duration` unscaled seconds.
+        bool readyForSkip = !Input.anyKey;
+        float remain = data.duration;
+
+        while (true)
         {
-            while (!Input.GetKeyDown(dismissKey) && !Input.GetMouseButtonDown(0))
-            {
-                PulseFrame();
-                yield return null;
-            }
-        }
-        else
-        {
-            float remain = data.duration;
-            while (remain > 0f)
+            if (!readyForSkip && !Input.anyKey)
+                readyForSkip = true;
+
+            if (readyForSkip && Input.anyKeyDown)
+                break;
+
+            if (!data.waitForInput)
             {
                 remain -= Time.unscaledDeltaTime;
-                PulseFrame();
-                yield return null;
+                if (remain <= 0f) break;
             }
+
+            PulseFrame();
+            yield return null;
         }
+
+        // Resume the game BEFORE the fade-out so motion picks back up in
+        // sync with the panel sliding away.
+        RestorePause();
 
         yield return HideRoutine();
     }

@@ -19,4 +19,5 @@ MonoBehaviour:
   videoClip: {fileID: 0}
   duration: 6
   waitForInput: 0
+  pauseGameWhileShown: 1
   showSound: {fileID: 0}

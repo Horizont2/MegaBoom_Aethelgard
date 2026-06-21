@@ -25,6 +25,8 @@ public class TutorialHintData : ScriptableObject
     public float duration = 6f;
     [Tooltip("Чекати на натискання будь-якої клавіші для закриття замість таймера")]
     public bool waitForInput = false;
+    [Tooltip("Поставити гру на паузу (Time.timeScale = 0) поки хінт показується")]
+    public bool pauseGameWhileShown = true;
     [Tooltip("Звук, що грає при появі панелі (опціонально)")]
     public AudioClip showSound;
 }
