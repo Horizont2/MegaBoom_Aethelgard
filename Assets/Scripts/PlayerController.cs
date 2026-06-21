@@ -104,6 +104,19 @@ public class PlayerController : MonoBehaviour, IDamageable
     [HideInInspector] public float globalCritChance = 0.05f;
     [HideInInspector] public float damageReduction = 0f;
 
+    // === LvlUp-driven RPG stats (extended in this polish pass) ===
+    [HideInInspector] public float critDamageMultiplier = 2.5f;   // base crit mult; LvlUp adds on top
+    [HideInInspector] public float lifeStealFraction = 0f;        // 0..1, % of finalDmg returned as HP
+    [HideInInspector] public float dodgeChance = 0f;              // 0..1, roll on TakeDamage
+    [HideInInspector] public float thornDamageFraction = 0f;      // 0..1, % of incoming dmg reflected
+    [HideInInspector] public float killHealAmount = 0f;           // flat HP gained on enemy kill
+    [HideInInspector] public float xpGainMultiplier = 1f;         // multiplier on GainXP
+    [HideInInspector] public float diamondBonusMultiplier = 1f;   // multiplier on GainDiamond
+
+    // Static so EnemyAI.Die() can broadcast without a per-frame find — single-player only.
+    public static System.Action OnEnemyKilled;
+    public static PlayerController LocalInstance { get; private set; }
+
     [Header("MegaBoom Settings")]
     public float stackRadius = 7f;
     public TextMeshProUGUI stackText;
@@ -140,6 +153,27 @@ public class PlayerController : MonoBehaviour, IDamageable
     private float focusCheckTimer = 0f;
     private Transform ikTargetItem = null;
     private Transform currentFocusEnemy = null;
+
+    private void OnEnable()
+    {
+        if (!isCampMode) LocalInstance = this;
+        OnEnemyKilled += HandleEnemyKilled;
+    }
+
+    private void OnDisable()
+    {
+        OnEnemyKilled -= HandleEnemyKilled;
+        if (LocalInstance == this) LocalInstance = null;
+    }
+
+    private void HandleEnemyKilled()
+    {
+        if (isDead || isCampMode) return;
+        if (killHealAmount > 0f && currentHealth > 0f && currentHealth < maxHealth)
+        {
+            Heal(killHealAmount);
+        }
+    }
 
     private void Awake()
     {
@@ -1017,7 +1051,12 @@ public class PlayerController : MonoBehaviour, IDamageable
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
-        if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? 3.5f : 2.5f);
+        // critDamageMultiplier is the LvlUp-scaled normal crit. Guaranteed crit
+        // (e.g. perfect dodge) gets a fixed 1.4x bonus on top, so investing in
+        // CritDamage always feels like an upgrade.
+        if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? critDamageMultiplier * 1.4f : critDamageMultiplier);
+
+        float totalLifestealDealt = 0f;
 
         for (int idx = 0; idx < hitCount; idx++)
         {
@@ -1040,7 +1079,8 @@ public class PlayerController : MonoBehaviour, IDamageable
                 };
 
                 damageable.TakeDamage(hitInfo);
-                if (col.CompareTag("Enemy")) hitEnemy = true; else hitResource = true;
+                if (col.CompareTag("Enemy")) { hitEnemy = true; totalLifestealDealt += finalDmg; }
+                else hitResource = true;
 
                 if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
@@ -1052,6 +1092,11 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         isNextAttackGuaranteedCrit = false;
+
+        if (lifeStealFraction > 0f && totalLifestealDealt > 0f && currentHealth < maxHealth)
+        {
+            Heal(totalLifestealDealt * lifeStealFraction);
+        }
 
         if (hitEnemy)
         {
@@ -1094,8 +1139,34 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead || currentHealth <= 0) return;
         if (isCampMode || isDashing || isBulletTime) return;
 
+        if (dodgeChance > 0f && UnityEngine.Random.value < dodgeChance)
+        {
+            // Treat dodge identically to a perfect dodge — visuals/SFX already
+            // exist for that path, so the player feels the upgrade firing.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
+            isNextAttackGuaranteedCrit = true;
+            return;
+        }
+
         float finalDamage = info.Amount * (1f - damageReduction);
         currentHealth -= finalDamage;
+
+        if (thornDamageFraction > 0f)
+        {
+            float reflected = finalDamage * thornDamageFraction;
+            // Attacker not exposed on DamageInfo, so apply as AoE thorn around player.
+            int n = Physics.OverlapSphereNonAlloc(transform.position, 2.5f, s_overlapBuffer);
+            for (int i = 0; i < n; i++)
+            {
+                Collider col = s_overlapBuffer[i];
+                if (col == null || col.gameObject == this.gameObject) continue;
+                if (!col.CompareTag("Enemy")) continue;
+                if (col.TryGetComponent(out IDamageable d))
+                {
+                    d.TakeDamage(new DamageInfo { Amount = reflected, IsCritical = false, KnockbackForce = 0f, StunDuration = 0f, PushDirection = Vector3.zero, HitPoint = col.transform.position });
+                }
+            }
+        }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
@@ -1186,22 +1257,69 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
-    public void GainXP(float amount) { if (isCampMode) return; currentXP += amount; if (currentXP >= xpToNextLevel) LevelUp(); }
+    public void GainXP(float amount)
+    {
+        if (isCampMode) return;
+        float scaled = amount * xpGainMultiplier;
+        currentXP += scaled;
+
+        if (GlobalHUD.Instance != null && scaled > 0f)
+            GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(scaled)} XP", new Color(0.4f, 0.85f, 1f));
+
+        // Loop in case a single huge gain crosses multiple thresholds.
+        while (currentXP >= xpToNextLevel) LevelUp();
+    }
 
     public void GainDiamond(int amount = 1)
     {
-        crystalsCollected += amount;
-        if (ResourceManager.Instance != null) { ResourceManager.Instance.diamonds += amount; ResourceManager.Instance.SaveStash(); ResourceManager.Instance.UpdateUI(); }
-        else { int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0); PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount); PlayerPrefs.Save(); }
+        int finalAmount = Mathf.Max(amount, Mathf.RoundToInt(amount * diamondBonusMultiplier));
+        crystalsCollected += finalAmount;
+        if (ResourceManager.Instance != null) { ResourceManager.Instance.diamonds += finalAmount; ResourceManager.Instance.SaveStash(); ResourceManager.Instance.UpdateUI(); }
+        else { int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0); PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + finalAmount); PlayerPrefs.Save(); }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+
+        if (GlobalHUD.Instance != null)
+            GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} Diamond", new Color(0.85f, 0.55f, 1f));
+
         UpdateHUD();
-        if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
+        if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
+    }
+
+    // Smooth quadratic XP curve. Replaces the prior 1.5x multiplier — at level 15
+    // that curve cost ~9.7k xp, which made any post-mid-game run dead. New curve:
+    //   L1->2: 50  L5: ~140  L10: ~340  L15: ~640  L20: ~1040  L25: ~1540
+    public static float ComputeXpToNextLevel(int level)
+    {
+        // level is the level you ARE on (i.e. need this much to reach level+1).
+        return 40f + level * level * 4f + level * 6f;
     }
 
     private void LevelUp()
     {
-        currentLevel++; currentXP -= xpToNextLevel; xpToNextLevel *= 1.5f; visualXP = 0f;
+        currentXP -= xpToNextLevel;
+        currentLevel++;
+        xpToNextLevel = ComputeXpToNextLevel(currentLevel);
+        visualXP = 0f;
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+
+        // Level-up rewards beyond the upgrade choice itself:
+        // - heal a chunk of HP so the player isn't punished for leveling mid-fight
+        // - drip-feed diamonds so progression always tangibly rewards XP
+        // - milestone gifts at L5/L10/L15/... — bigger heal + diamond cache
+        Heal(maxHealth * 0.4f);
+        int diamondReward = 3 + currentLevel;
+        bool milestone = currentLevel % 5 == 0;
+        if (milestone)
+        {
+            diamondReward += 25;
+            maxHealth += 10f;
+            currentHealth = maxHealth;
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.ShowPickupPopup($"MILESTONE LV{currentLevel}: +10 Max HP", new Color(1f, 0.85f, 0.3f));
+        }
+        GainDiamond(diamondReward);
+
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
@@ -1218,7 +1336,22 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = $"Diamonds: {displayDiamonds}"; }
     }
 
-    public void Heal(float amount) { currentHealth += amount; if (currentHealth > maxHealth) currentHealth = maxHealth; UpdateHUD(); }
+    public void Heal(float amount)
+    {
+        if (amount <= 0f || isDead) return;
+        float before = currentHealth;
+        currentHealth += amount;
+        if (currentHealth > maxHealth) currentHealth = maxHealth;
+        float actuallyHealed = currentHealth - before;
+        // Suppress popup spam from per-hit lifesteal/kill-heal; only show for
+        // meaningful chunks (level-up reward, big consumable, milestone).
+        if (actuallyHealed >= 5f && !isCampMode)
+        {
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(actuallyHealed)} HP", new Color(0.55f, 1f, 0.55f));
+        }
+        UpdateHUD();
+    }
 
     private Transform FindDeepChild(Transform parent, string name)
     {

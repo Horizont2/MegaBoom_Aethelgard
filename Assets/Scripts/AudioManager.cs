@@ -56,6 +56,13 @@ public static class AudioID
 
     public const string Music_Camp = "Music_Camp";
     public const string Music_Battle = "Music_Battle";
+
+    // === Ambient soundscape (occasional one-shots layered over music) ===
+    public const string Ambient_Wind = "Ambient_Wind";
+    public const string Ambient_Howl = "Ambient_Howl";
+    public const string Ambient_Crow = "Ambient_Crow";
+    public const string Ambient_DistantThunder = "Ambient_DistantThunder";
+    public const string Ambient_LeafRustle = "Ambient_LeafRustle";
 }
 
 [System.Serializable]
@@ -91,6 +98,9 @@ public class AudioManager : MonoBehaviour
 
     [Header("=== GAMEPLAY FEEL ===")]
     public SoundGroup encounterCleared, totemActivate, playerPerfectDodge;
+
+    [Header("=== AMBIENT SOUNDSCAPE ===")]
+    public SoundGroup ambientWind, ambientHowl, ambientCrow, ambientDistantThunder, ambientLeafRustle;
 
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp, musicBattle;
@@ -232,6 +242,12 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Encounter_Cleared, encounterCleared);
         sfxDictionary.Add(AudioID.Totem_Activate, totemActivate);
         sfxDictionary.Add(AudioID.Player_PerfectDodge, playerPerfectDodge);
+
+        sfxDictionary.Add(AudioID.Ambient_Wind, ambientWind);
+        sfxDictionary.Add(AudioID.Ambient_Howl, ambientHowl);
+        sfxDictionary.Add(AudioID.Ambient_Crow, ambientCrow);
+        sfxDictionary.Add(AudioID.Ambient_DistantThunder, ambientDistantThunder);
+        sfxDictionary.Add(AudioID.Ambient_LeafRustle, ambientLeafRustle);
 
         // Music
         musicDictionary.Add(AudioID.Music_Camp, musicCamp); musicDictionary.Add(AudioID.Music_Battle, musicBattle);

@@ -87,20 +87,22 @@ public class ResourceDrop : MonoBehaviour
             {
                 ResourceManager.Instance.AddRunResources(amount, 0, 0);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Wood", new Color(0.85f, 0.6f, 0.35f));
             }
             else if (resourceType == ResourceType.Stone)
             {
                 ResourceManager.Instance.AddRunResources(0, amount, 0);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Stone", new Color(0.8f, 0.8f, 0.85f));
             }
             else if (resourceType == ResourceType.Food)
             {
                 ResourceManager.Instance.AddRunResources(0, 0, amount);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Food", new Color(0.7f, 0.95f, 0.5f));
             }
             else if (resourceType == ResourceType.Diamond)
             {
-                // Звук діаманта вже викликається всередині GainDiamond, тому тут його не дублюємо
                 playerController.GainDiamond(amount);
             }
         }

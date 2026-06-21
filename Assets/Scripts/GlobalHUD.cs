@@ -89,6 +89,8 @@ public class GlobalHUD : MonoBehaviour
         if (pausePanelGroup != null) pausePanelGroup.gameObject.SetActive(false);
 
         CreateCinematicBarsIfNeeded();
+        CreateLowHealthVignetteIfNeeded();
+        CreatePickupPopupContainerIfNeeded();
     }
 
     private void ApplySavedSettings()
@@ -120,6 +122,8 @@ public class GlobalHUD : MonoBehaviour
             if (bossHpCatchupFill != null && bossHpCatchupFill.fillAmount > targetBossHpRatio)
                 bossHpCatchupFill.fillAmount = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
         }
+
+        UpdateLowHealthVignette();
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -644,5 +648,148 @@ public class GlobalHUD : MonoBehaviour
     public void SetGameplayPanelsActive(bool active)
     {
         if (gameplayPanels != null) { foreach (GameObject panel in gameplayPanels) { if (panel != null) panel.SetActive(active); } }
+    }
+
+    // ---- Low-Health Vignette ----
+    // A full-screen blood-red Image that fades in below 35% HP and pulses harder
+    // the closer the player gets to death. Built procedurally so it doesn't need
+    // any prefab/scene wiring.
+    private Image lowHealthVignette;
+    private float lowHealthAlpha;
+
+    private void CreateLowHealthVignetteIfNeeded()
+    {
+        if (lowHealthVignette != null) return;
+        RectTransform hudRect = GetComponent<RectTransform>();
+        if (hudRect == null) return;
+
+        GameObject go = new GameObject("LowHealthVignette");
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(hudRect, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.SetAsFirstSibling();
+
+        lowHealthVignette = go.AddComponent<Image>();
+        lowHealthVignette.color = new Color(0.6f, 0f, 0.02f, 0f);
+        lowHealthVignette.raycastTarget = false;
+        lowHealthVignette.maskable = false;
+    }
+
+    private void UpdateLowHealthVignette()
+    {
+        if (lowHealthVignette == null) return;
+
+        PlayerController pc = PlayerController.LocalInstance;
+        float targetAlpha = 0f;
+        if (pc != null && !pc.isCampMode && pc.maxHealth > 0f)
+        {
+            float ratio = pc.currentHealth / pc.maxHealth;
+            if (ratio < 0.35f && ratio > 0f)
+            {
+                float danger = 1f - (ratio / 0.35f);
+                // Pulse harder + faster as HP drops.
+                float pulse = (Mathf.Sin(Time.unscaledTime * (4f + danger * 6f)) * 0.5f + 0.5f);
+                targetAlpha = Mathf.Lerp(0.18f, 0.55f, danger) * Mathf.Lerp(0.65f, 1f, pulse);
+            }
+        }
+        lowHealthAlpha = Mathf.Lerp(lowHealthAlpha, targetAlpha, Time.unscaledDeltaTime * 8f);
+        Color c = lowHealthVignette.color; c.a = lowHealthAlpha; lowHealthVignette.color = c;
+    }
+
+    // ---- Pickup Popup Stack ----
+    // Lightweight floating "+5 Wood / +12 XP" messages that drift up the left
+    // side of the screen. Built from procedural TMP objects so no prefab needed.
+    private RectTransform pickupPopupContainer;
+    private readonly List<RectTransform> activePickupPopups = new List<RectTransform>();
+
+    private void CreatePickupPopupContainerIfNeeded()
+    {
+        if (pickupPopupContainer != null) return;
+        RectTransform hudRect = GetComponent<RectTransform>();
+        if (hudRect == null) return;
+
+        GameObject go = new GameObject("PickupPopupContainer");
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(hudRect, false);
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 0f);
+        rt.pivot = new Vector2(0f, 0f);
+        rt.anchoredPosition = new Vector2(60f, 200f);
+        rt.sizeDelta = new Vector2(400f, 300f);
+        pickupPopupContainer = rt;
+    }
+
+    public void ShowPickupPopup(string text, Color color)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        CreatePickupPopupContainerIfNeeded();
+        if (pickupPopupContainer == null) return;
+        StartCoroutine(PickupPopupRoutine(text, color));
+    }
+
+    private IEnumerator PickupPopupRoutine(string text, Color color)
+    {
+        GameObject go = new GameObject("PickupPopup");
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(pickupPopupContainer, false);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 0f);
+        rt.sizeDelta = new Vector2(400f, 36f);
+        rt.anchoredPosition = new Vector2(0f, 0f);
+
+        TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text = text;
+        tmp.fontSize = 26f;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.color = color;
+        tmp.outlineWidth = 0.18f;
+        tmp.outlineColor = Color.black;
+        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.raycastTarget = false;
+
+        activePickupPopups.Add(rt);
+        RestackPickupPopups();
+
+        const float lifetime = 1.8f;
+        float t = 0f;
+        Vector2 startScale = Vector2.one * 0.7f;
+        rt.localScale = startScale;
+
+        while (t < lifetime)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = t / lifetime;
+            // Pop in over first 12% then fade out over last 30%.
+            if (k < 0.12f) rt.localScale = Vector3.LerpUnclamped(startScale, Vector3.one * 1.05f, k / 0.12f);
+            else if (k < 0.22f) rt.localScale = Vector3.LerpUnclamped(Vector3.one * 1.05f, Vector3.one, (k - 0.12f) / 0.1f);
+            else rt.localScale = Vector3.one;
+
+            Color cc = tmp.color;
+            cc.a = k > 0.7f ? Mathf.Lerp(1f, 0f, (k - 0.7f) / 0.3f) : 1f;
+            tmp.color = cc;
+
+            yield return null;
+        }
+
+        activePickupPopups.Remove(rt);
+        Destroy(go);
+        RestackPickupPopups();
+    }
+
+    private void RestackPickupPopups()
+    {
+        // Newest at bottom, older entries slide up.
+        for (int i = 0; i < activePickupPopups.Count; i++)
+        {
+            RectTransform rt = activePickupPopups[i];
+            if (rt == null) continue;
+            float targetY = (activePickupPopups.Count - 1 - i) * 36f;
+            Vector2 pos = rt.anchoredPosition;
+            rt.anchoredPosition = new Vector2(0f, targetY);
+        }
     }
 }

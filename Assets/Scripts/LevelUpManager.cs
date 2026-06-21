@@ -3,7 +3,19 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 
-public enum UpgradeType { Health, Speed, Damage, PickupRadius, AttackSpeed, Armor, HealthRegen }
+public enum UpgradeType
+{
+    Health, Speed, Damage, PickupRadius, AttackSpeed, Armor, HealthRegen,
+    // === Extended upgrades (LvlUp polish pass) ===
+    CritChance,
+    CritDamage,
+    LifeSteal,
+    DodgeChance,
+    KillHeal,
+    ThornDamage,
+    XPGainBonus,
+    DiamondBonus,
+}
 
 [System.Serializable]
 public class UpgradeData
@@ -45,6 +57,56 @@ public class LevelUpManager : MonoBehaviour
         levelUpPanel.SetActive(false);
 
         if (randomButton != null) randomButton.onClick.AddListener(OnRandomClicked);
+
+        EnsureFullUpgradeCatalog();
+    }
+
+    // Populates allPossibleUpgrades at runtime so every UpgradeType has at least
+    // one entry — keeps the LvlUp menu varied without forcing a scene re-wire each
+    // time a new upgrade type is added.
+    private void EnsureFullUpgradeCatalog()
+    {
+        if (allPossibleUpgrades == null) allPossibleUpgrades = new List<UpgradeData>();
+
+        System.Collections.Generic.HashSet<UpgradeType> present = new System.Collections.Generic.HashSet<UpgradeType>();
+        foreach (UpgradeData u in allPossibleUpgrades) if (u != null) present.Add(u.type);
+
+        Sprite fallbackIcon = null;
+        for (int i = 0; i < allPossibleUpgrades.Count; i++)
+        {
+            if (allPossibleUpgrades[i] != null && allPossibleUpgrades[i].icon != null)
+            { fallbackIcon = allPossibleUpgrades[i].icon; break; }
+        }
+
+        AddIfMissing(present, fallbackIcon, UpgradeType.Health,        "Vitality Reserves",  "Forged sinew. Each layer means another swing you outlast.",            "+10 Max HP",         10f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.Speed,         "Vanguard March",     "Lighter step, longer stride. The blade always arrives first.",         "+0.5 Speed",         0.5f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.Damage,        "Siege Might",        "The hammer drinks deeper. Bones break at half the effort.",            "+5 Damage",          5f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.PickupRadius,  "Crystal Lure",       "Aether shards leap toward you from farther afield.",                   "+0.5 Pickup Range",  0.5f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.AttackSpeed,   "Whetstone Rhythm",   "The swing-arc tightens. More strikes per breath.",                     "+15 Atk Speed",      15f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.Armor,         "Aethelgard Plate",   "Damp the next blow with old steel and older oaths.",                   "+5% Damage Resist",  0.05f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.HealthRegen,   "Field Medicine",     "Slow knit, but knit it does. Health returns with every footfall.",     "+0.3 HP/sec",        0.3f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.CritChance,    "Keen Eye",           "You read where bone is brittle. Strikes find the weak point oftener.","+5% Crit Chance",    0.05f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.CritDamage,    "Executioner's Edge", "When the blade bites true, it bites deeper.",                          "+25% Crit Damage",   0.25f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.LifeSteal,     "Bloodbound Pact",    "Every wound you deliver feeds you back a sip.",                        "+5% Lifesteal",      0.05f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.DodgeChance,   "Wind-Touched",       "The air parts before you. Some blows pass through nothing.",           "+5% Dodge",          0.05f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.KillHeal,      "Reaver's Reward",    "Each kill stitches another scar shut.",                                "+3 HP per Kill",     3f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.ThornDamage,   "Wardbreaker Sigil",  "Those who strike you bleed for the privilege.",                        "+15% Thorns",        0.15f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.XPGainBonus,   "Soulreader",         "You hear the song each fallen soul carries. Learn faster.",            "+15% XP Gain",       0.15f);
+        AddIfMissing(present, fallbackIcon, UpgradeType.DiamondBonus,  "Hoarder's Gaze",     "Aether shards spill heavier where you walk.",                          "+20% Diamond Gain",  0.20f);
+    }
+
+    private void AddIfMissing(System.Collections.Generic.HashSet<UpgradeType> present, Sprite fallbackIcon, UpgradeType type, string name, string desc, string stat, float amount)
+    {
+        if (present.Contains(type)) return;
+        allPossibleUpgrades.Add(new UpgradeData
+        {
+            upgradeName = name,
+            description = desc,
+            statDisplay = stat,
+            icon = fallbackIcon,
+            type = type,
+            amount = amount,
+        });
     }
 
     public void ShowMenu()
@@ -173,8 +235,35 @@ public class LevelUpManager : MonoBehaviour
                 break;
             case UpgradeType.PickupRadius: if (player != null) player.pickupRadius += upgrade.amount; break;
             case UpgradeType.AttackSpeed: if (weaponOrbit != null) weaponOrbit.baseRotationSpeed += upgrade.amount; break;
-            case UpgradeType.Armor: if (player != null) player.damageReduction += upgrade.amount; break;
+            case UpgradeType.Armor:
+                if (player != null) player.damageReduction = Mathf.Clamp(player.damageReduction + upgrade.amount, 0f, 0.85f);
+                break;
             case UpgradeType.HealthRegen: if (player != null) player.healthRegenRate += upgrade.amount; break;
+
+            case UpgradeType.CritChance:
+                if (player != null) player.globalCritChance = Mathf.Clamp(player.globalCritChance + upgrade.amount, 0f, 1f);
+                break;
+            case UpgradeType.CritDamage:
+                if (player != null) player.critDamageMultiplier += upgrade.amount;
+                break;
+            case UpgradeType.LifeSteal:
+                if (player != null) player.lifeStealFraction = Mathf.Clamp(player.lifeStealFraction + upgrade.amount, 0f, 1f);
+                break;
+            case UpgradeType.DodgeChance:
+                if (player != null) player.dodgeChance = Mathf.Clamp(player.dodgeChance + upgrade.amount, 0f, 0.75f);
+                break;
+            case UpgradeType.KillHeal:
+                if (player != null) player.killHealAmount += upgrade.amount;
+                break;
+            case UpgradeType.ThornDamage:
+                if (player != null) player.thornDamageFraction = Mathf.Clamp(player.thornDamageFraction + upgrade.amount, 0f, 2f);
+                break;
+            case UpgradeType.XPGainBonus:
+                if (player != null) player.xpGainMultiplier += upgrade.amount;
+                break;
+            case UpgradeType.DiamondBonus:
+                if (player != null) player.diamondBonusMultiplier += upgrade.amount;
+                break;
         }
 
         // --- ²��������� ������ �������� (� ������� ���������) ---

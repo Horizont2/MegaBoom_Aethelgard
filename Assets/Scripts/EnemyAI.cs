@@ -672,6 +672,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        // Fire global kill event so RPG upgrades (KillHeal, etc.) can react
+        // without each system polling for kills.
+        PlayerController.OnEnemyKilled?.Invoke();
+
         if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
