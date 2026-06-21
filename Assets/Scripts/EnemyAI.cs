@@ -68,6 +68,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private MeshRenderer[] meshRenderers;
     private Color[] originalColors;
+    private MaterialPropertyBlock s_mpb;
+    private static readonly int s_baseColorID = Shader.PropertyToID("_BaseColor");
+    private static readonly int s_colorID = Shader.PropertyToID("_Color");
+
+    // Frame-skip counter for distance-based AI throttling. Distant enemies
+    // run their heavy movement/attack logic less often, since the player
+    // can't perceive sub-frame motion at 30m+.
+    private int updateSkipCounter = 0;
     private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
@@ -169,10 +177,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         meshRenderers = GetComponentsInChildren<MeshRenderer>();
         originalColors = new Color[meshRenderers.Length];
+        s_mpb = new MaterialPropertyBlock();
         for (int i = 0; i < meshRenderers.Length; i++)
         {
             if (meshRenderers[i].gameObject.layer != minimapLayer) meshRenderers[i].gameObject.layer = 9;
-            originalColors[i] = meshRenderers[i].material.color;
+            // sharedMaterial keeps SRP batching intact (the old .material
+            // call instanced every enemy's body, breaking the batch).
+            originalColors[i] = meshRenderers[i].sharedMaterial != null
+                ? meshRenderers[i].sharedMaterial.color
+                : Color.white;
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -181,7 +194,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         rb.useGravity = false;
 
         animator = GetComponentInChildren<Animator>();
-        if (animator != null) animator.applyRootMotion = false;
+        if (animator != null)
+        {
+            animator.applyRootMotion = false;
+            // CullCompletely freezes the entire animation rig when the
+            // renderer is offscreen — huge win in big regions where most
+            // enemies are out of frame at any moment.
+            animator.cullingMode = AnimatorCullingMode.CullCompletely;
+        }
 
         randomOffset = Random.Range(0f, 100f);
         strafeDir = Random.value > 0.5f ? 1f : -1f;
@@ -189,7 +209,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void Start()
     {
-        if (Camera.main != null) mainCamTransform = Camera.main.transform;
+        mainCamTransform = CameraCache.MainTransform;
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
@@ -297,6 +317,24 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         if (isDead) return;
+
+        // Distance-based update throttle. Cuts the per-frame cost of large
+        // regions where 25+ enemies are alive at once. Below 20m we run at
+        // full rate; further out we tick every 2nd / 4th / 8th frame.
+        // CullCompletely on the animator already handles offscreen-rendering
+        // savings; this handles the AI/physics side.
+        float sqrDistToPlayer = (target.position - transform.position).sqrMagnitude;
+        int updateInterval;
+        if (sqrDistToPlayer > 2500f) updateInterval = 8;       // >50m
+        else if (sqrDistToPlayer > 900f) updateInterval = 4;    // 30-50m
+        else if (sqrDistToPlayer > 400f) updateInterval = 2;    // 20-30m
+        else updateInterval = 1;
+
+        if (updateInterval > 1)
+        {
+            updateSkipCounter++;
+            if (updateSkipCounter % updateInterval != 0) return;
+        }
 
         if (playerTarget != null && playerTarget.currentHealth <= 0)
         {
@@ -645,15 +683,29 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void SetColor(Color c)
     {
-        if (meshRenderers == null) return;
-        foreach (var r in meshRenderers) if (r != null && r.material != null) r.material.color = c;
+        if (meshRenderers == null || s_mpb == null) return;
+        foreach (var r in meshRenderers)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(s_mpb);
+            s_mpb.SetColor(s_baseColorID, c);
+            s_mpb.SetColor(s_colorID, c);
+            r.SetPropertyBlock(s_mpb);
+        }
     }
 
     private void ResetColor()
     {
-        if (meshRenderers == null || originalColors == null) return;
+        if (meshRenderers == null || originalColors == null || s_mpb == null) return;
         for (int i = 0; i < meshRenderers.Length; i++)
-            if (meshRenderers[i] != null && meshRenderers[i].material != null) meshRenderers[i].material.color = originalColors[i];
+        {
+            Renderer r = meshRenderers[i];
+            if (r == null) continue;
+            r.GetPropertyBlock(s_mpb);
+            s_mpb.SetColor(s_baseColorID, originalColors[i]);
+            s_mpb.SetColor(s_colorID, originalColors[i]);
+            r.SetPropertyBlock(s_mpb);
+        }
     }
 
     public void ForceStop()

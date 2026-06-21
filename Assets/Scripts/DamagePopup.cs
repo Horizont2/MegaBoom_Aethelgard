@@ -27,8 +27,7 @@ public class DamagePopup : MonoBehaviour
     {
         if (s_cachedCamTransform == null)
         {
-            Camera main = Camera.main;
-            if (main != null) s_cachedCamTransform = main.transform;
+            s_cachedCamTransform = CameraCache.MainTransform;
         }
         camTransform = s_cachedCamTransform;
     }

@@ -309,24 +309,22 @@ public class DayNightCycle : MonoBehaviour
         while (currentWeather == WeatherState.Storm)
         {
             yield return new WaitForSeconds(Random.Range(5f, 15f));
-            if (lightningLight != null)
-            {
-                lightningLight.intensity = Random.Range(3f, 6f);
-                yield return new WaitForSeconds(0.05f);
-                lightningLight.intensity = 0f;
-                yield return new WaitForSeconds(0.1f);
-                lightningLight.intensity = Random.Range(1f, 3f);
-                yield return new WaitForSeconds(0.05f);
-                lightningLight.intensity = 0f;
-            }
 
-            if (lightningVFXPrefab != null && mainCam != null)
+            // Decide strike position first so the local flash light can be
+            // co-located with the VFX. Old code pumped the GLOBAL directional
+            // light, which lit the whole world like a daylight blink. The new
+            // version drops a point light at the strike so only the sky near
+            // the bolt brightens, matching how storms look on screen in AAA
+            // titles.
+            Vector3 spawnPos;
+            Quaternion spawnRot = Quaternion.identity;
+            bool strikeGround = Random.value > 0.4f;
+            float flashRange = strikeGround ? 35f : 60f;
+
+            if (mainCam != null)
             {
                 Vector2 randomCircle = Random.insideUnitCircle * lightningSpawnRadius;
-                Vector3 spawnPos = mainCam.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
-                bool strikeGround = Random.value > 0.4f;
-                Quaternion spawnRot = Quaternion.identity;
-
+                spawnPos = mainCam.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
                 if (strikeGround && Terrain.activeTerrain != null)
                     spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
                 else
@@ -334,7 +332,20 @@ public class DayNightCycle : MonoBehaviour
                     spawnPos.y = mainCam.transform.position.y + Random.Range(80f, 150f);
                     spawnRot = Quaternion.Euler(Random.Range(-70f, 70f), Random.Range(0f, 360f), Random.Range(-70f, 70f));
                 }
+            }
+            else spawnPos = transform.position;
 
+            StartCoroutine(LocalLightningFlash(spawnPos, flashRange));
+            // Just a hint of global atmosphere scatter, not a daylight pulse.
+            // Keep this subtle so the lightning reads as "in the sky near the
+            // bolt" rather than "the world briefly turned to noon."
+            if (lightningLight != null)
+            {
+                StartCoroutine(GlobalAmbientPulse(0.5f, 1.1f, 0.08f));
+            }
+
+            if (lightningVFXPrefab != null)
+            {
                 GameObject lightning;
                 if (ObjectPoolManager.Instance != null)
                 {
@@ -351,6 +362,44 @@ public class DayNightCycle : MonoBehaviour
             }
         }
         lightningCoroutine = null;
+    }
+
+    // Spawn a transient point light at the bolt position so only the local
+    // sky / nearby terrain brightens. Two quick pulses approximate the
+    // characteristic double-flash of a real strike.
+    private IEnumerator LocalLightningFlash(Vector3 position, float range)
+    {
+        GameObject go = new GameObject("LightningFlash");
+        go.transform.position = position;
+        Light l = go.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.range = range;
+        l.color = new Color(0.85f, 0.92f, 1f);
+        l.intensity = 0f;
+        l.shadows = LightShadows.None;
+        l.renderMode = LightRenderMode.ForcePixel;
+
+        float peak1 = Random.Range(80f, 120f);
+        l.intensity = peak1;
+        yield return new WaitForSeconds(0.05f);
+        l.intensity = 0f;
+        yield return new WaitForSeconds(0.07f);
+        l.intensity = peak1 * Random.Range(0.4f, 0.7f);
+        yield return new WaitForSeconds(0.05f);
+        l.intensity = 0f;
+        Destroy(go);
+    }
+
+    // Very small global intensity wobble — sells "the air just lit up" without
+    // making the screen white. The old code used 3-6 intensity which is what
+    // washed everything out.
+    private IEnumerator GlobalAmbientPulse(float minPeak, float maxPeak, float holdTime)
+    {
+        if (lightningLight == null) yield break;
+        float baseI = lightningLight.intensity;
+        lightningLight.intensity = baseI + Random.Range(minPeak, maxPeak);
+        yield return new WaitForSeconds(holdTime);
+        lightningLight.intensity = baseI;
     }
 
     private IEnumerator ReturnToPoolAfterDelay(GameObject obj, float delay)

@@ -710,12 +710,14 @@ public class GlobalHUD : MonoBehaviour
         if (pc != null && !pc.isCampMode && pc.maxHealth > 0f)
         {
             float ratio = pc.currentHealth / pc.maxHealth;
-            if (ratio < 0.35f && ratio > 0f)
+            // Softer + later trigger: starts at 25% HP (was 35%), peaks at
+            // 0.28 alpha (was 0.55) so the red rim hints "you're hurt"
+            // without flooding the screen the moment combat gets sticky.
+            if (ratio < 0.25f && ratio > 0f)
             {
-                float danger = 1f - (ratio / 0.35f);
-                // Pulse harder + faster as HP drops.
-                float pulse = (Mathf.Sin(Time.unscaledTime * (4f + danger * 6f)) * 0.5f + 0.5f);
-                targetAlpha = Mathf.Lerp(0.18f, 0.55f, danger) * Mathf.Lerp(0.65f, 1f, pulse);
+                float danger = 1f - (ratio / 0.25f);
+                float pulse = (Mathf.Sin(Time.unscaledTime * (3f + danger * 4f)) * 0.5f + 0.5f);
+                targetAlpha = Mathf.Lerp(0.08f, 0.28f, danger) * Mathf.Lerp(0.8f, 1f, pulse);
             }
         }
         lowHealthAlpha = Mathf.Lerp(lowHealthAlpha, targetAlpha, Time.unscaledDeltaTime * 8f);

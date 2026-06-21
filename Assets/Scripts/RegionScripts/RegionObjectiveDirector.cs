@@ -99,7 +99,7 @@ public class RegionObjectiveDirector : MonoBehaviour
 
         GameObject pObj = GameObject.FindGameObjectWithTag("Player");
         if (pObj != null) player = pObj.transform;
-        if (Camera.main != null) mainCamTransform = Camera.main.transform;
+        mainCamTransform = CameraCache.MainTransform;
 
         initialized = true;
     }
@@ -263,7 +263,7 @@ public class RegionObjectiveDirector : MonoBehaviour
         Vector3 totemPos = closestActive.totem.transform.position;
         distanceLabel.transform.position = totemPos + Vector3.up * labelHeight;
 
-        if (mainCamTransform == null && Camera.main != null) mainCamTransform = Camera.main.transform;
+        if (mainCamTransform == null) mainCamTransform = CameraCache.MainTransform;
         if (mainCamTransform != null)
         {
             // Billboard — face away from camera so text reads upright from the player's view.
