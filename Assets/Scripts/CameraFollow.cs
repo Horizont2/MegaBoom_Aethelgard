@@ -79,10 +79,11 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (isCinematicMode || Time.timeScale == 0f || target == null) return;
+        // === ОПТИМІЗАЦІЯ І ФІКС: Блокуємо камеру під час туторіалу ===
+        if (isCinematicMode || Time.timeScale == 0f || target == null || TutorialPanelUI.IsTutorialActive) return;
 
         float dt = Time.deltaTime;
-        if (dt < 0.0001f) return; // ФІКС: Захист від ділення на нуль при лагах
+        if (dt < 0.0001f) return;
 
         // 1. Стабільне обчислення швидкості гравця
         float currentFrameSpeed = (target.position - lastTargetPos).magnitude / dt;
@@ -113,7 +114,7 @@ public class CameraFollow : MonoBehaviour
         Vector3 lookAtPos = currentTargetPos + dynamicOffset;
         Vector3 direction = -(rotation * Vector3.forward);
 
-        // 4. Колізії (ФІКС ФПС: Радіус 0.1f замість 0.25f, щоб не чіпляти кожну травинку)
+        // 4. Колізії
         float hitDistance = currentDistance;
         if (Physics.SphereCast(lookAtPos, 0.1f, direction, out RaycastHit hit, currentDistance, collisionLayers))
         {
@@ -144,7 +145,7 @@ public class CameraFollow : MonoBehaviour
         transform.position = finalPosition;
         transform.LookAt(lookAtPos);
 
-        // 6. Захист від Terrain (ФІКС ФПС: Камера більше не стрибає і не ламає тіні)
+        // 6. Захист від Terrain
         if (Terrain.activeTerrain != null)
         {
             float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
@@ -155,7 +156,6 @@ public class CameraFollow : MonoBehaviour
                 safePos.y = terrainHeight + 0.3f;
                 transform.position = safePos;
 
-                // Змушуємо колізію плавно підтягнутися, замість агресивного телепорту
                 actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, minDistance, dt * 8f);
             }
         }

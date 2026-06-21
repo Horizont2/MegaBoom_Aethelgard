@@ -4,13 +4,12 @@ using UnityEngine.Video;
 using TMPro;
 using System.Collections;
 
-/// <summary>
-/// Worldspace/screen tutorial panel that shows a title, body text, optional icon
-/// and a looping video clip (AC-style). Wire the inspector fields in a prefab.
-/// </summary>
 public class TutorialPanelUI : MonoBehaviour
 {
     public static TutorialPanelUI Instance { get; private set; }
+
+    // НОВЕ: Публічний прапорець, щоб інші скрипти (гравець, зброя) знали, що зараз туторіал
+    public static bool IsTutorialActive { get; private set; }
 
     [Header("Refs (wire in inspector)")]
     public CanvasGroup canvasGroup;
@@ -26,7 +25,6 @@ public class TutorialPanelUI : MonoBehaviour
     public GameObject videoHolder;
     public RawImage videoSurface;
     public VideoPlayer videoPlayer;
-    [Tooltip("RenderTexture to which the VideoPlayer writes. The RawImage's texture should be the same.")]
     public RenderTexture videoTexture;
 
     [Header("Audio")]
@@ -34,15 +32,12 @@ public class TutorialPanelUI : MonoBehaviour
 
     [Header("Animation")]
     public float fadeDuration = 0.35f;
-    [Tooltip("Зсув при появі (рух з-під), у px")]
     public Vector2 slideFrom = new Vector2(0f, -40f);
-    [Tooltip("Пульсація рамки при появі (0 = вимкнено)")]
     [Range(0f, 0.3f)] public float pulseAmplitude = 0.05f;
     public float pulseSpeed = 2.5f;
     public Image backgroundFrame;
 
     [Header("Input")]
-    [Tooltip("Клавіша, яка скіпає панель. Працює і для waitForInput=true, і як ранній скіп для звичайних хінтів. Можна обрати будь-який KeyCode, включаючи Mouse0/Mouse1.")]
     public KeyCode dismissKey = KeyCode.Space;
 
     private Coroutine activeRoutine;
@@ -50,10 +45,9 @@ public class TutorialPanelUI : MonoBehaviour
     private Color frameBaseColor;
     private bool hasCachedFrameColor;
 
-    // Pause bookkeeping — restore previous timeScale on hide so we don't fight
-    // existing pause systems (e.g. the level-up menu also uses timeScale=0).
     private float savedTimeScale = 1f;
     private bool isPaused = false;
+    private bool skipRequested = false; // ФІКС СЬКІПУ
 
     private void Awake()
     {
@@ -70,6 +64,18 @@ public class TutorialPanelUI : MonoBehaviour
         if (gameObject.activeInHierarchy) gameObject.SetActive(false);
 
         WireVideoTexture();
+    }
+
+    // НОВЕ: Надійно перехоплюємо інпут у системному Update
+    private void Update()
+    {
+        if (IsTutorialActive && gameObject.activeInHierarchy)
+        {
+            if (Input.GetKeyDown(dismissKey) || Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return))
+            {
+                skipRequested = true;
+            }
+        }
     }
 
     private void OnDestroy()
@@ -96,9 +102,13 @@ public class TutorialPanelUI : MonoBehaviour
         if (activeRoutine != null)
         {
             StopCoroutine(activeRoutine);
-            RestorePause(); // don't leak timeScale=0 across a hint swap
+            RestorePause();
         }
+
         gameObject.SetActive(true);
+        IsTutorialActive = true; // Блокуємо гру
+        skipRequested = false;
+
         activeRoutine = StartCoroutine(ShowRoutine(data));
     }
 
@@ -111,15 +121,20 @@ public class TutorialPanelUI : MonoBehaviour
 
     private void OnDisable()
     {
-        // Belt-and-suspenders: never leave the game frozen if the panel goes away.
         RestorePause();
     }
 
     private void RestorePause()
     {
+        IsTutorialActive = false;
         if (!isPaused) return;
+
         Time.timeScale = savedTimeScale;
         isPaused = false;
+
+        // Повертаємо курсор в ігровий стан
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     private IEnumerator ShowRoutine(TutorialHintData data)
@@ -129,17 +144,13 @@ public class TutorialPanelUI : MonoBehaviour
         if (data.showSound != null && audioSource != null)
             audioSource.PlayOneShot(data.showSound);
 
-        // Pause the world so the player can read in peace. Capture the
-        // previous timeScale rather than assuming 1 — other systems (level-up
-        // menu, settings) may already have it at 0.
-        if (data.pauseGameWhileShown)
-        {
-            savedTimeScale = Time.timeScale;
-            isPaused = true;
-            if (Time.timeScale > 0f) Time.timeScale = 0f;
-        }
+        // ФІКС БЛОКУВАННЯ: Примусово зупиняємо час і показуємо курсор
+        savedTimeScale = Time.timeScale;
+        isPaused = true;
+        Time.timeScale = 0f;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
-        // Fade + slide in (uses unscaled time so the animation runs while paused)
         if (contentRect != null) contentRect.anchoredPosition = contentBasePos + slideFrom;
         if (canvasGroup != null) canvasGroup.alpha = 0f;
 
@@ -148,7 +159,7 @@ public class TutorialPanelUI : MonoBehaviour
         {
             t += Time.unscaledDeltaTime;
             float k = Mathf.Clamp01(t / fadeDuration);
-            float ease = 1f - Mathf.Pow(1f - k, 3f); // ease-out cubic
+            float ease = 1f - Mathf.Pow(1f - k, 3f);
             if (canvasGroup != null) canvasGroup.alpha = ease;
             if (contentRect != null)
                 contentRect.anchoredPosition = Vector2.Lerp(contentBasePos + slideFrom, contentBasePos, ease);
@@ -157,28 +168,19 @@ public class TutorialPanelUI : MonoBehaviour
         if (canvasGroup != null) canvasGroup.alpha = 1f;
         if (contentRect != null) contentRect.anchoredPosition = contentBasePos;
 
-        // Hold phase: dismiss on the configured `dismissKey` (Space by default;
-        // any KeyCode, including Mouse0/1, works since Unity treats them all
-        // as KeyCodes).
-        //
-        // Safeguard against accidental skip: if dismissKey was already being
-        // held when the panel appeared (e.g. the player was hammering Space
-        // through dialogue), that hold doesn't count. Wait until the key
-        // releases at least once, THEN listen for a fresh press.
-        //
-        // If waitForInput is false, the duration timer also dismisses on
-        // its own — so a player who keeps holding the key forever still
-        // gets the panel away after `data.duration` unscaled seconds.
-        bool readyForSkip = !Input.GetKey(dismissKey);
+        // Захист від миттєвого скіпу: чекаємо, поки гравець відпустить пробіл, якщо тримав його
+        while (Input.GetKey(dismissKey))
+        {
+            yield return null;
+        }
+
+        skipRequested = false;
         float remain = data.duration;
 
         while (true)
         {
-            if (!readyForSkip && !Input.GetKey(dismissKey))
-                readyForSkip = true;
-
-            if (readyForSkip && Input.GetKeyDown(dismissKey))
-                break;
+            // Перевіряємо прапорець з Update()
+            if (skipRequested) break;
 
             if (!data.waitForInput)
             {
@@ -190,10 +192,7 @@ public class TutorialPanelUI : MonoBehaviour
             yield return null;
         }
 
-        // Resume the game BEFORE the fade-out so motion picks back up in
-        // sync with the panel sliding away.
         RestorePause();
-
         yield return HideRoutine();
     }
 

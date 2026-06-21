@@ -505,7 +505,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             return;
         }
 
-        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime;
+        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive;
         Vector3 inputDir = Vector3.zero;
 
         if (!isCurrentlyLocked)

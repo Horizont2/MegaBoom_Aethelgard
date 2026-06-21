@@ -45,13 +45,11 @@ public class MapTableInteract : MonoBehaviour
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
 
-        // --- ����: ����������� ²������� ���� ϲ��� ���������� ��ò��� ---
         if (PlayerPrefs.GetInt("AutoOpenMap", 0) == 1)
         {
             PlayerPrefs.SetInt("AutoOpenMap", 0);
             PlayerPrefs.Save();
 
-            // ������, ���� ����� �� UI ��������� �������������
             yield return new WaitForSeconds(1.5f);
             activeSequence = StartCoroutine(OpenMapSequence());
         }
@@ -59,7 +57,8 @@ public class MapTableInteract : MonoBehaviour
 
     private void Update()
     {
-        if (isTransitioning) return;
+        // === ОПТИМІЗАЦІЯ І ФІКС: Блокуємо стіл карти під час туторіалу ===
+        if (isTransitioning || TutorialPanelUI.IsTutorialActive) return;
 
         if (playerInRange && !isMapOpen && Input.GetKeyDown(KeyCode.E))
         {
@@ -124,7 +123,6 @@ public class MapTableInteract : MonoBehaviour
 
         Transform mainCam = Camera.main.transform;
 
-        // �������� ������� ������ Ҳ���� ���� ���� �� �� ��������� � �������� ���� (���� �� ����-������� ���� � ������, �� ����� �� �������������� ������)
         if (savedCamPos == Vector3.zero)
         {
             savedCamPos = mainCam.position;

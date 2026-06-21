@@ -86,7 +86,6 @@ public class CampBuilding : MonoBehaviour
     private Vector3 originalModelPos;
     private Vector3 originalModelScale;
 
-    // КЕШУВАННЯ СХОВИЩА ДЛЯ ОПТИМІЗАЦІЇ
     private static CampBuilding storageBuildingCached;
 
     private void Awake()
@@ -206,6 +205,9 @@ public class CampBuilding : MonoBehaviour
             if (isPanelOpen) UpdateUIData();
         }
 
+        // === ОПТИМІЗАЦІЯ І ФІКС: Блокуємо будівлі під час туторіалу ===
+        if (TutorialPanelUI.IsTutorialActive) return;
+
         if (isPanelOpen && playerTransform != null)
         {
             if (Vector3.Distance(transform.position, playerTransform.position) > 12f)
@@ -238,7 +240,6 @@ public class CampBuilding : MonoBehaviour
                         ? "Hold <b>E</b> to start construction. Resources are spent immediately and the build runs even when you're away."
                         : "Hold <b>E</b> to start an upgrade. Each tier raises production and unlocks better tooltip text.", 6f);
 
-                // Per-building flavor (only once per building type)
                 TutorialHints.Instance.ShowIfNew(buildingID,
                     $"<b>{buildingName}</b>: see the panel for what this building produces.", 5f);
             }
@@ -295,6 +296,8 @@ public class CampBuilding : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        if (TutorialPanelUI.IsTutorialActive) return; // Захист від prompt-спаму
+
         if (other.CompareTag("Player") && levels != null && currentLevel < levels.Length && !isAnimating)
         {
             playerInRange = true;
