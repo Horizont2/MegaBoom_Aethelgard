@@ -648,6 +648,29 @@ public class GlobalHUD : MonoBehaviour
     public void SetGameplayPanelsActive(bool active)
     {
         if (gameplayPanels != null) { foreach (GameObject panel in gameplayPanels) { if (panel != null) panel.SetActive(active); } }
+
+        // Auxiliary HUD elements that aren't part of the inspector-wired
+        // gameplayPanels array but still need to vanish during cutscenes /
+        // map view. Cinematic bars and skip prompt deliberately stay since
+        // those are part of the cutscene framing itself.
+        if (promptCanvasGroup != null)
+        {
+            if (!active) { promptCanvasGroup.alpha = 0f; promptCanvasGroup.blocksRaycasts = false; }
+            // No "show on true" branch — the next prompt request will re-fade it.
+        }
+        if (objectivePanelGroup != null)
+        {
+            if (!active) { objectivePanelGroup.alpha = 0f; objectivePanelGroup.blocksRaycasts = false; }
+        }
+        if (bossUIGroup != null)
+        {
+            if (!active) { bossUIGroup.alpha = 0f; bossUIGroup.blocksRaycasts = false; }
+        }
+        if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(active);
+        if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(active);
+
+        // Build-in-progress widgets sit on widgetContainer in the corner.
+        if (widgetContainer != null) widgetContainer.gameObject.SetActive(active);
     }
 
     // ---- Low-Health Vignette ----

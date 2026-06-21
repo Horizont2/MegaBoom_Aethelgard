@@ -751,7 +751,15 @@ public class PlayerController : MonoBehaviour, IDamageable
                                 Time.fixedDeltaTime = 0.02f * Time.timeScale;
                             }
 
-                            if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
+                            if (trajectoryLine != null)
+                            {
+                                trajectoryLine.positionCount = linePoints;
+                                // Wipe out the prefab's alpha gradient (which
+                                // faded the line to transparent toward the
+                                // tail and made the arc look like it stopped
+                                // halfway, disconnected from the AoE ring).
+                                ResetTrajectoryGradient();
+                            }
                             if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
                             if (innerMarkerLine != null) innerMarkerLine.enabled = true;
                         }
@@ -943,6 +951,33 @@ public class PlayerController : MonoBehaviour, IDamageable
     // realign the AoE marker (and the throw itself) so visuals can never lie
     // about where the grenade lands.
     private static readonly RaycastHit[] s_grenadeSimHitBuffer = new RaycastHit[8];
+    private bool trajectoryGradientReset = false;
+
+    // The trajectoryLine prefab ships with an alpha gradient that tapers to
+    // zero, intended for a stylish "magic trail" head. While useful when the
+    // line is a fixed-length flair, it makes the arc look chopped off in the
+    // middle when the line traces a real ballistic path — the player sees a
+    // bright stub near their hand and an apparently disconnected AoE ring at
+    // the landing. Force a flat solid gradient once the first time we aim so
+    // the whole arc stays visible.
+    private void ResetTrajectoryGradient()
+    {
+        if (trajectoryGradientReset || trajectoryLine == null) return;
+        Gradient flat = new Gradient();
+        flat.SetKeys(
+            new[]
+            {
+                new GradientColorKey(Color.white, 0f),
+                new GradientColorKey(Color.white, 1f),
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(1f, 1f),
+            });
+        trajectoryLine.colorGradient = flat;
+        trajectoryGradientReset = true;
+    }
 
     // Walks up the parent chain to see if the collider belongs to the player.
     // CompareTag("Player") alone misses children (weapon, armor pieces, etc.)
