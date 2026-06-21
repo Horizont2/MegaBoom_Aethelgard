@@ -11,10 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_Attack
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: Attack
-  title: 'MELEE'
-  body: 'Hold <b>LMB</b> to chain swings. Killing builds your <b>STACK</b> — at 15+ stacks every hit deals multiplied damage.'
+  title: MELEE
+  body: Hold <b>LMB</b> to chain swings.
   icon: {fileID: 0}
   videoClip: {fileID: 0}
   duration: 6
