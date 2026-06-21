@@ -942,6 +942,23 @@ public class PlayerController : MonoBehaviour, IDamageable
     // Returning the simulated landing instead of just drawing it lets callers
     // realign the AoE marker (and the throw itself) so visuals can never lie
     // about where the grenade lands.
+    private static readonly RaycastHit[] s_grenadeSimHitBuffer = new RaycastHit[8];
+
+    // Walks up the parent chain to see if the collider belongs to the player.
+    // CompareTag("Player") alone misses children (weapon, armor pieces, etc.)
+    // that are typically untagged but still inside the player hierarchy.
+    private bool IsColliderPartOfPlayer(Collider c)
+    {
+        if (c == null) return false;
+        Transform t = c.transform;
+        while (t != null)
+        {
+            if (t == this.transform) return true;
+            t = t.parent;
+        }
+        return c.CompareTag("Player");
+    }
+
     private int SimulateTrajectoryToLanding(Vector3 requestedTarget, out Vector3 landing)
     {
         Vector3 start = throwPoint != null ? throwPoint.position : transform.position + Vector3.up;
@@ -972,16 +989,52 @@ public class PlayerController : MonoBehaviour, IDamageable
             float segDist = segDir.magnitude;
             if (segDist > 0.0001f)
             {
-                if (Physics.SphereCast(prev, COLLISION_RADIUS, segDir / segDist, out RaycastHit hit, segDist, blockerMask, QueryTriggerInteraction.Ignore))
+                Vector3 segDirN = segDir / segDist;
+                int hitCount = Physics.SphereCastNonAlloc(prev, COLLISION_RADIUS, segDirN, s_grenadeSimHitBuffer, segDist, blockerMask, QueryTriggerInteraction.Ignore);
+                if (hitCount > 0)
                 {
-                    // Only terminate on non-player blockers; otherwise we'd
-                    // collide with the player's own collider standing under
-                    // the throw origin.
-                    if (!hit.collider.CompareTag("Player"))
+                    // Scan for the closest hit that isn't part of the player.
+                    // The old code only checked CompareTag("Player"), which
+                    // missed untagged child colliders (weapon, armor, hand
+                    // bone box collider, etc.), so the trajectory used to
+                    // terminate on the first step against the player's own
+                    // weapon and the marker fell behind the visible arc.
+                    float bestDist = float.MaxValue;
+                    int bestIdx = -1;
+                    for (int h = 0; h < hitCount; h++)
                     {
-                        if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, hit.point);
+                        RaycastHit hh = s_grenadeSimHitBuffer[h];
+                        if (hh.collider == null) continue;
+                        if (IsColliderPartOfPlayer(hh.collider)) continue;
+                        // SphereCast returns 0 distance / zero point when the
+                        // cast started overlapping the collider — treat as a
+                        // glancing self-overlap and skip too.
+                        if (hh.distance <= 0.0001f) continue;
+                        if (hh.distance < bestDist) { bestDist = hh.distance; bestIdx = h; }
+                    }
+
+                    if (bestIdx >= 0)
+                    {
+                        RaycastHit hit = s_grenadeSimHitBuffer[bestIdx];
+                        Vector3 hitPoint = hit.point;
+                        if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, hitPoint);
                         writtenPoints++;
-                        landing = hit.point;
+
+                        // Visual drop marker: append a short vertical segment
+                        // from the hit point down to the ground so the line
+                        // unmistakably meets the AoE ring (which always sits
+                        // at ground level). Without this, hits on slopes/wall
+                        // sides looked detached from the marker.
+                        float groundY = GetGroundHeight(hitPoint);
+                        if (hitPoint.y - groundY > 0.05f && trajectoryLine != null)
+                        {
+                            trajectoryLine.SetPosition(writtenPoints, new Vector3(hitPoint.x, groundY + 0.1f, hitPoint.z));
+                            writtenPoints++;
+                        }
+
+                        // Marker sits on the ground directly under the impact
+                        // so it always reads as "where the AoE goes off."
+                        landing = new Vector3(hitPoint.x, groundY, hitPoint.z);
                         return writtenPoints;
                     }
                 }
@@ -993,10 +1046,18 @@ public class PlayerController : MonoBehaviour, IDamageable
 
             // Hard safety: if we somehow drop way below the throw origin (deep
             // pit or off-map), stop here so we don't trace into the void.
-            if (next.y < start.y - 50f) { landing = next; return writtenPoints; }
+            if (next.y < start.y - 50f)
+            {
+                float groundY = GetGroundHeight(next);
+                landing = new Vector3(next.x, groundY, next.z);
+                return writtenPoints;
+            }
         }
 
-        landing = prev;
+        // Sim exhausted without a collision (very long, very flat arc). Drop
+        // the marker straight down from the last simulated point.
+        float exitGroundY = GetGroundHeight(prev);
+        landing = new Vector3(prev.x, exitGroundY, prev.z);
         return writtenPoints;
     }
 
