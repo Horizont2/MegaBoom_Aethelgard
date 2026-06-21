@@ -12682,8 +12682,8 @@ MonoBehaviour:
   foliageLayer:
     serializedVersion: 2
     m_Bits: 32768
-  raycastRadius: 0.5
-  playerProximityIgnore: 1.6
+  raycastRadius: 0.7
+  playerProximityIgnore: 0.6
   cameraProximityIgnore: 0.4
   fadeAlpha: 0.25
   fadeSpeed: 3

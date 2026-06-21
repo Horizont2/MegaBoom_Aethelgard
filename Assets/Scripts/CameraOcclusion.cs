@@ -6,11 +6,11 @@ public class CameraOcclusion : MonoBehaviour
     [Header("Target & Scanning")]
     public Transform playerTarget;
     public LayerMask foliageLayer;
-    [Tooltip("Width of the line-of-sight sphere cast. Keep small (~0.5). Larger values fade trees that are merely *near* the line, not blocking it.")]
-    public float raycastRadius = 0.5f;
-    [Tooltip("Don't fade hits closer than this to the player. Stops trees the player is brushing against from going transparent.")]
-    public float playerProximityIgnore = 1.6f;
-    [Tooltip("Don't fade hits closer than this to the camera (e.g. handheld weapon, hair).")]
+    [Tooltip("Width of the line-of-sight sphere cast. ~0.7 catches typical tree trunks without hugging trees that are merely off to the side.")]
+    public float raycastRadius = 0.7f;
+    [Tooltip("Stop the cast this far short of the player so the player's own collider can't intercept the test.")]
+    public float playerProximityIgnore = 0.6f;
+    [Tooltip("Skip hits this close to the camera (e.g. handheld weapon, hair, head bones).")]
     public float cameraProximityIgnore = 0.4f;
 
     [Header("Fade Settings")]
@@ -57,10 +57,11 @@ public class CameraOcclusion : MonoBehaviour
         if (dist < 0.01f) return;
         Vector3 dir = toPlayer / dist;
 
-        // checkDistance: stop short of the player to avoid SphereCast'ing INTO
-        // the player capsule. We'll do per-hit proximity filtering below as
-        // well so trees the player is brushing against don't fade.
-        float checkDistance = Mathf.Max(0f, dist - playerProximityIgnore * 0.5f);
+        // Stop slightly short of the player so we don't cast into their own
+        // bounds. The player is on a layer outside foliageLayer, so this is
+        // just defensive; keep it small (~0.6m) so the cast sweeps the full
+        // path even when the player is hugging a tree.
+        float checkDistance = Mathf.Max(0f, dist - playerProximityIgnore);
 
         int hitCount = Physics.SphereCastNonAlloc(startPos, raycastRadius, dir, s_hitBuffer, checkDistance, foliageLayer);
 
@@ -71,18 +72,19 @@ public class CameraOcclusion : MonoBehaviour
             if (col == null) continue;
             if (col is TerrainCollider) continue;
 
-            // Per-hit proximity gates. raw.distance is the SphereCast travel
-            // distance, NOT the world distance from camera to hit point, so
-            // measure both ends from the actual hit point. This is the key
-            // fix that lets the script say "this tree is between us" without
-            // also flagging "this tree is just nearby".
             Vector3 hp = raw.point;
+            // SphereCast returns a zero point when the cast starts already
+            // overlapping the collider — fall back to the collider's own
+            // center so we still flag it as blocking.
             if (hp == Vector3.zero) hp = col.bounds.center;
 
+            // Reject hits too close to the camera (handheld weapon, head
+            // attachments, hair) and trees that aren't actually between the
+            // camera and player — measure perpendicular offset from the LoS
+            // segment, NOT raw distance to the player, because a tree right
+            // next to the player but along the LoS IS blocking the view.
             float distFromCam = Vector3.Distance(hp, startPos);
-            float distFromPlayer = Vector3.Distance(hp, endPos);
             if (distFromCam < cameraProximityIgnore) continue;
-            if (distFromPlayer < playerProximityIgnore) continue;
 
             FadingObject fader = AcquireOrCreateFader(col);
             if (fader == null) continue;

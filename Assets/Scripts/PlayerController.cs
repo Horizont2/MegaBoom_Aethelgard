@@ -796,10 +796,15 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (s_grenadeBlockerMask == -1)
         {
             // GrenadeLogic explodes on collision with anything tagged non-Player,
-            // which in practice means the Default/Terrain/Ground layers plus enemy
-            // bodies. The trajectory simulation has to mirror that to land where
-            // the grenade actually will.
-            s_grenadeBlockerMask = LayerMask.GetMask("Default", "Terrain", "Ground");
+            // so the prediction has to mirror that — including foliage. Without
+            // Foliage in the mask, a tree mid-arc would silently swallow the
+            // real grenade while the line happily drew through it.
+            int mask = LayerMask.GetMask("Default", "Terrain", "Ground", "Foliage");
+            // LayerMask.GetMask returns 0 for unknown layer names. If Foliage
+            // doesn't exist in this project, fall back to the safe trio so the
+            // mask isn't silently empty.
+            if (mask == 0) mask = LayerMask.GetMask("Default", "Terrain", "Ground");
+            s_grenadeBlockerMask = mask;
         }
         return s_grenadeBlockerMask;
     }
@@ -848,23 +853,26 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (offset.magnitude > maxThrowDistance)
         {
             hitPoint = transform.position + offset.normalized * maxThrowDistance;
+            // Re-ground the clamped point (sky aim) since we just moved it
+            // horizontally and the previous raycast hit no longer applies.
+            hitPoint = ProjectAimToGround(hitPoint);
         }
 
-        // Snap target to actual ground at that XZ — fixes the case where the
-        // raycast hit was an enemy collider in mid-air (or a sky-plane fallback
-        // at the player's elevation), which used to leave the AoE marker
-        // floating above the real landing.
-        hitPoint = ProjectAimToGround(hitPoint);
+        // currentGrenadeTarget stays at the player's actual aim — this is what
+        // the throw will use for its initial velocity, and what the marker
+        // shows the player is committing to. If the trajectory then clips a
+        // wall, the AoE preview moves to the clip point (markerPosition) but
+        // the throw still resolves identically because the same velocity is
+        // simulated above and applied below.
+        currentGrenadeTarget = hitPoint;
 
-        // Now simulate the throw with that target as the requested apex, then
-        // replace currentGrenadeTarget with where the grenade actually lands.
-        // This means the visual prediction is unconditionally correct: the line
-        // ends, the AoE rings sit, and the throw resolves all at the same point.
-        Vector3 simulatedLanding;
-        int simulatedCount = SimulateTrajectoryToLanding(hitPoint, out simulatedLanding);
-        currentGrenadeTarget = simulatedLanding;
+        // Simulate the throw with that target and find the real landing point.
+        // The line writes points along the simulated arc; markerPosition is
+        // where the grenade actually stops.
+        Vector3 markerPosition;
+        int simulatedCount = SimulateTrajectoryToLanding(currentGrenadeTarget, out markerPosition);
 
-        int blastCount = Physics.OverlapSphereNonAlloc(currentGrenadeTarget, grenadeExplosionRadius, s_overlapBuffer);
+        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, grenadeExplosionRadius, s_overlapBuffer);
         bool enemyInBlast = false;
         for (int bi = 0; bi < blastCount; bi++)
         {
@@ -884,7 +892,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
         if (innerMarkerLine != null) { innerMarkerLine.startColor = currentAimColor; innerMarkerLine.endColor = currentAimColor; }
 
-        DrawAoEMarker(currentGrenadeTarget);
+        // AoE ring sits on the *real* landing — i.e. where the grenade will
+        // actually explode after physics, not the player's raw aim point.
+        DrawAoEMarker(markerPosition);
 
         Vector3 aimDir = (currentGrenadeTarget - transform.position).normalized;
         aimDir.y = 0;
