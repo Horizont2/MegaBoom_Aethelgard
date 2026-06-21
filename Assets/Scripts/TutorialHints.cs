@@ -111,16 +111,27 @@ public class TutorialHints : MonoBehaviour
     }
 
     /// <summary>Clear seen flags for every hint in the wired library.</summary>
+    [ContextMenu("Reset all hint flags")]
     public void ResetAll()
     {
-        if (library == null || library.hints == null) return;
+        if (library == null || library.hints == null)
+        {
+            Debug.LogWarning("[TutorialHints] No library wired — nothing to reset. " +
+                             "Drop a TutorialHintLibrary asset into the 'library' field first.", this);
+            return;
+        }
+        int count = 0;
         for (int i = 0; i < library.hints.Length; i++)
         {
             TutorialHintData d = library.hints[i];
             if (d != null && !string.IsNullOrEmpty(d.key))
+            {
                 PlayerPrefs.DeleteKey(StorageKey(d.key));
+                count++;
+            }
         }
         PlayerPrefs.Save();
+        Debug.Log($"[TutorialHints] Reset {count} hint flag(s). All hints will replay on their next trigger.");
     }
 
     private void Enqueue(HintRequest req)
