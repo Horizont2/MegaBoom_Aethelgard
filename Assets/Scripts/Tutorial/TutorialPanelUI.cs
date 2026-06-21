@@ -42,7 +42,7 @@ public class TutorialPanelUI : MonoBehaviour
     public Image backgroundFrame;
 
     [Header("Input")]
-    [Tooltip("Якщо хінт чекає на ввід, ця клавіша закриває панель")]
+    [Tooltip("Клавіша, яка скіпає панель. Працює і для waitForInput=true, і як ранній скіп для звичайних хінтів. Можна обрати будь-який KeyCode, включаючи Mouse0/Mouse1.")]
     public KeyCode dismissKey = KeyCode.Space;
 
     private Coroutine activeRoutine;
@@ -157,26 +157,27 @@ public class TutorialPanelUI : MonoBehaviour
         if (canvasGroup != null) canvasGroup.alpha = 1f;
         if (contentRect != null) contentRect.anchoredPosition = contentBasePos;
 
-        // Hold phase: any-key skip with release-then-press safeguard.
+        // Hold phase: dismiss on the configured `dismissKey` (Space by default;
+        // any KeyCode, including Mouse0/1, works since Unity treats them all
+        // as KeyCodes).
         //
-        // If the player was already holding a key when the panel appeared
-        // (e.g. W to walk, LMB to attack), we don't want the same press to
-        // accidentally dismiss the tip the player hasn't even read yet.
-        // So we wait for ALL keys to release first; only after that, the
-        // NEXT fresh press counts as skip.
+        // Safeguard against accidental skip: if dismissKey was already being
+        // held when the panel appeared (e.g. the player was hammering Space
+        // through dialogue), that hold doesn't count. Wait until the key
+        // releases at least once, THEN listen for a fresh press.
         //
         // If waitForInput is false, the duration timer also dismisses on
-        // its own — so a player who keeps holding a key forever still
+        // its own — so a player who keeps holding the key forever still
         // gets the panel away after `data.duration` unscaled seconds.
-        bool readyForSkip = !Input.anyKey;
+        bool readyForSkip = !Input.GetKey(dismissKey);
         float remain = data.duration;
 
         while (true)
         {
-            if (!readyForSkip && !Input.anyKey)
+            if (!readyForSkip && !Input.GetKey(dismissKey))
                 readyForSkip = true;
 
-            if (readyForSkip && Input.anyKeyDown)
+            if (readyForSkip && Input.GetKeyDown(dismissKey))
                 break;
 
             if (!data.waitForInput)
