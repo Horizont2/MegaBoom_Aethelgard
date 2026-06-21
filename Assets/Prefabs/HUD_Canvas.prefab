@@ -1578,6 +1578,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ThreatUI
   threatIndicatorImage: {fileID: 7955806720037425842}
   displayDuration: 0.8
+  peakFraction: 0.7
+  rampShape: 1.5
+  maxScale: 1.35
 --- !u!1 &2177367128069841482
 GameObject:
   m_ObjectHideFlags: 0
@@ -9887,8 +9890,8 @@ MonoBehaviour:
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 57dff7deb879aba4e8d52b196c3dc534, type: 2}
+  m_sharedMaterial: {fileID: -5629448254891560715, guid: 57dff7deb879aba4e8d52b196c3dc534, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
