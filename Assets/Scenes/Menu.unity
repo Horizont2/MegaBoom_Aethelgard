@@ -5117,7 +5117,7 @@ MonoBehaviour:
   defaultDuration: 15
   minSpacing: 1.5
   fallbackPrefix: '<color=#FFD86B>TIP:</color> '
-  resetOnPlay: 1
+  resetOnPlay: 0
   verboseLogging: 0
 --- !u!4 &1215516263
 Transform:
