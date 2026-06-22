@@ -747,6 +747,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // without each system polling for kills.
         PlayerController.OnEnemyKilled?.Invoke();
 
+        // Stats + achievements bookkeeping. Elite/boss flagged via the
+        // isElite field; bosses are detected through TutorialBossAI on
+        // the same GameObject (it lives in regions).
+        RunStats.Add(RunStats.Stat.EnemiesKilled, 1);
+        AchievementManager.Notify(AchievementManager.Tracker.EnemyKilled, 1);
+        if (isElite)
+        {
+            RunStats.Add(RunStats.Stat.ElitesKilled, 1);
+        }
+        if (GetComponent<TutorialBossAI>() != null)
+        {
+            RunStats.Add(RunStats.Stat.BossesKilled, 1);
+            AchievementManager.Notify(AchievementManager.Tracker.BossSlain, 1);
+        }
+
         if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);

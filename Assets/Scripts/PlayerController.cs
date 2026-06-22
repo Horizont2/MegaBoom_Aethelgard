@@ -1270,6 +1270,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         isNextAttackGuaranteedCrit = true;
         isBulletTime = true;
 
+        RunStats.Add(RunStats.Stat.PerfectDodges, 1);
+        AchievementManager.Notify(AchievementManager.Tracker.PerfectDodge, 1);
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
 
         Time.timeScale = perfectDodgeSlowMoScale;
@@ -1596,6 +1599,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        RunStats.Add(RunStats.Stat.DeathsCount, 1);
+
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
@@ -1651,6 +1656,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (GlobalHUD.Instance != null)
             GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} Diamond", new Color(0.85f, 0.55f, 1f));
 
+        RunStats.Add(RunStats.Stat.DiamondsEarned, finalAmount);
+        AchievementManager.Notify(AchievementManager.Tracker.DiamondsEarned, finalAmount);
+
         UpdateHUD();
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
     }
@@ -1669,6 +1677,11 @@ public class PlayerController : MonoBehaviour, IDamageable
         currentXP -= xpToNextLevel;
         currentLevel++;
         xpToNextLevel = ComputeXpToNextLevel(currentLevel);
+
+        // Stats + achievements + level-up toast.
+        RunStats.Add(RunStats.Stat.LevelUps, 1);
+        AchievementManager.Notify(AchievementManager.Tracker.PlayerLevel, currentLevel);
+        ToastManager.Show(LocalizationManager.Tr("TOAST_LEVEL_UP", currentLevel), ToastManager.ToastKind.Info);
         visualXP = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);

@@ -40,7 +40,7 @@ public class MissionManager : MonoBehaviour
         SceneManager.sceneLoaded += OnSceneLoaded;
         LoadMissions();
 
-        // --- ФІКС: Якщо ми запустили гру прямо зі сцени табору в едіторі ---
+        // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ ---
         if (SceneManager.GetActiveScene().name == "CampScene")
         {
             ClearCompletedMissionsUI();
@@ -208,6 +208,11 @@ public class MissionManager : MonoBehaviour
         mission.isCompleted = true;
         if (mission.uiElement != null) mission.uiElement.CompleteMission();
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+
+        RunStats.Add(RunStats.Stat.MissionsCompleted, 1);
+        string missionName = mission.missionData != null ? mission.missionData.missionName : "Mission";
+        ToastManager.Show(LocalizationManager.Tr("TOAST_MISSION_DONE", missionName), ToastManager.ToastKind.Info);
+
         SaveMissions();
     }
 }
