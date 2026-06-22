@@ -704,23 +704,30 @@ public class GlobalHUD : MonoBehaviour
 
     private void ToggleAncestorPanel(Image img, RectTransform hudRect, bool active)
     {
-        if (img == null) return;
-        Transform t = img.transform;
-        // Climb until just below the HUD root so we toggle the largest
-        // owned panel (HP bar group, stamina bar group, etc.) without
-        // turning off the whole HUD canvas.
-        while (t != null && t.parent != null && t.parent != hudRect.transform)
-            t = t.parent;
-        if (t != null && t != hudRect.transform) t.gameObject.SetActive(active);
+        if (img != null) ToggleTopCanvasPanel(img.transform, active);
     }
 
     private void ToggleAncestorPanelText(TMPro.TextMeshProUGUI txt, RectTransform hudRect, bool active)
     {
-        if (txt == null) return;
-        Transform t = txt.transform;
-        while (t != null && t.parent != null && t.parent != hudRect.transform)
+        if (txt != null) ToggleTopCanvasPanel(txt.transform, active);
+    }
+
+    // Climbs from any UI transform up to the immediate child of its Canvas,
+    // and toggles THAT child. Works regardless of which canvas the panel
+    // sits under — CampScene's stamina lives in a scene-local Canvas, not
+    // GlobalHUD's, so the previous walk-to-hudRect approach silently no-
+    // op'd on it. Walking to the canvas root catches every case.
+    private void ToggleTopCanvasPanel(Transform leaf, bool active)
+    {
+        if (leaf == null) return;
+        Transform t = leaf;
+        while (t != null && t.parent != null && t.parent.GetComponent<Canvas>() == null)
             t = t.parent;
-        if (t != null && t != hudRect.transform) t.gameObject.SetActive(active);
+        // t is now the topmost child sitting directly under a Canvas.
+        if (t != null && t.parent != null && t.parent.GetComponent<Canvas>() != null)
+        {
+            if (t.gameObject.activeSelf != active) t.gameObject.SetActive(active);
+        }
     }
 
     // ---- Low-Health Vignette ----

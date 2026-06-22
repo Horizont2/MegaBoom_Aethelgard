@@ -131,8 +131,13 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         targetPosition += (localPoint - prevLocalPoint);
     }
 
-    public void FocusOnNode(RectTransform nodeRect, bool instant = true)
+    public void FocusOnNode(RectTransform nodeRect, bool instant = false)
     {
+        // Used to be instant=true so clicks snapped the camera onto the
+        // region. Default flipped to false so Update's smoothing lerps the
+        // dolly in — the cinematic glide is a flat AAA-feel upgrade with
+        // no extra moving parts. Pass instant=true when you really need a
+        // hard cut (eg. opening a fresh map view).
         targetZoom = Mathf.Clamp(1.7f, minZoom, maxZoom);
 
         Vector2 nodeLocalPos = mapRect.InverseTransformPoint(nodeRect.position);
@@ -142,7 +147,6 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
         {
             mapRect.localScale = new Vector3(targetZoom, targetZoom, 1f);
             mapRect.anchoredPosition = targetPosition;
-            // ��������� ���� Update() ��� ����������� �������� ������� ������ �� �������� ����������
         }
     }
 

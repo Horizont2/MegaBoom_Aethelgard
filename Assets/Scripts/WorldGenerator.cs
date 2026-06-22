@@ -1635,7 +1635,20 @@ public class WorldGenerator : MonoBehaviour
 
                         currentTreeCount++;
 
-                        if (vfxToSpawn != null) Instantiate(vfxToSpawn, obj.transform.position + Vector3.up * 5f, Quaternion.identity, obj.transform);
+                        if (vfxToSpawn != null)
+                        {
+                            GameObject vfxGO = Instantiate(vfxToSpawn, obj.transform.position + Vector3.up * 5f, Quaternion.identity, obj.transform);
+                            // The leaf-fall / snow particle systems run
+                            // unconditionally; multiplied across every giant
+                            // tree in a region they crushed the GPU budget the
+                            // moment the player walked up to one. The LOD
+                            // component stops emission past 55m and scales it
+                            // smoothly inside that radius, so distant trees
+                            // contribute nothing while the close-up effect
+                            // still looks right.
+                            if (vfxGO.GetComponent<GiantTreeVFXLOD>() == null)
+                                vfxGO.AddComponent<GiantTreeVFXLOD>();
+                        }
 
                         if (groundClutterPrefabs != null && groundClutterPrefabs.Length > 0) SpawnNatureCluster(GetRandomPrefab(groundClutterPrefabs), obj.transform.position, bushContainer, 3, 6, 3f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
                     }
