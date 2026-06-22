@@ -42,7 +42,7 @@ public static class AchievementManager
         new AchDef { id = "LEVEL_25",         tracker = Tracker.PlayerLevel,        threshold = 25,   nameKey = "ACH_LEVEL_25" },
         new AchDef { id = "BOSS_SLAIN",       tracker = Tracker.BossSlain,          threshold = 1,    nameKey = "ACH_BOSS_SLAIN" },
         new AchDef { id = "SCROLLS_5",        tracker = Tracker.ScrollFound,        threshold = 5,    nameKey = "ACH_SCROLLS_5" },
-        new AchDef { id = "SCROLLS_ALL",      tracker = Tracker.ScrollFound,        threshold = 8,    nameKey = "ACH_SCROLLS_ALL" },
+        new AchDef { id = "SCROLLS_ALL",      tracker = Tracker.ScrollFound,        threshold = 12,   nameKey = "ACH_SCROLLS_ALL" },
         new AchDef { id = "DODGE_10",         tracker = Tracker.PerfectDodge,       threshold = 10,   nameKey = "ACH_PERFECT_DODGE_10" },
         new AchDef { id = "DIAMOND_HOARDER",  tracker = Tracker.DiamondsEarned,     threshold = 5000, nameKey = "ACH_DIAMOND_HOARDER" },
         new AchDef { id = "NG_PLUS",          tracker = Tracker.NewGamePlusStarted, threshold = 1,    nameKey = "ACH_NG_PLUS" },

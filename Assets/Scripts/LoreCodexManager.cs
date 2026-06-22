@@ -20,6 +20,10 @@ public static class LoreCodexManager
         "LORE_NIGHT_BUFF",
         "LORE_THE_PALE_KING",
         "LORE_STRANGER",
+        "LORE_FORGE_MOTHER",
+        "LORE_WATCHFIRE",
+        "LORE_DEAD_RIVER",
+        "LORE_BLOOD_OATH",
     };
 
     private const string UnlockedPrefix = "Lore_Unlocked_";
