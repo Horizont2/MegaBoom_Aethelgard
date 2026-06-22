@@ -156,7 +156,14 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void OnEnable()
     {
-        if (!isCampMode) LocalInstance = this;
+        // Always register, even in camp mode. The low-health vignette
+        // already gates itself on isCampMode internally; GlobalHUD's
+        // hide-on-map-open path needs to find the camp player to walk
+        // its hpFill / dashStaminaFill up to the right canvas root,
+        // and that lookup was returning null when this gate excluded
+        // camp instances — leaving the stamina bar visible behind the
+        // region map.
+        LocalInstance = this;
         OnEnemyKilled += HandleEnemyKilled;
     }
 
