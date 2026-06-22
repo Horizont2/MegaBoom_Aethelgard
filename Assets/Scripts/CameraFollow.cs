@@ -94,8 +94,9 @@ public class CameraFollow : MonoBehaviour
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
         // 3. Миттєве, точне керування без желе
-        currentX += Input.GetAxis("Mouse X") * mouseSensitivity;
-        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+        float sensMul = MouseSensitivitySettings.Multiplier;
+        currentX += Input.GetAxis("Mouse X") * mouseSensitivity * sensMul;
+        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity * sensMul;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
 
