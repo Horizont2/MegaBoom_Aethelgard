@@ -210,7 +210,7 @@ public class MissionManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
         RunStats.Add(RunStats.Stat.MissionsCompleted, 1);
-        string missionName = mission.missionData != null ? mission.missionData.missionName : "Mission";
+        string missionName = mission.data != null ? mission.data.missionName : "Mission";
         ToastManager.Show(LocalizationManager.Tr("TOAST_MISSION_DONE", missionName), ToastManager.ToastKind.Info);
 
         SaveMissions();
