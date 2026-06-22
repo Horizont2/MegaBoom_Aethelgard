@@ -754,10 +754,12 @@ public class PlayerController : MonoBehaviour, IDamageable
                             if (trajectoryLine != null)
                             {
                                 trajectoryLine.positionCount = linePoints;
-                                // Wipe out the prefab's alpha gradient (which
-                                // faded the line to transparent toward the
-                                // tail and made the arc look like it stopped
-                                // halfway, disconnected from the AoE ring).
+                                // Replace the magic-trail material with a flat
+                                // unlit and force a clean opaque gradient. The
+                                // original prefab material had a texture whose
+                                // alpha faded along its length, which is what
+                                // kept the far end of the arc invisible.
+                                EnsureSolidTrajectoryMaterial();
                                 ResetTrajectoryGradient();
                             }
                             if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
@@ -961,6 +963,43 @@ public class PlayerController : MonoBehaviour, IDamageable
     // Returning the simulated landing instead of just drawing it lets callers
     // realign the AoE marker (and the throw itself) so visuals can never lie
     // about where the grenade lands.
+    private static Material s_solidTrajectoryMaterial;
+    private bool trajectoryMaterialReplaced = false;
+
+    // Replace the prefab's "magic trail" material with a flat URP unlit
+    // material. The original material was a Hovl trail effect with a
+    // texture whose alpha falls off along its length — perfect for a
+    // VFX trail, terrible for a precise aiming line, because the far
+    // tail of the arc rendered invisible no matter what colour we set.
+    private void EnsureSolidTrajectoryMaterial()
+    {
+        if (trajectoryMaterialReplaced || trajectoryLine == null) return;
+        if (s_solidTrajectoryMaterial == null)
+        {
+            Shader sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) sh = Shader.Find("Sprites/Default");
+            if (sh == null) sh = Shader.Find("Unlit/Color");
+            s_solidTrajectoryMaterial = new Material(sh);
+            // Transparent so the trajectory line can lay over geometry softly.
+            if (s_solidTrajectoryMaterial.HasProperty("_Surface"))
+            {
+                s_solidTrajectoryMaterial.SetFloat("_Surface", 1f);
+                s_solidTrajectoryMaterial.SetFloat("_Blend", 0f);
+                s_solidTrajectoryMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                s_solidTrajectoryMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                s_solidTrajectoryMaterial.SetInt("_ZWrite", 0);
+                s_solidTrajectoryMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                s_solidTrajectoryMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            s_solidTrajectoryMaterial.color = Color.white; // gradient drives the look
+        }
+        trajectoryLine.material = s_solidTrajectoryMaterial;
+        // Stretch the (non-existent) texture across the whole line so any
+        // residual tiling doesn't carve gaps mid-arc.
+        trajectoryLine.textureMode = LineTextureMode.Stretch;
+        trajectoryMaterialReplaced = true;
+    }
+
     private static readonly RaycastHit[] s_grenadeSimHitBuffer = new RaycastHit[8];
     private bool trajectoryGradientReset = false;
 
