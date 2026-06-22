@@ -737,20 +737,33 @@ public class GlobalHUD : MonoBehaviour
         if (t == null || t.parent == null || t.parent.GetComponent<Canvas>() == null) return;
 
         GameObject go = t.gameObject;
+
+        // Sanity gate: PlayerController.ReconnectUI auto-discovers fields
+        // by name search across every Image / TMP in the scene. In camp
+        // mode that gleefully picked up "diamond" texts inside the region
+        // map's reward block, or "fill" Images inside the Forge build
+        // panel. Walking up from those leaves landed on the map / Forge
+        // root and toggling THAT broke the actual gameplay UI. Only act
+        // when the resolved panel's name signals it's a real HUD container.
         if (active)
         {
-            // Only re-activate panels we explicitly hid. This prevents
-            // false-positive activations from auto-discovered fields
-            // pointing into unrelated UIs (Forge/build panels etc.).
             if (hiddenByGlobalHUD.Remove(go) && !go.activeSelf) go.SetActive(true);
+            return;
         }
-        else
+
+        string n = go.name.ToLower();
+        bool looksLikeHUDPanel =
+            n.Contains("hp") || n.Contains("health") ||
+            n.Contains("stamina") || n.Contains("dash") ||
+            n.Contains("xp") || n.Contains("level") || n.Contains("lvl") ||
+            n.Contains("diamond") || n.Contains("crystal") ||
+            n.Contains("hud") || n.Contains("playerui");
+        if (!looksLikeHUDPanel) return;
+
+        if (go.activeSelf)
         {
-            if (go.activeSelf)
-            {
-                go.SetActive(false);
-                hiddenByGlobalHUD.Add(go);
-            }
+            go.SetActive(false);
+            hiddenByGlobalHUD.Add(go);
         }
     }
 
