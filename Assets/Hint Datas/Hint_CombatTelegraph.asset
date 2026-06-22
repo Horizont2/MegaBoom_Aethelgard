@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_CombatTelegraph
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: CombatTelegraph
-  title: 'INCOMING ATTACK'
-  body: 'An enemy is winding up. Watch the <b>red pulse</b> grow brighter — peak brightness means the strike lands NOW. Dash to evade.'
+  title: INCOMING ATTACK
+  body: "An enemy is winding up. Watch the <b>red pulse</b> grow brighter \u2014
+    peak brightness means the strike lands NOW. Dash to evade."
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: c1156c565f3759d499479a4aa6eeef95, type: 3}
   duration: 7
   waitForInput: 0
   pauseGameWhileShown: 1

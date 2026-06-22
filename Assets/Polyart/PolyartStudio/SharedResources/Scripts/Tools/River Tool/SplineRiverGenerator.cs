@@ -1,13 +1,13 @@
-#if UNITY_EDITOR
-
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
 using System;
 
-
+// ФІКС: Залишаємо UnityEditor лише для роботи в редакторі
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 
 namespace Polyart
 {
@@ -46,18 +46,24 @@ namespace Polyart
 
         private void OnValidate()
         {
-            transform.GetChild(0).hideFlags = HideFlags.HideInHierarchy;
+            if (transform.childCount > 0)
+            {
+                transform.GetChild(0).hideFlags = HideFlags.HideInHierarchy;
+            }
             shouldReGenerate = false;
         }
 
         public void Update()
         {
+            // ФІКС: Блокуємо цей шматок, бо він працює тільки в Editor
+#if UNITY_EDITOR
             // Skip if in play mode or about to enter/exit play mode
             if (EditorApplication.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode)
                 return;
+#endif
 
             if (
-                    prevTransform != transform.position || 
+                    prevTransform != transform.position ||
                     prevRotation != transform.rotation
                 )
             {
@@ -79,7 +85,7 @@ namespace Polyart
             else
             {
                 shouldReGenerate = true;
-                prevHash = CalculateSplineHash(splineContainer); 
+                prevHash = CalculateSplineHash(splineContainer);
             }
         }
 
@@ -95,7 +101,7 @@ namespace Polyart
             if (meshFilter == null)
             {
                 meshFilter = gameObject.GetComponentInChildren<MeshFilter>();
-            } 
+            }
 
             float splineLength = Mathf.Round(splineContainer.Spline.GetLength());
             int numTiles = (int)Mathf.Round(splineLength / (tileLength * resolutionDivisor));
@@ -110,7 +116,7 @@ namespace Polyart
             List<Vector2> uvs = new List<Vector2>();
             List<Color> vertexColor = new List<Color>();
             List<Vector4> tangents = new List<Vector4>();
-            
+
             float prevWidthLeft = width * 0.5f, prevWidthRight = width * 0.5f;
 
             float widthSegmentsLength = width / currWidthSegments;
@@ -175,9 +181,6 @@ namespace Polyart
                     vertices.Add(leftPoint);
                     // Add UVs
                     uvs.Add(new Vector2(j * (1f / currWidthSegments), t * numUVTiles));
-                    // Add vertex color
-                    //vertexColor.Add(new Color((tangentWS.x + 1f) * 0.5f, (tangentWS.z + 1f) * 0.5f, Vector3.Dot(tangentWS, Vector3.down), 0f));
-                    //vertexColor.Add(new Color((tangentWS.x), (tangentWS.z), Vector3.Dot(tangentWS, Vector3.down), 0f));
                     vertexColor.Add(Color.black);
                     tangents.Add(tangent);
                 }
@@ -215,7 +218,6 @@ namespace Polyart
                 }
             }
             prevVertCols = mesh.colors;
-            //mesh.colors = mesh.colors.Length == vertexColor.Count ? mesh.colors : vertexColor.ToArray();
             mesh.uv = uvs.ToArray();
             mesh.tangents = tangents.ToArray();
             mesh.RecalculateNormals();
@@ -243,6 +245,8 @@ namespace Polyart
 
         private static int CalculateSplineHash(SplineContainer container)
         {
+            if (container == null || container.Splines == null) return 0; // ФІКС: Захист від NullReference
+
             int hash = 17;
 
             foreach (var spline in container.Splines)
@@ -256,23 +260,10 @@ namespace Polyart
 
             return hash;
         }
+
         public Material GetMaterialInstance()
         {
             return material;
         }
     }
-
 }
-
-#else
-
-using UnityEngine;
-
-namespace Polyart
-{
-    public class SplineRiverGenerator : MonoBehaviour
-    {
-
-    }
-}
-#endif
