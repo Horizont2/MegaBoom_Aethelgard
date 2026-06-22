@@ -762,21 +762,30 @@ public class EnemyAI : MonoBehaviour, IDamageable
         ResetColor();
 
         // --- ����������� Բ�� ������ ���� (�������� Pool) ---
+        // XP crystals and diamonds drop on every kill — those allocations
+        // were the biggest source of GC spikes during big waves. Route them
+        // through the global pool whenever it's available; the !=null
+        // result handles the case where the prefab isn't pre-registered.
         if (xpCrystalPrefab != null)
         {
-            Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+            Vector3 spawnPos = transform.position + Vector3.up * 1f;
+            GameObject xp = ObjectPoolManager.Instance != null
+                ? ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, spawnPos, Quaternion.identity)
+                : null;
+            if (xp == null) Instantiate(xpCrystalPrefab, spawnPos, Quaternion.identity);
         }
 
         if (diamondPrefab != null && Random.value <= diamondDropChance)
         {
-            // Elite kills drop a small cluster (2-3 diamonds) so they read as
-            // worthwhile fights, not "same loot as a minion."
             int dropCount = isElite ? Random.Range(2, 4) : 1;
             for (int d = 0; d < dropCount; d++)
             {
                 Vector2 spread = Random.insideUnitCircle * 0.6f;
                 Vector3 pos = transform.position + new Vector3(spread.x, 1f, spread.y);
-                Instantiate(diamondPrefab, pos, Quaternion.identity);
+                GameObject dia = ObjectPoolManager.Instance != null
+                    ? ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, pos, Quaternion.identity)
+                    : null;
+                if (dia == null) Instantiate(diamondPrefab, pos, Quaternion.identity);
             }
         }
         // ------------------------------------

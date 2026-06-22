@@ -59,6 +59,16 @@ public class EnemyEncounterGroup : MonoBehaviour
     public void SpawnGroup()
     {
         if (spawned) return;
+        // Stagger the actual spawns over a few frames so a 10-12 enemy
+        // camp doesn't Instantiate everything at once (Animator init +
+        // material upload + collider bake all hit the main thread). The
+        // group-level state (spawned flag, campfire) still happens
+        // synchronously, only the enemy-by-enemy work spreads out.
+        StartCoroutine(SpawnGroupRoutine());
+    }
+
+    private IEnumerator SpawnGroupRoutine()
+    {
         spawned = true;
 
         Vector3 groupCenter = GroundedCenter(transform.position);
@@ -66,17 +76,18 @@ public class EnemyEncounterGroup : MonoBehaviour
 
         if (style == EncounterStyle.Camp && campfirePrefab != null)
         {
-            // Preserve the prefab's own rotation so meshes don't end up sideways.
-            // Don't parent under the (randomly-rotated) group root either —
-            // worldPositionStays would still drag scale from the parent.
             spawnedCampfire = Instantiate(campfirePrefab, groupCenter, campfirePrefab.transform.rotation);
             spawnedCampfire.transform.SetParent(transform, true);
         }
 
-        if (enemyPrefabs == null || enemyPrefabs.Length == 0) return;
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0) yield break;
 
+        // Spawn ~4 enemies per frame; small groups still feel instant,
+        // big groups (10+) lose the spawn-frame stutter.
+        const int SPAWNS_PER_FRAME = 4;
         for (int i = 0; i < enemyCount; i++)
         {
+            if (i > 0 && i % SPAWNS_PER_FRAME == 0) yield return null;
             GameObject prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
             if (prefab == null) continue;
 

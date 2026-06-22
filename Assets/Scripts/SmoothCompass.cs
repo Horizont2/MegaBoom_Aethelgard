@@ -52,6 +52,14 @@ public class SmoothCompass : MonoBehaviour
     private readonly List<TextMeshProUGUI> spawnedIconDistance = new List<TextMeshProUGUI>();
     private readonly List<CanvasGroup> spawnedIconCanvas = new List<CanvasGroup>();
 
+    // Parallel pools for inactive icons — avoid Destroy/Instantiate churn
+    // when the set of tracked markers churns (totems unlock/lock,
+    // landmarks come into compass range, etc.).
+    private readonly Stack<GameObject> iconPool = new Stack<GameObject>(8);
+    private readonly Stack<RectTransform> iconPoolRects = new Stack<RectTransform>(8);
+    private readonly Stack<TextMeshProUGUI> iconPoolDistance = new Stack<TextMeshProUGUI>(8);
+    private readonly Stack<CanvasGroup> iconPoolCanvas = new Stack<CanvasGroup>(8);
+
     private RectTransform offscreenLeftArrow;
     private RectTransform offscreenRightArrow;
 
@@ -202,11 +210,19 @@ public class SmoothCompass : MonoBehaviour
         int iconsNeeded = activeMarkers.Count - spawnedIcons.Count;
         for (int i = 0; i < iconsNeeded; i++) SpawnIcon();
 
-        // Shrink: pop excess.
+        // Shrink: park excess icons into the pool (deactivated) instead of
+        // destroying them. Markers come and go often (region totems,
+        // quest objectives, distant landmarks) and Destroy + Instantiate
+        // each transition was needless GC pressure.
         while (spawnedIcons.Count > activeMarkers.Count)
         {
             int last = spawnedIcons.Count - 1;
-            Destroy(spawnedIcons[last]);
+            GameObject g = spawnedIcons[last];
+            if (g != null) g.SetActive(false);
+            iconPool.Push(g);
+            iconPoolRects.Push(spawnedIconRects[last]);
+            iconPoolCanvas.Push(spawnedIconCanvas[last]);
+            iconPoolDistance.Push(spawnedIconDistance[last]);
             spawnedIcons.RemoveAt(last);
             spawnedIconRects.RemoveAt(last);
             spawnedIconCanvas.RemoveAt(last);
@@ -269,16 +285,35 @@ public class SmoothCompass : MonoBehaviour
 
     private void SpawnIcon()
     {
-        GameObject icon = Instantiate(markerIconPrefab, markersParent, false);
-        RectTransform iconRect = icon.GetComponent<RectTransform>();
+        GameObject icon;
+        RectTransform iconRect;
+        CanvasGroup cg;
+        TextMeshProUGUI distLabel;
+
+        if (iconPool.Count > 0)
+        {
+            icon = iconPool.Pop();
+            iconRect = iconPoolRects.Pop();
+            cg = iconPoolCanvas.Pop();
+            distLabel = iconPoolDistance.Pop();
+            if (icon != null) icon.SetActive(true);
+            spawnedIcons.Add(icon);
+            spawnedIconRects.Add(iconRect);
+            spawnedIconCanvas.Add(cg);
+            spawnedIconDistance.Add(distLabel);
+            return;
+        }
+
+        icon = Instantiate(markerIconPrefab, markersParent, false);
+        iconRect = icon.GetComponent<RectTransform>();
         iconRect.localScale = Vector3.one;
 
-        CanvasGroup cg = icon.GetComponent<CanvasGroup>();
+        cg = icon.GetComponent<CanvasGroup>();
         if (cg == null) cg = icon.AddComponent<CanvasGroup>();
         cg.blocksRaycasts = false;
         cg.interactable = false;
 
-        TextMeshProUGUI distLabel = null;
+        distLabel = null;
         if (showDistanceOnIcons)
         {
             GameObject labelGO = new GameObject("Distance");

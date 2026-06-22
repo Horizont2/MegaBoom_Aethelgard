@@ -364,20 +364,46 @@ public class DayNightCycle : MonoBehaviour
         lightningCoroutine = null;
     }
 
+    // Pooled GameObject + Light combos so strikes don't allocate a fresh
+    // GO every 5-15 seconds during storms.
+    private readonly System.Collections.Generic.Stack<GameObject> lightningFlashPool = new System.Collections.Generic.Stack<GameObject>(4);
+
+    private GameObject AcquireLightningFlash()
+    {
+        while (lightningFlashPool.Count > 0)
+        {
+            GameObject g = lightningFlashPool.Pop();
+            if (g != null) return g;
+        }
+        GameObject go = new GameObject("LightningFlash");
+        Light l = go.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.shadows = LightShadows.None;
+        l.renderMode = LightRenderMode.ForcePixel;
+        l.color = new Color(0.85f, 0.92f, 1f);
+        return go;
+    }
+
+    private void ReleaseLightningFlash(GameObject go)
+    {
+        if (go == null) return;
+        Light l = go.GetComponent<Light>();
+        if (l != null) l.intensity = 0f;
+        go.SetActive(false);
+        lightningFlashPool.Push(go);
+    }
+
     // Spawn a transient point light at the bolt position so only the local
     // sky / nearby terrain brightens. Two quick pulses approximate the
     // characteristic double-flash of a real strike.
     private IEnumerator LocalLightningFlash(Vector3 position, float range)
     {
-        GameObject go = new GameObject("LightningFlash");
+        GameObject go = AcquireLightningFlash();
         go.transform.position = position;
-        Light l = go.AddComponent<Light>();
-        l.type = LightType.Point;
+        go.SetActive(true);
+        Light l = go.GetComponent<Light>();
         l.range = range;
-        l.color = new Color(0.85f, 0.92f, 1f);
         l.intensity = 0f;
-        l.shadows = LightShadows.None;
-        l.renderMode = LightRenderMode.ForcePixel;
 
         float peak1 = Random.Range(80f, 120f);
         l.intensity = peak1;
@@ -386,8 +412,7 @@ public class DayNightCycle : MonoBehaviour
         yield return new WaitForSeconds(0.07f);
         l.intensity = peak1 * Random.Range(0.4f, 0.7f);
         yield return new WaitForSeconds(0.05f);
-        l.intensity = 0f;
-        Destroy(go);
+        ReleaseLightningFlash(go);
     }
 
     // Very small global intensity wobble — sells "the air just lit up" without
