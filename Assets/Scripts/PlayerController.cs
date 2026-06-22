@@ -187,7 +187,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     // CharacterController briefly reports false. This kills the "stumbles on
     // a 5cm rock" bug where the animator flickered into Fall/T-pose for a
     // single frame each time the CC pushed over a small bump.
-    private const float COYOTE_GROUND_WINDOW = 0.12f;
+    private const float COYOTE_GROUND_WINDOW = 0.2f;
 
     private void Awake()
     {
@@ -699,10 +699,24 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         bool isVisuallyGrounded = isGroundedNow;
-        if (!isVisuallyGrounded && velocity.y <= 0f)
+        if (!isVisuallyGrounded && velocity.y <= 1f)
         {
-            if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, 0.4f, LayerMask.GetMask("Default", "Terrain", "Ground")))
-                isVisuallyGrounded = true;
+            // Was: LayerMask.GetMask("Default", "Terrain", "Ground") — but this
+            // project has no Terrain / Ground layers (see TagManager.asset).
+            // The mask silently resolved to "Default only", so the raycast
+            // missed the actual terrain (which sits on the Nature layer) and
+            // the animator's IsGrounded param flipped to false every time
+            // the player walked DOWN a slope. The visible result was the
+            // hovering T-pose during descents because the fall transition
+            // played in mid-air.
+            // GetGrenadeBlockerMask already includes Default + Nature +
+            // Obstacles, which is exactly what "is there ground under me"
+            // wants here too. Widened the cast (sphere not raycast, 0.9m
+            // vs 0.4m) so even fast descents catch the terrain reliably.
+            if (Physics.SphereCast(transform.position + Vector3.up * 0.3f, 0.25f, Vector3.down, out RaycastHit groundHit, 0.9f, GetGrenadeBlockerMask(), QueryTriggerInteraction.Ignore))
+            {
+                if (!groundHit.collider.CompareTag("Player")) isVisuallyGrounded = true;
+            }
         }
 
         if (anim != null)
