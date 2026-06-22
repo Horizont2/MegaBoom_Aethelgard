@@ -702,6 +702,15 @@ public class GlobalHUD : MonoBehaviour
         ToggleAncestorPanelText(pc.crystalText, hudRect, active);
     }
 
+    // Tracks the panels WE deactivated so we only re-activate those on
+    // SetGameplayPanelsActive(true). Without this, the walk-up code
+    // would happily SetActive(true) on whatever top-level canvas child
+    // it found from the player's hpFill / dashStaminaFill — including
+    // build / forge / interaction panels in CampScene that the player
+    // didn't open. Auto-discovered references to misnamed "Fill" images
+    // in unrelated panels were popping the whole Forge UI on scene load.
+    private readonly HashSet<GameObject> hiddenByGlobalHUD = new HashSet<GameObject>();
+
     private void ToggleAncestorPanel(Image img, RectTransform hudRect, bool active)
     {
         if (img != null) ToggleTopCanvasPanel(img.transform, active);
@@ -712,21 +721,29 @@ public class GlobalHUD : MonoBehaviour
         if (txt != null) ToggleTopCanvasPanel(txt.transform, active);
     }
 
-    // Climbs from any UI transform up to the immediate child of its Canvas,
-    // and toggles THAT child. Works regardless of which canvas the panel
-    // sits under — CampScene's stamina lives in a scene-local Canvas, not
-    // GlobalHUD's, so the previous walk-to-hudRect approach silently no-
-    // op'd on it. Walking to the canvas root catches every case.
     private void ToggleTopCanvasPanel(Transform leaf, bool active)
     {
         if (leaf == null) return;
         Transform t = leaf;
         while (t != null && t.parent != null && t.parent.GetComponent<Canvas>() == null)
             t = t.parent;
-        // t is now the topmost child sitting directly under a Canvas.
-        if (t != null && t.parent != null && t.parent.GetComponent<Canvas>() != null)
+        if (t == null || t.parent == null || t.parent.GetComponent<Canvas>() == null) return;
+
+        GameObject go = t.gameObject;
+        if (active)
         {
-            if (t.gameObject.activeSelf != active) t.gameObject.SetActive(active);
+            // Only re-activate panels we explicitly hid. This prevents
+            // false-positive activations from auto-discovered fields
+            // pointing into unrelated UIs (Forge/build panels etc.).
+            if (hiddenByGlobalHUD.Remove(go) && !go.activeSelf) go.SetActive(true);
+        }
+        else
+        {
+            if (go.activeSelf)
+            {
+                go.SetActive(false);
+                hiddenByGlobalHUD.Add(go);
+            }
         }
     }
 
