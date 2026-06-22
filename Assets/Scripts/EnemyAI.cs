@@ -762,17 +762,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
         ResetColor();
 
         // --- ����������� Բ�� ������ ���� (�������� Pool) ---
-        // XP crystals and diamonds drop on every kill — those allocations
-        // were the biggest source of GC spikes during big waves. Route them
-        // through the global pool whenever it's available; the !=null
-        // result handles the case where the prefab isn't pre-registered.
+        // Direct Instantiate for XP / diamond drops — routing them through
+        // the pool turned out to break the crystals' Awake/OnEnable
+        // lifecycle (canBeMagnetized never re-armed on reuse). The cost is
+        // a small GC tick per kill rather than a feature loss.
         if (xpCrystalPrefab != null)
         {
-            Vector3 spawnPos = transform.position + Vector3.up * 1f;
-            GameObject xp = ObjectPoolManager.Instance != null
-                ? ObjectPoolManager.Instance.SpawnFromPool(xpCrystalPrefab, spawnPos, Quaternion.identity)
-                : null;
-            if (xp == null) Instantiate(xpCrystalPrefab, spawnPos, Quaternion.identity);
+            Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         }
 
         if (diamondPrefab != null && Random.value <= diamondDropChance)
@@ -782,10 +778,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 Vector2 spread = Random.insideUnitCircle * 0.6f;
                 Vector3 pos = transform.position + new Vector3(spread.x, 1f, spread.y);
-                GameObject dia = ObjectPoolManager.Instance != null
-                    ? ObjectPoolManager.Instance.SpawnFromPool(diamondPrefab, pos, Quaternion.identity)
-                    : null;
-                if (dia == null) Instantiate(diamondPrefab, pos, Quaternion.identity);
+                Instantiate(diamondPrefab, pos, Quaternion.identity);
             }
         }
         // ------------------------------------

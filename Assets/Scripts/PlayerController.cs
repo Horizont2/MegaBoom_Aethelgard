@@ -754,13 +754,15 @@ public class PlayerController : MonoBehaviour, IDamageable
                             if (trajectoryLine != null)
                             {
                                 trajectoryLine.positionCount = linePoints;
-                                // Replace the magic-trail material with a flat
-                                // unlit and force a clean opaque gradient. The
-                                // original prefab material had a texture whose
-                                // alpha faded along its length, which is what
-                                // kept the far end of the arc invisible.
-                                EnsureSolidTrajectoryMaterial();
                                 ResetTrajectoryGradient();
+                                // Keep the Hovl trail material that ships on
+                                // the prefab — it looks like a magic-aim
+                                // streak. Stretch mode lets the texture
+                                // span the whole arc once so the bright
+                                // head sits at the throw origin and the
+                                // dim tail aligns with the landing, which
+                                // reads as "arc fading toward impact."
+                                trajectoryLine.textureMode = LineTextureMode.Stretch;
                             }
                             if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
                             if (innerMarkerLine != null) innerMarkerLine.enabled = true;
@@ -794,28 +796,37 @@ public class PlayerController : MonoBehaviour, IDamageable
     private static int s_grenadeAimMask = -1;
     private static int s_grenadeBlockerMask = -1;
 
+    // This project's layer setup (see ProjectSettings/TagManager.asset)
+    // doesn't include literal "Terrain" / "Ground" / "Foliage" names.
+    // Terrain in GameScene sits on the "Nature" layer (15), so the prior
+    // masks resolved to "Default only" — the sphere cast had nothing to
+    // terminate against, the simulation ran out the entire 64-step loop,
+    // and the marker landed wherever flight time happened to dump it
+    // (often off-map). Build the masks from layers we actually know to
+    // exist, with safe fallbacks so projects that DO use the canonical
+    // names still work.
+    private static int BuildGrenadeMask()
+    {
+        int mask = 0;
+        string[] candidates = { "Default", "Nature", "Obstacles", "InvisibleWall", "Terrain", "Ground", "Foliage" };
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            int layer = LayerMask.NameToLayer(candidates[i]);
+            if (layer >= 0) mask |= 1 << layer;
+        }
+        if (mask == 0) mask = ~0; // last-resort: hit everything; better than hitting nothing
+        return mask;
+    }
+
     private static int GetGrenadeAimMask()
     {
-        if (s_grenadeAimMask == -1)
-            s_grenadeAimMask = LayerMask.GetMask("Default", "Terrain", "Ground");
+        if (s_grenadeAimMask == -1) s_grenadeAimMask = BuildGrenadeMask();
         return s_grenadeAimMask;
     }
 
     private static int GetGrenadeBlockerMask()
     {
-        if (s_grenadeBlockerMask == -1)
-        {
-            // GrenadeLogic explodes on collision with anything tagged non-Player,
-            // so the prediction has to mirror that — including foliage. Without
-            // Foliage in the mask, a tree mid-arc would silently swallow the
-            // real grenade while the line happily drew through it.
-            int mask = LayerMask.GetMask("Default", "Terrain", "Ground", "Foliage");
-            // LayerMask.GetMask returns 0 for unknown layer names. If Foliage
-            // doesn't exist in this project, fall back to the safe trio so the
-            // mask isn't silently empty.
-            if (mask == 0) mask = LayerMask.GetMask("Default", "Terrain", "Ground");
-            s_grenadeBlockerMask = mask;
-        }
+        if (s_grenadeBlockerMask == -1) s_grenadeBlockerMask = BuildGrenadeMask();
         return s_grenadeBlockerMask;
     }
 
@@ -894,20 +905,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (trajectoryLine != null)
         {
             trajectoryLine.positionCount = simulatedCount;
-            // Force the full gradient every frame. The prefab ships with a
-            // 3-key alpha gradient where the middle key sits at ~1% of the
-            // line length with alpha 0, which is what was making the tail
-            // of long throws invisible no matter what startColor/endColor
-            // we set (those calls only touch the first/last keys, not the
-            // middle one). Rebuilding the gradient from scratch with two
-            // solid opaque keys guarantees the entire arc renders.
             ApplySolidTrajectoryGradient(currentAimColor);
-            // Make sure the line is thick enough to actually see when the
-            // far end is 15m+ from the camera. The prefab's 0.1m width is
-            // less than two pixels at distance.
             if (trajectoryLine.widthMultiplier < 0.18f) trajectoryLine.widthMultiplier = 0.22f;
-            // The texture scroll is mostly cosmetic; keeping it disabled
-            // avoids any flow-mapping that could hide segments.
+            if (trajectoryLine.material != null) trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
         }
 
         if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }

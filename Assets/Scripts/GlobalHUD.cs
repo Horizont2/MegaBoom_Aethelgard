@@ -649,6 +649,13 @@ public class GlobalHUD : MonoBehaviour
     {
         if (gameplayPanels != null) { foreach (GameObject panel in gameplayPanels) { if (panel != null) panel.SetActive(active); } }
 
+        // The HP / stamina / level / diamond bars hang off the live
+        // PlayerController instance, which isn't wired into the inspector
+        // gameplayPanels list. Walk from those Image references up to a
+        // sensible "PlayerHUD root" and toggle it directly so opening the
+        // map / triggering a cutscene clears them too.
+        TogglePlayerHUDRoots(active);
+
         // Auxiliary HUD elements that aren't part of the inspector-wired
         // gameplayPanels array but still need to vanish during cutscenes /
         // map view. Cinematic bars and skip prompt deliberately stay since
@@ -671,6 +678,49 @@ public class GlobalHUD : MonoBehaviour
 
         // Build-in-progress widgets sit on widgetContainer in the corner.
         if (widgetContainer != null) widgetContainer.gameObject.SetActive(active);
+    }
+
+    // Walks from the live PlayerController's hpFill / dashStaminaFill /
+    // levelText / crystalText up to the topmost UI parent that's still
+    // under this HUD canvas and toggles it. The original
+    // SetGameplayPanelsActive only touched the inspector-wired
+    // gameplayPanels[] list, which routinely missed the HP/stamina/level
+    // sub-panel that PlayerController auto-discovers by name. With this
+    // walk-up the map view and cutscenes can clear all gameplay HUD
+    // pieces, not just the ones manually wired.
+    private void TogglePlayerHUDRoots(bool active)
+    {
+        PlayerController pc = PlayerController.LocalInstance;
+        if (pc == null) return;
+        RectTransform hudRect = GetComponent<RectTransform>();
+        if (hudRect == null) return;
+
+        ToggleAncestorPanel(pc.hpFill, hudRect, active);
+        ToggleAncestorPanel(pc.dashStaminaFill, hudRect, active);
+        ToggleAncestorPanel(pc.xpFill, hudRect, active);
+        ToggleAncestorPanelText(pc.levelText, hudRect, active);
+        ToggleAncestorPanelText(pc.crystalText, hudRect, active);
+    }
+
+    private void ToggleAncestorPanel(Image img, RectTransform hudRect, bool active)
+    {
+        if (img == null) return;
+        Transform t = img.transform;
+        // Climb until just below the HUD root so we toggle the largest
+        // owned panel (HP bar group, stamina bar group, etc.) without
+        // turning off the whole HUD canvas.
+        while (t != null && t.parent != null && t.parent != hudRect.transform)
+            t = t.parent;
+        if (t != null && t != hudRect.transform) t.gameObject.SetActive(active);
+    }
+
+    private void ToggleAncestorPanelText(TMPro.TextMeshProUGUI txt, RectTransform hudRect, bool active)
+    {
+        if (txt == null) return;
+        Transform t = txt.transform;
+        while (t != null && t.parent != null && t.parent != hudRect.transform)
+            t = t.parent;
+        if (t != null && t != hudRect.transform) t.gameObject.SetActive(active);
     }
 
     // ---- Low-Health Vignette ----
