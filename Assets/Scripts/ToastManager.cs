@@ -1,203 +1,174 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
-// Slide-in toast notification stack for mission complete / achievement
-// unlocked / quick-save / region cleared / lore found messages. Builds
-// its own UI at runtime parented to GlobalHUD's canvas so no prefab
-// wiring is required.
-//
-// Public API is the single static Show(text, kind) call; the
-// singleton MonoBehaviour spawns itself on first access.
-public class ToastManager : MonoBehaviour
+// Headless toast bus. Gameplay code calls ToastManager.Show(text, kind)
+// without knowing how it's rendered. A ToastUIController in the scene
+// subscribes to OnToastRequested and spawns the visuals from your own
+// prefab. If no controller is in the scene, Show is a silent no-op so
+// gameplay never breaks.
+public static class ToastManager
 {
     public enum ToastKind { Info, Achievement, Save, Warning, Lore }
 
-    private static ToastManager s_instance;
+    public struct ToastRequest
+    {
+        public string text;
+        public ToastKind kind;
+    }
 
-    private RectTransform container;
-    private readonly List<RectTransform> liveToasts = new List<RectTransform>(8);
-
-    private const float TOAST_HEIGHT = 48f;
-    private const float TOAST_SPACING = 8f;
+    // ToastUIController subscribes to this in OnEnable, unsubscribes in OnDisable.
+    public static event System.Action<ToastRequest> OnToastRequested;
 
     public static void Show(string text, ToastKind kind = ToastKind.Info)
     {
-        Get().SpawnToast(text, kind);
+        if (string.IsNullOrEmpty(text)) return;
+        OnToastRequested?.Invoke(new ToastRequest { text = text, kind = kind });
+    }
+}
+
+// Wire ONE of these in your HUD canvas to actually render toasts.
+//
+// Inspector fields:
+//   toastTemplate     — a deactivated prefab/template in the canvas
+//                       hierarchy. Must contain a TMP_Text labelled
+//                       "Label" (or assign labelOverride) and
+//                       optionally an Image labelled "AccentBar" /
+//                       assign accentBarOverride.
+//   container         — RectTransform that newly spawned toasts are
+//                       parented to. Often a VerticalLayoutGroup so the
+//                       stack auto-flows; otherwise toasts get stacked
+//                       at fixed offsets calculated by toastSpacing.
+//   maxOnScreen       — older toasts are recycled past this count.
+//
+// Kind → accent color mapping is in inspector for full art control.
+public class ToastUIController : MonoBehaviour
+{
+    [Header("Required references")]
+    [Tooltip("Inactive template the controller will Instantiate per toast. Anchor / size / fonts come from this prefab.")]
+    public GameObject toastTemplate;
+    [Tooltip("Where instantiated toasts are parented. A VerticalLayoutGroup here will auto-stack them.")]
+    public RectTransform container;
+
+    [Header("Optional component overrides")]
+    [Tooltip("If null, child named 'Label' is searched on the template.")]
+    public TMP_Text labelOverride;
+    [Tooltip("If null, child named 'AccentBar' is searched.")]
+    public Image accentBarOverride;
+    [Tooltip("If null, no audio is played on toast spawn.")]
+    public AudioSource sfxSource;
+
+    [Header("Behaviour")]
+    [Tooltip("How long the toast holds at full opacity before fading out.")]
+    public float holdSeconds = 2.5f;
+    [Tooltip("Fade in / fade out duration.")]
+    public float fadeSeconds = 0.4f;
+    [Range(1, 12)] public int maxOnScreen = 5;
+
+    [Header("Per-kind accents")]
+    public Color infoAccent = new Color(0.8f, 0.85f, 0.95f);
+    public Color achievementAccent = new Color(1f, 0.84f, 0.28f);
+    public Color saveAccent = new Color(0.4f, 0.75f, 1f);
+    public Color warningAccent = new Color(1f, 0.4f, 0.35f);
+    public Color loreAccent = new Color(0.85f, 0.6f, 1f);
+
+    private readonly List<GameObject> liveToasts = new List<GameObject>(8);
+
+    private void OnEnable()
+    {
+        ToastManager.OnToastRequested += HandleRequest;
     }
 
-    private static ToastManager Get()
+    private void OnDisable()
     {
-        if (s_instance != null) return s_instance;
-        GameObject go = new GameObject("[ToastManager]");
-        DontDestroyOnLoad(go);
-        s_instance = go.AddComponent<ToastManager>();
-        return s_instance;
+        ToastManager.OnToastRequested -= HandleRequest;
     }
 
-    private void Awake()
+    private void HandleRequest(ToastManager.ToastRequest req)
     {
-        s_instance = this;
-    }
+        if (toastTemplate == null || container == null) return;
 
-    private void SpawnToast(string text, ToastKind kind)
-    {
-        EnsureContainer();
-        if (container == null) return;
-
-        GameObject go = new GameObject("Toast");
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.SetParent(container, false);
-        rt.anchorMin = new Vector2(1f, 1f);
-        rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(1f, 1f);
-        rt.sizeDelta = new Vector2(420f, TOAST_HEIGHT);
-        rt.anchoredPosition = new Vector2(500f, -(liveToasts.Count * (TOAST_HEIGHT + TOAST_SPACING)));
-
-        // Background pill — solid dark with a thin coloured accent edge
-        // that signals the toast type (achievement = gold, save = blue,
-        // warning = red, etc.).
-        Image bg = go.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.05f, 0.07f, 0.92f);
-        bg.raycastTarget = false;
-
-        Color accent = AccentFor(kind);
-
-        // Left edge accent bar
-        GameObject bar = new GameObject("Accent");
-        RectTransform barRT = bar.AddComponent<RectTransform>();
-        barRT.SetParent(rt, false);
-        barRT.anchorMin = new Vector2(0f, 0f);
-        barRT.anchorMax = new Vector2(0f, 1f);
-        barRT.pivot = new Vector2(0f, 0.5f);
-        barRT.anchoredPosition = Vector2.zero;
-        barRT.sizeDelta = new Vector2(5f, 0f);
-        Image barImg = bar.AddComponent<Image>();
-        barImg.color = accent;
-        barImg.raycastTarget = false;
-
-        // Text
-        GameObject txtGO = new GameObject("Text");
-        RectTransform txtRT = txtGO.AddComponent<RectTransform>();
-        txtRT.SetParent(rt, false);
-        txtRT.anchorMin = new Vector2(0f, 0f);
-        txtRT.anchorMax = new Vector2(1f, 1f);
-        txtRT.offsetMin = new Vector2(14f, 6f);
-        txtRT.offsetMax = new Vector2(-12f, -6f);
-
-        TextMeshProUGUI tmp = txtGO.AddComponent<TextMeshProUGUI>();
-        tmp.text = text;
-        tmp.alignment = TextAlignmentOptions.MidlineLeft;
-        tmp.fontSize = 18f;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.color = new Color(1f, 0.97f, 0.88f, 1f);
-        tmp.outlineWidth = 0.18f;
-        tmp.outlineColor = Color.black;
-        tmp.raycastTarget = false;
-
-        liveToasts.Add(rt);
-        StartCoroutine(AnimateToast(rt, bg, barImg, tmp));
-
-        // Optional click of audio cue for the toast.
-        if (AudioManager.Instance != null)
+        // Recycle if at cap
+        while (liveToasts.Count >= maxOnScreen)
         {
-            string sfx = kind == ToastKind.Achievement ? AudioID.UI_LevelUp : AudioID.UI_Click;
-            AudioManager.Instance.PlayUI(sfx);
+            GameObject oldest = liveToasts[0];
+            liveToasts.RemoveAt(0);
+            if (oldest != null) Destroy(oldest);
         }
+
+        GameObject toast = Instantiate(toastTemplate, container);
+        toast.SetActive(true);
+
+        TMP_Text label = labelOverride;
+        if (label == null) label = FindChildComponent<TMP_Text>(toast.transform, "Label");
+        if (label != null) label.text = req.text;
+
+        Image accent = accentBarOverride;
+        if (accent == null) accent = FindChildComponent<Image>(toast.transform, "AccentBar");
+        if (accent != null) accent.color = ColorFor(req.kind);
+
+        if (sfxSource != null) sfxSource.Play();
+
+        liveToasts.Add(toast);
+        StartCoroutine(LifecycleRoutine(toast));
     }
 
-    private System.Collections.IEnumerator AnimateToast(RectTransform rt, Image bg, Image bar, TextMeshProUGUI tmp)
+    private IEnumerator LifecycleRoutine(GameObject toast)
     {
-        const float SLIDE_IN = 0.35f;
-        const float HOLD     = 2.5f;
-        const float FADE_OUT = 0.55f;
+        CanvasGroup cg = toast.GetComponent<CanvasGroup>();
+        if (cg == null) cg = toast.AddComponent<CanvasGroup>();
 
-        // Slide in.
-        Vector2 startPos = rt.anchoredPosition;
-        Vector2 endPos = new Vector2(-12f, rt.anchoredPosition.y);
-        Restack();
-        endPos.y = rt.anchoredPosition.y;
-
+        // Fade in
         float t = 0f;
-        while (t < SLIDE_IN)
+        cg.alpha = 0f;
+        while (t < fadeSeconds)
         {
             t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / SLIDE_IN);
-            float ease = 1f - Mathf.Pow(1f - k, 3f);
-            rt.anchoredPosition = Vector2.Lerp(startPos, endPos, ease);
+            cg.alpha = Mathf.Clamp01(t / fadeSeconds);
             yield return null;
         }
-        rt.anchoredPosition = endPos;
+        cg.alpha = 1f;
 
-        yield return new WaitForSecondsRealtime(HOLD);
-
-        // Fade out + drift right.
-        Vector2 fadeStart = rt.anchoredPosition;
-        Vector2 fadeEnd = new Vector2(fadeStart.x + 90f, fadeStart.y);
-        Color bgC = bg.color;
-        Color barC = bar.color;
-        Color txtC = tmp.color;
+        yield return new WaitForSecondsRealtime(holdSeconds);
 
         t = 0f;
-        while (t < FADE_OUT)
+        while (t < fadeSeconds)
         {
             t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / FADE_OUT);
-            float a = 1f - k;
-            bg.color = new Color(bgC.r, bgC.g, bgC.b, bgC.a * a);
-            bar.color = new Color(barC.r, barC.g, barC.b, barC.a * a);
-            tmp.color = new Color(txtC.r, txtC.g, txtC.b, txtC.a * a);
-            rt.anchoredPosition = Vector2.Lerp(fadeStart, fadeEnd, k);
+            cg.alpha = 1f - Mathf.Clamp01(t / fadeSeconds);
             yield return null;
         }
 
-        liveToasts.Remove(rt);
-        Destroy(rt.gameObject);
-        Restack();
+        liveToasts.Remove(toast);
+        Destroy(toast);
     }
 
-    private void Restack()
-    {
-        // Top toast at 0, then stack downward.
-        for (int i = 0; i < liveToasts.Count; i++)
-        {
-            RectTransform rt = liveToasts[i];
-            if (rt == null) continue;
-            Vector2 p = rt.anchoredPosition;
-            p.y = Mathf.Lerp(p.y, -(i * (TOAST_HEIGHT + TOAST_SPACING)), 0.6f);
-            rt.anchoredPosition = p;
-        }
-    }
-
-    private Color AccentFor(ToastKind kind)
+    private Color ColorFor(ToastManager.ToastKind kind)
     {
         switch (kind)
         {
-            case ToastKind.Achievement: return new Color(1f, 0.84f, 0.28f);
-            case ToastKind.Save:        return new Color(0.4f, 0.75f, 1f);
-            case ToastKind.Warning:     return new Color(1f, 0.4f, 0.35f);
-            case ToastKind.Lore:        return new Color(0.85f, 0.6f, 1f);
-            default:                    return new Color(0.8f, 0.85f, 0.95f);
+            case ToastManager.ToastKind.Achievement: return achievementAccent;
+            case ToastManager.ToastKind.Save:        return saveAccent;
+            case ToastManager.ToastKind.Warning:     return warningAccent;
+            case ToastManager.ToastKind.Lore:        return loreAccent;
+            default:                                  return infoAccent;
         }
     }
 
-    private void EnsureContainer()
+    private static T FindChildComponent<T>(Transform root, string name) where T : Component
     {
-        if (container != null) return;
-        GlobalHUD hud = GlobalHUD.Instance;
-        if (hud == null) return;
-        RectTransform hudRect = hud.GetComponent<RectTransform>();
-        if (hudRect == null) return;
-
-        GameObject go = new GameObject("ToastStack");
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.SetParent(hudRect, false);
-        rt.anchorMin = new Vector2(1f, 1f);
-        rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(1f, 1f);
-        rt.anchoredPosition = new Vector2(-30f, -100f);
-        rt.sizeDelta = new Vector2(420f, 420f);
-        container = rt;
+        if (root == null) return null;
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == name)
+            {
+                T c = t.GetComponent<T>();
+                if (c != null) return c;
+            }
+        }
+        // Fallback: any T in subtree
+        return root.GetComponentInChildren<T>(true);
     }
 }

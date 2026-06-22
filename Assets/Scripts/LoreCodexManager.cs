@@ -3,13 +3,12 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
-// Persistent codex of lore fragments the player has unlocked. Entries
-// are seeded in LocalizationManager (LORE_* keys with _TITLE and _BODY
-// pairs). ScrollPickup unlocks them in-world; the codex panel reads
-// from here.
+// Persistent codex of lore fragments. Entries are seeded in
+// LocalizationManager (LORE_* keys with _TITLE and _BODY pairs).
+// ScrollPickup unlocks them in-world; LoreCodexUIController reads
+// from here when the player opens the codex panel.
 public static class LoreCodexManager
 {
-    // The canonical lore IDs — must match the keys seeded in LocalizationManager.
     public static readonly string[] AllLoreIDs = new[]
     {
         "LORE_AETHELGARD_FALL",
@@ -28,7 +27,7 @@ public static class LoreCodexManager
 
     private const string UnlockedPrefix = "Lore_Unlocked_";
 
-    public static System.Action<string> OnLoreUnlocked;
+    public static event System.Action<string> OnLoreUnlocked;
 
     public static bool IsUnlocked(string id) => PlayerPrefs.GetInt(UnlockedPrefix + id, 0) == 1;
 
@@ -59,16 +58,18 @@ public static class LoreCodexManager
     }
 }
 
-// Drop this on a scroll prefab in-world. When the player walks into
-// trigger range, press [E] to claim the lore entry. The pickup
-// destroys itself once claimed.
+// In-world collectible. Place on a scroll prefab in a region scene,
+// set `loreID` to one of LoreCodexManager.AllLoreIDs in the inspector,
+// and the player will unlock that lore entry on touch / press [E].
 [RequireComponent(typeof(Collider))]
 public class ScrollPickup : MonoBehaviour
 {
     [Tooltip("LocalizationManager LORE_* id to unlock when this scroll is picked up.")]
     public string loreID = "LORE_AETHELGARD_FALL";
-    [Tooltip("Auto-unlock on trigger (true) or require [E] interaction (false).")]
+    [Tooltip("True = unlock on trigger enter. False = require [E] keypress while in range.")]
     public bool autoUnlockOnTouch = true;
+    [Tooltip("Prompt text shown when autoUnlockOnTouch is false (only if GlobalHUD is present).")]
+    public string promptText = "[E] Read scroll";
 
     private bool playerInRange;
     private bool consumed;
@@ -84,7 +85,7 @@ public class ScrollPickup : MonoBehaviour
         if (!other.CompareTag("Player")) return;
         playerInRange = true;
         if (autoUnlockOnTouch) Claim();
-        else if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Read scroll");
+        else if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(promptText);
     }
 
     private void OnTriggerExit(Collider other)
@@ -111,240 +112,144 @@ public class ScrollPickup : MonoBehaviour
     }
 }
 
-// Procedural codex viewer UI — auto-builds when LoreCodexUI.Open is
-// called. Lists every known LORE_* id with title, marks locked
-// entries as "???" and renders the body of unlocked ones in a
-// scrollable right pane.
-public class LoreCodexUI : MonoBehaviour
+// Wire this onto your existing codex panel (whatever style you build
+// in the editor). Required inspector references:
+//
+//   panelRoot        — the GameObject that holds the whole codex view.
+//                      Toggled on Open/Close.
+//   listContainer    — RectTransform under which entry buttons spawn.
+//                      Usually has a VerticalLayoutGroup for auto-flow.
+//   entryButtonPrefab— prefab for a single list row. Must contain a
+//                      TMP_Text named "Label" (or use the inspector
+//                      override) and a Button on the root.
+//   titleText        — TMP_Text in the body pane that shows the
+//                      selected entry's title.
+//   bodyText         — TMP_Text in the body pane that shows the body.
+//   closeButton      — clicking it calls Close().
+//
+// Open() / Close() / Toggle() public methods drive visibility. The
+// controller re-populates the list every Open so newly unlocked
+// entries appear.
+public class LoreCodexUIController : MonoBehaviour
 {
-    private static LoreCodexUI s_instance;
+    public static LoreCodexUIController Instance { get; private set; }
 
-    private GameObject panel;
-    private TextMeshProUGUI titleLabel;
-    private TextMeshProUGUI bodyLabel;
-    private RectTransform listContainer;
+    [Header("Wire your codex UI here")]
+    public GameObject panelRoot;
+    public RectTransform listContainer;
+    public GameObject entryButtonPrefab;
+    public TMP_Text titleText;
+    public TMP_Text bodyText;
+    public Button closeButton;
+
+    [Header("Optional")]
+    [Tooltip("Locked entries display this in place of their title.")]
+    public string lockedTitlePlaceholder = "???";
+    [Tooltip("Body text when no entry has been recovered yet.")]
+    public string emptyBodyText = "No scrolls recovered yet. Search the regions.";
+    [Tooltip("Body text when a locked entry is selected.")]
+    public string lockedBodyText = "This scroll has not been recovered.";
+    [Tooltip("Color tint for locked entries (label/list row).")]
+    public Color lockedColor = new Color(0.4f, 0.4f, 0.4f);
+    [Tooltip("Color tint for unlocked entries.")]
+    public Color unlockedColor = new Color(0.9f, 0.85f, 0.55f);
+
     private string activeID;
 
-    public static void Open()
+    private void Awake()
     {
-        Get().BuildIfNeeded();
-        Get().panel.SetActive(true);
+        Instance = this;
+        if (panelRoot != null) panelRoot.SetActive(false);
+        if (closeButton != null) closeButton.onClick.AddListener(Close);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
+    private void Update()
+    {
+        if (panelRoot != null && panelRoot.activeSelf && Input.GetKeyDown(KeyCode.Escape)) Close();
+    }
+
+    public void Toggle() { if (panelRoot == null) return; if (panelRoot.activeSelf) Close(); else Open(); }
+
+    public void Open()
+    {
+        if (panelRoot == null) return;
+        panelRoot.SetActive(true);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        RepopulateList();
+    }
+
+    public void Close()
+    {
+        if (panelRoot == null) return;
+        panelRoot.SetActive(false);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
     }
 
-    public static void Close()
+    private void RepopulateList()
     {
-        if (s_instance == null || s_instance.panel == null) return;
-        s_instance.panel.SetActive(false);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-    }
+        if (listContainer == null || entryButtonPrefab == null) return;
 
-    private static LoreCodexUI Get()
-    {
-        if (s_instance != null) return s_instance;
-        GameObject go = new GameObject("[LoreCodexUI]");
-        DontDestroyOnLoad(go);
-        s_instance = go.AddComponent<LoreCodexUI>();
-        return s_instance;
-    }
+        // Clear out old buttons
+        for (int i = listContainer.childCount - 1; i >= 0; i--)
+            Destroy(listContainer.GetChild(i).gameObject);
 
-    private void BuildIfNeeded()
-    {
-        if (panel != null) return;
-        if (GlobalHUD.Instance == null) return;
-        RectTransform hudRect = GlobalHUD.Instance.GetComponent<RectTransform>();
-        if (hudRect == null) return;
-
-        // Backdrop dim
-        panel = new GameObject("LoreCodexPanel");
-        RectTransform pRT = panel.AddComponent<RectTransform>();
-        pRT.SetParent(hudRect, false);
-        pRT.anchorMin = Vector2.zero;
-        pRT.anchorMax = Vector2.one;
-        pRT.offsetMin = Vector2.zero;
-        pRT.offsetMax = Vector2.zero;
-        Image dim = panel.AddComponent<Image>();
-        dim.color = new Color(0f, 0f, 0f, 0.78f);
-        dim.raycastTarget = true;
-
-        // Window
-        GameObject win = new GameObject("Window");
-        RectTransform winRT = win.AddComponent<RectTransform>();
-        winRT.SetParent(pRT, false);
-        winRT.anchorMin = new Vector2(0.5f, 0.5f);
-        winRT.anchorMax = new Vector2(0.5f, 0.5f);
-        winRT.pivot = new Vector2(0.5f, 0.5f);
-        winRT.sizeDelta = new Vector2(1000f, 600f);
-        Image winBg = win.AddComponent<Image>();
-        winBg.color = new Color(0.13f, 0.10f, 0.07f, 0.96f);
-
-        // Title at top
-        GameObject hdr = new GameObject("Header");
-        RectTransform hdrRT = hdr.AddComponent<RectTransform>();
-        hdrRT.SetParent(winRT, false);
-        hdrRT.anchorMin = new Vector2(0f, 1f);
-        hdrRT.anchorMax = new Vector2(1f, 1f);
-        hdrRT.pivot = new Vector2(0.5f, 1f);
-        hdrRT.sizeDelta = new Vector2(0f, 50f);
-        TextMeshProUGUI hdrTxt = hdr.AddComponent<TextMeshProUGUI>();
-        hdrTxt.text = "CHRONICLES OF AETHELGARD";
-        hdrTxt.fontSize = 26f;
-        hdrTxt.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
-        hdrTxt.alignment = TextAlignmentOptions.Center;
-        hdrTxt.color = new Color(0.85f, 0.7f, 0.4f);
-        hdrTxt.outlineWidth = 0.18f;
-        hdrTxt.outlineColor = Color.black;
-
-        // Left list
-        GameObject list = new GameObject("List");
-        RectTransform listRT = list.AddComponent<RectTransform>();
-        listRT.SetParent(winRT, false);
-        listRT.anchorMin = new Vector2(0f, 0f);
-        listRT.anchorMax = new Vector2(0.4f, 1f);
-        listRT.offsetMin = new Vector2(20f, 60f);
-        listRT.offsetMax = new Vector2(-10f, -60f);
-        VerticalLayoutGroup vlg = list.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 6f;
-        vlg.childForceExpandHeight = false;
-        vlg.childForceExpandWidth = true;
-        listContainer = listRT;
-
-        // Right body
-        GameObject body = new GameObject("Body");
-        RectTransform bodyRT = body.AddComponent<RectTransform>();
-        bodyRT.SetParent(winRT, false);
-        bodyRT.anchorMin = new Vector2(0.4f, 0f);
-        bodyRT.anchorMax = new Vector2(1f, 1f);
-        bodyRT.offsetMin = new Vector2(10f, 60f);
-        bodyRT.offsetMax = new Vector2(-20f, -60f);
-
-        GameObject titleGO = new GameObject("Title");
-        RectTransform tRT = titleGO.AddComponent<RectTransform>();
-        tRT.SetParent(bodyRT, false);
-        tRT.anchorMin = new Vector2(0f, 1f);
-        tRT.anchorMax = new Vector2(1f, 1f);
-        tRT.pivot = new Vector2(0.5f, 1f);
-        tRT.sizeDelta = new Vector2(0f, 40f);
-        titleLabel = titleGO.AddComponent<TextMeshProUGUI>();
-        titleLabel.fontSize = 22f;
-        titleLabel.fontStyle = FontStyles.Bold;
-        titleLabel.alignment = TextAlignmentOptions.MidlineLeft;
-        titleLabel.color = new Color(1f, 0.9f, 0.55f);
-
-        GameObject bodyTxtGO = new GameObject("BodyText");
-        RectTransform btRT = bodyTxtGO.AddComponent<RectTransform>();
-        btRT.SetParent(bodyRT, false);
-        btRT.anchorMin = new Vector2(0f, 0f);
-        btRT.anchorMax = new Vector2(1f, 1f);
-        btRT.offsetMin = Vector2.zero;
-        btRT.offsetMax = new Vector2(0f, -50f);
-        bodyLabel = bodyTxtGO.AddComponent<TextMeshProUGUI>();
-        bodyLabel.fontSize = 15f;
-        bodyLabel.alignment = TextAlignmentOptions.TopLeft;
-        bodyLabel.color = new Color(0.9f, 0.86f, 0.78f);
-
-        // Close button (top right)
-        GameObject btn = new GameObject("Close");
-        RectTransform btnRT = btn.AddComponent<RectTransform>();
-        btnRT.SetParent(winRT, false);
-        btnRT.anchorMin = new Vector2(1f, 1f);
-        btnRT.anchorMax = new Vector2(1f, 1f);
-        btnRT.pivot = new Vector2(1f, 1f);
-        btnRT.anchoredPosition = new Vector2(-10f, -10f);
-        btnRT.sizeDelta = new Vector2(34f, 34f);
-        Image btnImg = btn.AddComponent<Image>();
-        btnImg.color = new Color(0.3f, 0.1f, 0.1f, 0.85f);
-        Button btnBtn = btn.AddComponent<Button>();
-        btnBtn.onClick.AddListener(Close);
-        GameObject btnTxtGO = new GameObject("X");
-        RectTransform btxRT = btnTxtGO.AddComponent<RectTransform>();
-        btxRT.SetParent(btnRT, false);
-        btxRT.anchorMin = Vector2.zero;
-        btxRT.anchorMax = Vector2.one;
-        btxRT.offsetMin = Vector2.zero;
-        btxRT.offsetMax = Vector2.zero;
-        TextMeshProUGUI bx = btnTxtGO.AddComponent<TextMeshProUGUI>();
-        bx.text = "X";
-        bx.fontSize = 22f;
-        bx.alignment = TextAlignmentOptions.Center;
-        bx.color = Color.white;
-
-        // Populate list
-        BuildList();
-
-        panel.SetActive(false);
-    }
-
-    private void BuildList()
-    {
-        foreach (Transform t in listContainer) Destroy(t.gameObject);
-
+        // Spawn one button per known lore id
         for (int i = 0; i < LoreCodexManager.AllLoreIDs.Length; i++)
         {
             string id = LoreCodexManager.AllLoreIDs[i];
             bool unlocked = LoreCodexManager.IsUnlocked(id);
 
-            GameObject entry = new GameObject("Entry_" + i);
-            RectTransform eRT = entry.AddComponent<RectTransform>();
-            eRT.SetParent(listContainer, false);
-            LayoutElement le = entry.AddComponent<LayoutElement>();
-            le.minHeight = 32f;
-            Image bg = entry.AddComponent<Image>();
-            bg.color = unlocked ? new Color(0.2f, 0.17f, 0.12f, 0.7f) : new Color(0.10f, 0.10f, 0.10f, 0.6f);
+            GameObject entry = Instantiate(entryButtonPrefab, listContainer);
+            entry.SetActive(true);
 
-            GameObject txtGO = new GameObject("Label");
-            RectTransform tRT = txtGO.AddComponent<RectTransform>();
-            tRT.SetParent(eRT, false);
-            tRT.anchorMin = Vector2.zero;
-            tRT.anchorMax = Vector2.one;
-            tRT.offsetMin = new Vector2(8f, 4f);
-            tRT.offsetMax = new Vector2(-8f, -4f);
-            TextMeshProUGUI tmp = txtGO.AddComponent<TextMeshProUGUI>();
-            tmp.text = unlocked ? LocalizationManager.Tr(id + "_TITLE") : "???";
-            tmp.fontSize = 15f;
-            tmp.alignment = TextAlignmentOptions.MidlineLeft;
-            tmp.color = unlocked ? new Color(0.9f, 0.85f, 0.55f) : new Color(0.4f, 0.4f, 0.4f);
+            // Find label inside prefab — by name 'Label', or first TMP_Text
+            TMP_Text label = null;
+            foreach (Transform t in entry.GetComponentsInChildren<Transform>(true))
+                if (t.name == "Label") { label = t.GetComponent<TMP_Text>(); break; }
+            if (label == null) label = entry.GetComponentInChildren<TMP_Text>(true);
 
-            string idCaptured = id;
-            Button btn = entry.AddComponent<Button>();
-            btn.onClick.AddListener(() => Select(idCaptured));
-        }
-
-        if (LoreCodexManager.UnlockedCount > 0)
-        {
-            for (int i = 0; i < LoreCodexManager.AllLoreIDs.Length; i++)
+            if (label != null)
             {
-                if (LoreCodexManager.IsUnlocked(LoreCodexManager.AllLoreIDs[i]))
-                {
-                    Select(LoreCodexManager.AllLoreIDs[i]);
-                    break;
-                }
+                label.text = unlocked ? LocalizationManager.Tr(id + "_TITLE") : lockedTitlePlaceholder;
+                label.color = unlocked ? unlockedColor : lockedColor;
+            }
+
+            Button btn = entry.GetComponent<Button>();
+            if (btn != null)
+            {
+                string idCaptured = id;
+                btn.onClick.AddListener(() => Select(idCaptured));
             }
         }
-        else
+
+        // Select first unlocked, or show empty state
+        bool any = false;
+        for (int i = 0; i < LoreCodexManager.AllLoreIDs.Length; i++)
         {
-            titleLabel.text = "—";
-            bodyLabel.text = "No scrolls recovered yet. Search the regions.";
+            if (LoreCodexManager.IsUnlocked(LoreCodexManager.AllLoreIDs[i]))
+            {
+                Select(LoreCodexManager.AllLoreIDs[i]);
+                any = true;
+                break;
+            }
+        }
+        if (!any)
+        {
+            if (titleText != null) titleText.text = "—";
+            if (bodyText != null) bodyText.text = emptyBodyText;
         }
     }
 
-    private void Select(string id)
+    public void Select(string id)
     {
         activeID = id;
-        if (LoreCodexManager.IsUnlocked(id))
-        {
-            titleLabel.text = LocalizationManager.Tr(id + "_TITLE");
-            bodyLabel.text = LocalizationManager.Tr(id + "_BODY");
-        }
-        else
-        {
-            titleLabel.text = "???";
-            bodyLabel.text = "This scroll has not been recovered.";
-        }
-    }
-
-    private void Update()
-    {
-        if (panel != null && panel.activeSelf && Input.GetKeyDown(KeyCode.Escape)) Close();
+        bool unlocked = LoreCodexManager.IsUnlocked(id);
+        if (titleText != null) titleText.text = unlocked ? LocalizationManager.Tr(id + "_TITLE") : lockedTitlePlaceholder;
+        if (bodyText != null) bodyText.text = unlocked ? LocalizationManager.Tr(id + "_BODY") : lockedBodyText;
     }
 }
