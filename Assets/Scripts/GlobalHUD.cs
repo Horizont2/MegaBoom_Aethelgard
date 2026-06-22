@@ -690,7 +690,14 @@ public class GlobalHUD : MonoBehaviour
     // pieces, not just the ones manually wired.
     private void TogglePlayerHUDRoots(bool active)
     {
+        // LocalInstance is cleared on PlayerController.OnDisable, and
+        // MapTableInteract disables the player while the map is open —
+        // so on the close path SetGameplayPanelsActive(true) fires
+        // BEFORE playerController.enabled is restored, leaving the
+        // singleton null and the stamina hidden permanently. Fall back
+        // to a scene search so we always find the camp player.
         PlayerController pc = PlayerController.LocalInstance;
+        if (pc == null) pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
         if (pc == null) return;
         RectTransform hudRect = GetComponent<RectTransform>();
         if (hudRect == null) return;
