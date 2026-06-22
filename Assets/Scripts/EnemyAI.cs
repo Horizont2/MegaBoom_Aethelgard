@@ -76,6 +76,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // run their heavy movement/attack logic less often, since the player
     // can't perceive sub-frame motion at 30m+.
     private int updateSkipCounter = 0;
+    private float hpBillboardTimer = 0f;
     private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
@@ -186,6 +187,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
             originalColors[i] = meshRenderers[i].sharedMaterial != null
                 ? meshRenderers[i].sharedMaterial.color
                 : Color.white;
+            // Enemies don't cast shadows. With 25+ enemies in a region wave
+            // each one would re-render its skeleton/mesh through the shadow
+            // pass, which is the biggest avoidable GPU cost in combat. They
+            // still RECEIVE shadows from the world.
+            meshRenderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        SkinnedMeshRenderer[] skinned = GetComponentsInChildren<SkinnedMeshRenderer>();
+        for (int i = 0; i < skinned.Length; i++)
+        {
+            if (skinned[i] != null) skinned[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -346,9 +357,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (currentPoise < maxPoise && stunTimer <= 0) currentPoise += Time.deltaTime * 15f;
 
+        // Throttle the HP billboard rotation to ~10 Hz. The player can't
+        // tell the difference visually but the savings stack when 20+
+        // damaged enemies billboard simultaneously.
         if (hpCanvas != null && mainCamTransform != null && hpCanvas.gameObject.activeSelf)
         {
-            hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
+            hpBillboardTimer -= Time.deltaTime;
+            if (hpBillboardTimer <= 0f)
+            {
+                hpBillboardTimer = 0.1f;
+                hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
+            }
         }
 
         if (knockbackVelocity.magnitude > 0.1f)

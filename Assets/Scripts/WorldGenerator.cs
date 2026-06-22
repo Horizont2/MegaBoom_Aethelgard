@@ -152,10 +152,15 @@ public class WorldGenerator : MonoBehaviour
     [Header("Biome Colors (Base)")]
     public Color forestFoliageColor = new Color(0.17f, 0.30f, 0.12f);
     public Color desertFoliageColor = new Color(0.65f, 0.55f, 0.26f);
-    public Color snowFoliageColor = new Color(0.40f, 0.55f, 0.70f);
+    // Snow tints were too saturated blue (0.40, 0.55, 0.70), which made
+    // trees and bushes look like cartoon ice cubes instead of frosted
+    // vegetation. Defaults are now near-white with a cool tint so the
+    // mood is "snow-dusted forest" rather than "everything was repainted
+    // blue." Inspector overrides still apply if explicitly set.
+    public Color snowFoliageColor = new Color(0.86f, 0.90f, 0.94f);
     public Color forestRockColor = new Color(0.55f, 0.55f, 0.55f);
     public Color desertRockColor = new Color(0.73f, 0.57f, 0.40f);
-    public Color snowRockColor = new Color(0.65f, 0.72f, 0.79f);
+    public Color snowRockColor = new Color(0.80f, 0.83f, 0.87f);
 
     [Header("GENERATION BUDGETS")]
     public int spawnAttempts = 60000;
@@ -1276,11 +1281,40 @@ public class WorldGenerator : MonoBehaviour
                     if (layer == 2 && !isSnowBiome) continue;
                     if (layer > 2 && isSnowBiome) continue;
 
-                    float layerMeadowNoise = (baseMeadowNoise + (layer * 0.15f)) % 1f;
                     int density = 0;
 
-                    if (layer > 2) { if (layerMeadowNoise > 0.60f) density = Mathf.RoundToInt(100f * densityNoise); }
-                    else { density = Mathf.RoundToInt(Mathf.Lerp(150f, 255f, densityNoise)); if (layerMeadowNoise > 0.3f) density = 255; }
+                    if (layer > 2)
+                    {
+                        // Each flower layer needs its own independent perlin
+                        // sample, otherwise every flower type chases the same
+                        // meadow patches (since the old `+ layer*0.15` only
+                        // shifted the same noise field by a constant) and the
+                        // first flower in the list always wins. The two big
+                        // primes shove each layer into a distinct frequency
+                        // and offset of the noise basis.
+                        float layerSeedX = offsetX + (layer * 137.55f);
+                        float layerSeedZ = offsetZ + (layer * 211.31f);
+                        float perLayerMeadow = Mathf.PerlinNoise(
+                            normX * meadowScale + layerSeedX,
+                            normZ * meadowScale + layerSeedZ);
+                        float perLayerDensity = Mathf.PerlinNoise(
+                            normX * clusterScale * 5f + layerSeedX,
+                            normZ * clusterScale * 5f + layerSeedZ);
+
+                        // Slightly lower threshold so the rarer-noise tail of
+                        // each layer still produces visible patches.
+                        if (perLayerMeadow > 0.55f)
+                            density = Mathf.RoundToInt(Mathf.Lerp(40f, 180f, perLayerDensity));
+                    }
+                    else
+                    {
+                        // Grass layers stay on the shared cluster noise so the
+                        // visual texture of the meadow reads as one biome
+                        // (only the flowers needed full independence).
+                        float layerMeadowNoise = (baseMeadowNoise + (layer * 0.15f)) % 1f;
+                        density = Mathf.RoundToInt(Mathf.Lerp(150f, 255f, densityNoise));
+                        if (layerMeadowNoise > 0.3f) density = 255;
+                    }
 
                     detailMaps[layer][y, x] = density;
                 }

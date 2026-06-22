@@ -891,10 +891,21 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (trajectoryLine != null)
         {
-            trajectoryLine.startColor = currentAimColor;
-            trajectoryLine.endColor = currentAimColor;
             trajectoryLine.positionCount = simulatedCount;
-            if (trajectoryLine.material != null) trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
+            // Force the full gradient every frame. The prefab ships with a
+            // 3-key alpha gradient where the middle key sits at ~1% of the
+            // line length with alpha 0, which is what was making the tail
+            // of long throws invisible no matter what startColor/endColor
+            // we set (those calls only touch the first/last keys, not the
+            // middle one). Rebuilding the gradient from scratch with two
+            // solid opaque keys guarantees the entire arc renders.
+            ApplySolidTrajectoryGradient(currentAimColor);
+            // Make sure the line is thick enough to actually see when the
+            // far end is 15m+ from the camera. The prefab's 0.1m width is
+            // less than two pixels at distance.
+            if (trajectoryLine.widthMultiplier < 0.18f) trajectoryLine.widthMultiplier = 0.22f;
+            // The texture scroll is mostly cosmetic; keeping it disabled
+            // avoids any flow-mapping that could hide segments.
         }
 
         if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
@@ -952,6 +963,31 @@ public class PlayerController : MonoBehaviour, IDamageable
     // about where the grenade lands.
     private static readonly RaycastHit[] s_grenadeSimHitBuffer = new RaycastHit[8];
     private bool trajectoryGradientReset = false;
+
+    // Reusable gradient + keyframe arrays so we can rebuild the line's
+    // colour gradient every aim frame without allocating per-call.
+    private static readonly Gradient s_trajectoryGradient = new Gradient();
+    private static readonly GradientColorKey[] s_trajectoryColorKeys = new GradientColorKey[2]
+    {
+        new GradientColorKey(Color.white, 0f),
+        new GradientColorKey(Color.white, 1f),
+    };
+    private static readonly GradientAlphaKey[] s_trajectoryAlphaKeys = new GradientAlphaKey[2]
+    {
+        new GradientAlphaKey(1f, 0f),
+        new GradientAlphaKey(1f, 1f),
+    };
+
+    private void ApplySolidTrajectoryGradient(Color color)
+    {
+        if (trajectoryLine == null) return;
+        s_trajectoryColorKeys[0].color = color;
+        s_trajectoryColorKeys[1].color = color;
+        s_trajectoryAlphaKeys[0].alpha = color.a;
+        s_trajectoryAlphaKeys[1].alpha = color.a;
+        s_trajectoryGradient.SetKeys(s_trajectoryColorKeys, s_trajectoryAlphaKeys);
+        trajectoryLine.colorGradient = s_trajectoryGradient;
+    }
 
     // The trajectoryLine prefab ships with an alpha gradient that tapers to
     // zero, intended for a stylish "magic trail" head. While useful when the

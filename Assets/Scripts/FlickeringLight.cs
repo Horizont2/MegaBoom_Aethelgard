@@ -13,7 +13,15 @@ public class FlickeringLight : MonoBehaviour
     void Start()
     {
         lightSource = GetComponent<Light>();
-        if (lightSource != null) baseIntensity = lightSource.intensity;
+        if (lightSource != null)
+        {
+            baseIntensity = lightSource.intensity;
+            // Per-light shadow maps on torches are the single largest
+            // hidden cost in combat scenes — N flickering lights with
+            // shadows = N shadow draws every frame. Hard-disable them;
+            // the world directional/ambient already grounds the scene.
+            lightSource.shadows = LightShadows.None;
+        }
         // De-sync many lights so they don't all hit Update on the same boundary
         phaseOffset = Random.Range(0f, 100f);
         skipFrame = Random.value > 0.5f;
