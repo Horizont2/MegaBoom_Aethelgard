@@ -78,9 +78,95 @@ public class MapAAAEnhancer : MonoBehaviour
 
         BuildTravelLine();
         BuildCompassRose();
+        BuildParchmentVignette();
+        BuildAmbientSparkles();
         DecorateRegions();
 
         installed = true;
+    }
+
+    // Parchment-style sepia-edge vignette over the entire map viewport.
+    // Sells "you're looking at a hand-drawn campaign map" rather than
+    // "you're looking at a flat UI panel."
+    private RectTransform parchmentVignette;
+    private void BuildParchmentVignette()
+    {
+        if (mapCanvas == null) return;
+        GameObject go = new GameObject("AAA_ParchmentVignette");
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(mapCanvas.transform, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.SetAsLastSibling();
+
+        Image img = go.AddComponent<Image>();
+        img.sprite = BuildVignetteSprite();
+        img.color = new Color(0.18f, 0.12f, 0.05f, 0.45f);
+        img.raycastTarget = false;
+        parchmentVignette = rt;
+    }
+
+    // A handful of slowly-drifting yellow specks over the map. Pure ambience,
+    // but it lifts the static map into a "living parchment" feel. Pure UI,
+    // so it costs basically nothing.
+    private readonly System.Collections.Generic.List<RectTransform> sparkles = new System.Collections.Generic.List<RectTransform>();
+    private readonly System.Collections.Generic.List<Vector2> sparkleVel = new System.Collections.Generic.List<Vector2>();
+    private readonly System.Collections.Generic.List<float> sparklePhase = new System.Collections.Generic.List<float>();
+    private void BuildAmbientSparkles()
+    {
+        if (mapRoot == null) return;
+        const int count = 18;
+        Vector2 mapSize = mapRoot.rect.size;
+        for (int i = 0; i < count; i++)
+        {
+            GameObject sp = new GameObject("AAA_Sparkle_" + i);
+            RectTransform spRT = sp.AddComponent<RectTransform>();
+            spRT.SetParent(mapRoot, false);
+            spRT.sizeDelta = new Vector2(Random.Range(4f, 9f), Random.Range(4f, 9f));
+            spRT.anchoredPosition = new Vector2(
+                Random.Range(-mapSize.x * 0.5f, mapSize.x * 0.5f),
+                Random.Range(-mapSize.y * 0.5f, mapSize.y * 0.5f));
+
+            Image img = sp.AddComponent<Image>();
+            img.sprite = BuildSoftCircleSprite();
+            img.color = new Color(1f, 0.85f, 0.5f, 0.6f);
+            img.raycastTarget = false;
+
+            sparkles.Add(spRT);
+            sparkleVel.Add(new Vector2(Random.Range(-6f, 6f), Random.Range(2f, 10f)));
+            sparklePhase.Add(Random.Range(0f, Mathf.PI * 2f));
+        }
+    }
+
+    private void UpdateAmbientSparkles()
+    {
+        if (sparkles.Count == 0 || mapRoot == null) return;
+        Vector2 mapSize = mapRoot.rect.size;
+        float halfX = mapSize.x * 0.5f;
+        float halfY = mapSize.y * 0.5f;
+        for (int i = 0; i < sparkles.Count; i++)
+        {
+            RectTransform rt = sparkles[i];
+            if (rt == null) continue;
+            Vector2 p = rt.anchoredPosition + sparkleVel[i] * Time.unscaledDeltaTime;
+            // Wrap when off the bottom/sides.
+            if (p.y > halfY) { p.y = -halfY; p.x = Random.Range(-halfX, halfX); }
+            if (p.x > halfX) p.x = -halfX;
+            if (p.x < -halfX) p.x = halfX;
+            rt.anchoredPosition = p;
+
+            float phase = sparklePhase[i] + Time.unscaledTime * 2f;
+            float twinkle = (Mathf.Sin(phase) * 0.5f + 0.5f);
+            Image img = rt.GetComponent<Image>();
+            if (img != null)
+            {
+                Color c = img.color;
+                c.a = Mathf.Lerp(0.25f, 0.75f, twinkle);
+                img.color = c;
+            }
+        }
     }
 
     private void Update()
@@ -91,6 +177,7 @@ public class MapAAAEnhancer : MonoBehaviour
         UpdateHoverTracking();
         UpdateTravelLine();
         UpdateDecor();
+        UpdateAmbientSparkles();
     }
 
     // ---------- Region decor ----------
@@ -109,7 +196,9 @@ public class MapAAAEnhancer : MonoBehaviour
 
     private void DecorateRegions()
     {
-        RegionUI[] regions = FindObjectsByType<RegionUI>(FindObjectsSortMode.None);
+        // Include inactive — regions may be in a faded-in panel that's
+        // momentarily inactive when the OnMapFullyOpened event fires.
+        RegionUI[] regions = FindObjectsByType<RegionUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < regions.Length; i++)
         {
             RegionUI r = regions[i];
@@ -124,15 +213,18 @@ public class MapAAAEnhancer : MonoBehaviour
         RectTransform rt = r.GetComponent<RectTransform>();
         if (rt == null) return d;
 
-        // --- glow ring: a soft halo that sits *behind* the region image ---
+        // --- glow ring: a generous soft halo that sits behind the region.
+        // The earlier 22px offset was barely larger than the region itself
+        // so the glow basically hid behind the image. Bumped to 55px so the
+        // halo extends visibly past the region's silhouette.
         GameObject ring = new GameObject("AAA_GlowRing");
         RectTransform ringRT = ring.AddComponent<RectTransform>();
         ringRT.SetParent(rt, false);
-        ringRT.SetAsFirstSibling(); // behind the region image
+        ringRT.SetAsFirstSibling();
         ringRT.anchorMin = Vector2.zero;
         ringRT.anchorMax = Vector2.one;
-        ringRT.offsetMin = new Vector2(-22f, -22f);
-        ringRT.offsetMax = new Vector2(22f, 22f);
+        ringRT.offsetMin = new Vector2(-55f, -55f);
+        ringRT.offsetMax = new Vector2(55f, 55f);
 
         Image ringImg = ring.AddComponent<Image>();
         ringImg.sprite = BuildSoftCircleSprite();
@@ -143,22 +235,38 @@ public class MapAAAEnhancer : MonoBehaviour
         d.glowRing = ringRT;
         d.glowImage = ringImg;
 
-        // --- status icon: small badge over the upper-right of the region ---
+        // --- status icon: badge with its own background so it reads at
+        // a glance over a busy map texture. Now lives on top of EVERYTHING
+        // in the region's hierarchy (SetAsLastSibling).
         GameObject status = new GameObject("AAA_StatusIcon");
         RectTransform statusRT = status.AddComponent<RectTransform>();
         statusRT.SetParent(rt, false);
+        statusRT.SetAsLastSibling();
         statusRT.anchorMin = new Vector2(1f, 1f);
         statusRT.anchorMax = new Vector2(1f, 1f);
         statusRT.pivot = new Vector2(0.5f, 0.5f);
-        statusRT.anchoredPosition = new Vector2(-6f, -6f);
-        statusRT.sizeDelta = new Vector2(28f, 28f);
+        statusRT.anchoredPosition = new Vector2(-4f, -4f);
+        statusRT.sizeDelta = new Vector2(38f, 38f);
 
-        TextMeshProUGUI glyph = status.AddComponent<TextMeshProUGUI>();
-        glyph.fontSize = 22f;
+        Image badgeBg = status.AddComponent<Image>();
+        badgeBg.sprite = BuildSoftCircleSprite();
+        badgeBg.color = new Color(0.05f, 0.05f, 0.08f, 0.85f);
+        badgeBg.raycastTarget = false;
+
+        GameObject glyphGO = new GameObject("Glyph");
+        RectTransform glyphRT = glyphGO.AddComponent<RectTransform>();
+        glyphRT.SetParent(statusRT, false);
+        glyphRT.anchorMin = Vector2.zero;
+        glyphRT.anchorMax = Vector2.one;
+        glyphRT.offsetMin = Vector2.zero;
+        glyphRT.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI glyph = glyphGO.AddComponent<TextMeshProUGUI>();
+        glyph.fontSize = 26f;
         glyph.fontStyle = FontStyles.Bold;
         glyph.alignment = TextAlignmentOptions.Center;
         glyph.color = Color.white;
-        glyph.outlineWidth = 0.25f;
+        glyph.outlineWidth = 0.18f;
         glyph.outlineColor = Color.black;
         glyph.raycastTarget = false;
 
@@ -207,15 +315,15 @@ public class MapAAAEnhancer : MonoBehaviour
             }
 
             // Glow pulse for Available regions — the "come capture me"
-            // beacon you see on AAA campaign maps.
+            // beacon you see on AAA campaign maps. Much brighter than the
+            // first pass so it actually reads through the map texture.
             if (state == RegionState.Available && d.glowImage != null)
             {
                 float pulse = (Mathf.Sin(Time.unscaledTime * 2.5f) * 0.5f + 0.5f);
                 Color c = d.glowImage.color;
-                c.a = Mathf.Lerp(0.18f, 0.45f, pulse);
+                c.a = Mathf.Lerp(0.45f, 0.85f, pulse);
                 d.glowImage.color = c;
-                // Gentle scale breathing on the ring.
-                float s = 1f + pulse * 0.08f;
+                float s = 1f + pulse * 0.14f;
                 d.glowRing.localScale = new Vector3(s, s, 1f);
             }
             else if (d.glowImage != null)
@@ -430,6 +538,32 @@ public class MapAAAEnhancer : MonoBehaviour
         tex.Apply(false);
         s_softCircle = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
         return s_softCircle;
+    }
+
+    private static Sprite s_vignette;
+    private static Sprite BuildVignetteSprite()
+    {
+        if (s_vignette != null) return s_vignette;
+        const int size = 256;
+        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Color[] pixels = new Color[size * size];
+        Vector2 center = new Vector2(size / 2f, size / 2f);
+        float maxR = size / 2f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x, y), center) / maxR;
+                // Outer dark, inner transparent. Soft inverse falloff.
+                float alpha = Mathf.SmoothStep(0f, 1f, Mathf.Pow(d, 2.2f));
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.Apply(false);
+        s_vignette = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return s_vignette;
     }
 
     private static Sprite BuildSoftLineSprite()
