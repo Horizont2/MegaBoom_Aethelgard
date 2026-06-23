@@ -95,18 +95,10 @@ public class GlobalHUD : MonoBehaviour
 
     private void ApplySavedSettings()
     {
-        bool isLimited = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
-
-        if (isLimited)
-        {
-            QualitySettings.vSyncCount = 1;
-            Application.targetFrameRate = 60;
-        }
-        else
-        {
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = -1;
-        }
+        // Share the same code path as SettingsUI so the limit always
+        // respects the high-refresh-rate fix (vSync stays off, the cap
+        // is driven by targetFrameRate only).
+        SettingsUI.ApplyFpsLimit(PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1);
     }
 
     private void OnEnable() { SceneManager.sceneLoaded += OnSceneLoaded; }
@@ -133,6 +125,13 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
+            // Pause is illegal while the level-up panel is showing.
+            // Without this guard, pressing Esc set Time.timeScale back to
+            // 1 (TogglePause toggles 0<->1) while the level-up UI stayed
+            // visible — the world resumed and enemies could keep hitting
+            // the frozen player. Just swallow the Esc here.
+            if (LevelUpManager.IsMenuOpen) return;
+
             if (MapTableInteract.IsMapActive) return;
 
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
@@ -142,7 +141,21 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
+            // Shop scene: if the player is inside a category (viewing
+            // weapons or armor list), Esc takes them back to the
+            // category grid instead of opening the pause menu. Only the
+            // top-level category grid pauses on Esc.
             string sceneName = SceneManager.GetActiveScene().name;
+            if (sceneName == "ShopScene")
+            {
+                ShopManager shop = FindFirstObjectByType<ShopManager>();
+                if (shop != null && shop.IsInsideCategory)
+                {
+                    shop.ReturnToArsenalGrid();
+                    return;
+                }
+            }
+
             if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1")
             {
                 TogglePause();
@@ -390,8 +403,15 @@ public class GlobalHUD : MonoBehaviour
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
         if (bossUIGroup == null) return;
+        // Force-activate in case SetGameplayPanelsActive(false) was called
+        // earlier in the region cinematic and left the GameObject inactive.
+        // Without this, ShowBossUI silently no-op'd and the boss bar
+        // never appeared during the actual fight.
+        bossUIGroup.gameObject.SetActive(true);
+        bossUIGroup.alpha = Mathf.Max(bossUIGroup.alpha, 0.001f); // make sure Update's lerp ticks
+
         if (bossNameText != null) bossNameText.text = bossName;
-        targetBossHpRatio = currentHp / maxHp;
+        targetBossHpRatio = Mathf.Clamp01(maxHp > 0f ? currentHp / maxHp : 1f);
         if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
         if (bossHpCatchupFill != null) bossHpCatchupFill.fillAmount = targetBossHpRatio;
         if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
@@ -409,9 +429,14 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator FadeBossUIRoutine(float targetAlpha)
     {
+        // unscaledDeltaTime so the fade progresses during cinematic
+        // pauses (Time.timeScale=0). With the old Time.deltaTime path,
+        // calling ShowBossUI inside a cutscene would queue the fade
+        // but it'd never tick — the boss bar appeared at alpha 0
+        // through the entire fight.
         while (Mathf.Abs(bossUIGroup.alpha - targetAlpha) > 0.01f)
         {
-            bossUIGroup.alpha = Mathf.MoveTowards(bossUIGroup.alpha, targetAlpha, Time.deltaTime * 2f);
+            bossUIGroup.alpha = Mathf.MoveTowards(bossUIGroup.alpha, targetAlpha, Time.unscaledDeltaTime * 3f);
             yield return null;
         }
         bossUIGroup.alpha = targetAlpha;
@@ -671,7 +696,16 @@ public class GlobalHUD : MonoBehaviour
         }
         if (bossUIGroup != null)
         {
-            if (!active) { bossUIGroup.alpha = 0f; bossUIGroup.blocksRaycasts = false; }
+            // Don't blanket-hide the boss bar if a boss fight is live —
+            // SetGameplayPanelsActive(false) is called by map open + a
+            // few cutscene transitions, and previously it was erasing
+            // the boss bar mid-fight. We only fade out when no
+            // TutorialBossAI is alive in the scene.
+            if (!active && FindFirstObjectByType<TutorialBossAI>() == null)
+            {
+                bossUIGroup.alpha = 0f;
+                bossUIGroup.blocksRaycasts = false;
+            }
         }
         if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(active);
         if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(active);
@@ -798,6 +832,15 @@ public class GlobalHUD : MonoBehaviour
     private void UpdateLowHealthVignette()
     {
         if (lowHealthVignette == null) return;
+
+        // Respect the accessibility toggle. When disabled, fade the
+        // vignette to invisible and skip the rest of the calculation.
+        if (PlayerPrefs.GetInt("Settings_LowHpVignette", 1) != 1)
+        {
+            lowHealthAlpha = Mathf.Lerp(lowHealthAlpha, 0f, Time.unscaledDeltaTime * 8f);
+            Color cc = lowHealthVignette.color; cc.a = lowHealthAlpha; lowHealthVignette.color = cc;
+            return;
+        }
 
         PlayerController pc = PlayerController.LocalInstance;
         float targetAlpha = 0f;

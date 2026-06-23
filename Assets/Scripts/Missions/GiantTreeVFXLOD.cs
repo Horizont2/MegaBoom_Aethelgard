@@ -1,39 +1,62 @@
 using UnityEngine;
+using System.Collections.Generic;
 
-// Auto-attached LOD throttle for the giant-tree leaf/snow VFX. The
-// instantiated effect prefab is a dense ParticleSystem set that runs
-// continuously even when the player isn't looking at it; multiplied
-// across every giant tree in a combat region it dominates the GPU
-// budget, and walking right up to one stalled the frame.
+// Auto-attached LOD throttle for the giant-tree leaf/snow VFX.
 //
-// This component:
-//   - Stops emission entirely when the player is past `farDistance`.
-//   - Scales emission rate smoothly across `nearDistance..farDistance`.
-//   - Hard-caps maxParticles so even the close case can't unbounded-spawn.
-//   - Disables shadow casting on the renderer.
-//   - Polls cheaply (5 Hz, with a per-instance phase offset).
+// The previous version capped emission rate and shadow casting which
+// still left the GPU rendering tens of overlapping transparent quads
+// plus per-light cost the moment the camera rotated toward a tree.
+// On the user's hardware that dropped FPS to 10-20 when standing
+// next to a giant tree and panning the camera.
+//
+// This pass is far more aggressive:
+//   * Past farDistance, ParticleSystemRenderer.enabled = false
+//     (zero draw cost, no overdraw).
+//   * Past lightDistance, Light.enabled = false — lights are the
+//     single biggest hidden cost; killing them when the player is
+//     more than ~12m away from the tree is invisible to the eye but
+//     huge for the per-tile light list in Forward+.
+//   * Particle emission still scales smoothly inside nearDistance
+//     but is hard-capped at 0.3 multiplier, and maxParticles is
+//     clamped to 12 (was 24).
+//   * When the tree leaves the active range we Clear() the
+//     particle system so there's no residual overdraw from dying
+//     particles.
+//   * The MeshRenderer / SkinnedMeshRenderer on the tree is forced
+//     to ShadowCastingMode.Off — saves a shadow pass per tree.
 public class GiantTreeVFXLOD : MonoBehaviour
 {
-    public float nearDistance = 22f;
-    public float farDistance = 55f;
-    public int maxParticlesCap = 24;
+    [Tooltip("Particles run at full multiplier when player is closer than this.")]
+    public float nearDistance = 15f;
+    [Tooltip("Particles + renderers off entirely beyond this distance.")]
+    public float farDistance = 45f;
+    [Tooltip("Per-light pixel-shading cap. Lights are disabled past this distance from the player.")]
+    public float lightDistance = 12f;
+    [Tooltip("Hard cap on simultaneous particles.")]
+    public int maxParticlesCap = 12;
+    [Tooltip("Cap on the close-range emission multiplier (1.0 = original prefab rate). Lower values are harder on the eyes vs. lower GPU cost.")]
+    [Range(0.05f, 1f)] public float closeRangeMultiplierCap = 0.3f;
 
     private struct PSCache
     {
         public ParticleSystem ps;
+        public ParticleSystemRenderer renderer;
         public float baseRate;
     }
 
     private PSCache[] systems;
     private Light[] lights;
     private float[] lightBaseIntensities;
+    private Renderer[] treeRenderers; // mesh renderers on the parent tree
     private Transform player;
     private float nextCheckTime;
-    private float checkInterval = 0.2f;
-    private bool emittingNow = true;
+    private const float CHECK_INTERVAL = 0.25f;
+    private bool particlesOn = true;
+    private bool lightsOn = true;
 
     private void Awake()
     {
+        // --- particles ---
         ParticleSystem[] all = GetComponentsInChildren<ParticleSystem>(true);
         systems = new PSCache[all.Length];
         for (int i = 0; i < all.Length; i++)
@@ -42,35 +65,25 @@ public class GiantTreeVFXLOD : MonoBehaviour
             var em = ps.emission;
             systems[i].ps = ps;
             systems[i].baseRate = em.rateOverTime.constant;
+            systems[i].renderer = ps.GetComponent<ParticleSystemRenderer>();
 
-            // Hard particle cap — close-up VFX could otherwise emit unbounded.
             var main = ps.main;
             if (main.maxParticles > maxParticlesCap) main.maxParticles = maxParticlesCap;
-            ParticleSystemRenderer rend = ps.GetComponent<ParticleSystemRenderer>();
-            if (rend != null)
+            if (systems[i].renderer != null)
             {
-                rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                rend.receiveShadows = false;
+                systems[i].renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                systems[i].renderer.receiveShadows = false;
             }
         }
 
-        // Lights buried inside the VFX prefab (and on the parent giant
-        // tree itself) are the silent FPS killer — every tree spawned
-        // its own point light with shadows, and a forest of them dragged
-        // the GPU into single-digit frame rates the moment the camera
-        // saw several at once. Walk BOTH this VFX and the tree it's
-        // parented to. Strip shadows unconditionally and cache intensity
-        // so we can fade lights with distance like the particles.
+        // --- lights (this subtree + parent tree subtree) ---
         Light[] selfLights = GetComponentsInChildren<Light>(true);
         Light[] parentLights = transform.parent != null
             ? transform.parent.GetComponentsInChildren<Light>(true)
             : new Light[0];
-        // Merge, deduping (parentLights includes our own subtree).
-        System.Collections.Generic.List<Light> merged = new System.Collections.Generic.List<Light>(selfLights);
+        List<Light> merged = new List<Light>(selfLights);
         for (int i = 0; i < parentLights.Length; i++)
-        {
             if (!merged.Contains(parentLights[i])) merged.Add(parentLights[i]);
-        }
         lights = merged.ToArray();
         lightBaseIntensities = new float[lights.Length];
         for (int i = 0; i < lights.Length; i++)
@@ -79,20 +92,31 @@ public class GiantTreeVFXLOD : MonoBehaviour
             if (l == null) continue;
             l.shadows = LightShadows.None;
             l.renderMode = LightRenderMode.Auto;
-            // Clamp the base — some VFX prefabs ship with intensity 8-15
-            // for "wow" close-up shots which is what tips the per-tile
-            // light list past the budget when several trees overlap.
-            if (l.intensity > 1.5f) l.intensity = 1.5f;
+            if (l.intensity > 1.2f) l.intensity = 1.2f; // hard clamp — prefab rates were 8-15
             lightBaseIntensities[i] = l.intensity;
         }
 
-        nextCheckTime = Time.unscaledTime + Random.Range(0f, checkInterval);
+        // --- parent tree mesh shadow casting off ---
+        if (transform.parent != null)
+        {
+            Renderer[] r = transform.parent.GetComponentsInChildren<Renderer>(true);
+            treeRenderers = r;
+            for (int i = 0; i < r.Length; i++)
+            {
+                if (r[i] == null) continue;
+                // Skip ourselves to keep particles configurable through the cache above
+                if (r[i] is ParticleSystemRenderer) continue;
+                r[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+
+        nextCheckTime = Time.unscaledTime + Random.Range(0f, CHECK_INTERVAL);
     }
 
     private void Update()
     {
         if (Time.unscaledTime < nextCheckTime) return;
-        nextCheckTime = Time.unscaledTime + checkInterval;
+        nextCheckTime = Time.unscaledTime + CHECK_INTERVAL;
 
         if (player == null) player = CameraCache.MainTransform;
         if (player == null) return;
@@ -100,74 +124,60 @@ public class GiantTreeVFXLOD : MonoBehaviour
         float sqr = (player.position - transform.position).sqrMagnitude;
         float farSqr = farDistance * farDistance;
         float nearSqr = nearDistance * nearDistance;
+        float lightSqr = lightDistance * lightDistance;
 
+        // === Particles ===
         if (sqr >= farSqr)
         {
-            SetEmission(false, 0f);
+            if (particlesOn) SetParticles(false, 0f);
         }
         else
         {
             float t = Mathf.Clamp01(1f - (sqr - nearSqr) / Mathf.Max(0.001f, farSqr - nearSqr));
-            // Cap the close-range multiplier at 0.4 — the prefab rates
-            // were tuned for "show the player how cool this is" and were
-            // 2-3x what's actually visible at 5m. 0.4 is still visibly
-            // alive without flooding the overdraw budget.
-            t = Mathf.Min(t, 0.4f);
-            SetEmission(true, t);
+            t = Mathf.Min(t, closeRangeMultiplierCap);
+            SetParticles(true, t);
         }
+
+        // === Lights ===
+        bool lightsShouldBeOn = sqr <= lightSqr;
+        if (lightsShouldBeOn != lightsOn) SetLights(lightsShouldBeOn);
     }
 
-    private void SetEmission(bool on, float multiplier)
+    private void SetParticles(bool on, float multiplier)
     {
-        if (!on && !emittingNow)
+        if (systems == null) return;
+        for (int i = 0; i < systems.Length; i++)
         {
-            // Even when fully off in particles, keep lights silenced.
-            for (int i = 0; lights != null && i < lights.Length; i++)
+            ParticleSystem ps = systems[i].ps;
+            if (ps == null) continue;
+            var em = ps.emission;
+            em.enabled = on;
+            if (on)
             {
-                if (lights[i] != null) lights[i].enabled = false;
+                em.rateOverTime = systems[i].baseRate * multiplier;
+                if (systems[i].renderer != null && !systems[i].renderer.enabled) systems[i].renderer.enabled = true;
             }
-            return;
-        }
-
-        if (systems != null)
-        {
-            for (int i = 0; i < systems.Length; i++)
+            else
             {
-                ParticleSystem ps = systems[i].ps;
-                if (ps == null) continue;
-                var em = ps.emission;
-                if (on)
-                {
-                    em.enabled = true;
-                    em.rateOverTime = systems[i].baseRate * multiplier;
-                }
-                else
-                {
-                    em.enabled = false;
-                }
+                // Hard stop: kill existing particles so we don't pay
+                // overdraw cost for the last second of fading particles.
+                ps.Clear();
+                if (systems[i].renderer != null) systems[i].renderer.enabled = false;
             }
         }
+        particlesOn = on;
+    }
 
-        // Fade lights with the same distance multiplier; full off past
-        // far range so distant trees pay zero light cost.
-        if (lights != null)
+    private void SetLights(bool on)
+    {
+        if (lights == null) return;
+        for (int i = 0; i < lights.Length; i++)
         {
-            for (int i = 0; i < lights.Length; i++)
-            {
-                Light l = lights[i];
-                if (l == null) continue;
-                if (on)
-                {
-                    l.enabled = true;
-                    l.intensity = lightBaseIntensities[i] * multiplier;
-                }
-                else
-                {
-                    l.enabled = false;
-                }
-            }
+            Light l = lights[i];
+            if (l == null) continue;
+            l.enabled = on;
+            if (on) l.intensity = lightBaseIntensities[i];
         }
-
-        emittingNow = on;
+        lightsOn = on;
     }
 }

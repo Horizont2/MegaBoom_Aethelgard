@@ -93,10 +93,13 @@ public class CameraFollow : MonoBehaviour
         // 2. Слідування за гравцем
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
-        // 3. Миттєве, точне керування без желе
-        float sensMul = MouseSensitivitySettings.Multiplier;
+        // 3. Миттєве, точне керування без желе. Settings panel persists a
+        // user-chosen multiplier (Settings_MouseSensitivity, default 1.0)
+        // and an invert-Y toggle (Settings_InvertYAxis).
+        float sensMul = PlayerPrefs.GetFloat("Settings_MouseSensitivity", 1f);
+        float yInvert = PlayerPrefs.GetInt("Settings_InvertYAxis", 0) == 1 ? -1f : 1f;
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity * sensMul;
-        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity * sensMul;
+        currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity * sensMul * yInvert;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);
         Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
 

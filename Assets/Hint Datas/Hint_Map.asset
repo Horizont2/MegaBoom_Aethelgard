@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_Map
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: Map
-  title: 'WORLD MAP'
-  body: '<b>Drag</b> to pan. <b>Scroll</b> to zoom. Click any unlocked region to see rewards and deploy. Each capture opens its neighbors.'
+  title: WORLD MAP
+  body: <b>Drag</b> to pan. <b>Scroll</b> to zoom. Click any unlocked region to see
+    rewards and deploy. Each capture opens its neighbors.
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: fe5c6c6890aaf3f42ac9c94201a16022, type: 3}
   duration: 7
   waitForInput: 0
   pauseGameWhileShown: 1

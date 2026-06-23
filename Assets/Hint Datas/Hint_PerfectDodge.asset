@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_PerfectDodge
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: PerfectDodge
-  title: 'PERFECT DODGE'
-  body: 'Elite tells are slower. Dash (<b>SHIFT</b>) right as the windup peaks to slow time and guarantee a critical follow-up.'
+  title: PERFECT DODGE
+  body: Elite tells are slower. Dash (<b>SHIFT</b>) right as the windup peaks to
+    slow time and guarantee a critical follow-up.
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: d54c2601cafe10848b27e96595643e18, type: 3}
   duration: 7
   waitForInput: 0
   pauseGameWhileShown: 1

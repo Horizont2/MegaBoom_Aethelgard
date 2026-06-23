@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_Move
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: Move
-  title: 'MOVEMENT'
-  body: '<b>WASD</b> to move. Mouse to look. Hold <b>SHIFT</b> to dash through danger — i-frames during the dash.'
+  title: MOVEMENT
+  body: "<b>WASD</b> to move. Mouse to look. Hold <b>SHIFT</b> to dash through danger
+    \u2014 i-frames during the dash."
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: f1778683d7c00e349abb0b5ac5b28bcf, type: 3}
   duration: 6
   waitForInput: 0
   pauseGameWhileShown: 1

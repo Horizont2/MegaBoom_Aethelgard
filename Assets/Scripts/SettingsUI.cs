@@ -39,13 +39,59 @@ public class SettingsUI : MonoBehaviour
     public Toggle limitFPSToggle;
     public Toggle showFPSToggle;
 
-    [Header("Checkmark Graphics (Для анімації)")]
+    [Header("Checkmark Graphics (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public Graphic damageCheckmark;
     public Graphic screenShakeCheckmark;
     public Graphic fpsLimitCheckmark;
     public Graphic showFPSCheckmark;
 
-    [Header("Buttons (Для анімації)")]
+    // ============================================================
+    // NEW (extended Tier 3 / Tier 5 settings вЂ” wire from inspector)
+    // Every reference below is optional; leave any blank to skip.
+    // ============================================================
+
+    [Header("Mouse / Camera")]
+    [Tooltip("Slider with min=10, max=300 (10 %..300 % of base). Persisted as Settings_MouseSensitivity (0.10..3.0).")]
+    public Slider sensitivitySlider;
+    public TMP_InputField sensitivityInput;
+    [Tooltip("Toggle that flips the camera vertical axis. Persisted as Settings_InvertYAxis.")]
+    public Toggle invertYToggle;
+    public Graphic invertYCheckmark;
+
+    [Header("Subtitles")]
+    public Toggle subtitlesToggle;
+    public Graphic subtitlesCheckmark;
+    [Tooltip("3-option dropdown (Small/Medium/Large). Persisted as Settings_SubtitleSize (0/1/2).")]
+    public TMP_Dropdown subtitleSizeDropdown;
+
+    [Header("Accessibility")]
+    public Toggle colorblindToggle;
+    public Graphic colorblindCheckmark;
+    [Tooltip("Toggle that disables the low-health red vignette. Persisted as Settings_LowHpVignette.")]
+    public Toggle lowHpVignetteToggle;
+    public Graphic lowHpVignetteCheckmark;
+    [Tooltip("Toggle that disables hit-stop micro-pauses on heavy hits. Persisted as Settings_HitStop.")]
+    public Toggle hitStopToggle;
+    public Graphic hitStopCheckmark;
+
+    [Header("Graphics")]
+    [Tooltip("4-option dropdown (Low/Medium/High/Ultra). Calls QualitySettings.SetQualityLevel.")]
+    public TMP_Dropdown qualityDropdown;
+    [Tooltip("Slider with min=70, max=100 (% of native). Persisted as Settings_RenderScale.")]
+    public Slider renderScaleSlider;
+    public TMP_InputField renderScaleInput;
+    [Tooltip("Toggle for post-processing (Bloom, ColorGrading). Persisted as Settings_PostFX.")]
+    public Toggle postFXToggle;
+    public Graphic postFXCheckmark;
+    [Tooltip("Toggle for dynamic shadows on minor lights. Persisted as Settings_DynamicShadows.")]
+    public Toggle dynamicShadowsToggle;
+    public Graphic dynamicShadowsCheckmark;
+
+    [Header("Language")]
+    [Tooltip("2-option dropdown (English / РЈРєСЂР°С—РЅСЃСЊРєР°). Drives LocalizationManager.CurrentLanguage.")]
+    public TMP_Dropdown languageDropdown;
+
+    [Header("Buttons (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public Button closeButton;
     public TextMeshProUGUI closeButtonText;
     public Button saveButton;
@@ -78,6 +124,68 @@ public class SettingsUI : MonoBehaviour
         if (limitFPSToggle) limitFPSToggle.onValueChanged.AddListener(OnFPSLimitChanged);
         if (showFPSToggle) showFPSToggle.onValueChanged.AddListener(OnShowFPSChanged);
 
+        // ---- Extended controls ----
+        if (sensitivitySlider)
+        {
+            sensitivitySlider.minValue = 10f;
+            sensitivitySlider.maxValue = 300f;
+            sensitivitySlider.onValueChanged.AddListener(OnSensitivitySliderChanged);
+        }
+        if (sensitivityInput) sensitivityInput.onEndEdit.AddListener(OnSensitivityInputChanged);
+        if (invertYToggle) invertYToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_InvertYAxis", v ? 1 : 0);
+            if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        });
+
+        if (subtitlesToggle) subtitlesToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_Subtitles", v ? 1 : 0);
+        });
+        if (subtitleSizeDropdown) subtitleSizeDropdown.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_SubtitleSize", Mathf.Clamp(v, 0, 2));
+        });
+
+        if (colorblindToggle) colorblindToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_Colorblind", v ? 1 : 0);
+        });
+        if (lowHpVignetteToggle) lowHpVignetteToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_LowHpVignette", v ? 1 : 0);
+        });
+        if (hitStopToggle) hitStopToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_HitStop", v ? 1 : 0);
+        });
+
+        if (qualityDropdown) qualityDropdown.onValueChanged.AddListener(v =>
+        {
+            QualitySettings.SetQualityLevel(Mathf.Clamp(v, 0, QualitySettings.names.Length - 1), true);
+            PlayerPrefs.SetInt("Settings_QualityLevel", v);
+        });
+        if (renderScaleSlider)
+        {
+            renderScaleSlider.minValue = 70f;
+            renderScaleSlider.maxValue = 100f;
+            renderScaleSlider.onValueChanged.AddListener(OnRenderScaleSliderChanged);
+        }
+        if (renderScaleInput) renderScaleInput.onEndEdit.AddListener(OnRenderScaleInputChanged);
+        if (postFXToggle) postFXToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_PostFX", v ? 1 : 0);
+        });
+        if (dynamicShadowsToggle) dynamicShadowsToggle.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_DynamicShadows", v ? 1 : 0);
+        });
+
+        if (languageDropdown) languageDropdown.onValueChanged.AddListener(v =>
+        {
+            PlayerPrefs.SetInt("Settings_Language", Mathf.Clamp(v, 0, 1));
+        });
+
         if (closeButton != null) closeButton.gameObject.AddComponent<AutoButtonAnimator>().Setup(closeButtonText, true);
 
         if (saveButton != null)
@@ -96,6 +204,15 @@ public class SettingsUI : MonoBehaviour
             AnimateCheckmark(screenShakeCheckmark, screenShakeToggle.isOn);
             AnimateCheckmark(fpsLimitCheckmark, limitFPSToggle.isOn);
             AnimateCheckmark(showFPSCheckmark, showFPSToggle.isOn);
+
+            // Extended checkmarks (all null-safe).
+            AnimateCheckmark(invertYCheckmark, invertYToggle != null && invertYToggle.isOn);
+            AnimateCheckmark(subtitlesCheckmark, subtitlesToggle != null && subtitlesToggle.isOn);
+            AnimateCheckmark(colorblindCheckmark, colorblindToggle != null && colorblindToggle.isOn);
+            AnimateCheckmark(lowHpVignetteCheckmark, lowHpVignetteToggle != null && lowHpVignetteToggle.isOn);
+            AnimateCheckmark(hitStopCheckmark, hitStopToggle != null && hitStopToggle.isOn);
+            AnimateCheckmark(postFXCheckmark, postFXToggle != null && postFXToggle.isOn);
+            AnimateCheckmark(dynamicShadowsCheckmark, dynamicShadowsToggle != null && dynamicShadowsToggle.isOn);
 
             if (underline != null && tabTexts != null && tabTexts.Length > 0)
             {
@@ -209,6 +326,37 @@ public class SettingsUI : MonoBehaviour
         ForceCheckmarkState(fpsLimitCheckmark, limitFPSToggle.isOn);
         ForceCheckmarkState(showFPSCheckmark, showFPSToggle.isOn);
 
+        // ---- Extended controls: populate from PlayerPrefs ----
+        if (sensitivitySlider) sensitivitySlider.value = PlayerPrefs.GetFloat("Settings_MouseSensitivity", 1f) * 100f;
+        if (sensitivityInput && sensitivitySlider) sensitivityInput.text = Mathf.RoundToInt(sensitivitySlider.value).ToString();
+        if (invertYToggle) invertYToggle.isOn = PlayerPrefs.GetInt("Settings_InvertYAxis", 0) == 1;
+        ForceCheckmarkState(invertYCheckmark, invertYToggle != null && invertYToggle.isOn);
+
+        if (subtitlesToggle) subtitlesToggle.isOn = PlayerPrefs.GetInt("Settings_Subtitles", 1) == 1;
+        ForceCheckmarkState(subtitlesCheckmark, subtitlesToggle != null && subtitlesToggle.isOn);
+        if (subtitleSizeDropdown) subtitleSizeDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_SubtitleSize", 1), 0, 2);
+
+        if (colorblindToggle) colorblindToggle.isOn = PlayerPrefs.GetInt("Settings_Colorblind", 0) == 1;
+        ForceCheckmarkState(colorblindCheckmark, colorblindToggle != null && colorblindToggle.isOn);
+        if (lowHpVignetteToggle) lowHpVignetteToggle.isOn = PlayerPrefs.GetInt("Settings_LowHpVignette", 1) == 1;
+        ForceCheckmarkState(lowHpVignetteCheckmark, lowHpVignetteToggle != null && lowHpVignetteToggle.isOn);
+        if (hitStopToggle) hitStopToggle.isOn = PlayerPrefs.GetInt("Settings_HitStop", 1) == 1;
+        ForceCheckmarkState(hitStopCheckmark, hitStopToggle != null && hitStopToggle.isOn);
+
+        if (qualityDropdown)
+        {
+            int saved = PlayerPrefs.GetInt("Settings_QualityLevel", Mathf.Clamp(QualitySettings.GetQualityLevel(), 0, qualityDropdown.options.Count - 1));
+            qualityDropdown.value = Mathf.Clamp(saved, 0, qualityDropdown.options.Count - 1);
+        }
+        if (renderScaleSlider) renderScaleSlider.value = PlayerPrefs.GetFloat("Settings_RenderScale", 1f) * 100f;
+        if (renderScaleInput && renderScaleSlider) renderScaleInput.text = Mathf.RoundToInt(renderScaleSlider.value).ToString();
+        if (postFXToggle) postFXToggle.isOn = PlayerPrefs.GetInt("Settings_PostFX", 1) == 1;
+        ForceCheckmarkState(postFXCheckmark, postFXToggle != null && postFXToggle.isOn);
+        if (dynamicShadowsToggle) dynamicShadowsToggle.isOn = PlayerPrefs.GetInt("Settings_DynamicShadows", 1) == 1;
+        ForceCheckmarkState(dynamicShadowsCheckmark, dynamicShadowsToggle != null && dynamicShadowsToggle.isOn);
+
+        if (languageDropdown) languageDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_Language", 0), 0, 1);
+
         if (saveButton != null)
         {
             TextMeshProUGUI btnText = saveButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -232,12 +380,28 @@ public class SettingsUI : MonoBehaviour
         if (limitFPSToggle) PlayerPrefs.SetInt("Settings_FPSLimit", limitFPSToggle.isOn ? 1 : 0);
         if (showFPSToggle) PlayerPrefs.SetInt("Settings_ShowFPS", showFPSToggle.isOn ? 1 : 0);
 
+        // ---- Extended controls: persist on close so even unfocused
+        //      sliders / dropdowns commit their final value ----
+        if (sensitivitySlider) PlayerPrefs.SetFloat("Settings_MouseSensitivity", sensitivitySlider.value / 100f);
+        if (invertYToggle) PlayerPrefs.SetInt("Settings_InvertYAxis", invertYToggle.isOn ? 1 : 0);
+        if (subtitlesToggle) PlayerPrefs.SetInt("Settings_Subtitles", subtitlesToggle.isOn ? 1 : 0);
+        if (subtitleSizeDropdown) PlayerPrefs.SetInt("Settings_SubtitleSize", subtitleSizeDropdown.value);
+        if (colorblindToggle) PlayerPrefs.SetInt("Settings_Colorblind", colorblindToggle.isOn ? 1 : 0);
+        if (lowHpVignetteToggle) PlayerPrefs.SetInt("Settings_LowHpVignette", lowHpVignetteToggle.isOn ? 1 : 0);
+        if (hitStopToggle) PlayerPrefs.SetInt("Settings_HitStop", hitStopToggle.isOn ? 1 : 0);
+        if (qualityDropdown) PlayerPrefs.SetInt("Settings_QualityLevel", qualityDropdown.value);
+        if (renderScaleSlider) PlayerPrefs.SetFloat("Settings_RenderScale", renderScaleSlider.value / 100f);
+        if (postFXToggle) PlayerPrefs.SetInt("Settings_PostFX", postFXToggle.isOn ? 1 : 0);
+        if (dynamicShadowsToggle) PlayerPrefs.SetInt("Settings_DynamicShadows", dynamicShadowsToggle.isOn ? 1 : 0);
+        if (languageDropdown) PlayerPrefs.SetInt("Settings_Language", languageDropdown.value);
+
         PlayerPrefs.Save();
 
-        // --- ФІКС FPS: Зберігаємо і розблоковуємо VSync разом із лімітом ---
+        // Force-apply the FPS limit via the shared helper so vSync is
+        // never accidentally turned on (which would lock the build to
+        // the monitor's refresh rate instead of 60).
         bool isLimited = limitFPSToggle != null && limitFPSToggle.isOn;
-        QualitySettings.vSyncCount = isLimited ? 1 : 0;
-        Application.targetFrameRate = isLimited ? 60 : -1;
+        ApplyFpsLimit(isLimited);
 
         if (FPSDisplay.Instance != null)
         {
@@ -359,9 +523,28 @@ public class SettingsUI : MonoBehaviour
     private void OnFPSLimitChanged(bool isOn)
     {
         if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
-        // --- ФІКС FPS: Змінюємо разом із галочкою ---
-        QualitySettings.vSyncCount = isOn ? 1 : 0;
-        Application.targetFrameRate = isOn ? 60 : -1;
+        ApplyFpsLimit(isOn);
+    }
+
+    // The previous implementation set vSyncCount=1 AND targetFrameRate=60.
+    // In a build, vSyncCount=1 takes precedence and locks the frame rate
+    // to the monitor's refresh rate (commonly 144 / 165 / 240 Hz), so the
+    // "Limit FPS to 60" toggle did nothing for high-refresh-rate
+    // displays. The build also persists vSyncCount, so the lock survived
+    // across scene loads. Force vSyncCount OFF whenever the limit is on,
+    // so targetFrameRate is what actually drives the cap.
+    public static void ApplyFpsLimit(bool isOn)
+    {
+        if (isOn)
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
+        }
+        else
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+        }
     }
 
     private void OnShowFPSChanged(bool isOn)
@@ -369,6 +552,40 @@ public class SettingsUI : MonoBehaviour
         if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
         PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
         if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
+    }
+
+    // ---- Extended slider / input handlers ----
+
+    private void OnSensitivitySliderChanged(float value)
+    {
+        if (sensitivityInput) sensitivityInput.text = Mathf.RoundToInt(value).ToString();
+        PlayerPrefs.SetFloat("Settings_MouseSensitivity", value / 100f);
+    }
+
+    private void OnSensitivityInputChanged(string text)
+    {
+        if (float.TryParse(text, out float result))
+        {
+            result = Mathf.Clamp(result, sensitivitySlider.minValue, sensitivitySlider.maxValue);
+            sensitivitySlider.value = result;
+        }
+        else if (sensitivityInput) sensitivityInput.text = Mathf.RoundToInt(sensitivitySlider.value).ToString();
+    }
+
+    private void OnRenderScaleSliderChanged(float value)
+    {
+        if (renderScaleInput) renderScaleInput.text = Mathf.RoundToInt(value).ToString();
+        PlayerPrefs.SetFloat("Settings_RenderScale", value / 100f);
+    }
+
+    private void OnRenderScaleInputChanged(string text)
+    {
+        if (float.TryParse(text, out float result))
+        {
+            result = Mathf.Clamp(result, renderScaleSlider.minValue, renderScaleSlider.maxValue);
+            renderScaleSlider.value = result;
+        }
+        else if (renderScaleInput) renderScaleInput.text = Mathf.RoundToInt(renderScaleSlider.value).ToString();
     }
 }
 

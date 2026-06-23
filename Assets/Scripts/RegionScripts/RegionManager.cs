@@ -367,10 +367,6 @@ public class RegionManager : MonoBehaviour
             PlayerPrefs.SetInt("AutoOpenMap", 1);
             PlayerPrefs.Save();
 
-            RunStats.Add(RunStats.Stat.RegionsConquered, 1);
-            AchievementManager.Notify(AchievementManager.Tracker.RegionConquered, 1);
-            ToastManager.Show(LocalizationManager.Tr("TOAST_REGION_CLEARED", currentRegion.regionName), ToastManager.ToastKind.Achievement);
-
             if (ResourceManager.Instance != null)
             {
                 ResourceManager.Instance.AddStashResources(currentRegion.woodReward, currentRegion.stoneReward, currentRegion.foodReward);
@@ -426,10 +422,6 @@ public class RegionManager : MonoBehaviour
             PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
             PlayerPrefs.SetInt("AutoOpenMap", 1);
             PlayerPrefs.Save();
-
-            RunStats.Add(RunStats.Stat.RegionsConquered, 1);
-            AchievementManager.Notify(AchievementManager.Tracker.RegionConquered, 1);
-            ToastManager.Show(LocalizationManager.Tr("TOAST_REGION_CLEARED", currentRegion.regionName), ToastManager.ToastKind.Achievement);
 
             if (ResourceManager.Instance != null)
             {

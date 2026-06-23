@@ -32,6 +32,14 @@ public class ShopManager : MonoBehaviour
     public Transform itemListContent;
     public GameObject itemButtonPrefab;
     public Button backToGridButton;
+    [Tooltip("Optional. If wired, will be reset to verticalNormalizedPosition=1 (top) on every category switch.")]
+    public ScrollRect itemListScrollRect;
+
+    // True while the player is browsing a specific category (weapon or
+    // armor) instead of looking at the top-level category grid. Read
+    // by GlobalHUD's Esc handler so Esc backs out of a category before
+    // it ever toggles the pause menu.
+    public bool IsInsideCategory { get; private set; }
 
     [Header("Arsenal Category Buttons (WEAPONS)")]
     public Button btnCategorySwords;
@@ -230,11 +238,12 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = true;
+        IsInsideCategory = true;
         SetupDynamicUI(true);
 
         FadeGroup(arsenalGridGroup, 0f);
 
-        foreach (Transform child in itemListContent) Destroy(child.gameObject);
+        ClearItemList();
 
         WeaponData firstWep = null;
         foreach (var w in weapons)
@@ -242,7 +251,8 @@ public class ShopManager : MonoBehaviour
             if (w.category == cat)
             {
                 if (firstWep == null) firstWep = w;
-                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(w));
+                WeaponData captured = w;
+                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
             }
         }
 
@@ -250,6 +260,7 @@ public class ShopManager : MonoBehaviour
         else SetEmptyUI();
 
         ShowContentPanels();
+        ScrollListToTop();
     }
 
     private void SelectWeapon(WeaponData w)
@@ -265,11 +276,12 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = false;
+        IsInsideCategory = true;
         SetupDynamicUI(false);
 
         FadeGroup(arsenalGridGroup, 0f);
 
-        foreach (Transform child in itemListContent) Destroy(child.gameObject);
+        ClearItemList();
 
         ArmorData firstArm = null;
         if (armors != null)
@@ -279,7 +291,8 @@ public class ShopManager : MonoBehaviour
                 if (a != null && a.category == cat)
                 {
                     if (firstArm == null) firstArm = a;
-                    CreateListButton(a.armorName, a.icon, () => SelectArmor(a));
+                    ArmorData captured = a;
+                    CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
                 }
             }
         }
@@ -288,6 +301,37 @@ public class ShopManager : MonoBehaviour
         else SetEmptyUI();
 
         ShowContentPanels();
+        ScrollListToTop();
+    }
+
+    // Properly destroys old buttons immediately (DestroyImmediate isn't
+    // safe in play mode, but explicitly removing the parent reference
+    // and calling Destroy keeps the children out of the layout for the
+    // current frame). Without an immediate clear, opening a new
+    // category sometimes layered the new buttons on top of stale ones.
+    private void ClearItemList()
+    {
+        if (itemListContent == null) return;
+        for (int i = itemListContent.childCount - 1; i >= 0; i--)
+        {
+            Transform t = itemListContent.GetChild(i);
+            t.SetParent(null, false);
+            Destroy(t.gameObject);
+        }
+    }
+
+    // Resets the item list's scroll position to the top whenever the
+    // player switches categories. Previously the list inherited the
+    // previous category's scroll offset — open a category, scroll to
+    // the bottom, switch to another category, and you'd see the new
+    // list scrolled below its first row.
+    private void ScrollListToTop()
+    {
+        if (itemListScrollRect != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            itemListScrollRect.verticalNormalizedPosition = 1f;
+        }
     }
 
     private void SelectArmor(ArmorData a)
@@ -301,6 +345,7 @@ public class ShopManager : MonoBehaviour
     private void CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
     {
         GameObject btnObj = Instantiate(itemButtonPrefab, itemListContent);
+        btnObj.SetActive(true);
         ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
         if (itemSlot != null)
         {
@@ -308,7 +353,20 @@ public class ShopManager : MonoBehaviour
             if (itemSlot.iconImage != null && icon != null) itemSlot.iconImage.sprite = icon;
             if (itemSlot.buttonComponent != null)
             {
-                itemSlot.buttonComponent.onClick.AddListener(() => { PlayButtonAnim(itemSlot.transform); action.Invoke(); });
+                // Wipe any stale serialised onClick listeners from the
+                // prefab. If the prefab was wired with a now-dead
+                // reference at design time, that listener could swallow
+                // the click silently. Add ONLY the runtime delegate.
+                itemSlot.buttonComponent.onClick.RemoveAllListeners();
+                itemSlot.buttonComponent.interactable = true;
+                ShopItemButton itemSlotCaptured = itemSlot;
+                UnityEngine.Events.UnityAction actionCaptured = action;
+                itemSlot.buttonComponent.onClick.AddListener(() =>
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+                    PlayButtonAnim(itemSlotCaptured.transform);
+                    actionCaptured?.Invoke();
+                });
             }
         }
     }
@@ -332,6 +390,7 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = false;
+        IsInsideCategory = false;
 
         int savedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)

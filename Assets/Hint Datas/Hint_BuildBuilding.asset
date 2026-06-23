@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_BuildBuilding
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: BuildBuilding
-  title: 'BUILD'
-  body: 'Hold <b>E</b> to start construction. Resources are spent up-front. The build runs on a real-time timer — even while you''re away.'
+  title: BUILD
+  body: "Hold <b>E</b> to start construction. Resources are spent up-front. The build
+    runs on a real-time timer \u2014 even while you're away."
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: 86499ef5fd458cc4f8bc9762c3514de2, type: 3}
   duration: 7
   waitForInput: 0
   pauseGameWhileShown: 1

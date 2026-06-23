@@ -49,6 +49,13 @@ public class LevelUpManager : MonoBehaviour
 
     private UpgradeData[] currentOptions = new UpgradeData[3];
 
+    // Public flag so other systems (GlobalHUD pause, gameplay code) can
+    // detect a live level-up menu and refuse to act. The bug fixed by
+    // this flag: pressing Esc while the level-up panel was open ran
+    // TogglePause which set Time.timeScale back to 1, leaving the panel
+    // visible but the world running — enemies could still kill you.
+    public static bool IsMenuOpen { get; private set; }
+
     private void Start()
     {
         player = FindFirstObjectByType<PlayerController>();
@@ -113,6 +120,7 @@ public class LevelUpManager : MonoBehaviour
     {
         levelUpPanel.SetActive(true);
         Time.timeScale = 0f;
+        IsMenuOpen = true;
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -307,6 +315,7 @@ public class LevelUpManager : MonoBehaviour
     {
         levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
+        IsMenuOpen = false;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;

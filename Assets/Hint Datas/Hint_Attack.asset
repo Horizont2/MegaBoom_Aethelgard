@@ -16,7 +16,7 @@ MonoBehaviour:
   title: MELEE
   body: Hold <b>LMB</b> to chain swings.
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: cc31d4fb137216b4793fa21f52048ff7, type: 3}
   duration: 6
   waitForInput: 0
   pauseGameWhileShown: 1

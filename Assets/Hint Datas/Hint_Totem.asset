@@ -11,12 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
   m_Name: Hint_Totem
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   key: Totem
-  title: 'CORRUPTED TOTEM'
-  body: 'Stand on the corrupted totem and press <b>F</b>. A wave will spawn — survive to purify it. Next totem unlocks afterward.'
+  title: CORRUPTED TOTEM
+  body: "Stand on the corrupted totem and press <b>F</b>. A wave will spawn \u2014
+    survive to purify it. Next totem unlocks afterward."
   icon: {fileID: 0}
-  videoClip: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: b6104545d77755e4bb543994882e4dfa, type: 3}
   duration: 7
   waitForInput: 0
   pauseGameWhileShown: 1
