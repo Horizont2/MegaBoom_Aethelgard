@@ -106,6 +106,31 @@ public class ShopManager : MonoBehaviour
 
     private const string DIAMONDS_KEY = "PlayerDiamonds";
 
+    // ResourceManager is the runtime source of truth for diamond
+    // balance — PlayerController.GainDiamond writes there first and
+    // never touches the PlayerPrefs key while ResourceManager exists.
+    // Reading PlayerPrefs directly in the shop meant the counter was
+    // always stale (showing the last persisted value, not the live
+    // balance). These helpers route through ResourceManager when it
+    // exists and fall back to PlayerPrefs only for safety.
+    private int ReadDiamonds()
+    {
+        if (ResourceManager.Instance != null) return ResourceManager.Instance.diamonds;
+        return PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+    }
+
+    private void WriteDiamonds(int newAmount)
+    {
+        if (ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.diamonds = newAmount;
+            ResourceManager.Instance.SaveStash();
+            ResourceManager.Instance.UpdateUI();
+        }
+        PlayerPrefs.SetInt(DIAMONDS_KEY, newAmount);
+        PlayerPrefs.Save();
+    }
+
     private Dictionary<CanvasGroup, Coroutine> activeFades = new Dictionary<CanvasGroup, Coroutine>();
 
     private void Awake()
@@ -165,12 +190,39 @@ public class ShopManager : MonoBehaviour
         if (btnCategoryFeet) btnCategoryFeet.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Feet));
     }
 
+    private int lastDisplayedDiamonds = -1;
+
     private void Update()
     {
+        // Defensive: the shop scene requires a free cursor. If any other
+        // system (tutorial hint dismissal, ESC handler, etc.) locked it
+        // away, restore it here. Cheap — sets the same value most frames.
+        if (!Cursor.visible || Cursor.lockState != CursorLockMode.None)
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+
         if (currentHeroModel != null && Input.GetMouseButton(0))
         {
             float rotX = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
             currentHeroModel.transform.Rotate(Vector3.up, -rotX, Space.World);
+        }
+
+        // Keep the displayed diamond balance in sync with the live
+        // ResourceManager value. UpdateUI() only refreshes the text on
+        // a category change or after a purchase — but the user can
+        // earn diamonds in another scene before opening the shop, and
+        // the cached on-load number was stale. Diff against the last
+        // rendered value to avoid burning a GC string every frame.
+        if (diamondBalanceText != null)
+        {
+            int live = ReadDiamonds();
+            if (live != lastDisplayedDiamonds)
+            {
+                lastDisplayedDiamonds = live;
+                diamondBalanceText.text = "Diamonds: " + live.ToString("N0");
+            }
         }
     }
 
@@ -392,6 +444,14 @@ public class ShopManager : MonoBehaviour
         isViewingWeapon = false;
         IsInsideCategory = false;
 
+        // Reset the shop camera back to the default view. When a
+        // category button is clicked, ShopCameraController.MoveToCategory
+        // is wired via the inspector OnClick event and slides the camera
+        // to the matching body part. Without this explicit MoveToDefault
+        // call the camera stayed zoomed on the last viewed part after
+        // Esc / Back-to-Categories.
+        if (ShopCameraController.Instance != null) ShopCameraController.Instance.MoveToDefault();
+
         int savedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)
         {
@@ -429,7 +489,7 @@ public class ShopManager : MonoBehaviour
 
     public void OnBuyOrSelectPressed()
     {
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -441,7 +501,7 @@ public class ShopManager : MonoBehaviour
             if (!isBought && myDiamonds >= price)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
+                WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.SetInt("SelectedWeaponID", id);
             }
@@ -462,7 +522,7 @@ public class ShopManager : MonoBehaviour
             if (!isBought && myDiamonds >= price)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
+                WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
             }
@@ -479,7 +539,7 @@ public class ShopManager : MonoBehaviour
 
     public void OnUpgradePressed()
     {
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -489,7 +549,7 @@ public class ShopManager : MonoBehaviour
             if (level < selectedWeaponData.maxUpgradeLevel && myDiamonds >= selectedWeaponData.GetUpgradeCost(level))
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedWeaponData.GetUpgradeCost(level));
+                WriteDiamonds(myDiamonds - selectedWeaponData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -502,7 +562,7 @@ public class ShopManager : MonoBehaviour
             if (level < selectedArmorData.maxUpgradeLevel && myDiamonds >= selectedArmorData.GetUpgradeCost(level))
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedArmorData.GetUpgradeCost(level));
+                WriteDiamonds(myDiamonds - selectedArmorData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("ArmorLevel_" + id, level + 1);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -514,8 +574,8 @@ public class ShopManager : MonoBehaviour
     private void UpdateUI(bool animateText)
     {
         if (buyButton) buyButton.gameObject.SetActive(true);
-        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + PlayerPrefs.GetInt(DIAMONDS_KEY, 0).ToString("N0");
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + ReadDiamonds().ToString("N0");
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {

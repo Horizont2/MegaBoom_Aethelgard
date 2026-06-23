@@ -1962,14 +1962,14 @@ Terrain:
   m_Enabled: 1
   serializedVersion: 6
   m_TerrainData: {fileID: 15600000, guid: 8d4c91d6964ec8a4fbe02d7b522a0ea8, type: 2}
-  m_TreeDistance: 5000
-  m_TreeBillboardDistance: 40
+  m_TreeDistance: 2500
+  m_TreeBillboardDistance: 30
   m_TreeCrossFadeLength: 5
-  m_TreeMaximumFullLODCount: 35
-  m_DetailObjectDistance: 120
-  m_DetailObjectDensity: 1
-  m_HeightmapPixelError: 12
-  m_SplatMapDistance: 600
+  m_TreeMaximumFullLODCount: 25
+  m_DetailObjectDistance: 80
+  m_DetailObjectDensity: 0.8
+  m_HeightmapPixelError: 20
+  m_SplatMapDistance: 400
   m_HeightmapMinimumLODSimplification: 0
   m_HeightmapMaximumLOD: 0
   m_ShadowCastingMode: 2

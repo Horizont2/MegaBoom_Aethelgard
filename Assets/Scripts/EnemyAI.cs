@@ -308,9 +308,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", false);
     }
 
+    private float lastHpFillValue = -1f;
     private void UpdateHealthUI()
     {
-        if (hpFill != null) hpFill.fillAmount = currentHealth / maxHealth;
+        if (hpFill == null) return;
+        // fillAmount setter dirties the Image's vertices and forces a
+        // CanvasUpdateRegistry rebuild on the parent canvas. With 25+
+        // enemies in a wave that's up to 25 dirty marks per frame even
+        // when no HP actually changed. Diff against the last sent value
+        // — Mathf.Approximately so we don't write for sub-pixel deltas.
+        float ratio = maxHealth > 0f ? currentHealth / maxHealth : 0f;
+        if (Mathf.Abs(ratio - lastHpFillValue) < 0.001f) return;
+        lastHpFillValue = ratio;
+        hpFill.fillAmount = ratio;
     }
 
     private void Update()

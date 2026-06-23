@@ -47,6 +47,8 @@ public class TutorialPanelUI : MonoBehaviour
 
     private float savedTimeScale = 1f;
     private bool isPaused = false;
+    private bool savedCursorVisible;
+    private CursorLockMode savedCursorLockState;
     private bool skipRequested = false; // ФІКС СЬКІПУ
 
     private void Awake()
@@ -132,9 +134,13 @@ public class TutorialPanelUI : MonoBehaviour
         Time.timeScale = savedTimeScale;
         isPaused = false;
 
-        // Повертаємо курсор в ігровий стан
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        // Restore the cursor to the state it had when the hint opened
+        // instead of force-locking it. The previous hardcoded
+        // (visible=false, Locked) erased the shop/camp/menu cursor and
+        // left the player unable to click anything after dismissing a
+        // hint in those scenes.
+        Cursor.visible = savedCursorVisible;
+        Cursor.lockState = savedCursorLockState;
     }
 
     private IEnumerator ShowRoutine(TutorialHintData data)
@@ -144,8 +150,13 @@ public class TutorialPanelUI : MonoBehaviour
         if (data.showSound != null && audioSource != null)
             audioSource.PlayOneShot(data.showSound);
 
-        // ФІКС БЛОКУВАННЯ: Примусово зупиняємо час і показуємо курсор
+        // ФІКС БЛОКУВАННЯ: Примусово зупиняємо час і показуємо курсор.
+        // Snapshot the caller's cursor state so we can restore it
+        // verbatim when the hint closes — scenes like Shop / Camp /
+        // Menu need the cursor to STAY visible after the hint.
         savedTimeScale = Time.timeScale;
+        savedCursorVisible = Cursor.visible;
+        savedCursorLockState = Cursor.lockState;
         isPaused = true;
         Time.timeScale = 0f;
         Cursor.visible = true;
