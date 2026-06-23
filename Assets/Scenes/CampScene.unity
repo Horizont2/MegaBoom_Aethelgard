@@ -52505,7 +52505,6 @@ GameObject:
   - component: {fileID: 522811751}
   - component: {fileID: 522811756}
   - component: {fileID: 522811757}
-  - component: {fileID: 522811758}
   - component: {fileID: 522811759}
   - component: {fileID: 522811760}
   m_Layer: 0
@@ -52672,28 +52671,6 @@ MonoBehaviour:
   minYAngle: -30
   maxYAngle: 50
   isCinematicMode: 0
---- !u!114 &522811758
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 522811750}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 04932c8720b2f97489ab3fd648275e56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CameraCollision
-  player: {fileID: 1126242359494067578}
-  minDistance: 1
-  maxDistance: 10
-  smoothSpeed: 10
-  dollyDir: {x: 0, y: 0, z: 0}
-  distance: 0
-  collisionLayers:
-    serializedVersion: 2
-    m_Bits: 2048
-  isCinematicMode: 0
 --- !u!114 &522811759
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52741,7 +52718,7 @@ MonoBehaviour:
   playerTarget: {fileID: 1126242359494067578}
   foliageLayer:
     serializedVersion: 2
-    m_Bits: 35328
+    m_Bits: 33280
   raycastRadius: 0.7
   playerProximityIgnore: 0.6
   cameraProximityIgnore: 0.4
@@ -153583,15 +153560,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3650638188812647480, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 26.41
+      value: 25.88
       objectReference: {fileID: 0}
     - target: {fileID: 3650638188812647480, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 21.79
+      value: 21.83
       objectReference: {fileID: 0}
     - target: {fileID: 3650638188812647480, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 47
+      value: 46.93
       objectReference: {fileID: 0}
     - target: {fileID: 3650638188812647480, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
       propertyPath: m_LocalRotation.w

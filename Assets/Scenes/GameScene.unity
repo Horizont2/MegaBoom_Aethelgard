@@ -12659,7 +12659,7 @@ MonoBehaviour:
   fovTransitionSpeed: 2.5
   collisionLayers:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 2561
   positionSmoothTime: 0.08
   mouseSensitivity: 2
   minYAngle: -30
@@ -12680,7 +12680,7 @@ MonoBehaviour:
   playerTarget: {fileID: 615663591}
   foliageLayer:
     serializedVersion: 2
-    m_Bits: 32768
+    m_Bits: 33280
   raycastRadius: 0.7
   playerProximityIgnore: 0.6
   cameraProximityIgnore: 0.4
