@@ -104,15 +104,32 @@ public class GlobalHUD : MonoBehaviour
     private void OnEnable() { SceneManager.sceneLoaded += OnSceneLoaded; }
     private void OnDisable() { SceneManager.sceneLoaded -= OnSceneLoaded; }
 
+    private float lastBossFill = -1f;
+    private float lastBossCatchupFill = -1f;
+
     private void Update()
     {
         if (bossUIGroup != null && bossUIGroup.alpha > 0f)
         {
             if (bossHpFill != null)
-                bossHpFill.fillAmount = Mathf.Lerp(bossHpFill.fillAmount, targetBossHpRatio, Time.deltaTime * 10f);
+            {
+                float bf = Mathf.Lerp(bossHpFill.fillAmount, targetBossHpRatio, Time.deltaTime * 10f);
+                if (Mathf.Abs(bf - lastBossFill) > 0.0005f)
+                {
+                    bossHpFill.fillAmount = bf;
+                    lastBossFill = bf;
+                }
+            }
 
             if (bossHpCatchupFill != null && bossHpCatchupFill.fillAmount > targetBossHpRatio)
-                bossHpCatchupFill.fillAmount = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
+            {
+                float bcf = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
+                if (Mathf.Abs(bcf - lastBossCatchupFill) > 0.0005f)
+                {
+                    bossHpCatchupFill.fillAmount = bcf;
+                    lastBossCatchupFill = bcf;
+                }
+            }
         }
 
         UpdateLowHealthVignette();

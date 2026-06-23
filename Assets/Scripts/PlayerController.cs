@@ -91,6 +91,15 @@ public class PlayerController : MonoBehaviour, IDamageable
     public float uiLerpSpeed = 5f;
     private float visualXP = 0f;
 
+    // Cached HUD fill values so the per-frame Update() can skip the
+    // fillAmount setter when nothing changed. Writing the setter every
+    // frame triggers a CanvasRenderer rebuild even with identical
+    // values, which shows up in the Profiler as Canvas.SendWillRenderCanvases.
+    private float lastHpFill = -1f;
+    private float lastHpCatchupFill = -1f;
+    private float lastXpFill = -1f;
+    private float lastDashStaminaFill = -1f;
+
     [Header("Dash Juice")]
     public ParticleSystem dashParticles;
     public float dashSpeed = 25f;
@@ -530,18 +539,41 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead) return;
 
         if (dashStaminaFill != null)
-            dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
+        {
+            float dashTarget = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
+            if (Mathf.Abs(dashTarget - lastDashStaminaFill) > 0.001f)
+            {
+                dashStaminaFill.fillAmount = dashTarget;
+                lastDashStaminaFill = dashTarget;
+            }
+        }
 
         float targetHpFill = currentHealth / maxHealth;
-        if (hpFill != null) hpFill.fillAmount = targetHpFill;
+        if (hpFill != null && Mathf.Abs(targetHpFill - lastHpFill) > 0.0005f)
+        {
+            hpFill.fillAmount = targetHpFill;
+            lastHpFill = targetHpFill;
+        }
         if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
-            hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+        {
+            float catchup = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+            if (Mathf.Abs(catchup - lastHpCatchupFill) > 0.0005f)
+            {
+                hpCatchupFill.fillAmount = catchup;
+                lastHpCatchupFill = catchup;
+            }
+        }
 
         float targetXpFill = currentXP / xpToNextLevel;
         if (xpFill != null && visualXP < currentXP)
         {
             visualXP = Mathf.Lerp(visualXP, currentXP, Time.unscaledDeltaTime * uiLerpSpeed);
-            xpFill.fillAmount = visualXP / xpToNextLevel;
+            float xpAmt = visualXP / xpToNextLevel;
+            if (Mathf.Abs(xpAmt - lastXpFill) > 0.0005f)
+            {
+                xpFill.fillAmount = xpAmt;
+                lastXpFill = xpAmt;
+            }
         }
 
         CheckStack();
