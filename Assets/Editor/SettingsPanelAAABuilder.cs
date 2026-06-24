@@ -128,6 +128,17 @@ public class SettingsPanelAAABuilder : EditorWindow
         Undo.SetCurrentGroupName("Build AAA Settings");
         int undoGroup = Undo.GetCurrentGroup();
 
+        // Tear down any previous build (and the legacy "SettingsPanel"
+        // GameObject from the old miniwindow flow) so we don't end up
+        // with two overlapping panels in the scene.
+        for (int i = targetCanvas.transform.childCount - 1; i >= 0; i--)
+        {
+            Transform c = targetCanvas.transform.GetChild(i);
+            if (c == null) continue;
+            if (c.name == "SettingsPanelAAA" || c.name == "SettingsPanel")
+                Undo.DestroyObjectImmediate(c.gameObject);
+        }
+
         // Root: full-screen overlay sitting under the canvas.
         GameObject rootGO = new GameObject("SettingsPanelAAA",
             typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
@@ -160,8 +171,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform mid = NewRect("Mid", rootRT);
         mid.anchorMin = new Vector2(0f, 0f);
         mid.anchorMax = new Vector2(1f, 1f);
-        mid.offsetMin = new Vector2(100f, 180f);
-        mid.offsetMax = new Vector2(-100f, -180f);
+        mid.offsetMin = new Vector2(150f, 200f);
+        mid.offsetMax = new Vector2(-150f, -200f);
 
         RectTransform sidebar = BuildSidebar(mid);
         RectTransform center = BuildCenter(mid);
@@ -304,7 +315,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         s.anchorMin = new Vector2(0f, 0f);
         s.anchorMax = new Vector2(0f, 1f);
         s.pivot = new Vector2(0f, 0.5f);
-        s.sizeDelta = new Vector2(360f, 0f);
+        s.sizeDelta = new Vector2(290f, 0f);
         s.anchoredPosition = Vector2.zero;
         AddPanelBg(s, colPanel);
         AddBorder(s, colBorder);
@@ -313,12 +324,12 @@ public class SettingsPanelAAABuilder : EditorWindow
         layoutGO.transform.SetParent(s, false);
         RectTransform layoutRT = layoutGO.GetComponent<RectTransform>();
         StretchFull(layoutRT);
-        layoutRT.offsetMin = new Vector2(0f, 20f);
-        layoutRT.offsetMax = new Vector2(0f, -20f);
+        layoutRT.offsetMin = new Vector2(0f, 24f);
+        layoutRT.offsetMax = new Vector2(0f, -24f);
 
         VerticalLayoutGroup vlg = layoutGO.GetComponent<VerticalLayoutGroup>();
-        vlg.padding = new RectOffset(12, 12, 12, 12);
-        vlg.spacing = 6;
+        vlg.padding = new RectOffset(20, 20, 8, 8);
+        vlg.spacing = 8;
         vlg.childAlignment = TextAnchor.UpperCenter;
         vlg.childControlWidth = true;
         vlg.childControlHeight = false;
@@ -340,7 +351,12 @@ public class SettingsPanelAAABuilder : EditorWindow
             le.flexibleHeight = 0f;
 
             Image bg = btnGO.GetComponent<Image>();
-            bg.color = new Color(0.105f, 0.115f, 0.13f, 1f); // default fill
+            // First category renders selected, others render default.
+            // Colours mirror SettingsAAATheme defaults so the panel looks
+            // right immediately without anyone hitting Apply Theme.
+            bg.color = (i == 0)
+                ? new Color(0.42f, 0.33f, 0.10f, 1f)
+                : new Color(0.105f, 0.115f, 0.13f, 1f);
             bg.raycastTarget = true;
 
             Button btn = btnGO.GetComponent<Button>();
@@ -358,7 +374,12 @@ public class SettingsPanelAAABuilder : EditorWindow
             RectTransform strokeRT = strokeGO.GetComponent<RectTransform>();
             StretchFull(strokeRT);
             Image strokeImg = strokeGO.GetComponent<Image>();
-            strokeImg.color = new Color(0.04f, 0.05f, 0.06f, 1f);
+            // No sprite yet → keep stroke transparent so we don't paint
+            // a dark plate over the fill. Once a sprite is supplied via
+            // SettingsAAATheme, EnsureStrokeChild fills it in.
+            strokeImg.color = (i == 0)
+                ? new Color(1f, 0.823f, 0.247f, 1f)
+                : new Color(0f, 0f, 0f, 0f);
             strokeImg.raycastTarget = false;
             categoryStripes.Add(strokeImg); // kept for backwards-compat with runtime.categoryStripes
 
@@ -366,7 +387,9 @@ public class SettingsPanelAAABuilder : EditorWindow
             TextMeshProUGUI t = AddText(btn.GetComponent<RectTransform>(), "Text",
                 $"  {spec.icon}   {spec.label}", 20, FontStyles.Bold);
             t.alignment = TextAlignmentOptions.MidlineLeft;
-            t.color = new Color(0.96f, 0.94f, 0.90f, 1f);
+            t.color = (i == 0)
+                ? new Color(1f, 0.92f, 0.55f, 1f)
+                : new Color(0.96f, 0.94f, 0.90f, 1f);
             StretchFull(t.rectTransform);
 
             // State driver — wires both layers' colours from the theme.
@@ -389,8 +412,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform c = NewRect("Center", parent);
         c.anchorMin = new Vector2(0f, 0f);
         c.anchorMax = new Vector2(1f, 1f);
-        c.offsetMin = new Vector2(400f, 0f);
-        c.offsetMax = new Vector2(-500f, 0f);
+        c.offsetMin = new Vector2(420f, 0f);
+        c.offsetMax = new Vector2(-510f, 0f);
         AddPanelBg(c, colPanel);
         AddBorder(c, colBorder);
 
@@ -461,10 +484,10 @@ public class SettingsPanelAAABuilder : EditorWindow
         bRT.anchorMin = new Vector2(1f, 0f);
         bRT.anchorMax = new Vector2(1f, 1f);
         bRT.pivot = new Vector2(1f, 0.5f);
-        bRT.sizeDelta = new Vector2(10f, 0f);
+        bRT.sizeDelta = new Vector2(6f, 0f);
         bRT.anchoredPosition = Vector2.zero;
         Image bImg = barGO.GetComponent<Image>();
-        bImg.color = colTrack;
+        bImg.color = new Color(1f, 1f, 1f, 0.04f);
 
         GameObject slidingGO = new GameObject("Sliding Area", typeof(RectTransform));
         slidingGO.transform.SetParent(bRT, false);
@@ -479,7 +502,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform hRT = hGO.GetComponent<RectTransform>();
         StretchFull(hRT);
         Image hImg = hGO.GetComponent<Image>();
-        hImg.color = colAccent;
+        hImg.color = new Color(1f, 1f, 1f, 0.18f);
 
         Scrollbar sb = barGO.GetComponent<Scrollbar>();
         sb.direction = Scrollbar.Direction.BottomToTop;
@@ -496,18 +519,20 @@ public class SettingsPanelAAABuilder : EditorWindow
         r.anchorMin = new Vector2(1f, 0f);
         r.anchorMax = new Vector2(1f, 1f);
         r.pivot = new Vector2(1f, 0.5f);
-        r.sizeDelta = new Vector2(460f, 0f);
+        r.sizeDelta = new Vector2(380f, 0f);
         r.anchoredPosition = Vector2.zero;
-        AddPanelBg(r, colPanel);
-        AddBorder(r, colBorder);
+        // Right rail is a TRANSPARENT layout container — the two
+        // children (PREVIEW + DESCRIPTION) are the real cards each
+        // with their own painted plate. Matches the reference where
+        // you see two distinct cards instead of one wrapping panel.
 
-        // Preview placeholder (top half).
+        // Preview card (top half) — full painted card.
         RectTransform preview = NewRect("Preview", r);
         preview.anchorMin = new Vector2(0f, 0.5f);
         preview.anchorMax = new Vector2(1f, 1f);
-        preview.offsetMin = new Vector2(16f, 8f);
-        preview.offsetMax = new Vector2(-16f, -16f);
-        AddPanelBg(preview, colTrack);
+        preview.offsetMin = new Vector2(0f, 16f);
+        preview.offsetMax = new Vector2(0f, 0f);
+        AddPanelBg(preview, colPanel);
         AddBorder(preview, colBorder);
 
         TextMeshProUGUI pTitle = AddText(preview, "PreviewTitle", "PREVIEW", 18, FontStyles.Bold);
@@ -527,13 +552,13 @@ public class SettingsPanelAAABuilder : EditorWindow
         pHint.alignment = TextAlignmentOptions.Center;
         StretchFull(pHint.rectTransform);
 
-        // Description box (bottom half).
+        // Description card (bottom half) — separate painted card.
         RectTransform desc = NewRect("Description", r);
         desc.anchorMin = new Vector2(0f, 0f);
         desc.anchorMax = new Vector2(1f, 0.5f);
-        desc.offsetMin = new Vector2(16f, 16f);
-        desc.offsetMax = new Vector2(-16f, -8f);
-        AddPanelBg(desc, colTrack);
+        desc.offsetMin = new Vector2(0f, 0f);
+        desc.offsetMax = new Vector2(0f, -16f);
+        AddPanelBg(desc, colPanel);
         AddBorder(desc, colBorder);
         descriptionPanel = desc.gameObject;
 

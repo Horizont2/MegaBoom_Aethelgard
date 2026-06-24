@@ -34,16 +34,19 @@ public class SettingsAAATheme : MonoBehaviour
     public Sprite[] categoryIcons = new Sprite[8];
 
     [Header("=== Sidebar — State Colours ===")]
+    // Selected fill is a saturated dark olive (gold pulled way down on
+    // value) so the bright gold text + brush stroke read on top of it —
+    // matches the painted GAMEPLAY card in the reference exactly.
     public Color categoryFillDefault   = new Color(0.105f, 0.115f, 0.13f, 1f);
     public Color categoryStrokeDefault = new Color(0.04f,  0.05f,  0.06f, 1f);
-    public Color categoryFillHover     = new Color(0.16f,  0.17f,  0.20f, 1f);
+    public Color categoryFillHover     = new Color(0.14f,  0.15f,  0.18f, 1f);
     public Color categoryStrokeHover   = new Color(0.45f,  0.37f,  0.11f, 1f);
-    public Color categoryFillSelected  = new Color(1f,     0.823f, 0.247f, 0.18f);
+    public Color categoryFillSelected  = new Color(0.42f,  0.33f,  0.10f, 1f);
     public Color categoryStrokeSelected= new Color(1f,     0.823f, 0.247f, 1f);
     public Color categoryFillDisabled  = new Color(0.10f,  0.10f,  0.12f, 0.5f);
     public Color categoryStrokeDisabled= new Color(0.20f,  0.20f,  0.22f, 0.5f);
     public Color categoryTextDefault   = new Color(0.96f,  0.94f,  0.90f, 1f);
-    public Color categoryTextSelected  = new Color(1f,     0.823f, 0.247f, 1f);
+    public Color categoryTextSelected  = new Color(1f,     0.92f,  0.55f, 1f);
 
     [Header("=== Sliders ===")]
     public Sprite sliderTrack;
