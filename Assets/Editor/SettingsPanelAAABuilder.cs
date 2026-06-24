@@ -52,16 +52,21 @@ public class SettingsPanelAAABuilder : EditorWindow
 
     // The categories that show up in the sidebar. Icon is a single
     // glyph TMP renders as a sprite-like prefix.
+    // Icon glyphs use simple ASCII so they render in any TMP font (the
+    // project's Montserrat-Regular SDF doesn't ship with the fancy
+    // pictograms). Once SettingsAAATheme.categoryIcons sprites are
+    // wired up the text icon becomes redundant — keep it as a typesafe
+    // fallback for setups without per-category PNGs.
     private static readonly CatSpec[] Categories = new CatSpec[]
     {
-        new CatSpec { id = "General",       label = "GENERAL",       icon = "▎" },
-        new CatSpec { id = "Gameplay",      label = "GAMEPLAY",      icon = "⚔" },
-        new CatSpec { id = "Audio",         label = "AUDIO",         icon = "♪" },
-        new CatSpec { id = "Video",         label = "VIDEO",         icon = "▦" },
-        new CatSpec { id = "Graphics",      label = "GRAPHICS",      icon = "□" },
-        new CatSpec { id = "Controls",      label = "CONTROLS",      icon = "⌖" },
-        new CatSpec { id = "Accessibility", label = "ACCESSIBILITY", icon = "✦" },
-        new CatSpec { id = "Language",      label = "LANGUAGE",      icon = "✎" },
+        new CatSpec { id = "General",       label = "GENERAL",       icon = "G" },
+        new CatSpec { id = "Gameplay",      label = "GAMEPLAY",      icon = "P" },
+        new CatSpec { id = "Audio",         label = "AUDIO",         icon = "A" },
+        new CatSpec { id = "Video",         label = "VIDEO",         icon = "V" },
+        new CatSpec { id = "Graphics",      label = "GRAPHICS",      icon = "Q" },
+        new CatSpec { id = "Controls",      label = "CONTROLS",      icon = "C" },
+        new CatSpec { id = "Accessibility", label = "ACCESSIBILITY", icon = "K" },
+        new CatSpec { id = "Language",      label = "LANGUAGE",      icon = "L" },
     };
 
     private void OnGUI()

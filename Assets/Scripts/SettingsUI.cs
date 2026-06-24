@@ -542,12 +542,15 @@ public class SettingsUI : MonoBehaviour
         if (tabTexts != null && tabTexts.Length > 0 && tabPanels != null && tabPanels.Length > 0)
         {
             currentTabIndex = 0;
-            Vector3 targetWorldPos = tabTexts[0].rectTransform.position;
-            Vector3 targetLocalPos = underline.parent.InverseTransformPoint(targetWorldPos);
-            targetLineLocalX = targetLocalPos.x;
-
-            if (underline != null)
+            // Legacy tab + underline animator from the old miniwindow flow.
+            // The AAA panel doesn't use these; guard every deref so an
+            // unassigned underline / null tabText doesn't crash OpenSettings.
+            if (tabTexts[0] != null && underline != null && underline.parent != null)
             {
+                Vector3 targetWorldPos = tabTexts[0].rectTransform.position;
+                Vector3 targetLocalPos = underline.parent.InverseTransformPoint(targetWorldPos);
+                targetLineLocalX = targetLocalPos.x;
+
                 Vector3 pos = underline.localPosition;
                 pos.x = targetLineLocalX;
                 underline.localPosition = pos;
