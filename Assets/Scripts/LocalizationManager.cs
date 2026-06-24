@@ -112,6 +112,131 @@ public static class LocalizationManager
         Add("TOAST_QUICKLOADED",       "Save Restored",               "Збереження відновлено");
         Add("TOAST_LORE_FOUND",        "New Lore Entry: {0}",         "Новий запис у літописі: {0}");
 
+        // === Text-as-key entries for AutoLocalize ===
+        // AutoLocalize uses the visible English text as the
+        // localization key. Keep these in sync with what's shown in
+        // scenes — missing entries fall through to the original.
+        Add("PAUSED",                  "PAUSED",                       "ПАУЗА");
+        Add("CONTINUE",                "CONTINUE",                     "ПРОДОВЖИТИ");
+        Add("RESUME",                  "RESUME",                       "ПРОДОВЖИТИ");
+        Add("BACK TO MENU",            "BACK TO MENU",                 "НА ГОЛОВНУ");
+        Add("SETTINGS",                "SETTINGS",                     "НАЛАШТУВАННЯ");
+        Add("BACK",                    "BACK",                         "НАЗАД");
+        Add("CLOSE",                   "CLOSE",                        "ЗАКРИТИ");
+        Add("APPLY",                   "APPLY",                        "ПРИЙНЯТИ");
+        Add("APPLY & CLOSE",           "APPLY & CLOSE",                "ПРИЙНЯТИ І ЗАКРИТИ");
+        Add("RESET DEFAULTS",          "RESET DEFAULTS",               "СКИНУТИ ДО ЗАМОВЧУВАНЬ");
+        Add("DISCARD",                 "DISCARD",                      "ВІДХИЛИТИ");
+        Add("NEW GAME",                "NEW GAME",                     "НОВА ГРА");
+        Add("LOAD GAME",               "LOAD GAME",                    "ЗАВАНТАЖИТИ");
+        Add("LOAD",                    "LOAD",                         "ЗАВАНТАЖИТИ");
+        Add("QUIT",                    "QUIT",                         "ВИЙТИ");
+        Add("QUIT TO DESKTOP",         "QUIT TO DESKTOP",              "ВИЙТИ В ОС");
+        Add("EXIT",                    "EXIT",                         "ВИЙТИ");
+        Add("PLAY",                    "PLAY",                         "ГРАТИ");
+        Add("START",                   "START",                        "СТАРТ");
+        // Sidebar categories used by AAA settings panel
+        Add("GENERAL",                 "GENERAL",                      "ЗАГАЛЬНІ");
+        Add("GAMEPLAY",                "GAMEPLAY",                     "ГРА");
+        Add("AUDIO",                   "AUDIO",                        "ЗВУК");
+        Add("VIDEO",                   "VIDEO",                        "ВІДЕО");
+        Add("GRAPHICS",                "GRAPHICS",                     "ГРАФІКА");
+        Add("CONTROLS",                "CONTROLS",                     "КЕРУВАННЯ");
+        Add("ACCESSIBILITY",           "ACCESSIBILITY",                "ДОСТУПНІСТЬ");
+        Add("LANGUAGE",                "LANGUAGE",                     "МОВА");
+        // Section headers + common settings rows
+        Add("HUD",                     "HUD",                          "HUD");
+        Add("SAVE",                    "SAVE",                         "ЗБЕРЕЖЕННЯ");
+        Add("MIX",                     "MIX",                          "МІКС");
+        Add("DISPLAY",                 "DISPLAY",                      "ДИСПЛЕЙ");
+        Add("CAMERA",                  "CAMERA",                       "КАМЕРА");
+        Add("QUALITY PRESET",          "QUALITY PRESET",               "ПРЕСЕТ ЯКОСТІ");
+        Add("TIERS",                   "TIERS",                        "РІВНІ");
+        Add("POST-FX",                 "POST-FX",                      "ПОСТ-ЕФЕКТИ");
+        Add("MOUSE & KEYBOARD",        "MOUSE & KEYBOARD",             "МИША ТА КЛАВІАТУРА");
+        Add("MOUSE & CAMERA",          "MOUSE & CAMERA",               "МИША ТА КАМЕРА");
+        Add("GAMEPAD",                 "GAMEPAD",                      "ГЕЙМПАД");
+        Add("BINDINGS",                "BINDINGS",                     "ПРИВ'ЯЗКИ");
+        Add("FEEDBACK",                "FEEDBACK",                     "ВІДГУК");
+        Add("DIFFICULTY",              "DIFFICULTY",                   "СКЛАДНІСТЬ");
+        Add("TUTORIAL",                "TUTORIAL",                     "НАВЧАННЯ");
+        Add("BEHAVIOUR",               "BEHAVIOUR",                    "ПОВЕДІНКА");
+        Add("VISUAL AIDS",             "VISUAL AIDS",                  "ВІЗУАЛЬНА ДОПОМОГА");
+        Add("UI",                      "UI",                           "ІНТЕРФЕЙС");
+        Add("TEXT",                    "TEXT",                         "ТЕКСТ");
+        Add("SUBTITLES",               "SUBTITLES",                    "СУБТИТРИ");
+        // Toggles & rows in settings panel
+        Add("Show FPS",                "Show FPS",                     "Показати FPS");
+        Add("Limit FPS",               "Limit FPS",                    "Обмежити FPS");
+        Add("Auto-Save",               "Auto-Save",                    "Авто-збереження");
+        Add("Damage Popups",           "Damage Popups",                "Цифри урону");
+        Add("Screen Shake",            "Screen Shake",                 "Тряска екрану");
+        Add("Hit-Stop FX",             "Hit-Stop FX",                  "Заморозка на ударі");
+        Add("Low HP Vignette",         "Low HP Vignette",              "Червона рамка при низькому HP");
+        Add("Tutorial Hints",          "Tutorial Hints",               "Підказки");
+        Add("Master",                  "Master",                       "Загальна");
+        Add("Music",                   "Music",                        "Музика");
+        Add("Sound FX",                "Sound FX",                     "Ефекти");
+        Add("Voice",                   "Voice",                        "Голос");
+        Add("Ambient",                 "Ambient",                      "Атмосфера");
+        Add("Mute When Unfocused",     "Mute When Unfocused",          "Глушити коли вікно неактивне");
+        Add("Resolution",              "Resolution",                   "Роздільна здатність");
+        Add("Window Mode",             "Window Mode",                  "Режим вікна");
+        Add("Refresh Rate",            "Refresh Rate",                 "Частота оновлення");
+        Add("Monitor",                 "Monitor",                      "Монітор");
+        Add("FPS Cap",                 "FPS Cap",                      "Ліміт FPS");
+        Add("V-Sync",                  "V-Sync",                       "Вертикальна синхр.");
+        Add("Field of View",           "Field of View",                "Поле зору");
+        Add("Brightness",              "Brightness",                   "Яскравість");
+        Add("Gamma",                   "Gamma",                        "Гамма");
+        Add("Preset",                  "Preset",                       "Пресет");
+        Add("Render Scale (%)",        "Render Scale (%)",             "Рендер-масштаб (%)");
+        Add("Anti-Aliasing",           "Anti-Aliasing",                "Згладжування");
+        Add("Texture Quality",         "Texture Quality",              "Якість текстур");
+        Add("Shadow Quality",          "Shadow Quality",               "Якість тіней");
+        Add("Shadow Distance",         "Shadow Distance",              "Дистанція тіней");
+        Add("Post Processing",         "Post Processing",              "Постобробка");
+        Add("Dynamic Shadows",         "Dynamic Shadows",              "Динамічні тіні");
+        Add("Motion Blur",             "Motion Blur",                  "Розмиття руху");
+        Add("Depth of Field",          "Depth of Field",               "Глибина різкості");
+        Add("Bloom",                   "Bloom",                        "Свічення");
+        Add("Ambient Occlusion",       "Ambient Occlusion",            "Затемнення");
+        Add("Volumetric Lighting",     "Volumetric Lighting",          "Об'ємне світло");
+        Add("Mouse Sensitivity",       "Mouse Sensitivity",            "Чутливість миші");
+        Add("Invert Y Axis",           "Invert Y Axis",                "Інверсія Y");
+        Add("Controller Vibration",    "Controller Vibration",         "Вібрація геймпада");
+        Add("Aim Assist",              "Aim Assist",                   "Прицілювання");
+        Add("Subtitle Size",           "Subtitle Size",                "Розмір субтитрів");
+        Add("Subtitle Background",     "Subtitle Background",          "Фон субтитрів");
+        Add("Colorblind Mode",         "Colorblind Mode",              "Режим дальтоніка");
+        Add("High Contrast UI",        "High Contrast UI",             "Високий контраст");
+        Add("Reduce Motion",           "Reduce Motion",                "Менше анімацій");
+        Add("Photosensitivity Safe Mode","Photosensitivity Safe Mode", "Безпечний режим (фотосенсит.)");
+        Add("UI Scale",                "UI Scale",                     "Масштаб UI");
+        Add("Game Language",           "Game Language",                "Мова гри");
+        Add("Voice Language",          "Voice Language",               "Мова озвучення");
+        Add("Hold to Sprint",          "Hold to Sprint",               "Утримувати спринт");
+        Add("Custom key bindings coming soon.","Custom key bindings coming soon.","Власні клавіші — скоро.");
+        Add("PREVIEW",                 "PREVIEW",                      "ПРЕВ'Ю");
+        Add("DESCRIPTION",             "DESCRIPTION",                  "ОПИС");
+        Add("Mouse over any option to read what it does.",
+                                       "Mouse over any option to read what it does.",
+                                       "Наведи на будь-яку опцію, щоб прочитати опис.");
+        // HUD prompts + section headers in gameplay
+        Add("ENGINEERING MASTERY",     "ENGINEERING MASTERY",          "ІНЖЕНЕРНА МАЙСТЕРНІСТЬ");
+        Add("WOOD",                    "WOOD",                         "ДЕРЕВО");
+        Add("STONE",                   "STONE",                        "КАМІНЬ");
+        Add("FOOD",                    "FOOD",                         "ЇЖА");
+        Add("DIAMONDS",                "DIAMONDS",                     "АЛМАЗИ");
+        Add("BACKPACK",                "BACKPACK",                     "РЮКЗАК");
+        Add("HP",                      "HP",                           "HP");
+        Add("STAMINA",                 "STAMINA",                      "ВИТРИВАЛІСТЬ");
+        Add("LVL",                     "LVL",                          "РІВ");
+        Add("PURIFY TOTEM",            "PURIFY TOTEM",                 "ОЧИСТИТИ ТОТЕМ");
+        Add("[E] Open Map",            "[E] Open Map",                 "[E] Відкрити мапу");
+        Add("SLAY THE OVERLORD!",      "SLAY THE OVERLORD!",           "ЗНИЩ ВЕЛИТЕНЯ!");
+        Add("SURVIVE THE SWARM!",      "SURVIVE THE SWARM!",           "ВИЖИВИ ПІД НАТИСКОМ!");
+
         // === Lore codex entries ===
         SeedLore();
 
