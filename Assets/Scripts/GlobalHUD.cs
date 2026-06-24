@@ -419,20 +419,35 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
-        if (bossUIGroup == null) return;
-        // Force-activate in case SetGameplayPanelsActive(false) was called
-        // earlier in the region cinematic and left the GameObject inactive.
-        // Without this, ShowBossUI silently no-op'd and the boss bar
-        // never appeared during the actual fight.
-        bossUIGroup.gameObject.SetActive(true);
-        bossUIGroup.alpha = Mathf.Max(bossUIGroup.alpha, 0.001f); // make sure Update's lerp ticks
+        if (bossUIGroup == null)
+        {
+            Debug.LogWarning("[GlobalHUD] ShowBossUI: bossUIGroup is null — wire it in the inspector.");
+            return;
+        }
+        // Walk up and force-enable any inactive ancestor. The boss bar
+        // sometimes lived under a parent that SetGameplayPanelsActive(false)
+        // had disabled and never re-enabled — the fade routine then
+        // ticked invisibly because the GameObject was disabled.
+        Transform t = bossUIGroup.transform;
+        while (t != null)
+        {
+            if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+            t = t.parent;
+        }
+        // Snap to fully visible instead of fading from 0. The fade
+        // routine relied on a per-frame coroutine lerp that could be
+        // pre-empted by FadeBossUIRoutine(0) in the same frame from
+        // OnSceneLoaded's HideBossUI, leaving the bar permanently at
+        // alpha 0 mid-fight.
+        bossUIGroup.alpha = 1f;
+        bossUIGroup.blocksRaycasts = true;
+        bossUIGroup.interactable = true;
+        if (bossUIFadeRoutine != null) { StopCoroutine(bossUIFadeRoutine); bossUIFadeRoutine = null; }
 
         if (bossNameText != null) bossNameText.text = bossName;
         targetBossHpRatio = Mathf.Clamp01(maxHp > 0f ? currentHp / maxHp : 1f);
         if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
         if (bossHpCatchupFill != null) bossHpCatchupFill.fillAmount = targetBossHpRatio;
-        if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
-        bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(1f));
     }
 
     public void UpdateBossHealth(float currentHp, float maxHp) { targetBossHpRatio = currentHp / maxHp; }
@@ -480,6 +495,18 @@ public class GlobalHUD : MonoBehaviour
 
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
         HideBossUI();
+
+        // Auxiliary HUD widgets (pickup popup container, build widget rail)
+        // can be left inactive by a previous scene's SetGameplayPanelsActive(false)
+        // — e.g. region victory cinematic disabled them, the next scene
+        // load never re-enabled them. Force-reset them here so the polished
+        // left-side pickup popup actually fires when the player re-enters
+        // a gameplay scene.
+        if (showGameplayUI)
+        {
+            if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(true);
+            if (widgetContainer != null) widgetContainer.gameObject.SetActive(true);
+        }
 
         if (isPaused)
         {

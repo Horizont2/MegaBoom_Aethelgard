@@ -333,25 +333,29 @@ public class DayNightCycle : MonoBehaviour
             if (mainCam != null)
             {
                 // Sample from an annulus instead of a disk so a strike can
-                // never land directly on the player. Old `insideUnitCircle
-                // * 60` had no inner radius — bolts dropped at player's
-                // feet whenever rng was unkind.
-                const float minDistance = 18f;
+                // never land near the player. Old `insideUnitCircle * 60`
+                // had no inner radius. Use the player's transform when we
+                // have it (camera can sit a few metres behind/above the
+                // player) so the inner ring is measured from the actual
+                // target, not the orbit camera.
+                const float minDistance = 35f;
+                Transform reference = mainCam.transform;
+                var playerObj = GameObject.FindGameObjectWithTag("Player");
+                if (playerObj != null) reference = playerObj.transform;
+
                 Vector2 dir = Random.insideUnitCircle.normalized;
                 if (dir.sqrMagnitude < 0.0001f) dir = Vector2.right;
                 float dist = Random.Range(minDistance, lightningSpawnRadius);
                 Vector2 offset = dir * dist;
-                spawnPos = mainCam.transform.position + new Vector3(offset.x, 0, offset.y);
+                spawnPos = reference.position + new Vector3(offset.x, 0, offset.y);
                 if (strikeGround && Terrain.activeTerrain != null)
                     spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
                 else
                 {
-                    spawnPos.y = mainCam.transform.position.y + Random.Range(80f, 150f);
-                    // Previously this allowed ±70° tilt on X and Z, which
-                    // made bolts lie nearly horizontal — they read as
-                    // crooked beams floating in the sky instead of strikes
-                    // falling toward the ground. Keep the bolt close to
-                    // vertical and use Y for rotational variety only.
+                    spawnPos.y = reference.position.y + Random.Range(80f, 150f);
+                    // Air bolts: keep nearly vertical, vary only on Y for
+                    // rotational presentation. ±70° tilt made them lie
+                    // sideways like billboards.
                     spawnRot = Quaternion.Euler(
                         Random.Range(-12f, 12f),
                         Random.Range(0f, 360f),
@@ -375,18 +379,49 @@ public class DayNightCycle : MonoBehaviour
                 if (ObjectPoolManager.Instance != null)
                 {
                     lightning = ObjectPoolManager.Instance.SpawnFromPool(lightningVFXPrefab, spawnPos, spawnRot);
-                    if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+                    ScaleLightningStrike(lightning, strikeGround);
                     StartCoroutine(ReturnToPoolAfterDelay(lightning, 2f));
                 }
                 else
                 {
                     lightning = Instantiate(lightningVFXPrefab, spawnPos, spawnRot);
-                    if (!strikeGround) lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+                    ScaleLightningStrike(lightning, strikeGround);
                     Destroy(lightning, 2f);
                 }
             }
         }
         lightningCoroutine = null;
+    }
+
+    // Scale + child-disable pass for every strike.
+    //   * Air bolts get scaled 1.5×–3× for sky visibility (original behaviour).
+    //   * Ground bolts stay at 0.5× scale so the "Zap Add Floor" decal
+    //     doesn't paint a camp-sized scorch on the terrain.
+    //   * The pooled prefab survives between strikes, so we ALWAYS reset
+    //     the scale before applying the new multiplier — otherwise the
+    //     scale stacked turn after turn (after a few storms a "ground"
+    //     bolt rendered as a 50-metre cylinder).
+    private void ScaleLightningStrike(GameObject lightning, bool strikeGround)
+    {
+        if (lightning == null) return;
+        lightning.transform.localScale = Vector3.one; // reset before scaling
+        if (strikeGround)
+        {
+            lightning.transform.localScale *= 0.5f;
+            // Disable the ground-decal child entirely — even at 0.5× scale
+            // it reads as a giant black splotch. Bolt itself is plenty of
+            // ground-impact feedback.
+            Transform decal = lightning.transform.Find("Zap Add Floor");
+            if (decal != null) decal.gameObject.SetActive(false);
+        }
+        else
+        {
+            lightning.transform.localScale *= Random.Range(1.5f, 3.0f);
+            // Re-enable the floor decal in case a previous ground strike
+            // disabled it on the pooled instance.
+            Transform decal = lightning.transform.Find("Zap Add Floor");
+            if (decal != null) decal.gameObject.SetActive(true);
+        }
     }
 
     // Pooled GameObject + Light combos so strikes don't allocate a fresh

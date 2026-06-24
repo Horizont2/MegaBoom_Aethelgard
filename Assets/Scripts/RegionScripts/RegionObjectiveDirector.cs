@@ -117,7 +117,20 @@ public class RegionObjectiveDirector : MonoBehaviour
         // Don't parent — totem may carry weird rotation/scale that would
         // tip the pillar over or stretch it sideways. Place in world space.
         beacon.transform.SetParent(null);
-        beacon.transform.position = totem.transform.position + Vector3.up * (beaconHeight * 0.5f + beaconBaseOffset);
+        // Use the totem's renderer bounds centre when available — pivot
+        // can sit at the base or one corner of the mesh, so
+        // `totem.transform.position + up` puts the beacon over the wrong
+        // spot and reads as "the beam is crooked over the totem".
+        // Bounds.center always picks the visual centre regardless of how
+        // the prefab was authored.
+        Vector3 totemAnchor = totem.transform.position;
+        Renderer totemRend = totem.GetComponentInChildren<Renderer>();
+        if (totemRend != null)
+        {
+            Bounds b = totemRend.bounds;
+            totemAnchor = new Vector3(b.center.x, b.max.y, b.center.z);
+        }
+        beacon.transform.position = totemAnchor + Vector3.up * (beaconHeight * 0.5f + beaconBaseOffset);
         beacon.transform.rotation = Quaternion.identity;
         // Unity's cylinder primitive is 1m diameter and 2m tall at scale (1,1,1),
         // so to get world (diameter, height) we use scale (diameter, height/2, diameter).
