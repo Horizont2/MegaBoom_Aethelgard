@@ -82,6 +82,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
+            hasShownBossUI = true;
         }
 
         // Boss arrival roar so the player KNOWS the fight has begun
@@ -90,6 +91,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         // Trigger combat music if the music system supports it
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
     }
+
+    private bool hasShownBossUI;
 
     private void Start()
     {
@@ -101,6 +104,16 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
 
         lastAttackTime = Time.time;
+
+        // Defensive show — if the boss was placed in the scene directly
+        // (without going through RegionTotem → InitializeBoss), the HUD
+        // bar never appeared. Make sure ShowBossUI fires once so every
+        // boss has a health bar regardless of spawn path.
+        if (!hasShownBossUI && GlobalHUD.Instance != null)
+        {
+            GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
+            hasShownBossUI = true;
+        }
     }
 
     private void Update()

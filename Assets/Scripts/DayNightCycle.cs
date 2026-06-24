@@ -135,7 +135,10 @@ public class DayNightCycle : MonoBehaviour
         CheckAndUpdateSkybox();
 
         float targetBlend = (currentWeather == WeatherState.Clear) ? 0f : (currentWeather == WeatherState.Storm ? 1f : 0.5f);
-        weatherBlend = Mathf.Lerp(weatherBlend, targetBlend, Time.deltaTime * weatherTransitionSpeed);
+        // unscaledDeltaTime so the fog / weather blend keeps ticking
+        // through cutscene pauses — needed for the region-clear
+        // ForceWeather(Clear) to actually finish blending mid-cinematic.
+        weatherBlend = Mathf.Lerp(weatherBlend, targetBlend, Time.unscaledDeltaTime * weatherTransitionSpeed);
 
         Color clearFog = fogColorClear.Evaluate(timePercent);
         Color stormFog = fogColorStorm.Evaluate(timePercent);
@@ -197,6 +200,12 @@ public class DayNightCycle : MonoBehaviour
         Material currentMat = RenderSettings.skybox;
         Color currentFogColor = RenderSettings.fogColor;
 
+        // Use unscaledDeltaTime so the skybox crossfade still ticks during
+        // cutscenes (Time.timeScale = 0/0.1). The region-clear cinematic
+        // calls ForceWeather(Clear) while the world is paused — with the
+        // old Time.deltaTime path the storm sky never finished blending
+        // back to clear, so the player exited the cutscene under stormy
+        // light.
         if (currentMat != null)
         {
             Material tempOutMat = new Material(currentMat);
@@ -206,7 +215,7 @@ public class DayNightCycle : MonoBehaviour
             float t = 0;
             while (t < 1f)
             {
-                t += Time.deltaTime * skyboxFadeSpeed;
+                t += Time.unscaledDeltaTime * skyboxFadeSpeed;
                 if (tempOutMat.HasProperty("_Tint")) tempOutMat.SetColor("_Tint", Color.Lerp(startTint, currentFogColor, t));
                 yield return null;
             }
@@ -220,7 +229,7 @@ public class DayNightCycle : MonoBehaviour
         float fadeInTimer = 0;
         while (fadeInTimer < 1f)
         {
-            fadeInTimer += Time.deltaTime * skyboxFadeSpeed;
+            fadeInTimer += Time.unscaledDeltaTime * skyboxFadeSpeed;
             if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", Color.Lerp(currentFogColor, originalNewTint, fadeInTimer));
             yield return null;
         }
@@ -323,14 +332,30 @@ public class DayNightCycle : MonoBehaviour
 
             if (mainCam != null)
             {
-                Vector2 randomCircle = Random.insideUnitCircle * lightningSpawnRadius;
-                spawnPos = mainCam.transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+                // Sample from an annulus instead of a disk so a strike can
+                // never land directly on the player. Old `insideUnitCircle
+                // * 60` had no inner radius — bolts dropped at player's
+                // feet whenever rng was unkind.
+                const float minDistance = 18f;
+                Vector2 dir = Random.insideUnitCircle.normalized;
+                if (dir.sqrMagnitude < 0.0001f) dir = Vector2.right;
+                float dist = Random.Range(minDistance, lightningSpawnRadius);
+                Vector2 offset = dir * dist;
+                spawnPos = mainCam.transform.position + new Vector3(offset.x, 0, offset.y);
                 if (strikeGround && Terrain.activeTerrain != null)
                     spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
                 else
                 {
                     spawnPos.y = mainCam.transform.position.y + Random.Range(80f, 150f);
-                    spawnRot = Quaternion.Euler(Random.Range(-70f, 70f), Random.Range(0f, 360f), Random.Range(-70f, 70f));
+                    // Previously this allowed ±70° tilt on X and Z, which
+                    // made bolts lie nearly horizontal — they read as
+                    // crooked beams floating in the sky instead of strikes
+                    // falling toward the ground. Keep the bolt close to
+                    // vertical and use Y for rotational variety only.
+                    spawnRot = Quaternion.Euler(
+                        Random.Range(-12f, 12f),
+                        Random.Range(0f, 360f),
+                        Random.Range(-12f, 12f));
                 }
             }
             else spawnPos = transform.position;

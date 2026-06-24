@@ -373,6 +373,12 @@ public class RegionManager : MonoBehaviour
                 ResourceManager.Instance.diamonds += currentRegion.diamondReward;
                 ResourceManager.Instance.UpdateUI();
             }
+            // Mirror the pickup popups that resource drops trigger so the
+            // big left-side reward toast shows up on region capture too —
+            // previously only ResourceManager's small +N text next to the
+            // resource panel fired, which felt inconsistent with normal
+            // mission play.
+            ShowRegionRewardToast(currentRegion);
         }
 
         if (dnc != null) dnc.isWeatherLocked = false;
@@ -429,6 +435,12 @@ public class RegionManager : MonoBehaviour
                 ResourceManager.Instance.diamonds += currentRegion.diamondReward;
                 ResourceManager.Instance.UpdateUI();
             }
+            // Mirror the pickup popups that resource drops trigger so the
+            // big left-side reward toast shows up on region capture too —
+            // previously only ResourceManager's small +N text next to the
+            // resource panel fired, which felt inconsistent with normal
+            // mission play.
+            ShowRegionRewardToast(currentRegion);
         }
 
         DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
@@ -512,5 +524,21 @@ public class RegionManager : MonoBehaviour
                $"<color=#D4B07A>+{region.woodReward}</color> Wood\n" +
                $"<color=#B0B0B0>+{region.stoneReward}</color> Stone   " +
                $"<color=#E0C260>+{region.foodReward}</color> Food";
+    }
+
+    // Fire the same left-side pickup popups that ResourceDrop uses when
+    // the player picks up wood/stone/food during normal play — so the
+    // region-clear reward feels consistent with the rest of the game.
+    private void ShowRegionRewardToast(RegionData region)
+    {
+        if (GlobalHUD.Instance == null || region == null) return;
+        if (region.woodReward > 0)
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.woodReward} Wood", new Color(0.85f, 0.6f, 0.35f));
+        if (region.stoneReward > 0)
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.stoneReward} Stone", new Color(0.8f, 0.8f, 0.85f));
+        if (region.foodReward > 0)
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.foodReward} Food", new Color(0.7f, 0.95f, 0.5f));
+        if (region.diamondReward > 0)
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.diamondReward} Diamonds", new Color(0.63f, 0.88f, 1f));
     }
 }
