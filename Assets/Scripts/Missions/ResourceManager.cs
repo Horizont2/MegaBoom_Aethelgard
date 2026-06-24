@@ -9,24 +9,24 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager Instance;
 
-    [Header("STASH (Склад у Таборі)")]
+    [Header("STASH (пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ)")]
     public int stashWood = 0;
     public int stashStone = 0;
     public int stashFood = 0;
     public int diamonds = 0;
 
-    [Header("Base Capacities (Склад)")]
+    [Header("Base Capacities (пїЅпїЅпїЅпїЅпїЅ)")]
     public int baseMaxWood = 200;
     public int baseMaxStone = 100;
     public int baseMaxFood = 50;
     public int extraCapacity = 0;
 
-    [Header("RUN INVENTORY (Зібране в Подорожі)")]
+    [Header("RUN INVENTORY (ЗіпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public int runWood = 0;
     public int runStone = 0;
     public int runFood = 0;
 
-    [Header("Backpack Capacities (Рюкзак)")]
+    [Header("Backpack Capacities (пїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public int baseRunMaxWood = 100;
     public int baseRunMaxStone = 50;
     public int baseRunMaxFood = 30;
@@ -39,7 +39,7 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI foodText;
     public TextMeshProUGUI diamondsText;
 
-    [Header("UI Fills (Зображення замість Слайдерів)")]
+    [Header("UI Fills (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public Image woodFill;
     public Image stoneFill;
     public Image foodFill;
@@ -52,7 +52,7 @@ public class ResourceManager : MonoBehaviour
 
     private bool isCamp => SceneManager.GetActiveScene().name == "CampScene";
 
-    // Словник для відстеження активних анімацій тексту, щоб вони не накладались одна на одну
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
     private Dictionary<TextMeshProUGUI, Coroutine> activeTextTweens = new Dictionary<TextMeshProUGUI, Coroutine>();
 
     private void Awake()
@@ -84,6 +84,12 @@ public class ResourceManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (isCamp) ClearRunInventory();
+        // Kill any in-flight resource popup on scene change so the
+        // floating +X / -X text from the previous scene doesn't ride
+        // along to the new HUD.
+        if (woodPopup  != null) woodPopup.ForceHide();
+        if (stonePopup != null) stonePopup.ForceHide();
+        if (foodPopup  != null) foodPopup.ForceHide();
         UpdateUI();
     }
 
@@ -152,7 +158,7 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = runStone - oldStone;
         int actualAddedFood = runFood - oldFood;
 
-        // Запускаємо анімації тексту та попапи тільки якщо ресурс дійсно додався
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (actualAddedWood > 0)
         {
             if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
@@ -294,13 +300,13 @@ public class ResourceManager : MonoBehaviour
         if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
     }
 
-    // --- СИСТЕМА АНІМАЦІЇ UI (JUICE) ---
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅНІпїЅпїЅЦІпїЅ UI (JUICE) ---
 
     private void BounceText(TextMeshProUGUI textElement)
     {
         if (textElement == null) return;
 
-        // Перериваємо попередню анімацію, якщо ресурс збирається дуже швидко (спам)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ)
         if (activeTextTweens.ContainsKey(textElement) && activeTextTweens[textElement] != null)
         {
             StopCoroutine(activeTextTweens[textElement]);
@@ -312,12 +318,12 @@ public class ResourceManager : MonoBehaviour
     private IEnumerator TextBounceRoutine(TextMeshProUGUI textElement)
     {
         Vector3 originalScale = Vector3.one;
-        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // Наскільки сильно збільшується
-        float upDuration = 0.08f; // Швидкість збільшення (дуже швидко)
-        float downDuration = 0.2f; // Швидкість повернення назад (трохи повільніше)
+        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        float upDuration = 0.08f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+        float downDuration = 0.2f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         float elapsed = 0f;
 
-        // Збільшення
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         while (elapsed < upDuration)
         {
             elapsed += Time.deltaTime;
@@ -325,7 +331,7 @@ public class ResourceManager : MonoBehaviour
             yield return null;
         }
 
-        // Повернення
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         elapsed = 0f;
         while (elapsed < downDuration)
         {

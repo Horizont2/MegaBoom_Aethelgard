@@ -105,6 +105,22 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyFpsCap()
     {
+        // Two PlayerPrefs work together here:
+        //   Settings_FPSLimit  (0/1)   — the global "Limit FPS" toggle
+        //   Settings_FpsCapIndex (0..6) — the per-cap dropdown
+        //
+        // Before this fix, the two were independent and ApplyFpsCap always
+        // wrote the dropdown's cap on top of an OFF toggle. In editor that
+        // didn't matter because vsync overrides, but in standalone builds
+        // the cap stuck — the "Limit FPS off" toggle did nothing. The
+        // toggle now wins: when it's off we always uncap.
+        bool limited = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
+        if (!limited)
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+            return;
+        }
         int idx = PlayerPrefs.GetInt("Settings_FpsCapIndex", 2);
         int[] caps = { -1, 30, 60, 90, 120, 144, 240 };
         if (idx < 0 || idx >= caps.Length) idx = 2;

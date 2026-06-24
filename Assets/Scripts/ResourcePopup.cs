@@ -8,8 +8,8 @@ public class ResourcePopup : MonoBehaviour
     private Vector2 startPos;
 
     [Header("Settings")]
-    public float displayTime = 1.5f; // Скільки секунд висить текст
-    public float floatSpeed = 40f;   // Швидкість польоту вгору
+    public float displayTime = 1.5f; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    public float floatSpeed = 40f;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
     private int accumulatedValue = 0;
     private float currentTimer = 0f;
@@ -20,7 +20,7 @@ public class ResourcePopup : MonoBehaviour
         rectTransform = GetComponent<RectTransform>();
         startPos = rectTransform.anchoredPosition;
 
-        // Ховаємо текст на старті
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         Color c = popupText.color;
         c.a = 0f;
         popupText.color = c;
@@ -30,17 +30,17 @@ public class ResourcePopup : MonoBehaviour
     {
         if (amount == 0) return;
 
-        // Якщо текст вже зник, скидаємо значення і позицію
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (currentTimer <= 0)
         {
             accumulatedValue = 0;
             rectTransform.anchoredPosition = startPos;
         }
 
-        // ДОПЛЮСОВУЄМО нове значення до старого (магія накопичення!)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅУЄпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!)
         accumulatedValue += amount;
 
-        // Оновлюємо колір і знак
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ
         if (accumulatedValue > 0)
         {
             popupText.text = $"+{accumulatedValue}";
@@ -48,22 +48,22 @@ public class ResourcePopup : MonoBehaviour
         }
         else if (accumulatedValue < 0)
         {
-            popupText.text = $"{accumulatedValue}"; // Мінус вже є в самому числі
+            popupText.text = $"{accumulatedValue}"; // МіпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             popupText.color = Color.red;
         }
         else
         {
-            // Якщо раптом вийшов нуль (+10 і -10)
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (+10 пїЅ -10)
             popupText.color = new Color(0, 0, 0, 0);
             currentTimer = 0;
             return;
         }
 
-        // Скидаємо таймер і повертаємо текст на стартову позицію для ефекту "удару/оновлення"
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
         currentTimer = displayTime;
         rectTransform.anchoredPosition = startPos;
 
-        // Робимо повністю видимим
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Color visibleColor = popupText.color;
         visibleColor.a = 1f;
         popupText.color = visibleColor;
@@ -73,18 +73,47 @@ public class ResourcePopup : MonoBehaviour
     {
         if (currentTimer > 0)
         {
-            currentTimer -= Time.deltaTime;
+            // unscaledDeltaTime so the fade still ticks when Time.timeScale
+            // = 0 (cutscenes, scene loads). Previously a popup mid-display
+            // when timeScale dropped to 0 froze at full alpha and stayed
+            // visible across scene changes.
+            currentTimer -= Time.unscaledDeltaTime;
+            rectTransform.anchoredPosition += Vector2.up * floatSpeed * Time.unscaledDeltaTime;
 
-            // Плавно піднімаємо вгору
-            rectTransform.anchoredPosition += Vector2.up * floatSpeed * Time.deltaTime;
-
-            // Плавно розчиняємо (Fade Out) в останні 0.5 секунд
+            // Fade Out in the last 0.5s
             if (currentTimer < 0.5f)
             {
                 Color c = popupText.color;
-                c.a = currentTimer / 0.5f;
+                c.a = Mathf.Max(0f, currentTimer / 0.5f);
                 popupText.color = c;
             }
+
+            // When the timer just hit zero, snap to fully invisible.
+            if (currentTimer <= 0f)
+            {
+                Color c = popupText.color;
+                c.a = 0f;
+                popupText.color = c;
+                accumulatedValue = 0;
+                rectTransform.anchoredPosition = startPos;
+            }
         }
+    }
+
+    // Hard reset вЂ” called by ResourceManager when the active scene
+    // changes so a popup half-way through fading doesn't stick at full
+    // alpha on the next scene's HUD.
+    public void ForceHide()
+    {
+        currentTimer = 0f;
+        accumulatedValue = 0;
+        if (popupText != null)
+        {
+            Color c = popupText.color;
+            c.a = 0f;
+            popupText.color = c;
+        }
+        if (rectTransform != null)
+            rectTransform.anchoredPosition = startPos;
     }
 }

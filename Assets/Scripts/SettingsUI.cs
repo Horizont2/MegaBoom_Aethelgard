@@ -275,6 +275,12 @@ public class SettingsUI : MonoBehaviour
         if (languageDropdown) languageDropdown.onValueChanged.AddListener(v =>
         {
             PlayerPrefs.SetInt("Settings_Language", Mathf.Clamp(v, 0, 1));
+            // Push the change into LocalizationManager so its
+            // OnLanguageChanged event fires and every text that
+            // subscribes (codex, achievements, save slots, …) updates
+            // immediately — without this the dropdown only persisted
+            // the pref and the UI stayed in the old language.
+            LocalizationManager.CurrentLanguage = (LocalizationManager.Lang)Mathf.Clamp(v, 0, 1);
         });
         if (voiceLanguageDropdown) voiceLanguageDropdown.onValueChanged.AddListener(v =>
         {
@@ -927,10 +933,17 @@ public class SettingsUI : MonoBehaviour
     // so targetFrameRate is what actually drives the cap.
     public static void ApplyFpsLimit(bool isOn)
     {
+        // Persist the toggle every time we apply so SettingsApplier picks
+        // it up on next boot — without this the standalone build never
+        // saw the toggle flip and re-locked the cap on next launch.
+        PlayerPrefs.SetInt("Settings_FPSLimit", isOn ? 1 : 0);
         if (isOn)
         {
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
+            int idx = PlayerPrefs.GetInt("Settings_FpsCapIndex", 2);
+            int[] caps = { -1, 30, 60, 90, 120, 144, 240 };
+            if (idx < 0 || idx >= caps.Length) idx = 2;
+            Application.targetFrameRate = caps[idx];
         }
         else
         {
