@@ -46,7 +46,6 @@ public class RegionTotem : MonoBehaviour
         if (totemLight != null) totemLight.color = Color.red;
         if (activationShieldVFX != null) { activationShieldVFX.Stop(); activationShieldVFX.gameObject.SetActive(false); }
 
-        // Вмикаємо маяк на старті (він світитиметься здалеку)
         if (interactHintVFX != null) interactHintVFX.SetActive(true);
     }
 
@@ -65,7 +64,6 @@ public class RegionTotem : MonoBehaviour
             else if (!isPurified) idleCorruptionVFX.Play();
         }
 
-        // Якщо тотем заблокований менеджером - ховаємо маяк. Якщо розблокований - показуємо.
         if (interactHintVFX != null) interactHintVFX.SetActive(!locked && !isPurified);
     }
 
@@ -89,7 +87,6 @@ public class RegionTotem : MonoBehaviour
 
         float dist = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(player.position.x, player.position.z));
 
-        // Логіка тільки для тексту [F], ефект більше не чіпаємо по дистанції
         if (dist <= interactionRadius)
         {
             if (!isPromptShowing && GlobalHUD.Instance != null)
@@ -148,10 +145,6 @@ public class RegionTotem : MonoBehaviour
         float hpMultBase = manager.currentRegion != null ? manager.currentRegion.enemyHpMultiplier : 1f;
         float dmgMultBase = manager.currentRegion != null ? manager.currentRegion.enemyDamageMultiplier : 1f;
 
-        // Old formula used Mathf.Abs which made the curve symmetric, so being
-        // OVER-recommended also scaled difficulty UP — the stronger you got,
-        // the harder totems became. Use the shared helper that floors at 0.7x
-        // for over-leveled and caps at 2x for under-leveled.
         float difficultyMult = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, recommendedPower);
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
@@ -201,7 +194,12 @@ public class RegionTotem : MonoBehaviour
         if (isBoss)
         {
             TutorialBossAI bossAI = entity.GetComponent<TutorialBossAI>();
-            if (bossAI != null) bossAI.InitializeBoss(hpMult, dmgMult);
+            if (bossAI != null)
+            {
+                bossAI.InitializeBoss(hpMult, dmgMult);
+                // Call ActivateBoss immediately when spawned by the totem
+                bossAI.ActivateBoss();
+            }
         }
         else
         {
@@ -238,7 +236,7 @@ public class RegionTotem : MonoBehaviour
 
         if (activationShieldVFX != null) activationShieldVFX.Stop();
         if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();
-        if (interactHintVFX != null) interactHintVFX.SetActive(false); // Запобіжник
+        if (interactHintVFX != null) interactHintVFX.SetActive(false);
 
         if (skyBeamVFX != null) { skyBeamVFX.gameObject.SetActive(true); skyBeamVFX.Play(); }
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }

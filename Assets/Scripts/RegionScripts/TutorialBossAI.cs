@@ -51,6 +51,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private GameObject staggerRing;
     private float staggerRumbleTimer;
 
+    private bool hasShownBossUI;
+
     private void Awake()
     {
         gameObject.layer = 9;
@@ -78,21 +80,20 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         maxHealth *= hpMultiplier;
         damage *= dmgMultiplier;
         currentHealth = maxHealth;
+    }
 
-        if (GlobalHUD.Instance != null)
+    public void ActivateBoss()
+    {
+        if (!hasShownBossUI && GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
             hasShownBossUI = true;
         }
 
-        // Boss arrival roar so the player KNOWS the fight has begun
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
-
-        // Trigger combat music if the music system supports it
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
     }
 
-    private bool hasShownBossUI;
 
     private void Start()
     {
@@ -104,16 +105,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
 
         lastAttackTime = Time.time;
-
-        // Defensive show — if the boss was placed in the scene directly
-        // (without going through RegionTotem → InitializeBoss), the HUD
-        // bar never appeared. Make sure ShowBossUI fires once so every
-        // boss has a health bar regardless of spawn path.
-        if (!hasShownBossUI && GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
-            hasShownBossUI = true;
-        }
     }
 
     private void Update()
@@ -191,13 +182,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        // HDR Колір (буде світитися, якщо є Bloom)
         SetColor(new Color(2f, 0.5f, 0f));
 
         if (playerTarget != null) playerTarget.OpenPerfectDodgeWindow(transform, attackTelegraphTime);
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
 
-        // СМАРТ-ТРЕКІНГ: Бос плавно повертається за гравцем 70% часу замаху, потім фіксується
         float timer = 0f;
         while (timer < attackTelegraphTime)
         {
@@ -228,11 +217,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         if (isDead || isStaggered || playerTarget == null || playerTarget.currentHealth <= 0) return;
 
-        // Ледь помітний мікро-поштовх (або можеш взагалі закоментувати цей блок)
         if (Camera.main != null)
         {
             CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
-            if (cam != null) cam.TriggerShake(0.15f, 0.08f); // Було (0.35f, 0.4f)
+            if (cam != null) cam.TriggerShake(0.15f, 0.08f);
         }
 
         if (Vector3.Distance(transform.position, target.position) <= attackRange + 1.5f)
@@ -266,7 +254,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         StartCoroutine(HitFlashRoutine());
 
-        // ХІТ-СТОП: Завмирання часу при критичному ударі
         if (info.IsCritical && !isStaggered && !isDead)
         {
             StartCoroutine(HitStopRoutine(0.06f));
@@ -282,11 +269,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
-    // Соковитий Хіт-Стоп
     private IEnumerator HitStopRoutine(float duration)
     {
-        // Settings_HitStop toggle — skip the micro-pause entirely when
-        // disabled. Default = on.
         if (PlayerPrefs.GetInt("Settings_HitStop", 1) != 1)
         {
             yield break;
@@ -303,7 +287,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         isStaggered = true;
         isPreparingAttack = false;
-        Time.timeScale = 1f; // restore in case hit-stop was active
+        Time.timeScale = 1f;
 
         SnapToGround();
 
@@ -328,10 +312,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             weaponRb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
         }
 
-        // Audio cue for stagger entry — weapon clatter + boss groan baked into one ID
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Stagger);
 
-        // Camera punch — boss is reeling, the camera should feel it too
         if (Camera.main != null)
         {
             CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
@@ -357,7 +339,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         if (Terrain.activeTerrain != null)
             ringPos.y = Terrain.activeTerrain.SampleHeight(ringPos) + Terrain.activeTerrain.transform.position.y + 0.05f;
         staggerRing.transform.position = ringPos;
-        // Flatten a unit cylinder into a thin disc the size we want
         staggerRing.transform.localScale = new Vector3(staggerRingRadius * 2f, 0.02f, staggerRingRadius * 2f);
 
         Material mat = BuildRingMaterial(staggerRingColor);
@@ -400,7 +381,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             float pulse = (Mathf.Sin(Time.time * 2.4f) + 1f) * 0.5f;
             transform.localScale = baseScale + new Vector3(0f, baseScale.y * 0.04f * pulse, 0f);
 
-            // Ring pulse — alpha + slight scale
             if (staggerRing != null)
             {
                 float ringPulse = 1f + Mathf.Sin(Time.time * 5f) * 0.06f;
@@ -408,7 +388,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                     staggerRingRadius * 2f * ringPulse, 0.02f, staggerRingRadius * 2f * ringPulse);
             }
 
-            // Low rumble approximately every 0.8s
             staggerRumbleTimer -= Time.deltaTime;
             if (staggerRumbleTimer <= 0f)
             {
@@ -462,7 +441,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         CharacterController playerCC = playerTarget.GetComponent<CharacterController>();
         if (playerCC != null) playerCC.enabled = false;
 
-        // ------ Compute geometry ------
         Vector3 playerStartPos = playerTarget.transform.position;
         Quaternion playerStartRot = playerTarget.transform.rotation;
 
@@ -483,7 +461,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         Vector3 startCamPos = mainCam.transform.position;
         Vector3 cinematicCamPos = midPoint + sideDir * 4f + Vector3.up * 1f;
 
-        // ------ Snapshot for restoration (try/finally style) ------
         float savedTimeScale = Time.timeScale;
         float savedFixedDelta = Time.fixedDeltaTime;
         Animator playerAnim = playerTarget.GetComponentInChildren<Animator>();
@@ -492,8 +469,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         try
         {
-            // ------ Phase 1: camera glides into position, player slides to mark ------
-            // No Attack trigger yet — the player is just being PLACED.
             Time.timeScale = 0.1f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
             if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
@@ -521,15 +496,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                 yield return null;
             }
 
-            // ------ Phase 2: IMPACT MOMENT — strike + boss death triggers fire on the SAME frame ------
             Time.timeScale = 0.005f;
             if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
 
             playerAnim?.SetTrigger("Attack");
-            // tiny pause so the windup of the swing reads before contact
             yield return new WaitForSecondsRealtime(0.18f);
 
-            // CONTACT — the killing blow lands
             if (animator != null) animator.SetTrigger("Die");
             if (AudioManager.Instance != null)
             {
@@ -537,16 +509,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                 AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
             }
             camFollow?.TriggerShake(0.45f, 0.45f);
-            SetColor(Color.white); // bloom flash
+            SetColor(Color.white);
             if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
 
             yield return new WaitForSecondsRealtime(0.08f);
             ResetColor();
 
-            // ------ Phase 3: hold the slow-mo to let the death pose read ------
             foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
 
-            // Loot bursts out radially as ash settles
             Vector3 dropOrigin = transform.position + Vector3.up * 1.5f;
             for (int i = 0; i < xpCrystalsToDrop; i++)
             {
@@ -577,7 +547,6 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
         finally
         {
-            // ALWAYS restore — even if the player dies mid-cinematic or scene unloads
             Time.timeScale = savedTimeScale > 0f ? savedTimeScale : 1f;
             Time.fixedDeltaTime = savedFixedDelta > 0f ? savedFixedDelta : 0.02f;
             if (playerAnim != null) playerAnim.updateMode = savedPlayerAnimMode;
