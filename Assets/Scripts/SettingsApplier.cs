@@ -146,16 +146,16 @@ public class SettingsApplier : MonoBehaviour
         int q = PlayerPrefs.GetInt("Settings_ShadowQuality", 2);
         QualitySettings.shadows = q switch
         {
-            0 => ShadowQuality.Disable,
-            1 => ShadowQuality.HardOnly,
-            _ => ShadowQuality.All,
+            0 => UnityEngine.ShadowQuality.Disable,
+            1 => UnityEngine.ShadowQuality.HardOnly,
+            _ => UnityEngine.ShadowQuality.All,
         };
         QualitySettings.shadowResolution = q switch
         {
-            0 => ShadowResolution.Low,
-            1 => ShadowResolution.Low,
-            2 => ShadowResolution.Medium,
-            _ => ShadowResolution.High,
+            0 => UnityEngine.ShadowResolution.Low,
+            1 => UnityEngine.ShadowResolution.Low,
+            2 => UnityEngine.ShadowResolution.Medium,
+            _ => UnityEngine.ShadowResolution.High,
         };
     }
 
