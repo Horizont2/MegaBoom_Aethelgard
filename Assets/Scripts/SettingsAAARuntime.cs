@@ -74,7 +74,7 @@ public class SettingsAAARuntime : MonoBehaviour
     private string categoryNameAt(int i)
     {
         // Mirrors SettingsPanelAAABuilder.Categories order.
-        string[] names = { "General", "Gameplay", "Audio", "Display", "Controls", "Accessibility", "Language" };
+        string[] names = { "General", "Gameplay", "Audio", "Video", "Graphics", "Controls", "Accessibility", "Language" };
         return i >= 0 && i < names.Length ? names[i] : "";
     }
 
@@ -101,55 +101,104 @@ public class SettingsAAARuntime : MonoBehaviour
 
     public void Apply()
     {
+        // CloseSettings persists everything to PlayerPrefs (it already
+        // walks every slider/toggle on close). Re-applying here pushes
+        // the new values into the live engine systems.
         if (settingsUI != null) settingsUI.CloseSettings();
+        if (SettingsApplier.Instance != null) SettingsApplier.Instance.ApplyAll();
     }
 
     public void Discard()
     {
-        // CloseSettings already calls AnimatePanelOut; values that weren't
-        // committed via slider/onValueChanged callbacks won't persist.
+        // Values that weren't committed via slider/onValueChanged callbacks
+        // won't persist beyond CloseSettings. Roll back the runtime engine
+        // state so any live-applied changes (resolution, render scale,
+        // FOV) revert to the saved PlayerPrefs values.
         if (settingsUI != null) settingsUI.CloseSettings();
+        if (SettingsApplier.Instance != null) SettingsApplier.Instance.ApplyAll();
     }
 
     public void ResetDefaults()
     {
         // Apply per-category PlayerPrefs defaults, then re-open the panel
         // so reload-from-prefs picks them up.
+        // 8 categories: General, Gameplay, Audio, Video, Graphics,
+        // Controls, Accessibility, Language. Each branch only resets the
+        // prefs it owns so other tabs stay untouched.
         switch (activeIndex)
         {
             case 0: // General
                 PlayerPrefs.SetInt("Settings_FPSLimit", 1);
                 PlayerPrefs.SetInt("Settings_ShowFPS", 0);
+                PlayerPrefs.SetInt("Settings_AutoSave", 1);
                 break;
             case 1: // Gameplay
                 PlayerPrefs.SetInt("Settings_DamagePopups", 1);
                 PlayerPrefs.SetInt("Settings_ScreenShake", 1);
                 PlayerPrefs.SetInt("Settings_HitStop", 1);
                 PlayerPrefs.SetInt("Settings_LowHpVignette", 1);
-                PlayerPrefs.SetFloat("Settings_MouseSensitivity", 1f);
-                PlayerPrefs.SetInt("Settings_InvertYAxis", 0);
+                PlayerPrefs.SetInt("Settings_TutorialHints", 1);
+                PlayerPrefs.SetInt("Settings_Difficulty", 1);
+                PlayerPrefs.SetInt("Settings_HoldToggleSprint", 0);
                 break;
             case 2: // Audio
                 PlayerPrefs.SetFloat("Settings_MasterVol", 100f);
                 PlayerPrefs.SetFloat("Settings_MusicVol", 100f);
                 PlayerPrefs.SetFloat("Settings_SFXVol", 100f);
+                PlayerPrefs.SetFloat("Settings_VoiceVol", 100f);
+                PlayerPrefs.SetFloat("Settings_UIVol", 100f);
+                PlayerPrefs.SetFloat("Settings_AmbientVol", 100f);
+                PlayerPrefs.SetInt("Settings_MuteWhenUnfocused", 1);
                 break;
-            case 3: // Display
+            case 3: // Video
+                PlayerPrefs.DeleteKey("Settings_ResolutionIndex");
+                PlayerPrefs.DeleteKey("Settings_RefreshRateIndex");
+                PlayerPrefs.SetInt("Settings_WindowMode", 0);
+                PlayerPrefs.SetInt("Settings_Monitor", 0);
+                PlayerPrefs.SetInt("Settings_VSync", 0);
+                PlayerPrefs.SetInt("Settings_FpsCapIndex", 2);
+                PlayerPrefs.SetFloat("Settings_FOV", 75f);
+                PlayerPrefs.SetFloat("Settings_Brightness", 1f);
+                PlayerPrefs.SetFloat("Settings_Gamma", 1f);
+                break;
+            case 4: // Graphics
                 PlayerPrefs.SetInt("Settings_QualityLevel", QualitySettings.GetQualityLevel());
                 PlayerPrefs.SetFloat("Settings_RenderScale", 1f);
+                PlayerPrefs.SetInt("Settings_AntiAliasing", 1);
+                PlayerPrefs.SetInt("Settings_TextureQuality", 2);
+                PlayerPrefs.SetInt("Settings_ShadowQuality", 2);
+                PlayerPrefs.SetFloat("Settings_ShadowDistance", 50f);
                 PlayerPrefs.SetInt("Settings_PostFX", 1);
                 PlayerPrefs.SetInt("Settings_DynamicShadows", 1);
+                PlayerPrefs.SetInt("Settings_MotionBlur", 0);
+                PlayerPrefs.SetInt("Settings_DepthOfField", 0);
+                PlayerPrefs.SetInt("Settings_Bloom", 1);
+                PlayerPrefs.SetInt("Settings_AO", 1);
+                PlayerPrefs.SetInt("Settings_Volumetrics", 0);
                 break;
-            case 5: // Accessibility
+            case 5: // Controls
+                PlayerPrefs.SetFloat("Settings_MouseSensitivity", 1f);
+                PlayerPrefs.SetInt("Settings_InvertYAxis", 0);
+                PlayerPrefs.SetInt("Settings_ControllerVibration", 1);
+                PlayerPrefs.SetFloat("Settings_AimAssist", 0.4f);
+                break;
+            case 6: // Accessibility
                 PlayerPrefs.SetInt("Settings_Subtitles", 1);
                 PlayerPrefs.SetInt("Settings_SubtitleSize", 1);
+                PlayerPrefs.SetInt("Settings_SubtitleBg", 1);
                 PlayerPrefs.SetInt("Settings_Colorblind", 0);
+                PlayerPrefs.SetInt("Settings_HighContrast", 0);
+                PlayerPrefs.SetInt("Settings_ReduceMotion", 0);
+                PlayerPrefs.SetInt("Settings_Photosensitivity", 0);
+                PlayerPrefs.SetFloat("Settings_UIScale", 1f);
                 break;
-            case 6: // Language
+            case 7: // Language
                 PlayerPrefs.SetInt("Settings_Language", 0);
+                PlayerPrefs.SetInt("Settings_VoiceLanguage", 0);
                 break;
         }
         PlayerPrefs.Save();
+        SettingsApplier.Instance?.ApplyAll();
 
         // Re-trigger SettingsUI population by closing and re-opening.
         if (settingsUI != null)

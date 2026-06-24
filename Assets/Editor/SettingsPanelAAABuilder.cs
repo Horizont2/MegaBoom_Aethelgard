@@ -58,7 +58,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         new CatSpec { id = "General",       label = "GENERAL",       icon = "▎" },
         new CatSpec { id = "Gameplay",      label = "GAMEPLAY",      icon = "⚔" },
         new CatSpec { id = "Audio",         label = "AUDIO",         icon = "♪" },
-        new CatSpec { id = "Display",       label = "DISPLAY",       icon = "□" },
+        new CatSpec { id = "Video",         label = "VIDEO",         icon = "▦" },
+        new CatSpec { id = "Graphics",      label = "GRAPHICS",      icon = "□" },
         new CatSpec { id = "Controls",      label = "CONTROLS",      icon = "⌖" },
         new CatSpec { id = "Accessibility", label = "ACCESSIBILITY", icon = "✦" },
         new CatSpec { id = "Language",      label = "LANGUAGE",      icon = "✎" },
@@ -172,6 +173,10 @@ public class SettingsPanelAAABuilder : EditorWindow
         // Per-category content panels stacked inside the scroll content.
         // Only the selected category is enabled at a time.
         BuildCategoryContents();
+
+        // Make sure every dropdown that lives on this panel has the
+        // canonical option list before any row tries to bind to it.
+        PrepopulateDropdownOptions();
 
         // Populate each category with rows pulled from the existing
         // SettingsUI references.
@@ -576,76 +581,170 @@ public class SettingsPanelAAABuilder : EditorWindow
         }
     }
 
+    private void PrepopulateDropdownOptions()
+    {
+        var s = settingsUI;
+        // Editor-time options; SettingsUI also (re)populates resolution
+        // / refresh / monitor at runtime where actual monitor data lives.
+        FillDropdown(s.qualityDropdown,        new[] { "Low", "Medium", "High", "Ultra" });
+        FillDropdown(s.antiAliasingDropdown,   new[] { "Off", "FXAA", "SMAA", "TAA" });
+        FillDropdown(s.textureQualityDropdown, new[] { "Low", "Medium", "High", "Ultra" });
+        FillDropdown(s.shadowQualityDropdown,  new[] { "Off", "Hard", "Soft Low", "Soft High" });
+        FillDropdown(s.difficultyDropdown,     new[] { "Easy", "Normal", "Hard", "Hardcore" });
+        FillDropdown(s.subtitleSizeDropdown,   new[] { "Small", "Medium", "Large" });
+        FillDropdown(s.languageDropdown,       new[] { "English", "Українська" });
+        FillDropdown(s.voiceLanguageDropdown,  new[] { "English", "Українська" });
+        FillDropdown(s.windowModeDropdown,     new[] { "Fullscreen", "Borderless", "Windowed" });
+        FillDropdown(s.fpsCapDropdown,         new[] { "Unlimited", "30", "60", "90", "120", "144", "240" });
+    }
+
+    private void FillDropdown(TMP_Dropdown d, string[] opts)
+    {
+        if (d == null) return;
+        d.ClearOptions();
+        d.AddOptions(new List<string>(opts));
+    }
+
     private void PopulateAllSections()
     {
-        // General — show FPS, FPS limit
+        var s = settingsUI;
+
+        // ===== GENERAL =====
         AddSectionHeader("General", "HUD");
-        AddRow("General", "Show FPS", settingsUI.showFPSToggle, null,
+        AddRow("General", "Show FPS", s.showFPSToggle, null,
             "Toggle the on-screen frames-per-second counter.");
-        AddRow("General", "Limit FPS to 60", settingsUI.limitFPSToggle, null,
-            "Caps the frame rate at 60 fps. Reduces heat and battery use; turn off for high-refresh displays.");
+        AddRow("General", "Limit FPS", s.limitFPSToggle, null,
+            "Quick on/off cap. Use the FPS Cap dropdown in Video for exact values.");
+        AddSectionHeader("General", "SAVE");
+        AddRow("General", "Auto-Save", s.autoSaveToggle, null,
+            "Periodically save progress without prompting.");
 
-        // Gameplay — damage popups, screen shake, hit-stop, low-hp vignette, colorblind, sensitivity, invert-Y
+        // ===== GAMEPLAY =====
+        AddSectionHeader("Gameplay", "DIFFICULTY");
+        AddDropdown("Gameplay", "Difficulty", s.difficultyDropdown,
+            "Combat scaling. Easy / Normal / Hard / Hardcore. Hardcore disables checkpoints.");
         AddSectionHeader("Gameplay", "FEEDBACK");
-        AddRow("Gameplay", "Damage Popups", settingsUI.damagePopupsToggle, null,
+        AddRow("Gameplay", "Damage Popups", s.damagePopupsToggle, null,
             "Show floating damage numbers above enemies you hit.");
-        AddRow("Gameplay", "Screen Shake", settingsUI.screenShakeToggle, null,
+        AddRow("Gameplay", "Screen Shake", s.screenShakeToggle, null,
             "Camera shake on impacts and explosions. Disable if it causes discomfort.");
-        AddRow("Gameplay", "Hit-Stop FX", settingsUI.hitStopToggle, null,
-            "Brief frame freeze on heavy hits for impact. Disabling makes combat feel smoother but less weighty.");
-        AddRow("Gameplay", "Low HP Vignette", settingsUI.lowHpVignetteToggle, null,
+        AddRow("Gameplay", "Hit-Stop FX", s.hitStopToggle, null,
+            "Brief freeze on heavy hits for impact. Disable for smoother combat.");
+        AddRow("Gameplay", "Low HP Vignette", s.lowHpVignetteToggle, null,
             "Red edge tint when health is critical. Disable to reduce visual noise.");
-        AddSectionHeader("Gameplay", "INPUT");
-        AddSlider("Gameplay", "Mouse Sensitivity",
-            settingsUI.sensitivitySlider, settingsUI.sensitivityInput,
-            "Camera sensitivity multiplier. 100 = default. Raise for snappy aim, lower for precision.");
-        AddRow("Gameplay", "Invert Y Axis", settingsUI.invertYToggle, null,
-            "Flip vertical look direction. Down on the mouse looks up, and vice versa.");
+        AddSectionHeader("Gameplay", "TUTORIAL");
+        AddRow("Gameplay", "Tutorial Hints", s.tutorialHintsToggle, null,
+            "Show contextual hint popups when new mechanics appear.");
+        AddRow("Gameplay", "Hold to Sprint", s.holdToggleSprintToggle, null,
+            "OFF = hold Shift to sprint. ON = press once to toggle sprint state.");
 
-        // Audio
-        AddSectionHeader("Audio", "VOLUME");
-        AddSlider("Audio", "Master", settingsUI.masterSlider, settingsUI.masterInput,
-            "Overall game volume. Affects every audio channel.");
-        AddSlider("Audio", "Music", settingsUI.musicSlider, settingsUI.musicInput,
-            "Background music and ambient score.");
-        AddSlider("Audio", "Sound Effects", settingsUI.sfxSlider, settingsUI.sfxInput,
-            "Combat, UI, and world effect volumes.");
+        // ===== AUDIO =====
+        AddSectionHeader("Audio", "MIX");
+        AddSlider("Audio", "Master",      s.masterSlider,  s.masterInput,  "Overall game volume — affects every channel.");
+        AddSlider("Audio", "Music",       s.musicSlider,   s.musicInput,   "Background music and ambient score.");
+        AddSlider("Audio", "Sound FX",    s.sfxSlider,     s.sfxInput,     "Combat and world impact sounds.");
+        AddSlider("Audio", "Voice",       s.voiceSlider,   s.voiceInput,   "Dialogue and narration.");
+        AddSlider("Audio", "UI",          s.uiSlider,      s.uiInput,      "Menu, button, and HUD sounds.");
+        AddSlider("Audio", "Ambient",     s.ambientSlider, s.ambientInput, "World ambience — wind, fire, water.");
+        AddSectionHeader("Audio", "BEHAVIOUR");
+        AddRow("Audio", "Mute When Unfocused", s.muteWhenUnfocusedToggle, null,
+            "Silence the game when the window loses focus (Alt-Tab).");
 
-        // Display / Graphics
-        AddSectionHeader("Display", "QUALITY");
-        AddDropdown("Display", "Preset", settingsUI.qualityDropdown,
-            "Quality preset. Overrides Render Scale and effect toggles when changed.");
-        AddSlider("Display", "Render Scale (%)",
-            settingsUI.renderScaleSlider, settingsUI.renderScaleInput,
-            "Internal render resolution as a percent of native. Lower for more FPS, higher for sharper image.");
-        AddSectionHeader("Display", "EFFECTS");
-        AddRow("Display", "Post Processing", settingsUI.postFXToggle, null,
-            "Bloom, color grading, depth of field. Disable for the highest FPS gain.");
-        AddRow("Display", "Dynamic Shadows", settingsUI.dynamicShadowsToggle, null,
-            "Realtime shadows from torches and minor lights. Disable to recover frames.");
+        // ===== VIDEO =====
+        AddSectionHeader("Video", "DISPLAY");
+        AddDropdown("Video", "Resolution",     s.resolutionDropdown,
+            "Render and output resolution. Lower for performance, higher for sharpness.");
+        AddDropdown("Video", "Window Mode",    s.windowModeDropdown,
+            "Fullscreen (exclusive), Borderless (snappy alt-tab), or Windowed.");
+        AddDropdown("Video", "Refresh Rate",   s.refreshRateDropdown,
+            "Monitor refresh rate target — only meaningful in Fullscreen.");
+        AddDropdown("Video", "Monitor",        s.monitorDropdown,
+            "Which display the game uses on multi-monitor setups.");
+        AddDropdown("Video", "FPS Cap",        s.fpsCapDropdown,
+            "Hard frame-rate cap. Unlimited = no cap. Lower caps reduce heat / battery.");
+        AddRow("Video", "V-Sync", s.vsyncToggle, null,
+            "Synchronise rendering to monitor refresh. Eliminates tearing but adds input lag.");
+        AddSectionHeader("Video", "CAMERA");
+        AddSlider("Video", "Field of View",    s.fovSlider,        s.fovInput,        "Wider FOV shows more peripheral vision but distorts edges. Default 75.");
+        AddSlider("Video", "Brightness",       s.brightnessSlider, s.brightnessInput, "Scene brightness multiplier. 100 = default.");
+        AddSlider("Video", "Gamma",            s.gammaSlider,      s.gammaInput,      "Mid-tone luminance. Lift shadows or crush highlights.");
 
-        // Controls — show FPS shortcut, anything keybindable later
+        // ===== GRAPHICS =====
+        AddSectionHeader("Graphics", "QUALITY PRESET");
+        AddDropdown("Graphics", "Preset",          s.qualityDropdown,
+            "Master quality preset. Overrides individual tiers below.");
+        AddSlider("Graphics", "Render Scale (%)",  s.renderScaleSlider, s.renderScaleInput,
+            "Internal resolution as % of output. Lower for more FPS, higher for super-sampling.");
+        AddSectionHeader("Graphics", "TIERS");
+        AddDropdown("Graphics", "Anti-Aliasing",    s.antiAliasingDropdown,
+            "Smooths jagged edges. FXAA cheap, SMAA balanced, TAA highest quality.");
+        AddDropdown("Graphics", "Texture Quality",  s.textureQualityDropdown,
+            "Texture mip level. Low saves VRAM, Ultra gives sharpest surfaces.");
+        AddDropdown("Graphics", "Shadow Quality",   s.shadowQualityDropdown,
+            "Off / Hard / Soft Low / Soft High. Biggest single-toggle performance lever.");
+        AddSlider("Graphics", "Shadow Distance",    s.shadowDistanceSlider, null,
+            "How far from the camera shadows are rendered, in metres.");
+        AddSectionHeader("Graphics", "POST-FX");
+        AddRow("Graphics", "Post Processing", s.postFXToggle, null,
+            "Master post-processing toggle (bloom + grading + DOF).");
+        AddRow("Graphics", "Dynamic Shadows", s.dynamicShadowsToggle, null,
+            "Realtime shadows on minor lights (torches, candles).");
+        AddRow("Graphics", "Motion Blur",     s.motionBlurToggle, null,
+            "Per-object motion blur on fast movement. Off for clarity.");
+        AddRow("Graphics", "Depth of Field",  s.depthOfFieldToggle, null,
+            "Cinematic focus blur during cutscenes and aim.");
+        AddRow("Graphics", "Bloom",           s.bloomToggle, null,
+            "Soft glow around bright pixels.");
+        AddRow("Graphics", "Ambient Occlusion", s.ambientOcclusionToggle, null,
+            "Soft shading in crevices and corners — adds depth, costs frames.");
+        AddRow("Graphics", "Volumetric Lighting", s.volumetricsToggle, null,
+            "God rays through fog. Expensive on lower-end GPUs.");
+
+        // ===== CONTROLS =====
+        AddSectionHeader("Controls", "MOUSE & KEYBOARD");
+        AddSlider("Controls", "Mouse Sensitivity", s.sensitivitySlider, s.sensitivityInput,
+            "Camera sensitivity multiplier. 100 = default. Raise for snappy aim.");
+        AddRow("Controls", "Invert Y Axis", s.invertYToggle, null,
+            "Flip vertical look direction. Down on the mouse looks up.");
+        AddSectionHeader("Controls", "GAMEPAD");
+        AddRow("Controls", "Controller Vibration", s.controllerVibrationToggle, null,
+            "Rumble on impacts when using a gamepad.");
+        AddSlider("Controls", "Aim Assist", s.aimAssistSlider, s.aimAssistInput,
+            "Sticky-aim strength on gamepad. 0 = off, 100 = strong magnet.");
         AddSectionHeader("Controls", "BINDINGS");
         TextMeshProUGUI placeholder = AddText(categoryRoots["Controls"], "ControlsPlaceholder",
-            "Custom keybindings coming soon.", 16, FontStyles.Italic);
+            "Custom key bindings coming soon.", 16, FontStyles.Italic);
         placeholder.color = colTextDim;
         placeholder.alignment = TextAlignmentOptions.Center;
-        LayoutElement le = placeholder.gameObject.AddComponent<LayoutElement>();
-        le.preferredHeight = 60f;
+        placeholder.gameObject.AddComponent<LayoutElement>().preferredHeight = 60f;
 
-        // Accessibility
-        AddSectionHeader("Accessibility", "VISUAL AIDS");
-        AddRow("Accessibility", "Subtitles", settingsUI.subtitlesToggle, null,
+        // ===== ACCESSIBILITY =====
+        AddSectionHeader("Accessibility", "SUBTITLES");
+        AddRow("Accessibility", "Subtitles", s.subtitlesToggle, null,
             "Show on-screen text for dialogue and narration.");
-        AddDropdown("Accessibility", "Subtitle Size", settingsUI.subtitleSizeDropdown,
+        AddDropdown("Accessibility", "Subtitle Size", s.subtitleSizeDropdown,
             "How large subtitle text is rendered.");
-        AddRow("Accessibility", "Colorblind Mode", settingsUI.colorblindToggle, null,
-            "Recolor enemy / pickup highlights for color-vision deficiencies.");
+        AddRow("Accessibility", "Subtitle Background", s.subtitleBackgroundToggle, null,
+            "Render subtitles on a translucent dark plate for readability.");
+        AddSectionHeader("Accessibility", "VISUAL AIDS");
+        AddRow("Accessibility", "Colorblind Mode", s.colorblindToggle, null,
+            "Recolor highlights for color-vision deficiencies.");
+        AddRow("Accessibility", "High Contrast UI", s.highContrastToggle, null,
+            "Boost contrast on HUD elements for visibility.");
+        AddRow("Accessibility", "Reduce Motion", s.reduceMotionToggle, null,
+            "Disable camera bob, screen sway, and aggressive transitions.");
+        AddRow("Accessibility", "Photosensitivity Safe Mode", s.photosensitivityToggle, null,
+            "Replace strobing flashes with steady glows.");
+        AddSectionHeader("Accessibility", "UI");
+        AddSlider("Accessibility", "UI Scale (%)", s.uiScaleSlider, s.uiScaleInput,
+            "Scale the HUD up to 150% for readability.");
 
-        // Language
-        AddSectionHeader("Language", "TEXT LANGUAGE");
-        AddDropdown("Language", "Language", settingsUI.languageDropdown,
-            "Game text language. Voice acting remains in its original language.");
+        // ===== LANGUAGE =====
+        AddSectionHeader("Language", "TEXT");
+        AddDropdown("Language", "Game Language",  s.languageDropdown,
+            "Game text language. Voice remains in its original language unless changed below.");
+        AddDropdown("Language", "Voice Language", s.voiceLanguageDropdown,
+            "Spoken dialogue language for cutscenes and barks.");
     }
 
     // ----- Row construction -----

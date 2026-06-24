@@ -187,6 +187,16 @@ public class AudioManager : MonoBehaviour
     public void SetMusicVolume(float vol) { globalMusicVolume = vol; PlayerPrefs.SetFloat("Settings_MusicVol", vol); UpdateMusicVolume(); }
     public void SetSFXVolume(float vol) { globalSFXVolume = vol; PlayerPrefs.SetFloat("Settings_SFXVol", vol); }
 
+    // Extended channels for AAA settings — UI / ambient / voice all
+    // multiply on top of master via AudioListener so we only need to
+    // surface them as multipliers consumed at PlayOneShot time.
+    public float globalUIVolume = 1f;
+    public float globalAmbientVolume = 1f;
+    public float globalVoiceVolume = 1f;
+    public void SetUIVolume(float vol) { globalUIVolume = vol; PlayerPrefs.SetFloat("Settings_UIVol", vol); }
+    public void SetAmbientVolume(float vol) { globalAmbientVolume = vol; PlayerPrefs.SetFloat("Settings_AmbientVol", vol); }
+    public void SetVoiceVolume(float vol) { globalVoiceVolume = vol; PlayerPrefs.SetFloat("Settings_VoiceVol", vol); }
+
     private void UpdateMusicVolume()
     {
         if (musicSource != null && musicSource.isPlaying)
