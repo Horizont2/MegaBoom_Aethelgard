@@ -224,8 +224,7 @@ public class SettingsAAARuntime : MonoBehaviour
             if (categoryRoots[i] != null) categoryRoots[i].gameObject.SetActive(i == idx);
         }
         // Drive per-button state via SettingsAAACategoryButton if present
-        // (two-layer themed flow). Falls back to the old categoryStripes
-        // toggle for setups that haven't been re-built since the migration.
+        // (two-layer themed flow).
         var stateBtns = GetComponentsInChildren<SettingsAAACategoryButton>(true);
         if (stateBtns != null && stateBtns.Length > 0)
         {
@@ -236,6 +235,11 @@ public class SettingsAAARuntime : MonoBehaviour
                 if (theme != null) stateBtns[i].theme = theme;
                 stateBtns[i].SetSelected(i == idx);
             }
+            // Always keep every Stroke layer visible — colour drives the
+            // selected/default look. A stuck disabled flag from the old
+            // categoryStripes flow would otherwise hide 7 of 8 cards.
+            for (int i = 0; i < categoryStripes.Count; i++)
+                if (categoryStripes[i] != null) categoryStripes[i].enabled = true;
         }
         else
         {

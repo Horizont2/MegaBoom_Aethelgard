@@ -806,33 +806,38 @@ public class SettingsUI : MonoBehaviour
 
     private IEnumerator AnimatePanelIn()
     {
+        // AAA panel is a full-screen overlay composed of three
+        // independent painted cards. Scaling the whole rect makes the
+        // cards expand outward from the canvas centre, which reads as
+        // them sliding into place — fade-only feels cleaner and matches
+        // typical AAA settings UX. Always reset scale to 1 in case a
+        // previous open/close half-finished.
         if (panelCanvasGroup == null || panelRect == null) yield break;
+        panelRect.localScale = Vector3.one;
         panelCanvasGroup.alpha = 0f;
-        panelRect.localScale = new Vector3(0.8f, 0.8f, 0.8f);
 
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.unscaledDeltaTime * animationSpeed;
+            t += Time.unscaledDeltaTime * animationSpeed * 1.6f;
             float easeOutQuart = 1f - Mathf.Pow(1f - t, 4f);
             panelCanvasGroup.alpha = Mathf.Lerp(0f, 1f, easeOutQuart);
-            panelRect.localScale = Vector3.Lerp(new Vector3(0.8f, 0.8f, 0.8f), Vector3.one, easeOutQuart);
             yield return null;
         }
         panelCanvasGroup.alpha = 1f;
-        panelRect.localScale = Vector3.one;
     }
 
     private IEnumerator AnimatePanelOut()
     {
+        // Mirror of AnimatePanelIn: fade alpha only, no scale.
         if (panelCanvasGroup == null || panelRect == null) { FinishClosing(); yield break; }
+        panelRect.localScale = Vector3.one;
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.unscaledDeltaTime * (animationSpeed * 1.5f);
+            t += Time.unscaledDeltaTime * (animationSpeed * 2f);
             float easeInQuad = t * t;
             panelCanvasGroup.alpha = Mathf.Lerp(1f, 0f, easeInQuad);
-            panelRect.localScale = Vector3.Lerp(Vector3.one, new Vector3(0.9f, 0.9f, 0.9f), easeInQuad);
             yield return null;
         }
         FinishClosing();
