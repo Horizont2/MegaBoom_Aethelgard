@@ -152,12 +152,13 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform footer = BuildFooter(rootRT);
 
         // Middle band fills the gap between header and footer with three
-        // columns: sidebar (240), center scroll, right rail (360).
+        // columns: sidebar (280), center scroll, right rail (300).
+        // Matches the painted-card reference proportions.
         RectTransform mid = NewRect("Mid", rootRT);
         mid.anchorMin = new Vector2(0f, 0f);
         mid.anchorMax = new Vector2(1f, 1f);
-        mid.offsetMin = new Vector2(40f, 110f);
-        mid.offsetMax = new Vector2(-40f, -90f);
+        mid.offsetMin = new Vector2(50f, 120f);
+        mid.offsetMax = new Vector2(-50f, -100f);
 
         RectTransform sidebar = BuildSidebar(mid);
         RectTransform center = BuildCenter(mid);
@@ -176,6 +177,9 @@ public class SettingsPanelAAABuilder : EditorWindow
         //  - category switching
         //  - description on row hover
         //  - apply / discard / reset
+        // Theme swapper — empty by default, user drags Figma sprites in.
+        rootGO.AddComponent<SettingsAAATheme>();
+
         SettingsAAARuntime runtime = rootGO.AddComponent<SettingsAAARuntime>();
         runtime.settingsUI = settingsUI;
         runtime.canvasGroup = rootCg;
@@ -291,7 +295,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         s.anchorMin = new Vector2(0f, 0f);
         s.anchorMax = new Vector2(0f, 1f);
         s.pivot = new Vector2(0f, 0.5f);
-        s.sizeDelta = new Vector2(240f, 0f);
+        s.sizeDelta = new Vector2(280f, 0f);
         s.anchoredPosition = Vector2.zero;
         AddPanelBg(s, colPanel);
         AddBorder(s, colBorder);
@@ -370,8 +374,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform c = NewRect("Center", parent);
         c.anchorMin = new Vector2(0f, 0f);
         c.anchorMax = new Vector2(1f, 1f);
-        c.offsetMin = new Vector2(260f, 0f);
-        c.offsetMax = new Vector2(-380f, 0f);
+        c.offsetMin = new Vector2(300f, 0f);
+        c.offsetMax = new Vector2(-320f, 0f);
         AddPanelBg(c, colPanel);
         AddBorder(c, colBorder);
 
@@ -477,7 +481,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         r.anchorMin = new Vector2(1f, 0f);
         r.anchorMax = new Vector2(1f, 1f);
         r.pivot = new Vector2(1f, 0.5f);
-        r.sizeDelta = new Vector2(360f, 0f);
+        r.sizeDelta = new Vector2(300f, 0f);
         r.anchoredPosition = Vector2.zero;
         AddPanelBg(r, colPanel);
         AddBorder(r, colBorder);
@@ -611,8 +615,6 @@ public class SettingsPanelAAABuilder : EditorWindow
         AddSectionHeader("Gameplay", "TUTORIAL");
         AddToggleField("Gameplay", "Tutorial Hints", "tutorialHintsToggle", true,
             "Show contextual hint popups when new mechanics appear.");
-        AddToggleField("Gameplay", "Hold to Sprint", "holdToggleSprintToggle", false,
-            "OFF = hold Shift to sprint. ON = press once to toggle sprint state.");
 
         // ===== AUDIO =====
         AddSectionHeader("Audio", "MIX");
@@ -760,9 +762,9 @@ public class SettingsPanelAAABuilder : EditorWindow
             typeof(RectTransform), typeof(LayoutElement), typeof(Image));
         ruleGO.transform.SetParent(hGO.transform, false);
         LayoutElement rule_le = ruleGO.GetComponent<LayoutElement>();
-        rule_le.preferredHeight = 2f;
+        rule_le.preferredHeight = 1f;
         Image r = ruleGO.GetComponent<Image>();
-        r.color = colBorder;
+        r.color = new Color(1f, 1f, 1f, 0.08f);
     }
 
     // ===== Procedural control creators =====
@@ -875,12 +877,20 @@ public class SettingsPanelAAABuilder : EditorWindow
 
         Toggle tog = tGO.GetComponent<Toggle>();
         tog.targetGraphic = pImg;
-        tog.graphic = kImg;
+        // NOTE: deliberately not setting tog.graphic — Unity hides the
+        // assigned graphic when isOn = false, which made the knob vanish
+        // instead of sliding. SettingsAAAToggleKnob animates it instead.
         tog.isOn = value;
         ColorBlock cb = tog.colors;
         cb.normalColor = Color.white;
         cb.highlightedColor = new Color(1f, 1f, 1f, 0.9f);
         tog.colors = cb;
+
+        var anim = tGO.AddComponent<SettingsAAAToggleKnob>();
+        anim.toggle = tog;
+        anim.knob = kImg;
+        anim.onColor = colSlider;
+        anim.offColor = new Color(0.55f, 0.58f, 0.62f, 1f);
         return tog;
     }
 
@@ -1182,6 +1192,9 @@ public class SettingsPanelAAABuilder : EditorWindow
 
     private void AddBorder(RectTransform rt, Color color)
     {
+        // Painted edge effect — 1px outline, subdued so it reads as a
+        // soft edge rather than a hard gold rule. Real edge styling
+        // comes from the Panel BG sprite once supplied via Theme.
         GameObject borderGO = new GameObject("Border",
             typeof(RectTransform), typeof(Image), typeof(Outline));
         borderGO.transform.SetParent(rt, false);
@@ -1191,7 +1204,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         bImg.color = new Color(0f, 0f, 0f, 0f);
         bImg.raycastTarget = false;
         Outline o = borderGO.GetComponent<Outline>();
-        o.effectColor = color;
+        o.effectColor = new Color(color.r, color.g, color.b, color.a * 0.5f);
         o.effectDistance = new Vector2(1f, -1f);
     }
 

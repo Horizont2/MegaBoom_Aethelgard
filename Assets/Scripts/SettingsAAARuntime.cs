@@ -81,7 +81,126 @@ public class SettingsAAARuntime : MonoBehaviour
         Button apply = FindButtonByName("ApplyButton");
         if (apply != null) { apply.onClick.RemoveAllListeners(); apply.onClick.AddListener(Apply); }
 
+        WireGraphicsPresetLogic();
         SwitchCategory(0);
+    }
+
+    // ===== Graphics preset linkage =====
+    // - When the user picks Low / Medium / High / Ultra → all individual
+    //   tier dropdowns + toggles get snapped to the matching values.
+    // - When the user touches any individual tier manually → preset is
+    //   pushed to "Custom" so the UI reflects that it's no longer the
+    //   stock preset.
+    //
+    // The Preset dropdown is rebuilt with 5 entries (Low / Medium / High
+    // / Ultra / Custom). Other tier dropdowns are looked up via reflection
+    // so the runtime stays decoupled from the exact field names.
+
+    private bool suppressTierEcho;
+    private bool suppressPresetEcho;
+
+    private void WireGraphicsPresetLogic()
+    {
+        if (settingsUI == null) return;
+        var s = settingsUI;
+
+        TMPro.TMP_Dropdown preset = s.qualityDropdown;
+        if (preset != null)
+        {
+            preset.ClearOptions();
+            preset.AddOptions(new List<string> { "Low", "Medium", "High", "Ultra", "Custom" });
+            int saved = Mathf.Clamp(PlayerPrefs.GetInt("Settings_QualityLevel", 2), 0, 4);
+            preset.SetValueWithoutNotify(saved);
+            preset.RefreshShownValue();
+            preset.onValueChanged.RemoveListener(OnPresetChanged);
+            preset.onValueChanged.AddListener(OnPresetChanged);
+        }
+
+        HookTierDropdown(s.antiAliasingDropdown);
+        HookTierDropdown(s.textureQualityDropdown);
+        HookTierDropdown(s.shadowQualityDropdown);
+        HookTierToggle(s.postFXToggle);
+        HookTierToggle(s.dynamicShadowsToggle);
+        HookTierToggle(s.motionBlurToggle);
+        HookTierToggle(s.depthOfFieldToggle);
+        HookTierToggle(s.bloomToggle);
+        HookTierToggle(s.ambientOcclusionToggle);
+        HookTierToggle(s.volumetricsToggle);
+        HookTierSlider(s.shadowDistanceSlider);
+        HookTierSlider(s.renderScaleSlider);
+    }
+
+    private void HookTierDropdown(TMPro.TMP_Dropdown d)
+    {
+        if (d == null) return;
+        d.onValueChanged.RemoveListener(OnTierTouched);
+        d.onValueChanged.AddListener(OnTierTouched);
+    }
+    private void HookTierToggle(Toggle t)
+    {
+        if (t == null) return;
+        t.onValueChanged.RemoveListener(OnTierTouchedBool);
+        t.onValueChanged.AddListener(OnTierTouchedBool);
+    }
+    private void HookTierSlider(Slider s)
+    {
+        if (s == null) return;
+        s.onValueChanged.RemoveListener(OnTierTouchedFloat);
+        s.onValueChanged.AddListener(OnTierTouchedFloat);
+    }
+
+    private void OnTierTouched(int _) { MarkCustomPreset(); }
+    private void OnTierTouchedBool(bool _) { MarkCustomPreset(); }
+    private void OnTierTouchedFloat(float _) { MarkCustomPreset(); }
+
+    private void MarkCustomPreset()
+    {
+        if (suppressTierEcho) return;
+        var preset = settingsUI != null ? settingsUI.qualityDropdown : null;
+        if (preset == null) return;
+        if (preset.value == 4) return;
+        suppressPresetEcho = true;
+        preset.SetValueWithoutNotify(4);
+        preset.RefreshShownValue();
+        suppressPresetEcho = false;
+    }
+
+    private void OnPresetChanged(int idx)
+    {
+        if (suppressPresetEcho) return;
+        if (idx < 0 || idx > 3) return;
+        var s = settingsUI;
+        if (s == null) return;
+        suppressTierEcho = true;
+
+        // Tier values per preset (Low=0, Medium=1, High=2, Ultra=3).
+        int aa            = new[] { 0, 1, 2, 3 }[idx];
+        int texture       = new[] { 0, 1, 2, 3 }[idx];
+        int shadow        = new[] { 0, 1, 2, 3 }[idx];
+        float renderScale = new[] { 75f, 90f, 100f, 100f }[idx];
+        float shadowDist  = new[] { 30f, 50f, 80f, 150f }[idx];
+        bool postFX       = idx >= 1;
+        bool dynShadows   = idx >= 1;
+        bool motionBlur   = idx >= 3;
+        bool dof          = idx >= 3;
+        bool bloom        = idx >= 1;
+        bool ao           = idx >= 1;
+        bool volumetrics  = idx >= 2;
+
+        if (s.antiAliasingDropdown   != null) s.antiAliasingDropdown.value   = aa;
+        if (s.textureQualityDropdown != null) s.textureQualityDropdown.value = texture;
+        if (s.shadowQualityDropdown  != null) s.shadowQualityDropdown.value  = shadow;
+        if (s.renderScaleSlider      != null) s.renderScaleSlider.value      = renderScale;
+        if (s.shadowDistanceSlider   != null) s.shadowDistanceSlider.value   = shadowDist;
+        if (s.postFXToggle           != null) s.postFXToggle.isOn            = postFX;
+        if (s.dynamicShadowsToggle   != null) s.dynamicShadowsToggle.isOn    = dynShadows;
+        if (s.motionBlurToggle       != null) s.motionBlurToggle.isOn        = motionBlur;
+        if (s.depthOfFieldToggle     != null) s.depthOfFieldToggle.isOn      = dof;
+        if (s.bloomToggle            != null) s.bloomToggle.isOn             = bloom;
+        if (s.ambientOcclusionToggle != null) s.ambientOcclusionToggle.isOn  = ao;
+        if (s.volumetricsToggle      != null) s.volumetricsToggle.isOn       = volumetrics;
+
+        suppressTierEcho = false;
     }
 
     public void Close()
