@@ -31,6 +31,13 @@ public class SettingsAAARuntime : MonoBehaviour
     private int activeIndex = 0;
     private string defaultDescription = "Mouse over any option to read what it does.";
 
+    // Editor-time AddListener calls don't survive scene save / play-mode
+    // reloads — only persistent UnityEvent links from the inspector do.
+    // Re-wire every button ourselves in OnEnable so the panel works
+    // whether the user re-built it just now or loaded the saved scene.
+    private void Awake() { Initialise(); }
+    private void OnEnable() { Initialise(); }
+
     public void Initialise()
     {
         // Hook hover behaviour into the runtime; the editor builder already
@@ -60,6 +67,12 @@ public class SettingsAAARuntime : MonoBehaviour
             }
         }
 
+        // Header buttons.
+        Button back = FindButtonByName("BackButton");
+        if (back != null) { back.onClick.RemoveAllListeners(); back.onClick.AddListener(Close); }
+        Button close = FindButtonByName("CloseButton");
+        if (close != null) { close.onClick.RemoveAllListeners(); close.onClick.AddListener(Close); }
+
         // Footer buttons.
         Button reset = FindButtonByName("ResetButton");
         if (reset != null) { reset.onClick.RemoveAllListeners(); reset.onClick.AddListener(ResetDefaults); }
@@ -69,6 +82,12 @@ public class SettingsAAARuntime : MonoBehaviour
         if (apply != null) { apply.onClick.RemoveAllListeners(); apply.onClick.AddListener(Apply); }
 
         SwitchCategory(0);
+    }
+
+    public void Close()
+    {
+        if (settingsUI != null) settingsUI.CloseSettings();
+        else gameObject.SetActive(false);
     }
 
     private string categoryNameAt(int i)
