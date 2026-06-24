@@ -29,11 +29,6 @@ public class SettingsPanelAAABuilder : EditorWindow
     private SettingsUI settingsUI;
     private TMP_FontAsset font;
 
-    private Slider templateSlider;
-    private Toggle templateToggle;
-    private TMP_Dropdown templateDropdown;
-    private TMP_InputField templateInput;
-
     private Sprite panelBgSprite;
     private Sprite buttonSprite;
     private Sprite handleSprite;
@@ -75,22 +70,15 @@ public class SettingsPanelAAABuilder : EditorWindow
 
         GUILayout.Label("AAA Settings Builder", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "Builds a full-screen settings overlay on the chosen Canvas.\n" +
-            "Wires the new controls into the SettingsUI script you point at.\n" +
-            "Templates (Slider/Toggle/Dropdown/InputField) get cloned per row.\n" +
-            "Leave sprites empty for default flat UI fill.",
+            "Builds a full-screen AAA settings overlay on the chosen Canvas.\n" +
+            "Every slider / toggle / dropdown is generated procedurally and\n" +
+            "auto-bound into matching SettingsUI public fields — no scene\n" +
+            "templates needed. Leave sprites empty for default flat UI fill.",
             MessageType.Info);
 
         targetCanvas = (Canvas)EditorGUILayout.ObjectField("Target Canvas", targetCanvas, typeof(Canvas), true);
         settingsUI = (SettingsUI)EditorGUILayout.ObjectField("SettingsUI", settingsUI, typeof(SettingsUI), true);
         font = (TMP_FontAsset)EditorGUILayout.ObjectField("Font", font, typeof(TMP_FontAsset), false);
-
-        GUILayout.Space(6);
-        GUILayout.Label("Control Templates (cloned for each row)", EditorStyles.boldLabel);
-        templateSlider = (Slider)EditorGUILayout.ObjectField("Slider", templateSlider, typeof(Slider), true);
-        templateToggle = (Toggle)EditorGUILayout.ObjectField("Toggle", templateToggle, typeof(Toggle), true);
-        templateDropdown = (TMP_Dropdown)EditorGUILayout.ObjectField("Dropdown", templateDropdown, typeof(TMP_Dropdown), true);
-        templateInput = (TMP_InputField)EditorGUILayout.ObjectField("InputField", templateInput, typeof(TMP_InputField), true);
 
         GUILayout.Space(6);
         GUILayout.Label("Optional Sprites", EditorStyles.boldLabel);
@@ -179,12 +167,9 @@ public class SettingsPanelAAABuilder : EditorWindow
         // Only the selected category is enabled at a time.
         BuildCategoryContents();
 
-        // Make sure every dropdown that lives on this panel has the
-        // canonical option list before any row tries to bind to it.
-        PrepopulateDropdownOptions();
-
-        // Populate each category with rows pulled from the existing
-        // SettingsUI references.
+        // Build every row procedurally and bind each control back into
+        // the matching SettingsUI public field so the existing
+        // OpenSettings / CloseSettings logic still picks them up.
         PopulateAllSections();
 
         // Attach runtime controller that drives:
@@ -586,136 +571,126 @@ public class SettingsPanelAAABuilder : EditorWindow
         }
     }
 
-    private void PrepopulateDropdownOptions()
-    {
-        var s = settingsUI;
-        // Editor-time options; SettingsUI also (re)populates resolution
-        // / refresh / monitor at runtime where actual monitor data lives.
-        FillDropdown(s.qualityDropdown,        new[] { "Low", "Medium", "High", "Ultra" });
-        FillDropdown(s.antiAliasingDropdown,   new[] { "Off", "FXAA", "SMAA", "TAA" });
-        FillDropdown(s.textureQualityDropdown, new[] { "Low", "Medium", "High", "Ultra" });
-        FillDropdown(s.shadowQualityDropdown,  new[] { "Off", "Hard", "Soft Low", "Soft High" });
-        FillDropdown(s.difficultyDropdown,     new[] { "Easy", "Normal", "Hard", "Hardcore" });
-        FillDropdown(s.subtitleSizeDropdown,   new[] { "Small", "Medium", "Large" });
-        FillDropdown(s.languageDropdown,       new[] { "English", "Українська" });
-        FillDropdown(s.voiceLanguageDropdown,  new[] { "English", "Українська" });
-        FillDropdown(s.windowModeDropdown,     new[] { "Fullscreen", "Borderless", "Windowed" });
-        FillDropdown(s.fpsCapDropdown,         new[] { "Unlimited", "30", "60", "90", "120", "144", "240" });
-    }
-
-    private void FillDropdown(TMP_Dropdown d, string[] opts)
-    {
-        if (d == null) return;
-        d.ClearOptions();
-        d.AddOptions(new List<string>(opts));
-    }
-
     private void PopulateAllSections()
     {
-        var s = settingsUI;
+        string[] qualityOpts    = { "Low", "Medium", "High", "Ultra" };
+        string[] aaOpts         = { "Off", "FXAA", "SMAA", "TAA" };
+        string[] shadowOpts     = { "Off", "Hard", "Soft Low", "Soft High" };
+        string[] difficultyOpts = { "Easy", "Normal", "Hard", "Hardcore" };
+        string[] subtitleSize   = { "Small", "Medium", "Large" };
+        string[] languageOpts   = { "English", "Українська", "Русский", "Español", "Deutsch", "Français" };
+        string[] windowOpts     = { "Fullscreen", "Borderless", "Windowed" };
+        string[] resOpts        = { "1920×1080", "2560×1440", "3840×2160" };
+        string[] refreshOpts    = { "60 Hz", "120 Hz", "144 Hz", "165 Hz", "240 Hz" };
+        string[] monitorOpts    = { "Primary" };
+        string[] fpsCapOpts     = { "Unlimited", "30", "60", "90", "120", "144", "240" };
 
         // ===== GENERAL =====
         AddSectionHeader("General", "HUD");
-        AddRow("General", "Show FPS", s.showFPSToggle, null,
+        AddToggleField("General", "Show FPS", "showFPSToggle", false,
             "Toggle the on-screen frames-per-second counter.");
-        AddRow("General", "Limit FPS", s.limitFPSToggle, null,
+        AddToggleField("General", "Limit FPS", "limitFPSToggle", true,
             "Quick on/off cap. Use the FPS Cap dropdown in Video for exact values.");
         AddSectionHeader("General", "SAVE");
-        AddRow("General", "Auto-Save", s.autoSaveToggle, null,
+        AddToggleField("General", "Auto-Save", "autoSaveToggle", true,
             "Periodically save progress without prompting.");
 
         // ===== GAMEPLAY =====
         AddSectionHeader("Gameplay", "DIFFICULTY");
-        AddDropdown("Gameplay", "Difficulty", s.difficultyDropdown,
+        AddDropdownField("Gameplay", "Difficulty", "difficultyDropdown", difficultyOpts, 1,
             "Combat scaling. Easy / Normal / Hard / Hardcore. Hardcore disables checkpoints.");
         AddSectionHeader("Gameplay", "FEEDBACK");
-        AddRow("Gameplay", "Damage Popups", s.damagePopupsToggle, null,
+        AddToggleField("Gameplay", "Damage Popups", "damagePopupsToggle", true,
             "Show floating damage numbers above enemies you hit.");
-        AddRow("Gameplay", "Screen Shake", s.screenShakeToggle, null,
+        AddToggleField("Gameplay", "Screen Shake", "screenShakeToggle", true,
             "Camera shake on impacts and explosions. Disable if it causes discomfort.");
-        AddRow("Gameplay", "Hit-Stop FX", s.hitStopToggle, null,
+        AddToggleField("Gameplay", "Hit-Stop FX", "hitStopToggle", true,
             "Brief freeze on heavy hits for impact. Disable for smoother combat.");
-        AddRow("Gameplay", "Low HP Vignette", s.lowHpVignetteToggle, null,
+        AddToggleField("Gameplay", "Low HP Vignette", "lowHpVignetteToggle", true,
             "Red edge tint when health is critical. Disable to reduce visual noise.");
         AddSectionHeader("Gameplay", "TUTORIAL");
-        AddRow("Gameplay", "Tutorial Hints", s.tutorialHintsToggle, null,
+        AddToggleField("Gameplay", "Tutorial Hints", "tutorialHintsToggle", true,
             "Show contextual hint popups when new mechanics appear.");
-        AddRow("Gameplay", "Hold to Sprint", s.holdToggleSprintToggle, null,
+        AddToggleField("Gameplay", "Hold to Sprint", "holdToggleSprintToggle", false,
             "OFF = hold Shift to sprint. ON = press once to toggle sprint state.");
 
         // ===== AUDIO =====
         AddSectionHeader("Audio", "MIX");
-        AddSlider("Audio", "Master",      s.masterSlider,  s.masterInput,  "Overall game volume — affects every channel.");
-        AddSlider("Audio", "Music",       s.musicSlider,   s.musicInput,   "Background music and ambient score.");
-        AddSlider("Audio", "Sound FX",    s.sfxSlider,     s.sfxInput,     "Combat and world impact sounds.");
-        AddSlider("Audio", "Voice",       s.voiceSlider,   s.voiceInput,   "Dialogue and narration.");
-        AddSlider("Audio", "UI",          s.uiSlider,      s.uiInput,      "Menu, button, and HUD sounds.");
-        AddSlider("Audio", "Ambient",     s.ambientSlider, s.ambientInput, "World ambience — wind, fire, water.");
+        AddSliderField("Audio", "Master",  "masterSlider",  "masterInput",  0f, 100f, 100f, "Overall game volume — affects every channel.");
+        AddSliderField("Audio", "Music",   "musicSlider",   "musicInput",   0f, 100f, 100f, "Background music and ambient score.");
+        AddSliderField("Audio", "Sound FX","sfxSlider",     "sfxInput",     0f, 100f, 100f, "Combat and world impact sounds.");
+        AddSliderField("Audio", "Voice",   "voiceSlider",   "voiceInput",   0f, 100f, 100f, "Dialogue and narration.");
+        AddSliderField("Audio", "UI",      "uiSlider",      "uiInput",      0f, 100f, 100f, "Menu, button, and HUD sounds.");
+        AddSliderField("Audio", "Ambient", "ambientSlider", "ambientInput", 0f, 100f, 100f, "World ambience — wind, fire, water.");
         AddSectionHeader("Audio", "BEHAVIOUR");
-        AddRow("Audio", "Mute When Unfocused", s.muteWhenUnfocusedToggle, null,
+        AddToggleField("Audio", "Mute When Unfocused", "muteWhenUnfocusedToggle", true,
             "Silence the game when the window loses focus (Alt-Tab).");
 
         // ===== VIDEO =====
         AddSectionHeader("Video", "DISPLAY");
-        AddDropdown("Video", "Resolution",     s.resolutionDropdown,
+        AddDropdownField("Video", "Resolution",   "resolutionDropdown",  resOpts, 0,
             "Render and output resolution. Lower for performance, higher for sharpness.");
-        AddDropdown("Video", "Window Mode",    s.windowModeDropdown,
+        AddDropdownField("Video", "Window Mode",  "windowModeDropdown",  windowOpts, 0,
             "Fullscreen (exclusive), Borderless (snappy alt-tab), or Windowed.");
-        AddDropdown("Video", "Refresh Rate",   s.refreshRateDropdown,
+        AddDropdownField("Video", "Refresh Rate", "refreshRateDropdown", refreshOpts, 0,
             "Monitor refresh rate target — only meaningful in Fullscreen.");
-        AddDropdown("Video", "Monitor",        s.monitorDropdown,
+        AddDropdownField("Video", "Monitor",      "monitorDropdown",     monitorOpts, 0,
             "Which display the game uses on multi-monitor setups.");
-        AddDropdown("Video", "FPS Cap",        s.fpsCapDropdown,
+        AddDropdownField("Video", "FPS Cap",      "fpsCapDropdown",      fpsCapOpts, 2,
             "Hard frame-rate cap. Unlimited = no cap. Lower caps reduce heat / battery.");
-        AddRow("Video", "V-Sync", s.vsyncToggle, null,
+        AddToggleField("Video", "V-Sync", "vsyncToggle", false,
             "Synchronise rendering to monitor refresh. Eliminates tearing but adds input lag.");
         AddSectionHeader("Video", "CAMERA");
-        AddSlider("Video", "Field of View",    s.fovSlider,        s.fovInput,        "Wider FOV shows more peripheral vision but distorts edges. Default 75.");
-        AddSlider("Video", "Brightness",       s.brightnessSlider, s.brightnessInput, "Scene brightness multiplier. 100 = default.");
-        AddSlider("Video", "Gamma",            s.gammaSlider,      s.gammaInput,      "Mid-tone luminance. Lift shadows or crush highlights.");
+        AddSliderField("Video", "Field of View", "fovSlider",        "fovInput",        60f,  120f, 75f,  "Wider FOV shows more peripheral vision but distorts edges. Default 75.");
+        AddSliderField("Video", "Brightness",    "brightnessSlider", "brightnessInput", 0.5f, 1.5f, 1f,   "Scene brightness multiplier. 1 = default.");
+        AddSliderField("Video", "Gamma",         "gammaSlider",      "gammaInput",      0.5f, 1.5f, 1f,   "Mid-tone luminance. Lift shadows or crush highlights.");
 
         // ===== GRAPHICS =====
         AddSectionHeader("Graphics", "QUALITY PRESET");
-        AddDropdown("Graphics", "Preset",          s.qualityDropdown,
+        AddDropdownField("Graphics", "Preset",         "qualityDropdown", qualityOpts, 2,
             "Master quality preset. Overrides individual tiers below.");
-        AddSlider("Graphics", "Render Scale (%)",  s.renderScaleSlider, s.renderScaleInput,
+        AddSliderField("Graphics", "Render Scale (%)", "renderScaleSlider", "renderScaleInput",
+            50f, 200f, 100f,
             "Internal resolution as % of output. Lower for more FPS, higher for super-sampling.");
         AddSectionHeader("Graphics", "TIERS");
-        AddDropdown("Graphics", "Anti-Aliasing",    s.antiAliasingDropdown,
+        AddDropdownField("Graphics", "Anti-Aliasing",   "antiAliasingDropdown", aaOpts, 1,
             "Smooths jagged edges. FXAA cheap, SMAA balanced, TAA highest quality.");
-        AddDropdown("Graphics", "Texture Quality",  s.textureQualityDropdown,
+        AddDropdownField("Graphics", "Texture Quality", "textureQualityDropdown", qualityOpts, 2,
             "Texture mip level. Low saves VRAM, Ultra gives sharpest surfaces.");
-        AddDropdown("Graphics", "Shadow Quality",   s.shadowQualityDropdown,
+        AddDropdownField("Graphics", "Shadow Quality",  "shadowQualityDropdown", shadowOpts, 2,
             "Off / Hard / Soft Low / Soft High. Biggest single-toggle performance lever.");
-        AddSlider("Graphics", "Shadow Distance",    s.shadowDistanceSlider, null,
+        AddSliderField("Graphics", "Shadow Distance",   "shadowDistanceSlider", null,
+            10f, 200f, 50f,
             "How far from the camera shadows are rendered, in metres.");
         AddSectionHeader("Graphics", "POST-FX");
-        AddRow("Graphics", "Post Processing", s.postFXToggle, null,
+        AddToggleField("Graphics", "Post Processing",    "postFXToggle", true,
             "Master post-processing toggle (bloom + grading + DOF).");
-        AddRow("Graphics", "Dynamic Shadows", s.dynamicShadowsToggle, null,
+        AddToggleField("Graphics", "Dynamic Shadows",    "dynamicShadowsToggle", true,
             "Realtime shadows on minor lights (torches, candles).");
-        AddRow("Graphics", "Motion Blur",     s.motionBlurToggle, null,
+        AddToggleField("Graphics", "Motion Blur",        "motionBlurToggle", false,
             "Per-object motion blur on fast movement. Off for clarity.");
-        AddRow("Graphics", "Depth of Field",  s.depthOfFieldToggle, null,
+        AddToggleField("Graphics", "Depth of Field",     "depthOfFieldToggle", false,
             "Cinematic focus blur during cutscenes and aim.");
-        AddRow("Graphics", "Bloom",           s.bloomToggle, null,
+        AddToggleField("Graphics", "Bloom",              "bloomToggle", true,
             "Soft glow around bright pixels.");
-        AddRow("Graphics", "Ambient Occlusion", s.ambientOcclusionToggle, null,
+        AddToggleField("Graphics", "Ambient Occlusion",  "ambientOcclusionToggle", true,
             "Soft shading in crevices and corners — adds depth, costs frames.");
-        AddRow("Graphics", "Volumetric Lighting", s.volumetricsToggle, null,
+        AddToggleField("Graphics", "Volumetric Lighting","volumetricsToggle", false,
             "God rays through fog. Expensive on lower-end GPUs.");
 
         // ===== CONTROLS =====
         AddSectionHeader("Controls", "MOUSE & KEYBOARD");
-        AddSlider("Controls", "Mouse Sensitivity", s.sensitivitySlider, s.sensitivityInput,
-            "Camera sensitivity multiplier. 100 = default. Raise for snappy aim.");
-        AddRow("Controls", "Invert Y Axis", s.invertYToggle, null,
+        AddSliderField("Controls", "Mouse Sensitivity", "sensitivitySlider", "sensitivityInput",
+            0.1f, 5f, 1f,
+            "Camera sensitivity multiplier. 1 = default. Raise for snappy aim.");
+        AddToggleField("Controls", "Invert Y Axis", "invertYToggle", false,
             "Flip vertical look direction. Down on the mouse looks up.");
         AddSectionHeader("Controls", "GAMEPAD");
-        AddRow("Controls", "Controller Vibration", s.controllerVibrationToggle, null,
+        AddToggleField("Controls", "Controller Vibration", "controllerVibrationToggle", true,
             "Rumble on impacts when using a gamepad.");
-        AddSlider("Controls", "Aim Assist", s.aimAssistSlider, s.aimAssistInput,
-            "Sticky-aim strength on gamepad. 0 = off, 100 = strong magnet.");
+        AddSliderField("Controls", "Aim Assist", "aimAssistSlider", "aimAssistInput",
+            0f, 1f, 0.4f,
+            "Sticky-aim strength on gamepad. 0 = off, 1 = strong magnet.");
         AddSectionHeader("Controls", "BINDINGS");
         TextMeshProUGUI placeholder = AddText(categoryRoots["Controls"], "ControlsPlaceholder",
             "Custom key bindings coming soon.", 16, FontStyles.Italic);
@@ -725,30 +700,31 @@ public class SettingsPanelAAABuilder : EditorWindow
 
         // ===== ACCESSIBILITY =====
         AddSectionHeader("Accessibility", "SUBTITLES");
-        AddRow("Accessibility", "Subtitles", s.subtitlesToggle, null,
+        AddToggleField("Accessibility", "Subtitles", "subtitlesToggle", true,
             "Show on-screen text for dialogue and narration.");
-        AddDropdown("Accessibility", "Subtitle Size", s.subtitleSizeDropdown,
+        AddDropdownField("Accessibility", "Subtitle Size", "subtitleSizeDropdown", subtitleSize, 1,
             "How large subtitle text is rendered.");
-        AddRow("Accessibility", "Subtitle Background", s.subtitleBackgroundToggle, null,
+        AddToggleField("Accessibility", "Subtitle Background", "subtitleBackgroundToggle", true,
             "Render subtitles on a translucent dark plate for readability.");
         AddSectionHeader("Accessibility", "VISUAL AIDS");
-        AddRow("Accessibility", "Colorblind Mode", s.colorblindToggle, null,
+        AddToggleField("Accessibility", "Colorblind Mode", "colorblindToggle", false,
             "Recolor highlights for color-vision deficiencies.");
-        AddRow("Accessibility", "High Contrast UI", s.highContrastToggle, null,
+        AddToggleField("Accessibility", "High Contrast UI", "highContrastToggle", false,
             "Boost contrast on HUD elements for visibility.");
-        AddRow("Accessibility", "Reduce Motion", s.reduceMotionToggle, null,
+        AddToggleField("Accessibility", "Reduce Motion", "reduceMotionToggle", false,
             "Disable camera bob, screen sway, and aggressive transitions.");
-        AddRow("Accessibility", "Photosensitivity Safe Mode", s.photosensitivityToggle, null,
+        AddToggleField("Accessibility", "Photosensitivity Safe Mode", "photosensitivityToggle", false,
             "Replace strobing flashes with steady glows.");
         AddSectionHeader("Accessibility", "UI");
-        AddSlider("Accessibility", "UI Scale (%)", s.uiScaleSlider, s.uiScaleInput,
+        AddSliderField("Accessibility", "UI Scale", "uiScaleSlider", "uiScaleInput",
+            0.75f, 1.5f, 1f,
             "Scale the HUD up to 150% for readability.");
 
         // ===== LANGUAGE =====
         AddSectionHeader("Language", "TEXT");
-        AddDropdown("Language", "Game Language",  s.languageDropdown,
+        AddDropdownField("Language", "Game Language",  "languageDropdown",      languageOpts, 0,
             "Game text language. Voice remains in its original language unless changed below.");
-        AddDropdown("Language", "Voice Language", s.voiceLanguageDropdown,
+        AddDropdownField("Language", "Voice Language", "voiceLanguageDropdown", languageOpts, 0,
             "Spoken dialogue language for cutscenes and barks.");
     }
 
@@ -789,88 +765,359 @@ public class SettingsPanelAAABuilder : EditorWindow
         r.color = colBorder;
     }
 
-    private GameObject AddRow(string categoryId, string label, Toggle togSrc, TMP_InputField inputSrc, string description)
+    // ===== Procedural control creators =====
+    // We build sliders / toggles / dropdowns from scratch (instead of
+    // reparenting whatever the user assigned to SettingsUI) so the panel
+    // looks the same regardless of how the scene was set up. The created
+    // control is also written back into the matching SettingsUI field via
+    // reflection, so existing OpenSettings/CloseSettings code still works.
+
+    private Slider CreateSlider(Transform parent, float min, float max, float value)
     {
-        if (togSrc == null && inputSrc == null) return null;
+        GameObject sGO = new GameObject("Slider",
+            typeof(RectTransform), typeof(Slider));
+        sGO.transform.SetParent(parent, false);
+        RectTransform sRT = sGO.GetComponent<RectTransform>();
+        sRT.sizeDelta = new Vector2(260f, 20f);
+        sRT.localScale = Vector3.one;
+
+        // Background track.
+        GameObject bgGO = new GameObject("Background",
+            typeof(RectTransform), typeof(Image));
+        bgGO.transform.SetParent(sRT, false);
+        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
+        bgRT.anchorMin = new Vector2(0f, 0.5f);
+        bgRT.anchorMax = new Vector2(1f, 0.5f);
+        bgRT.sizeDelta = new Vector2(0f, 6f);
+        bgRT.anchoredPosition = Vector2.zero;
+        Image bgImg = bgGO.GetComponent<Image>();
+        bgImg.color = colTrack;
+
+        // Fill area + fill.
+        GameObject faGO = new GameObject("Fill Area", typeof(RectTransform));
+        faGO.transform.SetParent(sRT, false);
+        RectTransform faRT = faGO.GetComponent<RectTransform>();
+        faRT.anchorMin = new Vector2(0f, 0.5f);
+        faRT.anchorMax = new Vector2(1f, 0.5f);
+        faRT.offsetMin = new Vector2(8f, -3f);
+        faRT.offsetMax = new Vector2(-8f, 3f);
+
+        GameObject fGO = new GameObject("Fill",
+            typeof(RectTransform), typeof(Image));
+        fGO.transform.SetParent(faRT, false);
+        RectTransform fRT = fGO.GetComponent<RectTransform>();
+        fRT.anchorMin = new Vector2(0f, 0f);
+        fRT.anchorMax = new Vector2(1f, 1f);
+        fRT.offsetMin = Vector2.zero;
+        fRT.offsetMax = Vector2.zero;
+        Image fImg = fGO.GetComponent<Image>();
+        fImg.color = colSlider;
+
+        // Handle area + handle.
+        GameObject haGO = new GameObject("Handle Slide Area", typeof(RectTransform));
+        haGO.transform.SetParent(sRT, false);
+        RectTransform haRT = haGO.GetComponent<RectTransform>();
+        haRT.anchorMin = new Vector2(0f, 0f);
+        haRT.anchorMax = new Vector2(1f, 1f);
+        haRT.offsetMin = new Vector2(10f, 0f);
+        haRT.offsetMax = new Vector2(-10f, 0f);
+
+        GameObject hGO = new GameObject("Handle",
+            typeof(RectTransform), typeof(Image));
+        hGO.transform.SetParent(haRT, false);
+        RectTransform hRT = hGO.GetComponent<RectTransform>();
+        hRT.sizeDelta = new Vector2(18f, 18f);
+        Image hImg = hGO.GetComponent<Image>();
+        hImg.color = new Color(colSlider.r * 1.3f, colSlider.g * 1.3f, colSlider.b * 1.3f, 1f);
+        if (handleSprite != null) hImg.sprite = handleSprite;
+
+        Slider sld = sGO.GetComponent<Slider>();
+        sld.fillRect = fRT;
+        sld.handleRect = hRT;
+        sld.targetGraphic = hImg;
+        sld.direction = Slider.Direction.LeftToRight;
+        sld.minValue = min;
+        sld.maxValue = max;
+        sld.value = value;
+        return sld;
+    }
+
+    private Toggle CreateToggle(Transform parent, bool value)
+    {
+        GameObject tGO = new GameObject("Toggle",
+            typeof(RectTransform), typeof(Toggle));
+        tGO.transform.SetParent(parent, false);
+        RectTransform tRT = tGO.GetComponent<RectTransform>();
+        tRT.sizeDelta = new Vector2(56f, 28f);
+        tRT.localScale = Vector3.one;
+
+        // Pill background.
+        GameObject pGO = new GameObject("Background",
+            typeof(RectTransform), typeof(Image));
+        pGO.transform.SetParent(tRT, false);
+        RectTransform pRT = pGO.GetComponent<RectTransform>();
+        StretchFull(pRT);
+        Image pImg = pGO.GetComponent<Image>();
+        pImg.color = colTrack;
+
+        // Knob (sliding circle).
+        GameObject kGO = new GameObject("Checkmark",
+            typeof(RectTransform), typeof(Image));
+        kGO.transform.SetParent(pRT, false);
+        RectTransform kRT = kGO.GetComponent<RectTransform>();
+        kRT.sizeDelta = new Vector2(22f, 22f);
+        kRT.anchorMin = new Vector2(value ? 1f : 0f, 0.5f);
+        kRT.anchorMax = new Vector2(value ? 1f : 0f, 0.5f);
+        kRT.pivot = new Vector2(value ? 1f : 0f, 0.5f);
+        kRT.anchoredPosition = new Vector2(value ? -3f : 3f, 0f);
+        Image kImg = kGO.GetComponent<Image>();
+        kImg.color = value ? colSlider : new Color(0.6f, 0.6f, 0.65f, 1f);
+
+        Toggle tog = tGO.GetComponent<Toggle>();
+        tog.targetGraphic = pImg;
+        tog.graphic = kImg;
+        tog.isOn = value;
+        ColorBlock cb = tog.colors;
+        cb.normalColor = Color.white;
+        cb.highlightedColor = new Color(1f, 1f, 1f, 0.9f);
+        tog.colors = cb;
+        return tog;
+    }
+
+    private TMP_Dropdown CreateDropdown(Transform parent, string[] options, int selected)
+    {
+        GameObject dGO = new GameObject("Dropdown",
+            typeof(RectTransform), typeof(Image), typeof(TMP_Dropdown));
+        dGO.transform.SetParent(parent, false);
+        RectTransform dRT = dGO.GetComponent<RectTransform>();
+        dRT.sizeDelta = new Vector2(220f, 36f);
+        dRT.localScale = Vector3.one;
+        Image dImg = dGO.GetComponent<Image>();
+        dImg.color = colTrack;
+
+        // Label.
+        GameObject lGO = new GameObject("Label",
+            typeof(RectTransform), typeof(TextMeshProUGUI));
+        lGO.transform.SetParent(dRT, false);
+        RectTransform lRT = lGO.GetComponent<RectTransform>();
+        StretchFull(lRT);
+        lRT.offsetMin = new Vector2(12f, 2f);
+        lRT.offsetMax = new Vector2(-30f, -2f);
+        TextMeshProUGUI lTxt = lGO.GetComponent<TextMeshProUGUI>();
+        lTxt.text = options.Length > 0 ? options[Mathf.Clamp(selected, 0, options.Length - 1)] : "";
+        lTxt.color = colText;
+        lTxt.fontSize = 16;
+        lTxt.alignment = TextAlignmentOptions.MidlineLeft;
+        if (font != null) lTxt.font = font;
+
+        // Caret arrow.
+        GameObject cGO = new GameObject("Arrow",
+            typeof(RectTransform), typeof(TextMeshProUGUI));
+        cGO.transform.SetParent(dRT, false);
+        RectTransform cRT = cGO.GetComponent<RectTransform>();
+        cRT.anchorMin = new Vector2(1f, 0.5f);
+        cRT.anchorMax = new Vector2(1f, 0.5f);
+        cRT.pivot = new Vector2(1f, 0.5f);
+        cRT.sizeDelta = new Vector2(24f, 24f);
+        cRT.anchoredPosition = new Vector2(-8f, 0f);
+        TextMeshProUGUI cTxt = cGO.GetComponent<TextMeshProUGUI>();
+        cTxt.text = "▼";
+        cTxt.color = colAccent;
+        cTxt.fontSize = 14;
+        cTxt.alignment = TextAlignmentOptions.Center;
+        if (font != null) cTxt.font = font;
+
+        // Template (collapsed).
+        GameObject tplGO = new GameObject("Template",
+            typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+        tplGO.transform.SetParent(dRT, false);
+        RectTransform tplRT = tplGO.GetComponent<RectTransform>();
+        tplRT.anchorMin = new Vector2(0f, 0f);
+        tplRT.anchorMax = new Vector2(1f, 0f);
+        tplRT.pivot = new Vector2(0.5f, 1f);
+        tplRT.sizeDelta = new Vector2(0f, 150f);
+        tplRT.anchoredPosition = new Vector2(0f, 2f);
+        Image tplImg = tplGO.GetComponent<Image>();
+        tplImg.color = new Color(colTrack.r, colTrack.g, colTrack.b, 0.98f);
+        ScrollRect tplSR = tplGO.GetComponent<ScrollRect>();
+
+        GameObject vpGO = new GameObject("Viewport",
+            typeof(RectTransform), typeof(Image), typeof(Mask));
+        vpGO.transform.SetParent(tplRT, false);
+        RectTransform vpRT = vpGO.GetComponent<RectTransform>();
+        StretchFull(vpRT);
+        Image vpImg = vpGO.GetComponent<Image>(); vpImg.color = new Color(1f, 1f, 1f, 0.01f);
+        Mask vpMask = vpGO.GetComponent<Mask>(); vpMask.showMaskGraphic = false;
+
+        GameObject contentGO = new GameObject("Content", typeof(RectTransform));
+        contentGO.transform.SetParent(vpRT, false);
+        RectTransform contentRT = contentGO.GetComponent<RectTransform>();
+        contentRT.anchorMin = new Vector2(0f, 1f);
+        contentRT.anchorMax = new Vector2(1f, 1f);
+        contentRT.pivot = new Vector2(0.5f, 1f);
+        contentRT.sizeDelta = new Vector2(0f, 28f);
+
+        GameObject itemGO = new GameObject("Item",
+            typeof(RectTransform), typeof(Toggle));
+        itemGO.transform.SetParent(contentRT, false);
+        RectTransform itemRT = itemGO.GetComponent<RectTransform>();
+        itemRT.anchorMin = new Vector2(0f, 0.5f);
+        itemRT.anchorMax = new Vector2(1f, 0.5f);
+        itemRT.sizeDelta = new Vector2(0f, 24f);
+
+        GameObject itemBgGO = new GameObject("Item Background",
+            typeof(RectTransform), typeof(Image));
+        itemBgGO.transform.SetParent(itemRT, false);
+        RectTransform itemBgRT = itemBgGO.GetComponent<RectTransform>();
+        StretchFull(itemBgRT);
+        Image itemBgImg = itemBgGO.GetComponent<Image>();
+        itemBgImg.color = new Color(colSlider.r, colSlider.g, colSlider.b, 0.4f);
+
+        GameObject itemLblGO = new GameObject("Item Label",
+            typeof(RectTransform), typeof(TextMeshProUGUI));
+        itemLblGO.transform.SetParent(itemRT, false);
+        RectTransform itemLblRT = itemLblGO.GetComponent<RectTransform>();
+        StretchFull(itemLblRT);
+        itemLblRT.offsetMin = new Vector2(12f, 0f);
+        itemLblRT.offsetMax = new Vector2(-12f, 0f);
+        TextMeshProUGUI itemLbl = itemLblGO.GetComponent<TextMeshProUGUI>();
+        itemLbl.text = "Option";
+        itemLbl.color = colText;
+        itemLbl.fontSize = 15;
+        itemLbl.alignment = TextAlignmentOptions.MidlineLeft;
+        if (font != null) itemLbl.font = font;
+
+        Toggle itemTog = itemGO.GetComponent<Toggle>();
+        itemTog.targetGraphic = itemBgImg;
+
+        tplSR.viewport = vpRT;
+        tplSR.content = contentRT;
+        tplSR.horizontal = false;
+        tplSR.vertical = true;
+
+        TMP_Dropdown dd = dGO.GetComponent<TMP_Dropdown>();
+        dd.template = tplRT;
+        dd.captionText = lTxt;
+        dd.itemText = itemLbl;
+        dd.targetGraphic = dImg;
+        dd.ClearOptions();
+        dd.AddOptions(new List<string>(options));
+        dd.value = Mathf.Clamp(selected, 0, Mathf.Max(0, options.Length - 1));
+        dd.RefreshShownValue();
+        tplGO.SetActive(false);
+        return dd;
+    }
+
+    private TMP_InputField CreateInputField(Transform parent, string text)
+    {
+        GameObject iGO = new GameObject("Input",
+            typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
+        iGO.transform.SetParent(parent, false);
+        RectTransform iRT = iGO.GetComponent<RectTransform>();
+        iRT.sizeDelta = new Vector2(70f, 32f);
+        iRT.localScale = Vector3.one;
+        Image bg = iGO.GetComponent<Image>();
+        bg.color = colTrack;
+
+        GameObject taGO = new GameObject("Text Area",
+            typeof(RectTransform), typeof(RectMask2D));
+        taGO.transform.SetParent(iRT, false);
+        RectTransform taRT = taGO.GetComponent<RectTransform>();
+        StretchFull(taRT);
+        taRT.offsetMin = new Vector2(8f, 2f);
+        taRT.offsetMax = new Vector2(-8f, -2f);
+
+        GameObject txtGO = new GameObject("Text",
+            typeof(RectTransform), typeof(TextMeshProUGUI));
+        txtGO.transform.SetParent(taRT, false);
+        RectTransform txtRT = txtGO.GetComponent<RectTransform>();
+        StretchFull(txtRT);
+        TextMeshProUGUI txt = txtGO.GetComponent<TextMeshProUGUI>();
+        txt.text = text;
+        txt.color = colText;
+        txt.fontSize = 16;
+        txt.alignment = TextAlignmentOptions.Center;
+        if (font != null) txt.font = font;
+
+        TMP_InputField inf = iGO.GetComponent<TMP_InputField>();
+        inf.textViewport = taRT;
+        inf.textComponent = txt;
+        inf.text = text;
+        inf.contentType = TMP_InputField.ContentType.IntegerNumber;
+        inf.characterLimit = 4;
+        return inf;
+    }
+
+    // Assigns the freshly built control back to the SettingsUI public
+    // field named `fieldName`, so OpenSettings/CloseSettings can still
+    // read/write it via the original references.
+    private void Bind(string fieldName, UnityEngine.Object value)
+    {
+        if (string.IsNullOrEmpty(fieldName) || value == null) return;
+        var so = new SerializedObject(settingsUI);
+        var prop = so.FindProperty(fieldName);
+        if (prop != null) { prop.objectReferenceValue = value; so.ApplyModifiedProperties(); return; }
+        var fi = settingsUI.GetType().GetField(fieldName,
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (fi != null) fi.SetValue(settingsUI, value);
+    }
+
+    // ===== Field-name based row helpers (procedural) =====
+    private void AddSliderField(string categoryId, string label, string sliderField,
+                                string inputField, float min, float max, float defaultValue,
+                                string description)
+    {
         RectTransform parent = categoryRoots[categoryId];
         GameObject row = BuildRowShell(parent, label, description);
 
-        if (togSrc != null)
+        Slider sld = CreateSlider(row.transform, min, max, defaultValue);
+        RectTransform sRT = sld.GetComponent<RectTransform>();
+        sRT.anchorMin = new Vector2(1f, 0.5f);
+        sRT.anchorMax = new Vector2(1f, 0.5f);
+        sRT.pivot = new Vector2(1f, 0.5f);
+        sRT.anchoredPosition = new Vector2(inputField != null ? -90f : -12f, 0f);
+        Bind(sliderField, sld);
+
+        if (inputField != null)
         {
-            Undo.SetTransformParent(togSrc.transform, row.transform, "Move Toggle");
-            RectTransform tt = togSrc.GetComponent<RectTransform>();
-            tt.anchorMin = new Vector2(1f, 0.5f);
-            tt.anchorMax = new Vector2(1f, 0.5f);
-            tt.pivot = new Vector2(1f, 0.5f);
-            tt.anchoredPosition = new Vector2(-12f, 0f);
+            TMP_InputField inf = CreateInputField(row.transform, Mathf.RoundToInt(defaultValue).ToString());
+            RectTransform iRT = inf.GetComponent<RectTransform>();
+            iRT.anchorMin = new Vector2(1f, 0.5f);
+            iRT.anchorMax = new Vector2(1f, 0.5f);
+            iRT.pivot = new Vector2(1f, 0.5f);
+            iRT.anchoredPosition = new Vector2(-12f, 0f);
+            Bind(inputField, inf);
         }
-        return row;
     }
 
-    private GameObject AddSlider(string categoryId, string label, Slider sliderSrc, TMP_InputField inputSrc, string description)
+    private void AddToggleField(string categoryId, string label, string toggleField,
+                                bool defaultValue, string description)
     {
-        if (sliderSrc == null) return null;
         RectTransform parent = categoryRoots[categoryId];
         GameObject row = BuildRowShell(parent, label, description);
 
-        Undo.SetTransformParent(sliderSrc.transform, row.transform, "Move Slider");
-        RectTransform st = sliderSrc.GetComponent<RectTransform>();
-        st.anchorMin = new Vector2(1f, 0.5f);
-        st.anchorMax = new Vector2(1f, 0.5f);
-        st.pivot = new Vector2(1f, 0.5f);
-        st.sizeDelta = new Vector2(260f, 20f);
-        st.anchoredPosition = new Vector2(inputSrc != null ? -90f : -12f, 0f);
-        RecolorSlider(sliderSrc);
-
-        if (inputSrc != null)
-        {
-            Undo.SetTransformParent(inputSrc.transform, row.transform, "Move Input");
-            RectTransform it = inputSrc.GetComponent<RectTransform>();
-            it.anchorMin = new Vector2(1f, 0.5f);
-            it.anchorMax = new Vector2(1f, 0.5f);
-            it.pivot = new Vector2(1f, 0.5f);
-            it.sizeDelta = new Vector2(70f, 36f);
-            it.anchoredPosition = new Vector2(-12f, 0f);
-            inputSrc.contentType = TMP_InputField.ContentType.IntegerNumber;
-            inputSrc.characterLimit = 4;
-            if (inputSrc.textComponent != null) inputSrc.textComponent.alignment = TextAlignmentOptions.Center;
-        }
-        return row;
+        Toggle tog = CreateToggle(row.transform, defaultValue);
+        RectTransform tRT = tog.GetComponent<RectTransform>();
+        tRT.anchorMin = new Vector2(1f, 0.5f);
+        tRT.anchorMax = new Vector2(1f, 0.5f);
+        tRT.pivot = new Vector2(1f, 0.5f);
+        tRT.anchoredPosition = new Vector2(-12f, 0f);
+        Bind(toggleField, tog);
     }
 
-    private GameObject AddDropdown(string categoryId, string label, TMP_Dropdown ddSrc, string description)
+    private void AddDropdownField(string categoryId, string label, string ddField,
+                                  string[] options, int defaultSelected, string description)
     {
-        if (ddSrc == null) return null;
         RectTransform parent = categoryRoots[categoryId];
         GameObject row = BuildRowShell(parent, label, description);
 
-        Undo.SetTransformParent(ddSrc.transform, row.transform, "Move Dropdown");
-        RectTransform dt = ddSrc.GetComponent<RectTransform>();
-        dt.anchorMin = new Vector2(1f, 0.5f);
-        dt.anchorMax = new Vector2(1f, 0.5f);
-        dt.pivot = new Vector2(1f, 0.5f);
-        dt.sizeDelta = new Vector2(220f, 36f);
-        dt.anchoredPosition = new Vector2(-12f, 0f);
-        return row;
-    }
-
-    // Stylise the cloned slider so every category's controls share the
-    // mockup palette regardless of the template's original colours.
-    private void RecolorSlider(Slider s)
-    {
-        if (s == null) return;
-        Transform bg = s.transform.Find("Background");
-        if (bg != null) { Image bgi = bg.GetComponent<Image>(); if (bgi != null) bgi.color = colTrack; }
-        if (s.fillRect != null)
-        {
-            Image fi = s.fillRect.GetComponent<Image>();
-            if (fi != null) fi.color = colSlider;
-        }
-        if (s.handleRect != null)
-        {
-            Image hi = s.handleRect.GetComponent<Image>();
-            if (hi != null) hi.color = colSlider;
-        }
+        TMP_Dropdown dd = CreateDropdown(row.transform, options, defaultSelected);
+        RectTransform dRT = dd.GetComponent<RectTransform>();
+        dRT.anchorMin = new Vector2(1f, 0.5f);
+        dRT.anchorMax = new Vector2(1f, 0.5f);
+        dRT.pivot = new Vector2(1f, 0.5f);
+        dRT.anchoredPosition = new Vector2(-12f, 0f);
+        Bind(ddField, dd);
     }
 
     private GameObject BuildRowShell(RectTransform parent, string label, string description)

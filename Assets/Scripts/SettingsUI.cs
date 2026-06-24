@@ -461,10 +461,10 @@ public class SettingsUI : MonoBehaviour
     {
         if (settingsPanel != null && settingsPanel.activeInHierarchy)
         {
-            AnimateCheckmark(damageCheckmark, damagePopupsToggle.isOn);
-            AnimateCheckmark(screenShakeCheckmark, screenShakeToggle.isOn);
-            AnimateCheckmark(fpsLimitCheckmark, limitFPSToggle.isOn);
-            AnimateCheckmark(showFPSCheckmark, showFPSToggle.isOn);
+            AnimateCheckmark(damageCheckmark, damagePopupsToggle != null && damagePopupsToggle.isOn);
+            AnimateCheckmark(screenShakeCheckmark, screenShakeToggle != null && screenShakeToggle.isOn);
+            AnimateCheckmark(fpsLimitCheckmark, limitFPSToggle != null && limitFPSToggle.isOn);
+            AnimateCheckmark(showFPSCheckmark, showFPSToggle != null && showFPSToggle.isOn);
 
             // Extended checkmarks (all null-safe).
             AnimateCheckmark(invertYCheckmark, invertYToggle != null && invertYToggle.isOn);
