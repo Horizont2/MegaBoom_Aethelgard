@@ -285,6 +285,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     // Соковитий Хіт-Стоп
     private IEnumerator HitStopRoutine(float duration)
     {
+        // Settings_HitStop toggle — skip the micro-pause entirely when
+        // disabled. Default = on.
+        if (PlayerPrefs.GetInt("Settings_HitStop", 1) != 1)
+        {
+            yield break;
+        }
         Time.timeScale = 0.1f;
         yield return new WaitForSecondsRealtime(duration);
         if (!isStaggered && !isDead && !playerTarget.isControlBlocked)

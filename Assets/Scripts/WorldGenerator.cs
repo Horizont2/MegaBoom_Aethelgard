@@ -1633,6 +1633,19 @@ public class WorldGenerator : MonoBehaviour
                         if (currentGiantTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentGiantTreeMat);
                         else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
 
+                        // Giant trees are the worst-case shadow caster on
+                        // the map: tall geometry, every leaf billboard
+                        // sliced into the depth pass, multiplied by N per
+                        // chunk. Each tree was driving its own shadow pass
+                        // when the camera looked at the canopy and FPS
+                        // tanked to ~20 next to one. Forcing the trunk +
+                        // canopy renderers to ShadowsOnly = Off cuts the
+                        // worst spike without changing what the player
+                        // sees in the foreground.
+                        Renderer[] giantRenderers = obj.GetComponentsInChildren<Renderer>(true);
+                        foreach (Renderer r in giantRenderers)
+                            if (r != null) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
                         currentTreeCount++;
 
                         if (vfxToSpawn != null)

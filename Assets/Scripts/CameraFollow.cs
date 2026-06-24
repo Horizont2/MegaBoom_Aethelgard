@@ -197,6 +197,10 @@ public class CameraFollow : MonoBehaviour
 
     public void TriggerShake(float duration, float intensity)
     {
+        // Settings_ScreenShake toggle — when off, every caller's shake
+        // request becomes a no-op without each call site having to
+        // check the pref individually. Default = on (1).
+        if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
         shakeTimer = duration;
         currentShakeIntensity = intensity;
         directionalShakeForce = 0f;
@@ -204,6 +208,7 @@ public class CameraFollow : MonoBehaviour
 
     public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity)
     {
+        if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
         shakeTimer = duration;
         shakeDirection = direction.normalized;
         directionalShakeForce = force;

@@ -75,6 +75,13 @@ public class TutorialHints : MonoBehaviour
     public void ShowIfNew(string key, string fallbackBody = null, float fallbackDuration = -1f)
     {
         if (string.IsNullOrEmpty(key)) return;
+        // Settings_TutorialHints toggle — silently drop every hint
+        // request when the player has tutorials disabled. Default = on.
+        if (PlayerPrefs.GetInt("Settings_TutorialHints", 1) != 1)
+        {
+            if (verboseLogging) Debug.Log($"[TutorialHints] Skip '{key}' (disabled in settings).");
+            return;
+        }
         if (HasSeen(key))
         {
             if (verboseLogging) Debug.Log($"[TutorialHints] Skip '{key}' (already seen).");

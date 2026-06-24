@@ -78,9 +78,26 @@ public class PowerSystemManager : MonoBehaviour
     public static float CalculateDifficultyMultiplier(int playerPower, int recommendedPower)
     {
         int delta = playerPower - recommendedPower;
-        if (delta < 0)
-            return Mathf.Clamp(1f + (-delta) * 0.01f, 1f, 2f);
-        return Mathf.Clamp(1f - delta * 0.003f, 0.7f, 1f);
+        float power = (delta < 0)
+            ? Mathf.Clamp(1f + (-delta) * 0.01f, 1f, 2f)
+            : Mathf.Clamp(1f - delta * 0.003f, 0.7f, 1f);
+        // Stack the player's chosen difficulty on top of the power-based
+        // curve so the Settings_Difficulty dropdown actually does
+        // something. Default = Normal (1×).
+        return power * GetDifficultyScalar();
+    }
+
+    // Settings_Difficulty: 0 Easy, 1 Normal, 2 Hard, 3 Hardcore.
+    public static float GetDifficultyScalar()
+    {
+        int idx = PlayerPrefs.GetInt("Settings_Difficulty", 1);
+        return idx switch
+        {
+            0 => 0.75f,
+            2 => 1.35f,
+            3 => 1.7f,
+            _ => 1f,
+        };
     }
 
     /// <summary>
