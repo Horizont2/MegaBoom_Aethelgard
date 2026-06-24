@@ -34,17 +34,17 @@ public class SettingsPanelAAABuilder : EditorWindow
     private Sprite handleSprite;
 
     // ----- Theme -----
-    // Tuned to match the painted-card mockup style: semi-transparent dark
-    // panels over a scene background, gold reserved for title + active
-    // sidebar accent + APPLY button, soft cyan reserved for slider fill.
-    private Color colBg = new Color(0.03f, 0.03f, 0.05f, 0.55f);
-    private Color colPanel = new Color(0.09f, 0.10f, 0.13f, 0.92f);
+    // Tuned to match the painted-card mockup: near-black panels over a
+    // dimmed scene, gold reserved for title + active sidebar accent +
+    // APPLY button, soft cyan reserved for slider fill / toggle on.
+    private Color colBg = new Color(0.02f, 0.025f, 0.03f, 0.65f);     // overlay darkens scene
+    private Color colPanel = new Color(0.07f, 0.075f, 0.09f, 0.96f);   // card surface
     private Color colAccent = new Color(1f, 0.82f, 0.24f, 1f);
     private Color colSlider = new Color(0.36f, 0.75f, 0.87f, 1f);
     private Color colText = new Color(0.95f, 0.94f, 0.90f, 1f);
-    private Color colTextDim = new Color(0.72f, 0.70f, 0.65f, 1f);
-    private Color colBorder = new Color(1f, 0.82f, 0.24f, 0.35f);
-    private Color colTrack = new Color(0.16f, 0.18f, 0.22f, 1f);
+    private Color colTextDim = new Color(0.65f, 0.63f, 0.58f, 1f);
+    private Color colBorder = new Color(0f, 0f, 0f, 0.6f);             // dark painted edge
+    private Color colTrack = new Color(0.11f, 0.12f, 0.14f, 1f);
 
     private Vector2 scroll;
 
@@ -151,14 +151,17 @@ public class SettingsPanelAAABuilder : EditorWindow
         // Footer.
         RectTransform footer = BuildFooter(rootRT);
 
-        // Middle band fills the gap between header and footer with three
-        // columns: sidebar (280), center scroll, right rail (300).
-        // Matches the painted-card reference proportions.
+        // Middle band — three card columns float over the scene with
+        // generous breathing room on every side. Sidebar 360, right rail
+        // 460, center fills the remaining width. Matches the painted
+        // mockup proportions (cards take ~70% of screen height, with
+        // ~140px transparent strips top + bottom for title and footer
+        // buttons that sit directly over the scene art).
         RectTransform mid = NewRect("Mid", rootRT);
         mid.anchorMin = new Vector2(0f, 0f);
         mid.anchorMax = new Vector2(1f, 1f);
-        mid.offsetMin = new Vector2(50f, 120f);
-        mid.offsetMax = new Vector2(-50f, -100f);
+        mid.offsetMin = new Vector2(100f, 180f);
+        mid.offsetMax = new Vector2(-100f, -180f);
 
         RectTransform sidebar = BuildSidebar(mid);
         RectTransform center = BuildCenter(mid);
@@ -217,36 +220,32 @@ public class SettingsPanelAAABuilder : EditorWindow
 
     private RectTransform BuildHeader(RectTransform parent)
     {
+        // Transparent header band — title + ✕ float directly over the
+        // scene background. Matches the painted-mockup reference where
+        // no card hides the game art behind the title bar.
         RectTransform h = NewRect("Header", parent);
         h.anchorMin = new Vector2(0f, 1f);
         h.anchorMax = new Vector2(1f, 1f);
         h.pivot = new Vector2(0.5f, 1f);
-        h.offsetMin = new Vector2(40f, -80f);
-        h.offsetMax = new Vector2(-40f, -20f);
-        AddPanelBg(h, colPanel);
-        AddBorder(h, colBorder);
+        h.offsetMin = new Vector2(0f, -140f);
+        h.offsetMax = new Vector2(0f, 0f);
 
-        TextMeshProUGUI title = AddText(h, "TitleText", "S E T T I N G S", 38, FontStyles.Bold);
+        TextMeshProUGUI title = AddText(h, "TitleText", "S E T T I N G S", 54, FontStyles.Bold);
         title.alignment = TextAlignmentOptions.Center;
         title.color = colAccent;
+        title.characterSpacing = 16f;
         StretchFull(title.rectTransform);
-
-        Button back = MakeFlatButton(h, "BackButton", "◄ BACK");
-        RectTransform brt = back.GetComponent<RectTransform>();
-        brt.anchorMin = new Vector2(0f, 0.5f);
-        brt.anchorMax = new Vector2(0f, 0.5f);
-        brt.pivot = new Vector2(0f, 0.5f);
-        brt.sizeDelta = new Vector2(140f, 44f);
-        brt.anchoredPosition = new Vector2(20f, 0f);
-        back.onClick.AddListener(() => settingsUI.CloseSettings());
 
         Button close = MakeFlatButton(h, "CloseButton", "✕");
         RectTransform crt = close.GetComponent<RectTransform>();
         crt.anchorMin = new Vector2(1f, 0.5f);
         crt.anchorMax = new Vector2(1f, 0.5f);
         crt.pivot = new Vector2(1f, 0.5f);
-        crt.sizeDelta = new Vector2(48f, 44f);
-        crt.anchoredPosition = new Vector2(-20f, 0f);
+        crt.sizeDelta = new Vector2(56f, 56f);
+        crt.anchoredPosition = new Vector2(-60f, 0f);
+        // Make CLOSE almost transparent — just the glyph reads, no chrome.
+        Image cImg = close.GetComponent<Image>();
+        if (cImg != null) cImg.color = new Color(0f, 0f, 0f, 0f);
         close.onClick.AddListener(() => settingsUI.CloseSettings());
 
         return h;
@@ -254,28 +253,38 @@ public class SettingsPanelAAABuilder : EditorWindow
 
     private RectTransform BuildFooter(RectTransform parent)
     {
+        // Transparent footer band — buttons sit directly over the scene.
         RectTransform f = NewRect("Footer", parent);
         f.anchorMin = new Vector2(0f, 0f);
         f.anchorMax = new Vector2(1f, 0f);
         f.pivot = new Vector2(0.5f, 0f);
-        f.offsetMin = new Vector2(40f, 20f);
-        f.offsetMax = new Vector2(-40f, 90f);
-        AddPanelBg(f, colPanel);
-        AddBorder(f, colBorder);
+        f.offsetMin = new Vector2(0f, 0f);
+        f.offsetMax = new Vector2(0f, 110f);
 
         Button reset = MakeFlatButton(f, "ResetButton", "↺  RESET DEFAULTS");
         PlaceFooterButton(reset, 0f);
         Button discard = MakeFlatButton(f, "DiscardButton", "✕  DISCARD");
-        PlaceFooterButton(discard, 0.5f);
+        PlaceFooterButton(discard, 0.7f);
         Button apply = MakeFlatButton(f, "ApplyButton", "✓  APPLY & CLOSE", true);
         PlaceFooterButton(apply, 1f);
 
-        // Wire to runtime in Build() via reflection-free named refs.
+        // Strip chrome off the secondary buttons so they read as text-only
+        // like the reference; only APPLY keeps its painted plate.
+        StripBg(reset); StripBg(discard);
+
         reset.gameObject.name = "ResetButton";
         discard.gameObject.name = "DiscardButton";
         apply.gameObject.name = "ApplyButton";
 
         return f;
+    }
+
+    private static void StripBg(Button b)
+    {
+        Image bg = b.GetComponent<Image>();
+        if (bg != null) bg.color = new Color(0f, 0f, 0f, 0f);
+        Transform border = b.transform.Find("Border");
+        if (border != null) Object.DestroyImmediate(border.gameObject);
     }
 
     private void PlaceFooterButton(Button b, float anchorX)
@@ -284,8 +293,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         rt.anchorMin = new Vector2(anchorX, 0.5f);
         rt.anchorMax = new Vector2(anchorX, 0.5f);
         rt.pivot = new Vector2(anchorX, 0.5f);
-        rt.sizeDelta = new Vector2(260f, 54f);
-        float offset = anchorX == 0f ? 30f : (anchorX == 1f ? -30f : 0f);
+        rt.sizeDelta = new Vector2(280f, 56f);
+        float offset = anchorX == 0f ? 80f : (anchorX == 1f ? -80f : 0f);
         rt.anchoredPosition = new Vector2(offset, 0f);
     }
 
@@ -295,7 +304,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         s.anchorMin = new Vector2(0f, 0f);
         s.anchorMax = new Vector2(0f, 1f);
         s.pivot = new Vector2(0f, 0.5f);
-        s.sizeDelta = new Vector2(280f, 0f);
+        s.sizeDelta = new Vector2(360f, 0f);
         s.anchoredPosition = Vector2.zero;
         AddPanelBg(s, colPanel);
         AddBorder(s, colBorder);
@@ -319,47 +328,53 @@ public class SettingsPanelAAABuilder : EditorWindow
         for (int i = 0; i < Categories.Length; i++)
         {
             var spec = Categories[i];
+            // Two-layer card: fill Image (this object) + Stroke child Image.
+            // SettingsAAACategoryButton drives both layers' colours from the
+            // theme's state palette so we don't need ColorBlock tinting.
             GameObject btnGO = new GameObject("Cat_" + spec.id,
                 typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(Button));
             btnGO.transform.SetParent(layoutRT, false);
 
             LayoutElement le = btnGO.GetComponent<LayoutElement>();
-            le.preferredHeight = 60f;
+            le.preferredHeight = 64f;
             le.flexibleHeight = 0f;
 
             Image bg = btnGO.GetComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.001f); // invisible by default
+            bg.color = new Color(0.105f, 0.115f, 0.13f, 1f); // default fill
             bg.raycastTarget = true;
 
             Button btn = btnGO.GetComponent<Button>();
             ColorBlock cb = btn.colors;
             cb.normalColor = new Color(1f, 1f, 1f, 1f);
-            cb.highlightedColor = new Color(colAccent.r, colAccent.g, colAccent.b, 0.10f);
-            cb.pressedColor = new Color(colAccent.r, colAccent.g, colAccent.b, 0.25f);
-            cb.selectedColor = new Color(colAccent.r, colAccent.g, colAccent.b, 0.10f);
+            cb.highlightedColor = new Color(1f, 1f, 1f, 1f);
+            cb.pressedColor = new Color(1f, 1f, 1f, 1f);
+            cb.selectedColor = new Color(1f, 1f, 1f, 1f);
             btn.colors = cb;
 
-            // Gold stripe on the left edge — visible only when active.
-            GameObject stripeGO = new GameObject("Stripe",
+            // Stroke overlay — sits on top of fill, no raycast.
+            GameObject strokeGO = new GameObject("Stroke",
                 typeof(RectTransform), typeof(Image));
-            stripeGO.transform.SetParent(btnGO.transform, false);
-            RectTransform srt = stripeGO.GetComponent<RectTransform>();
-            srt.anchorMin = new Vector2(0f, 0f);
-            srt.anchorMax = new Vector2(0f, 1f);
-            srt.pivot = new Vector2(0f, 0.5f);
-            srt.sizeDelta = new Vector2(4f, 0f);
-            srt.anchoredPosition = new Vector2(0f, 0f);
-            Image stripeImg = stripeGO.GetComponent<Image>();
-            stripeImg.color = colAccent;
-            stripeImg.enabled = (i == 0);
-            categoryStripes.Add(stripeImg);
+            strokeGO.transform.SetParent(btnGO.transform, false);
+            RectTransform strokeRT = strokeGO.GetComponent<RectTransform>();
+            StretchFull(strokeRT);
+            Image strokeImg = strokeGO.GetComponent<Image>();
+            strokeImg.color = new Color(0.04f, 0.05f, 0.06f, 1f);
+            strokeImg.raycastTarget = false;
+            categoryStripes.Add(strokeImg); // kept for backwards-compat with runtime.categoryStripes
 
-            // Icon + label.
+            // Icon + label as one TMP block.
             TextMeshProUGUI t = AddText(btn.GetComponent<RectTransform>(), "Text",
                 $"  {spec.icon}   {spec.label}", 20, FontStyles.Bold);
             t.alignment = TextAlignmentOptions.MidlineLeft;
-            t.color = (i == 0) ? colAccent : colTextDim;
+            t.color = new Color(0.96f, 0.94f, 0.90f, 1f);
             StretchFull(t.rectTransform);
+
+            // State driver — wires both layers' colours from the theme.
+            var stateBtn = btnGO.AddComponent<SettingsAAACategoryButton>();
+            stateBtn.fillImg = bg;
+            stateBtn.strokeImg = strokeImg;
+            stateBtn.labelTMP = t;
+            stateBtn.isSelected = (i == 0);
 
             int captured = i;
             btn.onClick.AddListener(() => SwitchCategoryRuntime(captured));
@@ -374,8 +389,8 @@ public class SettingsPanelAAABuilder : EditorWindow
         RectTransform c = NewRect("Center", parent);
         c.anchorMin = new Vector2(0f, 0f);
         c.anchorMax = new Vector2(1f, 1f);
-        c.offsetMin = new Vector2(300f, 0f);
-        c.offsetMax = new Vector2(-320f, 0f);
+        c.offsetMin = new Vector2(400f, 0f);
+        c.offsetMax = new Vector2(-500f, 0f);
         AddPanelBg(c, colPanel);
         AddBorder(c, colBorder);
 
@@ -481,7 +496,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         r.anchorMin = new Vector2(1f, 0f);
         r.anchorMax = new Vector2(1f, 1f);
         r.pivot = new Vector2(1f, 0.5f);
-        r.sizeDelta = new Vector2(300f, 0f);
+        r.sizeDelta = new Vector2(460f, 0f);
         r.anchoredPosition = Vector2.zero;
         AddPanelBg(r, colPanel);
         AddBorder(r, colBorder);

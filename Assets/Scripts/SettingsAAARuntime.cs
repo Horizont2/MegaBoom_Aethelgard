@@ -222,7 +222,25 @@ public class SettingsAAARuntime : MonoBehaviour
         for (int i = 0; i < categoryRoots.Count; i++)
         {
             if (categoryRoots[i] != null) categoryRoots[i].gameObject.SetActive(i == idx);
-            if (i < categoryStripes.Count && categoryStripes[i] != null) categoryStripes[i].enabled = (i == idx);
+        }
+        // Drive per-button state via SettingsAAACategoryButton if present
+        // (two-layer themed flow). Falls back to the old categoryStripes
+        // toggle for setups that haven't been re-built since the migration.
+        var stateBtns = GetComponentsInChildren<SettingsAAACategoryButton>(true);
+        if (stateBtns != null && stateBtns.Length > 0)
+        {
+            var theme = GetComponent<SettingsAAATheme>();
+            for (int i = 0; i < stateBtns.Length; i++)
+            {
+                if (stateBtns[i] == null) continue;
+                if (theme != null) stateBtns[i].theme = theme;
+                stateBtns[i].SetSelected(i == idx);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < categoryStripes.Count; i++)
+                if (categoryStripes[i] != null) categoryStripes[i].enabled = (i == idx);
         }
         SetDescription(defaultDescription);
     }

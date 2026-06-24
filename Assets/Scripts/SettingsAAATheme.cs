@@ -7,26 +7,43 @@ using UnityEngine.UI;
 // the swapper walks the panel hierarchy, retargeting Image.sprite on
 // every part it recognises by name.
 //
-// Add sprites here as you export them; empty slots are skipped so it
-// works incrementally — replace pieces one at a time without breaking
-// what's already wired up.
+// Two-layer mode: when both fill + stroke sprites are supplied for a
+// part (currently only category buttons), the swapper paints the fill
+// on the main Image and creates a sibling "Stroke" Image overlay on
+// top. State colour is then tinted independently per layer, giving the
+// painted gold-border-over-olive-fill look without baked sprite states.
+//
+// Empty slots are skipped so it works incrementally — replace pieces
+// one at a time without breaking what's already wired up.
 public class SettingsAAATheme : MonoBehaviour
 {
     [Header("=== Panels & Cards ===")]
-    [Tooltip("Soft brush-stroke card. Used for Header, Footer, Sidebar, Center, Right Rail.")]
+    [Tooltip("Soft brush-stroke card. Used for Sidebar, Center, Right Rail.")]
     public Sprite panelBg;
     [Tooltip("Inner card BG used by PREVIEW and DESCRIPTION blocks on the right rail.")]
     public Sprite innerCardBg;
     [Tooltip("Background fill for individual rows (Mouse Sensitivity, Field of View, …). Optional.")]
     public Sprite rowBg;
 
-    [Header("=== Sidebar ===")]
-    [Tooltip("Background of every category button.")]
-    public Sprite categoryBg;
-    [Tooltip("Background of the currently selected category (gold-tinted card).")]
-    public Sprite categorySelectedBg;
+    [Header("=== Sidebar — Two-Layer (fill + stroke) ===")]
+    [Tooltip("Default category card fill — no stroke baked in.")]
+    public Sprite categoryBgFill;
+    [Tooltip("Default category card brush-stroke overlay — transparent center, painted edge only.")]
+    public Sprite categoryBgStroke;
     [Tooltip("Per-category 32×32 icons. Slot order matches the sidebar: General, Gameplay, Audio, Video, Graphics, Controls, Accessibility, Language.")]
     public Sprite[] categoryIcons = new Sprite[8];
+
+    [Header("=== Sidebar — State Colours ===")]
+    public Color categoryFillDefault   = new Color(0.105f, 0.115f, 0.13f, 1f);
+    public Color categoryStrokeDefault = new Color(0.04f,  0.05f,  0.06f, 1f);
+    public Color categoryFillHover     = new Color(0.16f,  0.17f,  0.20f, 1f);
+    public Color categoryStrokeHover   = new Color(0.45f,  0.37f,  0.11f, 1f);
+    public Color categoryFillSelected  = new Color(1f,     0.823f, 0.247f, 0.18f);
+    public Color categoryStrokeSelected= new Color(1f,     0.823f, 0.247f, 1f);
+    public Color categoryFillDisabled  = new Color(0.10f,  0.10f,  0.12f, 0.5f);
+    public Color categoryStrokeDisabled= new Color(0.20f,  0.20f,  0.22f, 0.5f);
+    public Color categoryTextDefault   = new Color(0.96f,  0.94f,  0.90f, 1f);
+    public Color categoryTextSelected  = new Color(1f,     0.823f, 0.247f, 1f);
 
     [Header("=== Sliders ===")]
     public Sprite sliderTrack;
@@ -76,27 +93,32 @@ public class SettingsAAATheme : MonoBehaviour
             string n = img.gameObject.name;
             Transform t = img.transform;
 
-            // Root overlay BG.
             if (img.gameObject == this.gameObject)
             {
                 if (backgroundArt != null) Slice(img, backgroundArt);
                 continue;
             }
 
-            // Header / Footer / Sidebar / Center / RightRail / Preview / Description.
             string parentName = t.parent != null ? t.parent.name : "";
             string grandName = (t.parent != null && t.parent.parent != null) ? t.parent.parent.name : "";
 
-            if (panelBg != null && (n == "Header" || n == "Footer" || n == "Sidebar" || n == "Center" || n == "RightRail"))
+            // Category buttons — two-layer pipeline.
+            if (n.StartsWith("Cat_"))
+            {
+                if (categoryBgFill != null)
+                {
+                    Slice(img, categoryBgFill);
+                    img.color = categoryFillDefault;
+                }
+                EnsureStrokeChild(img.transform, categoryBgStroke, categoryStrokeDefault);
+                BindCategoryStateRefs(img);
+                continue;
+            }
+
+            if (panelBg != null && (n == "Sidebar" || n == "Center" || n == "RightRail" || n == "Header" || n == "Footer"))
             { Slice(img, panelBg); continue; }
             if (innerCardBg != null && (n == "Preview" || n == "Description"))
             { Slice(img, innerCardBg); continue; }
-
-            // Category buttons in sidebar.
-            if (categoryBg != null && n.StartsWith("Cat_"))
-            { Slice(img, categoryBg); continue; }
-
-            // Per-row background plate.
             if (rowBg != null && n.StartsWith("Row_"))
             { Slice(img, rowBg); continue; }
 
@@ -131,12 +153,62 @@ public class SettingsAAATheme : MonoBehaviour
             { Slice(img, buttonPrimaryBg); continue; }
         }
 
-        // Dropdown arrow + per-category icons live in TMP labels we
-        // can't drive by sprite — they're set up as text glyphs.
-        // Skip them silently; the user can replace those with Image
-        // children manually if they want sprite icons.
-
         Debug.Log("[Settings Theme] Applied current sprite slots to the panel.");
+    }
+
+    // For two-layer parts: spawn (or update) a sibling "Stroke" Image
+    // on top of the fill, sized to match. Skipped when no stroke sprite
+    // is supplied — caller falls back to single-layer behaviour.
+    private static void EnsureStrokeChild(Transform parent, Sprite strokeSprite, Color strokeColor)
+    {
+        Transform existing = parent.Find("Stroke");
+        Image strokeImg;
+        if (existing == null)
+        {
+            GameObject go = new GameObject("Stroke", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            strokeImg = go.GetComponent<Image>();
+            strokeImg.raycastTarget = false;
+        }
+        else
+        {
+            strokeImg = existing.GetComponent<Image>();
+            if (strokeImg == null) strokeImg = existing.gameObject.AddComponent<Image>();
+        }
+        if (strokeSprite != null)
+        {
+            Slice(strokeImg, strokeSprite);
+            strokeImg.color = strokeColor;
+        }
+        else
+        {
+            // No stroke sprite supplied yet — make the layer invisible
+            // so we don't end up with a solid dark plate on top of fill.
+            strokeImg.sprite = null;
+            strokeImg.color = new Color(0f, 0f, 0f, 0f);
+        }
+    }
+
+    // Wire SettingsAAACategoryButton (creates one if missing) so it can
+    // tint fill + stroke layers on hover / select.
+    private void BindCategoryStateRefs(Image fill)
+    {
+        var btn = fill.GetComponent<SettingsAAACategoryButton>();
+        if (btn == null) btn = fill.gameObject.AddComponent<SettingsAAACategoryButton>();
+        btn.theme = this;
+        btn.fillImg = fill;
+        Transform strokeT = fill.transform.Find("Stroke");
+        btn.strokeImg = strokeT != null ? strokeT.GetComponent<Image>() : null;
+        Transform labelT = fill.transform.Find("Text");
+        if (labelT != null) btn.labelText = labelT.GetComponent<Text>();
+        var tmp = fill.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (tmp != null) btn.labelTMP = tmp;
+        btn.Refresh();
     }
 
     private static void Slice(Image img, Sprite s)
@@ -146,3 +218,4 @@ public class SettingsAAATheme : MonoBehaviour
         img.pixelsPerUnitMultiplier = 1f;
     }
 }
+
