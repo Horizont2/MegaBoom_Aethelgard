@@ -39,13 +39,17 @@ public class SettingsPanelAAABuilder : EditorWindow
     private Sprite handleSprite;
 
     // ----- Theme -----
-    private Color colBg = new Color(0.04f, 0.04f, 0.06f, 0.92f);
-    private Color colPanel = new Color(0.07f, 0.07f, 0.10f, 0.95f);
+    // Tuned to match the painted-card mockup style: semi-transparent dark
+    // panels over a scene background, gold reserved for title + active
+    // sidebar accent + APPLY button, soft cyan reserved for slider fill.
+    private Color colBg = new Color(0.03f, 0.03f, 0.05f, 0.55f);
+    private Color colPanel = new Color(0.09f, 0.10f, 0.13f, 0.92f);
     private Color colAccent = new Color(1f, 0.82f, 0.24f, 1f);
+    private Color colSlider = new Color(0.36f, 0.75f, 0.87f, 1f);
     private Color colText = new Color(0.95f, 0.94f, 0.90f, 1f);
-    private Color colTextDim = new Color(0.75f, 0.72f, 0.66f, 1f);
-    private Color colBorder = new Color(1f, 0.82f, 0.24f, 0.45f);
-    private Color colTrack = new Color(0.10f, 0.10f, 0.14f, 1f);
+    private Color colTextDim = new Color(0.72f, 0.70f, 0.65f, 1f);
+    private Color colBorder = new Color(1f, 0.82f, 0.24f, 0.35f);
+    private Color colTrack = new Color(0.16f, 0.18f, 0.22f, 1f);
 
     private Vector2 scroll;
 
@@ -99,6 +103,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         colBg = EditorGUILayout.ColorField("Overlay BG", colBg);
         colPanel = EditorGUILayout.ColorField("Panel Fill", colPanel);
         colAccent = EditorGUILayout.ColorField("Accent (gold)", colAccent);
+        colSlider = EditorGUILayout.ColorField("Slider Fill (cyan)", colSlider);
         colText = EditorGUILayout.ColorField("Text", colText);
         colTextDim = EditorGUILayout.ColorField("Dim Text", colTextDim);
         colBorder = EditorGUILayout.ColorField("Border", colBorder);
@@ -273,7 +278,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         PlaceFooterButton(reset, 0f);
         Button discard = MakeFlatButton(f, "DiscardButton", "✕  DISCARD");
         PlaceFooterButton(discard, 0.5f);
-        Button apply = MakeFlatButton(f, "ApplyButton", "✓  APPLY & CLOSE");
+        Button apply = MakeFlatButton(f, "ApplyButton", "✓  APPLY & CLOSE", true);
         PlaceFooterButton(apply, 1f);
 
         // Wire to runtime in Build() via reflection-free named refs.
@@ -815,6 +820,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         st.pivot = new Vector2(1f, 0.5f);
         st.sizeDelta = new Vector2(260f, 20f);
         st.anchoredPosition = new Vector2(inputSrc != null ? -90f : -12f, 0f);
+        RecolorSlider(sliderSrc);
 
         if (inputSrc != null)
         {
@@ -846,6 +852,25 @@ public class SettingsPanelAAABuilder : EditorWindow
         dt.sizeDelta = new Vector2(220f, 36f);
         dt.anchoredPosition = new Vector2(-12f, 0f);
         return row;
+    }
+
+    // Stylise the cloned slider so every category's controls share the
+    // mockup palette regardless of the template's original colours.
+    private void RecolorSlider(Slider s)
+    {
+        if (s == null) return;
+        Transform bg = s.transform.Find("Background");
+        if (bg != null) { Image bgi = bg.GetComponent<Image>(); if (bgi != null) bgi.color = colTrack; }
+        if (s.fillRect != null)
+        {
+            Image fi = s.fillRect.GetComponent<Image>();
+            if (fi != null) fi.color = colSlider;
+        }
+        if (s.handleRect != null)
+        {
+            Image hi = s.handleRect.GetComponent<Image>();
+            if (hi != null) hi.color = colSlider;
+        }
     }
 
     private GameObject BuildRowShell(RectTransform parent, string label, string description)
@@ -937,24 +962,31 @@ public class SettingsPanelAAABuilder : EditorWindow
         return t;
     }
 
-    private Button MakeFlatButton(RectTransform parent, string name, string label)
+    private Button MakeFlatButton(RectTransform parent, string name, string label, bool primary = false)
     {
         GameObject go = new GameObject(name,
             typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(parent, false);
         Image bg = go.GetComponent<Image>();
-        bg.color = new Color(colAccent.r, colAccent.g, colAccent.b, 0.08f);
+        // Primary action (APPLY): warmer gold tint. Secondary actions: neutral dark.
+        bg.color = primary
+            ? new Color(colAccent.r, colAccent.g, colAccent.b, 0.18f)
+            : new Color(1f, 1f, 1f, 0.05f);
         if (buttonSprite != null) { bg.sprite = buttonSprite; bg.type = Image.Type.Sliced; }
         Button btn = go.GetComponent<Button>();
         ColorBlock cb = btn.colors;
         cb.normalColor = new Color(1f, 1f, 1f, 1f);
-        cb.highlightedColor = new Color(colAccent.r, colAccent.g, colAccent.b, 0.30f);
-        cb.pressedColor = new Color(colAccent.r, colAccent.g, colAccent.b, 0.50f);
+        cb.highlightedColor = primary
+            ? new Color(colAccent.r, colAccent.g, colAccent.b, 0.35f)
+            : new Color(1f, 1f, 1f, 0.12f);
+        cb.pressedColor = primary
+            ? new Color(colAccent.r, colAccent.g, colAccent.b, 0.55f)
+            : new Color(1f, 1f, 1f, 0.22f);
         btn.colors = cb;
-        AddBorder(go.GetComponent<RectTransform>(), colBorder);
+        AddBorder(go.GetComponent<RectTransform>(), primary ? colBorder : new Color(1f, 1f, 1f, 0.18f));
         TextMeshProUGUI t = AddText(go.GetComponent<RectTransform>(), "Label", label, 18, FontStyles.Bold);
         t.alignment = TextAlignmentOptions.Center;
-        t.color = colAccent;
+        t.color = primary ? colAccent : colText;
         StretchFull(t.rectTransform);
         return btn;
     }
