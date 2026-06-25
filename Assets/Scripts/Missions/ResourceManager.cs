@@ -158,20 +158,25 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = runStone - oldStone;
         int actualAddedFood = runFood - oldFood;
 
-        // ��������� �������� ������ �� ������ ����� ���� ������ ����� �������
+        // Route every resource delta through GlobalHUD's polished
+        // left-side pickup toast. The old per-resource popup objects
+        // (woodPopup / stonePopup / foodPopup) are still bounced for the
+        // counter "pop" effect but no longer drive the small +N text —
+        // that path now lives entirely in ShowPickupPopup so only ONE
+        // toast appears per change, on every scene.
         if (actualAddedWood > 0)
         {
-            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            ShowResourceToast(actualAddedWood, "Wood", new Color(0.85f, 0.6f, 0.35f));
             BounceText(woodText);
         }
         if (actualAddedStone > 0)
         {
-            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            ShowResourceToast(actualAddedStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
             BounceText(stoneText);
         }
         if (actualAddedFood > 0)
         {
-            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            ShowResourceToast(actualAddedFood, "Food", new Color(0.7f, 0.95f, 0.5f));
             BounceText(foodText);
         }
 
@@ -192,17 +197,17 @@ public class ResourceManager : MonoBehaviour
 
         if (actualAddedWood > 0)
         {
-            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            ShowResourceToast(actualAddedWood, "Wood", new Color(0.85f, 0.6f, 0.35f));
             BounceText(woodText);
         }
         if (actualAddedStone > 0)
         {
-            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            ShowResourceToast(actualAddedStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
             BounceText(stoneText);
         }
         if (actualAddedFood > 0)
         {
-            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            ShowResourceToast(actualAddedFood, "Food", new Color(0.7f, 0.95f, 0.5f));
             BounceText(foodText);
         }
 
@@ -221,9 +226,9 @@ public class ResourceManager : MonoBehaviour
         stashStone -= costStone;
         stashFood -= costFood;
 
-        if (woodPopup != null && costWood > 0) woodPopup.ShowChange(-costWood);
-        if (stonePopup != null && costStone > 0) stonePopup.ShowChange(-costStone);
-        if (foodPopup != null && costFood > 0) foodPopup.ShowChange(-costFood);
+        if (costWood > 0)  ShowResourceToast(-costWood,  "Wood",  new Color(0.85f, 0.6f, 0.35f));
+        if (costStone > 0) ShowResourceToast(-costStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
+        if (costFood > 0)  ShowResourceToast(-costFood,  "Food",  new Color(0.7f, 0.95f, 0.5f));
 
         SaveStash();
         UpdateUI();
@@ -298,6 +303,17 @@ public class ResourceManager : MonoBehaviour
         }
 
         if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
+    }
+
+    // Unified pickup toast — replaces the old per-resource popup
+    // objects (which only existed on the camp HUD). Routes through
+    // GlobalHUD so the polished left-side stack shows on every scene
+    // (camp, region capture, gameplay).
+    private void ShowResourceToast(int amount, string label, Color color)
+    {
+        if (GlobalHUD.Instance == null || amount == 0) return;
+        string sign = amount > 0 ? "+" : "";
+        GlobalHUD.Instance.ShowPickupPopup($"{sign}{amount} {label}", color);
     }
 
     // --- ������� �Ͳ��ֲ� UI (JUICE) ---

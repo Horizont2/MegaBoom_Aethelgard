@@ -95,7 +95,11 @@ public class AutoLocalize : MonoBehaviour
         foreach (var t in tmps)
         {
             if (t == null) continue;
-            if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.CompareTag(ignoreTag)) continue;
+            // Compare tag string directly — CompareTag(name) throws when
+            // the tag isn't registered in TagManager, which spammed the
+            // console hundreds of times per scene before the project had
+            // a DontLocalize tag set up.
+            if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.tag == ignoreTag) continue;
             if (t.GetComponent<LocalizedText>() != null) continue;
             string key = (t.text ?? "").Trim();
             if (string.IsNullOrEmpty(key)) continue;
@@ -105,7 +109,7 @@ public class AutoLocalize : MonoBehaviour
         foreach (var t in legacy)
         {
             if (t == null) continue;
-            if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.CompareTag(ignoreTag)) continue;
+            if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.tag == ignoreTag) continue;
             string key = (t.text ?? "").Trim();
             if (string.IsNullOrEmpty(key)) continue;
             legacyTargets.Add((t, key));

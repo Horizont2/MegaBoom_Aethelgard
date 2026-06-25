@@ -83,23 +83,23 @@ public class ResourceDrop : MonoBehaviour
     {
         if (ResourceManager.Instance != null)
         {
+            // ResourceManager.AddRunResources now fires its own toast
+            // through GlobalHUD, so we no longer call ShowPickupPopup
+            // here — that produced two stacking toasts per pickup.
             if (resourceType == ResourceType.Wood)
             {
                 ResourceManager.Instance.AddRunResources(amount, 0, 0);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Wood", new Color(0.85f, 0.6f, 0.35f));
             }
             else if (resourceType == ResourceType.Stone)
             {
                 ResourceManager.Instance.AddRunResources(0, amount, 0);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Stone", new Color(0.8f, 0.8f, 0.85f));
             }
             else if (resourceType == ResourceType.Food)
             {
                 ResourceManager.Instance.AddRunResources(0, 0, amount);
                 if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPickupPopup($"+{amount} Food", new Color(0.7f, 0.95f, 0.5f));
             }
             else if (resourceType == ResourceType.Diamond)
             {
