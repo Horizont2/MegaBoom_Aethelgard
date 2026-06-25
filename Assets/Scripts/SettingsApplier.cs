@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 // Central applier: reads every "Settings_*" PlayerPref and pushes its
 // value into the engine system that actually controls it. The runtime
@@ -203,6 +204,7 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyFOV()
     {
+        if (SceneManager.GetActiveScene().name == "Menu") return;
         float fov = PlayerPrefs.GetFloat("Settings_FOV", 75f);
         Camera cam = Camera.main;
         if (cam != null) cam.fieldOfView = fov;

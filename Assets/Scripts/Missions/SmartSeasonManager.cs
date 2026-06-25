@@ -6,6 +6,8 @@ public enum Season { Summer, EarlyAutumn, Autumn, LateAutumn, Winter, Spring }
 
 public class SmartSeasonManager : MonoBehaviour
 {
+    public static SmartSeasonManager Instance;
+
     [Header("Time & Save System")]
     public float minutesPerSeason = 20f;
     private float totalSecondsPerSeason;
@@ -86,8 +88,16 @@ public class SmartSeasonManager : MonoBehaviour
     // ОПТИМІЗАЦІЯ: Кешовані масиви для уникнення Garbage Collection
     private ParticleSystem[] cachedWeatherVFX;
     private List<Renderer> cachedFoliageRenderers = new List<Renderer>();
+    private List<Terrain> cachedTerrains = new List<Terrain>();
     private Camera mainCam;
 
+    private void Awake()
+    {
+        // У методі Start додайте пошук терейнів (навіть вимкнених)
+        Terrain[] foundTerrains = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        cachedTerrains.AddRange(foundTerrains);
+        Instance = this;
+    }
     private void Start()
     {
         mainCam = Camera.main;
@@ -250,6 +260,7 @@ public class SmartSeasonManager : MonoBehaviour
 
         // ЗМІНА МАТЕРІАЛІВ ДЕРЕВ
         UpdateFoliageMaterials(targetSeason);
+        UpdateTerrainTrees(targetSeason);
 
         Color targetSun = Color.white;
         Color targetFog = Color.white;
@@ -389,5 +400,49 @@ public class SmartSeasonManager : MonoBehaviour
             directionalLight.intensity = defaultSunIntensity;
             directionalLight.transform.localRotation = Quaternion.Euler(50f, 170f, 0f);
         }
+    }
+
+    public void RegisterDynamicFoliage(Transform root)
+    {
+        if (root == null) return;
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        bool needsUpdate = false;
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend is ParticleSystemRenderer) continue;
+            if (IsVFX(rend.gameObject.name)) continue;
+
+            if (!cachedFoliageRenderers.Contains(rend))
+            {
+                cachedFoliageRenderers.Add(rend);
+                needsUpdate = true;
+            }
+        }
+
+        // Якщо додали нові дерева, одразу перефарбовуємо їх під поточний сезон
+        if (needsUpdate)
+        {
+            UpdateFoliageMaterials(currentSeason);
+        }
+    }
+
+    private void UpdateTerrainTrees(Season season)
+    {
+        // Визначаємо номер сезону або індекс матеріалу для передачі в шейдер
+        // 0 = Summer, 1 = Autumn, 2 = Winter
+        int seasonIndex = 0;
+        if (season == Season.Autumn || season == Season.EarlyAutumn || season == Season.LateAutumn) seasonIndex = 1;
+        else if (season == Season.Winter) seasonIndex = 2;
+
+        // Передаємо значення в шейдери (всі матеріали дерев на терейні побачать це значення)
+        Shader.SetGlobalFloat("_SeasonIndex", seasonIndex);
+
+        // Якщо ви хочете передавати конкретний колір для маскування
+        Color seasonColor = Color.white;
+        if (seasonIndex == 1) seasonColor = new Color(0.8f, 0.4f, 0.1f); // Осінь
+        if (seasonIndex == 2) seasonColor = new Color(0.9f, 0.9f, 1.0f); // Зима
+        Shader.SetGlobalColor("_SeasonColor", seasonColor);
     }
 }

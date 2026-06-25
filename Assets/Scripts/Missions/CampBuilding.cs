@@ -134,174 +134,194 @@ public class CampBuilding : MonoBehaviour
     {
         if (currentLevel == 0)
         {
-            ghostModel.SetActive(true);
-            realModel.SetActive(false);
+            if (ghostModel != null) ghostModel.SetActive(true);
+            if (realModel != null) realModel.SetActive(false);
         }
         else
         {
-            ghostModel.SetActive(false);
-            realModel.SetActive(true);
-            realModel.transform.localPosition = originalModelPos;
+            if (ghostModel != null) ghostModel.SetActive(false);
+            if (realModel != null)
+            {
+                realModel.SetActive(true);
+                realModel.transform.localPosition = originalModelPos;
+            }
         }
     }
 
     private void Update()
     {
-        if (snowClumps != null && seasonManager != null)
+        // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: Читання кнопок завжди нагорі!
+        // Навіть якщо код нижче зламається, панель відкриється.
+        if (playerInRange)
         {
-            bool isWinter = (seasonManager.currentSeason == Season.Winter);
-            bool isBuilt = (currentLevel > 0);
-            snowClumps.SetActive(isBuilt && isWinter && !isAnimating);
-        }
-
-        if (isAnimating) return;
-
-        if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
-        {
-            PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
-            StartCoroutine(CompleteUpgradeSequence(currentLevel + 1));
-            return;
-        }
-
-        if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1)
-        {
-            if (isPanelOpen) ClosePanel();
-
-            if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
-
-            if (upgradeGlimmer != null && upgradeGlimmer.activeSelf)
-                upgradeGlimmer.SetActive(false);
-
-            string startTimeStr = PlayerPrefs.GetString("UpgradeStart_" + buildingID, "");
-            if (long.TryParse(startTimeStr, out long startTimeBin))
+            if (Input.GetKeyDown(KeyCode.F))
             {
-                DateTime startTime = DateTime.FromBinary(startTimeBin);
-                float elapsed = (float)(DateTime.UtcNow - startTime).TotalSeconds;
-
-                if (currentLevel < levels.Length)
-                {
-                    float totalTime = levels[currentLevel].buildTime;
-
-                    if (totalTime > 0)
-                    {
-                        float progress = Mathf.Clamp01(elapsed / totalTime);
-
-                        if (!ghostModel.activeSelf) ghostModel.SetActive(true);
-                        if (!realModel.activeSelf) realModel.SetActive(true);
-
-                        Vector3 startPos = originalModelPos - new Vector3(0, spawnDepth, 0);
-                        realModel.transform.localPosition = Vector3.Lerp(startPos, originalModelPos, progress);
-                    }
-                }
+                if (isPanelOpen) ClosePanel();
+                else OpenPanel();
             }
-            return;
         }
 
-        glimmerCheckTimer += Time.deltaTime;
-        if (glimmerCheckTimer >= 1f)
+        // Загортаємо решту логіки в try-catch, щоб вона не спамила помилками 
+        // і не ламала інші будівлі на рівні
+        try
         {
-            glimmerCheckTimer = 0f;
-            UpdateGlimmerState();
-            if (isPanelOpen) UpdateUIData();
-        }
-
-        // === ОПТИМІЗАЦІЯ І ФІКС: Блокуємо будівлі під час туторіалу ===
-        if (TutorialPanelUI.IsTutorialActive) return;
-
-        if (isPanelOpen && playerTransform != null)
-        {
-            if (Vector3.Distance(transform.position, playerTransform.position) > 12f)
+            // 2. Сніг
+            if (snowClumps != null && seasonManager != null)
             {
-                playerInRange = false;
-                ClosePanel();
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+                bool isWinter = (seasonManager.currentSeason == Season.Winter);
+                bool isBuilt = (currentLevel > 0);
+                snowClumps.SetActive(isBuilt && isWinter && !isAnimating);
+            }
+
+            if (isAnimating) return;
+
+            // 3. Перевірка завершення апгрейду
+            if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
+            {
+                PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
+                StartCoroutine(CompleteUpgradeSequence(currentLevel + 1));
                 return;
             }
-        }
 
-        if (!playerInRange) return;
-
-        if (levels == null || levels.Length == 0 || currentLevel >= levels.Length)
-        {
-            if (isPanelOpen) ClosePanel();
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.F))
-        {
-            if (isPanelOpen) ClosePanel();
-            else OpenPanel();
-
-            if (!isPanelOpen && TutorialHints.Instance != null)
+            // 4. Активний процес апгрейду (анімація побудови)
+            if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1)
             {
-                string hintKey = currentLevel == 0 ? "BuildBuilding" : "UpgradeBuilding";
-                TutorialHints.Instance.ShowIfNew(hintKey,
-                    currentLevel == 0
-                        ? "Hold <b>E</b> to start construction. Resources are spent immediately and the build runs even when you're away."
-                        : "Hold <b>E</b> to start an upgrade. Each tier raises production and unlocks better tooltip text.", 6f);
+                if (isPanelOpen) ClosePanel();
 
-                TutorialHints.Instance.ShowIfNew(buildingID,
-                    $"<b>{buildingName}</b>: see the panel for what this building produces.", 5f);
-            }
-        }
+                if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
+                if (upgradeGlimmer != null && upgradeGlimmer.activeSelf) upgradeGlimmer.SetActive(false);
 
-        if (isPanelOpen)
-        {
-            BuildingLevel nextLevelData = levels[currentLevel];
-            bool canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
-
-            if (Input.GetKey(KeyCode.E) && canAfford)
-            {
-                currentHoldTime += Time.deltaTime;
-                float fillRatio = currentHoldTime / holdTimeRequired;
-
-                if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
-                if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
-
-                if (currentHoldTime >= holdTimeRequired)
+                string startTimeStr = PlayerPrefs.GetString("UpgradeStart_" + buildingID, "");
+                if (long.TryParse(startTimeStr, out long startTimeBin))
                 {
-                    currentHoldTime = 0f;
-                    if (progressTMP != null) progressTMP.text = "100%";
+                    DateTime startTime = DateTime.FromBinary(startTimeBin);
+                    float elapsed = (float)(DateTime.UtcNow - startTime).TotalSeconds;
 
-                    ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+                    if (levels != null && currentLevel < levels.Length)
+                    {
+                        float totalTime = levels[currentLevel].buildTime;
+                        if (totalTime > 0)
+                        {
+                            float progress = Mathf.Clamp01(elapsed / totalTime);
 
-                    long startTimeBinary = DateTime.UtcNow.ToBinary();
-                    PlayerPrefs.SetString("UpgradeStart_" + buildingID, startTimeBinary.ToString());
-                    PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 1);
-                    PlayerPrefs.Save();
+                            if (ghostModel != null && !ghostModel.activeSelf) ghostModel.SetActive(true);
+                            if (realModel != null)
+                            {
+                                if (!realModel.activeSelf) realModel.SetActive(true);
+                                Vector3 startPos = originalModelPos - new Vector3(0, spawnDepth, 0);
+                                realModel.transform.localPosition = Vector3.Lerp(startPos, originalModelPos, progress);
+                            }
+                        }
+                    }
+                }
+                return;
+            }
 
-                    StartDustEffect();
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
+            // 5. Оновлення світіння
+            glimmerCheckTimer += Time.deltaTime;
+            if (glimmerCheckTimer >= 1f)
+            {
+                glimmerCheckTimer = 0f;
+                UpdateGlimmerState();
+                if (isPanelOpen) UpdateUIData();
+            }
 
-                    if (GlobalHUD.Instance != null)
-                        GlobalHUD.Instance.StartTrackingUpgrade(buildingID, buildingName, buildingIconSprite, nextLevelData.buildTime, startTimeBinary);
+            // Якщо туторіал активний - блокуємо взаємодію
+            try { if (TutorialPanelUI.IsTutorialActive) return; } catch { }
 
+            // 6. Автозакриття панелі при віддаленні
+            if (isPanelOpen && playerTransform != null)
+            {
+                if (Vector3.Distance(transform.position, playerTransform.position) > 12f)
+                {
+                    playerInRange = false;
                     ClosePanel();
+                    if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+                    return;
                 }
             }
-            else
+
+            if (!playerInRange) return;
+
+            // 7. Показ підказки [F]
+            if (!isPanelOpen && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
             {
-                if (currentHoldTime > 0)
+                if (GlobalHUD.Instance != null)
                 {
-                    currentHoldTime -= Time.deltaTime * 3f;
-                    currentHoldTime = Mathf.Max(0, currentHoldTime);
-                    float fillRatio = currentHoldTime / holdTimeRequired;
+                    GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
+                }
+            }
+
+            // 8. Логіка утримання клавіші [E] всередині панелі
+            if (isPanelOpen && levels != null && currentLevel < levels.Length)
+            {
+                BuildingLevel nextLevelData = levels[currentLevel];
+
+                bool canAfford = false;
+                if (ResourceManager.Instance != null && nextLevelData != null)
+                {
+                    canAfford = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+                }
+
+                if (Input.GetKey(KeyCode.E) && canAfford)
+                {
+                    currentHoldTime += Time.deltaTime;
+                    float fillRatio = holdTimeRequired > 0 ? currentHoldTime / holdTimeRequired : 1f;
 
                     if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
                     if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
+
+                    if (currentHoldTime >= holdTimeRequired)
+                    {
+                        currentHoldTime = 0f;
+                        if (progressTMP != null) progressTMP.text = "100%";
+
+                        if (ResourceManager.Instance != null)
+                        {
+                            ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
+                        }
+
+                        long startTimeBinary = DateTime.UtcNow.ToBinary();
+                        PlayerPrefs.SetString("UpgradeStart_" + buildingID, startTimeBinary.ToString());
+                        PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 1);
+                        PlayerPrefs.Save();
+
+                        StartDustEffect();
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
+
+                        if (GlobalHUD.Instance != null && nextLevelData != null)
+                            GlobalHUD.Instance.StartTrackingUpgrade(buildingID, buildingName, buildingIconSprite, nextLevelData.buildTime, startTimeBinary);
+
+                        ClosePanel();
+                    }
+                }
+                else
+                {
+                    if (currentHoldTime > 0)
+                    {
+                        currentHoldTime -= Time.deltaTime * 3f;
+                        currentHoldTime = Mathf.Max(0, currentHoldTime);
+                        float fillRatio = holdTimeRequired > 0 ? currentHoldTime / holdTimeRequired : 0f;
+
+                        if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
+                        if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
+                    }
                 }
             }
+        }
+        catch (System.Exception ex)
+        {
+            // Якщо щось зламалося в ефектах, панель все одно працюватиме!
+            Debug.LogWarning($"[CampBuilding] Фонова помилка у {buildingName}, але будівля продовжує працювати: {ex.Message}");
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (TutorialPanelUI.IsTutorialActive) return; // Захист від prompt-спаму
-
-        if (other.CompareTag("Player") && levels != null && currentLevel < levels.Length && !isAnimating)
+        if (other.CompareTag("Player"))
         {
             playerInRange = true;
-            if (GlobalHUD.Instance != null && !isPanelOpen && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
+            if (GlobalHUD.Instance != null && !isPanelOpen)
             {
                 GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
             }
@@ -322,6 +342,7 @@ public class CampBuilding : MonoBehaviour
     {
         isPanelOpen = true;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
         UpdateUIData();
 
         if (aaaPanel != null)
@@ -329,6 +350,11 @@ public class CampBuilding : MonoBehaviour
             aaaPanel.SetActive(true);
             StartCoroutine(PopUpUI(aaaPanel.transform));
         }
+        else
+        {
+            Debug.LogWarning($"[CampBuilding] У будівлі {buildingName} не призначена aaaPanel в інспекторі!");
+        }
+
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
     }
 
@@ -336,15 +362,10 @@ public class CampBuilding : MonoBehaviour
     {
         isPanelOpen = false;
         currentHoldTime = 0f;
+
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
         if (progressTMP != null) progressTMP.text = "0%";
-
         if (aaaPanel != null) aaaPanel.SetActive(false);
-
-        if (playerInRange && GlobalHUD.Instance != null && currentLevel < levels.Length && !isAnimating && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
-        {
-            GlobalHUD.Instance.ShowPrompt("[F] Inspect " + buildingName);
-        }
     }
 
     private IEnumerator PopUpUI(Transform targetTransform)
@@ -374,54 +395,78 @@ public class CampBuilding : MonoBehaviour
 
     private void UpdateUIData()
     {
-        if (levels == null || levels.Length == 0 || currentLevel >= levels.Length) return;
-        BuildingLevel nextLevelData = levels[currentLevel];
-
-        if (titleTMP) titleTMP.text = buildingName.ToUpper();
-        if (lvlTMP) lvlTMP.text = currentLevel == 0 ? "(Unbuilt)" : $"(Level {currentLevel})";
-        if (descTMP) descTMP.text = description;
+        // 1. Оновлюємо базові тексти ЗАВЖДИ (навіть якщо максимальний рівень)
+        if (titleTMP != null) titleTMP.text = buildingName.ToUpper();
+        if (lvlTMP != null) lvlTMP.text = currentLevel == 0 ? "(Unbuilt)" : $"(Level {currentLevel})";
+        if (descTMP != null) descTMP.text = description;
 
         if (buildingIconImage != null && buildingIconSprite != null)
             buildingIconImage.sprite = buildingIconSprite;
 
-        string infoText = "";
+        // 2. Якщо масив рівнів пустий - просто виходимо (базові тексти вже оновилися)
+        if (levels == null || levels.Length == 0) return;
+
         string prodLabel = (buildingID == "ScoutsLodge") ? "Feature" : "Production";
+
+        // 3. БАГФІКС: Якщо будівля вже МАКСИМАЛЬНОГО рівня
+        if (currentLevel >= levels.Length)
+        {
+            BuildingLevel maxLevelData = levels[levels.Length - 1];
+
+            if (infoTMP != null)
+                infoTMP.text = $"{prodLabel}: <b><color=#A8E6CF>{maxLevelData.productionDescription}</color></b>\n<color=#F1C40F>Max Level Reached</color>";
+
+            if (buildHintTMP != null) buildHintTMP.text = "MAX LEVEL";
+
+            // Ховаємо вартість, бо купувати більше нічого
+            if (costWoodTMP != null) costWoodTMP.text = "-";
+            if (costStoneTMP != null) costStoneTMP.text = "-";
+            if (costFoodTMP != null) costFoodTMP.text = "-";
+
+            return; // Виходимо, бо далі йде логіка апгрейду
+        }
+
+        // 4. Логіка для нормального апгрейду
+        BuildingLevel nextLevelData = levels[currentLevel];
+        string infoText = "";
 
         if (currentLevel == 0)
         {
             infoText += $"{prodLabel}: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Build Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
-            if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO BUILD";
+            if (buildHintTMP != null) buildHintTMP.text = "HOLD TO BUILD";
         }
         else
         {
-            BuildingLevel currentData = levels[currentLevel - 1];
-            infoText += $"{prodLabel}: <b><color=#AAAAAA>{currentData.productionDescription}</color></b> -> <b><color=#00FF00>{nextLevelData.productionDescription}</color></b>\n";
+            if (currentLevel > 0 && currentLevel - 1 < levels.Length)
+                infoText += $"{prodLabel}: <b><color=#FFFFFF>{levels[currentLevel - 1].productionDescription}</color></b>";
+
+            infoText += $" ➔ <b><color=#A8E6CF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
-            if (buildHintTMP) buildHintTMP.text = "HOLD [E] TO UPGRADE";
+
+            if (buildHintTMP != null) buildHintTMP.text = "HOLD TO UPGRADE";
         }
 
-        if (buildingName.ToUpper().Contains("FORGE"))
-        {
-            float currentMult = GetForgeMultiplier(currentLevel);
-            float nextMult = GetForgeMultiplier(currentLevel + 1);
-            int currentPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
-            int basePower = Mathf.RoundToInt(currentPower / currentMult);
-            int nextPower = Mathf.RoundToInt(basePower * nextMult);
-            infoText += $"\n\nTotal Power: <b><color=#AAAAAA>{currentPower}</color></b> -> <b><color=#D4AF37>{nextPower} <size=70%>({nextMult * 100 - 100}%)</size></color></b>";
-        }
+        if (infoTMP != null) infoTMP.text = infoText;
 
-        if (infoTMP) infoTMP.text = infoText;
-
+        // Оновлюємо колір ресурсів
         if (ResourceManager.Instance != null)
         {
-            string woodColor = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? "#FFFFFF" : "#FF4444";
-            string stoneColor = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? "#FFFFFF" : "#FF4444";
-            string foodColor = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? "#FFFFFF" : "#FF4444";
-
-            if (costWoodTMP) costWoodTMP.text = $"<color=#CCCCCC>WOOD</color>\n<size=130%><color={woodColor}>{nextLevelData.costWood}</color></size>";
-            if (costStoneTMP) costStoneTMP.text = $"<color=#CCCCCC>STONE</color>\n<size=130%><color={stoneColor}>{nextLevelData.costStone}</color></size>";
-            if (costFoodTMP) costFoodTMP.text = $"<color=#CCCCCC>FOOD</color>\n<size=130%><color={foodColor}>{nextLevelData.costFood}</color></size>";
+            if (costWoodTMP != null)
+            {
+                costWoodTMP.text = nextLevelData.costWood.ToString();
+                costWoodTMP.color = ResourceManager.Instance.stashWood >= nextLevelData.costWood ? Color.white : Color.red;
+            }
+            if (costStoneTMP != null)
+            {
+                costStoneTMP.text = nextLevelData.costStone.ToString();
+                costStoneTMP.color = ResourceManager.Instance.stashStone >= nextLevelData.costStone ? Color.white : Color.red;
+            }
+            if (costFoodTMP != null)
+            {
+                costFoodTMP.text = nextLevelData.costFood.ToString();
+                costFoodTMP.color = ResourceManager.Instance.stashFood >= nextLevelData.costFood ? Color.white : Color.red;
+            }
         }
     }
 
@@ -437,15 +482,18 @@ public class CampBuilding : MonoBehaviour
             productionCoroutine = null;
         }
 
-        ghostModel.SetActive(false);
-        realModel.SetActive(true);
-        realModel.transform.localPosition = originalModelPos;
+        if (ghostModel != null) ghostModel.SetActive(false);
+        if (realModel != null)
+        {
+            realModel.SetActive(true);
+            realModel.transform.localPosition = originalModelPos;
+        }
 
         float popTimer = 0f;
         float popDuration = 0.5f;
         Vector3 bounceScale = originalModelScale * upgradeBounceAmount;
 
-        while (popTimer < popDuration)
+        while (popTimer < popDuration && realModel != null)
         {
             popTimer += Time.deltaTime;
             float progress = popTimer / popDuration;
@@ -453,7 +501,7 @@ public class CampBuilding : MonoBehaviour
             realModel.transform.localScale = Vector3.Lerp(originalModelScale, bounceScale, Mathf.SmoothStep(0f, 1f, scaleCurve));
             yield return null;
         }
-        realModel.transform.localScale = originalModelScale;
+        if (realModel != null) realModel.transform.localScale = originalModelScale;
 
         StopDustEffect();
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
@@ -534,7 +582,7 @@ public class CampBuilding : MonoBehaviour
             {
                 pendingResourcesCount += amountPerMinute;
             }
-            else
+            else if (ResourceManager.Instance != null) // Безпечне додавання
             {
                 if (productionType == ResourceType.Wood) ResourceManager.Instance.AddStashResources(amountPerMinute, 0, 0);
                 else if (productionType == ResourceType.Food) ResourceManager.Instance.AddStashResources(0, 0, amountPerMinute);
@@ -599,9 +647,8 @@ public class CampBuilding : MonoBehaviour
     {
         if (buildDustVFX != null)
         {
-            var main = buildDustVFX.main;
-            main.loop = false;
             buildDustVFX.Stop();
+            buildDustVFX.gameObject.SetActive(false);
         }
     }
 }

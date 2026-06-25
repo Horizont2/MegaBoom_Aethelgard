@@ -79,23 +79,17 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
-        // === ОПТИМІЗАЦІЯ І ФІКС: Блокуємо камеру під час туторіалу ===
         if (isCinematicMode || Time.timeScale == 0f || target == null || TutorialPanelUI.IsTutorialActive) return;
 
         float dt = Time.deltaTime;
         if (dt < 0.0001f) return;
 
-        // 1. Стабільне обчислення швидкості гравця
         float currentFrameSpeed = (target.position - lastTargetPos).magnitude / dt;
         smoothedPlayerSpeed = Mathf.Lerp(smoothedPlayerSpeed, currentFrameSpeed, dt * 5f);
         lastTargetPos = target.position;
 
-        // 2. Слідування за гравцем
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
-        // 3. Миттєве, точне керування без желе. Settings panel persists a
-        // user-chosen multiplier (Settings_MouseSensitivity, default 1.0)
-        // and an invert-Y toggle (Settings_InvertYAxis).
         float sensMul = PlayerPrefs.GetFloat("Settings_MouseSensitivity", 1f);
         float yInvert = PlayerPrefs.GetInt("Settings_InvertYAxis", 0) == 1 ? -1f : 1f;
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity * sensMul;
@@ -118,7 +112,6 @@ public class CameraFollow : MonoBehaviour
         Vector3 lookAtPos = currentTargetPos + dynamicOffset;
         Vector3 direction = -(rotation * Vector3.forward);
 
-        // 4. Колізії
         float hitDistance = currentDistance;
         if (Physics.SphereCast(lookAtPos, 0.1f, direction, out RaycastHit hit, currentDistance, collisionLayers))
         {
@@ -130,7 +123,6 @@ public class CameraFollow : MonoBehaviour
 
         Vector3 finalPosition = lookAtPos + direction * actualCollisionDistance;
 
-        // 5. Тряска
         if (shakeTimer > 0)
         {
             finalPosition += Random.insideUnitSphere * currentShakeIntensity;
@@ -146,21 +138,13 @@ public class CameraFollow : MonoBehaviour
             directionalShakeForce = 0f;
         }
 
-        // Compute the natural target rotation (matches transform.LookAt below),
-        // then blend toward it from the snapshot we took when the cutscene ended.
         Quaternion finalRotation = Quaternion.LookRotation(lookAtPos - finalPosition);
         ApplyHandoffBlendIfActive(ref finalPosition, ref finalRotation, dt);
 
         transform.position = finalPosition;
         transform.rotation = finalRotation;
 
-        // 6. Захист від Terrain — picks the terrain whose XZ footprint
-        // actually contains the camera, so a far-away scenery terrain
-        // (e.g. PauseLocation prefab with its own terrain) can't drag
-        // the camera up. Without this guard, Terrain.activeTerrain
-        // returned the most-recently-loaded terrain regardless of
-        // distance — that's why placing the pause scenery flipped the
-        // gameplay camera high into the sky.
+        // Виправлено баг з Terrain: тепер захищає тільки якщо ми реально над терейном
         Terrain relevant = GetTerrainAt(transform.position);
         if (relevant != null)
         {
@@ -204,9 +188,6 @@ public class CameraFollow : MonoBehaviour
 
     public void TriggerShake(float duration, float intensity)
     {
-        // Settings_ScreenShake toggle — when off, every caller's shake
-        // request becomes a no-op without each call site having to
-        // check the pref individually. Default = on (1).
         if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
         shakeTimer = duration;
         currentShakeIntensity = intensity;
@@ -226,14 +207,10 @@ public class CameraFollow : MonoBehaviour
 
     public void SyncRotation(float x, float y) { currentX = x; currentY = y; }
 
-    // Returns the terrain whose footprint contains the given world XZ
-    // position. Lets scenes have multiple disjoint terrains (main world
-    // + a PauseLocation prefab in another spot) without
-    // Terrain.activeTerrain dragging the camera onto the wrong one.
     private static Terrain GetTerrainAt(Vector3 worldPos)
     {
         Terrain[] all = Terrain.activeTerrains;
-        if (all == null || all.Length == 0) return Terrain.activeTerrain;
+        if (all == null || all.Length == 0) return null; // ФІКС: Більше не беремо рандомний Terrain.activeTerrain
         for (int i = 0; i < all.Length; i++)
         {
             Terrain t = all[i];
@@ -244,7 +221,7 @@ public class CameraFollow : MonoBehaviour
                 worldPos.z >= origin.z && worldPos.z <= origin.z + size.z)
                 return t;
         }
-        return Terrain.activeTerrain;
+        return null; // ФІКС: Повертаємо null, якщо камера поза межами всіх терейнів
     }
 
     public void SnapToTarget()
@@ -258,13 +235,6 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
-    // ---- Cinematic handoff blend ----
-    // BeginHandoffBlend captures the camera's current world position + rotation
-    // (e.g. wherever Cinemachine left them) and smoothly interpolates the final
-    // transform.position/rotation toward whatever CameraFollow computes over the
-    // given duration. While the blend is running, every other system in
-    // LateUpdate works as normal, and the snap that used to happen on the first
-    // post-cutscene frame is gone.
     private bool isHandoffBlending = false;
     private float handoffBlendT;
     private float handoffBlendDuration;
@@ -281,10 +251,6 @@ public class CameraFollow : MonoBehaviour
         handoffBlendDuration = duration;
         handoffBlendT = 0f;
         isHandoffBlending = true;
-
-        // SnapToTarget so the target-follow numbers (currentTargetPos, distance)
-        // start from the player's current state — otherwise the destination
-        // we're blending toward would itself be drifting.
         SnapToTarget();
     }
 
@@ -294,7 +260,6 @@ public class CameraFollow : MonoBehaviour
 
         handoffBlendT += dt;
         float k = Mathf.Clamp01(handoffBlendT / handoffBlendDuration);
-        // ease-in-out cubic so the blend feels organic, not linear
         float ease = k < 0.5f ? 4f * k * k * k : 1f - Mathf.Pow(-2f * k + 2f, 3f) / 2f;
 
         finalPosition = Vector3.Lerp(handoffStartPos, finalPosition, ease);

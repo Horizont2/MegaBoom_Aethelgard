@@ -12,6 +12,10 @@ public class GlobalHUD : MonoBehaviour
 {
     public static GlobalHUD Instance;
 
+    private Camera mainGameplayCamera;
+    private int originalCullingMask;
+    private Terrain mainTerrainComponent;
+
     [Header("Visibility Control")]
     public GameObject[] gameplayPanels;
 
@@ -64,9 +68,18 @@ public class GlobalHUD : MonoBehaviour
     private bool isConfirmingGiveUp = false;
     private DepthOfField dofEffect;
 
+    private Camera cachedMainCamera;
+    private Camera cachedPauseCamera;
+    private MonoBehaviour cachedCameraFollow;
+    private bool wasPauseSceneActive = false; // Пам'ять про те, чи був увімкнений краєвид
+
     private Coroutine promptFadeCoroutine;
     private Coroutine promptTypingCoroutine;
     private RenderMode defaultRenderMode;
+    private string currentPromptMessage = "";
+
+    private readonly HashSet<GameObject> objectsHiddenByPause = new HashSet<GameObject>();
+    private readonly HashSet<GameObject> hiddenByGlobalHUD = new HashSet<GameObject>();
 
     private void Awake()
     {
@@ -164,7 +177,7 @@ public class GlobalHUD : MonoBehaviour
                 }
             }
 
-            if (sceneName == "GameScene" || sceneName == "CampScene" || sceneName == "ShopScene" || sceneName == "Lvl_1")
+            if (sceneName != "Menu")
             {
                 TogglePause();
             }
@@ -414,7 +427,6 @@ public class GlobalHUD : MonoBehaviour
             return;
         }
 
-        // Вмикаємо саму CanvasGroup і всіх її батьків
         Transform t = bossUIGroup.transform;
         while (t != null)
         {
@@ -422,8 +434,6 @@ public class GlobalHUD : MonoBehaviour
             t = t.parent;
         }
 
-        // ФІКС БРОНЕБІЙНИЙ: Примусово вмикаємо ВСІХ дітей у Canvas Group
-        // Це гарантує, що якщо ти в префабі вимкнув об'єкт 'Content', він 100% увімкнеться!
         if (bossUIGroup.transform.childCount > 0)
         {
             for (int i = 0; i < bossUIGroup.transform.childCount; i++)
@@ -499,13 +509,14 @@ public class GlobalHUD : MonoBehaviour
             isPaused = false;
             Time.timeScale = 1f;
             if (pausePanelGroup != null) { pausePanelGroup.alpha = 0f; pausePanelGroup.gameObject.SetActive(false); }
+
+            objectsHiddenByPause.Clear();
         }
     }
 
     private IEnumerator SyncCameraAndVolumeRoutine()
     {
         yield return new WaitForSeconds(0.5f);
-
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null)
         {
@@ -524,8 +535,11 @@ public class GlobalHUD : MonoBehaviour
         {
             if (v.isGlobal && v.profile != null && v.profile.TryGet(out dofEffect))
             {
-                bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
-                dofEffect.active = isShop || isPaused;
+                if (dofEffect != null)
+                {
+                    bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
+                    dofEffect.active = isShop || isPaused;
+                }
                 break;
             }
             yield return null;
@@ -548,6 +562,9 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowPrompt(string message)
     {
+        if (promptCanvasGroup != null && promptCanvasGroup.alpha > 0f && currentPromptMessage == message) return;
+        currentPromptMessage = message;
+
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
         promptFadeCoroutine = StartCoroutine(FadeCanvasGroup(1f));
@@ -556,6 +573,7 @@ public class GlobalHUD : MonoBehaviour
 
     public void HidePrompt()
     {
+        currentPromptMessage = "";
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
         promptFadeCoroutine = StartCoroutine(FadeCanvasGroup(0f));
@@ -587,6 +605,28 @@ public class GlobalHUD : MonoBehaviour
         textTarget.maxVisibleCharacters = 99999;
     }
 
+    public void CloseAllOtherActivePanels()
+    {
+        CampBuilding[] buildings = UnityEngine.Object.FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
+        foreach (var b in buildings)
+        {
+            if (b != null && b.aaaPanel != null && b.aaaPanel.activeSelf)
+            {
+                b.aaaPanel.SetActive(false);
+            }
+        }
+
+        GameObject missionBoardCanvas = GameObject.Find("MissionBoardCanvas");
+        if (missionBoardCanvas == null) missionBoardCanvas = GameObject.Find("MissionBoard");
+        if (missionBoardCanvas != null && missionBoardCanvas.activeSelf)
+        {
+            missionBoardCanvas.SetActive(false);
+        }
+    }
+
+    // ==========================================
+    // 🎬 AAA СВІТЧ КАМЕР ТА ПАУЗА
+    // ==========================================
     public void TogglePause()
     {
         if (pausePanelGroup == null) return;
@@ -594,21 +634,21 @@ public class GlobalHUD : MonoBehaviour
         if (canvas != null && !canvas.enabled) canvas.enabled = true;
 
         isPaused = !isPaused;
-        Time.timeScale = isPaused ? 0f : 1f;
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        // Cinematic-pause hook (KCD2-style scenery). If a PauseSceneController
-        // is present anywhere in the scene we hand off to it — it swaps the
-        // camera + audio listener to the waterfall vignette, leaves the
-        // pause scene running on UnscaledTime, and reverses on resume. No
-        // PauseSceneController in scene → plain freeze-pause as before.
-        if (pauseSceneController == null)
-            pauseSceneController = UnityEngine.Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
+        // 1. ЗАВЖДИ шукаємо контролер у поточній сцені (навіть якщо об'єкт вимкнений)
+        pauseSceneController = FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
+
+        // 2. Логіка часу
         if (pauseSceneController != null)
         {
-            if (isPaused) pauseSceneController.EnterPause();
-            else pauseSceneController.ExitPause();
+            Time.timeScale = 1f;
         }
+        else
+        {
+            Time.timeScale = isPaused ? 0f : 1f;
+        }
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         if (dofEffect != null)
         {
@@ -616,37 +656,221 @@ public class GlobalHUD : MonoBehaviour
             dofEffect.active = isShop || isPaused;
         }
 
-        if (isPaused) { ResetGiveUpState(); StartCoroutine(ShowMenuRoutine()); }
-        else StartCoroutine(HideMenuRoutine());
+        if (isPaused)
+        {
+            // Кешуємо камери
+            cachedMainCamera = Camera.main;
+            if (cachedMainCamera == null)
+            {
+                cachedMainCamera = FindFirstObjectByType<Camera>();
+            }
+
+            if (cachedMainCamera != null)
+            {
+                cachedCameraFollow = cachedMainCamera.GetComponent("CameraFollow") as MonoBehaviour;
+                if (cachedCameraFollow != null) cachedCameraFollow.enabled = false;
+            }
+
+            if (pauseSceneController != null)
+            {
+                wasPauseSceneActive = pauseSceneController.gameObject.activeSelf;
+                pauseSceneController.gameObject.SetActive(true);
+                pauseSceneController.EnterPause();
+                cachedPauseCamera = pauseSceneController.pauseCamera;
+            }
+
+            // Перемикаємо камери
+            if (cachedPauseCamera != null)
+            {
+                if (cachedMainCamera != null) cachedMainCamera.enabled = false;
+                cachedPauseCamera.gameObject.SetActive(true);
+                cachedPauseCamera.enabled = true;
+
+                if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
+                    canvas.worldCamera = cachedPauseCamera;
+            }
+
+            ResetGiveUpState();
+            ToggleGameplayUIForPause(true);
+            StartCoroutine(ShowMenuRoutine());
+        }
+        else
+        {
+            // Вихід з паузи
+            if (cachedCameraFollow != null) cachedCameraFollow.enabled = true;
+
+            if (pauseSceneController != null)
+            {
+                pauseSceneController.ExitPause();
+                if (!wasPauseSceneActive)
+                {
+                    pauseSceneController.gameObject.SetActive(false);
+                }
+            }
+
+            if (cachedMainCamera != null && cachedPauseCamera != null)
+            {
+                cachedMainCamera.enabled = true;
+                cachedPauseCamera.enabled = false;
+                cachedPauseCamera.gameObject.SetActive(false);
+
+                if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
+                    canvas.worldCamera = cachedMainCamera;
+            }
+
+            ToggleGameplayUIForPause(false);
+            StartCoroutine(HideMenuRoutine(cachedCameraFollow));
+
+            // Очищаємо кеш
+            cachedMainCamera = null;
+            cachedPauseCamera = null;
+            cachedCameraFollow = null;
+        }
 
         string currentScene = SceneManager.GetActiveScene().name;
-        if (currentScene == "ShopScene" || currentScene == "Menu") { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
-        else { Cursor.visible = isPaused; Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked; }
+        if (currentScene == "ShopScene" || currentScene == "Menu")
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+        else
+        {
+            Cursor.visible = isPaused;
+            Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
+        }
+    }
+
+    private void ToggleGameplayUIForPause(bool isPausedMenuVisible)
+    {
+        if (isPausedMenuVisible)
+        {
+            objectsHiddenByPause.Clear();
+
+            if (gameplayPanels != null)
+            {
+                foreach (GameObject panel in gameplayPanels)
+                {
+                    if (panel != null && panel.activeSelf)
+                    {
+                        objectsHiddenByPause.Add(panel);
+                        panel.SetActive(false);
+                    }
+                }
+            }
+
+            if (promptCanvasGroup != null && promptCanvasGroup.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(promptCanvasGroup.gameObject);
+                promptCanvasGroup.gameObject.SetActive(false);
+            }
+
+            if (objectivePanelGroup != null && objectivePanelGroup.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(objectivePanelGroup.gameObject);
+                objectivePanelGroup.gameObject.SetActive(false);
+            }
+
+            if (bossUIGroup != null && bossUIGroup.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(bossUIGroup.gameObject);
+                bossUIGroup.gameObject.SetActive(false);
+            }
+
+            if (lowHealthVignette != null && lowHealthVignette.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(lowHealthVignette.gameObject);
+                lowHealthVignette.gameObject.SetActive(false);
+            }
+
+            if (pickupPopupContainer != null && pickupPopupContainer.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(pickupPopupContainer.gameObject);
+                pickupPopupContainer.gameObject.SetActive(false);
+            }
+
+            if (widgetContainer != null && widgetContainer.gameObject.activeSelf)
+            {
+                objectsHiddenByPause.Add(widgetContainer.gameObject);
+                widgetContainer.gameObject.SetActive(false);
+            }
+
+            PlayerController pc = PlayerController.LocalInstance;
+            if (pc == null) pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc != null)
+            {
+                HidePlayerHUDElementForPause(pc.hpFill?.transform);
+                HidePlayerHUDElementForPause(pc.dashStaminaFill?.transform);
+                HidePlayerHUDElementForPause(pc.xpFill?.transform);
+                HidePlayerHUDElementForPause(pc.levelText?.transform);
+                HidePlayerHUDElementForPause(pc.crystalText?.transform);
+            }
+        }
+        else
+        {
+            foreach (GameObject obj in objectsHiddenByPause)
+            {
+                if (obj != null) obj.SetActive(true);
+            }
+            objectsHiddenByPause.Clear();
+        }
+    }
+
+    private void HidePlayerHUDElementForPause(Transform leaf)
+    {
+        if (leaf == null) return;
+        Transform t = leaf;
+        while (t != null && t.parent != null && t.parent.GetComponent<Canvas>() == null)
+            t = t.parent;
+
+        if (t == null || t.parent == null || t.parent.GetComponent<Canvas>() == null) return;
+
+        GameObject topPanel = t.gameObject;
+        if (topPanel.activeSelf && !objectsHiddenByPause.Contains(topPanel))
+        {
+            objectsHiddenByPause.Add(topPanel);
+            topPanel.SetActive(false);
+        }
     }
 
     private IEnumerator ShowMenuRoutine()
     {
-        pausePanelGroup.gameObject.SetActive(true);
+        if (pausePanelGroup == null) yield break;
+
+        if (!pausePanelGroup.gameObject.activeSelf)
+            pausePanelGroup.gameObject.SetActive(true);
+
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
-        string currentScene = SceneManager.GetActiveScene().name;
 
-        if (giveUpButtonGroup != null)
+        while (pausePanelGroup.alpha < 1f)
         {
-            giveUpButtonGroup.gameObject.SetActive(true);
-            if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
+            pausePanelGroup.alpha += Time.unscaledDeltaTime * 5f;
+            yield return null;
         }
 
-        foreach (var btn in pauseButtons) if (btn != null) btn.GetComponent<RectTransform>().localScale = Vector3.zero;
-
-        float t = 0;
-        while (t < 1) { t += Time.unscaledDeltaTime * 6f; pausePanelGroup.alpha = Mathf.Lerp(0, 1, t); yield return null; }
         pausePanelGroup.alpha = 1f;
+    }
 
-        foreach (var btn in pauseButtons)
+    private IEnumerator HideMenuRoutine(MonoBehaviour camFollow)
+    {
+        if (pausePanelGroup == null) yield break;
+
+        pausePanelGroup.blocksRaycasts = false;
+        pausePanelGroup.interactable = false;
+
+        if (pauseSceneController != null && camFollow != null)
         {
-            if (btn != null && btn.activeSelf) { StartCoroutine(AnimateButtonIn(btn.GetComponent<RectTransform>())); yield return new WaitForSecondsRealtime(buttonDelay); }
+            camFollow.SendMessage("BeginHandoffBlend", 0.4f, SendMessageOptions.DontRequireReceiver);
         }
+
+        while (pausePanelGroup.alpha > 0f)
+        {
+            pausePanelGroup.alpha -= Time.unscaledDeltaTime * 5f;
+            yield return null;
+        }
+
+        pausePanelGroup.alpha = 0f;
+        pausePanelGroup.gameObject.SetActive(false);
     }
 
     private IEnumerator AnimateButtonIn(RectTransform btn)
@@ -655,16 +879,6 @@ public class GlobalHUD : MonoBehaviour
         float t = 0;
         while (t < 1) { t += Time.unscaledDeltaTime * 5f; float s = Mathf.Sin(t * Mathf.PI * 0.5f + 0.2f) * 1.15f; btn.localScale = new Vector3(s, s, s); yield return null; }
         btn.localScale = targetScale;
-    }
-
-    private IEnumerator HideMenuRoutine()
-    {
-        pausePanelGroup.interactable = false;
-        pausePanelGroup.blocksRaycasts = false;
-        float t = pausePanelGroup.alpha;
-        while (t > 0) { t -= Time.unscaledDeltaTime * 10f; pausePanelGroup.alpha = t; yield return null; }
-        pausePanelGroup.alpha = 0f;
-        pausePanelGroup.gameObject.SetActive(false);
     }
 
     public void OnGiveUpClicked()
@@ -755,8 +969,6 @@ public class GlobalHUD : MonoBehaviour
         ToggleAncestorPanelText(pc.levelText, hudRect, active);
         ToggleAncestorPanelText(pc.crystalText, hudRect, active);
     }
-
-    private readonly HashSet<GameObject> hiddenByGlobalHUD = new HashSet<GameObject>();
 
     private void ToggleAncestorPanel(Image img, RectTransform hudRect, bool active)
     {
