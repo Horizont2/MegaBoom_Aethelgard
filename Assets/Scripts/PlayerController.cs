@@ -602,7 +602,12 @@ public class PlayerController : MonoBehaviour, IDamageable
             return;
         }
 
-        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive;
+        // Block WASD when paused (Time.timeScale == 0 covers both the
+        // regular pause menu and any cinematic that freezes the game)
+        // and while a tutorial hint is on screen — without this the
+        // player could still pivot through the air while reading the
+        // pause menu or hovering a hint.
+        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive || Time.timeScale == 0f || TutorialHints.IsAnyHintShowing;
         Vector3 inputDir = Vector3.zero;
 
         if (!isCurrentlyLocked)

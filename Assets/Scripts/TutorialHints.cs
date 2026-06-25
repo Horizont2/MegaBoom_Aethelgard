@@ -37,6 +37,12 @@ public class TutorialHints : MonoBehaviour
     private Coroutine currentRoutine;
     private readonly Queue<HintRequest> queue = new Queue<HintRequest>();
 
+    // Cross-system flag: true while any hint (panel OR fallback prompt)
+    // is on screen. Cutscene skip handlers gate Space/Enter/Escape on
+    // this so dismissing a hint mid-cutscene doesn't double up as a
+    // cutscene skip. Also used by PlayerController to freeze movement.
+    public static bool IsAnyHintShowing { get; private set; }
+
     private struct HintRequest
     {
         public string key;
@@ -165,6 +171,12 @@ public class TutorialHints : MonoBehaviour
     private IEnumerator ShowOne(HintRequest req)
     {
         TutorialHintData data = library != null ? library.FindByKey(req.key) : null;
+        // Flip the shared "any hint visible" flag for the entire
+        // display window so cutscene skip handlers and player movement
+        // know to ignore inputs until the hint is dismissed.
+        IsAnyHintShowing = true;
+        try
+        {
 
         // Path 1: styled panel
         if (data != null && TutorialPanelUI.Instance != null)
@@ -201,6 +213,12 @@ public class TutorialHints : MonoBehaviour
 
         if (verboseLogging)
             Debug.LogWarning($"[TutorialHints] No display path for '{req.key}' (no library entry, no fallback body, or no GlobalHUD).");
+
+        }
+        finally
+        {
+            IsAnyHintShowing = false;
+        }
     }
 
     private static string StorageKey(string key) => "TutShown_" + key;

@@ -625,7 +625,13 @@ public class SettingsUI : MonoBehaviour
         if (dynamicShadowsToggle) dynamicShadowsToggle.isOn = PlayerPrefs.GetInt("Settings_DynamicShadows", 1) == 1;
         ForceCheckmarkState(dynamicShadowsCheckmark, dynamicShadowsToggle != null && dynamicShadowsToggle.isOn);
 
-        if (languageDropdown) languageDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_Language", 0), 0, 1);
+        // Make sure both language dropdowns contain every locale the
+        // LocalizationManager supports — manually-edited panels often
+        // only ship the first six and need Polski appended at runtime
+        // without forcing the designer to rebuild.
+        EnsureFullLanguageOptions(languageDropdown);
+        EnsureFullLanguageOptions(voiceLanguageDropdown);
+        if (languageDropdown) languageDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_Language", 0), 0, languageDropdown.options.Count - 1);
         if (voiceLanguageDropdown) voiceLanguageDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_VoiceLanguage", 0), 0, voiceLanguageDropdown.options.Count - 1);
 
         // ---- VIDEO ----
@@ -1096,6 +1102,22 @@ public class SettingsUI : MonoBehaviour
         if (fpsCapDropdown == null) return;
         fpsCapDropdown.ClearOptions();
         fpsCapDropdown.AddOptions(new List<string> { "Unlimited", "30", "60", "90", "120", "144", "240" });
+    }
+
+    // Ensure both language dropdowns expose every Lang the
+    // LocalizationManager supports — appends any missing entries in
+    // order without disrupting the existing first N items. Lets a
+    // hand-tuned panel pick up Polish (or any future locale) without
+    // a full panel rebuild.
+    private static readonly string[] s_allLanguageNames =
+        { "English", "Українська", "Русский", "Español", "Deutsch", "Français", "Polski" };
+
+    private static void EnsureFullLanguageOptions(TMP_Dropdown dd)
+    {
+        if (dd == null) return;
+        for (int i = dd.options.Count; i < s_allLanguageNames.Length; i++)
+            dd.options.Add(new TMP_Dropdown.OptionData(s_allLanguageNames[i]));
+        dd.RefreshShownValue();
     }
 }
 

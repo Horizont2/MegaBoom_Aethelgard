@@ -154,10 +154,17 @@ public class CameraFollow : MonoBehaviour
         transform.position = finalPosition;
         transform.rotation = finalRotation;
 
-        // 6. Захист від Terrain
-        if (Terrain.activeTerrain != null)
+        // 6. Захист від Terrain — picks the terrain whose XZ footprint
+        // actually contains the camera, so a far-away scenery terrain
+        // (e.g. PauseLocation prefab with its own terrain) can't drag
+        // the camera up. Without this guard, Terrain.activeTerrain
+        // returned the most-recently-loaded terrain regardless of
+        // distance — that's why placing the pause scenery flipped the
+        // gameplay camera high into the sky.
+        Terrain relevant = GetTerrainAt(transform.position);
+        if (relevant != null)
         {
-            float terrainHeight = Terrain.activeTerrain.SampleHeight(transform.position) + Terrain.activeTerrain.transform.position.y;
+            float terrainHeight = relevant.SampleHeight(transform.position) + relevant.transform.position.y;
 
             if (transform.position.y < terrainHeight + 0.3f)
             {
@@ -218,6 +225,27 @@ public class CameraFollow : MonoBehaviour
     public void StartShake() { TriggerShake(0.2f, 0.3f); }
 
     public void SyncRotation(float x, float y) { currentX = x; currentY = y; }
+
+    // Returns the terrain whose footprint contains the given world XZ
+    // position. Lets scenes have multiple disjoint terrains (main world
+    // + a PauseLocation prefab in another spot) without
+    // Terrain.activeTerrain dragging the camera onto the wrong one.
+    private static Terrain GetTerrainAt(Vector3 worldPos)
+    {
+        Terrain[] all = Terrain.activeTerrains;
+        if (all == null || all.Length == 0) return Terrain.activeTerrain;
+        for (int i = 0; i < all.Length; i++)
+        {
+            Terrain t = all[i];
+            if (t == null || t.terrainData == null) continue;
+            Vector3 origin = t.transform.position;
+            Vector3 size = t.terrainData.size;
+            if (worldPos.x >= origin.x && worldPos.x <= origin.x + size.x &&
+                worldPos.z >= origin.z && worldPos.z <= origin.z + size.z)
+                return t;
+        }
+        return Terrain.activeTerrain;
+    }
 
     public void SnapToTarget()
     {

@@ -395,6 +395,11 @@ public class RegionManager : MonoBehaviour
 
     private static bool CheckSkipRequested()
     {
+        // Don't read skip input while a tutorial hint is on screen —
+        // the player's Space press is for dismissing the hint, not for
+        // skipping the cutscene underneath it.
+        if (TutorialHints.IsAnyHintShowing) return false;
+        if (TutorialPanelUI.IsTutorialActive) return false;
         return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Escape);
     }
 

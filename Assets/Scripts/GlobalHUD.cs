@@ -56,6 +56,10 @@ public class GlobalHUD : MonoBehaviour
     public GameObject buildWidgetPrefab;
     public Transform widgetContainer;
 
+    [Header("Cinematic Pause (KCD2-style scenery)")]
+    [Tooltip("Optional: PauseSceneController in the scene that owns the WaterfallPos camera + scenery. Auto-discovered on first TogglePause if left null.")]
+    public PauseSceneController pauseSceneController;
+
     private bool isPaused = false;
     private bool isConfirmingGiveUp = false;
     private DepthOfField dofEffect;
@@ -592,6 +596,19 @@ public class GlobalHUD : MonoBehaviour
         isPaused = !isPaused;
         Time.timeScale = isPaused ? 0f : 1f;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+        // Cinematic-pause hook (KCD2-style scenery). If a PauseSceneController
+        // is present anywhere in the scene we hand off to it — it swaps the
+        // camera + audio listener to the waterfall vignette, leaves the
+        // pause scene running on UnscaledTime, and reverses on resume. No
+        // PauseSceneController in scene → plain freeze-pause as before.
+        if (pauseSceneController == null)
+            pauseSceneController = Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
+        if (pauseSceneController != null)
+        {
+            if (isPaused) pauseSceneController.EnterPause();
+            else pauseSceneController.ExitPause();
+        }
 
         if (dofEffect != null)
         {
