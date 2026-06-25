@@ -7906,7 +7906,7 @@ GameObject:
   - component: {fileID: 1770608804}
   m_Layer: 5
   m_Name: TitleText
-  m_TagString: Untagged
+  m_TagString: DontLocalize
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
