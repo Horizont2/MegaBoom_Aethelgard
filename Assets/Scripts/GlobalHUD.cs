@@ -603,7 +603,7 @@ public class GlobalHUD : MonoBehaviour
         // pause scene running on UnscaledTime, and reverses on resume. No
         // PauseSceneController in scene → plain freeze-pause as before.
         if (pauseSceneController == null)
-            pauseSceneController = Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
+            pauseSceneController = UnityEngine.Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
         if (pauseSceneController != null)
         {
             if (isPaused) pauseSceneController.EnterPause();
