@@ -40,6 +40,8 @@ public class SettingsAAARuntime : MonoBehaviour
 
     public void Initialise()
     {
+        StripCategoryIconGlyphs();
+
         // Hook hover behaviour into the runtime; the editor builder already
         // attaches a SettingsAAARowHover stub per row that defers to us.
         foreach (var hr in hoverRows)
@@ -207,6 +209,43 @@ public class SettingsAAARuntime : MonoBehaviour
     {
         if (settingsUI != null) settingsUI.CloseSettings();
         else gameObject.SetActive(false);
+    }
+
+    // Old AAA builds embedded a single-letter ASCII "icon" glyph
+    // before each category label ("  G   GENERAL", "  P   GAMEPLAY",
+    // …). Designers wanted to swap those for real image icons later,
+    // and TMP was logging missing-glyph warnings on Unicode fallbacks.
+    // Strip the prefix at runtime so the existing prefab works without
+    // a rebuild — leaves the canonical label so AutoLocalize +
+    // SmartTranslate can still translate "GENERAL" / "GAMEPLAY" / …
+    private static readonly string[] s_canonicalCategories =
+        { "GENERAL", "GAMEPLAY", "AUDIO", "VIDEO", "GRAPHICS", "CONTROLS", "ACCESSIBILITY", "LANGUAGE" };
+
+    private void StripCategoryIconGlyphs()
+    {
+        var labels = GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+        foreach (var lbl in labels)
+        {
+            if (lbl == null) continue;
+            // Only touch labels that sit on Cat_* GameObjects so we
+            // don't mangle row labels that happen to start with extra
+            // whitespace.
+            Transform p = lbl.transform.parent;
+            if (p == null || !p.name.StartsWith("Cat_")) continue;
+            string current = lbl.text ?? "";
+            string trimmed = current.Trim();
+            // Match every canonical category label, even when prefixed
+            // by an arbitrary single-char "icon" or stretched whitespace.
+            for (int i = 0; i < s_canonicalCategories.Length; i++)
+            {
+                if (trimmed.EndsWith(s_canonicalCategories[i]))
+                {
+                    string clean = "   " + s_canonicalCategories[i];
+                    if (current != clean) lbl.text = clean;
+                    break;
+                }
+            }
+        }
     }
 
     private string categoryNameAt(int i)

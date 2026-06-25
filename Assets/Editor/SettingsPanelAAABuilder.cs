@@ -390,7 +390,7 @@ public class SettingsPanelAAABuilder : EditorWindow
 
             // Icon + label as one TMP block.
             TextMeshProUGUI t = AddText(btn.GetComponent<RectTransform>(), "Text",
-                $"  {spec.icon}   {spec.label}", 20, FontStyles.Bold);
+                $"   {spec.label}", 20, FontStyles.Bold);
             t.alignment = TextAlignmentOptions.MidlineLeft;
             t.color = (i == 0)
                 ? new Color(1f, 0.92f, 0.55f, 1f)
