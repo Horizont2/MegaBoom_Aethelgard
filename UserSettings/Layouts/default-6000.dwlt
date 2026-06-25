@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 2560
     height: 1397
   m_ShowMode: 4
-  m_Title: Inspector
+  m_Title: Game
   m_RootView: {fileID: 4}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -74,7 +74,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 56}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 146
+  controlID: 174
   draggingID: 0
 --- !u!114 &4
 MonoBehaviour:
@@ -171,7 +171,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 112}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 175
+  controlID: 105
   draggingID: 0
 --- !u!114 &8
 MonoBehaviour:
@@ -197,7 +197,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 112}
   m_MaxSize: {x: 16192, y: 16192}
   vertical: 1
-  controlID: 18
+  controlID: 106
   draggingID: 0
 --- !u!114 &9
 MonoBehaviour:
@@ -223,7 +223,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 56}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 19
+  controlID: 107
   draggingID: 0
 --- !u!114 &10
 MonoBehaviour:
@@ -836,13 +836,15 @@ MonoBehaviour:
     m_DynamicPanelBehavior: 0
   m_SceneHierarchy:
     m_TreeViewState:
-      scrollPos: {x: 0, y: 270}
+      scrollPos: {x: 0, y: 0}
       m_SelectedIDs: []
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
+      - m_Data: -363778
+      - m_Data: -88246
+      - m_Data: -46182
       - m_Data: -1338
-      - m_Data: 66586
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1515,9 +1517,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: -0.3164498, y: -0.17220238, z: 0.05623234, w: -0.9317969}
   m_Size:
-    m_Target: 46.74853
+    m_Target: 235.59163
     speed: 2
-    m_Value: 46.74853
+    m_Value: 235.59163
   m_Ortho:
     m_Target: 0
     speed: 2
@@ -7101,7 +7103,7 @@ MonoBehaviour:
     m_OverlaysVisible: 1
     m_DynamicPanelBehavior: 0
   m_SearchFilter:
-    m_NameFilter: fmod
+    m_NameFilter: au
     m_ClassNames: []
     m_AssetLabels: []
     m_AssetBundleNames: []
@@ -7109,34 +7111,34 @@ MonoBehaviour:
     m_SceneHandles: []
     m_ShowAllHits: 0
     m_SkipHidden: 0
-    m_SearchArea: 0
+    m_SearchArea: 3
     m_Folders:
-    - Assets
+    - Assets/Scripts
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
-    m_OriginalText: fmod
+    m_OriginalText: au
     m_ImportLogFlags: 0
     m_FilterByTypeIntersection: 0
   m_ViewMode: 1
   m_StartGridSize: 95
   m_LastFolders:
-  - Assets
+  - Assets/Scripts
   m_LastFoldersGridSize: 95
   m_LastProjectPath: D:\Projekty Unity\MegaBoom
   m_LockTracker:
     m_IsLocked: 0
-  m_LastLocalAssetsSearchArea: 0
+  m_LastLocalAssetsSearchArea: 3
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 79}
+    scrollPos: {x: 0, y: 939}
     m_SelectedIDs:
-    - m_Data: 80386
+    - m_Data: 80754
     m_LastClickedID:
-      m_Data: 80386
+      m_Data: 80754
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 80416
-    - m_Data: 80418
+    - m_Data: 80406
+    - m_Data: 80408
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -7170,8 +7172,8 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 80416
-    - m_Data: 80418
+    - m_Data: 80406
+    - m_Data: 80408
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -7199,9 +7201,9 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 51260
-    m_LastClickedInstanceID: 51260
-    m_HadKeyboardFocusLastEvent: 0
+    - m_Data: 149292
+    m_LastClickedInstanceID: 149292
+    m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs: []
     m_RenameOverlay:
       m_UserAcceptedRename: 0
@@ -7228,7 +7230,7 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
     m_NewAssetIndexInList: -1
-    m_ScrollPosition: {x: 0, y: 407}
+    m_ScrollPosition: {x: 0, y: 0}
     m_GridSize: 95
   m_SkipHiddenPackages: 0
   m_DirectoriesAreaWidth: 278.6

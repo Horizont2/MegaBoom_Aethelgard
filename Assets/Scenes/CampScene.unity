@@ -66745,8 +66745,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 522811750}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.029298982, y: -0.9467901, z: 0.08435747, w: -0.30921495}
-  m_LocalPosition: {x: 70.53114, y: 25.118126, z: 51.51487}
+  m_LocalRotation: {x: 0.074671045, y: -0.86047256, z: 0.13558508, w: 0.48541522}
+  m_LocalPosition: {x: 108.907425, y: 38.730473, z: 70.60573}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -66907,7 +66907,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: FMODUnity::FMODUnity.StudioListener
   nonRigidbodyVelocity: 0
-  attenuationObject: {fileID: 0}
+  attenuationObject: {fileID: 354350443688894400}
 --- !u!1001 &524003176
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -138343,7 +138343,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1160241407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -138357,179 +138357,269 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   uiClick:
-    clips:
-    - {fileID: 8300000, guid: 50fbea6c138d3ea42a74d6590cc2ad4b, type: 3}
-    volume: 0.518
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -1618122163
+        Data2: 1137819442
+        Data3: -1064010878
+        Data4: -488274434
+      Path: event:/UI/Click
   uiHover:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1722241415
+        Data2: 1252055506
+        Data3: 974556052
+        Data4: -168615635
+      Path: event:/UI/Hover
   uiQuestAccept:
-    clips:
-    - {fileID: 8300000, guid: 46296c765d01de74da228fa15f785117, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 492320643
+        Data2: 1174676965
+        Data3: -1923864898
+        Data4: 557103049
+      Path: event:/UI/QuestAccept
   uiQuestComplete:
-    clips:
-    - {fileID: 8300000, guid: fe7978cc72edee44e9028a0b428e34ec, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -1362681147
+        Data2: 1298253128
+        Data3: -86333016
+        Data4: 1356606897
+      Path: event:/UI/QuestComplete
   uiError:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -187672074
+        Data2: 1219703516
+        Data3: -492917104
+        Data4: -1631327094
+      Path: event:/UI/Error
   uiLevelUp:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1514384386
+        Data2: 1273233340
+        Data3: -952038230
+        Data4: 1254541772
+      Path: event:/UI/LVLUP
   uiPurchase:
-    clips:
-    - {fileID: 8300000, guid: 1a738ab4bd199294b9b38b5590400abf, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 340674706
+        Data2: 1341018835
+        Data3: -651174266
+        Data4: -569208273
+      Path: event:/UI/Purchase
   playerDash:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1792544028
+        Data2: 1330996492
+        Data3: -1396703567
+        Data4: -290020963
+      Path: event:/Player/Dash
   playerSwing:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -1206020815
+        Data2: 1239083769
+        Data3: 1595772314
+        Data4: 88098492
+      Path: event:/Player/Swing
   playerHitEnemy:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -481280108
+        Data2: 1093987928
+        Data3: -1907442767
+        Data4: -1610699695
+      Path: event:/Player/Hit_Enemy_Sword
   playerHitResource:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 300303717
+        Data2: 1264253452
+        Data3: -519421789
+        Data4: -348900643
+      Path: event:/Player/Hit_Wood
   playerHurt:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1512681972
+        Data2: 1230450877
+        Data3: 259746688
+        Data4: 1496089535
+      Path: event:/Player/Hurt
   playerThrow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -882350821
+        Data2: 1321087204
+        Data3: -298616938
+        Data4: -839513339
+      Path: event:/Player/Throw
   playerHeal:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1317903470
+        Data2: 1208248545
+        Data3: 644284803
+        Data4: 1304659324
+      Path: event:/Player/Heal
   playerFootstep:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 486520348
+        Data2: 1087596929
+        Data3: 812551599
+        Data4: -1131889617
+      Path: event:/Player/Footsteps
   explosion:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -341023071
+        Data2: 1320758291
+        Data3: 1826153090
+        Data4: 747019329
+      Path: event:/Player/Explosion
   enemyAgro:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyTelegraph:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyAttack:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1740202278
+        Data2: 1244269481
+        Data3: 272835771
+        Data4: 68754711
+      Path: event:/Enemy/Hit
   enemyHurt:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1768254308
+        Data2: 1160991230
+        Data3: -272386912
+        Data4: 1917118621
+      Path: event:/Enemy/Hurt
   enemyDie:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1009044467
+        Data2: 1107401261
+        Data3: 1621863552
+        Data4: -565477885
+      Path: event:/Enemy/Die
   enemyFootstep:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -1813958497
+        Data2: 1323991254
+        Data3: -2112112229
+        Data4: -1304438184
+      Path: event:/Enemy/Footsteps
   campCollectItem:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 353179649
+        Data2: 1329775517
+        Data3: -1352649821
+        Data4: -89283583
+      Path: event:/ENV/Camp_Collect_Item
   campCollectGem:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 1482439877
+        Data2: 1142886581
+        Data3: -904170367
+        Data4: 1867173031
+      Path: event:/ENV/Camp_Collect_Gem
   campBuildStart:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 10221575
+        Data2: 1224880748
+        Data3: 1955255727
+        Data4: -1044329048
+      Path: event:/ENV/Camp_Build
   campBuildDone:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 882413884
+        Data2: 1334823877
+        Data3: 129793212
+        Data4: -133911966
+      Path: event:/ENV/Camp_Done
   npcWork:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   envThunder:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -2130433249
+        Data2: 1157974612
+        Data3: 669768075
+        Data4: 1726526011
+      Path: event:/AMB/AMB_Thunder
   envChestOpen:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -895759569
+        Data2: 1162263652
+        Data3: 1545477536
+        Data4: -37443179
+      Path: event:/EnV/WoodChestOpen
   animalCatMeow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -1740506411
+        Data2: 1210778287
+        Data3: -1995087988
+        Data4: -1303176203
+      Path: event:/Animals/CatMeow
   animalChicken:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -6397087
+        Data2: 1278236292
+        Data3: 885319560
+        Data4: 1960737469
+      Path: event:/Animals/Chicken
   musicCamp:
-    clips:
-    - {fileID: 8300000, guid: 2f81e7c29f7609146bea894c96d68900, type: 3}
-    volume: 0.497
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 2059486281
+        Data2: 1152121598
+        Data3: -15586668
+        Data4: 1499660520
+      Path: event:/AMB/AMB_Camp
   musicBattle:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
-  sfxPoolSize: 15
-  musicFadeDuration: 1.5
-  globalMusicVolume: 1
-  globalSFXVolume: 1
+    fmodEvent:
+      Guid:
+        Data1: 719038294
+        Data2: 1146569717
+        Data3: -1294364284
+        Data4: -1267188723
+      Path: event:/AMB/AMB_Journey
 --- !u!4 &1160241408
 Transform:
   m_ObjectHideFlags: 0
