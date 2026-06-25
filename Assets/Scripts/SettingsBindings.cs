@@ -82,7 +82,7 @@ public class SettingsBindings : MonoBehaviour
             });
 
         if (languageDropdown != null)
-            languageDropdown.onValueChanged.AddListener(v => LocalizationManager.CurrentLanguage = (LocalizationManager.Lang)Mathf.Clamp(v, 0, 1));
+            languageDropdown.onValueChanged.AddListener(v => LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5));
 
         if (qualityDropdown != null)
             qualityDropdown.onValueChanged.AddListener(v => QualitySettings.SetQualityLevel(Mathf.Clamp(v, 0, QualitySettings.names.Length - 1), true));

@@ -280,7 +280,7 @@ public class SettingsUI : MonoBehaviour
             // subscribes (codex, achievements, save slots, …) updates
             // immediately — without this the dropdown only persisted
             // the pref and the UI stayed in the old language.
-            LocalizationManager.CurrentLanguage = (LocalizationManager.Lang)Mathf.Clamp(v, 0, 1);
+            LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5);
         });
         if (voiceLanguageDropdown) voiceLanguageDropdown.onValueChanged.AddListener(v =>
         {
