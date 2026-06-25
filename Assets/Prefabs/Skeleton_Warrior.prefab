@@ -562,14 +562,14 @@ MonoBehaviour:
   diamondPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   diamondDropChance: 0.3
   damagePopupPrefab: {fileID: 2253435216451658149, guid: 5b744f29cb75ed84a869ee92bd84278b, type: 3}
-  hpCanvas: {fileID: 8340369701345728555}
-  hpFill: {fileID: 2447475982802889256}
   target: {fileID: 0}
   verticalOffset: 0
   repulsionRadius: 1
   repulsionForce: 3
   deathVFXPrefab: {fileID: 0}
   dissolveAshVFX: {fileID: 0}
+  healthCanvas: {fileID: 2426312410389585324}
+  healthFill: {fileID: 2447475982802889256}
   xpRewardMultiplier: 1
   isInvincible: 0
   startPassive: 0

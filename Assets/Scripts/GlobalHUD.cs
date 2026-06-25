@@ -629,106 +629,106 @@ public class GlobalHUD : MonoBehaviour
     // ==========================================
     public void TogglePause()
     {
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (currentScene == "Menu" || currentScene == "MainMenu" || currentScene == "ShopScene")
+        {
+            return;
+        }
+
         if (pausePanelGroup == null) return;
+
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null && !canvas.enabled) canvas.enabled = true;
 
         isPaused = !isPaused;
 
-        // 1. ЗАВЖДИ шукаємо контролер у поточній сцені (навіть якщо об'єкт вимкнений)
-        pauseSceneController = FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
-
-        // 2. Логіка часу
-        if (pauseSceneController != null)
-        {
-            Time.timeScale = 1f;
-        }
-        else
-        {
-            Time.timeScale = isPaused ? 0f : 1f;
-        }
-
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
-        if (dofEffect != null)
-        {
-            bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
-            dofEffect.active = isShop || isPaused;
-        }
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
 
         if (isPaused)
         {
-            // Кешуємо камери
-            cachedMainCamera = Camera.main;
-            if (cachedMainCamera == null)
+            try { CloseAllOtherActivePanels(); } catch (System.Exception) { }
+        }
+
+        // ==========================================
+        // НАДІЙНИЙ ПОШУК КОНТРОЛЕРА (як у твоєму оригіналі)
+        // ==========================================
+        try
+        {
+            // Очищаємо "мертві" посилання
+            if (pauseSceneController != null && !pauseSceneController.gameObject.scene.IsValid())
             {
-                cachedMainCamera = FindFirstObjectByType<Camera>();
+                pauseSceneController = null;
             }
 
-            if (cachedMainCamera != null)
+            // Шукаємо контролер найсучаснішим методом Unity
+            if (pauseSceneController == null)
             {
-                cachedCameraFollow = cachedMainCamera.GetComponent("CameraFollow") as MonoBehaviour;
-                if (cachedCameraFollow != null) cachedCameraFollow.enabled = false;
+                pauseSceneController = UnityEngine.Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
             }
+        }
+        catch (System.Exception) { }
 
+        // ==========================================
+        // ОПТИМІЗАЦІЯ ТА ЧАС
+        // ==========================================
+        if (isPaused)
+        {
             if (pauseSceneController != null)
             {
-                wasPauseSceneActive = pauseSceneController.gameObject.activeSelf;
-                pauseSceneController.gameObject.SetActive(true);
-                pauseSceneController.EnterPause();
-                cachedPauseCamera = pauseSceneController.pauseCamera;
-            }
+                // ПРИМУСОВО вмикаємо об'єкт табору, якщо він був вимкнений, щоб його камера точно запрацювала
+                if (!pauseSceneController.gameObject.activeInHierarchy)
+                {
+                    pauseSceneController.gameObject.SetActive(true);
+                }
 
-            // Перемикаємо камери
-            if (cachedPauseCamera != null)
+                // Вимикаємо террейн головної сцени для підвищення FPS
+                mainTerrainComponent = Terrain.activeTerrain;
+                if (mainTerrainComponent != null) mainTerrainComponent.enabled = false;
+
+                Time.timeScale = 1f;
+                try { pauseSceneController.EnterPause(); } catch { }
+            }
+            else
             {
-                if (cachedMainCamera != null) cachedMainCamera.enabled = false;
-                cachedPauseCamera.gameObject.SetActive(true);
-                cachedPauseCamera.enabled = true;
-
-                if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
-                    canvas.worldCamera = cachedPauseCamera;
+                Time.timeScale = 0f; // Глуха пауза для бою
             }
+        }
+        else
+        {
+            if (pauseSceneController != null)
+            {
+                Time.timeScale = 1f;
+                try { pauseSceneController.ExitPause(); } catch { }
 
-            ResetGiveUpState();
-            ToggleGameplayUIForPause(true);
+                // Вмикаємо террейн назад у гру
+                if (mainTerrainComponent != null) mainTerrainComponent.enabled = true;
+            }
+            else
+            {
+                Time.timeScale = 1f;
+            }
+        }
+        // ==========================================
+
+        if (dofEffect != null)
+        {
+            bool isShop = currentScene == "ShopScene";
+            dofEffect.active = isShop || isPaused;
+        }
+
+        try { ToggleGameplayUIForPause(isPaused); } catch (System.Exception) { }
+
+        if (isPaused)
+        {
+            try { ResetGiveUpState(); } catch { }
             StartCoroutine(ShowMenuRoutine());
         }
         else
         {
-            // Вихід з паузи
-            if (cachedCameraFollow != null) cachedCameraFollow.enabled = true;
-
-            if (pauseSceneController != null)
-            {
-                pauseSceneController.ExitPause();
-                if (!wasPauseSceneActive)
-                {
-                    pauseSceneController.gameObject.SetActive(false);
-                }
-            }
-
-            if (cachedMainCamera != null && cachedPauseCamera != null)
-            {
-                cachedMainCamera.enabled = true;
-                cachedPauseCamera.enabled = false;
-                cachedPauseCamera.gameObject.SetActive(false);
-
-                if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
-                    canvas.worldCamera = cachedMainCamera;
-            }
-
-            ToggleGameplayUIForPause(false);
-            StartCoroutine(HideMenuRoutine(cachedCameraFollow));
-
-            // Очищаємо кеш
-            cachedMainCamera = null;
-            cachedPauseCamera = null;
-            cachedCameraFollow = null;
+            StartCoroutine(HideMenuRoutine());
         }
 
-        string currentScene = SceneManager.GetActiveScene().name;
-        if (currentScene == "ShopScene" || currentScene == "Menu")
+        if (currentScene == "ShopScene" || currentScene == "Menu" || currentScene == "MainMenu")
         {
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -842,31 +842,62 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
 
-        while (pausePanelGroup.alpha < 1f)
+        if (pauseSceneController != null && Camera.main != null && pauseSceneController.pauseCamera != null)
         {
-            pausePanelGroup.alpha += Time.unscaledDeltaTime * 5f;
-            yield return null;
+            float t = 0f;
+            Vector3 startPos = Camera.main.transform.position;
+            Quaternion startRot = Camera.main.transform.rotation;
+            while (t < 1f)
+            {
+                t += Time.unscaledDeltaTime * 3.5f;
+                pausePanelGroup.alpha = Mathf.Lerp(0f, 1f, t);
+                Camera.main.transform.position = Vector3.Lerp(startPos, pauseSceneController.pauseCamera.transform.position, t);
+                Camera.main.transform.rotation = Quaternion.Slerp(startRot, pauseSceneController.pauseCamera.transform.rotation, t);
+                yield return null;
+            }
+        }
+        else
+        {
+            // БОЙОВА СЦЕНА АБО КАМЕРИ НЕМАЄ
+            while (pausePanelGroup.alpha < 1f)
+            {
+                pausePanelGroup.alpha += Time.unscaledDeltaTime * 5f;
+                yield return null;
+            }
         }
 
         pausePanelGroup.alpha = 1f;
     }
 
-    private IEnumerator HideMenuRoutine(MonoBehaviour camFollow)
+    private IEnumerator HideMenuRoutine()
     {
         if (pausePanelGroup == null) yield break;
 
         pausePanelGroup.blocksRaycasts = false;
         pausePanelGroup.interactable = false;
 
-        if (pauseSceneController != null && camFollow != null)
+        if (pauseSceneController != null && Camera.main != null)
         {
-            camFollow.SendMessage("BeginHandoffBlend", 0.4f, SendMessageOptions.DontRequireReceiver);
+            CameraFollow follower = Camera.main.GetComponent<CameraFollow>();
+            if (follower != null)
+            {
+                follower.BeginHandoffBlend(0.4f);
+                float t = 0f;
+                while (t < 1f)
+                {
+                    t += Time.unscaledDeltaTime * 4f;
+                    pausePanelGroup.alpha = Mathf.Lerp(1f, 0f, t);
+                    yield return null;
+                }
+            }
         }
-
-        while (pausePanelGroup.alpha > 0f)
+        else
         {
-            pausePanelGroup.alpha -= Time.unscaledDeltaTime * 5f;
-            yield return null;
+            while (pausePanelGroup.alpha > 0f)
+            {
+                pausePanelGroup.alpha -= Time.unscaledDeltaTime * 5f;
+                yield return null;
+            }
         }
 
         pausePanelGroup.alpha = 0f;

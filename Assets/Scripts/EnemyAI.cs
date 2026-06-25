@@ -46,6 +46,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public GameObject deathVFXPrefab;
     public ParticleSystem dissolveAshVFX;
 
+    [Header("UI Settings")]
+    public GameObject healthCanvas; // Об'єкт Канвасу (має бути вимкнений за замовчуванням)
+    public Image healthFill;        // Зображення смужки ХП (Image Type = Filled)
+    private float targetHealthRatio = 1f;
+
     [HideInInspector] public float xpRewardMultiplier = 1f;
 
     public bool isInvincible = false;
@@ -68,9 +73,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private static readonly int s_baseColorID = Shader.PropertyToID("_BaseColor");
     private static readonly int s_colorID = Shader.PropertyToID("_Color");
 
-    // Frame-skip counter for distance-based AI throttling. Distant enemies
-    // run their heavy movement/attack logic less often, since the player
-    // can't perceive sub-frame motion at 30m+.
     private int updateSkipCounter = 0;
     private PlayerController playerTarget;
     private Animator animator;
@@ -82,7 +84,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool isPreparingAttack = false;
     private Transform mainCamTransform;
 
-    // ---- Scene-wide caches (shared by every EnemyAI in the scene) ----
     private static Transform s_player;
     private static PlayerController s_playerController;
     private static Terrain s_terrain;
@@ -143,14 +144,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private static void OnActiveSceneChanged(UnityEngine.SceneManagement.Scene a, UnityEngine.SceneManagement.Scene b)
     {
-        // Reset shared caches so the next scene doesn't read stale references.
         s_player = null;
         s_playerController = null;
         s_terrain = null;
         s_terrainOriginY = 0f;
     }
 
-    // --- Passive / Encounter Group Mode (configured by EnemyEncounterGroup) ---
     [HideInInspector] public bool startPassive = false;
     [HideInInspector] public Vector3 anchorPoint;
     [HideInInspector] public Transform anchorTransform;
@@ -177,15 +176,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         for (int i = 0; i < meshRenderers.Length; i++)
         {
             if (meshRenderers[i].gameObject.layer != minimapLayer) meshRenderers[i].gameObject.layer = 9;
-            // sharedMaterial keeps SRP batching intact (the old .material
-            // call instanced every enemy's body, breaking the batch).
             originalColors[i] = meshRenderers[i].sharedMaterial != null
                 ? meshRenderers[i].sharedMaterial.color
                 : Color.white;
-            // Enemies don't cast shadows. With 25+ enemies in a region wave
-            // each one would re-render its skeleton/mesh through the shadow
-            // pass, which is the biggest avoidable GPU cost in combat. They
-            // still RECEIVE shadows from the world.
             meshRenderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
         SkinnedMeshRenderer[] skinned = GetComponentsInChildren<SkinnedMeshRenderer>();
@@ -203,9 +196,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null)
         {
             animator.applyRootMotion = false;
-            // CullCompletely freezes the entire animation rig when the
-            // renderer is offscreen — huge win in big regions where most
-            // enemies are out of frame at any moment.
             animator.cullingMode = AnimatorCullingMode.CullCompletely;
         }
 
@@ -246,6 +236,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         baseDamage = damage;
         currentHealth = maxHealth;
         currentPoise = maxPoise;
+
+        // Ініціалізація UI ХП ворога при спавні
+        if (healthCanvas != null) healthCanvas.SetActive(false);
+        if (healthFill != null) healthFill.fillAmount = 1f;
+        targetHealthRatio = 1f;
 
         if (TryGetPlayer(out Transform startT, out PlayerController startPC))
         {
@@ -302,10 +297,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        // --- Плавна анімація UI ХП (Lerp) ---
+        if (healthCanvas != null && healthCanvas.activeInHierarchy && healthFill != null)
+        {
+            // Використовуємо Lerp, щоб плавно змінити рівень "заповнення" смужки
+            healthFill.fillAmount = Mathf.Lerp(healthFill.fillAmount, targetHealthRatio, Time.deltaTime * 8f);
+        }
+
         if (target == null && !isDead)
         {
-            // Use the shared static cache so 30 enemies don't each fire a
-            // FindGameObjectWithTag every frame they have no target.
             if (TryGetPlayer(out Transform pt, out PlayerController pc))
             {
                 target = pt;
@@ -316,16 +316,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isDead) return;
 
-        // Distance-based update throttle. Cuts the per-frame cost of large
-        // regions where 25+ enemies are alive at once. Below 20m we run at
-        // full rate; further out we tick every 2nd / 4th / 8th frame.
-        // CullCompletely on the animator already handles offscreen-rendering
-        // savings; this handles the AI/physics side.
         float sqrDistToPlayer = (target.position - transform.position).sqrMagnitude;
         int updateInterval;
-        if (sqrDistToPlayer > 2500f) updateInterval = 8;       // >50m
-        else if (sqrDistToPlayer > 900f) updateInterval = 4;    // 30-50m
-        else if (sqrDistToPlayer > 400f) updateInterval = 2;    // 20-30m
+        if (sqrDistToPlayer > 2500f) updateInterval = 8;
+        else if (sqrDistToPlayer > 900f) updateInterval = 4;
+        else if (sqrDistToPlayer > 400f) updateInterval = 2;
         else updateInterval = 1;
 
         if (updateInterval > 1)
@@ -456,7 +451,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         Vector3 anchor = anchorTransform != null ? anchorTransform.position : anchorPoint;
 
-        // Aggro check (every 200ms)
         passiveAggroCheckTimer -= Time.deltaTime;
         if (passiveAggroCheckTimer <= 0f && target != null)
         {
@@ -470,8 +464,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        // Pick wander target. When roamWhilePassive is false (camp guards) we
-        // stick to our personal anchor so nobody walks circles around the fire.
         if (roamWhilePassive)
         {
             if (Time.time >= nextRoamPickTime || Vector3.SqrMagnitude(transform.position - currentRoamTarget) < 0.6f)
@@ -490,9 +482,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 toTarget = currentRoamTarget - transform.position;
         toTarget.y = 0f;
         float distXZ = toTarget.magnitude;
-
-        // Stationary deadband for camp guards is larger so they don't twitch
-        // every frame to "correct" their position by a few cm.
         float standThreshold = roamWhilePassive ? 0.2f : 0.6f;
 
         if (distXZ > standThreshold)
@@ -507,8 +496,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
         else
         {
-            // Standing — optionally turn to face the anchor (campfire) for
-            // a natural "huddling around the fire" look.
             if (faceAnchorWhenIdle)
             {
                 Vector3 lookAt = anchor - transform.position;
@@ -527,8 +514,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         if (animator == null || !animator.enabled) return;
         animator.SetBool("isMoving", moving);
-        // Defensive: some skeleton controllers drive blend trees off a Speed float.
-        // SetFloat silently no-ops when the parameter doesn't exist.
         animator.SetFloat("Speed", moving ? speed : 0f);
     }
 
@@ -537,7 +522,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isAggroed) return;
         isAggroed = true;
 
-        // Snap to face the player so the reaction reads instantly.
         if (target != null)
         {
             Vector3 look = target.position - transform.position;
@@ -562,9 +546,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", false);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
-        // Threat indicator: trigger for every attacker, not just elites.
-        // It's the single best readability cue the player has for off-screen
-        // hits, so we always raise it during the windup.
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
 
         if (isElite && playerTarget != null)
@@ -575,14 +556,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
         }
 
-        // First-time combat tutorial — fires once the very first attack any
-        // enemy ever telegraphs against the player.
         if (TutorialHints.Instance != null)
             TutorialHints.Instance.ShowIfNew("CombatTelegraph",
                 "TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.", 5f);
 
-        // Pulse the color across the windup instead of holding a static
-        // red — the flicker makes the windup readable even mid-melee chaos.
         Color baseTele = isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f));
         Color flashTele = Color.white;
         float elapsed = 0f;
@@ -625,6 +602,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;
+
+        // --- Показуємо ХП та передаємо нове значення для анімації ---
+        if (healthCanvas != null && !healthCanvas.activeSelf)
+        {
+            healthCanvas.SetActive(true);
+        }
+        targetHealthRatio = currentHealth / maxHealth;
+        // -------------------------------------------------------------
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
@@ -716,8 +701,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
-        // Fire global kill event so RPG upgrades (KillHeal, etc.) can react
-        // without each system polling for kills.
+        // Миттєво ховаємо канвас після смерті
+        if (healthCanvas != null)
+        {
+            healthCanvas.SetActive(false);
+        }
+
         PlayerController.OnEnemyKilled?.Invoke();
 
         if (animator != null) animator.SetTrigger("Die");
@@ -733,11 +722,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // --- Direct Drop Logic (pool fix) ---
-        // Direct Instantiate for XP / diamond drops — routing them through
-        // the pool turned out to break the crystals' Awake/OnEnable
-        // lifecycle (canBeMagnetized never re-armed on reuse). The cost is
-        // a small GC tick per kill rather than a feature loss.
         if (xpCrystalPrefab != null)
         {
             Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
@@ -753,7 +737,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 Instantiate(diamondPrefab, pos, Quaternion.identity);
             }
         }
-        // ------------------------------------
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();
