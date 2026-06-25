@@ -836,9 +836,22 @@ public class GlobalHUD : MonoBehaviour
     {
         if (pausePanelGroup == null) yield break;
 
-        if (!pausePanelGroup.gameObject.activeSelf)
-            pausePanelGroup.gameObject.SetActive(true);
+        // Walk every ancestor up to the canvas root and force-activate.
+        // Без цього, якщо в сцені немає PauseSceneController (Time.timeScale=0
+        // freeze-pause шлях), батьківський контейнер може лишитися вимкненим
+        // через ToggleGameplayUIForPause і SetActive(true) на дочірньому
+        // об'єкті дасть activeSelf=true, але activeInHierarchy=false — панель
+        // невидима, alpha не "піднімається" візуально. Цей прохід гарантує
+        // що сама панель реально потрапляє у видимий стан.
+        Transform t = pausePanelGroup.transform;
+        while (t != null)
+        {
+            if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+            t = t.parent;
+        }
 
+        pausePanelGroup.alpha = 0f;
+        pausePanelGroup.ignoreParentGroups = true;
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
 
