@@ -159,7 +159,7 @@ public class RegionTotem : MonoBehaviour
 
             for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
             {
-                SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult, true);
+                SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult);
                 yield return new WaitForSeconds(0.8f);
             }
         }
@@ -178,12 +178,12 @@ public class RegionTotem : MonoBehaviour
         if (prefabs == null || prefabs.Length == 0 || count <= 0) yield break;
         for (int i = 0; i < count; i++)
         {
-            SpawnEntity(prefabs[Random.Range(0, prefabs.Length)], hpMult, dmgMult, false);
+            SpawnEntity(prefabs[Random.Range(0, prefabs.Length)], hpMult, dmgMult);
             yield return new WaitForSeconds(0.15f);
         }
     }
 
-    private void SpawnEntity(GameObject prefab, float hpMult, float dmgMult, bool isBoss)
+    private void SpawnEntity(GameObject prefab, float hpMult, float dmgMult)
     {
         Vector3 spawnPos = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(6f, 12f));
         spawnPos.y = GetGroundHeight(spawnPos);
@@ -191,15 +191,13 @@ public class RegionTotem : MonoBehaviour
         GameObject entity = Instantiate(prefab, spawnPos, Quaternion.identity);
         activeEnemies.Add(entity);
 
-        if (isBoss)
+        // ФІКС: Більше ніяких isBoss прапорців. Перевіряємо напряму, чи це бос!
+        TutorialBossAI bossAI = entity.GetComponent<TutorialBossAI>();
+        if (bossAI != null)
         {
-            TutorialBossAI bossAI = entity.GetComponent<TutorialBossAI>();
-            if (bossAI != null)
-            {
-                bossAI.InitializeBoss(hpMult, dmgMult);
-                // Call ActivateBoss immediately when spawned by the totem
-                bossAI.ActivateBoss();
-            }
+            bossAI.InitializeBoss(hpMult, dmgMult);
+            bossAI.ActivateBoss();
+            if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
         }
         else
         {
@@ -210,8 +208,6 @@ public class RegionTotem : MonoBehaviour
                 enemyAI.damage *= dmgMult;
             }
         }
-
-        if (Camera.main != null && isBoss) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
     }
 
     private IEnumerator MonitorCombatRoutine()

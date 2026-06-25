@@ -95,9 +95,6 @@ public class GlobalHUD : MonoBehaviour
 
     private void ApplySavedSettings()
     {
-        // Share the same code path as SettingsUI so the limit always
-        // respects the high-refresh-rate fix (vSync stays off, the cap
-        // is driven by targetFrameRate only).
         SettingsUI.ApplyFpsLimit(PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1);
     }
 
@@ -142,13 +139,7 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
-            // Pause is illegal while the level-up panel is showing.
-            // Without this guard, pressing Esc set Time.timeScale back to
-            // 1 (TogglePause toggles 0<->1) while the level-up UI stayed
-            // visible — the world resumed and enemies could keep hitting
-            // the frozen player. Just swallow the Esc here.
             if (LevelUpManager.IsMenuOpen) return;
-
             if (MapTableInteract.IsMapActive) return;
 
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
@@ -158,10 +149,6 @@ public class GlobalHUD : MonoBehaviour
                 return;
             }
 
-            // Shop scene: if the player is inside a category (viewing
-            // weapons or armor list), Esc takes them back to the
-            // category grid instead of opening the pause menu. Only the
-            // top-level category grid pauses on Esc.
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "ShopScene")
             {
@@ -263,11 +250,6 @@ public class GlobalHUD : MonoBehaviour
     {
         if (topCinematicBar != null && bottomCinematicBar != null) return;
 
-        // Important: parent directly to the GlobalHUD canvas (RectTransform). The
-        // previous version created a plain GameObject ("CinematicBars_Auto") and
-        // parented Image children to its non-RectTransform — RectTransform anchors
-        // don't work properly when an ancestor in the chain isn't a RectTransform,
-        // which is why the bars never showed up on cutscenes.
         Transform parent = this.transform;
 
         GameObject topObj = new GameObject("CinematicBar_Top", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -355,7 +337,6 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator SkipPromptRoutine()
     {
-        // Fade in once, then breathe alpha forever until HideSkipPrompt() stops us.
         float fadeIn = 0.5f;
         float t = 0f;
         while (t < fadeIn)
@@ -366,7 +347,6 @@ public class GlobalHUD : MonoBehaviour
         }
         while (true)
         {
-            // breathe: sin wave 0.55 → 1.0 → 0.55 each ~1.4s
             float k = (Mathf.Sin(Time.unscaledTime * 4.5f) + 1f) * 0.5f;
             skipPromptGroup.alpha = Mathf.Lerp(0.55f, 1f, k);
             yield return null;
@@ -419,10 +399,6 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
-        // Last-ditch re-discovery — if the inspector field somehow ended
-        // up null after a scene reload, find the BossUI by name and
-        // pull its CanvasGroup. Without this, every boss with a missing
-        // wiring used to silently no-op and the bar never appeared.
         if (bossUIGroup == null)
         {
             Transform found = transform.Find("BossUI");
@@ -433,29 +409,30 @@ public class GlobalHUD : MonoBehaviour
             Debug.LogWarning("[GlobalHUD] ShowBossUI: bossUIGroup is null — wire it in the inspector.");
             return;
         }
-        Debug.Log($"[GlobalHUD] ShowBossUI('{bossName}', {currentHp}/{maxHp})");
-        // Walk up and force-enable any inactive ancestor. The boss bar
-        // sometimes lived under a parent that SetGameplayPanelsActive(false)
-        // had disabled and never re-enabled — the fade routine then
-        // ticked invisibly because the GameObject was disabled.
+
+        // Вмикаємо саму CanvasGroup і всіх її батьків
         Transform t = bossUIGroup.transform;
         while (t != null)
         {
             if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
             t = t.parent;
         }
-        // Override any parent CanvasGroup that might dim us — the HUD
-        // root or a "GameplayUI" wrapper sometimes carries alpha 0
-        // because of pause / map / cinematic overlays.
+
+        // ФІКС БРОНЕБІЙНИЙ: Примусово вмикаємо ВСІХ дітей у Canvas Group
+        // Це гарантує, що якщо ти в префабі вимкнув об'єкт 'Content', він 100% увімкнеться!
+        if (bossUIGroup.transform.childCount > 0)
+        {
+            for (int i = 0; i < bossUIGroup.transform.childCount; i++)
+            {
+                bossUIGroup.transform.GetChild(i).gameObject.SetActive(true);
+            }
+        }
+
         bossUIGroup.ignoreParentGroups = true;
-        // Snap to fully visible instead of fading from 0. The fade
-        // routine relied on a per-frame coroutine lerp that could be
-        // pre-empted by FadeBossUIRoutine(0) in the same frame from
-        // OnSceneLoaded's HideBossUI, leaving the bar permanently at
-        // alpha 0 mid-fight.
         bossUIGroup.alpha = 1f;
         bossUIGroup.blocksRaycasts = true;
         bossUIGroup.interactable = true;
+
         if (bossUIFadeRoutine != null) { StopCoroutine(bossUIFadeRoutine); bossUIFadeRoutine = null; }
 
         if (bossNameText != null) bossNameText.text = bossName;
@@ -475,11 +452,6 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator FadeBossUIRoutine(float targetAlpha)
     {
-        // unscaledDeltaTime so the fade progresses during cinematic
-        // pauses (Time.timeScale=0). With the old Time.deltaTime path,
-        // calling ShowBossUI inside a cutscene would queue the fade
-        // but it'd never tick — the boss bar appeared at alpha 0
-        // through the entire fight.
         while (Mathf.Abs(bossUIGroup.alpha - targetAlpha) > 0.01f)
         {
             bossUIGroup.alpha = Mathf.MoveTowards(bossUIGroup.alpha, targetAlpha, Time.unscaledDeltaTime * 3f);
@@ -510,23 +482,12 @@ public class GlobalHUD : MonoBehaviour
         if (promptCanvasGroup != null) promptCanvasGroup.alpha = 0f;
         HideBossUI();
 
-        // Auxiliary HUD widgets (pickup popup container, build widget rail)
-        // can be left inactive by a previous scene's SetGameplayPanelsActive(false)
-        // — e.g. region victory cinematic disabled them, the next scene
-        // load never re-enabled them. Force-reset them here so the polished
-        // left-side pickup popup actually fires when the player re-enters
-        // a gameplay scene.
         if (showGameplayUI)
         {
             if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(true);
             if (widgetContainer != null) widgetContainer.gameObject.SetActive(true);
         }
-        // Wipe any in-flight pickup popups so they don't pile up on the
-        // new scene's HUD. Coroutines on popup GameObjects pause while
-        // their container is disabled during cinematic transitions,
-        // and resume in the new scene at full alpha and zero stack
-        // offset — that's the "stuck pile" the player sees. Hard reset
-        // here so the new scene always starts with a clean popup stack.
+
         ClearAllPickupPopups();
 
         if (isPaused)
@@ -539,7 +500,7 @@ public class GlobalHUD : MonoBehaviour
 
     private IEnumerator SyncCameraAndVolumeRoutine()
     {
-        yield return new WaitForSeconds(0.5f); // Чекаємо півсекунди, щоб уникнути фрізу при завантаженні
+        yield return new WaitForSeconds(0.5f);
 
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null)
@@ -563,7 +524,7 @@ public class GlobalHUD : MonoBehaviour
                 dofEffect.active = isShop || isPaused;
                 break;
             }
-            yield return null; // Розподіляємо навантаження на кілька кадрів
+            yield return null;
         }
     }
 
@@ -739,21 +700,11 @@ public class GlobalHUD : MonoBehaviour
     {
         if (gameplayPanels != null) { foreach (GameObject panel in gameplayPanels) { if (panel != null) panel.SetActive(active); } }
 
-        // The HP / stamina / level / diamond bars hang off the live
-        // PlayerController instance, which isn't wired into the inspector
-        // gameplayPanels list. Walk from those Image references up to a
-        // sensible "PlayerHUD root" and toggle it directly so opening the
-        // map / triggering a cutscene clears them too.
         TogglePlayerHUDRoots(active);
 
-        // Auxiliary HUD elements that aren't part of the inspector-wired
-        // gameplayPanels array but still need to vanish during cutscenes /
-        // map view. Cinematic bars and skip prompt deliberately stay since
-        // those are part of the cutscene framing itself.
         if (promptCanvasGroup != null)
         {
             if (!active) { promptCanvasGroup.alpha = 0f; promptCanvasGroup.blocksRaycasts = false; }
-            // No "show on true" branch — the next prompt request will re-fade it.
         }
         if (objectivePanelGroup != null)
         {
@@ -761,11 +712,6 @@ public class GlobalHUD : MonoBehaviour
         }
         if (bossUIGroup != null)
         {
-            // Don't blanket-hide the boss bar if a boss fight is live —
-            // SetGameplayPanelsActive(false) is called by map open + a
-            // few cutscene transitions, and previously it was erasing
-            // the boss bar mid-fight. We only fade out when no
-            // TutorialBossAI is alive in the scene.
             if (!active && FindFirstObjectByType<TutorialBossAI>() == null)
             {
                 bossUIGroup.alpha = 0f;
@@ -775,26 +721,11 @@ public class GlobalHUD : MonoBehaviour
         if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(active);
         if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(active);
 
-        // Build-in-progress widgets sit on widgetContainer in the corner.
         if (widgetContainer != null) widgetContainer.gameObject.SetActive(active);
     }
 
-    // Walks from the live PlayerController's hpFill / dashStaminaFill /
-    // levelText / crystalText up to the topmost UI parent that's still
-    // under this HUD canvas and toggles it. The original
-    // SetGameplayPanelsActive only touched the inspector-wired
-    // gameplayPanels[] list, which routinely missed the HP/stamina/level
-    // sub-panel that PlayerController auto-discovers by name. With this
-    // walk-up the map view and cutscenes can clear all gameplay HUD
-    // pieces, not just the ones manually wired.
     private void TogglePlayerHUDRoots(bool active)
     {
-        // LocalInstance is cleared on PlayerController.OnDisable, and
-        // MapTableInteract disables the player while the map is open —
-        // so on the close path SetGameplayPanelsActive(true) fires
-        // BEFORE playerController.enabled is restored, leaving the
-        // singleton null and the stamina hidden permanently. Fall back
-        // to a scene search so we always find the camp player.
         PlayerController pc = PlayerController.LocalInstance;
         if (pc == null) pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
         if (pc == null) return;
@@ -808,13 +739,6 @@ public class GlobalHUD : MonoBehaviour
         ToggleAncestorPanelText(pc.crystalText, hudRect, active);
     }
 
-    // Tracks the panels WE deactivated so we only re-activate those on
-    // SetGameplayPanelsActive(true). Without this, the walk-up code
-    // would happily SetActive(true) on whatever top-level canvas child
-    // it found from the player's hpFill / dashStaminaFill — including
-    // build / forge / interaction panels in CampScene that the player
-    // didn't open. Auto-discovered references to misnamed "Fill" images
-    // in unrelated panels were popping the whole Forge UI on scene load.
     private readonly HashSet<GameObject> hiddenByGlobalHUD = new HashSet<GameObject>();
 
     private void ToggleAncestorPanel(Image img, RectTransform hudRect, bool active)
@@ -837,13 +761,6 @@ public class GlobalHUD : MonoBehaviour
 
         GameObject go = t.gameObject;
 
-        // Sanity gate: PlayerController.ReconnectUI auto-discovers fields
-        // by name search across every Image / TMP in the scene. In camp
-        // mode that gleefully picked up "diamond" texts inside the region
-        // map's reward block, or "fill" Images inside the Forge build
-        // panel. Walking up from those leaves landed on the map / Forge
-        // root and toggling THAT broke the actual gameplay UI. Only act
-        // when the resolved panel's name signals it's a real HUD container.
         if (active)
         {
             if (hiddenByGlobalHUD.Remove(go) && !go.activeSelf) go.SetActive(true);
@@ -866,10 +783,6 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
-    // ---- Low-Health Vignette ----
-    // A full-screen blood-red Image that fades in below 35% HP and pulses harder
-    // the closer the player gets to death. Built procedurally so it doesn't need
-    // any prefab/scene wiring.
     private Image lowHealthVignette;
     private float lowHealthAlpha;
 
@@ -898,8 +811,6 @@ public class GlobalHUD : MonoBehaviour
     {
         if (lowHealthVignette == null) return;
 
-        // Respect the accessibility toggle. When disabled, fade the
-        // vignette to invisible and skip the rest of the calculation.
         if (PlayerPrefs.GetInt("Settings_LowHpVignette", 1) != 1)
         {
             lowHealthAlpha = Mathf.Lerp(lowHealthAlpha, 0f, Time.unscaledDeltaTime * 8f);
@@ -912,9 +823,6 @@ public class GlobalHUD : MonoBehaviour
         if (pc != null && !pc.isCampMode && pc.maxHealth > 0f)
         {
             float ratio = pc.currentHealth / pc.maxHealth;
-            // Softer + later trigger: starts at 25% HP (was 35%), peaks at
-            // 0.28 alpha (was 0.55) so the red rim hints "you're hurt"
-            // without flooding the screen the moment combat gets sticky.
             if (ratio < 0.25f && ratio > 0f)
             {
                 float danger = 1f - (ratio / 0.25f);
@@ -926,9 +834,6 @@ public class GlobalHUD : MonoBehaviour
         Color c = lowHealthVignette.color; c.a = lowHealthAlpha; lowHealthVignette.color = c;
     }
 
-    // ---- Pickup Popup Stack ----
-    // Lightweight floating "+5 Wood / +12 XP" messages that drift up the left
-    // side of the screen. Built from procedural TMP objects so no prefab needed.
     private RectTransform pickupPopupContainer;
     private readonly List<RectTransform> activePickupPopups = new List<RectTransform>();
 
@@ -990,7 +895,6 @@ public class GlobalHUD : MonoBehaviour
         {
             t += Time.unscaledDeltaTime;
             float k = t / lifetime;
-            // Pop in over first 12% then fade out over last 30%.
             if (k < 0.12f) rt.localScale = Vector3.LerpUnclamped(startScale, Vector3.one * 1.05f, k / 0.12f);
             else if (k < 0.22f) rt.localScale = Vector3.LerpUnclamped(Vector3.one * 1.05f, Vector3.one, (k - 0.12f) / 0.1f);
             else rt.localScale = Vector3.one;
@@ -1009,22 +913,15 @@ public class GlobalHUD : MonoBehaviour
 
     private void RestackPickupPopups()
     {
-        // Newest at bottom, older entries slide up.
         for (int i = 0; i < activePickupPopups.Count; i++)
         {
             RectTransform rt = activePickupPopups[i];
             if (rt == null) continue;
             float targetY = (activePickupPopups.Count - 1 - i) * 36f;
-            Vector2 pos = rt.anchoredPosition;
             rt.anchoredPosition = new Vector2(0f, targetY);
         }
     }
 
-    // Hard wipe — used by OnSceneLoaded to make sure popups from the
-    // previous scene don't survive into the new one. Stops every
-    // GlobalHUD-owned coroutine (PickupPopupRoutine, fade routines,
-    // ambient pulses) and destroys every popup GameObject that's still
-    // alive under the container.
     private void ClearAllPickupPopups()
     {
         StopAllCoroutines();
@@ -1036,15 +933,9 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Clear();
         if (pickupPopupContainer != null)
         {
-            // Belt-and-braces: also nuke any orphans that slipped out
-            // of activePickupPopups (e.g. a coroutine added them but
-            // never removed because it was cancelled mid-flight).
             for (int i = pickupPopupContainer.childCount - 1; i >= 0; i--)
                 Destroy(pickupPopupContainer.GetChild(i).gameObject);
         }
-        // Coroutines we just StopAllCoroutines'd include the boss fade
-        // routine — null its handle so the next ShowBossUI can spawn a
-        // fresh one without trying to stop an already-stopped pointer.
         bossUIFadeRoutine = null;
     }
 }

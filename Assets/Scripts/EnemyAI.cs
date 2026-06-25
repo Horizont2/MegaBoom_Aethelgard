@@ -36,10 +36,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Range(0f, 1f)] public float diamondDropChance = 0.1f;
     public GameObject damagePopupPrefab;
 
-    [Header("UI (Health Bar)")]
-    public Canvas hpCanvas;
-    public Image hpFill;
-
     [Header("Targeting & Swarm")]
     public Transform target;
     public float verticalOffset = 0.0f;
@@ -76,7 +72,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // run their heavy movement/attack logic less often, since the player
     // can't perceive sub-frame motion at 30m+.
     private int updateSkipCounter = 0;
-    private float hpBillboardTimer = 0f;
     private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
@@ -224,8 +219,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
-        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
-
         float timeMultiplier = PowerSystemManager.CalculateTimeMultiplier(Time.timeSinceLevelLoad);
 
         if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
@@ -253,7 +246,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         baseDamage = damage;
         currentHealth = maxHealth;
         currentPoise = maxPoise;
-        UpdateHealthUI();
 
         if (TryGetPlayer(out Transform startT, out PlayerController startPC))
         {
@@ -308,21 +300,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (animator != null) animator.SetBool("isMoving", false);
     }
 
-    private float lastHpFillValue = -1f;
-    private void UpdateHealthUI()
-    {
-        if (hpFill == null) return;
-        // fillAmount setter dirties the Image's vertices and forces a
-        // CanvasUpdateRegistry rebuild on the parent canvas. With 25+
-        // enemies in a wave that's up to 25 dirty marks per frame even
-        // when no HP actually changed. Diff against the last sent value
-        // — Mathf.Approximately so we don't write for sub-pixel deltas.
-        float ratio = maxHealth > 0f ? currentHealth / maxHealth : 0f;
-        if (Mathf.Abs(ratio - lastHpFillValue) < 0.001f) return;
-        lastHpFillValue = ratio;
-        hpFill.fillAmount = ratio;
-    }
-
     private void Update()
     {
         if (target == null && !isDead)
@@ -366,19 +343,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         CheckNightBuff();
 
         if (currentPoise < maxPoise && stunTimer <= 0) currentPoise += Time.deltaTime * 15f;
-
-        // Throttle the HP billboard rotation to ~10 Hz. The player can't
-        // tell the difference visually but the savings stack when 20+
-        // damaged enemies billboard simultaneously.
-        if (hpCanvas != null && mainCamTransform != null && hpCanvas.gameObject.activeSelf)
-        {
-            hpBillboardTimer -= Time.deltaTime;
-            if (hpBillboardTimer <= 0f)
-            {
-                hpBillboardTimer = 0.1f;
-                hpCanvas.transform.rotation = Quaternion.LookRotation(hpCanvas.transform.position - mainCamTransform.position);
-            }
-        }
 
         if (knockbackVelocity.magnitude > 0.1f)
         {
@@ -514,7 +478,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 Vector2 r = Random.insideUnitCircle * roamRadius;
                 currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
-                currentRoamTarget.y = SampleTerrainHeight(currentRoamTarget) + verticalOffset;nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
+                currentRoamTarget.y = SampleTerrainHeight(currentRoamTarget) + verticalOffset;
+                nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
             }
         }
         else
@@ -535,7 +500,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 moveDir = toTarget / distXZ;
             float passiveSpeed = actualMoveSpeed * 0.4f;
             Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
-            nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;transform.position = nextPos;
+            nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+            transform.position = nextPos;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
             SetMovingAnim(true, passiveSpeed);
         }
@@ -657,11 +623,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (parentGroup != null) parentGroup.AlertAll();
         }
 
-        if (hpCanvas != null && !hpCanvas.gameObject.activeSelf) hpCanvas.gameObject.SetActive(true);
-
         currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;
-        UpdateHealthUI();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
@@ -757,7 +720,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // without each system polling for kills.
         PlayerController.OnEnemyKilled?.Invoke();
 
-        if (hpCanvas != null) hpCanvas.gameObject.SetActive(false);
         if (animator != null) animator.SetTrigger("Die");
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
@@ -771,7 +733,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        // --- ����������� Բ�� ������ ���� (�������� Pool) ---
+        // --- Direct Drop Logic (pool fix) ---
         // Direct Instantiate for XP / diamond drops — routing them through
         // the pool turned out to break the crystals' Awake/OnEnable
         // lifecycle (canBeMagnetized never re-armed on reuse). The cost is

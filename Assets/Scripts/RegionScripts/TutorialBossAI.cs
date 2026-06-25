@@ -51,7 +51,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private GameObject staggerRing;
     private float staggerRumbleTimer;
 
-    private bool hasShownBossUI;
+    private bool hasShownBossUI = false;
 
     private void Awake()
     {
@@ -84,14 +84,16 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     public void ActivateBoss()
     {
+        // ФІКС: Робимо так, щоб HUD, рик і музика вмикалися суворо 1 раз, 
+        // навіть якщо функція викликається з різних місць
         if (!hasShownBossUI && GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
             hasShownBossUI = true;
-        }
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayMusic(AudioID.Music_Battle);
+        }
     }
 
 
@@ -105,6 +107,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
 
         lastAttackTime = Time.time;
+
+        // ФІКС ЗАПОБІЖНИК: Якщо боса просто поставили на сцену (без тотему), 
+        // він сам ініціалізує свій HUD при старті
+        if (!hasShownBossUI)
+        {
+            if (currentHealth <= 0) currentHealth = maxHealth; // На випадок якщо InitializeBoss не викликали
+            ActivateBoss();
+        }
     }
 
     private void Update()
