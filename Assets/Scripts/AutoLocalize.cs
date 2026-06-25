@@ -121,12 +121,39 @@ public class AutoLocalize : MonoBehaviour
         foreach (var (tmp, key) in tmpTargets)
         {
             if (tmp == null) continue;
-            tmp.text = LocalizationManager.Tr(key);
+            tmp.text = SmartTranslate(key);
         }
         foreach (var (legacy, key) in legacyTargets)
         {
             if (legacy == null) continue;
-            legacy.text = LocalizationManager.Tr(key);
+            legacy.text = SmartTranslate(key);
         }
+    }
+
+    // Try the full string first, then fall back to the trailing label
+    // word(s) after the icon prefix. AAA category buttons render as
+    // "  P   GAMEPLAY" — the dictionary key is "GAMEPLAY". If we don't
+    // strip the icon, every category stays in English. Logic: split
+    // by 2+ consecutive spaces and try the last non-empty token, then
+    // re-prefix with the original icon span so the icon char stays
+    // wherever it was.
+    private static string SmartTranslate(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return raw;
+        string full = LocalizationManager.Tr(raw);
+        // Tr returns the key literal when no entry exists. If a
+        // translation actually fired, full != raw (different chars)
+        // OR full == raw and raw IS an English term we shipped.
+        if (full != raw) return full;
+
+        // No exact match — try splitting "<prefix><spaces><label>".
+        int lastDouble = raw.LastIndexOf("  ");
+        if (lastDouble <= 0) return full;
+        string label = raw.Substring(lastDouble).TrimStart();
+        if (string.IsNullOrEmpty(label)) return full;
+        string translated = LocalizationManager.Tr(label);
+        if (translated == label) return full; // still nothing
+        string prefix = raw.Substring(0, lastDouble + 2);
+        return prefix + translated;
     }
 }

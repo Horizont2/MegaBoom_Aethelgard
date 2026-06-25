@@ -18,14 +18,14 @@ public abstract class AnimalAI : MonoBehaviour
     public LayerMask playerLayer;
 
     [Header("Saving System")]
-    [Tooltip("Унікальний ID для збереження (напр. Cat_01, Chicken_05). Має бути різним для кожної тварини!")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ. Cat_01, Chicken_05). пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ!")]
     public string uniqueID;
     public bool shouldSavePosition = true;
 
     protected NavMeshAgent agent;
     protected Animator anim;
 
-    // ФІКС ОПТИМІЗАЦІЇ: Кешуємо гравця і його контролер один раз!
+    // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ!
     protected Transform player;
     protected CharacterController playerCC;
 
@@ -50,7 +50,7 @@ public abstract class AnimalAI : MonoBehaviour
         agent.acceleration = 12f;
         agent.angularSpeed = 0f;
 
-        // Отримуємо компоненти гравця раз і назавжди
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
         {
@@ -116,7 +116,7 @@ public abstract class AnimalAI : MonoBehaviour
             smoothedSpeed = Mathf.Lerp(smoothedSpeed, currentSpeed, Time.deltaTime * 10f);
 
             if (smoothedSpeed < 0.1f) smoothedSpeed = 0f;
-            anim.SetFloat("Speed", smoothedSpeed);
+            anim.SetFloatSafe("Speed", smoothedSpeed);
         }
     }
 
@@ -137,7 +137,7 @@ public abstract class AnimalAI : MonoBehaviour
         AnimalState previousState = currentState;
         ChangeState(AnimalState.Jumping);
 
-        if (anim != null) anim.SetFloat("Speed", 4.5f);
+        if (anim != null) anim.SetFloatSafe("Speed", 4.5f);
 
         OffMeshLinkData data = agent.currentOffMeshLinkData;
         Vector3 startPos = transform.position;

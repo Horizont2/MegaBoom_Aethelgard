@@ -39,7 +39,7 @@ public class CampHunterAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            anim.SetFloat("Speed", agent.velocity.magnitude);
+            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
         }
     }
 
@@ -111,7 +111,7 @@ public class CampHunterAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
             if (!agent.isOnNavMesh) yield break;
 
-            // --- ЙДЕМО ДО ТАБОРУ ---
+            // --- пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ---
             agent.isStopped = false;
             if (lodgePoint != null) agent.SetDestination(lodgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -122,13 +122,13 @@ public class CampHunterAI : MonoBehaviour
             if (anim != null) anim.SetTrigger("Work");
             yield return new WaitForSeconds(prepDuration);
 
-            // --- ЙДЕМО ДО ЛІСУ ---
+            // --- пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ ЛІпїЅпїЅ ---
             agent.isStopped = false;
 
             if (forestEdgePoint != null)
             {
                 NavMeshHit forestHit;
-                // Шукаємо валідну точку в радіусі аж 20 метрів
+                // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 20 пїЅпїЅпїЅпїЅпїЅ
                 if (NavMesh.SamplePosition(forestEdgePoint.position, out forestHit, 20.0f, NavMesh.AllAreas))
                 {
                     agent.SetDestination(forestHit.position);
@@ -141,10 +141,10 @@ public class CampHunterAI : MonoBehaviour
 
             yield return StartCoroutine(WaitForDestination());
 
-            // ВИПРАВЛЕННЯ: Порівнюємо поточну позицію з кінцевою точкою шляху (agent.destination), а не зі статичним об'єктом
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (agent.destination), пїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅпїЅпїЅ
             if (Vector3.Distance(transform.position, agent.destination) > 2.5f)
             {
-                Debug.LogWarning("[Hunter AI] Не зміг дійти до лісу. Застряг або шлях не знайдено. Починаю цикл заново.");
+                Debug.LogWarning("[Hunter AI] пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.");
                 continue;
             }
 
@@ -155,7 +155,7 @@ public class CampHunterAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(true);
             yield return StartCoroutine(VFXTransitionRoutine(true));
 
-            // --- ПОВЕРТАЄМОСЬ ДО ТАБОРУ ---
+            // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ---
             agent.isStopped = false;
             if (lodgePoint != null) agent.SetDestination(lodgePoint.position);
             yield return StartCoroutine(WaitForDestination());
@@ -184,7 +184,7 @@ public class CampHunterAI : MonoBehaviour
 
     private IEnumerator WaitForDestination()
     {
-        // ГОЛОВНЕ ВИПРАВЛЕННЯ: Чекаємо 1 кадр, щоб Unity встиг почати прораховувати шлях
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ 1 пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ Unity пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         yield return null;
 
         float timeout = 0f;
@@ -193,20 +193,20 @@ public class CampHunterAI : MonoBehaviour
             timeout += Time.deltaTime;
             if (agent != null && agent.isOnNavMesh)
             {
-                // Поки шлях в стадії прорахунку - просто чекаємо і нічого не робимо
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅдії пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 if (agent.pathPending)
                 {
                     yield return null;
                     continue;
                 }
 
-                // Якщо шлях зламався
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial)
                 {
                     break;
                 }
 
-                // Якщо ми дійшли
+                // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
                 if (agent.remainingDistance <= agent.stoppingDistance + 0.5f)
                 {
                     break;

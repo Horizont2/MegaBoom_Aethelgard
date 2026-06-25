@@ -16,7 +16,7 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Hero Spawning")]
     public GameObject heroPrefab;
-    public GameObject[] weaponPrefabs; // Обов'язково додай сюди зброю в Інспекторі!
+    public GameObject[] weaponPrefabs; // пїЅпїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
     public Transform heroSpawnPoint;
     public RuntimeAnimatorController menuAnimatorController;
 
@@ -54,9 +54,9 @@ public class MainMenuManager : MonoBehaviour
         if (heroPrefab != null && heroSpawnPoint != null)
         {
             GameObject currentVisual = Instantiate(heroPrefab, heroSpawnPoint.position, heroSpawnPoint.rotation);
-            currentVisual.transform.localScale = new Vector3(1f, 1f, 1f); // Можеш змінити розмір, якщо потрібно
+            currentVisual.transform.localScale = new Vector3(1f, 1f, 1f); // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-            // ФІКС: Знищуємо логіку, щоб гравець не телепортувався!
+            // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
             PlayerController pc = currentVisual.GetComponent<PlayerController>();
             if (pc != null) Destroy(pc);
 
@@ -67,14 +67,14 @@ public class MainMenuManager : MonoBehaviour
             if (anim != null)
             {
                 if (menuAnimatorController != null) anim.runtimeAnimatorController = menuAnimatorController;
-                else { anim.SetBool("IsGrounded", true); anim.SetFloat("Speed", 0f); }
+                else { anim.SetBoolSafe("IsGrounded", true); anim.SetFloatSafe("Speed", 0f); }
             }
 
-            // Одягаємо збережену броню
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             ModularArmorManager mam = currentVisual.GetComponent<ModularArmorManager>();
             if (mam != null) mam.LoadEquippedArmor();
 
-            // Одягаємо збережену зброю
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             Transform socket = FindDeepChild(currentVisual.transform, "handslot.r");
             if (socket == null) socket = FindDeepChild(currentVisual.transform, "RightHand");
 

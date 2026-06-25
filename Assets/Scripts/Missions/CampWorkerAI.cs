@@ -44,7 +44,7 @@ public class CampWorkerAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            anim.SetFloat("Speed", agent.velocity.magnitude);
+            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
         }
     }
 
@@ -216,7 +216,7 @@ public class CampWorkerAI : MonoBehaviour
 
     private CampTree FindNearestTree()
     {
-        // ФІКС ОПТИМІЗАЦІЇ: Використовуємо OverlapSphere замість важкого пошуку по всій сцені
+        // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OverlapSphere пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         Collider[] hits = Physics.OverlapSphere(transform.position, searchRadius);
         CampTree nearest = null;
         float minDistance = Mathf.Infinity;

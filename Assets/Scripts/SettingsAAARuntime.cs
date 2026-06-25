@@ -251,7 +251,14 @@ public class SettingsAAARuntime : MonoBehaviour
 
     public void SetDescription(string text)
     {
-        if (descriptionText != null) descriptionText.text = text;
+        // Run every description through LocalizationManager so the
+        // right-rail copy follows the active language. English text is
+        // also the localisation key so designers can wire entries via
+        // Add6/Add7 in LocalizationManager. Missing keys fall through
+        // to the literal English string — nothing breaks if a
+        // translation isn't ready yet.
+        if (descriptionText != null)
+            descriptionText.text = string.IsNullOrEmpty(text) ? text : LocalizationManager.Tr(text);
     }
 
     public void ClearDescription()

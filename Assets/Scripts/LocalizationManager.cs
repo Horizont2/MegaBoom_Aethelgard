@@ -19,8 +19,8 @@ public class LocalizedText : MonoBehaviour { }
 public static class LocalizationManager
 {
     // Order MUST match the LANGUAGE dropdown in SettingsPanelAAABuilder:
-    //   English / Українська / Русский / Español / Deutsch / Français
-    public enum Lang { English, Ukrainian, Russian, Spanish, German, French }
+    //   English / Українська / Русский / Español / Deutsch / Français / Polski
+    public enum Lang { English, Ukrainian, Russian, Spanish, German, French, Polish }
 
     public static event System.Action OnLanguageChanged;
 
@@ -33,15 +33,16 @@ public static class LocalizationManager
     private static readonly Dictionary<string, string> s_es = new Dictionary<string, string>();
     private static readonly Dictionary<string, string> s_de = new Dictionary<string, string>();
     private static readonly Dictionary<string, string> s_fr = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> s_pl = new Dictionary<string, string>();
 
-    // int for dropdown parity. 0=EN, 1=UK, 2=RU, 3=ES, 4=DE, 5=FR.
+    // int for dropdown parity. 0=EN, 1=UK, 2=RU, 3=ES, 4=DE, 5=FR, 6=PL.
     public static int CurrentLanguage
     {
         get { EnsureLoaded(); return (int)s_lang; }
         set
         {
             EnsureLoaded();
-            Lang newLang = (Lang)Mathf.Clamp(value, 0, 5);
+            Lang newLang = (Lang)Mathf.Clamp(value, 0, 6);
             if (s_lang == newLang) return;
             s_lang = newLang;
             PlayerPrefs.SetInt("Settings_Language", (int)s_lang);
@@ -71,6 +72,7 @@ public static class LocalizationManager
             case Lang.Spanish:   return s_es;
             case Lang.German:    return s_de;
             case Lang.French:    return s_fr;
+            case Lang.Polish:    return s_pl;
             default:             return s_en;
         }
     }
@@ -164,15 +166,15 @@ public static class LocalizationManager
         Add6("PAUSED",            "PAUSED",          "ПАУЗА",           "ПАУЗА",           "EN PAUSA",         "PAUSIERT",          "EN PAUSE");
         Add6("CONTINUE",          "CONTINUE",        "ПРОДОВЖИТИ",      "ПРОДОЛЖИТЬ",      "CONTINUAR",        "FORTSETZEN",        "CONTINUER");
 
-        // Sidebar categories used by AAA settings panel
-        Add6("GENERAL",       "GENERAL",       "ЗАГАЛЬНІ",     "ОБЩИЕ",       "GENERAL",     "ALLGEMEIN",   "GÉNÉRAL");
-        Add6("GAMEPLAY",      "GAMEPLAY",      "ГРА",          "ИГРОВОЙ ПРОЦЕСС","JUEGO",    "SPIELABLAUF", "GAMEPLAY");
-        Add6("AUDIO",         "AUDIO",         "ЗВУК",         "ЗВУК",        "AUDIO",       "AUDIO",       "AUDIO");
-        Add6("VIDEO",         "VIDEO",         "ВІДЕО",        "ВИДЕО",       "VIDEO",       "VIDEO",       "VIDÉO");
-        Add6("GRAPHICS",      "GRAPHICS",      "ГРАФІКА",      "ГРАФИКА",     "GRÁFICOS",    "GRAFIK",      "GRAPHISMES");
-        Add6("CONTROLS",      "CONTROLS",      "КЕРУВАННЯ",    "УПРАВЛЕНИЕ",  "CONTROLES",   "STEUERUNG",   "COMMANDES");
-        Add6("ACCESSIBILITY", "ACCESSIBILITY", "ДОСТУПНІСТЬ",  "ДОСТУПНОСТЬ", "ACCESIBILIDAD","BARRIEREFREIHEIT","ACCESSIBILITÉ");
-        Add6("LANGUAGE",      "LANGUAGE",      "МОВА",         "ЯЗЫК",        "IDIOMA",      "SPRACHE",     "LANGUE");
+        // Sidebar categories used by AAA settings panel — all 7 locales.
+        Add7("GENERAL",       "GENERAL",       "ЗАГАЛЬНІ",     "ОБЩИЕ",       "GENERAL",     "ALLGEMEIN",   "GÉNÉRAL",        "OGÓLNE");
+        Add7("GAMEPLAY",      "GAMEPLAY",      "ГРА",          "ИГРОВОЙ ПРОЦЕСС","JUEGO",    "SPIELABLAUF", "GAMEPLAY",       "ROZGRYWKA");
+        Add7("AUDIO",         "AUDIO",         "ЗВУК",         "ЗВУК",        "AUDIO",       "AUDIO",       "AUDIO",          "DŹWIĘK");
+        Add7("VIDEO",         "VIDEO",         "ВІДЕО",        "ВИДЕО",       "VIDEO",       "VIDEO",       "VIDÉO",          "WIDEO");
+        Add7("GRAPHICS",      "GRAPHICS",      "ГРАФІКА",      "ГРАФИКА",     "GRÁFICOS",    "GRAFIK",      "GRAPHISMES",     "GRAFIKA");
+        Add7("CONTROLS",      "CONTROLS",      "КЕРУВАННЯ",    "УПРАВЛЕНИЕ",  "CONTROLES",   "STEUERUNG",   "COMMANDES",      "STEROWANIE");
+        Add7("ACCESSIBILITY", "ACCESSIBILITY", "ДОСТУПНІСТЬ",  "ДОСТУПНОСТЬ", "ACCESIBILIDAD","BARRIEREFREIHEIT","ACCESSIBILITÉ","DOSTĘPNOŚĆ");
+        Add7("LANGUAGE",      "LANGUAGE",      "МОВА",         "ЯЗЫК",        "IDIOMA",      "SPRACHE",     "LANGUE",         "JĘZYK");
 
         // Section headers
         Add6("HUD",              "HUD",             "HUD",          "HUD",           "HUD",            "HUD",            "HUD");
@@ -268,6 +270,8 @@ public static class LocalizationManager
         Add("[E] Open Map", "[E] Open Map", "[E] Відкрити мапу");
         Add("SLAY THE OVERLORD!", "SLAY THE OVERLORD!", "ЗНИЩ ВЕЛИТЕНЯ!");
         Add("SURVIVE THE SWARM!", "SURVIVE THE SWARM!", "ВИЖИВИ ПІД НАТИСКОМ!");
+
+        SeedFullLocale();
 
         // === Lore codex entries ===
         SeedLore();
@@ -497,10 +501,274 @@ public static class LocalizationManager
         s_uk[key] = uk;
     }
 
-    // Full-locale add — feed all 6 translations at once. Designer only
-    // needs this for the strings that actually require localisation in
-    // every language (settings menu, common UI). Anything left to the
-    // two-arg Add silently falls back to English for ru/es/de/fr.
+    // Bulk pass that touches every visible string we ship in the AAA
+    // settings panel — row labels, description copy, dropdown options,
+    // section headers, and the right-rail PREVIEW / DESCRIPTION text.
+    // Splits out of Seed so the table is easier to maintain. Every
+    // entry here uses Add7 (all 7 locales) so language flips actually
+    // re-render the panel.
+    private static void SeedFullLocale()
+    {
+        // -- Common dropdown values --
+        Add7("Low",     "Low",     "Низька",  "Низкое",  "Bajo",    "Niedrig", "Bas",     "Niskie");
+        Add7("Medium",  "Medium",  "Середня", "Среднее", "Medio",   "Mittel",  "Moyen",   "Średnie");
+        Add7("High",    "High",    "Висока",  "Высокое", "Alto",    "Hoch",    "Élevé",   "Wysokie");
+        Add7("Ultra",   "Ultra",   "Ультра",  "Ультра",  "Ultra",   "Ultra",   "Ultra",   "Ultra");
+        Add7("Custom",  "Custom",  "Власна",  "Кастом",  "Personal.","Eigene", "Perso.",  "Własne");
+        Add7("Off",     "Off",     "Вимк.",   "Выкл.",   "Apagado", "Aus",     "Désactivé","Wył.");
+        Add7("On",      "On",      "Увімк.",  "Вкл.",    "Encendido","An",     "Activé",  "Wł.");
+        Add7("Easy",    "Easy",    "Легко",   "Легко",   "Fácil",   "Leicht",  "Facile",  "Łatwo");
+        Add7("Normal",  "Normal",  "Норма",   "Нормально","Normal",  "Normal", "Normal",  "Normalnie");
+        Add7("Hard",    "Hard",    "Складно", "Сложно",  "Difícil", "Schwer",  "Difficile","Trudno");
+        Add7("Hardcore","Hardcore","Хардкор", "Хардкор", "Hardcore","Hardcore","Hardcore","Hardcore");
+        Add7("Small",   "Small",   "Малий",   "Малый",   "Pequeño", "Klein",   "Petit",   "Mały");
+        Add7("Large",   "Large",   "Великий", "Большой", "Grande",  "Groß",    "Grand",   "Duży");
+        Add7("Fullscreen","Fullscreen","Повноекр.","Полноэкр.","Pant. completa","Vollbild","Plein écran","Pełny ekran");
+        Add7("Borderless","Borderless","Без рамки","Без рамки","Sin bordes","Randlos","Sans bord","Bezramkowy");
+        Add7("Windowed","Windowed","У вікні","Оконный","Ventana","Fenster","Fenêtré","Okno");
+        Add7("FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA",    "FXAA");
+        Add7("SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA",    "SMAA");
+        Add7("TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA",     "TAA");
+        Add7("Hard",    "Hard",    "Жорсткі", "Жесткие", "Duras",   "Hart",    "Dures",   "Twarde");
+        Add7("Soft Low","Soft Low","М'які слабкі","Мягкие низкие","Suaves bajo","Weich niedrig","Doux faible","Miękkie niskie");
+        Add7("Soft High","Soft High","М'які високі","Мягкие высокие","Suaves alto","Weich hoch","Doux élevé","Miękkie wysokie");
+        Add7("Unlimited","Unlimited","Без ліміту","Без ограничения","Sin límite","Unbegrenzt","Illimité","Bez limitu");
+        Add7("Primary",  "Primary",  "Основний","Основной","Principal","Primär","Principal","Główny");
+
+        // -- More row labels --
+        Add7("Texture Quality","Texture Quality","Якість текстур","Качество текстур","Calidad de texturas","Texturqualität","Qualité des textures","Jakość tekstur");
+        Add7("Shadow Quality", "Shadow Quality", "Якість тіней",   "Качество теней",  "Calidad de sombras", "Schattenqualität",     "Qualité des ombres", "Jakość cieni");
+        Add7("Shadow Distance","Shadow Distance","Дистанція тіней","Дальность теней","Distancia de sombras","Schattendistanz",   "Distance des ombres","Odległość cieni");
+        Add7("Post Processing","Post Processing","Постобробка",    "Пост-обработка",  "Postprocesado",       "Nachbearbeitung",      "Post-traitement",    "Post-processing");
+        Add7("Dynamic Shadows","Dynamic Shadows","Динамічні тіні", "Динамические тени","Sombras dinámicas",  "Dynamische Schatten",  "Ombres dynamiques",  "Dynamiczne cienie");
+        Add7("Motion Blur",    "Motion Blur",    "Розмиття руху",  "Размытие в движении","Desenfoque mov.", "Bewegungsunschärfe",  "Flou cinétique",     "Rozmycie ruchu");
+        Add7("Depth of Field", "Depth of Field", "Глибина різкості","Глубина резкости","Profundidad de campo","Tiefenschärfe",     "Profondeur de champ","Głębia ostrości");
+        Add7("Bloom",          "Bloom",          "Свічення",       "Свечение",        "Bloom",               "Bloom",                "Bloom",              "Bloom");
+        Add7("Ambient Occlusion","Ambient Occlusion","Затемнення", "Окружающее затемн.","Oclusión ambiental","Umgebungsverdeckung","Occlusion ambiante", "Ambient Occlusion");
+        Add7("Volumetric Lighting","Volumetric Lighting","Об'ємне світло","Объёмное освещение","Iluminación volumétrica","Volumetrisches Licht","Éclairage volumétrique","Oświetlenie wolumetryczne");
+        Add7("Mouse Sensitivity","Mouse Sensitivity","Чутливість миші","Чувствительность мыши","Sensibilidad ratón","Mausempfindlichkeit","Sensibilité souris","Czułość myszy");
+        Add7("Invert Y Axis",  "Invert Y Axis",  "Інверсія Y",     "Инверсия Y",      "Invertir eje Y",      "Y-Achse invertieren",   "Inverser axe Y",     "Odwróć oś Y");
+        Add7("Controller Vibration","Controller Vibration","Вібрація геймпада","Вибрация геймпада","Vibración del mando","Controller-Vibration","Vibration manette","Wibracje pada");
+        Add7("Aim Assist",     "Aim Assist",     "Прицілювання",   "Помощь прицела",  "Asistencia de mira",  "Zielhilfe",            "Aide à la visée",    "Asystent celow.");
+        Add7("Subtitle Size",  "Subtitle Size",  "Розмір субтитрів","Размер субтитров","Tamaño subtítulos",  "Untertitelgröße",      "Taille sous-titres", "Rozmiar napisów");
+        Add7("Subtitle Background","Subtitle Background","Фон субтитрів","Фон субтитров","Fondo de subtítulos","Untertitelhintergrund","Fond des sous-titres","Tło napisów");
+        Add7("Colorblind Mode","Colorblind Mode","Режим дальтоніка","Режим дальтоника","Modo daltónico",     "Farbenblindmodus",     "Mode daltonien",     "Tryb daltonisty");
+        Add7("High Contrast UI","High Contrast UI","Високий контраст","Высокий контраст","Alto contraste",  "Hoher Kontrast",       "Contraste élevé",    "Wysoki kontrast");
+        Add7("Reduce Motion",  "Reduce Motion",  "Менше анімацій", "Меньше анимаций", "Reducir movimiento",  "Bewegung reduzieren",  "Réduire les mouvts.","Mniej ruchu");
+        Add7("Photosensitivity Safe Mode","Photosensitivity Safe Mode","Безпечний режим (фотосенсит.)","Безопасный режим (фоточувств.)","Modo seguro fotosen.","Sicherer Modus (lichtempf.)","Mode photosensible","Tryb fotoczuły");
+        Add7("UI Scale",       "UI Scale",       "Масштаб UI",     "Масштаб UI",      "Escala de IU",        "UI-Skalierung",        "Échelle IU",         "Skala UI");
+        Add7("Game Language",  "Game Language",  "Мова гри",       "Язык игры",       "Idioma del juego",    "Spielsprache",         "Langue du jeu",      "Język gry");
+        Add7("Voice Language", "Voice Language", "Мова озвучення", "Язык озвучки",    "Idioma de voz",       "Sprachausgabe",        "Langue voix",        "Język głosu");
+        Add7("Hold to Sprint", "Hold to Sprint", "Утримувати спринт","Удерживать спринт","Mantener para correr","Halten zum Sprinten","Maintenir pour courir","Trzymaj by biec");
+        Add7("Preset",         "Preset",         "Пресет",         "Пресет",          "Preset",              "Voreinstellung",       "Préréglage",         "Predefiniowane");
+        Add7("Render Scale (%)","Render Scale (%)","Рендер-масштаб (%)","Масштаб рендера (%)","Escala render (%)","Rendering-Skala (%)","Échelle rendu (%)","Skala renderu (%)");
+        Add7("Anti-Aliasing",  "Anti-Aliasing",  "Згладжування",   "Сглаживание",     "Suavizado",           "Kantenglättung",       "Anti-aliasing",      "Wygładzanie");
+        Add7("Difficulty",     "Difficulty",     "Складність",     "Сложность",       "Dificultad",          "Schwierigkeit",        "Difficulté",         "Trudność");
+
+        // -- Description text shown in right rail on hover --
+        Add7("Toggle the on-screen frames-per-second counter.",
+            "Toggle the on-screen frames-per-second counter.",
+            "Увімкнути/вимкнути екранний лічильник кадрів.",
+            "Включить/выключить счётчик кадров на экране.",
+            "Activa el contador de FPS en pantalla.",
+            "FPS-Anzeige auf dem Bildschirm umschalten.",
+            "Active/désactive l'indicateur de FPS à l'écran.",
+            "Pokaż/ukryj licznik klatek na ekranie.");
+        Add7("Quick on/off cap. Use the FPS Cap dropdown in Video for exact values.",
+            "Quick on/off cap. Use the FPS Cap dropdown in Video for exact values.",
+            "Швидкий перемикач ліміту. Точне значення — у Video → FPS Cap.",
+            "Быстрое включение лимита. Точное значение — в Video → FPS Cap.",
+            "Limitador rápido. Usa FPS Cap en Video para el valor exacto.",
+            "Schneller An/Aus-Schalter. Genauer Wert in Video → FPS Cap.",
+            "Bascule rapide. Limite précise dans Vidéo → FPS Cap.",
+            "Szybki limit. Dokładna wartość w Wideo → FPS Cap.");
+        Add7("Periodically save progress without prompting.",
+            "Periodically save progress without prompting.",
+            "Періодично зберігає прогрес без сповіщень.",
+            "Периодически сохраняет прогресс без подтверждения.",
+            "Guarda progreso periódicamente sin preguntar.",
+            "Speichert den Fortschritt regelmäßig im Hintergrund.",
+            "Sauvegarde régulière, sans confirmation.",
+            "Okresowo zapisuje postępy bez pytania.");
+        Add7("Combat scaling. Easy / Normal / Hard / Hardcore. Hardcore disables checkpoints.",
+            "Combat scaling. Easy / Normal / Hard / Hardcore. Hardcore disables checkpoints.",
+            "Складність бою. Легко / Норма / Складно / Хардкор. У хардкорі чекпойнти відключені.",
+            "Сложность боя. Легко / Норма / Сложно / Хардкор. В хардкоре нет чекпоинтов.",
+            "Escala de combate. Hardcore desactiva los puntos de control.",
+            "Kampfskalierung. Hardcore deaktiviert Checkpoints.",
+            "Échelle de combat. Hardcore désactive les points de contrôle.",
+            "Skalowanie walki. Hardcore wyłącza punkty kontrolne.");
+        Add7("Show floating damage numbers above enemies you hit.",
+            "Show floating damage numbers above enemies you hit.",
+            "Показувати літаючі цифри урону над ворогами.",
+            "Показывать всплывающие цифры урона над врагами.",
+            "Muestra cifras de daño flotantes sobre los enemigos.",
+            "Schwebende Schadenszahlen über Gegnern anzeigen.",
+            "Affiche les dégâts au-dessus des ennemis touchés.",
+            "Pokazuj cyfry obrażeń nad trafionymi wrogami.");
+        Add7("Camera shake on impacts and explosions. Disable if it causes discomfort.",
+            "Camera shake on impacts and explosions. Disable if it causes discomfort.",
+            "Тряска камери на ударах і вибухах. Вимкніть, якщо викликає дискомфорт.",
+            "Тряска камеры от ударов и взрывов. Отключите при дискомфорте.",
+            "Vibración por impactos y explosiones.",
+            "Bildschirmrütteln bei Treffern und Explosionen.",
+            "Tremblement de caméra. Désactivable si gênant.",
+            "Wstrząsy kamery przy trafieniach i wybuchach.");
+        Add7("Brief freeze on heavy hits for impact. Disable for smoother combat.",
+            "Brief freeze on heavy hits for impact. Disable for smoother combat.",
+            "Коротка заморозка при важких ударах. Вимкніть для плавнішого бою.",
+            "Кратковременная заморозка при тяжёлых ударах.",
+            "Pausa breve en golpes pesados.",
+            "Kurze Freeze-Pause bei harten Treffern.",
+            "Pause brève sur coups lourds.",
+            "Krótka pauza przy mocnych trafieniach.");
+        Add7("Red edge tint when health is critical. Disable to reduce visual noise.",
+            "Red edge tint when health is critical. Disable to reduce visual noise.",
+            "Червоний контур при критичному HP. Вимкніть, щоб менше відволікало.",
+            "Красный край при критическом HP.",
+            "Borde rojo cuando el HP es crítico.",
+            "Roter Rand bei kritischem HP.",
+            "Vignette rouge quand HP critique.",
+            "Czerwony brzeg przy krytycznym HP.");
+        Add7("Show contextual hint popups when new mechanics appear.",
+            "Show contextual hint popups when new mechanics appear.",
+            "Показувати підказки при появі нових механік.",
+            "Показывать подсказки при новых механиках.",
+            "Muestra sugerencias contextuales con mecánicas nuevas.",
+            "Zeigt Tutorial-Tipps bei neuen Mechaniken.",
+            "Affiche les astuces sur les nouvelles mécaniques.",
+            "Pokazuj wskazówki przy nowych mechanikach.");
+        Add7("Overall game volume — affects every channel.",
+            "Overall game volume — affects every channel.",
+            "Загальна гучність гри — впливає на всі канали.",
+            "Общая громкость — влияет на все каналы.",
+            "Volumen general — afecta a todos los canales.",
+            "Gesamtlautstärke — alle Kanäle betroffen.",
+            "Volume général — affecte tous les canaux.",
+            "Główna głośność — wpływa na wszystkie kanały.");
+        Add7("Background music and ambient score.",
+            "Background music and ambient score.",
+            "Фонова музика та амбіент.",
+            "Фоновая музыка и амбиент.",
+            "Música de fondo y ambiental.",
+            "Hintergrundmusik und Ambient.",
+            "Musique de fond et ambiance.",
+            "Muzyka tła i ambient.");
+        Add7("Combat and world impact sounds.",
+            "Combat and world impact sounds.",
+            "Звуки бою та світу.",
+            "Звуки боя и мира.",
+            "Sonidos de combate y mundo.",
+            "Kampf- und Weltklänge.",
+            "Sons de combat et du monde.",
+            "Dźwięki walki i świata.");
+        Add7("Dialogue and narration.",
+            "Dialogue and narration.",
+            "Діалоги та розповідь.",
+            "Диалоги и закадровый текст.",
+            "Diálogo y narración.",
+            "Dialoge und Erzählung.",
+            "Dialogues et narration.",
+            "Dialogi i narracja.");
+        Add7("Menu, button, and HUD sounds.",
+            "Menu, button, and HUD sounds.",
+            "Звуки меню, кнопок та HUD.",
+            "Звуки меню, кнопок и HUD.",
+            "Sonidos de menú, botones e HUD.",
+            "Menü-, Tasten- und HUD-Sounds.",
+            "Sons du menu, des boutons, du HUD.",
+            "Dźwięki menu, przycisków, HUD.");
+        Add7("World ambience — wind, fire, water.",
+            "World ambience — wind, fire, water.",
+            "Атмосфера світу — вітер, вогонь, вода.",
+            "Окружение — ветер, огонь, вода.",
+            "Ambiente — viento, fuego, agua.",
+            "Weltatmosphäre — Wind, Feuer, Wasser.",
+            "Ambiance — vent, feu, eau.",
+            "Otoczenie — wiatr, ogień, woda.");
+        Add7("Silence the game when the window loses focus (Alt-Tab).",
+            "Silence the game when the window loses focus (Alt-Tab).",
+            "Заглушує гру при втраті фокусу вікна (Alt-Tab).",
+            "Глушит звук при потере фокуса (Alt-Tab).",
+            "Silencia el juego al perder el foco (Alt-Tab).",
+            "Stumm, wenn das Fenster den Fokus verliert.",
+            "Coupe le son si la fenêtre perd le focus.",
+            "Wycisza grę gdy okno traci fokus.");
+        Add7("Wider FOV shows more peripheral vision but distorts edges. Default 75.",
+            "Wider FOV shows more peripheral vision but distorts edges. Default 75.",
+            "Ширше поле зору — більше периферії, але викривляє краї. За замовч. 75.",
+            "Шире поле обзора — больше периферии. По умолчанию 75.",
+            "Más amplio: más visión periférica, distorsiona bordes. Por defecto 75.",
+            "Breiteres FOV: mehr Peripherie, verzerrte Ränder. Standard 75.",
+            "FOV plus large : plus de périphérie, bords distordus. Défaut 75.",
+            "Szersze FOV: więcej peryferium, zniekształca brzegi. Domyślnie 75.");
+
+        Add7("Mouse over any option to read what it does.",
+            "Mouse over any option to read what it does.",
+            "Наведи на будь-яку опцію, щоб прочитати опис.",
+            "Наведи на любую опцию, чтобы прочитать описание.",
+            "Pasa el ratón por una opción para leer su descripción.",
+            "Mit der Maus über eine Option fahren, um die Beschreibung zu lesen.",
+            "Survolez une option pour lire sa description.",
+            "Najedź na opcję by przeczytać opis.");
+
+        // -- Pause menu + main menu basics --
+        Add7("PRESS START",   "PRESS START",   "НАТИСНІТЬ START",  "НАЖМИТЕ START",   "PULSA START",      "DRÜCKE START",     "APPUYEZ SUR START","WCIŚNIJ START");
+        Add7("Save",          "Save",          "Зберегти",         "Сохранить",       "Guardar",          "Speichern",        "Sauvegarder",      "Zapisz");
+        Add7("Load",          "Load",          "Завантажити",      "Загрузить",       "Cargar",           "Laden",            "Charger",          "Wczytaj");
+        Add7("Delete",        "Delete",        "Видалити",         "Удалить",         "Eliminar",         "Löschen",          "Supprimer",        "Usuń");
+        Add7("Yes",           "Yes",           "Так",              "Да",              "Sí",               "Ja",               "Oui",              "Tak");
+        Add7("No",            "No",            "Ні",               "Нет",             "No",               "Nein",             "Non",              "Nie");
+        Add7("OK",            "OK",            "Гаразд",           "ОК",              "Aceptar",          "OK",               "OK",               "OK");
+        Add7("Cancel",        "Cancel",        "Скасувати",        "Отмена",          "Cancelar",         "Abbrechen",        "Annuler",          "Anuluj");
+        Add7("OPTIONS",       "OPTIONS",       "ОПЦІЇ",            "ОПЦИИ",           "OPCIONES",         "OPTIONEN",         "OPTIONS",          "OPCJE");
+        Add7("CREDITS",       "CREDITS",       "ТИТРИ",            "АВТОРЫ",          "CRÉDITOS",         "ABSPANN",          "CRÉDITS",          "TWÓRCY");
+        Add7("MAP",           "MAP",           "КАРТА",            "КАРТА",           "MAPA",             "KARTE",            "CARTE",            "MAPA");
+        Add7("INVENTORY",     "INVENTORY",     "ІНВЕНТАР",         "ИНВЕНТАРЬ",       "INVENTARIO",       "INVENTAR",         "INVENTAIRE",       "EKWIPUNEK");
+        Add7("CODEX",         "CODEX",         "КОДЕКС",           "КОДЕКС",          "CÓDEX",            "KODEX",            "CODEX",            "KODEKS");
+        Add7("ACHIEVEMENTS",  "ACHIEVEMENTS",  "ДОСЯГНЕННЯ",       "ДОСТИЖЕНИЯ",      "LOGROS",           "ERFOLGE",          "SUCCÈS",           "OSIĄGNIĘCIA");
+        Add7("CAMP STASH",    "CAMP STASH",    "ЗАПАСИ ТАБОРУ",    "ЗАПАСЫ ЛАГЕРЯ",   "ALMACÉN",          "LAGERVORRAT",      "RÉSERVE DU CAMP",  "ZAPASY OBOZU");
+        Add7("BACKPACK",      "BACKPACK",      "РЮКЗАК",           "РЮКЗАК",          "MOCHILA",          "RUCKSACK",         "SAC À DOS",        "PLECAK");
+        Add7("WOOD",          "WOOD",          "ДЕРЕВО",           "ДЕРЕВО",          "MADERA",           "HOLZ",             "BOIS",             "DREWNO");
+        Add7("STONE",         "STONE",         "КАМІНЬ",           "КАМЕНЬ",          "PIEDRA",           "STEIN",            "PIERRE",           "KAMIEŃ");
+        Add7("FOOD",          "FOOD",          "ЇЖА",              "ЕДА",             "COMIDA",           "NAHRUNG",          "NOURRITURE",       "JEDZENIE");
+        Add7("DIAMONDS",      "DIAMONDS",      "АЛМАЗИ",           "АЛМАЗЫ",          "DIAMANTES",        "DIAMANTEN",        "DIAMANTS",         "DIAMENTY");
+        Add7("HP",            "HP",            "HP",               "HP",              "PV",               "LP",               "PV",               "HP");
+        Add7("STAMINA",       "STAMINA",       "ВИТРИВАЛІСТЬ",     "ВЫНОСЛИВОСТЬ",    "ENERGÍA",          "AUSDAUER",         "ENDURANCE",        "WYTRZYMAŁOŚĆ");
+        Add7("LVL",           "LVL",           "РІВ",              "УР",              "NV",               "LVL",              "NV",               "POZIOM");
+        Add7("Level {0}",     "Level {0}",     "Рівень {0}",       "Уровень {0}",     "Nivel {0}",        "Stufe {0}",        "Niveau {0}",       "Poziom {0}");
+        Add7("PURIFY TOTEM",  "PURIFY TOTEM",  "ОЧИСТИТИ ТОТЕМ",   "ОЧИСТИТЬ ТОТЕМ",  "PURIFICAR TÓTEM",  "TOTEM REINIGEN",   "PURIFIER LE TOTEM","OCZYŚĆ TOTEM");
+        Add7("[E] Open Map",  "[E] Open Map",  "[E] Відкрити мапу","[E] Открыть карту","[E] Abrir mapa",  "[E] Karte öffnen", "[E] Ouvrir carte", "[E] Otwórz mapę");
+        Add7("[F] EXECUTE",   "[F] EXECUTE",   "[F] СТРАТИТИ",     "[F] КАЗНИТЬ",     "[F] EJECUTAR",     "[F] HINRICHTEN",   "[F] EXÉCUTER",     "[F] EGZEKUCJA");
+        Add7("SLAY THE OVERLORD!","SLAY THE OVERLORD!","ЗНИЩ ВЕЛИТЕНЯ!","УБЕЙ ВЛАДЫКУ!","¡MATA AL SEÑOR!","BESIEGE DEN OVERLORD!","TUE LE SEIGNEUR!","ZABIJ WŁADCĘ!");
+        Add7("SURVIVE THE SWARM!","SURVIVE THE SWARM!","ВИЖИВИ ПІД НАТИСКОМ!","ВЫЖИВИ В РОЕ!","SOBREVIVE A LA HORDA!","ÜBERLEBE DEN SCHWARM!","SURVIVRE À LA HORDE !","PRZETRWAJ HORDĘ!");
+        Add7("ENGINEERING MASTERY","ENGINEERING MASTERY","ІНЖЕНЕРНА МАЙСТЕРНІСТЬ","ИНЖЕНЕРНОЕ МАСТЕРСТВО","MAESTRÍA EN INGENIERÍA","INGENIEURSMEISTERSCHAFT","MAÎTRISE TECHNIQUE","MISTRZOSTWO INŻYNIERII");
+        Add7("Reach a new level of camp efficiency. (0/5)",
+             "Reach a new level of camp efficiency. (0/5)",
+             "Досягни нового рівня ефективності табору. (0/5)",
+             "Достигни нового уровня эффективности лагеря. (0/5)",
+             "Alcanza un nuevo nivel de eficiencia. (0/5)",
+             "Erreiche eine neue Effizienzstufe. (0/5)",
+             "Atteignez un nouveau niveau d'efficacité. (0/5)",
+             "Osiągnij nowy poziom efektywności. (0/5)");
+
+        // -- Footer + header text --
+        Add7("RESET DEFAULTS","RESET DEFAULTS","СКИНУТИ ДО ЗАМОВЧУВАНЬ","СБРОСИТЬ ПО УМОЛЧАНИЮ","RESTABLECER","ZURÜCKSETZEN","RÉINITIALISER","PRZYWRÓĆ DOMYŚLNE");
+        Add7("S E T T I N G S","S E T T I N G S","Н А Л А Ш Т У В А Н Н Я","Н А С Т Р О Й К И","A J U S T E S","E I N S T E L L U N G E N","P A R A M È T R E S","U S T A W I E N I A");
+
+        // -- Custom key bindings placeholder --
+        Add7("Custom key bindings coming soon.",
+             "Custom key bindings coming soon.",
+             "Власні клавіші — скоро.",
+             "Кастомные клавиши — скоро.",
+             "Combinaciones personalizadas próximamente.",
+             "Eigene Tastenbelegung folgt bald.",
+             "Touches personnalisées bientôt.",
+             "Własne klawisze wkrótce.");
+    }
+
+    // Full-locale add — feed all 6 translations at once. Polish silently
+    // falls back to English here; use Add7 below to provide all 7.
     private static void Add6(string key, string en, string uk, string ru, string es, string de, string fr)
     {
         s_en[key] = en;
@@ -509,6 +777,17 @@ public static class LocalizationManager
         s_es[key] = es;
         s_de[key] = de;
         s_fr[key] = fr;
+    }
+
+    private static void Add7(string key, string en, string uk, string ru, string es, string de, string fr, string pl)
+    {
+        s_en[key] = en;
+        s_uk[key] = uk;
+        s_ru[key] = ru;
+        s_es[key] = es;
+        s_de[key] = de;
+        s_fr[key] = fr;
+        s_pl[key] = pl;
     }
 
     private static void AddLore(string key, string titleEn, string titleUk, string bodyEn, string bodyUk)

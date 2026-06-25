@@ -729,7 +729,7 @@ public class ShopManager : MonoBehaviour
             if (anim != null)
             {
                 anim.SetBool("IsGrounded", true);
-                anim.SetFloat("Speed", 0f);
+                anim.SetFloatSafe("Speed", 0f);
             }
 
             dummyArmorManager = currentHeroModel.GetComponent<ModularArmorManager>();

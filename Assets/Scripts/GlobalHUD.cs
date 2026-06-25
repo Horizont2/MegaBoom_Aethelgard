@@ -419,11 +419,21 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
+        // Last-ditch re-discovery — if the inspector field somehow ended
+        // up null after a scene reload, find the BossUI by name and
+        // pull its CanvasGroup. Without this, every boss with a missing
+        // wiring used to silently no-op and the bar never appeared.
+        if (bossUIGroup == null)
+        {
+            Transform found = transform.Find("BossUI");
+            if (found != null) bossUIGroup = found.GetComponent<CanvasGroup>();
+        }
         if (bossUIGroup == null)
         {
             Debug.LogWarning("[GlobalHUD] ShowBossUI: bossUIGroup is null — wire it in the inspector.");
             return;
         }
+        Debug.Log($"[GlobalHUD] ShowBossUI('{bossName}', {currentHp}/{maxHp})");
         // Walk up and force-enable any inactive ancestor. The boss bar
         // sometimes lived under a parent that SetGameplayPanelsActive(false)
         // had disabled and never re-enabled — the fade routine then
@@ -434,6 +444,10 @@ public class GlobalHUD : MonoBehaviour
             if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
             t = t.parent;
         }
+        // Override any parent CanvasGroup that might dim us — the HUD
+        // root or a "GameplayUI" wrapper sometimes carries alpha 0
+        // because of pause / map / cinematic overlays.
+        bossUIGroup.ignoreParentGroups = true;
         // Snap to fully visible instead of fading from 0. The fade
         // routine relied on a per-frame coroutine lerp that could be
         // pre-empted by FadeBossUIRoutine(0) in the same frame from
@@ -507,6 +521,13 @@ public class GlobalHUD : MonoBehaviour
             if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(true);
             if (widgetContainer != null) widgetContainer.gameObject.SetActive(true);
         }
+        // Wipe any in-flight pickup popups so they don't pile up on the
+        // new scene's HUD. Coroutines on popup GameObjects pause while
+        // their container is disabled during cinematic transitions,
+        // and resume in the new scene at full alpha and zero stack
+        // offset — that's the "stuck pile" the player sees. Hard reset
+        // here so the new scene always starts with a clean popup stack.
+        ClearAllPickupPopups();
 
         if (isPaused)
         {
@@ -997,5 +1018,33 @@ public class GlobalHUD : MonoBehaviour
             Vector2 pos = rt.anchoredPosition;
             rt.anchoredPosition = new Vector2(0f, targetY);
         }
+    }
+
+    // Hard wipe — used by OnSceneLoaded to make sure popups from the
+    // previous scene don't survive into the new one. Stops every
+    // GlobalHUD-owned coroutine (PickupPopupRoutine, fade routines,
+    // ambient pulses) and destroys every popup GameObject that's still
+    // alive under the container.
+    private void ClearAllPickupPopups()
+    {
+        StopAllCoroutines();
+        for (int i = 0; i < activePickupPopups.Count; i++)
+        {
+            if (activePickupPopups[i] == null) continue;
+            Destroy(activePickupPopups[i].gameObject);
+        }
+        activePickupPopups.Clear();
+        if (pickupPopupContainer != null)
+        {
+            // Belt-and-braces: also nuke any orphans that slipped out
+            // of activePickupPopups (e.g. a coroutine added them but
+            // never removed because it was cancelled mid-flight).
+            for (int i = pickupPopupContainer.childCount - 1; i >= 0; i--)
+                Destroy(pickupPopupContainer.GetChild(i).gameObject);
+        }
+        // Coroutines we just StopAllCoroutines'd include the boss fade
+        // routine — null its handle so the next ShowBossUI can spawn a
+        // fresh one without trying to stop an already-stopped pointer.
+        bossUIFadeRoutine = null;
     }
 }

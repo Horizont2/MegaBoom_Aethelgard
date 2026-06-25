@@ -26,7 +26,7 @@ public class StorageWorkerAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            anim.SetFloat("Speed", agent.velocity.magnitude);
+            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
         }
     }
 
@@ -93,7 +93,7 @@ public class StorageWorkerAI : MonoBehaviour
                 {
                     collectedAnything = true;
 
-                    // 1. Йдемо до Pickup Point (З розумним пошуком)
+                    // 1. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ Pickup Point (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                     agent.isStopped = false;
                     Vector3 rawTargetPos = building.pickupPoint != null ? building.pickupPoint.position : building.transform.position;
                     Vector3 targetPos = rawTargetPos;
@@ -110,7 +110,7 @@ public class StorageWorkerAI : MonoBehaviour
                     agent.isStopped = true;
                     transform.LookAt(targetPos);
 
-                    // 2. Підбираємо
+                    // 2. ПіпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                     if (anim != null) anim.SetTrigger("Pickup");
                     yield return new WaitForSeconds(1.5f);
 
@@ -119,7 +119,7 @@ public class StorageWorkerAI : MonoBehaviour
 
                     yield return new WaitForSeconds(0.5f);
 
-                    // 3. Несемо на Склад (З розумним пошуком НавМешу для точки складу!)
+                    // 3. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!)
                     agent.isStopped = false;
                     Vector3 rawDropPos = storageDropPoint != null ? storageDropPoint.position : transform.position;
                     Vector3 dropTargetPos = rawDropPos;
@@ -133,9 +133,9 @@ public class StorageWorkerAI : MonoBehaviour
                     agent.SetDestination(dropTargetPos);
                     yield return StartCoroutine(WaitArrival());
 
-                    // 4. Скидаємо
+                    // 4. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                     agent.isStopped = true;
-                    // Плавно повертаємось у сторону складу
+                    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                     if (storageDropPoint != null) transform.rotation = storageDropPoint.rotation;
 
                     if (anim != null) anim.SetTrigger("Pickup");
@@ -167,7 +167,7 @@ public class StorageWorkerAI : MonoBehaviour
 
     private IEnumerator WaitArrival()
     {
-        // Даємо рушію Unity 1 кадр, щоб він 100% встиг почати розрахунок шляху
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Unity 1 пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ 100% пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         yield return null;
 
         float timeout = 0f;

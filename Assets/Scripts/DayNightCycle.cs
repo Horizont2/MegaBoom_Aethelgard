@@ -206,8 +206,10 @@ public class DayNightCycle : MonoBehaviour
         // old Time.deltaTime path the storm sky never finished blending
         // back to clear, so the player exited the cutscene under stormy
         // light.
-        if (currentMat != null)
+        if (currentMat != null && currentMat.shader != null)
         {
+            // Guard against null source — Material's source-copy ctor
+            // throws ArgumentNullException for sources without a shader.
             Material tempOutMat = new Material(currentMat);
             RenderSettings.skybox = tempOutMat;
             Color startTint = tempOutMat.HasProperty("_Tint") ? tempOutMat.GetColor("_Tint") : Color.gray;
@@ -221,6 +223,7 @@ public class DayNightCycle : MonoBehaviour
             }
         }
 
+        if (newSkyboxMat.shader == null) yield break;
         Material tempInMat = new Material(newSkyboxMat);
         RenderSettings.skybox = tempInMat;
         Color originalNewTint = newSkyboxMat.HasProperty("_Tint") ? newSkyboxMat.GetColor("_Tint") : Color.gray;

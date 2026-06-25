@@ -627,7 +627,7 @@ public class SettingsPanelAAABuilder : EditorWindow
         string[] shadowOpts     = { "Off", "Hard", "Soft Low", "Soft High" };
         string[] difficultyOpts = { "Easy", "Normal", "Hard", "Hardcore" };
         string[] subtitleSize   = { "Small", "Medium", "Large" };
-        string[] languageOpts   = { "English", "Українська", "Русский", "Español", "Deutsch", "Français" };
+        string[] languageOpts   = { "English", "Українська", "Русский", "Español", "Deutsch", "Français", "Polski" };
         string[] windowOpts     = { "Fullscreen", "Borderless", "Windowed" };
         string[] resOpts        = { "1920×1080", "2560×1440", "3840×2160" };
         string[] refreshOpts    = { "60 Hz", "120 Hz", "144 Hz", "165 Hz", "240 Hz" };
