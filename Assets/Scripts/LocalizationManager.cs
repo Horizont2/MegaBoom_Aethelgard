@@ -18,7 +18,9 @@ public class LocalizedText : MonoBehaviour { }
 // and a change broadcasts OnLanguageChanged so UI can re-pull strings.
 public static class LocalizationManager
 {
-    public enum Lang { English, Ukrainian }
+    // Order MUST match the LANGUAGE dropdown in SettingsPanelAAABuilder:
+    //   English / Українська / Русский / Español / Deutsch / Français
+    public enum Lang { English, Ukrainian, Russian, Spanish, German, French }
 
     public static event System.Action OnLanguageChanged;
 
@@ -27,15 +29,19 @@ public static class LocalizationManager
 
     private static readonly Dictionary<string, string> s_en = new Dictionary<string, string>();
     private static readonly Dictionary<string, string> s_uk = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> s_ru = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> s_es = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> s_de = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> s_fr = new Dictionary<string, string>();
 
-    // ФІКС: Змінено на int, щоб ідеально збігатися з Dropdown (0 = English, 1 = Ukrainian)
+    // int for dropdown parity. 0=EN, 1=UK, 2=RU, 3=ES, 4=DE, 5=FR.
     public static int CurrentLanguage
     {
         get { EnsureLoaded(); return (int)s_lang; }
         set
         {
             EnsureLoaded();
-            Lang newLang = (Lang)Mathf.Clamp(value, 0, 1);
+            Lang newLang = (Lang)Mathf.Clamp(value, 0, 5);
             if (s_lang == newLang) return;
             s_lang = newLang;
             PlayerPrefs.SetInt("Settings_Language", (int)s_lang);
@@ -47,11 +53,26 @@ public static class LocalizationManager
     public static string Tr(string key)
     {
         EnsureLoaded();
-        Dictionary<string, string> active = s_lang == Lang.Ukrainian ? s_uk : s_en;
+        Dictionary<string, string> active = ActiveDictionary();
         if (active.TryGetValue(key, out string v)) return v;
-        // English fallback if Ukrainian entry missing.
-        if (s_lang == Lang.Ukrainian && s_en.TryGetValue(key, out v)) return v;
-        return key; // last resort — surface the key so missing strings are obvious
+        // Always fall through to English if the active locale is missing
+        // the entry — keeps unlocalised strings readable instead of
+        // surfacing the raw key in the UI.
+        if (s_lang != Lang.English && s_en.TryGetValue(key, out v)) return v;
+        return key; // last resort — key acts as the literal string
+    }
+
+    private static Dictionary<string, string> ActiveDictionary()
+    {
+        switch (s_lang)
+        {
+            case Lang.Ukrainian: return s_uk;
+            case Lang.Russian:   return s_ru;
+            case Lang.Spanish:   return s_es;
+            case Lang.German:    return s_de;
+            case Lang.French:    return s_fr;
+            default:             return s_en;
+        }
     }
 
     public static string Tr(string key, params object[] args)
@@ -123,77 +144,83 @@ public static class LocalizationManager
         // scenes — missing entries fall through to the original.
         Add("PAUSED", "PAUSED", "ПАУЗА");
         Add("CONTINUE", "CONTINUE", "ПРОДОВЖИТИ");
-        Add("RESUME", "RESUME", "ПРОДОВЖИТИ");
-        Add("BACK TO MENU", "BACK TO MENU", "НА ГОЛОВНУ");
-        Add("SETTINGS", "SETTINGS", "НАЛАШТУВАННЯ");
-        Add("BACK", "BACK", "НАЗАД");
-        Add("CLOSE", "CLOSE", "ЗАКРИТИ");
-        Add("APPLY", "APPLY", "ПРИЙНЯТИ");
-        Add("APPLY & CLOSE", "APPLY & CLOSE", "ПРИЙНЯТИ І ЗАКРИТИ");
-        Add("RESET DEFAULTS", "RESET DEFAULTS", "СКИНУТИ ДО ЗАМОВЧУВАНЬ");
-        Add("DISCARD", "DISCARD", "ВІДХИЛИТИ");
-        Add("NEW GAME", "NEW GAME", "НОВА ГРА");
-        Add("LOAD GAME", "LOAD GAME", "ЗАВАНТАЖИТИ");
-        Add("LOAD", "LOAD", "ЗАВАНТАЖИТИ");
-        Add("QUIT", "QUIT", "ВИЙТИ");
-        Add("QUIT TO DESKTOP", "QUIT TO DESKTOP", "ВИЙТИ В ОС");
-        Add("EXIT", "EXIT", "ВИЙТИ");
-        Add("PLAY", "PLAY", "ГРАТИ");
-        Add("START", "START", "СТАРТ");
+        Add6("RESUME",            "RESUME",          "ПРОДОВЖИТИ",      "ПРОДОЛЖИТЬ",      "REANUDAR",         "FORTSETZEN",        "REPRENDRE");
+        Add6("BACK TO MENU",      "BACK TO MENU",    "НА ГОЛОВНУ",      "В ГЛАВНОЕ МЕНЮ",  "VOLVER AL MENÚ",   "ZUM HAUPTMENÜ",     "MENU PRINCIPAL");
+        Add6("SETTINGS",          "SETTINGS",        "НАЛАШТУВАННЯ",    "НАСТРОЙКИ",       "AJUSTES",          "EINSTELLUNGEN",     "PARAMÈTRES");
+        Add6("BACK",              "BACK",            "НАЗАД",           "НАЗАД",           "ATRÁS",            "ZURÜCK",            "RETOUR");
+        Add6("CLOSE",             "CLOSE",           "ЗАКРИТИ",         "ЗАКРЫТЬ",         "CERRAR",           "SCHLIESSEN",        "FERMER");
+        Add6("APPLY",             "APPLY",           "ПРИЙНЯТИ",        "ПРИМЕНИТЬ",       "APLICAR",          "ÜBERNEHMEN",        "APPLIQUER");
+        Add6("APPLY & CLOSE",     "APPLY & CLOSE",   "ПРИЙНЯТИ І ЗАКРИТИ","ПРИМЕНИТЬ И ЗАКРЫТЬ","APLICAR Y CERRAR","ÜBERNEHMEN U. SCHLIESSEN","APPLIQUER ET FERMER");
+        Add6("RESET DEFAULTS",    "RESET DEFAULTS",  "СКИНУТИ ДО ЗАМОВЧУВАНЬ","СБРОСИТЬ ПО УМОЛЧАНИЮ","RESTABLECER","ZURÜCKSETZEN", "RÉINITIALISER");
+        Add6("DISCARD",           "DISCARD",         "ВІДХИЛИТИ",       "ОТМЕНИТЬ",        "DESCARTAR",        "VERWERFEN",         "ANNULER");
+        Add6("NEW GAME",          "NEW GAME",        "НОВА ГРА",        "НОВАЯ ИГРА",      "NUEVA PARTIDA",    "NEUES SPIEL",       "NOUVELLE PARTIE");
+        Add6("LOAD GAME",         "LOAD GAME",       "ЗАВАНТАЖИТИ",     "ЗАГРУЗИТЬ",       "CARGAR PARTIDA",   "SPIEL LADEN",       "CHARGER");
+        Add6("LOAD",              "LOAD",            "ЗАВАНТАЖИТИ",     "ЗАГРУЗИТЬ",       "CARGAR",           "LADEN",             "CHARGER");
+        Add6("QUIT",              "QUIT",            "ВИЙТИ",           "ВЫХОД",           "SALIR",            "BEENDEN",           "QUITTER");
+        Add6("QUIT TO DESKTOP",   "QUIT TO DESKTOP", "ВИЙТИ В ОС",      "ВЫЙТИ НА РАБОЧИЙ СТОЛ","SALIR AL ESCRITORIO","ZUM DESKTOP BEENDEN","QUITTER VERS BUREAU");
+        Add6("EXIT",              "EXIT",            "ВИЙТИ",           "ВЫХОД",           "SALIR",            "BEENDEN",           "QUITTER");
+        Add6("PLAY",              "PLAY",            "ГРАТИ",           "ИГРАТЬ",          "JUGAR",            "SPIELEN",           "JOUER");
+        Add6("START",             "START",           "СТАРТ",           "СТАРТ",           "INICIAR",          "START",             "DÉMARRER");
+        Add6("PAUSED",            "PAUSED",          "ПАУЗА",           "ПАУЗА",           "EN PAUSA",         "PAUSIERT",          "EN PAUSE");
+        Add6("CONTINUE",          "CONTINUE",        "ПРОДОВЖИТИ",      "ПРОДОЛЖИТЬ",      "CONTINUAR",        "FORTSETZEN",        "CONTINUER");
+
         // Sidebar categories used by AAA settings panel
-        Add("GENERAL", "GENERAL", "ЗАГАЛЬНІ");
-        Add("GAMEPLAY", "GAMEPLAY", "ГРА");
-        Add("AUDIO", "AUDIO", "ЗВУК");
-        Add("VIDEO", "VIDEO", "ВІДЕО");
-        Add("GRAPHICS", "GRAPHICS", "ГРАФІКА");
-        Add("CONTROLS", "CONTROLS", "КЕРУВАННЯ");
-        Add("ACCESSIBILITY", "ACCESSIBILITY", "ДОСТУПНІСТЬ");
-        Add("LANGUAGE", "LANGUAGE", "МОВА");
-        // Section headers + common settings rows
-        Add("HUD", "HUD", "HUD");
-        Add("SAVE", "SAVE", "ЗБЕРЕЖЕННЯ");
-        Add("MIX", "MIX", "МІКС");
-        Add("DISPLAY", "DISPLAY", "ДИСПЛЕЙ");
-        Add("CAMERA", "CAMERA", "КАМЕРА");
-        Add("QUALITY PRESET", "QUALITY PRESET", "ПРЕСЕТ ЯКОСТІ");
-        Add("TIERS", "TIERS", "РІВНІ");
-        Add("POST-FX", "POST-FX", "ПОСТ-ЕФЕКТИ");
-        Add("MOUSE & KEYBOARD", "MOUSE & KEYBOARD", "МИША ТА КЛАВІАТУРА");
-        Add("MOUSE & CAMERA", "MOUSE & CAMERA", "МИША ТА КАМЕРА");
-        Add("GAMEPAD", "GAMEPAD", "ГЕЙМПАД");
-        Add("BINDINGS", "BINDINGS", "ПРИВ'ЯЗКИ");
-        Add("FEEDBACK", "FEEDBACK", "ВІДГУК");
-        Add("DIFFICULTY", "DIFFICULTY", "СКЛАДНІСТЬ");
-        Add("TUTORIAL", "TUTORIAL", "НАВЧАННЯ");
-        Add("BEHAVIOUR", "BEHAVIOUR", "ПОВЕДІНКА");
-        Add("VISUAL AIDS", "VISUAL AIDS", "ВІЗУАЛЬНА ДОПОМОГА");
-        Add("UI", "UI", "ІНТЕРФЕЙС");
-        Add("TEXT", "TEXT", "ТЕКСТ");
-        Add("SUBTITLES", "SUBTITLES", "СУБТИТРИ");
+        Add6("GENERAL",       "GENERAL",       "ЗАГАЛЬНІ",     "ОБЩИЕ",       "GENERAL",     "ALLGEMEIN",   "GÉNÉRAL");
+        Add6("GAMEPLAY",      "GAMEPLAY",      "ГРА",          "ИГРОВОЙ ПРОЦЕСС","JUEGO",    "SPIELABLAUF", "GAMEPLAY");
+        Add6("AUDIO",         "AUDIO",         "ЗВУК",         "ЗВУК",        "AUDIO",       "AUDIO",       "AUDIO");
+        Add6("VIDEO",         "VIDEO",         "ВІДЕО",        "ВИДЕО",       "VIDEO",       "VIDEO",       "VIDÉO");
+        Add6("GRAPHICS",      "GRAPHICS",      "ГРАФІКА",      "ГРАФИКА",     "GRÁFICOS",    "GRAFIK",      "GRAPHISMES");
+        Add6("CONTROLS",      "CONTROLS",      "КЕРУВАННЯ",    "УПРАВЛЕНИЕ",  "CONTROLES",   "STEUERUNG",   "COMMANDES");
+        Add6("ACCESSIBILITY", "ACCESSIBILITY", "ДОСТУПНІСТЬ",  "ДОСТУПНОСТЬ", "ACCESIBILIDAD","BARRIEREFREIHEIT","ACCESSIBILITÉ");
+        Add6("LANGUAGE",      "LANGUAGE",      "МОВА",         "ЯЗЫК",        "IDIOMA",      "SPRACHE",     "LANGUE");
+
+        // Section headers
+        Add6("HUD",              "HUD",             "HUD",          "HUD",           "HUD",            "HUD",            "HUD");
+        Add6("SAVE",             "SAVE",            "ЗБЕРЕЖЕННЯ",   "СОХРАНЕНИЕ",    "GUARDADO",       "SPEICHERN",      "SAUVEGARDE");
+        Add6("MIX",              "MIX",             "МІКС",         "МИКС",          "MEZCLA",         "MIX",            "MIX");
+        Add6("DISPLAY",          "DISPLAY",         "ДИСПЛЕЙ",      "ДИСПЛЕЙ",       "PANTALLA",       "ANZEIGE",        "AFFICHAGE");
+        Add6("CAMERA",           "CAMERA",          "КАМЕРА",       "КАМЕРА",        "CÁMARA",         "KAMERA",         "CAMÉRA");
+        Add6("QUALITY PRESET",   "QUALITY PRESET",  "ПРЕСЕТ ЯКОСТІ","ПРЕСЕТ КАЧЕСТВА","CALIDAD",        "QUALITÄTSPROFIL","PROFIL DE QUALITÉ");
+        Add6("TIERS",            "TIERS",           "РІВНІ",        "УРОВНИ",        "NIVELES",        "STUFEN",         "NIVEAUX");
+        Add6("POST-FX",          "POST-FX",         "ПОСТ-ЕФЕКТИ",  "ПОСТ-ЭФФЕКТЫ",  "POST-FX",        "POST-FX",        "POST-FX");
+        Add6("MOUSE & KEYBOARD", "MOUSE & KEYBOARD","МИША ТА КЛАВІАТУРА","МЫШЬ И КЛАВИАТУРА","RATÓN Y TECLADO","MAUS UND TASTATUR","SOURIS ET CLAVIER");
+        Add6("MOUSE & CAMERA",   "MOUSE & CAMERA",  "МИША ТА КАМЕРА","МЫШЬ И КАМЕРА", "RATÓN Y CÁMARA", "MAUS UND KAMERA","SOURIS ET CAMÉRA");
+        Add6("GAMEPAD",          "GAMEPAD",         "ГЕЙМПАД",      "ГЕЙМПАД",       "MANDO",          "GAMEPAD",        "MANETTE");
+        Add6("BINDINGS",         "BINDINGS",        "ПРИВ'ЯЗКИ",    "ПРИВЯЗКИ",      "ASIGNACIONES",   "BELEGUNG",       "TOUCHES");
+        Add6("FEEDBACK",         "FEEDBACK",        "ВІДГУК",       "ОТКЛИК",        "RETROALIM.",     "FEEDBACK",       "RETOUR");
+        Add6("DIFFICULTY",       "DIFFICULTY",      "СКЛАДНІСТЬ",   "СЛОЖНОСТЬ",     "DIFICULTAD",     "SCHWIERIGKEIT",  "DIFFICULTÉ");
+        Add6("TUTORIAL",         "TUTORIAL",        "НАВЧАННЯ",     "ОБУЧЕНИЕ",      "TUTORIAL",       "TUTORIAL",       "TUTORIEL");
+        Add6("BEHAVIOUR",        "BEHAVIOUR",       "ПОВЕДІНКА",    "ПОВЕДЕНИЕ",     "COMPORTAMIENTO", "VERHALTEN",      "COMPORTEMENT");
+        Add6("VISUAL AIDS",      "VISUAL AIDS",     "ВІЗУАЛЬНА ДОПОМОГА","ВИЗУАЛЬНАЯ ПОМОЩЬ","AYUDA VISUAL","SEHHILFEN",  "AIDES VISUELLES");
+        Add6("UI",               "UI",              "ІНТЕРФЕЙС",    "ИНТЕРФЕЙС",     "INTERFAZ",       "BENUTZEROBERFLÄCHE","INTERFACE");
+        Add6("TEXT",             "TEXT",            "ТЕКСТ",        "ТЕКСТ",         "TEXTO",          "TEXT",           "TEXTE");
+        Add6("SUBTITLES",        "SUBTITLES",       "СУБТИТРИ",     "СУБТИТРЫ",      "SUBTÍTULOS",     "UNTERTITEL",     "SOUS-TITRES");
+        Add6("PREVIEW",          "PREVIEW",         "ПРЕВ'Ю",       "ПРЕДПРОСМОТР",  "VISTA PREVIA",   "VORSCHAU",       "APERÇU");
+        Add6("DESCRIPTION",      "DESCRIPTION",     "ОПИС",         "ОПИСАНИЕ",      "DESCRIPCIÓN",    "BESCHREIBUNG",   "DESCRIPTION");
         // Toggles & rows in settings panel
-        Add("Show FPS", "Show FPS", "Показати FPS");
-        Add("Limit FPS", "Limit FPS", "Обмежити FPS");
-        Add("Auto-Save", "Auto-Save", "Авто-збереження");
-        Add("Damage Popups", "Damage Popups", "Цифри урону");
-        Add("Screen Shake", "Screen Shake", "Тряска екрану");
-        Add("Hit-Stop FX", "Hit-Stop FX", "Заморозка на ударі");
-        Add("Low HP Vignette", "Low HP Vignette", "Червона рамка при низькому HP");
-        Add("Tutorial Hints", "Tutorial Hints", "Підказки");
-        Add("Master", "Master", "Загальна");
-        Add("Music", "Music", "Музика");
-        Add("Sound FX", "Sound FX", "Ефекти");
-        Add("Voice", "Voice", "Голос");
-        Add("Ambient", "Ambient", "Атмосфера");
-        Add("Mute When Unfocused", "Mute When Unfocused", "Глушити коли вікно неактивне");
-        Add("Resolution", "Resolution", "Роздільна здатність");
-        Add("Window Mode", "Window Mode", "Режим вікна");
-        Add("Refresh Rate", "Refresh Rate", "Частота оновлення");
-        Add("Monitor", "Monitor", "Монітор");
-        Add("FPS Cap", "FPS Cap", "Ліміт FPS");
-        Add("V-Sync", "V-Sync", "Вертикальна синхр.");
-        Add("Field of View", "Field of View", "Поле зору");
-        Add("Brightness", "Brightness", "Яскравість");
-        Add("Gamma", "Gamma", "Гамма");
+        Add6("Show FPS",     "Show FPS",     "Показати FPS",     "Показывать FPS",  "Mostrar FPS",   "FPS anzeigen",     "Afficher FPS");
+        Add6("Limit FPS",    "Limit FPS",    "Обмежити FPS",     "Ограничить FPS",  "Limitar FPS",   "FPS begrenzen",    "Limiter FPS");
+        Add6("Auto-Save",    "Auto-Save",    "Авто-збереження",  "Автосохранение",  "Auto-guardar",  "Autospeichern",    "Sauv. auto");
+        Add6("Damage Popups","Damage Popups","Цифри урону",      "Цифры урона",     "Cifras de daño","Schadenszahlen",   "Chiffres dégâts");
+        Add6("Screen Shake", "Screen Shake", "Тряска екрану",    "Тряска экрана",   "Vibrar pantalla","Bildschirmrütteln","Tremblement écran");
+        Add6("Hit-Stop FX",  "Hit-Stop FX",  "Заморозка на ударі","Заморозка при ударе","Pausa de golpe","Trefferstopp",  "Pause d'impact");
+        Add6("Low HP Vignette","Low HP Vignette","Червона рамка при низькому HP","Виньетка при низком HP","Viñeta de HP bajo","Vignette bei niedrigem HP","Vignette PV faible");
+        Add6("Tutorial Hints","Tutorial Hints","Підказки",       "Подсказки",       "Sugerencias",   "Tutorial-Tipps",   "Astuces du tuto");
+        Add6("Master",       "Master",       "Загальна",         "Общая",           "Maestro",       "Hauptlautstärke",  "Volume principal");
+        Add6("Music",        "Music",        "Музика",           "Музыка",          "Música",        "Musik",            "Musique");
+        Add6("Sound FX",     "Sound FX",     "Ефекти",           "Звуковые эффекты","Efectos",       "Soundeffekte",     "Effets sonores");
+        Add6("Voice",        "Voice",        "Голос",            "Голос",           "Voz",           "Stimme",           "Voix");
+        Add6("Ambient",      "Ambient",      "Атмосфера",        "Окружение",       "Ambiente",      "Ambiente",         "Ambiance");
+        Add6("Mute When Unfocused","Mute When Unfocused","Глушити коли вікно неактивне","Глушить при сворачивании","Silenciar al perder foco","Stumm bei Fokusverlust","Couper si fenêtre inactive");
+        Add6("Resolution",   "Resolution",   "Роздільна здатність","Разрешение",    "Resolución",    "Auflösung",        "Résolution");
+        Add6("Window Mode",  "Window Mode",  "Режим вікна",      "Режим окна",      "Modo de ventana","Fenstermodus",    "Mode fenêtre");
+        Add6("Refresh Rate", "Refresh Rate", "Частота оновлення","Частота обновления","Tasa de refresco","Bildwiederholrate","Taux rafraîchiss.");
+        Add6("Monitor",      "Monitor",      "Монітор",          "Монитор",         "Monitor",       "Monitor",          "Moniteur");
+        Add6("FPS Cap",      "FPS Cap",      "Ліміт FPS",        "Лимит FPS",       "Límite FPS",    "FPS-Limit",        "Limite FPS");
+        Add6("V-Sync",       "V-Sync",       "Вертикальна синхр.","Верт. синхрон.", "Sincr. vert.",  "VSync",            "Synchro vert.");
+        Add6("Field of View","Field of View","Поле зору",        "Поле обзора",     "Campo de visión","Sichtfeld",       "Champ de vision");
+        Add6("Brightness",   "Brightness",   "Яскравість",       "Яркость",         "Brillo",        "Helligkeit",       "Luminosité");
+        Add6("Gamma",        "Gamma",        "Гамма",            "Гамма",           "Gamma",         "Gamma",            "Gamma");
         Add("Preset", "Preset", "Пресет");
         Add("Render Scale (%)", "Render Scale (%)", "Рендер-масштаб (%)");
         Add("Anti-Aliasing", "Anti-Aliasing", "Згладжування");
@@ -468,6 +495,20 @@ public static class LocalizationManager
     {
         s_en[key] = en;
         s_uk[key] = uk;
+    }
+
+    // Full-locale add — feed all 6 translations at once. Designer only
+    // needs this for the strings that actually require localisation in
+    // every language (settings menu, common UI). Anything left to the
+    // two-arg Add silently falls back to English for ru/es/de/fr.
+    private static void Add6(string key, string en, string uk, string ru, string es, string de, string fr)
+    {
+        s_en[key] = en;
+        s_uk[key] = uk;
+        s_ru[key] = ru;
+        s_es[key] = es;
+        s_de[key] = de;
+        s_fr[key] = fr;
     }
 
     private static void AddLore(string key, string titleEn, string titleUk, string bodyEn, string bodyUk)
