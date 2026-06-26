@@ -169,12 +169,27 @@ public class SettingsUI : MonoBehaviour
         }
 
         // ==========================================
-        // ФІКС: Ініціалізуємо значення ДО підписки на події,
-        // щоб дефолтний 0 з Інспектора не перезаписав збереження.
+        // ФІКС: Задаємо ліміти 0-100 ДО ініціалізації, щоб Unity 
+        // не обрізала збережені 100% до 1%, і звук не зникав!
         // ==========================================
-        if (masterSlider) masterSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MasterVol", 100f));
-        if (musicSlider) musicSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MusicVol", 100f));
-        if (sfxSlider) sfxSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_SFXVol", 100f));
+        if (masterSlider)
+        {
+            masterSlider.minValue = 0f;
+            masterSlider.maxValue = 100f;
+            masterSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MasterVol", 100f));
+        }
+        if (musicSlider)
+        {
+            musicSlider.minValue = 0f;
+            musicSlider.maxValue = 100f;
+            musicSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MusicVol", 100f));
+        }
+        if (sfxSlider)
+        {
+            sfxSlider.minValue = 0f;
+            sfxSlider.maxValue = 100f;
+            sfxSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_SFXVol", 100f));
+        }
 
         if (masterInput && masterSlider) masterInput.text = masterSlider.value.ToString("0");
         if (musicInput && musicSlider) musicInput.text = musicSlider.value.ToString("0");
