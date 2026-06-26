@@ -41,7 +41,16 @@ public class EnemySpawner : MonoBehaviour
         }
 
         if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
-        if (player == null || enemyPool == null || enemyPool.Length == 0) return;
+
+        // ÇÍÀÕÎÄÈÌÎ ÃĞÀÂÖß ÏĞÈÌÓÑÎÂÎ
+        if (player == null)
+        {
+            GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+            if (pObj != null) player = pObj.transform;
+            else return;
+        }
+
+        if (enemyPool == null || enemyPool.Length == 0) return;
 
         timer += Time.deltaTime;
 

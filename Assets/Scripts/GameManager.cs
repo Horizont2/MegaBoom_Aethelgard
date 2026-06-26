@@ -48,10 +48,13 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // ГАРАНТІЯ: Розморожуємо час, якщо діалог його зупинив!
+        Time.timeScale = 1f;
+
         survivalTime = 0f;
         nextSurvivalTick = 1f;
         isGameOver = false;
-        isTimerActive = false; // Таймер стоїть, поки йде завантаження
+        isTimerActive = false;
 
         GameObject timerObj = GameObject.Find("TimerText");
         if (timerObj != null) timerText = timerObj.GetComponent<TextMeshProUGUI>();
@@ -74,8 +77,16 @@ public class GameManager : MonoBehaviour
     private IEnumerator CheckForLoadingManager()
     {
         yield return null;
-        // Якщо екрану завантаження немає (тест в редакторі), стартуємо одразу
-        if (LoadingManager.Instance == null) StartLevelTimer();
+
+        // Надійний запуск: чекаємо завершення генерації світу
+        WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
+        if (worldGen != null)
+        {
+            while (!WorldGenerator.IsGenerationDone) yield return null;
+        }
+
+        yield return new WaitForSeconds(0.5f);
+        StartLevelTimer();
     }
 
     private void Update()
@@ -84,12 +95,10 @@ public class GameManager : MonoBehaviour
 
         survivalTime += Time.deltaTime;
 
-        // Коли проходить секунда
         if (survivalTime >= nextSurvivalTick)
         {
             nextSurvivalTick += 1f;
 
-            // ФІКС ЗАВИСАННЯ: Захищаємо код від крашу, якщо MissionManager глючить
             try
             {
                 if (MissionManager.Instance != null)

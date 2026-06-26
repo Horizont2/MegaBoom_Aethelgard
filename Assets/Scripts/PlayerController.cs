@@ -554,13 +554,28 @@ public class PlayerController : MonoBehaviour, IDamageable
             hpFill.fillAmount = targetHpFill;
             lastHpFill = targetHpFill;
         }
-        if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
+
+        // ФІКС: Плавне доведення білої смужки (Catchup) без зависання
+        if (hpCatchupFill != null)
         {
-            float catchup = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
-            if (Mathf.Abs(catchup - lastHpCatchupFill) > 0.0005f)
+            if (hpCatchupFill.fillAmount > targetHpFill)
             {
-                hpCatchupFill.fillAmount = catchup;
-                lastHpCatchupFill = catchup;
+                float catchup = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+                // Якщо залишився міліметр - примагнічуємо до кінця
+                if (Mathf.Abs(catchup - targetHpFill) < 0.005f)
+                    catchup = targetHpFill;
+
+                if (Mathf.Abs(catchup - lastHpCatchupFill) > 0.0005f)
+                {
+                    hpCatchupFill.fillAmount = catchup;
+                    lastHpCatchupFill = catchup;
+                }
+            }
+            else if (hpCatchupFill.fillAmount < targetHpFill)
+            {
+                // При лікуванні біла смужка одразу доганяє здоров'я
+                hpCatchupFill.fillAmount = targetHpFill;
+                lastHpCatchupFill = targetHpFill;
             }
         }
 

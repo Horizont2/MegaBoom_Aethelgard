@@ -127,21 +127,22 @@ public class GlobalHUD : MonoBehaviour
         {
             if (bossHpFill != null)
             {
-                float bf = Mathf.Lerp(bossHpFill.fillAmount, targetBossHpRatio, Time.deltaTime * 10f);
-                if (Mathf.Abs(bf - lastBossFill) > 0.0005f)
-                {
-                    bossHpFill.fillAmount = bf;
-                    lastBossFill = bf;
-                }
+                bossHpFill.fillAmount = Mathf.Lerp(bossHpFill.fillAmount, targetBossHpRatio, Time.deltaTime * 10f);
+                if (Mathf.Abs(bossHpFill.fillAmount - targetBossHpRatio) < 0.005f)
+                    bossHpFill.fillAmount = targetBossHpRatio;
             }
 
-            if (bossHpCatchupFill != null && bossHpCatchupFill.fillAmount > targetBossHpRatio)
+            if (bossHpCatchupFill != null)
             {
-                float bcf = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
-                if (Mathf.Abs(bcf - lastBossCatchupFill) > 0.0005f)
+                if (bossHpCatchupFill.fillAmount > targetBossHpRatio)
                 {
-                    bossHpCatchupFill.fillAmount = bcf;
-                    lastBossCatchupFill = bcf;
+                    bossHpCatchupFill.fillAmount = Mathf.Lerp(bossHpCatchupFill.fillAmount, targetBossHpRatio, Time.deltaTime * 2.5f);
+                    if (Mathf.Abs(bossHpCatchupFill.fillAmount - targetBossHpRatio) < 0.005f)
+                        bossHpCatchupFill.fillAmount = targetBossHpRatio;
+                }
+                else
+                {
+                    bossHpCatchupFill.fillAmount = targetBossHpRatio;
                 }
             }
         }

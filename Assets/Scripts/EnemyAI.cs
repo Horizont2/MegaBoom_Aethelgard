@@ -298,10 +298,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void Update()
     {
         // --- Плавна анімація UI ХП (Lerp) ---
-        if (healthCanvas != null && healthCanvas.activeInHierarchy && healthFill != null)
+        if (healthCanvas != null && healthCanvas.activeInHierarchy)
         {
-            // Використовуємо Lerp, щоб плавно змінити рівень "заповнення" смужки
-            healthFill.fillAmount = Mathf.Lerp(healthFill.fillAmount, targetHealthRatio, Time.deltaTime * 8f);
+            // 1. Фікс зависання смужки ХП ворога
+            if (healthFill != null)
+            {
+                healthFill.fillAmount = Mathf.Lerp(healthFill.fillAmount, targetHealthRatio, Time.deltaTime * 8f);
+                if (Mathf.Abs(healthFill.fillAmount - targetHealthRatio) < 0.005f)
+                {
+                    healthFill.fillAmount = targetHealthRatio;
+                }
+            }
+
+            // 2. Фікс повороту: Канвас ворога завжди дивиться прямо в камеру
+            if (mainCamTransform != null)
+            {
+                healthCanvas.transform.rotation = mainCamTransform.rotation;
+            }
+            else if (Camera.main != null)
+            {
+                healthCanvas.transform.rotation = Camera.main.transform.rotation;
+            }
         }
 
         if (target == null && !isDead)
