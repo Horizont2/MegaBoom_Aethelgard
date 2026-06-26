@@ -5642,7 +5642,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 43.2
+    y: 0
     width: 1536
     height: 36
   m_SerializedDataModeController:
@@ -5922,7 +5922,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 79.200005
+    y: 24
     width: 336.6
     height: 463.6
   m_SerializedDataModeController:
@@ -6682,8 +6682,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Game\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 337.6
-    y: 79.200005
+    x: 338.6
+    y: 24
     width: 817.2001
     height: 463.6
   m_SerializedDataModeController:
@@ -6757,7 +6757,7 @@ MonoBehaviour:
       height: 864
     m_MinimalGUI: 1
   m_defaultScale: 0.51226854
-  m_LastWindowPixelSize: {x: 1021.5001, y: 579.5}
+  m_LastWindowPixelSize: {x: 817.2001, y: 463.6}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
@@ -21573,9 +21573,9 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 568.8
+    y: 513.6
     width: 1155.8
-    height: 209.19998
+    height: 209.20001
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -22346,8 +22346,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1156.8
-    y: 79.200005
+    x: 1157.8
+    y: 24
     width: 378.19995
     height: 698.8
   m_SerializedDataModeController:

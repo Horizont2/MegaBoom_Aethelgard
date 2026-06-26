@@ -116,7 +116,7 @@ public class Level1_QuestManager : MonoBehaviour
     private IEnumerator IntroDialogueRoutine()
     {
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.", 2.5f));
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 15 pieces, or we're not getting out of here alive!", 3f));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f));
 
         AdvanceQuest();
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));

@@ -9318,7 +9318,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ResourceNode
   nodeType: 0
   minHealth: 50
-  maxHealth: 200
+  maxHealth: 170
   dropPrefab: {fileID: 1558540992293105036, guid: b2069a990000a2e47aaecdf06f4d68b4, type: 3}
   minDrops: 1
   maxDrops: 1
