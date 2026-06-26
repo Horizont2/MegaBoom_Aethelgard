@@ -257,13 +257,19 @@ public class SettingsApplier : MonoBehaviour
     private void OnApplicationFocus(bool hasFocus)
     {
         if (PlayerPrefs.GetInt("Settings_MuteWhenUnfocused", 1) != 1) return;
-        if (!hasFocus)
+
+        // Визначаємо, яка гучність має бути: 0 якщо згорнуто, або збережена якщо розгорнуто
+        float targetVolume = hasFocus ? (PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f) : 0f;
+
+        if (AudioManager.Instance != null)
         {
-            AudioListener.volume = 0f;
+            // Якщо є AudioManager (FMOD), передаємо значення через нього
+            AudioManager.Instance.SetMasterVolume(targetVolume);
         }
         else
         {
-            AudioListener.volume = PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f;
+            // Резервний варіант для базового звуку Unity
+            AudioListener.volume = targetVolume;
         }
     }
 }

@@ -168,6 +168,19 @@ public class SettingsUI : MonoBehaviour
             if (panelCanvasGroup != null) panelCanvasGroup.alpha = 0f;
         }
 
+        // ==========================================
+        // ФІКС: Ініціалізуємо значення ДО підписки на події,
+        // щоб дефолтний 0 з Інспектора не перезаписав збереження.
+        // ==========================================
+        if (masterSlider) masterSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MasterVol", 100f));
+        if (musicSlider) musicSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_MusicVol", 100f));
+        if (sfxSlider) sfxSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_SFXVol", 100f));
+
+        if (masterInput && masterSlider) masterInput.text = masterSlider.value.ToString("0");
+        if (musicInput && musicSlider) musicInput.text = musicSlider.value.ToString("0");
+        if (sfxInput && sfxSlider) sfxInput.text = sfxSlider.value.ToString("0");
+
+        // Тепер можна безпечно додавати лісенерів
         if (masterSlider) masterSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
         if (musicSlider) musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
         if (sfxSlider) sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
