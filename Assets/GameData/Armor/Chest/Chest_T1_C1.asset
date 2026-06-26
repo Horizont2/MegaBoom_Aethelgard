@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 118
   armorName: Novice Chestplate
-  description: A reliable chestplate forged for a novice warrior. Provides decent
-    protection in battle.
+  description: Issue chestplate of the city watch. The lining still smells of mothproof.
   category: 1
   prefabIndex: 0
   icon: {fileID: 21300000, guid: 29b15983c0783f949ae50d5326698091, type: 3}

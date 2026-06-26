@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 3b3ee06c255085d4d9ea814be7bac9f3
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186894
+  packageName: 'Dreamscape Nature : Meadows : Stylized Open World Environment'
+  packageVersion: 2.2
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Scripts/Misc/CustomInspectorsHelper.cs
+  uploadId: 866086

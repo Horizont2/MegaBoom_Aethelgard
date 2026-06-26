@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 176
   armorName: Mercenary Greaves (Sturdy)
-  description: A reliable greaves forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: Patched campaign leggings. Whatever they were paid, it bought one more season.
   category: 4
   prefabIndex: 4
   icon: {fileID: 21300000, guid: 6f101b79ed73fed429004b0af8c8a0ae, type: 3}
-  price: 1300
+  price: 400
   maxUpgradeLevel: 5
   basePower: 50
   baseHealthBonus: 40

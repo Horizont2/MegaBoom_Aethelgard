@@ -9,24 +9,24 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager Instance;
 
-    [Header("STASH (Склад у Таборі)")]
+    [Header("STASH (пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ)")]
     public int stashWood = 0;
     public int stashStone = 0;
     public int stashFood = 0;
     public int diamonds = 0;
 
-    [Header("Base Capacities (Склад)")]
+    [Header("Base Capacities (пїЅпїЅпїЅпїЅпїЅ)")]
     public int baseMaxWood = 200;
     public int baseMaxStone = 100;
     public int baseMaxFood = 50;
     public int extraCapacity = 0;
 
-    [Header("RUN INVENTORY (Зібране в Подорожі)")]
+    [Header("RUN INVENTORY (ЗіпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public int runWood = 0;
     public int runStone = 0;
     public int runFood = 0;
 
-    [Header("Backpack Capacities (Рюкзак)")]
+    [Header("Backpack Capacities (пїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public int baseRunMaxWood = 100;
     public int baseRunMaxStone = 50;
     public int baseRunMaxFood = 30;
@@ -39,7 +39,7 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI foodText;
     public TextMeshProUGUI diamondsText;
 
-    [Header("UI Fills (Зображення замість Слайдерів)")]
+    [Header("UI Fills (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public Image woodFill;
     public Image stoneFill;
     public Image foodFill;
@@ -52,7 +52,7 @@ public class ResourceManager : MonoBehaviour
 
     private bool isCamp => SceneManager.GetActiveScene().name == "CampScene";
 
-    // Словник для відстеження активних анімацій тексту, щоб вони не накладались одна на одну
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
     private Dictionary<TextMeshProUGUI, Coroutine> activeTextTweens = new Dictionary<TextMeshProUGUI, Coroutine>();
 
     private void Awake()
@@ -84,6 +84,12 @@ public class ResourceManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (isCamp) ClearRunInventory();
+        // Kill any in-flight resource popup on scene change so the
+        // floating +X / -X text from the previous scene doesn't ride
+        // along to the new HUD.
+        if (woodPopup  != null) woodPopup.ForceHide();
+        if (stonePopup != null) stonePopup.ForceHide();
+        if (foodPopup  != null) foodPopup.ForceHide();
         UpdateUI();
     }
 
@@ -152,20 +158,25 @@ public class ResourceManager : MonoBehaviour
         int actualAddedStone = runStone - oldStone;
         int actualAddedFood = runFood - oldFood;
 
-        // Запускаємо анімації тексту та попапи тільки якщо ресурс дійсно додався
+        // Route every resource delta through GlobalHUD's polished
+        // left-side pickup toast. The old per-resource popup objects
+        // (woodPopup / stonePopup / foodPopup) are still bounced for the
+        // counter "pop" effect but no longer drive the small +N text вЂ”
+        // that path now lives entirely in ShowPickupPopup so only ONE
+        // toast appears per change, on every scene.
         if (actualAddedWood > 0)
         {
-            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            ShowResourceToast(actualAddedWood, "Wood", new Color(0.85f, 0.6f, 0.35f));
             BounceText(woodText);
         }
         if (actualAddedStone > 0)
         {
-            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            ShowResourceToast(actualAddedStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
             BounceText(stoneText);
         }
         if (actualAddedFood > 0)
         {
-            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            ShowResourceToast(actualAddedFood, "Food", new Color(0.7f, 0.95f, 0.5f));
             BounceText(foodText);
         }
 
@@ -186,17 +197,17 @@ public class ResourceManager : MonoBehaviour
 
         if (actualAddedWood > 0)
         {
-            if (woodPopup != null) woodPopup.ShowChange(actualAddedWood);
+            ShowResourceToast(actualAddedWood, "Wood", new Color(0.85f, 0.6f, 0.35f));
             BounceText(woodText);
         }
         if (actualAddedStone > 0)
         {
-            if (stonePopup != null) stonePopup.ShowChange(actualAddedStone);
+            ShowResourceToast(actualAddedStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
             BounceText(stoneText);
         }
         if (actualAddedFood > 0)
         {
-            if (foodPopup != null) foodPopup.ShowChange(actualAddedFood);
+            ShowResourceToast(actualAddedFood, "Food", new Color(0.7f, 0.95f, 0.5f));
             BounceText(foodText);
         }
 
@@ -215,9 +226,9 @@ public class ResourceManager : MonoBehaviour
         stashStone -= costStone;
         stashFood -= costFood;
 
-        if (woodPopup != null && costWood > 0) woodPopup.ShowChange(-costWood);
-        if (stonePopup != null && costStone > 0) stonePopup.ShowChange(-costStone);
-        if (foodPopup != null && costFood > 0) foodPopup.ShowChange(-costFood);
+        if (costWood > 0)  ShowResourceToast(-costWood,  "Wood",  new Color(0.85f, 0.6f, 0.35f));
+        if (costStone > 0) ShowResourceToast(-costStone, "Stone", new Color(0.8f, 0.8f, 0.85f));
+        if (costFood > 0)  ShowResourceToast(-costFood,  "Food",  new Color(0.7f, 0.95f, 0.5f));
 
         SaveStash();
         UpdateUI();
@@ -294,13 +305,24 @@ public class ResourceManager : MonoBehaviour
         if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
     }
 
-    // --- СИСТЕМА АНІМАЦІЇ UI (JUICE) ---
+    // Unified pickup toast вЂ” replaces the old per-resource popup
+    // objects (which only existed on the camp HUD). Routes through
+    // GlobalHUD so the polished left-side stack shows on every scene
+    // (camp, region capture, gameplay).
+    private void ShowResourceToast(int amount, string label, Color color)
+    {
+        if (GlobalHUD.Instance == null || amount == 0) return;
+        string sign = amount > 0 ? "+" : "";
+        GlobalHUD.Instance.ShowPickupPopup($"{sign}{amount} {label}", color);
+    }
+
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅНІпїЅпїЅЦІпїЅ UI (JUICE) ---
 
     private void BounceText(TextMeshProUGUI textElement)
     {
         if (textElement == null) return;
 
-        // Перериваємо попередню анімацію, якщо ресурс збирається дуже швидко (спам)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ)
         if (activeTextTweens.ContainsKey(textElement) && activeTextTweens[textElement] != null)
         {
             StopCoroutine(activeTextTweens[textElement]);
@@ -312,12 +334,12 @@ public class ResourceManager : MonoBehaviour
     private IEnumerator TextBounceRoutine(TextMeshProUGUI textElement)
     {
         Vector3 originalScale = Vector3.one;
-        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // Наскільки сильно збільшується
-        float upDuration = 0.08f; // Швидкість збільшення (дуже швидко)
-        float downDuration = 0.2f; // Швидкість повернення назад (трохи повільніше)
+        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        float upDuration = 0.08f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+        float downDuration = 0.2f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         float elapsed = 0f;
 
-        // Збільшення
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         while (elapsed < upDuration)
         {
             elapsed += Time.deltaTime;
@@ -325,7 +347,7 @@ public class ResourceManager : MonoBehaviour
             yield return null;
         }
 
-        // Повернення
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         elapsed = 0f;
         while (elapsed < downDuration)
         {

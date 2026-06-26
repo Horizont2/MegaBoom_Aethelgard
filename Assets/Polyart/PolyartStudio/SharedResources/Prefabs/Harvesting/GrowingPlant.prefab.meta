@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 62c8ecd4ed9d4f1489d72466dbc0612b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317546
+  packageName: 'Farmlands : Ultimate Stylized Farm Environment'
+  packageVersion: 1.1
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Prefabs/Harvesting/GrowingPlant.prefab
+  uploadId: 752582

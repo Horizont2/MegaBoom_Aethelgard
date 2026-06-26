@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 101
   armorName: Novice Helm (Sturdy)
-  description: A reliable helm forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Standard militia helm. Light dents from drills, no real battle scars.
   category: 0
   prefabIndex: 1
   icon: {fileID: 21300000, guid: 4158e4fa6e166db4b8884e67c3abfb08, type: 3}
-  price: 550
+  price: 100
   maxUpgradeLevel: 5
   basePower: 30
   baseHealthBonus: 25

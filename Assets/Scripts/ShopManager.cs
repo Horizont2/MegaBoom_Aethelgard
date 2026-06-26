@@ -32,6 +32,14 @@ public class ShopManager : MonoBehaviour
     public Transform itemListContent;
     public GameObject itemButtonPrefab;
     public Button backToGridButton;
+    [Tooltip("Optional. If wired, will be reset to verticalNormalizedPosition=1 (top) on every category switch.")]
+    public ScrollRect itemListScrollRect;
+
+    // True while the player is browsing a specific category (weapon or
+    // armor) instead of looking at the top-level category grid. Read
+    // by GlobalHUD's Esc handler so Esc backs out of a category before
+    // it ever toggles the pause menu.
+    public bool IsInsideCategory { get; private set; }
 
     [Header("Arsenal Category Buttons (WEAPONS)")]
     public Button btnCategorySwords;
@@ -98,6 +106,31 @@ public class ShopManager : MonoBehaviour
 
     private const string DIAMONDS_KEY = "PlayerDiamonds";
 
+    // ResourceManager is the runtime source of truth for diamond
+    // balance вЂ” PlayerController.GainDiamond writes there first and
+    // never touches the PlayerPrefs key while ResourceManager exists.
+    // Reading PlayerPrefs directly in the shop meant the counter was
+    // always stale (showing the last persisted value, not the live
+    // balance). These helpers route through ResourceManager when it
+    // exists and fall back to PlayerPrefs only for safety.
+    private int ReadDiamonds()
+    {
+        if (ResourceManager.Instance != null) return ResourceManager.Instance.diamonds;
+        return PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+    }
+
+    private void WriteDiamonds(int newAmount)
+    {
+        if (ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.diamonds = newAmount;
+            ResourceManager.Instance.SaveStash();
+            ResourceManager.Instance.UpdateUI();
+        }
+        PlayerPrefs.SetInt(DIAMONDS_KEY, newAmount);
+        PlayerPrefs.Save();
+    }
+
     private Dictionary<CanvasGroup, Coroutine> activeFades = new Dictionary<CanvasGroup, Coroutine>();
 
     private void Awake()
@@ -111,6 +144,10 @@ public class ShopManager : MonoBehaviour
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Shop",
+                "Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.", 7f);
 
         if (!PlayerPrefs.HasKey(DIAMONDS_KEY)) PlayerPrefs.SetInt(DIAMONDS_KEY, 0);
         if (!PlayerPrefs.HasKey("SelectedWeaponID"))
@@ -153,12 +190,39 @@ public class ShopManager : MonoBehaviour
         if (btnCategoryFeet) btnCategoryFeet.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Feet));
     }
 
+    private int lastDisplayedDiamonds = -1;
+
     private void Update()
     {
+        // Defensive: the shop scene requires a free cursor. If any other
+        // system (tutorial hint dismissal, ESC handler, etc.) locked it
+        // away, restore it here. Cheap вЂ” sets the same value most frames.
+        if (!Cursor.visible || Cursor.lockState != CursorLockMode.None)
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+
         if (currentHeroModel != null && Input.GetMouseButton(0))
         {
             float rotX = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
             currentHeroModel.transform.Rotate(Vector3.up, -rotX, Space.World);
+        }
+
+        // Keep the displayed diamond balance in sync with the live
+        // ResourceManager value. UpdateUI() only refreshes the text on
+        // a category change or after a purchase вЂ” but the user can
+        // earn diamonds in another scene before opening the shop, and
+        // the cached on-load number was stale. Diff against the last
+        // rendered value to avoid burning a GC string every frame.
+        if (diamondBalanceText != null)
+        {
+            int live = ReadDiamonds();
+            if (live != lastDisplayedDiamonds)
+            {
+                lastDisplayedDiamonds = live;
+                diamondBalanceText.text = "Diamonds: " + live.ToString("N0");
+            }
         }
     }
 
@@ -226,11 +290,12 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = true;
+        IsInsideCategory = true;
         SetupDynamicUI(true);
 
         FadeGroup(arsenalGridGroup, 0f);
 
-        foreach (Transform child in itemListContent) Destroy(child.gameObject);
+        ClearItemList();
 
         WeaponData firstWep = null;
         foreach (var w in weapons)
@@ -238,7 +303,8 @@ public class ShopManager : MonoBehaviour
             if (w.category == cat)
             {
                 if (firstWep == null) firstWep = w;
-                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(w));
+                WeaponData captured = w;
+                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
             }
         }
 
@@ -246,6 +312,7 @@ public class ShopManager : MonoBehaviour
         else SetEmptyUI();
 
         ShowContentPanels();
+        ScrollListToTop();
     }
 
     private void SelectWeapon(WeaponData w)
@@ -261,11 +328,12 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = false;
+        IsInsideCategory = true;
         SetupDynamicUI(false);
 
         FadeGroup(arsenalGridGroup, 0f);
 
-        foreach (Transform child in itemListContent) Destroy(child.gameObject);
+        ClearItemList();
 
         ArmorData firstArm = null;
         if (armors != null)
@@ -275,7 +343,8 @@ public class ShopManager : MonoBehaviour
                 if (a != null && a.category == cat)
                 {
                     if (firstArm == null) firstArm = a;
-                    CreateListButton(a.armorName, a.icon, () => SelectArmor(a));
+                    ArmorData captured = a;
+                    CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
                 }
             }
         }
@@ -284,6 +353,37 @@ public class ShopManager : MonoBehaviour
         else SetEmptyUI();
 
         ShowContentPanels();
+        ScrollListToTop();
+    }
+
+    // Properly destroys old buttons immediately (DestroyImmediate isn't
+    // safe in play mode, but explicitly removing the parent reference
+    // and calling Destroy keeps the children out of the layout for the
+    // current frame). Without an immediate clear, opening a new
+    // category sometimes layered the new buttons on top of stale ones.
+    private void ClearItemList()
+    {
+        if (itemListContent == null) return;
+        for (int i = itemListContent.childCount - 1; i >= 0; i--)
+        {
+            Transform t = itemListContent.GetChild(i);
+            t.SetParent(null, false);
+            Destroy(t.gameObject);
+        }
+    }
+
+    // Resets the item list's scroll position to the top whenever the
+    // player switches categories. Previously the list inherited the
+    // previous category's scroll offset вЂ” open a category, scroll to
+    // the bottom, switch to another category, and you'd see the new
+    // list scrolled below its first row.
+    private void ScrollListToTop()
+    {
+        if (itemListScrollRect != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            itemListScrollRect.verticalNormalizedPosition = 1f;
+        }
     }
 
     private void SelectArmor(ArmorData a)
@@ -297,6 +397,7 @@ public class ShopManager : MonoBehaviour
     private void CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
     {
         GameObject btnObj = Instantiate(itemButtonPrefab, itemListContent);
+        btnObj.SetActive(true);
         ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
         if (itemSlot != null)
         {
@@ -304,7 +405,20 @@ public class ShopManager : MonoBehaviour
             if (itemSlot.iconImage != null && icon != null) itemSlot.iconImage.sprite = icon;
             if (itemSlot.buttonComponent != null)
             {
-                itemSlot.buttonComponent.onClick.AddListener(() => { PlayButtonAnim(itemSlot.transform); action.Invoke(); });
+                // Wipe any stale serialised onClick listeners from the
+                // prefab. If the prefab was wired with a now-dead
+                // reference at design time, that listener could swallow
+                // the click silently. Add ONLY the runtime delegate.
+                itemSlot.buttonComponent.onClick.RemoveAllListeners();
+                itemSlot.buttonComponent.interactable = true;
+                ShopItemButton itemSlotCaptured = itemSlot;
+                UnityEngine.Events.UnityAction actionCaptured = action;
+                itemSlot.buttonComponent.onClick.AddListener(() =>
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+                    PlayButtonAnim(itemSlotCaptured.transform);
+                    actionCaptured?.Invoke();
+                });
             }
         }
     }
@@ -328,6 +442,15 @@ public class ShopManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         isViewingWeapon = false;
+        IsInsideCategory = false;
+
+        // Reset the shop camera back to the default view. When a
+        // category button is clicked, ShopCameraController.MoveToCategory
+        // is wired via the inspector OnClick event and slides the camera
+        // to the matching body part. Without this explicit MoveToDefault
+        // call the camera stayed zoomed on the last viewed part after
+        // Esc / Back-to-Categories.
+        if (ShopCameraController.Instance != null) ShopCameraController.Instance.MoveToDefault();
 
         int savedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)
@@ -366,7 +489,7 @@ public class ShopManager : MonoBehaviour
 
     public void OnBuyOrSelectPressed()
     {
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -378,7 +501,7 @@ public class ShopManager : MonoBehaviour
             if (!isBought && myDiamonds >= price)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
+                WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.SetInt("SelectedWeaponID", id);
             }
@@ -399,7 +522,7 @@ public class ShopManager : MonoBehaviour
             if (!isBought && myDiamonds >= price)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - price);
+                WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
             }
@@ -416,7 +539,7 @@ public class ShopManager : MonoBehaviour
 
     public void OnUpgradePressed()
     {
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -426,7 +549,7 @@ public class ShopManager : MonoBehaviour
             if (level < selectedWeaponData.maxUpgradeLevel && myDiamonds >= selectedWeaponData.GetUpgradeCost(level))
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedWeaponData.GetUpgradeCost(level));
+                WriteDiamonds(myDiamonds - selectedWeaponData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -439,7 +562,7 @@ public class ShopManager : MonoBehaviour
             if (level < selectedArmorData.maxUpgradeLevel && myDiamonds >= selectedArmorData.GetUpgradeCost(level))
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
-                PlayerPrefs.SetInt(DIAMONDS_KEY, myDiamonds - selectedArmorData.GetUpgradeCost(level));
+                WriteDiamonds(myDiamonds - selectedArmorData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("ArmorLevel_" + id, level + 1);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -451,8 +574,8 @@ public class ShopManager : MonoBehaviour
     private void UpdateUI(bool animateText)
     {
         if (buyButton) buyButton.gameObject.SetActive(true);
-        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + PlayerPrefs.GetInt(DIAMONDS_KEY, 0).ToString("N0");
-        int myDiamonds = PlayerPrefs.GetInt(DIAMONDS_KEY, 0);
+        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + ReadDiamonds().ToString("N0");
+        int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -581,7 +704,12 @@ public class ShopManager : MonoBehaviour
 
         PlayerPrefs.SetFloat("EquippedArmorHealth", totalArmorHealth);
         PlayerPrefs.SetFloat("EquippedArmorReduction", totalArmorReduction);
+        // baseTotal is the GEAR-only power score (weapon + armor). Persist it
+        // separately so PowerSystemManager can fold meta-upgrades and the
+        // forge in on top without double-counting.
+        PlayerPrefs.SetInt("PlayerTotalPower_Gear", baseTotal);
         PlayerPrefs.SetInt("PlayerTotalPower", baseTotal);
+        if (PowerSystemManager.Instance != null) PowerSystemManager.Instance.RefreshAndSave();
     }
 
     private void SpawnDummyHero()
@@ -601,7 +729,7 @@ public class ShopManager : MonoBehaviour
             if (anim != null)
             {
                 anim.SetBool("IsGrounded", true);
-                anim.SetFloat("Speed", 0f);
+                anim.SetFloatSafe("Speed", 0f);
             }
 
             dummyArmorManager = currentHeroModel.GetComponent<ModularArmorManager>();
@@ -613,7 +741,7 @@ public class ShopManager : MonoBehaviour
         if (currentWeaponModel != null) DestroyImmediate(currentWeaponModel);
         if (currentHeroModel == null || w.shopPrefab == null) return;
 
-        // ФІКС: Шукаємо наш ідеальний сокет першим!
+        // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!
         Transform socket = FindDeepChild(currentHeroModel.transform, "WeaponSocket");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "handslot.r");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_r");
@@ -664,7 +792,7 @@ public class ShopManager : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // ФІКС: Повернуто підтримку GlobalHUD.Instance!
+        // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ GlobalHUD.Instance!
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         else if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(campSceneName);
         else SceneManager.LoadScene(campSceneName);

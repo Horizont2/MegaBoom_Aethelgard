@@ -92,12 +92,10 @@ public class CatAI : AnimalAI
 
             transform.position = currentPOI.position;
             transform.rotation = currentPOI.rotation;
-
-            // Кішка просто стоїть/сидить на бочці, анімація Idle включиться сама через Speed = 0
         }
 
         stateTimer += Time.deltaTime;
-        if (stateTimer > 30f) // Відпочиває 30 секунд
+        if (stateTimer > 30f)
         {
             ChangeState(AnimalState.Idle);
         }
@@ -122,9 +120,7 @@ public class CatAI : AnimalAI
 
         if (dist < fleeDistance)
         {
-            CharacterController playerCC = player.GetComponent<CharacterController>();
-
-            // Якщо гравець біжить прямо на кота (швидкість > 3)
+            // ФІКС ОПТИМІЗАЦІЇ: Використовуємо кешований playerCC
             if (playerCC != null && playerCC.velocity.magnitude > 3f && currentState != AnimalState.Flee)
             {
                 if (GlobalHUD.Instance != null && playerInRange) GlobalHUD.Instance.HidePrompt();
@@ -175,10 +171,7 @@ public class CatAI : AnimalAI
 
     private void WakeUp()
     {
-        if (isResting)
-        {
-            isResting = false;
-        }
+        if (isResting) isResting = false;
     }
 
     private bool FindRandomPOI()

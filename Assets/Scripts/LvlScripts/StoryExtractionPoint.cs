@@ -24,14 +24,18 @@ public class StoryExtractionPoint : MonoBehaviour
 
     private bool isPlayerInRange = false;
     private bool isEvacuating = false;
+
+    // UI Елементи для кінематографії
     private CanvasGroup fadeGroup;
+    private RectTransform topBar;
+    private RectTransform bottomBar;
 
     // Глобальна змінна тільки для зсуву позиції від удару
     private Vector3 shakePosOffset = Vector3.zero;
 
     private void Start()
     {
-        CreateFadeOverlay();
+        CreateCinematicUI();
         if (forcePlayOnStart) StartCoroutine(DebugStartRoutine());
     }
 
@@ -81,12 +85,11 @@ public class StoryExtractionPoint : MonoBehaviour
     {
         isEvacuating = true;
 
-        // --- ПРИБИРАЄМО АБСОЛЮТНО ВЕСЬ UI ---
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HidePrompt();
             GlobalHUD.Instance.SetGameplayPanelsActive(false);
-            GlobalHUD.Instance.HideLevelObjective(); // Ховаємо табличку квесту
+            GlobalHUD.Instance.HideLevelObjective();
         }
 
         // --- 1. ПЛАВНЕ ЗАТЕМНЕННЯ ---
@@ -128,7 +131,9 @@ public class StoryExtractionPoint : MonoBehaviour
 
         // if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Horse_Gallop);
 
-        // --- 3. ПЛАВНИЙ ПРОЯВ ---
+        // --- 3. ПЛАВНИЙ ПРОЯВ + КІНЕМАТОГРАФІЧНІ ПОЛОСИ ---
+        // Випускаємо чорні полоси (Letterbox) на 12% екрану зверху і знизу
+        StartCoroutine(LetterboxRoutine(0.12f, 0.8f));
         yield return StartCoroutine(FadeRoutine(0f, 0.4f));
 
         // --- 4. ЗАПУСК РУХУ КОНЯ ---
@@ -144,7 +149,6 @@ public class StoryExtractionPoint : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = elapsed / totalTime;
 
-            // Рух коня
             Vector3 nextPos = Vector3.Lerp(startPos, targetPos, t * t);
             if (Terrain.activeTerrain != null)
             {
@@ -159,19 +163,16 @@ public class StoryExtractionPoint : MonoBehaviour
                 if (lookDir != Vector3.zero) horseTransform.rotation = Quaternion.LookRotation(lookDir);
             }
 
-            // Жорстка фіксація камери + трясучка
             if (mainCam != null && cinematicCameraPoint != null)
             {
                 mainCam.transform.position = cinematicCameraPoint.position + shakePosOffset;
-                mainCam.transform.rotation = cinematicCameraPoint.rotation; // Камера не крутиться!
+                mainCam.transform.rotation = cinematicCameraPoint.rotation;
 
                 if (!hasImpacted)
                 {
-                    // ФІКС: Математичне визначення, коли коняча морда перетинає об'єктив
                     Vector3 horseToCam = cinematicCameraPoint.position - horseTransform.position;
                     float distanceAhead = Vector3.Dot(horseToCam, horseTransform.forward);
 
-                    // Як тільки кінь опиняється менш ніж за 1 метр перед камерою
                     if (distanceAhead < 1.0f)
                     {
                         hasImpacted = true;
@@ -183,8 +184,7 @@ public class StoryExtractionPoint : MonoBehaviour
             yield return null;
         }
 
-        // --- 5. ПРОДОВЖЕННЯ СЦЕНИ (Скелети біжать далі) ---
-        // Замість телепорту, кінь просто скаче вперед ще 4 секунди
+        // --- 5. ПРОДОВЖЕННЯ СЦЕНИ ---
         float lingerDuration = 4.0f;
         float lingerElapsed = 0f;
 
@@ -192,7 +192,6 @@ public class StoryExtractionPoint : MonoBehaviour
         {
             lingerElapsed += Time.deltaTime;
 
-            // Кінь продовжує свій біг
             Vector3 nextPos = horseTransform.position + horseTransform.forward * horseRunSpeed * Time.deltaTime;
             if (Terrain.activeTerrain != null)
             {
@@ -200,7 +199,6 @@ public class StoryExtractionPoint : MonoBehaviour
             }
             horseTransform.position = nextPos;
 
-            // Камера продовжує стояти на місці (і дотрясується, якщо ще треба)
             if (mainCam != null && cinematicCameraPoint != null)
             {
                 mainCam.transform.position = cinematicCameraPoint.position + shakePosOffset;
@@ -219,18 +217,16 @@ public class StoryExtractionPoint : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
     }
 
-    // --- ФІЗИЧНА ТРЯСУЧКА (ТІЛЬКИ ПОЗИЦІЯ) ---
+    // --- ФІЗИЧНА ТРЯСУЧКА ---
     private IEnumerator HeavyImpactRoutine(Vector3 horseDirection)
     {
-        Time.timeScale = 0.15f; // Різке кінематографічне сповільнення
+        Time.timeScale = 0.15f;
 
-        // Звук зламаної гілки / удару (він у тебе є, тому я його увімкнув)
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
 
         float duration = 0.6f;
         float elapsed = 0f;
 
-        // Посилений вектор удару (вітер від коня)
         Vector3 impactPush = horseDirection * 0.8f - Vector3.up * 0.3f;
 
         while (elapsed < duration)
@@ -238,10 +234,8 @@ public class StoryExtractionPoint : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
 
-            // Затухаюча синусоїда
             float springWobble = Mathf.Exp(-t * 6f) * Mathf.Sin(t * Mathf.PI * 12f);
 
-            // Зміщуємо лише позицію, без жодного повороту!
             shakePosOffset = impactPush * springWobble;
 
             yield return null;
@@ -251,8 +245,8 @@ public class StoryExtractionPoint : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-    // --- СИСТЕМА ЗАТЕМНЕННЯ ЕКРАНУ ---
-    private void CreateFadeOverlay()
+    // --- КІНЕМАТОГРАФІЧНИЙ UI (Затемнення + Полоси) ---
+    private void CreateCinematicUI()
     {
         if (fadeGroup != null) return;
 
@@ -261,6 +255,7 @@ public class StoryExtractionPoint : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 999;
 
+        // 1. ЗАТЕМНЕННЯ
         GameObject imageObj = new GameObject("FadeImage");
         imageObj.transform.SetParent(canvasObj.transform, false);
         Image img = imageObj.AddComponent<Image>();
@@ -271,14 +266,36 @@ public class StoryExtractionPoint : MonoBehaviour
         rt.anchorMax = Vector2.one;
         rt.sizeDelta = Vector2.zero;
 
-        fadeGroup = canvasObj.AddComponent<CanvasGroup>();
+        fadeGroup = imageObj.AddComponent<CanvasGroup>();
         fadeGroup.alpha = 0f;
         fadeGroup.blocksRaycasts = false;
+
+        // 2. ВЕРХНЯ ПОЛОСА (Letterbox)
+        GameObject topObj = new GameObject("TopBar");
+        topObj.transform.SetParent(canvasObj.transform, false);
+        Image topImg = topObj.AddComponent<Image>();
+        topImg.color = Color.black;
+        topBar = topImg.GetComponent<RectTransform>();
+        topBar.anchorMin = new Vector2(0, 1);
+        topBar.anchorMax = new Vector2(1, 1);
+        topBar.pivot = new Vector2(0.5f, 1);
+        topBar.sizeDelta = new Vector2(0, 0); // Починаємо з висоти 0
+
+        // 3. НИЖНЯ ПОЛОСА (Letterbox)
+        GameObject botObj = new GameObject("BottomBar");
+        botObj.transform.SetParent(canvasObj.transform, false);
+        Image botImg = botObj.AddComponent<Image>();
+        botImg.color = Color.black;
+        bottomBar = botImg.GetComponent<RectTransform>();
+        bottomBar.anchorMin = new Vector2(0, 0);
+        bottomBar.anchorMax = new Vector2(1, 0);
+        bottomBar.pivot = new Vector2(0.5f, 0);
+        bottomBar.sizeDelta = new Vector2(0, 0); // Починаємо з висоти 0
     }
 
     private IEnumerator FadeRoutine(float targetAlpha, float duration)
     {
-        if (fadeGroup == null) CreateFadeOverlay();
+        if (fadeGroup == null) CreateCinematicUI();
 
         float startAlpha = fadeGroup.alpha;
         float elapsed = 0f;
@@ -291,5 +308,31 @@ public class StoryExtractionPoint : MonoBehaviour
         }
 
         fadeGroup.alpha = targetAlpha;
+    }
+
+    private IEnumerator LetterboxRoutine(float targetHeightRatio, float duration)
+    {
+        if (topBar == null || bottomBar == null) yield break;
+
+        float startHeight = topBar.sizeDelta.y;
+        float targetHeight = Screen.height * targetHeightRatio; // Розраховуємо % від висоти екрану
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+
+            // Плавна математика (EaseInOut)
+            float t = Mathf.Clamp01(elapsed / duration);
+            float smoothStep = t * t * (3f - 2f * t);
+            float currentHeight = Mathf.Lerp(startHeight, targetHeight, smoothStep);
+
+            topBar.sizeDelta = new Vector2(0, currentHeight);
+            bottomBar.sizeDelta = new Vector2(0, currentHeight);
+            yield return null;
+        }
+
+        topBar.sizeDelta = new Vector2(0, targetHeight);
+        bottomBar.sizeDelta = new Vector2(0, targetHeight);
     }
 }

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 4fc38cacea37a4947b431dd6488935f0
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186894
+  packageName: 'Dreamscape Nature : Meadows : Stylized Open World Environment'
+  packageVersion: 2.2
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Scripts/Misc/Cull_Particles.cs
+  uploadId: 866086

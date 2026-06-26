@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 157
   armorName: Mercenary Belt
-  description: A reliable belt forged for a mercenary warrior. Provides decent protection
-    in battle.
+  description: Heavy belt with hooks for spoils — purse, hatchet, a saint's finger.
   category: 3
   prefabIndex: 3
   icon: {fileID: 21300000, guid: 61873dc3dd9d7cc46986b18105737a9c, type: 3}
-  price: 1150
+  price: 300
   maxUpgradeLevel: 5
   basePower: 45
   baseHealthBonus: 35

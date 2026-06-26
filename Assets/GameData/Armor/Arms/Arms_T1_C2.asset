@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 137
   armorName: Novice Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a novice warrior. Provides decent
-    protection in battle.
+  description: Drill-yard gauntlets. The grip is sturdy; the knuckles, untested.
   category: 2
   prefabIndex: 1
   icon: {fileID: 21300000, guid: 1822bbdb88b7f1e47825243292f87770, type: 3}
-  price: 550
+  price: 100
   maxUpgradeLevel: 5
   basePower: 30
   baseHealthBonus: 25

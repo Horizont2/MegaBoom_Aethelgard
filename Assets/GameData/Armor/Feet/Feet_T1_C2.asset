@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 191
   armorName: Novice Boots (Sturdy)
-  description: A reliable boots forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Hobnail boots of the Aethelgard infantry. The soles still bite cobblestone.
   category: 5
   prefabIndex: 1
   icon: {fileID: 21300000, guid: 5437ebb930d0bfa4d93034277bcae0e9, type: 3}
-  price: 550
+  price: 100
   maxUpgradeLevel: 5
   basePower: 30
   baseHealthBonus: 25

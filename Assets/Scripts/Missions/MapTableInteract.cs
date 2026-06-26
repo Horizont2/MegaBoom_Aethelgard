@@ -4,7 +4,7 @@ using System.Collections;
 public class MapTableInteract : MonoBehaviour
 {
     public static event System.Action OnMapFullyOpened;
-    public static bool IsMapActive = false; // НОВЕ: Надійний глобальний статус мапи
+    public static bool IsMapActive = false;
 
     [Header("Camera Flight Target")]
     public Transform mapCameraPosition;
@@ -12,7 +12,6 @@ public class MapTableInteract : MonoBehaviour
     [Header("UI & Scene Objects")]
     public CanvasGroup mapCanvasGroup;
     public MapPanelUI mapPanelUI;
-    [Tooltip("Перетягніть сюди літаючу іконку над столом")]
     public GameObject floatingIcon;
 
     [Header("Flight Settings (Juice)")]
@@ -30,9 +29,9 @@ public class MapTableInteract : MonoBehaviour
     private Quaternion savedCamRot;
     private Coroutine activeSequence;
 
-    private void Start()
+    private IEnumerator Start()
     {
-        IsMapActive = false; // Завжди вимкнено на старті
+        IsMapActive = false;
         if (mapCanvasGroup != null)
         {
             mapCanvasGroup.alpha = 0f;
@@ -45,16 +44,21 @@ public class MapTableInteract : MonoBehaviour
         if (player != null) playerController = player.GetComponent<PlayerController>();
 
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
-    }
 
-    private void OnDestroy()
-    {
-        IsMapActive = false; // Страховка при виході зі сцени
+        if (PlayerPrefs.GetInt("AutoOpenMap", 0) == 1)
+        {
+            PlayerPrefs.SetInt("AutoOpenMap", 0);
+            PlayerPrefs.Save();
+
+            yield return new WaitForSeconds(1.5f);
+            activeSequence = StartCoroutine(OpenMapSequence());
+        }
     }
 
     private void Update()
     {
-        if (isTransitioning) return;
+        // === РћРџРўРРњР†Р—РђР¦Р†РЇ Р† Р¤Р†РљРЎ: Р‘Р»РѕРєСѓС”РјРѕ СЃС‚С–Р» РєР°СЂС‚Рё РїС–Рґ С‡Р°СЃ С‚СѓС‚РѕСЂС–Р°Р»Сѓ ===
+        if (isTransitioning || TutorialPanelUI.IsTutorialActive) return;
 
         if (playerInRange && !isMapOpen && Input.GetKeyDown(KeyCode.E))
         {
@@ -97,9 +101,13 @@ public class MapTableInteract : MonoBehaviour
 
     private IEnumerator OpenMapSequence()
     {
-        IsMapActive = true; // МАПА ВІДКРИТА
+        IsMapActive = true;
         isTransitioning = true;
         isMapOpen = true;
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Map",
+                "Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.", 6f);
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
         if (GlobalHUD.Instance != null)
@@ -114,8 +122,12 @@ public class MapTableInteract : MonoBehaviour
         if (cameraFollow != null) cameraFollow.isCinematicMode = true;
 
         Transform mainCam = Camera.main.transform;
-        savedCamPos = mainCam.position;
-        savedCamRot = mainCam.rotation;
+
+        if (savedCamPos == Vector3.zero)
+        {
+            savedCamPos = mainCam.position;
+            savedCamRot = mainCam.rotation;
+        }
 
         float elapsed = 0f;
         while (elapsed < flightDuration)
@@ -152,10 +164,9 @@ public class MapTableInteract : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Чекаємо тільки поки зникне інтерфейс мапи
         yield return StartCoroutine(FadeCanvas(mapCanvasGroup, 0f, uiFadeDuration));
 
-        IsMapActive = false; // МАПУ ПРИХОВАНО (Одразу дозволяємо паузу!)
+        IsMapActive = false;
 
         if (floatingIcon != null) floatingIcon.SetActive(true);
 
@@ -205,4 +216,7 @@ public class MapTableInteract : MonoBehaviour
 
         if (targetAlpha < 0.5f) { cg.blocksRaycasts = false; cg.interactable = false; }
     }
+
+    private void OnDestroy() { IsMapActive = false; }
+    private void OnDisable() { IsMapActive = false; }
 }

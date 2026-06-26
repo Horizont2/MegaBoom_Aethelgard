@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 155
   armorName: Novice Belt (Sturdy)
-  description: A reliable belt forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Plain leather belt of the foot militia. Bears a single dull buckle.
   category: 3
   prefabIndex: 1
   icon: {fileID: 21300000, guid: f69bced91948d32448199e605ed162bd, type: 3}
-  price: 550
+  price: 100
   maxUpgradeLevel: 5
   basePower: 30
   baseHealthBonus: 25

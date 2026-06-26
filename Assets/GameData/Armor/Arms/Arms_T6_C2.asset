@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 152
   armorName: Abyssal Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a abyssal warrior. Provides decent
-    protection in battle.
+  description: Abyssal gauntlets. The grip closes a heartbeat after the wearer wills it.
   category: 2
   prefabIndex: 16
   icon: {fileID: 21300000, guid: c0afedfe740674e43851ef1037c52966, type: 3}
-  price: 9300
+  price: 2600
   maxUpgradeLevel: 5
   basePower: 130
   baseHealthBonus: 100

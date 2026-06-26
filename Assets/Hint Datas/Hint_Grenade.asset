@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
+  m_Name: Hint_Grenade
+  m_EditorClassIdentifier: 
+  key: Grenade
+  title: GRENADE
+  body: "Hold <b>RMB</b> to aim a grenade. Time slows while aiming. Release to throw.
+    Cooldown \u2014 don't waste it on stragglers. You can also cancel aiming a grenade
+    using LMB."
+  icon: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: 40dc19bc85bec7041812471bb7298ebb, type: 3}
+  duration: 6
+  waitForInput: 0
+  pauseGameWhileShown: 1
+  showSound: {fileID: 0}

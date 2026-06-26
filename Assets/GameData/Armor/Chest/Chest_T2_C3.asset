@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 123
   armorName: Mercenary Chestplate (Elite)
-  description: A reliable chestplate forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: A sellsword's chestplate, repainted twice over a different sigil each campaign.
   category: 1
   prefabIndex: 5
   icon: {fileID: 21300000, guid: 68fb1cac2b1ef504fb8aa81b36f6137b, type: 3}
-  price: 1450
+  price: 500
   maxUpgradeLevel: 5
   basePower: 55
   baseHealthBonus: 45

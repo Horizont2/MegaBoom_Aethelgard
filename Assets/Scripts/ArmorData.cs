@@ -15,10 +15,10 @@ public class ArmorData : ScriptableObject
     public string description;
     public ArmorCategory category;
 
-    [Tooltip("Індекс цього об'єкта в масиві броні GanzSe (від 0 до 17)")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ GanzSe (пїЅпїЅ 0 пїЅпїЅ 17)")]
     public int prefabIndex;
 
-    // ДОДАНО СЛОТ ДЛЯ ІКОНКИ
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     public Sprite icon;
 
     [Header("Economy")]
@@ -33,10 +33,14 @@ public class ArmorData : ScriptableObject
     [Header("Upgrade Scaling")]
     public int powerPerLevel = 5;
     public float healthPerLevel = 5f;
-    public float reductionPerLevel = 0.01f; // +1% захисту за рівень
+    public float reductionPerLevel = 0.01f; // +1% пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
     public int GetUpgradeCost(int currentLevel)
     {
-        return 150 + (currentLevel * currentLevel * 100);
+        // Linear ramp: cheap first upgrade, predictable progression.
+        // Total 0в†’5: 80+140+200+260+320 = 1000 diamonds per piece.
+        // Old formula `150 + lvl*lvl*100` totalled 3750 per piece вЂ” that was
+        // 22.5k for a full set, on top of the buy price.
+        return 80 + (currentLevel * 60);
     }
 }

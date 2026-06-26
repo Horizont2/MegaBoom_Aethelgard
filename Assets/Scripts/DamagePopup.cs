@@ -16,6 +16,7 @@ public class DamagePopup : MonoBehaviour
 
     private Color textColor;
     private Transform camTransform;
+    private static Transform s_cachedCamTransform;
 
     private void Awake()
     {
@@ -24,15 +25,29 @@ public class DamagePopup : MonoBehaviour
 
     private void Start()
     {
-        if (Camera.main != null) camTransform = Camera.main.transform;
+        if (s_cachedCamTransform == null)
+        {
+            s_cachedCamTransform = CameraCache.MainTransform;
+        }
+        camTransform = s_cachedCamTransform;
     }
 
     public void Setup(float damageAmount, bool isCrit = false)
     {
-        // Додаємо знак мінуса перед цифрою
+        // Re-acquire camera ref if cleared by scene unload (safe for pooled instances)
+        if (camTransform == null)
+        {
+            if (s_cachedCamTransform == null)
+            {
+                Camera main = Camera.main;
+                if (main != null) s_cachedCamTransform = main.transform;
+            }
+            camTransform = s_cachedCamTransform;
+        }
+
         textMesh.text = "-" + Mathf.CeilToInt(damageAmount).ToString();
 
-        // Застосовуємо твої кольори та розміри
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (isCrit)
         {
             textMesh.text += "!";
@@ -47,30 +62,30 @@ public class DamagePopup : MonoBehaviour
 
         textColor = textMesh.color;
 
-        // Початковий мікро-зсув, щоб цифри не злипалися в одній точці, якщо ударів багато
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         float randomX = Random.Range(-0.5f, 0.5f);
         float randomZ = Random.Range(-0.5f, 0.5f);
         transform.position += new Vector3(randomX, 1f, randomZ);
 
-        // Починаємо з нульового масштабу для ефекту появи (Pop)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (Pop)
         transform.localScale = Vector3.zero;
 
-        // Запускаємо соковиту анімацію
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         StartCoroutine(AnimatePopupRoutine(isCrit));
     }
 
     private IEnumerator AnimatePopupRoutine(bool isCrit)
     {
-        // Крит висить на екрані трохи довше
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         float duration = isCrit ? lifetime + 0.5f : lifetime;
         float elapsed = 0f;
 
         Vector3 startPos = transform.position;
 
-        // Випадковий напрямок розльоту вбік і трохи вперед/назад
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅ
         Vector3 randomDir = new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)).normalized;
 
-        // Критичні удари відлітають далі
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         Vector3 targetPos = startPos + randomDir * (isCrit ? 2.5f : 1.5f);
 
         Vector3 baseScale = Vector3.one;
@@ -78,13 +93,13 @@ public class DamagePopup : MonoBehaviour
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / duration; // Прогрес від 0 до 1
+            float t = elapsed / duration; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 0 пїЅпїЅ 1
 
-            // 1. Рух по дузі (Lerp + Sin для ефекту підстрибування/гравітації)
+            // 1. пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ (Lerp + Sin пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             Vector3 currentPos = Vector3.Lerp(startPos, targetPos, t);
-            currentPos.y += Mathf.Sin(t * Mathf.PI) * 2f; // Висота дуги
+            currentPos.y += Mathf.Sin(t * Mathf.PI) * 2f; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
-            // 2. Мікро-трясіння для крита на самому початку (ефект сильного імпакту)
+            // 2. МіпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             if (isCrit && t < 0.2f)
             {
                 currentPos += (Vector3)Random.insideUnitCircle * 0.15f;
@@ -92,7 +107,7 @@ public class DamagePopup : MonoBehaviour
 
             transform.position = currentPos;
 
-            // 3. Скейлінг (Juicy Pop Effect: різко збільшується, пружинить, плавно до норми)
+            // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Juicy Pop Effect: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
             float scaleCurve;
             if (t < 0.15f) scaleCurve = Mathf.Lerp(0f, 1.3f, t / 0.15f);
             else if (t < 0.3f) scaleCurve = Mathf.Lerp(1.3f, 1f, (t - 0.15f) / 0.15f);
@@ -100,14 +115,14 @@ public class DamagePopup : MonoBehaviour
 
             transform.localScale = baseScale * scaleCurve;
 
-            // 4. Плавне згасання прозорості у другій половині анімації
+            // 4. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (t > 0.5f)
             {
                 textColor.a = Mathf.Lerp(1f, 0f, (t - 0.5f) / 0.5f);
                 textMesh.color = textColor;
             }
 
-            // 5. Завжди дивимося прямо в камеру
+            // 5. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             if (camTransform != null)
             {
                 transform.rotation = Quaternion.LookRotation(transform.position - camTransform.position);
@@ -116,7 +131,7 @@ public class DamagePopup : MonoBehaviour
             yield return null;
         }
 
-        // Знищуємо об'єкт після завершення анімації
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         ObjectPoolManager.Instance.ReturnToPool(gameObject);
     }
 }

@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 114
   armorName: Royal Helm (Elite)
-  description: A reliable helm forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Helm of the Crown's Companion. The visor is inlaid with silver bear-spirit runes.
   category: 0
   prefabIndex: 14
   icon: {fileID: 21300000, guid: 04583bdb187e91945b3c725eee480ef2, type: 3}
-  price: 6700
+  price: 1900
   maxUpgradeLevel: 5
   basePower: 115
   baseHealthBonus: 90

@@ -68,11 +68,17 @@ public class PlayerController : MonoBehaviour, IDamageable
     private LineRenderer aoeMarkerLine;
     private LineRenderer innerMarkerLine;
 
-    [Header("Visual Effects (Juice)")]
+    [Header("Grenade AAA Feel")]
+    public float aimSlowMotion = 0.25f;
+    public float aimAssistRadius = 3.5f;
+
+    [Header("Dark Fantasy VFX")]
+    public ParticleSystem runDustParticles;
+    public ParticleSystem hardLandingVFX;
+    public float hardLandingVelocityThreshold = -12f;
+    public GameObject hitSparkVFXPrefab;
     public Image damageFlashImage;
     private TrailRenderer weaponTrail;
-    public GameObject hitVFXPrefab;
-    public ParticleSystem footstepParticles;
 
     [Header("HUD UI References")]
     public Image hpFill;
@@ -84,6 +90,15 @@ public class PlayerController : MonoBehaviour, IDamageable
     public Image hpCatchupFill;
     public float uiLerpSpeed = 5f;
     private float visualXP = 0f;
+
+    // Cached HUD fill values so the per-frame Update() can skip the
+    // fillAmount setter when nothing changed. Writing the setter every
+    // frame triggers a CanvasRenderer rebuild even with identical
+    // values, which shows up in the Profiler as Canvas.SendWillRenderCanvases.
+    private float lastHpFill = -1f;
+    private float lastHpCatchupFill = -1f;
+    private float lastXpFill = -1f;
+    private float lastDashStaminaFill = -1f;
 
     [Header("Dash Juice")]
     public ParticleSystem dashParticles;
@@ -97,6 +112,19 @@ public class PlayerController : MonoBehaviour, IDamageable
     [HideInInspector] public float globalDamageMultiplier = 1f;
     [HideInInspector] public float globalCritChance = 0.05f;
     [HideInInspector] public float damageReduction = 0f;
+
+    // === LvlUp-driven RPG stats (extended in this polish pass) ===
+    [HideInInspector] public float critDamageMultiplier = 2.5f;   // base crit mult; LvlUp adds on top
+    [HideInInspector] public float lifeStealFraction = 0f;        // 0..1, % of finalDmg returned as HP
+    [HideInInspector] public float dodgeChance = 0f;              // 0..1, roll on TakeDamage
+    [HideInInspector] public float thornDamageFraction = 0f;      // 0..1, % of incoming dmg reflected
+    [HideInInspector] public float killHealAmount = 0f;           // flat HP gained on enemy kill
+    [HideInInspector] public float xpGainMultiplier = 1f;         // multiplier on GainXP
+    [HideInInspector] public float diamondBonusMultiplier = 1f;   // multiplier on GainDiamond
+
+    // Static so EnemyAI.Die() can broadcast without a per-frame find — single-player only.
+    public static System.Action OnEnemyKilled;
+    public static PlayerController LocalInstance { get; private set; }
 
     [Header("MegaBoom Settings")]
     public float stackRadius = 7f;
@@ -115,11 +143,60 @@ public class PlayerController : MonoBehaviour, IDamageable
     private bool isBulletTime = false;
 
     private CameraFollow cameraFollow;
+    private Camera mainCameraCached;
+    private Transform mainCameraTransformCached;
     private HealthVisuals healthVisuals;
     private CharacterController characterController;
     private Vector3 velocity;
     private Animator anim;
     private bool isDead = false;
+
+    private Transform visualModel;
+    private bool wasGroundedLastFrame = true;
+
+    private static readonly Collider[] s_overlapBuffer = new Collider[64];
+
+    // Բ��� ����̲��ֲ�
+    private float stackCheckTimer = 0f;
+    private float ikCheckTimer = 0f;
+    private float focusCheckTimer = 0f;
+    private Transform ikTargetItem = null;
+    private Transform currentFocusEnemy = null;
+
+    private void OnEnable()
+    {
+        // Always register, even in camp mode. The low-health vignette
+        // already gates itself on isCampMode internally; GlobalHUD's
+        // hide-on-map-open path needs to find the camp player to walk
+        // its hpFill / dashStaminaFill up to the right canvas root,
+        // and that lookup was returning null when this gate excluded
+        // camp instances — leaving the stamina bar visible behind the
+        // region map.
+        LocalInstance = this;
+        OnEnemyKilled += HandleEnemyKilled;
+    }
+
+    private void OnDisable()
+    {
+        OnEnemyKilled -= HandleEnemyKilled;
+        if (LocalInstance == this) LocalInstance = null;
+    }
+
+    private void HandleEnemyKilled()
+    {
+        if (isDead || isCampMode) return;
+        if (killHealAmount > 0f && currentHealth > 0f && currentHealth < maxHealth)
+        {
+            Heal(killHealAmount);
+        }
+    }
+
+    private float lastGroundedRealTime = -1f;
+    // Window during which we still treat the player as grounded even if the
+    // CharacterController briefly reports false. This kills the "stumbles on
+    // a 5cm rock" bug where the animator flickered into Fall/T-pose for a
+    // single frame each time the CC pushed over a small bump.
+    private const float COYOTE_GROUND_WINDOW = 0.2f;
 
     private void Awake()
     {
@@ -127,18 +204,47 @@ public class PlayerController : MonoBehaviour, IDamageable
         Physics.IgnoreLayerCollision(8, 9, true);
 
         characterController = GetComponent<CharacterController>();
+        if (characterController != null)
+        {
+            // Default prefab value is 0.3, which is too short for the terrain
+            // detail in the levels — the CC tripped over roots and small
+            // boulders instead of auto-stepping over them. 0.45 covers typical
+            // knee-height bumps without letting the player walk up cliffs.
+            if (characterController.stepOffset < 0.45f) characterController.stepOffset = 0.45f;
+        }
         anim = GetComponentInChildren<Animator>();
-        if (anim != null) anim.applyRootMotion = false;
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;
+            visualModel = anim.transform;
+        }
 
-        if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
+        // Cache Camera.main + its transform — each Camera.main call iterates all
+        // tagged cameras in the scene, and PlayerController reads it ~16 times.
+        mainCameraCached = Camera.main;
+        if (mainCameraCached != null)
+        {
+            mainCameraTransformCached = mainCameraCached.transform;
+            cameraFollow = mainCameraCached.GetComponent<CameraFollow>();
+        }
         healthVisuals = FindFirstObjectByType<HealthVisuals>();
 
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
+
         InitAoEMarker();
     }
 
     private void Start()
     {
+        if (runDustParticles != null)
+        {
+            var em = runDustParticles.emission;
+            em.rateOverTime = 0f;
+            em.rateOverDistance = 0f;
+            runDustParticles.Stop();
+        }
+        if (hardLandingVFX != null) hardLandingVFX.Stop();
+
         isDead = false;
         ReconnectUI();
         SpawnEquippedWeapon();
@@ -153,6 +259,16 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (weaponTrail != null) weaponTrail.emitting = false;
 
         StartCoroutine(SpawnSafely());
+
+        if (!isCampMode) StartCoroutine(FireOnboardingHints());
+        else StartCoroutine(FireCampHints());
+    }
+
+    public void TriggerFootstepDust()
+    {
+        if (characterController == null || runDustParticles == null) return;
+        Vector3 horizontalVel = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
+        if (characterController.isGrounded && horizontalVel.sqrMagnitude > 0.1f) runDustParticles.Emit(1);
     }
 
     private void InitAoEMarker()
@@ -160,8 +276,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         GameObject markerObj = new GameObject("GrenadeAoEMarker");
         aoeMarkerLine = markerObj.AddComponent<LineRenderer>();
         aoeMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
-        aoeMarkerLine.startColor = new Color(1f, 0.2f, 0.2f, 0.4f);
-        aoeMarkerLine.endColor = new Color(1f, 0.2f, 0.2f, 0.4f);
+        aoeMarkerLine.startColor = new Color(0f, 0.8f, 1f, 0.8f);
+        aoeMarkerLine.endColor = new Color(0f, 0.8f, 1f, 0.8f);
         aoeMarkerLine.startWidth = 0.25f;
         aoeMarkerLine.endWidth = 0.25f;
         aoeMarkerLine.useWorldSpace = true;
@@ -172,8 +288,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         GameObject innerObj = new GameObject("GrenadeInnerMarker");
         innerMarkerLine = innerObj.AddComponent<LineRenderer>();
         innerMarkerLine.material = new Material(Shader.Find("Sprites/Default"));
-        innerMarkerLine.startColor = new Color(1f, 0.1f, 0.1f, 0.8f);
-        innerMarkerLine.endColor = new Color(1f, 0.1f, 0.1f, 0.8f);
+        innerMarkerLine.startColor = new Color(0f, 0.8f, 1f, 0.8f);
+        innerMarkerLine.endColor = new Color(0f, 0.8f, 1f, 0.8f);
         innerMarkerLine.startWidth = 0.15f;
         innerMarkerLine.endWidth = 0.15f;
         innerMarkerLine.useWorldSpace = true;
@@ -204,7 +320,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             string n = img.name.ToLower();
             string p = img.transform.parent != null ? img.transform.parent.name.ToLower() : "";
-
             bool isHP = n.Contains("hp") || p.Contains("hp");
             bool isXP = n.Contains("xp") || p.Contains("xp");
             bool isStamina = n.Contains("stamina") || n.Contains("dash") || p.Contains("stamina") || p.Contains("dash");
@@ -274,6 +389,32 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (characterController != null) characterController.enabled = true;
     }
 
+    private IEnumerator FireCampHints()
+    {
+        yield return new WaitForSecondsRealtime(2.5f);
+        if (TutorialHints.Instance == null) yield break;
+        TutorialHints.Instance.ShowIfNew("CampOverview",
+            "Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.");
+    }
+
+    private IEnumerator FireOnboardingHints()
+    {
+        // Give the world a beat to settle so the very first prompt doesn't fight
+        // the title cinematic / region name reveal.
+        yield return new WaitForSecondsRealtime(2.5f);
+        if (TutorialHints.Instance == null) yield break;
+
+        TutorialHints.Instance.ShowIfNew("Move",
+            "WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.");
+
+        if (grenadePrefab != null)
+        {
+            yield return new WaitForSecondsRealtime(8f);
+            TutorialHints.Instance.ShowIfNew("Grenade",
+                "Hold <b>G</b> to aim a grenade — releases when you let go. Slows time while aiming.");
+        }
+    }
+
     private void ApplyMetaUpgrades()
     {
         int healthLvl = SaveManager.GetUpgradeLevel("MetaHealth");
@@ -302,22 +443,31 @@ public class PlayerController : MonoBehaviour, IDamageable
             case 3: forgeDamageBonus = 0.08f; break;
             case 4: forgeDamageBonus = 0.11f; break;
             case 5: forgeDamageBonus = 0.15f; break;
-            default: forgeDamageBonus = 0f; break;
         }
         globalDamageMultiplier += forgeDamageBonus;
     }
 
+    // Բ�� ����̲��ֲ�: ������ ��� �������� �������
     private void CheckStack()
     {
         if (isCampMode) return;
-        Collider[] colliders = Physics.OverlapSphere(transform.position, stackRadius, 1 << 9);
+
+        stackCheckTimer -= Time.deltaTime;
+        if (stackCheckTimer > 0f) return;
+        stackCheckTimer = 0.25f;
+
+        int count = Physics.OverlapSphereNonAlloc(transform.position, stackRadius, s_overlapBuffer, 1 << 9);
         currentStack = 0;
-        foreach (Collider col in colliders) { if (col.CompareTag("Enemy")) currentStack++; }
+        for (int i = 0; i < count; i++) { if (s_overlapBuffer[i].CompareTag("Enemy")) currentStack++; }
 
         if (currentStack >= 30) currentMultiplier = 5;
         else if (currentStack >= 20) currentMultiplier = 4;
         else if (currentStack >= 15) currentMultiplier = 2;
         else currentMultiplier = 1;
+
+        if (currentMultiplier > 1 && TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Stack",
+                "STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.", 6f);
 
         if (stackText != null)
         {
@@ -344,26 +494,101 @@ public class PlayerController : MonoBehaviour, IDamageable
     private void CancelGrenadeAim()
     {
         isAimingGrenade = false;
+
+        if (!isBulletTime)
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = 0.02f;
+        }
+
         if (trajectoryLine != null) trajectoryLine.positionCount = 0;
         if (aoeMarkerLine != null) aoeMarkerLine.enabled = false;
         if (innerMarkerLine != null) innerMarkerLine.enabled = false;
     }
 
+    private Transform GetClosestEnemyForFocus(float maxDist, float maxAngle)
+    {
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, maxDist, s_overlapBuffer);
+        Transform bestTarget = null;
+        float minDist = float.MaxValue;
+
+        Vector3 playerForward = transform.forward;
+        playerForward.y = 0;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider hit = s_overlapBuffer[i];
+            if (hit.CompareTag("Enemy"))
+            {
+                Vector3 dir = hit.transform.position - transform.position;
+                dir.y = 0;
+                float dist = dir.magnitude;
+                float angle = Vector3.Angle(playerForward, dir.normalized);
+
+                if (dist < maxDist && angle < maxAngle)
+                {
+                    if (dist < minDist) { minDist = dist; bestTarget = hit.transform; }
+                }
+            }
+        }
+        return bestTarget;
+    }
+
     private void Update()
     {
+        if (isDead) return;
+
         if (dashStaminaFill != null)
-            dashStaminaFill.fillAmount = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
+        {
+            float dashTarget = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
+            if (Mathf.Abs(dashTarget - lastDashStaminaFill) > 0.001f)
+            {
+                dashStaminaFill.fillAmount = dashTarget;
+                lastDashStaminaFill = dashTarget;
+            }
+        }
 
         float targetHpFill = currentHealth / maxHealth;
-        if (hpFill != null) hpFill.fillAmount = targetHpFill;
-        if (hpCatchupFill != null && hpCatchupFill.fillAmount > targetHpFill)
-            hpCatchupFill.fillAmount = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+        if (hpFill != null && Mathf.Abs(targetHpFill - lastHpFill) > 0.0005f)
+        {
+            hpFill.fillAmount = targetHpFill;
+            lastHpFill = targetHpFill;
+        }
+
+        // ФІКС: Плавне доведення білої смужки (Catchup) без зависання
+        if (hpCatchupFill != null)
+        {
+            if (hpCatchupFill.fillAmount > targetHpFill)
+            {
+                float catchup = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+                // Якщо залишився міліметр - примагнічуємо до кінця
+                if (Mathf.Abs(catchup - targetHpFill) < 0.005f)
+                    catchup = targetHpFill;
+
+                if (Mathf.Abs(catchup - lastHpCatchupFill) > 0.0005f)
+                {
+                    hpCatchupFill.fillAmount = catchup;
+                    lastHpCatchupFill = catchup;
+                }
+            }
+            else if (hpCatchupFill.fillAmount < targetHpFill)
+            {
+                // При лікуванні біла смужка одразу доганяє здоров'я
+                hpCatchupFill.fillAmount = targetHpFill;
+                lastHpCatchupFill = targetHpFill;
+            }
+        }
 
         float targetXpFill = currentXP / xpToNextLevel;
         if (xpFill != null && visualXP < currentXP)
         {
             visualXP = Mathf.Lerp(visualXP, currentXP, Time.unscaledDeltaTime * uiLerpSpeed);
-            xpFill.fillAmount = visualXP / xpToNextLevel;
+            float xpAmt = visualXP / xpToNextLevel;
+            if (Mathf.Abs(xpAmt - lastXpFill) > 0.0005f)
+            {
+                xpFill.fillAmount = xpAmt;
+                lastXpFill = xpAmt;
+            }
         }
 
         CheckStack();
@@ -384,68 +609,178 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (Input.GetKey(KeyCode.Space)) up = 1f;
             if (Input.GetKey(KeyCode.LeftControl)) up = -1f;
 
-            Vector3 ncForward = Camera.main.transform.forward;
-            Vector3 ncRight = Camera.main.transform.right;
+            Vector3 ncForward = mainCameraTransformCached.forward;
+            Vector3 ncRight = mainCameraTransformCached.right;
 
             Vector3 dir = (ncForward * v + ncRight * h + Vector3.up * up).normalized;
             transform.position += dir * noclipSpeed * Time.unscaledDeltaTime;
             return;
         }
 
-        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime;
+        // Block WASD when paused (Time.timeScale == 0 covers both the
+        // regular pause menu and any cinematic that freezes the game)
+        // and while a tutorial hint is on screen — without this the
+        // player could still pivot through the air while reading the
+        // pause menu or hovering a hint.
+        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive || Time.timeScale == 0f || TutorialHints.IsAnyHintShowing;
         Vector3 inputDir = Vector3.zero;
 
         if (!isCurrentlyLocked)
         {
             inputDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
 
-            if (!isCampMode && Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
+            if (Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
             {
-                if (dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
-                else StartCoroutine(DashRoutine(inputDir, false));
+                if (!isAimingGrenade)
+                {
+                    // PerfectDodge needs a live threat window which never opens
+                    // in camp, so skip it there and go straight to a normal dash.
+                    if (!isCampMode && dodgeWindowTimer > 0f) StartCoroutine(PerfectDodgeSequence(inputDir));
+                    else StartCoroutine(DashRoutine(inputDir, false));
+                }
             }
         }
 
-        if (isDashing || Camera.main == null) return;
+        if (isDashing || mainCameraTransformCached == null) return;
 
-        Vector3 camForward = Camera.main.transform.forward;
-        Vector3 camRight = Camera.main.transform.right;
+        Vector3 camForward = mainCameraTransformCached.forward;
+        Vector3 camRight = mainCameraTransformCached.right;
         camForward.y = 0f; camRight.y = 0f;
         camForward.Normalize(); camRight.Normalize();
 
         Vector3 targetMoveDirection = Vector3.zero;
+
         if (inputDir.magnitude >= 0.1f)
         {
             targetMoveDirection = (camForward * inputDir.z + camRight * inputDir.x).normalized;
             Quaternion targetRotation = Quaternion.LookRotation(targetMoveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.unscaledDeltaTime);
         }
+        else if (!isCurrentlyLocked && !isCampMode)
+        {
+            // Բ�� ����̲��ֲ�: ������ ������ ��� ������ �� ����� ����
+            focusCheckTimer -= Time.unscaledDeltaTime;
+            if (focusCheckTimer <= 0f)
+            {
+                focusCheckTimer = 0.2f;
+                currentFocusEnemy = GetClosestEnemyForFocus(4f, 60f);
+            }
+
+            if (currentFocusEnemy != null)
+            {
+                Vector3 dirToEnemy = (currentFocusEnemy.position - transform.position).normalized;
+                dirToEnemy.y = 0;
+                if (dirToEnemy.sqrMagnitude > 0.01f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(dirToEnemy);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, (rotationSpeed / 2f) * Time.unscaledDeltaTime);
+                }
+            }
+        }
 
         float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f : moveSpeed;
-
-        float dt = isBulletTime ? Time.unscaledDeltaTime : Time.deltaTime;
+        float dt = isBulletTime || isAimingGrenade ? Time.unscaledDeltaTime : Time.deltaTime;
 
         if (inputDir.magnitude >= 0.1f) currentVelocityMove = Vector3.Lerp(currentVelocityMove, targetMoveDirection * actualSpeed, currentAccel * dt);
         else currentVelocityMove = Vector3.Lerp(currentVelocityMove, Vector3.zero, currentAccel * dt);
 
         float safeDeltaTime = Mathf.Min(dt, 0.05f);
-        if (characterController.isGrounded && velocity.y < 0) velocity.y = -2f;
-        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded) velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+
+        if (!isCurrentlyLocked && canJump && Input.GetButtonDown("Jump") && characterController.isGrounded)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        float yVelocityBeforeMove = velocity.y;
         velocity.y += gravity * safeDeltaTime;
 
-        if (characterController.enabled) characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
+        if (characterController.enabled)
+        {
+            characterController.Move((currentVelocityMove + velocity) * safeDeltaTime);
+        }
+
+        bool ccGroundedThisFrame = characterController.isGrounded;
+        if (ccGroundedThisFrame) lastGroundedRealTime = Time.unscaledTime;
+
+        // Coyote-grounded: keep the player "grounded" for ~120ms after the CC
+        // last touched ground, as long as they're not actively rising (i.e.
+        // genuine jumps still register as airborne). This matches what
+        // animation typically wants and stops the IsGrounded param from
+        // flickering when the CC steps up over micro-bumps.
+        bool isGroundedNow = ccGroundedThisFrame
+            || (Time.unscaledTime - lastGroundedRealTime < COYOTE_GROUND_WINDOW && velocity.y <= 0.5f);
+
+        if (!wasGroundedLastFrame && isGroundedNow)
+        {
+            if (yVelocityBeforeMove <= hardLandingVelocityThreshold)
+            {
+                if (hardLandingVFX != null) hardLandingVFX.Play();
+                if (cameraFollow != null) cameraFollow.TriggerShake(0.2f, 0.25f);
+            }
+            else if (yVelocityBeforeMove < -5f)
+            {
+                if (runDustParticles != null) runDustParticles.Emit(2);
+            }
+        }
+
+        if (isGroundedNow && velocity.y < 0) velocity.y = -2f;
+
+        // Ground-snap: if we're descending slowly and ground is right below
+        // (within ~0.5m), pin the vertical velocity. This prevents the player
+        // from "floating" off the top of small bumps for a few frames after a
+        // step-up, which is what usually triggered the fall/T-pose animation.
+        if (!ccGroundedThisFrame && velocity.y < 0f && velocity.y > -8f)
+        {
+            if (Physics.SphereCast(transform.position + Vector3.up * 0.4f, 0.2f, Vector3.down, out RaycastHit groundHit, 0.7f, GetGrenadeBlockerMask(), QueryTriggerInteraction.Ignore))
+            {
+                if (!groundHit.collider.CompareTag("Player")) velocity.y = -2f;
+            }
+        }
+
+        wasGroundedLastFrame = isGroundedNow;
+
+        if (visualModel != null && visualModel != transform && !isCampMode)
+        {
+            Vector3 localVel = transform.InverseTransformDirection(currentVelocityMove);
+            float leanX = (localVel.z / moveSpeed) * 8f;
+            float leanZ = -(localVel.x / moveSpeed) * 10f;
+
+            Quaternion targetLean = Quaternion.Euler(leanX, 0, leanZ);
+            visualModel.localRotation = Quaternion.Slerp(visualModel.localRotation, targetLean, Time.deltaTime * 18f);
+        }
+
+        bool isVisuallyGrounded = isGroundedNow;
+        if (!isVisuallyGrounded && velocity.y <= 1f)
+        {
+            // Was: LayerMask.GetMask("Default", "Terrain", "Ground") — but this
+            // project has no Terrain / Ground layers (see TagManager.asset).
+            // The mask silently resolved to "Default only", so the raycast
+            // missed the actual terrain (which sits on the Nature layer) and
+            // the animator's IsGrounded param flipped to false every time
+            // the player walked DOWN a slope. The visible result was the
+            // hovering T-pose during descents because the fall transition
+            // played in mid-air.
+            // GetGrenadeBlockerMask already includes Default + Nature +
+            // Obstacles, which is exactly what "is there ground under me"
+            // wants here too. Widened the cast (sphere not raycast, 0.9m
+            // vs 0.4m) so even fast descents catch the terrain reliably.
+            if (Physics.SphereCast(transform.position + Vector3.up * 0.3f, 0.25f, Vector3.down, out RaycastHit groundHit, 0.9f, GetGrenadeBlockerMask(), QueryTriggerInteraction.Ignore))
+            {
+                if (!groundHit.collider.CompareTag("Player")) isVisuallyGrounded = true;
+            }
+        }
 
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
-            anim.SetBool("IsGrounded", characterController.isGrounded);
+            anim.SetBool("IsGrounded", isVisuallyGrounded);
 
             Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
             anim.SetFloat("MoveZ", Mathf.Clamp(localVelocity.z / moveSpeed, -1f, 1f));
 
-            if (characterController.isGrounded && !isCurrentlyLocked)
+            if (isGroundedNow && !isCurrentlyLocked)
             {
                 if (!isCampMode)
                 {
@@ -454,7 +789,18 @@ public class PlayerController : MonoBehaviour, IDamageable
                         if (!isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.unscaledTime;
-                            if (camForward.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(camForward);
+
+                            Transform combatTarget = GetClosestEnemyForFocus(7f, 90f);
+                            if (combatTarget != null)
+                            {
+                                Vector3 attackDir = (combatTarget.position - transform.position).normalized;
+                                attackDir.y = 0;
+                                transform.rotation = Quaternion.LookRotation(attackDir);
+                            }
+                            else if (camForward.sqrMagnitude > 0.01f)
+                            {
+                                transform.rotation = Quaternion.LookRotation(camForward);
+                            }
 
                             int randAnim = Random.Range(0, 3);
                             if (randAnim == lastAttackIndex) randAnim = (randAnim + 1) % 3;
@@ -466,12 +812,31 @@ public class PlayerController : MonoBehaviour, IDamageable
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
 
-                    if (Input.GetMouseButtonDown(1))
+                    if (Input.GetMouseButtonDown(1) && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                     {
                         if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
                         {
                             isAimingGrenade = true;
-                            if (trajectoryLine != null) trajectoryLine.positionCount = linePoints;
+
+                            if (!isBulletTime)
+                            {
+                                Time.timeScale = aimSlowMotion;
+                                Time.fixedDeltaTime = 0.02f * Time.timeScale;
+                            }
+
+                            if (trajectoryLine != null)
+                            {
+                                trajectoryLine.positionCount = linePoints;
+                                ResetTrajectoryGradient();
+                                // Keep the Hovl trail material that ships on
+                                // the prefab — it looks like a magic-aim
+                                // streak. Stretch mode lets the texture
+                                // span the whole arc once so the bright
+                                // head sits at the throw origin and the
+                                // dim tail aligns with the landing, which
+                                // reads as "arc fading toward impact."
+                                trajectoryLine.textureMode = LineTextureMode.Stretch;
+                            }
                             if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
                             if (innerMarkerLine != null) innerMarkerLine.enabled = true;
                         }
@@ -485,7 +850,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (isAimingGrenade)
                 {
                     CancelGrenadeAim();
-                    if (characterController.isGrounded) LockAction("Throw", 0.4f);
+                    if (isGroundedNow) LockAction("Throw", 0.4f);
                     else ExecuteThrow();
                 }
             }
@@ -499,12 +864,52 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    // Layer mask used to detect both aim-raycast and trajectory collisions.
+    // Cached so we don't rebuild it every frame while aiming.
+    private static int s_grenadeAimMask = -1;
+    private static int s_grenadeBlockerMask = -1;
+
+    // This project's layer setup (see ProjectSettings/TagManager.asset)
+    // doesn't include literal "Terrain" / "Ground" / "Foliage" names.
+    // Terrain in GameScene sits on the "Nature" layer (15), so the prior
+    // masks resolved to "Default only" — the sphere cast had nothing to
+    // terminate against, the simulation ran out the entire 64-step loop,
+    // and the marker landed wherever flight time happened to dump it
+    // (often off-map). Build the masks from layers we actually know to
+    // exist, with safe fallbacks so projects that DO use the canonical
+    // names still work.
+    private static int BuildGrenadeMask()
+    {
+        int mask = 0;
+        string[] candidates = { "Default", "Nature", "Obstacles", "InvisibleWall", "Terrain", "Ground", "Foliage" };
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            int layer = LayerMask.NameToLayer(candidates[i]);
+            if (layer >= 0) mask |= 1 << layer;
+        }
+        if (mask == 0) mask = ~0; // last-resort: hit everything; better than hitting nothing
+        return mask;
+    }
+
+    private static int GetGrenadeAimMask()
+    {
+        if (s_grenadeAimMask == -1) s_grenadeAimMask = BuildGrenadeMask();
+        return s_grenadeAimMask;
+    }
+
+    private static int GetGrenadeBlockerMask()
+    {
+        if (s_grenadeBlockerMask == -1) s_grenadeBlockerMask = BuildGrenadeMask();
+        return s_grenadeBlockerMask;
+    }
+
     private void UpdateGrenadeAiming()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = mainCameraCached.ScreenPointToRay(Input.mousePosition);
         Vector3 hitPoint = transform.position + transform.forward * 5f;
+        int aimMask = GetGrenadeAimMask();
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, aimMask))
         {
             hitPoint = hit.point;
         }
@@ -514,28 +919,100 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (groundPlane.Raycast(ray, out float enter)) hitPoint = ray.GetPoint(enter);
         }
 
+        // Soft aim-magnet to nearby enemy — but keep the magnet purely horizontal
+        // so the predicted landing stays grounded. The old code carried the
+        // enemy's elevated Y into the target, which is half the reason the
+        // marker drifted away from the real explosion.
+        int magnetCount = Physics.OverlapSphereNonAlloc(hitPoint, aimAssistRadius, s_overlapBuffer);
+        Transform bestTarget = null;
+        float minDist = float.MaxValue;
+        for (int mi = 0; mi < magnetCount; mi++)
+        {
+            Collider mHit = s_overlapBuffer[mi];
+            if (mHit != null && mHit.CompareTag("Enemy"))
+            {
+                float d = Vector3.Distance(hitPoint, mHit.transform.position);
+                if (d < minDist) { minDist = d; bestTarget = mHit.transform; }
+            }
+        }
+        if (bestTarget != null)
+        {
+            Vector3 magneticTarget = new Vector3(bestTarget.position.x, hitPoint.y, bestTarget.position.z);
+            hitPoint = Vector3.Lerp(hitPoint, magneticTarget, 0.4f);
+        }
+
+        // Clamp to throw range in XZ.
         Vector3 offset = hitPoint - transform.position;
         offset.y = 0;
         if (offset.magnitude > maxThrowDistance)
         {
             hitPoint = transform.position + offset.normalized * maxThrowDistance;
-            if (Terrain.activeTerrain != null) hitPoint.y = Terrain.activeTerrain.SampleHeight(hitPoint) + Terrain.activeTerrain.transform.position.y;
+            // Re-ground the clamped point (sky aim) since we just moved it
+            // horizontally and the previous raycast hit no longer applies.
+            hitPoint = ProjectAimToGround(hitPoint);
         }
 
+        // currentGrenadeTarget stays at the player's actual aim — this is what
+        // the throw will use for its initial velocity, and what the marker
+        // shows the player is committing to. If the trajectory then clips a
+        // wall, the AoE preview moves to the clip point (markerPosition) but
+        // the throw still resolves identically because the same velocity is
+        // simulated above and applied below.
         currentGrenadeTarget = hitPoint;
 
-        Vector3 aimDir = (hitPoint - transform.position).normalized;
+        // Simulate the throw with that target and find the real landing point.
+        // The line writes points along the simulated arc; markerPosition is
+        // where the grenade actually stops.
+        Vector3 markerPosition;
+        int simulatedCount = SimulateTrajectoryToLanding(currentGrenadeTarget, out markerPosition);
+
+        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, grenadeExplosionRadius, s_overlapBuffer);
+        bool enemyInBlast = false;
+        for (int bi = 0; bi < blastCount; bi++)
+        {
+            if (s_overlapBuffer[bi] != null && s_overlapBuffer[bi].CompareTag("Enemy")) { enemyInBlast = true; break; }
+        }
+
+        Color currentAimColor = enemyInBlast ? new Color(1f, 0.1f, 0.1f, 0.8f) : new Color(0f, 0.8f, 1f, 0.8f);
+
+        if (trajectoryLine != null)
+        {
+            trajectoryLine.positionCount = simulatedCount;
+            ApplySolidTrajectoryGradient(currentAimColor);
+            if (trajectoryLine.widthMultiplier < 0.18f) trajectoryLine.widthMultiplier = 0.22f;
+            if (trajectoryLine.material != null) trajectoryLine.material.mainTextureOffset -= new Vector2(Time.unscaledDeltaTime * 2.5f, 0);
+        }
+
+        if (aoeMarkerLine != null) { aoeMarkerLine.startColor = currentAimColor; aoeMarkerLine.endColor = currentAimColor; }
+        if (innerMarkerLine != null) { innerMarkerLine.startColor = currentAimColor; innerMarkerLine.endColor = currentAimColor; }
+
+        // AoE ring sits on the *real* landing — i.e. where the grenade will
+        // actually explode after physics, not the player's raw aim point.
+        DrawAoEMarker(markerPosition);
+
+        Vector3 aimDir = (currentGrenadeTarget - transform.position).normalized;
         aimDir.y = 0;
         if (aimDir.sqrMagnitude > 0.01f)
         {
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aimDir), rotationSpeed * Time.unscaledDeltaTime * 3f);
         }
+    }
 
-        if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
-        if (innerMarkerLine != null) innerMarkerLine.enabled = true;
-
-        DrawPreciseTrajectory(currentGrenadeTarget);
-        DrawAoEMarker(currentGrenadeTarget);
+    // Snaps an XZ aim point to whatever ground is directly below it. Falls back
+    // to terrain height, then to the original point if nothing was found.
+    private Vector3 ProjectAimToGround(Vector3 worldPoint)
+    {
+        Vector3 from = worldPoint + Vector3.up * 30f;
+        if (Physics.Raycast(from, Vector3.down, out RaycastHit groundHit, 100f, GetGrenadeBlockerMask()))
+        {
+            return groundHit.point;
+        }
+        if (Terrain.activeTerrain != null)
+        {
+            float ty = Terrain.activeTerrain.SampleHeight(worldPoint) + Terrain.activeTerrain.transform.position.y;
+            return new Vector3(worldPoint.x, ty, worldPoint.z);
+        }
+        return worldPoint;
     }
 
     private Vector3 CalculateThrowVelocity(Vector3 target)
@@ -551,26 +1028,226 @@ public class PlayerController : MonoBehaviour, IDamageable
         return velXZ + Vector3.up * velY;
     }
 
-    private void DrawPreciseTrajectory(Vector3 target)
+    // Physics-accurate trajectory simulation that mirrors what the live grenade
+    // will do: it ballisticly steps with gravity, sphere-casts each segment
+    // against terrain/world geometry, and writes the actual flight path into
+    // trajectoryLine. Returns the final point count.
+    //
+    // Returning the simulated landing instead of just drawing it lets callers
+    // realign the AoE marker (and the throw itself) so visuals can never lie
+    // about where the grenade lands.
+    private static Material s_solidTrajectoryMaterial;
+    private bool trajectoryMaterialReplaced = false;
+
+    // Replace the prefab's "magic trail" material with a flat URP unlit
+    // material. The original material was a Hovl trail effect with a
+    // texture whose alpha falls off along its length — perfect for a
+    // VFX trail, terrible for a precise aiming line, because the far
+    // tail of the arc rendered invisible no matter what colour we set.
+    private void EnsureSolidTrajectoryMaterial()
+    {
+        if (trajectoryMaterialReplaced || trajectoryLine == null) return;
+        if (s_solidTrajectoryMaterial == null)
+        {
+            Shader sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) sh = Shader.Find("Sprites/Default");
+            if (sh == null) sh = Shader.Find("Unlit/Color");
+            s_solidTrajectoryMaterial = new Material(sh);
+            // Transparent so the trajectory line can lay over geometry softly.
+            if (s_solidTrajectoryMaterial.HasProperty("_Surface"))
+            {
+                s_solidTrajectoryMaterial.SetFloat("_Surface", 1f);
+                s_solidTrajectoryMaterial.SetFloat("_Blend", 0f);
+                s_solidTrajectoryMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                s_solidTrajectoryMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                s_solidTrajectoryMaterial.SetInt("_ZWrite", 0);
+                s_solidTrajectoryMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                s_solidTrajectoryMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            s_solidTrajectoryMaterial.color = Color.white; // gradient drives the look
+        }
+        trajectoryLine.material = s_solidTrajectoryMaterial;
+        // Stretch the (non-existent) texture across the whole line so any
+        // residual tiling doesn't carve gaps mid-arc.
+        trajectoryLine.textureMode = LineTextureMode.Stretch;
+        trajectoryMaterialReplaced = true;
+    }
+
+    private static readonly RaycastHit[] s_grenadeSimHitBuffer = new RaycastHit[8];
+    private bool trajectoryGradientReset = false;
+
+    // Reusable gradient + keyframe arrays so we can rebuild the line's
+    // colour gradient every aim frame without allocating per-call.
+    private static readonly Gradient s_trajectoryGradient = new Gradient();
+    private static readonly GradientColorKey[] s_trajectoryColorKeys = new GradientColorKey[2]
+    {
+        new GradientColorKey(Color.white, 0f),
+        new GradientColorKey(Color.white, 1f),
+    };
+    private static readonly GradientAlphaKey[] s_trajectoryAlphaKeys = new GradientAlphaKey[2]
+    {
+        new GradientAlphaKey(1f, 0f),
+        new GradientAlphaKey(1f, 1f),
+    };
+
+    private void ApplySolidTrajectoryGradient(Color color)
     {
         if (trajectoryLine == null) return;
-        trajectoryLine.positionCount = linePoints;
-        Vector3 startPos = throwPoint.position;
-        Vector3 vel = CalculateThrowVelocity(target);
+        s_trajectoryColorKeys[0].color = color;
+        s_trajectoryColorKeys[1].color = color;
+        s_trajectoryAlphaKeys[0].alpha = color.a;
+        s_trajectoryAlphaKeys[1].alpha = color.a;
+        s_trajectoryGradient.SetKeys(s_trajectoryColorKeys, s_trajectoryAlphaKeys);
+        trajectoryLine.colorGradient = s_trajectoryGradient;
+    }
 
-        Vector3 displacementXZ = new Vector3(target.x - startPos.x, 0, target.z - startPos.z);
-        float flightTime = Mathf.Clamp(displacementXZ.magnitude / grenadeThrowSpeed, 0.25f, 1.2f);
+    // The trajectoryLine prefab ships with an alpha gradient that tapers to
+    // zero, intended for a stylish "magic trail" head. While useful when the
+    // line is a fixed-length flair, it makes the arc look chopped off in the
+    // middle when the line traces a real ballistic path — the player sees a
+    // bright stub near their hand and an apparently disconnected AoE ring at
+    // the landing. Force a flat solid gradient once the first time we aim so
+    // the whole arc stays visible.
+    private void ResetTrajectoryGradient()
+    {
+        if (trajectoryGradientReset || trajectoryLine == null) return;
+        Gradient flat = new Gradient();
+        flat.SetKeys(
+            new[]
+            {
+                new GradientColorKey(Color.white, 0f),
+                new GradientColorKey(Color.white, 1f),
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(1f, 1f),
+            });
+        trajectoryLine.colorGradient = flat;
+        trajectoryGradientReset = true;
+    }
 
-        for (int i = 0; i < linePoints; i++)
+    // Walks up the parent chain to see if the collider belongs to the player.
+    // CompareTag("Player") alone misses children (weapon, armor pieces, etc.)
+    // that are typically untagged but still inside the player hierarchy.
+    private bool IsColliderPartOfPlayer(Collider c)
+    {
+        if (c == null) return false;
+        Transform t = c.transform;
+        while (t != null)
         {
-            float t = i * (flightTime / (linePoints - 1));
-            Vector3 point = startPos + vel * t + Physics.gravity * 0.5f * t * t;
-            trajectoryLine.SetPosition(i, point);
+            if (t == this.transform) return true;
+            t = t.parent;
         }
+        return c.CompareTag("Player");
+    }
+
+    private int SimulateTrajectoryToLanding(Vector3 requestedTarget, out Vector3 landing)
+    {
+        Vector3 start = throwPoint != null ? throwPoint.position : transform.position + Vector3.up;
+        Vector3 vel = CalculateThrowVelocity(requestedTarget);
+
+        const int MAX_STEPS = 64;
+        const float STEP_TIME = 0.04f;
+        const float COLLISION_RADIUS = 0.15f;
+
+        int blockerMask = GetGrenadeBlockerMask();
+        Vector3 prev = start;
+
+        // Pre-size the line buffer so SetPosition() calls don't fail; caller
+        // will trim positionCount down to the actual writtenPoints below.
+        if (trajectoryLine != null && trajectoryLine.positionCount < MAX_STEPS)
+            trajectoryLine.positionCount = MAX_STEPS;
+
+        // First point is the throw origin.
+        if (trajectoryLine != null) trajectoryLine.SetPosition(0, prev);
+
+        int writtenPoints = 1;
+        for (int i = 1; i < MAX_STEPS; i++)
+        {
+            float t = i * STEP_TIME;
+            Vector3 next = start + vel * t + Physics.gravity * 0.5f * t * t;
+
+            Vector3 segDir = next - prev;
+            float segDist = segDir.magnitude;
+            if (segDist > 0.0001f)
+            {
+                Vector3 segDirN = segDir / segDist;
+                int hitCount = Physics.SphereCastNonAlloc(prev, COLLISION_RADIUS, segDirN, s_grenadeSimHitBuffer, segDist, blockerMask, QueryTriggerInteraction.Ignore);
+                if (hitCount > 0)
+                {
+                    // Scan for the closest hit that isn't part of the player.
+                    // The old code only checked CompareTag("Player"), which
+                    // missed untagged child colliders (weapon, armor, hand
+                    // bone box collider, etc.), so the trajectory used to
+                    // terminate on the first step against the player's own
+                    // weapon and the marker fell behind the visible arc.
+                    float bestDist = float.MaxValue;
+                    int bestIdx = -1;
+                    for (int h = 0; h < hitCount; h++)
+                    {
+                        RaycastHit hh = s_grenadeSimHitBuffer[h];
+                        if (hh.collider == null) continue;
+                        if (IsColliderPartOfPlayer(hh.collider)) continue;
+                        // SphereCast returns 0 distance / zero point when the
+                        // cast started overlapping the collider — treat as a
+                        // glancing self-overlap and skip too.
+                        if (hh.distance <= 0.0001f) continue;
+                        if (hh.distance < bestDist) { bestDist = hh.distance; bestIdx = h; }
+                    }
+
+                    if (bestIdx >= 0)
+                    {
+                        RaycastHit hit = s_grenadeSimHitBuffer[bestIdx];
+                        Vector3 hitPoint = hit.point;
+                        if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, hitPoint);
+                        writtenPoints++;
+
+                        // Visual drop marker: append a short vertical segment
+                        // from the hit point down to the ground so the line
+                        // unmistakably meets the AoE ring (which always sits
+                        // at ground level). Without this, hits on slopes/wall
+                        // sides looked detached from the marker.
+                        float groundY = GetGroundHeight(hitPoint);
+                        if (hitPoint.y - groundY > 0.05f && trajectoryLine != null)
+                        {
+                            trajectoryLine.SetPosition(writtenPoints, new Vector3(hitPoint.x, groundY + 0.1f, hitPoint.z));
+                            writtenPoints++;
+                        }
+
+                        // Marker sits on the ground directly under the impact
+                        // so it always reads as "where the AoE goes off."
+                        landing = new Vector3(hitPoint.x, groundY, hitPoint.z);
+                        return writtenPoints;
+                    }
+                }
+            }
+
+            if (trajectoryLine != null) trajectoryLine.SetPosition(writtenPoints, next);
+            writtenPoints++;
+            prev = next;
+
+            // Hard safety: if we somehow drop way below the throw origin (deep
+            // pit or off-map), stop here so we don't trace into the void.
+            if (next.y < start.y - 50f)
+            {
+                float groundY = GetGroundHeight(next);
+                landing = new Vector3(next.x, groundY, next.z);
+                return writtenPoints;
+            }
+        }
+
+        // Sim exhausted without a collision (very long, very flat arc). Drop
+        // the marker straight down from the last simulated point.
+        float exitGroundY = GetGroundHeight(prev);
+        landing = new Vector3(prev.x, exitGroundY, prev.z);
+        return writtenPoints;
     }
 
     private void DrawAoEMarker(Vector3 center)
     {
+        int blockerMask = GetGrenadeBlockerMask();
+
         if (aoeMarkerLine != null)
         {
             int segments = aoeMarkerLine.positionCount;
@@ -579,8 +1256,15 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * grenadeExplosionRadius;
-                Vector3 point = center + new Vector3(x, 50f, z);
-                point.y = GetGroundHeight(point) + 0.15f;
+
+                // ФІКС: Пускаємо промінь лише на 2 метри вище центру, а не на 20, 
+                // щоб коло не малювалось на деревах або дахах будівель!
+                Vector3 point = center + new Vector3(x, 2f, z);
+                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
+                    point.y = hit.point.y + 0.15f;
+                else
+                    point.y = center.y + 0.15f;
+
                 aoeMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -595,8 +1279,13 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 float x = Mathf.Sin(Mathf.Deg2Rad * angle) * innerRadius;
                 float z = Mathf.Cos(Mathf.Deg2Rad * angle) * innerRadius;
-                Vector3 point = center + new Vector3(x, 50f, z);
-                point.y = GetGroundHeight(point) + 0.15f;
+
+                Vector3 point = center + new Vector3(x, 2f, z);
+                if (Physics.Raycast(point, Vector3.down, out RaycastHit hit, 6f, blockerMask))
+                    point.y = hit.point.y + 0.15f;
+                else
+                    point.y = center.y + 0.15f;
+
                 innerMarkerLine.SetPosition(i, point);
                 angle += (360f / segments);
             }
@@ -605,14 +1294,26 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private float GetGroundHeight(Vector3 pos)
     {
-        if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground"))) return hit.point.y;
-        else if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-        return 0f;
+        // ФІКС: Скануємо лише на 1 метр вгору і 5 вниз, щоб не хапати дахи та гілки!
+        if (Physics.Raycast(pos + Vector3.up * 1f, Vector3.down, out RaycastHit hit, 5f, GetGrenadeBlockerMask()))
+        {
+            return hit.point.y;
+        }
+        else if (Terrain.activeTerrain != null)
+        {
+            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        }
+
+        return pos.y;
     }
 
     public void OpenPerfectDodgeWindow(Transform attacker, float duration)
     {
         dodgeWindowTimer = duration;
+
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("PerfectDodge",
+                "ELITE windup detected. Dash (<b>SHIFT</b>) right as their flash peaks to trigger Perfect Dodge — guaranteed crit + slow-mo.", 6f);
     }
 
     private IEnumerator PerfectDodgeSequence(Vector3 fallbackDirection)
@@ -620,6 +1321,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         dodgeWindowTimer = 0f;
         isNextAttackGuaranteedCrit = true;
         isBulletTime = true;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
 
         Time.timeScale = perfectDodgeSlowMoScale;
 
@@ -635,7 +1338,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         yield return new WaitForSecondsRealtime(perfectDodgeDuration);
 
-        Time.timeScale = 1f;
+        if (!isAimingGrenade) Time.timeScale = 1f;
         isBulletTime = false;
         if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
         if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(false);
@@ -656,8 +1359,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         Vector3 targetPos = threat.position - threat.forward * 2.5f;
         targetPos.y = GetGroundHeight(targetPos);
 
-        float originalFOV = Camera.main.fieldOfView;
-        Camera.main.fieldOfView = originalFOV + 20f;
+        float originalFOV = mainCameraCached.fieldOfView;
+        mainCameraCached.fieldOfView = originalFOV + 20f;
         if (dashParticles != null) dashParticles.Play();
         if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
 
@@ -689,10 +1392,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         while (elapsed < 0.3f)
         {
             elapsed += Time.unscaledDeltaTime;
-            Camera.main.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
+            mainCameraCached.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
             yield return null;
         }
-        Camera.main.fieldOfView = originalFOV;
+        mainCameraCached.fieldOfView = originalFOV;
     }
 
     private IEnumerator DashRoutine(Vector3 direction, bool isPerfectDodge = false)
@@ -703,7 +1406,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (AudioManager.Instance != null && !isPerfectDodge) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
 
-        float originalFOV = Camera.main.fieldOfView;
+        float originalFOV = mainCameraCached.fieldOfView;
         float targetFOV = originalFOV + (isPerfectDodge ? 20f : 12f);
 
         if (dashParticles != null) dashParticles.Play();
@@ -712,7 +1415,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (direction == Vector3.zero) direction = transform.forward;
         else
         {
-            Vector3 camForward = Camera.main.transform.forward; Vector3 camRight = Camera.main.transform.right;
+            Vector3 camForward = mainCameraTransformCached.forward; Vector3 camRight = mainCameraTransformCached.right;
             camForward.y = 0f; camRight.y = 0f;
             direction = (camForward * direction.z + camRight * direction.x).normalized;
         }
@@ -725,7 +1428,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             float curve = Mathf.Sin(normalizedTime * Mathf.PI);
 
             characterController.Move(direction * currentDashSpeed * curve * Time.unscaledDeltaTime);
-            Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, normalizedTime);
+            mainCameraCached.fieldOfView = Mathf.Lerp(mainCameraCached.fieldOfView, targetFOV, normalizedTime);
 
             yield return null;
         }
@@ -736,10 +1439,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         while (elapsed < 0.3f)
         {
             elapsed += Time.unscaledDeltaTime;
-            Camera.main.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / 0.3f);
+            mainCameraCached.fieldOfView = Mathf.Lerp(targetFOV, originalFOV, elapsed / 0.3f);
             yield return null;
         }
-        Camera.main.fieldOfView = originalFOV;
+        mainCameraCached.fieldOfView = originalFOV;
     }
 
     public void ExecuteAttack()
@@ -747,15 +1450,27 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (meleePoint == null || isCampMode) return;
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
-        Collider[] hitObjects = Physics.OverlapSphere(meleePoint.position, meleeRadius);
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("Attack",
+                "Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.", 6f);
+
+        if (cameraFollow != null) cameraFollow.SetCombatState();
+
+        int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
-        if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? 3.5f : 2.5f);
+        // critDamageMultiplier is the LvlUp-scaled normal crit. Guaranteed crit
+        // (e.g. perfect dodge) gets a fixed 1.4x bonus on top, so investing in
+        // CritDamage always feels like an upgrade.
+        if (isCriticalHit) finalDmg *= (isNextAttackGuaranteedCrit ? critDamageMultiplier * 1.4f : critDamageMultiplier);
 
-        foreach (Collider col in hitObjects)
+        float totalLifestealDealt = 0f;
+
+        for (int idx = 0; idx < hitCount; idx++)
         {
+            Collider col = s_overlapBuffer[idx];
             if (col.TryGetComponent(out IDamageable damageable))
             {
                 if (col.gameObject == this.gameObject) continue;
@@ -774,19 +1489,24 @@ public class PlayerController : MonoBehaviour, IDamageable
                 };
 
                 damageable.TakeDamage(hitInfo);
-                if (col.CompareTag("Enemy")) hitEnemy = true; else hitResource = true;
+                if (col.CompareTag("Enemy")) { hitEnemy = true; totalLifestealDealt += finalDmg; }
+                else hitResource = true;
 
-                // Բ��: ��������� ����� ������
-                if (hitVFXPrefab != null && ObjectPoolManager.Instance != null)
+                if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
                     Quaternion hitRot = pushDir != Vector3.zero ? Quaternion.LookRotation(pushDir) : Quaternion.identity;
-                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitVFXPrefab, hitInfo.HitPoint, hitRot);
+                    GameObject vfx = ObjectPoolManager.Instance.SpawnFromPool(hitSparkVFXPrefab, hitInfo.HitPoint, hitRot);
                     if (vfx != null) vfx.transform.localScale = isNextAttackGuaranteedCrit ? Vector3.one * 3f : (isCriticalHit ? Vector3.one * 1.5f : Vector3.one);
                 }
             }
         }
 
         isNextAttackGuaranteedCrit = false;
+
+        if (lifeStealFraction > 0f && totalLifestealDealt > 0f && currentHealth < maxHealth)
+        {
+            Heal(totalLifestealDealt * lifeStealFraction);
+        }
 
         if (hitEnemy)
         {
@@ -804,13 +1524,31 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void ExecuteThrow()
     {
+        if (!isBulletTime)
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = 0.02f;
+        }
+
         if (grenadePrefab != null && throwPoint != null && !isCampMode)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Throw);
             GameObject grenade = Instantiate(grenadePrefab, throwPoint.position, throwPoint.rotation);
+
+            // === ФІКС ФІЗИКИ 1: Щоб граната не врізалась у самого гравця при спавні і не відбивалась під ноги ===
+            Collider grenadeCol = grenade.GetComponent<Collider>();
+            Collider playerCol = GetComponent<Collider>();
+            if (grenadeCol != null && playerCol != null)
+            {
+                Physics.IgnoreCollision(grenadeCol, playerCol, true);
+            }
+
             Rigidbody rb = grenade.GetComponent<Rigidbody>();
             if (rb != null)
             {
+                // === ФІКС ФІЗИКИ 2: Вимикаємо опір повітря (Drag), бо він гальмує політ і ламає математичну траєкторію ===
+                rb.linearDamping = 0f;
+
                 rb.linearVelocity = CalculateThrowVelocity(currentGrenadeTarget);
                 rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
             }
@@ -820,17 +1558,48 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamage(DamageInfo info)
     {
+        if (isDead || currentHealth <= 0) return;
         if (isCampMode || isDashing || isBulletTime) return;
+
+        if (dodgeChance > 0f && UnityEngine.Random.value < dodgeChance)
+        {
+            // Treat dodge identically to a perfect dodge — visuals/SFX already
+            // exist for that path, so the player feels the upgrade firing.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
+            isNextAttackGuaranteedCrit = true;
+            return;
+        }
 
         float finalDamage = info.Amount * (1f - damageReduction);
         currentHealth -= finalDamage;
+
+        if (thornDamageFraction > 0f)
+        {
+            float reflected = finalDamage * thornDamageFraction;
+            // Attacker not exposed on DamageInfo, so apply as AoE thorn around player.
+            int n = Physics.OverlapSphereNonAlloc(transform.position, 2.5f, s_overlapBuffer);
+            for (int i = 0; i < n; i++)
+            {
+                Collider col = s_overlapBuffer[i];
+                if (col == null || col.gameObject == this.gameObject) continue;
+                if (!col.CompareTag("Enemy")) continue;
+                if (col.TryGetComponent(out IDamageable d))
+                {
+                    d.TakeDamage(new DamageInfo { Amount = reflected, IsCritical = false, KnockbackForce = 0f, StunDuration = 0f, PushDirection = Vector3.zero, HitPoint = col.transform.position });
+                }
+            }
+        }
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Hurt);
 
         if (cameraFollow != null)
         {
-            Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : transform.forward;
-            cameraFollow.TriggerDirectionalShake(shakeDir, 1.5f, 0.3f, 0.3f);
+            // --- ��� Բ�� ������ ������ ---
+            // ���������: 0.15� (���� �������). 
+            // ��������� ���: 0.08f (������ ����� �� ����, � ������ ���� ��������).
+            // ��������: ���� ����� �� ������� ��������, �������� ������ ������ ����� (-transform.forward).
+            Vector3 shakeDir = info.PushDirection != Vector3.zero ? info.PushDirection : -transform.forward;
+            cameraFollow.TriggerDirectionalShake(shakeDir, 1.2f, 0.15f, 0.08f);
         }
 
         if (finalDamage >= maxHealth * 0.15f && hpFill != null)
@@ -882,36 +1651,97 @@ public class PlayerController : MonoBehaviour, IDamageable
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
-        string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        GameManager gm = FindFirstObjectByType<GameManager>();
+        isControlBlocked = true;
+        if (characterController != null) characterController.enabled = false;
 
-        if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.TriggerGameOver();
-        else if (gm != null) gm.TriggerGameOver();
-        else if (GlobalHUD.Instance != null)
+        if (anim != null)
         {
-            if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
-            else GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            anim.ResetTrigger("Hit");
+            anim.SetTrigger("Die");
         }
 
-        gameObject.SetActive(false);
+        if (DeathCinematicManager.Instance != null)
+        {
+            DeathCinematicManager.Instance.TriggerDeathCinematic();
+        }
+        else
+        {
+            string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            GameManager gm = FindFirstObjectByType<GameManager>();
+
+            if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.TriggerGameOver();
+            else if (gm != null) gm.TriggerGameOver();
+            else if (GlobalHUD.Instance != null)
+            {
+                if (currentSceneName == "Lvl_1") GlobalHUD.Instance.FadeAndLoadScene(currentSceneName);
+                else GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+            }
+        }
     }
 
-    public void GainXP(float amount) { if (isCampMode) return; currentXP += amount; if (currentXP >= xpToNextLevel) LevelUp(); }
+    public void GainXP(float amount)
+    {
+        if (isCampMode) return;
+        float scaled = amount * xpGainMultiplier;
+        currentXP += scaled;
+
+        if (GlobalHUD.Instance != null && scaled > 0f)
+            GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(scaled)} XP", new Color(0.4f, 0.85f, 1f));
+
+        // Loop in case a single huge gain crosses multiple thresholds.
+        while (currentXP >= xpToNextLevel) LevelUp();
+    }
 
     public void GainDiamond(int amount = 1)
     {
-        crystalsCollected += amount;
-        if (ResourceManager.Instance != null) { ResourceManager.Instance.diamonds += amount; ResourceManager.Instance.SaveStash(); ResourceManager.Instance.UpdateUI(); }
-        else { int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0); PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + amount); PlayerPrefs.Save(); }
+        int finalAmount = Mathf.Max(amount, Mathf.RoundToInt(amount * diamondBonusMultiplier));
+        crystalsCollected += finalAmount;
+        if (ResourceManager.Instance != null) { ResourceManager.Instance.diamonds += finalAmount; ResourceManager.Instance.SaveStash(); ResourceManager.Instance.UpdateUI(); }
+        else { int currentDiamonds = PlayerPrefs.GetInt("PlayerDiamonds", 0); PlayerPrefs.SetInt("PlayerDiamonds", currentDiamonds + finalAmount); PlayerPrefs.Save(); }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+
+        if (GlobalHUD.Instance != null)
+            GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} Diamond", new Color(0.85f, 0.55f, 1f));
+
         UpdateHUD();
-        if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, amount);
+        if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
+    }
+
+    // Smooth quadratic XP curve. Replaces the prior 1.5x multiplier — at level 15
+    // that curve cost ~9.7k xp, which made any post-mid-game run dead. New curve:
+    //   L1->2: 50  L5: ~140  L10: ~340  L15: ~640  L20: ~1040  L25: ~1540
+    public static float ComputeXpToNextLevel(int level)
+    {
+        // level is the level you ARE on (i.e. need this much to reach level+1).
+        return 40f + level * level * 4f + level * 6f;
     }
 
     private void LevelUp()
     {
-        currentLevel++; currentXP -= xpToNextLevel; xpToNextLevel *= 1.5f; visualXP = 0f;
+        currentXP -= xpToNextLevel;
+        currentLevel++;
+        xpToNextLevel = ComputeXpToNextLevel(currentLevel);
+        visualXP = 0f;
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+
+        // Level-up rewards beyond the upgrade choice itself:
+        // - heal a chunk of HP so the player isn't punished for leveling mid-fight
+        // - drip-feed diamonds so progression always tangibly rewards XP
+        // - milestone gifts at L5/L10/L15/... — bigger heal + diamond cache
+        Heal(maxHealth * 0.4f);
+        int diamondReward = 3 + currentLevel;
+        bool milestone = currentLevel % 5 == 0;
+        if (milestone)
+        {
+            diamondReward += 25;
+            maxHealth += 10f;
+            currentHealth = maxHealth;
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.ShowPickupPopup($"MILESTONE LV{currentLevel}: +10 Max HP", new Color(1f, 0.85f, 0.3f));
+        }
+        GainDiamond(diamondReward);
+
         LevelUpManager lum = FindFirstObjectByType<LevelUpManager>();
         if (lum != null) lum.ShowMenu();
         UpdateHUD();
@@ -928,7 +1758,22 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = $"Diamonds: {displayDiamonds}"; }
     }
 
-    public void Heal(float amount) { currentHealth += amount; if (currentHealth > maxHealth) currentHealth = maxHealth; UpdateHUD(); }
+    public void Heal(float amount)
+    {
+        if (amount <= 0f || isDead) return;
+        float before = currentHealth;
+        currentHealth += amount;
+        if (currentHealth > maxHealth) currentHealth = maxHealth;
+        float actuallyHealed = currentHealth - before;
+        // Suppress popup spam from per-hit lifesteal/kill-heal; only show for
+        // meaningful chunks (level-up reward, big consumable, milestone).
+        if (actuallyHealed >= 5f && !isCampMode)
+        {
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(actuallyHealed)} HP", new Color(0.55f, 1f, 0.55f));
+        }
+        UpdateHUD();
+    }
 
     private Transform FindDeepChild(Transform parent, string name)
     {
@@ -967,5 +1812,58 @@ public class PlayerController : MonoBehaviour, IDamageable
         float elapsed = 0f;
         while (elapsed < 0.15f) { elapsed += Time.unscaledDeltaTime; float curve = Mathf.Sin((elapsed / 0.15f) * Mathf.PI); uiElement.localScale = origScale + new Vector3(0.15f, 0.15f, 0f) * curve; yield return null; }
         uiElement.localScale = origScale;
+    }
+
+    private float handIKWeight = 0f;
+    private Vector3 handIKTarget;
+
+    private void OnAnimatorIK(int layerIndex)
+    {
+        if (anim == null || isCampMode) return;
+
+        // Բ�� ����̲��ֲ�: ������ ��� IK ������
+        ikCheckTimer -= Time.deltaTime;
+        if (ikCheckTimer <= 0f)
+        {
+            ikCheckTimer = 0.2f;
+            ikTargetItem = null;
+            int nearbyCount = Physics.OverlapSphereNonAlloc(transform.position, 5f, s_overlapBuffer);
+            float minDist = float.MaxValue;
+
+            for (int ni = 0; ni < nearbyCount; ni++)
+            {
+                Collider item = s_overlapBuffer[ni];
+                bool isValidTarget = false;
+
+                XpCrystal crystal = item.GetComponent<XpCrystal>();
+                if (crystal != null && crystal.IsMagnetized) isValidTarget = true;
+
+                DiamondPickup diamond = item.GetComponent<DiamondPickup>();
+                if (diamond != null && diamond.IsMagnetized) isValidTarget = true;
+
+                if (isValidTarget)
+                {
+                    float d = Vector3.Distance(transform.position, item.transform.position);
+                    if (d < minDist)
+                    {
+                        minDist = d;
+                        ikTargetItem = item.transform;
+                    }
+                }
+            }
+        }
+
+        if (ikTargetItem != null)
+        {
+            handIKWeight = Mathf.Lerp(handIKWeight, 0.8f, Time.deltaTime * 8f);
+            handIKTarget = Vector3.Lerp(handIKTarget, ikTargetItem.position + Vector3.down * 0.2f, Time.deltaTime * 15f);
+        }
+        else
+        {
+            handIKWeight = Mathf.Lerp(handIKWeight, 0f, Time.deltaTime * 6f);
+        }
+
+        anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, handIKWeight);
+        anim.SetIKPosition(AvatarIKGoal.LeftHand, handIKTarget);
     }
 }

@@ -16,16 +16,15 @@ MonoBehaviour:
   weaponName: Barbarian's Officer Axe
   category: 1
   icon: {fileID: 21300000, guid: c9e2dd2f4aa549542840ebf75304c932, type: 3}
-  description: A ceremonial yet lethal war axe, etched with runes of the Bear Spirit.
-    Only the fiercest chieftains wield such devastating power.
-  price: 1600
+  description: Officer's piece of the Wild Clans. Rune-etched for the Bear Spirit; its weight rewards a single, killing blow.
+  price: 1000
   shopPrefab: {fileID: 8406527810264565357, guid: 73df0b61d7cbc0b488506125cca18713, type: 3}
   inGamePrefab: {fileID: 5548968681433392241, guid: d9ebcf06070c13044a82cab96c409270, type: 3}
   basePower: 200
   powerPerLevel: 30
   maxUpgradeLevel: 10
-  baseUpgradeCost: 250
-  upgradeCostMultiplier: 1.4
+  baseUpgradeCost: 160
+  upgradeCostMultiplier: 1.25
   damageBonus: 80
   attackSpeed: 0.6
   critChance: 0.05

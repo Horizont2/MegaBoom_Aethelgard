@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 80d7e859ae7f28d4d95831843ffbf244
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 13400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186894
+  packageName: 'Dreamscape Nature : Meadows : Stylized Open World Environment'
+  packageVersion: 2.2
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Materials/Effects/PM_TreeTrunk.physicMaterial
+  uploadId: 866086

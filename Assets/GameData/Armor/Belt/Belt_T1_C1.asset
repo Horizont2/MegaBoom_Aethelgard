@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 154
   armorName: Novice Belt
-  description: A reliable belt forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Plain leather belt of the foot militia. Bears a single dull buckle.
   category: 3
   prefabIndex: 0
   icon: {fileID: 21300000, guid: 7e06228813fe2214bad273a6968a872a, type: 3}

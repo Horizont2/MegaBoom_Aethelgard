@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_6
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Mountain Trail
-  missionDescription: Explore the high pass during a blizzard.
-  missionType: 2
-  targetAmount: 120
-  woodReward: 5
-  stoneReward: 15
-  foodReward: 7
-  diamondReward: 0
+  missionName: Forest Patrol
+  missionDescription: Sweep the south road. The traders will not pay tribute if they cannot reach us.
+  missionType: 0
+  targetAmount: 30
+  woodReward: 50
+  stoneReward: 25
+  foodReward: 15
+  diamondReward: 10

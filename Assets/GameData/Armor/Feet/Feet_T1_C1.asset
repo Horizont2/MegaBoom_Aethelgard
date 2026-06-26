@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 190
   armorName: Novice Boots
-  description: A reliable boots forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Hobnail boots of the Aethelgard infantry. The soles still bite cobblestone.
   category: 5
   prefabIndex: 0
   icon: {fileID: 21300000, guid: 7b357dde7f65e7043a0b09eae95a7695, type: 3}

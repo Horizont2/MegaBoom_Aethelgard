@@ -12,12 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_2
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Scrap Metal
-  missionDescription: Hunt down heavily armored skeleton knights and salvage their
-    steel.
-  missionType: 0
-  targetAmount: 10
-  woodReward: 5
-  stoneReward: 5
-  foodReward: 3
-  diamondReward: 0
+  missionName: Scrap Run
+  missionDescription: 'Drag back enough aether shards to feed the camp''s furnace through dawn.'
+  missionType: 1
+  targetAmount: 8
+  woodReward: 15
+  stoneReward: 15
+  foodReward: 5
+  diamondReward: 5

@@ -83,6 +83,9 @@ public class ResourceDrop : MonoBehaviour
     {
         if (ResourceManager.Instance != null)
         {
+            // ResourceManager.AddRunResources now fires its own toast
+            // through GlobalHUD, so we no longer call ShowPickupPopup
+            // here вЂ” that produced two stacking toasts per pickup.
             if (resourceType == ResourceType.Wood)
             {
                 ResourceManager.Instance.AddRunResources(amount, 0, 0);
@@ -100,7 +103,6 @@ public class ResourceDrop : MonoBehaviour
             }
             else if (resourceType == ResourceType.Diamond)
             {
-                // Звук діаманта вже викликається всередині GainDiamond, тому тут його не дублюємо
                 playerController.GainDiamond(amount);
             }
         }

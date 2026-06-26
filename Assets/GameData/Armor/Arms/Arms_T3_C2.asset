@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 143
   armorName: Knight Gauntlets (Sturdy)
-  description: A reliable gauntlets forged for a knight warrior. Provides decent
-    protection in battle.
+  description: Tournament gauntlets reissued for war. The fingerplates click softly with each step.
   category: 2
   prefabIndex: 7
   icon: {fileID: 21300000, guid: 9ec646e190fe55449bd1b1d5ce7dd0da, type: 3}
-  price: 2550
+  price: 800
   maxUpgradeLevel: 5
   basePower: 70
   baseHealthBonus: 55

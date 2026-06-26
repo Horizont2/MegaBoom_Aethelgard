@@ -23,13 +23,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: be82deb97b96fa54db570672e30cca62, type: 2}
   - {fileID: 11400000, guid: 439db7e6ed15b494da6d83fbf9ebc625, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 240
+  recommendedPower: 455
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
+  regionTotemPrefab: {fileID: 0}
+  regionBossPrefabs: []
   woodReward: 130
   stoneReward: 200
   foodReward: 70
-  diamondReward: 100
+  diamondReward: 200
   upgradeLevels:
   - costWood: 0
     costStone: 0

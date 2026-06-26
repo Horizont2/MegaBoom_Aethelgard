@@ -13,7 +13,7 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     [Header("UI References")]
     public GameObject lockIcon;
     public Image borderImage;
-    [Tooltip("Шар для відображення туману або бурі над регіоном")]
+    [Tooltip("пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
     public Image stormLayer;
 
     [Header("Map Label (Ink on Paper)")]
@@ -21,7 +21,7 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 
     [Header("Level Indicator")]
     public Image levelIconImage;
-    [Tooltip("Сюди перетягни 5 нарізаних спрайтів (Lv1, Lv2, Lv3, Lv4, Lv5)")]
+    [Tooltip("пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 5 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Lv1, Lv2, Lv3, Lv4, Lv5)")]
     public Sprite[] levelSprites;
 
     [Header("AAA Polish")]
@@ -273,6 +273,14 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         if (mainMapUI != null && myRegionData != null)
         {
+            // Cinematic dolly to the clicked region before opening the
+            // detail panel вЂ” the smooth zoom is what reads as AAA. The
+            // viewer's Update() lerps localScale + anchoredPosition over
+            // its own smoothing window, so we just set the target and
+            // let it glide.
+            MapInteractiveViewer viewer = FindFirstObjectByType<MapInteractiveViewer>();
+            if (viewer != null) viewer.FocusOnNode(GetComponent<RectTransform>(), false);
+
             mainMapUI.OpenPanel(myRegionData, transform.position);
         }
     }

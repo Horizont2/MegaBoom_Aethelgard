@@ -20,6 +20,15 @@ public class CampDirector : MonoBehaviour
             PlayerPrefs.SetInt("SaveBld_ScoutsLodge", 1);
             PlayerPrefs.Save();
         }
+
+        // --- ФІКС БАГУ З ТУТОРІАЛОМ ---
+        // Якщо гравець потрапив у сцену табору, значить вступний рівень (Lvl_1) точно пройдено!
+        if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
+        {
+            PlayerPrefs.SetInt("TutorialCompleted", 1);
+            PlayerPrefs.Save();
+            Debug.Log("[CampDirector] Туторіал успішно відмічено як пройдений!");
+        }
     }
 
     private void Start()

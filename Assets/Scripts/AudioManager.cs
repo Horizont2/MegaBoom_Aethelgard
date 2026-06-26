@@ -43,8 +43,28 @@ public static class AudioID
     public const string Animal_CatMeow = "Animal_CatMeow";
     public const string Animal_Chicken = "Animal_Chicken";
 
+    // === Region mission + boss cinematic ===
+    public const string Boss_Roar = "Boss_Roar";
+    public const string Boss_Stagger = "Boss_Stagger";
+    public const string Boss_Execute = "Boss_Execute";
+    public const string Region_VictoryStinger = "Region_VictoryStinger";
+    public const string Region_Shockwave = "Region_Shockwave";
+    public const string Cinematic_Whoosh = "Cinematic_Whoosh";
+
+    // === Gameplay feel ===
+    public const string Encounter_Cleared = "Encounter_Cleared";
+    public const string Totem_Activate = "Totem_Activate";
+    public const string Player_PerfectDodge = "Player_PerfectDodge";
+
     public const string Music_Camp = "Music_Camp";
     public const string Music_Battle = "Music_Battle";
+
+    // === Ambient soundscape (occasional one-shots layered over music) ===
+    public const string Ambient_Wind = "Ambient_Wind";
+    public const string Ambient_Howl = "Ambient_Howl";
+    public const string Ambient_Crow = "Ambient_Crow";
+    public const string Ambient_DistantThunder = "Ambient_DistantThunder";
+    public const string Ambient_LeafRustle = "Ambient_LeafRustle";
 }
 
 [System.Serializable]
@@ -72,12 +92,26 @@ public class AudioManager : MonoBehaviour
     [Header("=== ANIMALS ===")]
     public SoundGroup animalCatMeow, animalChicken;
 
+    [Header("=== REGION + BOSS CINEMATIC ===")]
+    public SoundGroup bossRoar, bossStagger, bossExecute, regionVictoryStinger, regionShockwave, cinematicWhoosh;
+
+    [Header("=== GAMEPLAY FEEL ===")]
+    public SoundGroup encounterCleared, totemActivate, playerPerfectDodge;
+
+    [Header("=== AMBIENT SOUNDSCAPE ===")]
+    public SoundGroup ambientWind, ambientHowl, ambientCrow, ambientDistantThunder, ambientLeafRustle;
+
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp, musicBattle;
 
     private Dictionary<string, SoundGroup> sfxDictionary;
     private EventInstance currentMusicInstance;
     private string currentMusicName;
+
+    // –î–æ–¥–∞–π—Ç–µ —Ü—ñ –∑–º—ñ–Ω–Ω—ñ –¥–ª—è –≥—É—á–Ω–æ—Å—Ç—ñ
+    public float globalMusicVolume = 1f;
+    public float globalSFXVolume = 1f;
+    public AudioSource musicSource;
 
     private void Awake()
     {
@@ -108,6 +142,37 @@ public class AudioManager : MonoBehaviour
         else if (scene.name == "WorldScene") PlayMusic(AudioID.Music_Battle);
     }
 
+    private void LoadAudioSettings()
+    {
+        // ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ: Mathf.Clamp ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ 1 (100%)
+        globalMusicVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MusicVol", 1f), 0f, 1f);
+        globalSFXVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_SFXVol", 1f), 0f, 1f);
+
+        float masterVol = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MasterVol", 1f), 0f, 1f);
+        AudioListener.volume = masterVol;
+    }
+
+    public void SetMasterVolume(float vol) { AudioListener.volume = vol; PlayerPrefs.SetFloat("Settings_MasterVol", vol); }
+    public void SetMusicVolume(float vol)
+    {
+        globalMusicVolume = vol;
+        PlayerPrefs.SetFloat("Settings_MusicVol", vol);
+
+        // –Ø–∫—â–æ —É –≤–∞—Å —î —à–∏–Ω–∞ "Music" –≤ FMOD Studio
+        RuntimeManager.GetBus("bus:/Music").setVolume(vol);
+    }
+    public void SetSFXVolume(float vol) { globalSFXVolume = vol; PlayerPrefs.SetFloat("Settings_SFXVol", vol); }
+
+    // Extended channels for AAA settings ‚Äî UI / ambient / voice all
+    // multiply on top of master via AudioListener so we only need to
+    // surface them as multipliers consumed at PlayOneShot time.
+    public float globalUIVolume = 1f;
+    public float globalAmbientVolume = 1f;
+    public float globalVoiceVolume = 1f;
+    public void SetUIVolume(float vol) { globalUIVolume = vol; PlayerPrefs.SetFloat("Settings_UIVol", vol); }
+    public void SetAmbientVolume(float vol) { globalAmbientVolume = vol; PlayerPrefs.SetFloat("Settings_AmbientVol", vol); }
+    public void SetVoiceVolume(float vol) { globalVoiceVolume = vol; PlayerPrefs.SetFloat("Settings_VoiceVol", vol); }
+
     private void InitializeDictionaries()
     {
         sfxDictionary = new Dictionary<string, SoundGroup>();
@@ -134,33 +199,52 @@ public class AudioManager : MonoBehaviour
         // Animals
         sfxDictionary.Add(AudioID.Animal_CatMeow, animalCatMeow); sfxDictionary.Add(AudioID.Animal_Chicken, animalChicken);
 
+        // Region + Boss cinematic
+        sfxDictionary.Add(AudioID.Boss_Roar, bossRoar);
+        sfxDictionary.Add(AudioID.Boss_Stagger, bossStagger);
+        sfxDictionary.Add(AudioID.Boss_Execute, bossExecute);
+        sfxDictionary.Add(AudioID.Region_VictoryStinger, regionVictoryStinger);
+        sfxDictionary.Add(AudioID.Region_Shockwave, regionShockwave);
+        sfxDictionary.Add(AudioID.Cinematic_Whoosh, cinematicWhoosh);
+
+        // Gameplay feel
+        sfxDictionary.Add(AudioID.Encounter_Cleared, encounterCleared);
+        sfxDictionary.Add(AudioID.Totem_Activate, totemActivate);
+        sfxDictionary.Add(AudioID.Player_PerfectDodge, playerPerfectDodge);
+
+        sfxDictionary.Add(AudioID.Ambient_Wind, ambientWind);
+        sfxDictionary.Add(AudioID.Ambient_Howl, ambientHowl);
+        sfxDictionary.Add(AudioID.Ambient_Crow, ambientCrow);
+        sfxDictionary.Add(AudioID.Ambient_DistantThunder, ambientDistantThunder);
+        sfxDictionary.Add(AudioID.Ambient_LeafRustle, ambientLeafRustle);
+
         // Music
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp); sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
     }
 
-    // Odpalanie efektÛw düwiÍkowych 2D (interfejs)
+    // Odpalanie efektÔøΩw dÔøΩwiÔøΩkowych 2D (interfejs)
     public void PlayUI(string soundName)
     {
         PlaySFX(soundName);
     }
 
-    // Odpalanie efektÛw düwiÍkowych w úwiecie gry
+    // Odpalanie efektÔøΩw dÔøΩwiÔøΩkowych w ÔøΩwiecie gry
     public void PlaySFX(string soundName)
     {
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
-            // FMOD odpala düwiÍk jednorazowo w locie! 
-            // LosowoúÊ pitchu/g≥oúnoúci ustawiasz bezpoúrednio w programie FMOD Studio!
+            // FMOD odpala dÔøΩwiÔøΩk jednorazowo w locie! 
+            // LosowoÔøΩÔøΩ pitchu/gÔøΩoÔøΩnoÔøΩci ustawiasz bezpoÔøΩrednio w programie FMOD Studio!
             RuntimeManager.PlayOneShot(group.fmodEvent);
         }
     }
 
-    // Zarzπdzanie muzykπ w tle
+    // ZarzÔøΩdzanie muzykÔøΩ w tle
     public void PlayMusic(string soundName)
     {
         if (currentMusicName == soundName) return;
 
-        // Jeúli leci jakaú muzyka, zatrzymujemy jπ z uwzglÍdnieniem wygaszania (Fade Out zdefiniowanego w FMOD Studio)
+        // JeÔøΩli leci jakaÔøΩ muzyka, zatrzymujemy jÔøΩ z uwzglÔøΩdnieniem wygaszania (Fade Out zdefiniowanego w FMOD Studio)
         if (currentMusicInstance.isValid())
         {
             currentMusicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
@@ -174,9 +258,4 @@ public class AudioManager : MonoBehaviour
             currentMusicName = soundName;
         }
     }
-
-    // Puste funkcje zachowane dla kompatybilnoúci kodu programisty (øeby gra siÍ kompilowa≥a)
-    public void SetMasterVolume(float vol) { }
-    public void SetMusicVolume(float vol) { }
-    public void SetSFXVolume(float vol) { }
 }

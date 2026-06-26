@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 173
   armorName: Novice Greaves (Sturdy)
-  description: A reliable greaves forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Quilted leggings cut for long marches. Easy to mend in the field.
   category: 4
   prefabIndex: 1
   icon: {fileID: 21300000, guid: 7e7cd1f644ab51145a010bcbf78f62e3, type: 3}
-  price: 550
+  price: 100
   maxUpgradeLevel: 5
   basePower: 30
   baseHealthBonus: 25

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_15
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Final Stand
-  missionDescription: Protect the extraction point in the dense forest.
+  missionName: Frontline Trench
+  missionDescription: Four minutes alone against everything in the wood. The wall comes after.
   missionType: 2
-  targetAmount: 400
-  woodReward: 40
-  stoneReward: 40
-  foodReward: 40
-  diamondReward: 50
+  targetAmount: 240
+  woodReward: 80
+  stoneReward: 100
+  foodReward: 80
+  diamondReward: 60

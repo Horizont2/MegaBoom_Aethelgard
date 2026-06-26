@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 107
   armorName: Knight Helm (Sturdy)
-  description: A reliable helm forged for a knight warrior. Provides decent protection
-    in battle.
+  description: Knight's helm forged in the Royal Smithy. The visor still carries the king's seal.
   category: 0
   prefabIndex: 7
   icon: {fileID: 21300000, guid: 3ebd7e874551b1e49b9ec13fdbecf594, type: 3}
-  price: 2550
+  price: 800
   maxUpgradeLevel: 5
   basePower: 70
   baseHealthBonus: 55

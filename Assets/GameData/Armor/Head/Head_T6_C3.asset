@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 117
   armorName: Abyssal Helm (Elite)
-  description: A reliable helm forged for a abyssal warrior. Provides decent protection
-    in battle.
+  description: Helm dredged from beneath the Bloodstone Mines. It is not iron. The smiths refuse to name what it is.
   category: 0
   prefabIndex: 17
   icon: {fileID: 21300000, guid: 3ee8e6d0cfa115243919ab6eb2fb2d14, type: 3}
-  price: 9450
+  price: 2700
   maxUpgradeLevel: 5
   basePower: 135
   baseHealthBonus: 105

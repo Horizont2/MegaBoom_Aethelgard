@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 147
   armorName: Paladin Gauntlets (Elite)
-  description: A reliable gauntlets forged for a paladin warrior. Provides decent
-    protection in battle.
+  description: Gauntlets blessed at the Hollow Sun chapel. Filigree of holy runes.
   category: 2
   prefabIndex: 11
   icon: {fileID: 21300000, guid: 784f4a8ccd0f9444fab06b2f2b9b5fac, type: 3}
-  price: 4450
+  price: 1300
   maxUpgradeLevel: 5
   basePower: 95
   baseHealthBonus: 75

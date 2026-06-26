@@ -8,6 +8,7 @@ TagManager:
   - ResourceNode
   - CatPOI
   - ExtractionPoint
+  - DontLocalize
   layers:
   - Default
   - TransparentFX

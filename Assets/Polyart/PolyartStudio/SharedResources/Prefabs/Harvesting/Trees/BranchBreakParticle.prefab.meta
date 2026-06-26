@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: efbd88eeed2b0484ea97b1dca6c7776c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317546
+  packageName: 'Farmlands : Ultimate Stylized Farm Environment'
+  packageVersion: 1.1
+  assetPath: Assets/Polyart/PolyartStudio/SharedResources/Prefabs/Harvesting/Trees/BranchBreakParticle.prefab
+  uploadId: 752582

@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 104
   armorName: Mercenary Helm (Sturdy)
-  description: A reliable helm forged for a mercenary warrior. Provides decent protection
-    in battle.
+  description: Open-faced helm of the Lowland Free Companies. The brow bears a healed crack.
   category: 0
   prefabIndex: 4
   icon: {fileID: 21300000, guid: dbde1c3359819124681571c5f853a577, type: 3}
-  price: 1300
+  price: 400
   maxUpgradeLevel: 5
   basePower: 50
   baseHealthBonus: 40

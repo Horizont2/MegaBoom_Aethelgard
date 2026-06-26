@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 161
   armorName: Knight Belt (Sturdy)
-  description: A reliable belt forged for a knight warrior. Provides decent protection
-    in battle.
+  description: Belt of a Royal Order knight. The buckle is shaped as a falcon mid-strike.
   category: 3
   prefabIndex: 7
   icon: {fileID: 21300000, guid: 1147bfb51b95e0944a943a6455ea6bfa, type: 3}
-  price: 2550
+  price: 800
   maxUpgradeLevel: 5
   basePower: 70
   baseHealthBonus: 55

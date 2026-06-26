@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6617070365945808750
 Transform:
   m_ObjectHideFlags: 0
@@ -4778,7 +4778,8 @@ MonoBehaviour:
   - {fileID: 964249021273521635}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 2426404073247421201}
   isCurrentlyVisible: 1
 --- !u!4 &2101667809818396300 stripped
 Transform:

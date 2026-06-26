@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_12
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Frontline Builder
-  missionDescription: Map the distant forest borders.
-  missionType: 2
-  targetAmount: 300
-  woodReward: 25
-  stoneReward: 25
-  foodReward: 25
-  diamondReward: 0
+  missionName: Crystal Rush
+  missionDescription: The aetherwells are bleeding. Reap what they leak before the corruption seals them.
+  missionType: 1
+  targetAmount: 70
+  woodReward: 50
+  stoneReward: 50
+  foodReward: 40
+  diamondReward: 55

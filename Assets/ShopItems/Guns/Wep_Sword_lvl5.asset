@@ -16,16 +16,15 @@ MonoBehaviour:
   weaponName: Aethelgard's Vengeance
   category: 0
   icon: {fileID: 21300000, guid: c8545946627fe69429f5fefc19e216a8, type: 3}
-  description: An ancient, masterwork greatsword glowing with residual magic. Legends
-    say it clove through shadow-beasts during the First Siege.
-  price: 3500
+  description: Recovered from the King's tomb beneath Old Aethelgard. The steel is older than the kingdom and remembers every hand that has carried it.
+  price: 2000
   shopPrefab: {fileID: 3030662099941857429, guid: a8847a5e05a707a4ebc10a507999f4a8, type: 3}
   inGamePrefab: {fileID: 7705683734966450536, guid: 4f6e37ac6643cd14e84eb94f9516c131, type: 3}
   basePower: 350
   powerPerLevel: 40
   maxUpgradeLevel: 15
-  baseUpgradeCost: 400
-  upgradeCostMultiplier: 1.3
+  baseUpgradeCost: 250
+  upgradeCostMultiplier: 1.25
   damageBonus: 100
   attackSpeed: 1.2
   critChance: 0.25

@@ -10,7 +10,7 @@ public class CampWorkerAI : MonoBehaviour
 
     [Header("Locations")]
     public Transform dropPoint;
-    public Transform spawnPoint; // НОВЕ: Точка на краю лісу, звідки він прийде
+    public Transform spawnPoint;
     public float searchRadius = 30f;
 
     [Header("Distances")]
@@ -35,7 +35,6 @@ public class CampWorkerAI : MonoBehaviour
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (carryItemVisual != null) carryItemVisual.SetActive(false);
 
-        // Найнадійніший спосіб сховати NPC: відправляємо його глибоко під карту
         transform.position = new Vector3(0, -1000f, 0);
 
         StartCoroutine(InitAndStartRoutine());
@@ -45,13 +44,12 @@ public class CampWorkerAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            anim.SetFloat("Speed", agent.velocity.magnitude);
+            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
         }
     }
 
     private IEnumerator InitAndStartRoutine()
     {
-        // 1. Чекаємо, поки будівлю побудують
         if (myBuilding != null)
         {
             while (myBuilding.currentLevel == 0) yield return null;
@@ -59,7 +57,6 @@ public class CampWorkerAI : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        // 2. Ставимо лісоруба на точку старту (край лісу)
         Vector3 startPos = spawnPoint != null ? spawnPoint.position : (dropPoint != null ? dropPoint.position : Vector3.zero);
 
         if (Terrain.activeTerrain != null)
@@ -70,11 +67,10 @@ public class CampWorkerAI : MonoBehaviour
 
         transform.position = startPos;
 
-        // 3. Вмикаємо агента
         if (agent != null)
         {
             agent.enabled = true;
-            yield return null; // Даємо 1 кадр на ініціалізацію NavMesh
+            yield return null;
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(startPos, out hit, 4f, NavMesh.AllAreas))
@@ -83,26 +79,22 @@ public class CampWorkerAI : MonoBehaviour
             }
         }
 
-        // 4. ЕПІЧНА ПОЯВА: Йде до своєї нової лісопилки!
         if (agent != null && dropPoint != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
             agent.stoppingDistance = dropDistance;
             agent.SetDestination(dropPoint.position);
 
-            // Чекаємо поки він дійде до робочого місця
             while (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.1f)
             {
                 yield return null;
             }
 
-            // Прийшов! Зупиняється і дивиться на лісопилку 1 секунду
             agent.isStopped = true;
             transform.rotation = dropPoint.rotation;
             yield return new WaitForSeconds(1f);
         }
 
-        // 5. Починає нормальний робочий цикл
         StartCoroutine(WorkerRoutine());
     }
 
@@ -224,18 +216,22 @@ public class CampWorkerAI : MonoBehaviour
 
     private CampTree FindNearestTree()
     {
-        CampTree[] allTrees = Object.FindObjectsByType<CampTree>(FindObjectsSortMode.None);
+        // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OverlapSphere пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+        Collider[] hits = Physics.OverlapSphere(transform.position, searchRadius);
         CampTree nearest = null;
         float minDistance = Mathf.Infinity;
 
-        foreach (CampTree tree in allTrees)
+        foreach (Collider hit in hits)
         {
-            if (tree.isChopped) continue;
-            float dist = Vector3.Distance(transform.position, tree.transform.position);
-            if (dist < minDistance && dist <= searchRadius)
+            CampTree tree = hit.GetComponent<CampTree>();
+            if (tree != null && !tree.isChopped)
             {
-                minDistance = dist;
-                nearest = tree;
+                float dist = Vector3.Distance(transform.position, tree.transform.position);
+                if (dist < minDistance)
+                {
+                    minDistance = dist;
+                    nearest = tree;
+                }
             }
         }
         return nearest;

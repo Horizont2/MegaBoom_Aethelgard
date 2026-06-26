@@ -3,14 +3,13 @@ using UnityEngine;
 public class TreeVFX : MonoBehaviour
 {
     [Header("VFX Prefabs (Spawned on action)")]
-    public GameObject hitVFXPrefab;   // Тріски при ударі
-    public GameObject fallDustPrefab; // Хмара пилу при падінні
+    public GameObject hitVFXPrefab;
+    public GameObject fallDustPrefab;
 
     public void PlayHitEffect()
     {
         if (hitVFXPrefab != null)
         {
-            // Вираховуємо висоту удару: беремо найнижчу точку колайдера і піднімаємо на 1 метр
             Collider col = GetComponent<Collider>();
             Vector3 spawnPos = transform.position + Vector3.up * 1f;
             if (col != null)
@@ -20,7 +19,9 @@ public class TreeVFX : MonoBehaviour
 
             GameObject fx = Instantiate(hitVFXPrefab, spawnPos, Quaternion.identity);
 
-            // Примусово запускаємо ефект, навіть якщо галочка Play On Awake вимкнена
+            // ФІКС: Вмикаємо об'єкт, бо префаб міг бути деактивованим для оптимізації
+            fx.SetActive(true);
+
             ParticleSystem ps = fx.GetComponentInChildren<ParticleSystem>();
             if (ps != null) ps.Play();
 
@@ -33,6 +34,8 @@ public class TreeVFX : MonoBehaviour
         if (fallDustPrefab != null)
         {
             GameObject fx = Instantiate(fallDustPrefab, rootPosition + Vector3.up * 0.2f, Quaternion.identity);
+
+            fx.SetActive(true); // Вмикаємо пил
 
             ParticleSystem ps = fx.GetComponentInChildren<ParticleSystem>();
             if (ps != null) ps.Play();

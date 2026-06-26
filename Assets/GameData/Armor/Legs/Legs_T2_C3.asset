@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 177
   armorName: Mercenary Greaves (Elite)
-  description: A reliable greaves forged for a mercenary warrior. Provides decent
-    protection in battle.
+  description: Patched campaign leggings. Whatever they were paid, it bought one more season.
   category: 4
   prefabIndex: 5
   icon: {fileID: 21300000, guid: f7950371c54fe734b8ab3584efe89d0c, type: 3}
-  price: 1450
+  price: 500
   maxUpgradeLevel: 5
   basePower: 55
   baseHealthBonus: 45

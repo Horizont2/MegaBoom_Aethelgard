@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 172
   armorName: Novice Greaves
-  description: A reliable greaves forged for a novice warrior. Provides decent protection
-    in battle.
+  description: Quilted leggings cut for long marches. Easy to mend in the field.
   category: 4
   prefabIndex: 0
   icon: {fileID: 21300000, guid: e6686cbfec29afb4f997ac22f936a38b, type: 3}

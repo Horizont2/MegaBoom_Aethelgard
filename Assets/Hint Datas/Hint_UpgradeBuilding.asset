@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15460bbd788ee734a99b0e3a497c108a, type: 3}
+  m_Name: Hint_UpgradeBuilding
+  m_EditorClassIdentifier: 
+  key: UpgradeBuilding
+  title: UPGRADE
+  body: Hold <b>E</b> to begin an upgrade. Each tier raises production and unlocks
+    a stronger passive bonus.
+  icon: {fileID: 0}
+  videoClip: {fileID: 32900000, guid: 9bd162d4c20e04e439614fcfe3a9454b, type: 3}
+  duration: 6
+  waitForInput: 0
+  pauseGameWhileShown: 1
+  showSound: {fileID: 0}

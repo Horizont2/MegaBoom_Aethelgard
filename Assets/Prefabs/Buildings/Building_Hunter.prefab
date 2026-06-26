@@ -77,31 +77,31 @@ MonoBehaviour:
   isStorageVault: 0
   currentLevel: 0
   levels:
-  - costWood: 80
-    costStone: 20
+  - costWood: 60
+    costStone: 15
     costFood: 0
     productionValue: 2
     productionDescription: +2 FOOD/MIN
-  - costWood: 120
-    costStone: 40
+  - costWood: 90
+    costStone: 30
     costFood: 0
-    productionValue: 5
-    productionDescription: +5 FOOD/MIN
-  - costWood: 180
-    costStone: 80
+    productionValue: 6
+    productionDescription: +6 FOOD/MIN
+  - costWood: 135
+    costStone: 60
     costFood: 0
-    productionValue: 9
-    productionDescription: +9 FOOD/MIN
-  - costWood: 260
-    costStone: 130
+    productionValue: 11
+    productionDescription: +11 FOOD/MIN
+  - costWood: 195
+    costStone: 98
     costFood: 0
-    productionValue: 14
-    productionDescription: +14 FOOD/MIN
-  - costWood: 380
-    costStone: 200
+    productionValue: 18
+    productionDescription: +18 FOOD/MIN
+  - costWood: 285
+    costStone: 150
     costFood: 0
-    productionValue: 20
-    productionDescription: +20 FOOD/MIN
+    productionValue: 25
+    productionDescription: +25 FOOD/MIN
   holdTimeRequired: 3
   uiCanvas: {fileID: 6048950706500882816}
   holdFillImage: {fileID: 3934444087665526538}

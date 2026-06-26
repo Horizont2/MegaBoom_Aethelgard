@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 135
   armorName: Abyssal Chestplate (Elite)
-  description: A reliable chestplate forged for a abyssal warrior. Provides decent
-    protection in battle.
+  description: Abyssal chestplate. It does not rust. It does not warm. It does not breathe with the wearer.
   category: 1
   prefabIndex: 17
   icon: {fileID: 21300000, guid: 97199868fdaae1a47941232a9b90282f, type: 3}
-  price: 9450
+  price: 2700
   maxUpgradeLevel: 5
   basePower: 135
   baseHealthBonus: 105

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_3
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Crystal Fever
-  missionDescription: Collect magical crystals dropped by defeated enemies.
-  missionType: 1
-  targetAmount: 10
-  woodReward: 5
-  stoneReward: 5
-  foodReward: 3
-  diamondReward: 10
+  missionName: Long Watch
+  missionDescription: 'Hold position while the runners get clear. Don''t die. Don''t move.'
+  missionType: 2
+  targetAmount: 60
+  woodReward: 20
+  stoneReward: 15
+  foodReward: 10
+  diamondReward: 5

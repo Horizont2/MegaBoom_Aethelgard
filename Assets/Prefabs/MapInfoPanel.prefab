@@ -301,8 +301,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4292470250
-  m_fontColor: {r: 0.91764706, g: 0.8980392, b: 0.8509804, a: 1}
+    rgba: 4281479735
+  m_fontColor: {r: 0.21509439, g: 0.19764334, b: 0.19764334, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1358,7 +1358,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -2428,8 +2428,8 @@ MonoBehaviour:
   upgMaxLevelText: {fileID: 3913584559578784817}
   affordableColor: {r: 0.298, g: 0.686, b: 0.314, a: 1}
   unaffordableColor: {r: 0.957, g: 0.263, b: 0.212, a: 1}
-  btnTextAffordableColor: {r: 1, g: 1, b: 1, a: 1}
-  btnTextUnaffordableColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  btnTextAffordableColor: {r: 0.19999999, g: 0.19886792, b: 0.19886792, a: 1}
+  btnTextUnaffordableColor: {r: 0.690566, g: 0.09772151, b: 0.09772151, a: 1}
   upgradeSuccessVFX: {fileID: 0}
   shakeIntensity: 8
   shakeDuration: 0.2
@@ -5304,7 +5304,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:

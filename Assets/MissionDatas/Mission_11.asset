@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_11
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Wild Harvest
-  missionDescription: Deep expedition for energy sources.
-  missionType: 1
-  targetAmount: 75
-  woodReward: 15
-  stoneReward: 15
-  foodReward: 10
+  missionName: Mountain Vigil
+  missionDescription: 'Keep the high pass watched. If you fall, the eastern villages fall with you.'
+  missionType: 2
+  targetAmount: 150
+  woodReward: 35
+  stoneReward: 60
+  foodReward: 35
   diamondReward: 30

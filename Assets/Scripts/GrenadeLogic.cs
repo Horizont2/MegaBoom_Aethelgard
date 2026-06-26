@@ -23,6 +23,8 @@ public class GrenadeLogic : MonoBehaviour
     private CameraFollow mainCameraScript;
     private MeshRenderer meshRenderer;
 
+    private static readonly Collider[] s_explosionBuffer = new Collider[64];
+
     private void Start()
     {
         countdown = fallbackDelay;
@@ -55,12 +57,12 @@ public class GrenadeLogic : MonoBehaviour
 
         if (explosionEffect != null) ObjectPoolManager.Instance.SpawnFromPool(explosionEffect, transform.position, Quaternion.identity);
 
-        Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);
+        int colliderCount = Physics.OverlapSphereNonAlloc(transform.position, explosionRadius, s_explosionBuffer);
         int enemyCount = 0;
 
-        foreach (Collider nearbyObject in colliders)
+        for (int i = 0; i < colliderCount; i++)
         {
-            if (nearbyObject.CompareTag("Enemy")) enemyCount++;
+            if (s_explosionBuffer[i].CompareTag("Enemy")) enemyCount++;
         }
 
         int multiplier = 1;
@@ -76,11 +78,12 @@ public class GrenadeLogic : MonoBehaviour
             StartCoroutine(HitStopRoutine(currentHitStop));
         }
 
-        foreach (Collider nearbyObject in colliders)
+        for (int i = 0; i < colliderCount; i++)
         {
+            Collider nearbyObject = s_explosionBuffer[i];
             if (nearbyObject.TryGetComponent(out IDamageable damageable))
             {
-                // ФІКС: Граната наносить шкоду ТІЛЬКИ ворогам та гравцю (ігнорує дерева/ресурси)
+                // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ТІпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                 if (!nearbyObject.CompareTag("Enemy") && !nearbyObject.CompareTag("Player")) continue;
 
                 Vector3 pushDir = (nearbyObject.transform.position - transform.position).normalized;
@@ -103,7 +106,7 @@ public class GrenadeLogic : MonoBehaviour
 
                 if (!isPlayer && crystalPrefab != null && ObjectPoolManager.Instance != null)
                 {
-                    for (int i = 0; i < multiplier - 1; i++)
+                    for (int m = 0; m < multiplier - 1; m++)
                     {
                         Vector3 offset = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f));
                         ObjectPoolManager.Instance.SpawnFromPool(crystalPrefab, nearbyObject.transform.position + offset, Quaternion.identity);

@@ -1,37 +1,63 @@
 using UnityEngine;
+using System.Collections;
 
 public class MapLootSpawner : MonoBehaviour
 {
     [Header("Loot Settings")]
     public GameObject xpCrystalPrefab;
-    public int amountToSpawn = 150; // Кількість луту на карті
-    public float scatterRadius = 150f; // На якій відстані розкидати лут
+    public int amountToSpawn = 200;
 
     private void Start()
     {
-        // Чекаємо півсекунди, щоб ландшафт 100% встиг згенеруватися, а потім розкидаємо лут
-        Invoke(nameof(ScatterLoot), 0.5f);
+        StartCoroutine(SpawnLootAsync());
     }
 
-    private void ScatterLoot()
+    private IEnumerator SpawnLootAsync()
     {
-        if (xpCrystalPrefab == null) return;
+        if (xpCrystalPrefab == null) yield break;
 
-        for (int i = 0; i < amountToSpawn; i++)
+        // ФІКС 1: Надійне очікування поки гори повністю побудуються
+        while (!WorldGenerator.IsGenerationDone)
         {
-            // Вибираємо випадкову точку в межах великого кола
-            Vector2 randomPoint = Random.insideUnitCircle * scatterRadius;
-            Vector3 spawnPos = new Vector3(randomPoint.x, 0, randomPoint.y);
-
-            // Знаходимо точну висоту гори в цій точці
-            if (Terrain.activeTerrain != null)
-            {
-                float terrainY = Terrain.activeTerrain.SampleHeight(spawnPos) + Terrain.activeTerrain.transform.position.y;
-                spawnPos.y = terrainY + 0.8f; // Трохи піднімаємо над землею
-            }
-
-            // Створюємо кристал
-            Instantiate(xpCrystalPrefab, spawnPos, Quaternion.identity);
+            yield return null;
         }
+
+        if (Terrain.activeTerrain == null) yield break;
+
+        TerrainData tData = Terrain.activeTerrain.terrainData;
+        Vector3 tPos = Terrain.activeTerrain.transform.position;
+        WorldGenerator wg = FindFirstObjectByType<WorldGenerator>();
+        float absoluteWaterHeight = wg != null ? tPos.y + (wg.depth * wg.waterLevel) : -999f;
+
+        int successfullySpawned = 0;
+        int maxAttempts = amountToSpawn * 5;
+        int attempts = 0;
+
+        while (successfullySpawned < amountToSpawn && attempts < maxAttempts)
+        {
+            attempts++;
+
+            float randX = Random.Range(20f, tData.size.x - 20f);
+            float randZ = Random.Range(20f, tData.size.z - 20f);
+
+            Vector3 spawnPos = new Vector3(tPos.x + randX, 0, tPos.z + randZ);
+            spawnPos.y = Terrain.activeTerrain.SampleHeight(spawnPos) + tPos.y;
+
+            // Захист від води
+            if (spawnPos.y <= absoluteWaterHeight + 0.5f) continue;
+
+            // Захист від крутих гір
+            float steepness = tData.GetSteepness(randX / tData.size.x, randZ / tData.size.z);
+            if (steepness > 35f) continue;
+
+            // ФІКС 2: Простий і надійний спавн без блокування коллайдерами дерев
+            GameObject loot = Instantiate(xpCrystalPrefab, spawnPos + Vector3.up * 0.5f, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            loot.transform.SetParent(transform);
+            successfullySpawned++;
+
+            if (attempts % 15 == 0) yield return null;
+        }
+
+        Debug.Log($"[MapLootSpawner] Успішно розкидано {successfullySpawned} кристалів по мапі.");
     }
 }

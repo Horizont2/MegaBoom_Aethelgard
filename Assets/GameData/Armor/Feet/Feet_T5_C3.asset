@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 204
   armorName: Royal Boots (Elite)
-  description: A reliable boots forged for a royal warrior. Provides decent protection
-    in battle.
+  description: Royal greaves, polished only when a king's eye might fall upon them.
   category: 5
   prefabIndex: 14
   icon: {fileID: 21300000, guid: 4e5a1bcc9a9761647b1f9289daa21a5c, type: 3}
-  price: 6700
+  price: 1900
   maxUpgradeLevel: 5
   basePower: 115
   baseHealthBonus: 90

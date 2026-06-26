@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 165
   armorName: Paladin Belt (Elite)
-  description: A reliable belt forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Cord-and-plate belt of the Order. Three silver bells warn the wearer of curses.
   category: 3
   prefabIndex: 11
   icon: {fileID: 21300000, guid: ae28d5ee1d2066643a5ef7c3b36a7743, type: 3}
-  price: 4450
+  price: 1300
   maxUpgradeLevel: 5
   basePower: 95
   baseHealthBonus: 75

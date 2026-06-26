@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
+public class ResourceNode : MonoBehaviour, IDamageable
 {
     public enum NodeType { Tree, Rock, Barrel }
 
@@ -31,15 +31,17 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         originalScale = transform.localScale;
     }
 
-    // ААА-архітектура: Приймаємо структуру замість простої цифри
     public void TakeDamage(DamageInfo info)
     {
         if (isDead) return;
 
         currentHealth -= info.Amount;
 
-        // Випускаємо пил/іскри при кожному ударі
-        if (hitEffect != null) hitEffect.Play();
+        if (hitEffect != null)
+        {
+            if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+            hitEffect.Play();
+        }
 
         StopAllCoroutines();
 
@@ -50,17 +52,14 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         }
         else
         {
-            // РОЗУМНА АНІМАЦІЯ ЗАЛЕЖНО ВІД ТИПУ
             if (nodeType == NodeType.Rock)
             {
-                // Камінь фізично зменшується
-                float healthPercent = currentHealth / maxHealth;
+                float healthPercent = currentHealth / actualMaxHealth;
                 Vector3 targetScale = originalScale * Mathf.Max(0.4f, healthPercent);
                 StartCoroutine(SquishRoutine(targetScale));
             }
             else
             {
-                // Дерева і бочки хитаються від удару
                 StartCoroutine(WobbleRoutine());
             }
         }
@@ -97,8 +96,21 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
         if (nodeType == NodeType.Tree)
         {
             Vector3 pivotPoint = transform.position;
-            Collider col = GetComponentInChildren<Collider>();
-            if (col != null) pivotPoint.y = col.bounds.min.y;
+            Collider[] cols = GetComponentsInChildren<Collider>();
+
+            // Знаходимо найнижчу точку (корінь) для осі обертання
+            if (cols.Length > 0 && cols[0] != null) pivotPoint.y = cols[0].bounds.min.y;
+
+            // ==========================================
+            // ФІКС 2: Одразу вимикаємо всі колайдери дерева, щоб воно не вдавлювало гравця
+            // ==========================================
+            foreach (Collider c in cols)
+            {
+                if (c != null) c.enabled = false;
+            }
+
+            // ЗБЕРІГАЄМО ПОЧАТКОВУ РОТАЦІЮ ДЕРЕВА ДО ТОГО ЯК ВОНО ВПАДЕ
+            Quaternion initialRotation = transform.rotation;
 
             float fallDuration = 0.5f;
             float fallSpeed = 90f / fallDuration;
@@ -111,15 +123,25 @@ public class ResourceNode : MonoBehaviour, IDamageable // НОВЕ: Інтерфейс
                 yield return null;
             }
 
-            if (hitEffect != null) hitEffect.Play();
-            if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, transform.rotation);
+            if (hitEffect != null)
+            {
+                if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+                hitEffect.Play();
+            }
+
+            // ВИКОРИСТОВУЄМО ПОЧАТКОВУ РОТАЦІЮ ДЛЯ ПЕНЬКА
+            if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, initialRotation);
 
             yield return new WaitForSeconds(0.5f);
             Destroy(gameObject);
         }
         else
         {
-            if (hitEffect != null) hitEffect.Play();
+            if (hitEffect != null)
+            {
+                if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
+                hitEffect.Play();
+            }
 
             if (GetComponentInChildren<MeshRenderer>() != null) GetComponentInChildren<MeshRenderer>().enabled = false;
             if (GetComponent<Collider>() != null) GetComponent<Collider>().enabled = false;

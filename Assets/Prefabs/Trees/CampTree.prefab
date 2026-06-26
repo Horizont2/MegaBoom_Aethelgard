@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6008420488128653990
 Transform:
   m_ObjectHideFlags: 0
@@ -4808,7 +4808,9 @@ MonoBehaviour:
   - {fileID: 5604614537702280292}
   animator: {fileID: 0}
   lights: []
-  particles: []
+  particles:
+  - {fileID: 1565756016322884437}
+  - {fileID: 9127472498350802507}
   isCurrentlyVisible: 1
 --- !u!1 &4326599246691624536
 GameObject:
@@ -4827,7 +4829,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6785586052214917127
 Transform:
   m_ObjectHideFlags: 0

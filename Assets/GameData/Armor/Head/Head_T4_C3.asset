@@ -14,12 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
   armorID: 111
   armorName: Paladin Helm (Elite)
-  description: A reliable helm forged for a paladin warrior. Provides decent protection
-    in battle.
+  description: Helm of the Hollow Sun. The seer's prayer is etched along the cheekguard.
   category: 0
   prefabIndex: 11
   icon: {fileID: 21300000, guid: ee856421ccc87c94d80d2e0f785679f5, type: 3}
-  price: 4450
+  price: 1300
   maxUpgradeLevel: 5
   basePower: 95
   baseHealthBonus: 75

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ae77dc6f206ac46bc6e35a259b0dcc, type: 3}
   m_Name: Mission_13
   m_EditorClassIdentifier: Assembly-CSharp::MissionData
-  missionName: Engineering Mastery
-  missionDescription: Reach a new level of camp efficiency.
-  missionType: 3
-  targetAmount: 2
-  woodReward: 50
-  stoneReward: 40
-  foodReward: 15
-  diamondReward: 0
+  missionName: Highland Purge
+  missionDescription: 'Burn the hillside clean. Every skeleton, every wraith, every chained thing.'
+  missionType: 0
+  targetAmount: 75
+  woodReward: 85
+  stoneReward: 100
+  foodReward: 45
+  diamondReward: 65
