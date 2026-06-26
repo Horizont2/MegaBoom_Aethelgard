@@ -53,9 +53,11 @@ public class IntroCinematicManager : MonoBehaviour
     // МЕТОД ДЛЯ ВИКЛИКУ З TIMELINE
     public void SetSubtitle(string fullText)
     {
+        // ЗАХИСТ: Якщо об'єкт уже вимкнений, нічого не робимо
+        if (!gameObject.activeInHierarchy) return;
+
         if (typingCoroutine != null) StopCoroutine(typingCoroutine);
 
-        // Автоматично розбиваємо текст перед тим, як його друкувати
         List<string> autoChunks = AutoSplitText(fullText);
         typingCoroutine = StartCoroutine(TypeTextChunks(autoChunks));
     }
@@ -130,7 +132,8 @@ public class IntroCinematicManager : MonoBehaviour
 
     public void SkipCinematic()
     {
-        if (isSkipping) return;
+        // ЗАХИСТ: Перевіряємо чи активний об'єкт
+        if (!gameObject.activeInHierarchy || isSkipping) return;
         isSkipping = true;
         StartCoroutine(FadeOutCinematic());
     }
