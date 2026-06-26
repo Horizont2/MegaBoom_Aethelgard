@@ -3331,249 +3331,384 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   uiClick:
-    clips:
-    - {fileID: 8300000, guid: 50fbea6c138d3ea42a74d6590cc2ad4b, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiHover:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiQuestAccept:
-    clips:
-    - {fileID: 8300000, guid: 46296c765d01de74da228fa15f785117, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiQuestComplete:
-    clips:
-    - {fileID: 8300000, guid: fe7978cc72edee44e9028a0b428e34ec, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiError:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiLevelUp:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   uiPurchase:
-    clips:
-    - {fileID: 8300000, guid: 1a738ab4bd199294b9b38b5590400abf, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerDash:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerSwing:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerHitEnemy:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerHitResource:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerHurt:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerThrow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerHeal:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerFootstep:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   explosion:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyAgro:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyTelegraph:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyAttack:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyHurt:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyDie:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   enemyFootstep:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campCollectItem:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campCollectGem:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campBuildStart:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campBuildDone:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   npcWork:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   envThunder:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   envChestOpen:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   animalCatMeow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   animalChicken:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossRoar:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossStagger:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossExecute:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionVictoryStinger:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionShockwave:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   cinematicWhoosh:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   encounterCleared:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   totemActivate:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerPerfectDodge:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientWind:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientCrow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientDistantThunder:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientLeafRustle:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
-    clips:
-    - {fileID: 8300000, guid: 2f81e7c29f7609146bea894c96d68900, type: 3}
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicBattle:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
-  sfxPoolSize: 15
-  musicFadeDuration: 1.5
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   globalMusicVolume: 1
   globalSFXVolume: 1
+  musicSource: {fileID: 0}
   globalUIVolume: 1
   globalAmbientVolume: 1
   globalVoiceVolume: 1

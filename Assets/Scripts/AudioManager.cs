@@ -108,6 +108,11 @@ public class AudioManager : MonoBehaviour
     private EventInstance currentMusicInstance;
     private string currentMusicName;
 
+    // Додайте ці змінні для гучності
+    public float globalMusicVolume = 1f;
+    public float globalSFXVolume = 1f;
+    public AudioSource musicSource;
+
     private void Awake()
     {
         if (Instance == null)
@@ -148,7 +153,14 @@ public class AudioManager : MonoBehaviour
     }
 
     public void SetMasterVolume(float vol) { AudioListener.volume = vol; PlayerPrefs.SetFloat("Settings_MasterVol", vol); }
-    public void SetMusicVolume(float vol) { globalMusicVolume = vol; PlayerPrefs.SetFloat("Settings_MusicVol", vol); UpdateMusicVolume(); }
+    public void SetMusicVolume(float vol)
+    {
+        globalMusicVolume = vol;
+        PlayerPrefs.SetFloat("Settings_MusicVol", vol);
+
+        // Якщо у вас є шина "Music" в FMOD Studio
+        RuntimeManager.GetBus("bus:/Music").setVolume(vol);
+    }
     public void SetSFXVolume(float vol) { globalSFXVolume = vol; PlayerPrefs.SetFloat("Settings_SFXVol", vol); }
 
     // Extended channels for AAA settings — UI / ambient / voice all
@@ -160,21 +172,6 @@ public class AudioManager : MonoBehaviour
     public void SetUIVolume(float vol) { globalUIVolume = vol; PlayerPrefs.SetFloat("Settings_UIVol", vol); }
     public void SetAmbientVolume(float vol) { globalAmbientVolume = vol; PlayerPrefs.SetFloat("Settings_AmbientVol", vol); }
     public void SetVoiceVolume(float vol) { globalVoiceVolume = vol; PlayerPrefs.SetFloat("Settings_VoiceVol", vol); }
-
-    private void UpdateMusicVolume()
-    {
-        if (musicSource != null && musicSource.isPlaying)
-        {
-            foreach (var kvp in musicDictionary)
-            {
-                if (kvp.Value.clips != null && kvp.Value.clips.Length > 0 && kvp.Value.clips[0] == musicSource.clip)
-                {
-                    musicSource.volume = kvp.Value.volume * globalMusicVolume;
-                    break;
-                }
-            }
-        }
-    }
 
     private void InitializeDictionaries()
     {
@@ -261,9 +258,4 @@ public class AudioManager : MonoBehaviour
             currentMusicName = soundName;
         }
     }
-
-    // Puste funkcje zachowane dla kompatybilno�ci kodu programisty (�eby gra si� kompilowa�a)
-    public void SetMasterVolume(float vol) { }
-    public void SetMusicVolume(float vol) { }
-    public void SetSFXVolume(float vol) { }
 }
