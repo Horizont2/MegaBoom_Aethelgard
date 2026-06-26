@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using FMODUnity;
+using FMOD.Studio;
 
 public static class AudioID
 {
@@ -68,10 +70,7 @@ public static class AudioID
 [System.Serializable]
 public class SoundGroup
 {
-    public AudioClip[] clips;
-    [Range(0f, 1f)] public float volume = 1f;
-    [Range(0.5f, 2f)] public float pitch = 1f;
-    public bool randomizePitch = false;
+    public EventReference fmodEvent;
 }
 
 public class AudioManager : MonoBehaviour
@@ -105,24 +104,9 @@ public class AudioManager : MonoBehaviour
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp, musicBattle;
 
-    [Header("=== SETTINGS ===")]
-    public int sfxPoolSize = 15;
-    public float musicFadeDuration = 1.5f;
-
-    [HideInInspector] public float globalMusicVolume = 1f;
-    [HideInInspector] public float globalSFXVolume = 1f;
-
-    // �������� ���������� (����� �� ����� ������������� � ���������)
-    private AudioSource musicSource;
-    private AudioSource uiSource;
-    private AudioSource[] sfxSources;
-
-    private Dictionary<string, SoundGroup> sfxDictionary, uiDictionary, musicDictionary;
-    private Coroutine musicFadeCoroutine;
-
-    // ����� ��� ����-����� (������ �� ���������� �����)
-    private float lastUIPlayTime;
-    private string lastUIPlaySound;
+    private Dictionary<string, SoundGroup> sfxDictionary;
+    private EventInstance currentMusicInstance;
+    private string currentMusicName;
 
     private void Awake()
     {
@@ -140,26 +124,6 @@ public class AudioManager : MonoBehaviour
         }
 
         InitializeDictionaries();
-        CreateAudioSources();
-        LoadAudioSettings();
-    }
-
-    private void CreateAudioSources()
-    {
-        // ����������� ��������� � ������ �� �������
-        musicSource = gameObject.AddComponent<AudioSource>();
-        musicSource.loop = true;
-        musicSource.hideFlags = HideFlags.HideInInspector;
-
-        uiSource = gameObject.AddComponent<AudioSource>();
-        uiSource.hideFlags = HideFlags.HideInInspector;
-
-        sfxSources = new AudioSource[sfxPoolSize];
-        for (int i = 0; i < sfxPoolSize; i++)
-        {
-            sfxSources[i] = gameObject.AddComponent<AudioSource>();
-            sfxSources[i].hideFlags = HideFlags.HideInInspector;
-        }
     }
 
     private void OnDestroy()
@@ -215,13 +179,11 @@ public class AudioManager : MonoBehaviour
     private void InitializeDictionaries()
     {
         sfxDictionary = new Dictionary<string, SoundGroup>();
-        uiDictionary = new Dictionary<string, SoundGroup>();
-        musicDictionary = new Dictionary<string, SoundGroup>();
 
         // UI
-        uiDictionary.Add(AudioID.UI_Click, uiClick); uiDictionary.Add(AudioID.UI_Hover, uiHover); uiDictionary.Add(AudioID.UI_QuestAccept, uiQuestAccept);
-        uiDictionary.Add(AudioID.UI_QuestComplete, uiQuestComplete); uiDictionary.Add(AudioID.UI_Error, uiError); uiDictionary.Add(AudioID.UI_LevelUp, uiLevelUp);
-        uiDictionary.Add(AudioID.UI_Purchase, uiPurchase);
+        sfxDictionary.Add(AudioID.UI_Click, uiClick); sfxDictionary.Add(AudioID.UI_Hover, uiHover); sfxDictionary.Add(AudioID.UI_QuestAccept, uiQuestAccept);
+        sfxDictionary.Add(AudioID.UI_QuestComplete, uiQuestComplete); sfxDictionary.Add(AudioID.UI_Error, uiError); sfxDictionary.Add(AudioID.UI_LevelUp, uiLevelUp);
+        sfxDictionary.Add(AudioID.UI_Purchase, uiPurchase);
 
         // Player
         sfxDictionary.Add(AudioID.Player_Dash, playerDash); sfxDictionary.Add(AudioID.Player_Swing, playerSwing); sfxDictionary.Add(AudioID.Player_HitEnemy, playerHitEnemy);
@@ -260,84 +222,48 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Ambient_LeafRustle, ambientLeafRustle);
 
         // Music
-        musicDictionary.Add(AudioID.Music_Camp, musicCamp); musicDictionary.Add(AudioID.Music_Battle, musicBattle);
+        sfxDictionary.Add(AudioID.Music_Camp, musicCamp); sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
     }
 
-    public void PlaySFX(string soundName)
-    {
-        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0)
-        {
-            AudioSource source = GetAvailableSFXSource();
-            if (source != null)
-            {
-                source.clip = group.clips[Random.Range(0, group.clips.Length)];
-                source.volume = group.volume * globalSFXVolume;
-                source.pitch = group.randomizePitch ? group.pitch * Random.Range(0.85f, 1.15f) : group.pitch;
-                source.Play();
-            }
-        }
-    }
-
+    // Odpalanie efekt�w d�wi�kowych 2D (interfejs)
     public void PlayUI(string soundName)
     {
-        // ����-����: ����������� ����� ��������� ��� ����� ����, ���� � �������� ������� ������� ����� 0.05 �������
-        if (soundName == lastUIPlaySound && Time.unscaledTime - lastUIPlayTime < 0.05f) return;
+        PlaySFX(soundName);
+    }
 
-        lastUIPlaySound = soundName;
-        lastUIPlayTime = Time.unscaledTime;
-
-        if (uiDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0 && uiSource != null)
+    // Odpalanie efekt�w d�wi�kowych w �wiecie gry
+    public void PlaySFX(string soundName)
+    {
+        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
-            float dynamicPitch = group.randomizePitch ? group.pitch * Random.Range(0.85f, 1.15f) : group.pitch * Random.Range(0.95f, 1.05f);
-            uiSource.pitch = dynamicPitch;
-            uiSource.PlayOneShot(group.clips[Random.Range(0, group.clips.Length)], group.volume * globalSFXVolume);
+            // FMOD odpala d�wi�k jednorazowo w locie! 
+            // Losowo�� pitchu/g�o�no�ci ustawiasz bezpo�rednio w programie FMOD Studio!
+            RuntimeManager.PlayOneShot(group.fmodEvent);
         }
     }
 
+    // Zarz�dzanie muzyk� w tle
     public void PlayMusic(string soundName)
     {
-        if (musicDictionary.TryGetValue(soundName, out SoundGroup group) && group.clips.Length > 0 && musicSource != null)
+        if (currentMusicName == soundName) return;
+
+        // Je�li leci jaka� muzyka, zatrzymujemy j� z uwzgl�dnieniem wygaszania (Fade Out zdefiniowanego w FMOD Studio)
+        if (currentMusicInstance.isValid())
         {
-            AudioClip clipToPlay = group.clips[0];
-            if (musicSource.clip == clipToPlay && musicSource.isPlaying) return;
-            if (musicFadeCoroutine != null) StopCoroutine(musicFadeCoroutine);
-            musicFadeCoroutine = StartCoroutine(FadeMusicRoutine(clipToPlay, group.volume * globalMusicVolume, group.pitch));
+            currentMusicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+            currentMusicInstance.release();
+        }
+
+        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
+        {
+            currentMusicInstance = RuntimeManager.CreateInstance(group.fmodEvent);
+            currentMusicInstance.start();
+            currentMusicName = soundName;
         }
     }
 
-    private IEnumerator FadeMusicRoutine(AudioClip newClip, float targetVolume, float pitch)
-    {
-        if (musicSource.isPlaying)
-        {
-            float startVol = musicSource.volume;
-            float t = 0;
-            while (t < musicFadeDuration)
-            {
-                t += Time.unscaledDeltaTime;
-                musicSource.volume = Mathf.Lerp(startVol, 0f, t / musicFadeDuration);
-                yield return null;
-            }
-            musicSource.volume = 0f;
-            musicSource.Stop();
-        }
-
-        musicSource.clip = newClip;
-        musicSource.pitch = pitch;
-        musicSource.Play();
-
-        float fadeInTimer = 0;
-        while (fadeInTimer < musicFadeDuration)
-        {
-            fadeInTimer += Time.unscaledDeltaTime;
-            musicSource.volume = Mathf.Lerp(0f, targetVolume, fadeInTimer / musicFadeDuration);
-            yield return null;
-        }
-        musicSource.volume = targetVolume;
-    }
-
-    private AudioSource GetAvailableSFXSource()
-    {
-        foreach (AudioSource source in sfxSources) if (!source.isPlaying) return source;
-        return sfxSources[0];
-    }
+    // Puste funkcje zachowane dla kompatybilno�ci kodu programisty (�eby gra si� kompilowa�a)
+    public void SetMasterVolume(float vol) { }
+    public void SetMusicVolume(float vol) { }
+    public void SetSFXVolume(float vol) { }
 }
