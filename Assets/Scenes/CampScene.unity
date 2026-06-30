@@ -27352,6 +27352,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7567328155276401006, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -1.4858398
+      objectReference: {fileID: 0}
+    - target: {fileID: 7567328155276401006, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -18.069336
+      objectReference: {fileID: 0}
     - target: {fileID: 7586515861558239303, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_SizeDelta.y
       value: 250
@@ -27659,6 +27667,10 @@ PrefabInstance:
     - target: {fileID: 8141585894083667912, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8169061197963646922, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -1.4853516
       objectReference: {fileID: 0}
     - target: {fileID: 8170708943568034435, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
@@ -57697,6 +57709,20 @@ MonoBehaviour:
   fadeAlpha: 0.2
   fadeSpeed: 3
   scansPerSecond: 30
+--- !u!114 &522811761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 522811750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86c6556701af9e04380698b89f691b6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FMODUnity::FMODUnity.StudioListener
+  nonRigidbodyVelocity: 0
+  attenuationObject: {fileID: 0}
 --- !u!1001 &524003176
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -106017,80 +106043,125 @@ MonoBehaviour:
         Data4: -1303176203
       Path: event:/Animals/CatMeow
   animalChicken:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: -6397087
+        Data2: 1278236292
+        Data3: 885319560
+        Data4: 1960737469
+      Path: event:/Animals/Chicken
   bossRoar:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossStagger:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossExecute:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionVictoryStinger:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionShockwave:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   cinematicWhoosh:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   encounterCleared:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   totemActivate:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerPerfectDodge:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientWind:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientCrow:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientDistantThunder:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientLeafRustle:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
     fmodEvent:
       Guid:
@@ -106100,14 +106171,16 @@ MonoBehaviour:
         Data4: 1499660520
       Path: event:/AMB/AMB_Camp
   musicBattle:
-    clips: []
-    volume: 1
-    pitch: 1
-    randomizePitch: 0
-  sfxPoolSize: 15
-  musicFadeDuration: 1.5
+    fmodEvent:
+      Guid:
+        Data1: 719038294
+        Data2: 1146569717
+        Data3: -1294364284
+        Data4: -1267188723
+      Path: event:/AMB/AMB_Journey
   globalMusicVolume: 1
   globalSFXVolume: 1
+  musicSource: {fileID: 0}
   globalUIVolume: 1
   globalAmbientVolume: 1
   globalVoiceVolume: 1

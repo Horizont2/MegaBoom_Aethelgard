@@ -108,10 +108,13 @@ public class AudioManager : MonoBehaviour
     private EventInstance currentMusicInstance;
     private string currentMusicName;
 
-    // Додайте ці змінні для гучності
-    public float globalMusicVolume = 1f;
-    public float globalSFXVolume = 1f;
-    public AudioSource musicSource;
+    // Instancje szyn z FMODa
+    private FMOD.Studio.Bus masterBus;
+    private FMOD.Studio.Bus musicBus;
+    private FMOD.Studio.Bus sfxBus;
+    private FMOD.Studio.Bus uiBus;
+    private FMOD.Studio.Bus ambientBus;
+    private FMOD.Studio.Bus voiceBus;
 
     private void Awake()
     {
@@ -131,6 +134,18 @@ public class AudioManager : MonoBehaviour
         InitializeDictionaries();
     }
 
+    private void Start()
+    {
+        masterBus = RuntimeManager.GetBus("bus:/");
+        musicBus = RuntimeManager.GetBus("bus:/Music");
+        sfxBus = RuntimeManager.GetBus("bus:/Sound FX");
+        uiBus = RuntimeManager.GetBus("bus:/Ui");
+        ambientBus = RuntimeManager.GetBus("bus:/Ambient");
+        voiceBus = RuntimeManager.GetBus("bus:/Voice");
+
+        LoadAudioSettings();
+    }
+
     private void OnDestroy()
     {
         if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -144,34 +159,59 @@ public class AudioManager : MonoBehaviour
 
     private void LoadAudioSettings()
     {
-        // �������� ������: Mathf.Clamp �� ����� ������� ����� ������ �� 1 (100%)
-        globalMusicVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MusicVol", 1f), 0f, 1f);
-        globalSFXVolume = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_SFXVol", 1f), 0f, 1f);
+        // Pobieramy wartości z PlayerPrefs (domyślnie 1f czyli 100% głośności)
+        float masterVol = PlayerPrefs.GetFloat("Settings_MasterVol", 1f);
+        float musicVol = PlayerPrefs.GetFloat("Settings_MusicVol", 1f);
+        float sfxVol = PlayerPrefs.GetFloat("Settings_SFXVol", 1f);
+        float uiVol = PlayerPrefs.GetFloat("Settings_UIVol", 1f);
+        float ambientVol = PlayerPrefs.GetFloat("Settings_AmbientVol", 1f);
+        float voiceVol = PlayerPrefs.GetFloat("Settings_VoiceVol", 1f);
 
-        float masterVol = Mathf.Clamp(PlayerPrefs.GetFloat("Settings_MasterVol", 1f), 0f, 1f);
-        AudioListener.volume = masterVol;
+        // Aplikujemy głośności bezpośrednio do miksera FMOD
+        masterBus.setVolume(masterVol);
+        musicBus.setVolume(musicVol);
+        sfxBus.setVolume(sfxVol);
+        uiBus.setVolume(uiVol);
+        ambientBus.setVolume(ambientVol);
+        voiceBus.setVolume(voiceVol);
     }
 
-    public void SetMasterVolume(float vol) { AudioListener.volume = vol; PlayerPrefs.SetFloat("Settings_MasterVol", vol); }
+    // Funkcje dla suwaków UI (oczekują wartości od 0.0f do 1.0f)
+    public void SetMasterVolume(float vol)
+    {
+        masterBus.setVolume(vol);
+        PlayerPrefs.SetFloat("Settings_MasterVol", vol);
+    }
+
     public void SetMusicVolume(float vol)
     {
-        globalMusicVolume = vol;
+        musicBus.setVolume(vol);
         PlayerPrefs.SetFloat("Settings_MusicVol", vol);
-
-        // Якщо у вас є шина "Music" в FMOD Studio
-        RuntimeManager.GetBus("bus:/Music").setVolume(vol);
     }
-    public void SetSFXVolume(float vol) { globalSFXVolume = vol; PlayerPrefs.SetFloat("Settings_SFXVol", vol); }
 
-    // Extended channels for AAA settings — UI / ambient / voice all
-    // multiply on top of master via AudioListener so we only need to
-    // surface them as multipliers consumed at PlayOneShot time.
-    public float globalUIVolume = 1f;
-    public float globalAmbientVolume = 1f;
-    public float globalVoiceVolume = 1f;
-    public void SetUIVolume(float vol) { globalUIVolume = vol; PlayerPrefs.SetFloat("Settings_UIVol", vol); }
-    public void SetAmbientVolume(float vol) { globalAmbientVolume = vol; PlayerPrefs.SetFloat("Settings_AmbientVol", vol); }
-    public void SetVoiceVolume(float vol) { globalVoiceVolume = vol; PlayerPrefs.SetFloat("Settings_VoiceVol", vol); }
+    public void SetSFXVolume(float vol)
+    {
+        sfxBus.setVolume(vol);
+        PlayerPrefs.SetFloat("Settings_SFXVol", vol);
+    }
+
+    public void SetUIVolume(float vol)
+    {
+        uiBus.setVolume(vol);
+        PlayerPrefs.SetFloat("Settings_UIVol", vol);
+    }
+
+    public void SetAmbientVolume(float vol)
+    {
+        ambientBus.setVolume(vol);
+        PlayerPrefs.SetFloat("Settings_AmbientVol", vol);
+    }
+
+    public void SetVoiceVolume(float vol)
+    {
+        voiceBus.setVolume(vol);
+        PlayerPrefs.SetFloat("Settings_VoiceVol", vol);
+    }
 
     private void InitializeDictionaries()
     {
@@ -222,29 +262,28 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp); sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
     }
 
-    // Odpalanie efekt�w d�wi�kowych 2D (interfejs)
-    public void PlayUI(string soundName)
-    {
-        PlaySFX(soundName);
-    }
+    public void PlayUI(string soundName) { PlaySFX(soundName); }
 
-    // Odpalanie efekt�w d�wi�kowych w �wiecie gry
     public void PlaySFX(string soundName)
     {
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
-            // FMOD odpala d�wi�k jednorazowo w locie! 
-            // Losowo�� pitchu/g�o�no�ci ustawiasz bezpo�rednio w programie FMOD Studio!
             RuntimeManager.PlayOneShot(group.fmodEvent);
         }
     }
 
-    // Zarz�dzanie muzyk� w tle
+    public void PlaySFX3D(string soundName, Vector3 position)
+    {
+        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
+        {
+            RuntimeManager.PlayOneShot(group.fmodEvent, position);
+        }
+    }
+
     public void PlayMusic(string soundName)
     {
         if (currentMusicName == soundName) return;
 
-        // Je�li leci jaka� muzyka, zatrzymujemy j� z uwzgl�dnieniem wygaszania (Fade Out zdefiniowanego w FMOD Studio)
         if (currentMusicInstance.isValid())
         {
             currentMusicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
