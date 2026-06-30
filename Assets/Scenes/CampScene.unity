@@ -57667,6 +57667,7 @@ GameObject:
   - component: {fileID: 522811759}
   - component: {fileID: 522811760}
   - component: {fileID: 522811761}
+  - component: {fileID: 522811762}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -57877,7 +57878,15 @@ MonoBehaviour:
   fadeAlpha: 0.2
   fadeSpeed: 3
   scansPerSecond: 30
---- !u!114 &522811761
+--- !u!81 &522811761
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 522811750}
+  m_Enabled: 1
+--- !u!114 &522811762
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -106253,123 +106262,123 @@ MonoBehaviour:
   animalChicken:
     fmodEvent:
       Guid:
-        Data1: -6397087
-        Data2: 1278236292
-        Data3: 885319560
-        Data4: 1960737469
-      Path: event:/Animals/Chicken
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossRoar:
     fmodEvent:
       Guid:
-        Data1: 1612392752
-        Data2: 1254746842
-        Data3: -2121881679
-        Data4: -2002975019
-      Path: event:/ENemy/Boss/Roar
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossStagger:
     fmodEvent:
       Guid:
-        Data1: 1917467362
-        Data2: 1213465785
-        Data3: -585801320
-        Data4: 114644234
-      Path: event:/ENemy/Stagger
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   bossExecute:
     fmodEvent:
       Guid:
-        Data1: -1492063085
-        Data2: 1327952398
-        Data3: -947395434
-        Data4: -15599563
-      Path: event:/ENemy/Boss/Boss Execute
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionVictoryStinger:
     fmodEvent:
       Guid:
-        Data1: 1233641523
-        Data2: 1341393151
-        Data3: -92908915
-        Data4: 1016019402
-      Path: event:/ENemy/Boss/Victory Stinger
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   regionShockwave:
     fmodEvent:
       Guid:
-        Data1: 1110858150
-        Data2: 1287294704
-        Data3: 593793950
-        Data4: -1205289067
-      Path: event:/ENemy/Shockwave
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   cinematicWhoosh:
     fmodEvent:
       Guid:
-        Data1: 1066734674
-        Data2: 1132191787
-        Data3: 1964989079
-        Data4: -245983134
-      Path: event:/ENemy/Boss/Cinematic Whoosh
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   encounterCleared:
     fmodEvent:
       Guid:
-        Data1: -1635300041
-        Data2: 1089793008
-        Data3: 1328735149
-        Data4: -2058419140
-      Path: event:/UI/Encounter Cleared
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   totemActivate:
     fmodEvent:
       Guid:
-        Data1: 905996406
-        Data2: 1082043002
-        Data3: -600107865
-        Data4: -1590715004
-      Path: event:/UI/Activate Totem
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerPerfectDodge:
     fmodEvent:
       Guid:
-        Data1: -629385297
-        Data2: 1259237887
-        Data3: -185522261
-        Data4: -2128417550
-      Path: event:/Player/Player Perfect Dodge
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientWind:
     fmodEvent:
       Guid:
-        Data1: -2103810906
-        Data2: 1248205352
-        Data3: 1137872263
-        Data4: -40351538
-      Path: event:/AMB/AMB_Wind
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
     fmodEvent:
       Guid:
-        Data1: -1840129684
-        Data2: 1247423786
-        Data3: -1299432010
-        Data4: -265638126
-      Path: event:/AMB/AMB_Howl
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientCrow:
     fmodEvent:
       Guid:
-        Data1: 488879883
-        Data2: 1231444999
-        Data3: -1319577676
-        Data4: -1402412118
-      Path: event:/AMB/AMB_Crow
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientDistantThunder:
     fmodEvent:
       Guid:
-        Data1: 1445464367
-        Data2: 1209521328
-        Data3: -451331425
-        Data4: -1879353210
-      Path: event:/AMB/AMB_Distant_Thunder
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientLeafRustle:
     fmodEvent:
       Guid:
-        Data1: -1149515787
-        Data2: 1327063369
-        Data3: 1891996549
-        Data4: -356795183
-      Path: event:/AMB/AMB_Leaf_Rustle
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
     fmodEvent:
       Guid:
@@ -106381,91 +106390,17 @@ MonoBehaviour:
   musicBattle:
     fmodEvent:
       Guid:
-        Data1: 719038294
-        Data2: 1146569717
-        Data3: -1294364284
-        Data4: -1267188723
-      Path: event:/Music/Music_Journey
-  dialogue1:
-    fmodEvent:
-      Guid:
-        Data1: -56570961
-        Data2: 1112080766
-        Data3: 186498705
-        Data4: -1006490679
-      Path: event:/Dialogue/Dialogue1
-  dialogue2:
-    fmodEvent:
-      Guid:
-        Data1: -835453275
-        Data2: 1175108346
-        Data3: -1380227964
-        Data4: 1274974632
-      Path: event:/Dialogue/Dialogue2
-  dialogue3:
-    fmodEvent:
-      Guid:
-        Data1: -1581335787
-        Data2: 1252278220
-        Data3: 1397179576
-        Data4: -197192432
-      Path: event:/Dialogue/Dialogue3
-  dialogue4:
-    fmodEvent:
-      Guid:
-        Data1: -387594757
-        Data2: 1099872219
-        Data3: -910128474
-        Data4: 880927783
-      Path: event:/Dialogue/Dialogue4
-  dialogue5:
-    fmodEvent:
-      Guid:
-        Data1: 941721244
-        Data2: 1149008904
-        Data3: -1231348345
-        Data4: -1573884790
-      Path: event:/Dialogue/Dialogue5
-  dialogue6:
-    fmodEvent:
-      Guid:
-        Data1: -1274647598
-        Data2: 1113306871
-        Data3: 988026777
-        Data4: 2026982229
-      Path: event:/Dialogue/Dialogue6
-  dialogue7:
-    fmodEvent:
-      Guid:
-        Data1: -1014525079
-        Data2: 1318183965
-        Data3: 740381859
-        Data4: -144367151
-      Path: event:/Dialogue/Dialogue7
-  dialogue8:
-    fmodEvent:
-      Guid:
-        Data1: -294020184
-        Data2: 1133653142
-        Data3: -562419274
-        Data4: -540823255
-      Path: event:/Dialogue/Dialogue8
-  dialogue9:
-    fmodEvent:
-      Guid:
-        Data1: 1700423914
-        Data2: 1318461073
-        Data3: -879997552
-        Data4: 1074459988
-      Path: event:/Dialogue/Dialogue9
-  dialogue10:
-    fmodEvent:
-      Guid:
-        Data1: 1319556318
-        Data2: 1205044369
-        Data3: 630293942
-        Data4: -1736516694
-      Path: event:/Dialogue/Dialogue10
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  globalMusicVolume: 1
+  globalSFXVolume: 1
+  musicSource: {fileID: 0}
+  globalUIVolume: 1
+  globalAmbientVolume: 1
+  globalVoiceVolume: 1
 --- !u!4 &1160241408
 Transform:
   m_ObjectHideFlags: 0

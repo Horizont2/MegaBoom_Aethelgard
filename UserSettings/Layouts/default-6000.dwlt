@@ -360,10 +360,10 @@ MonoBehaviour:
     m_TextWithWhitespace: "Trunk\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 316
+    x: 337.6
     y: 79.200005
-    width: 828.4
-    height: 457.2
+    width: 817.2001
+    height: 442
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -8211,10 +8211,10 @@ MonoBehaviour:
     m_TextWithWhitespace: "Animator\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 318.4
+    x: 337.6
     y: 79.200005
-    width: 833.19995
-    height: 463.6
+    width: 817.2001
+    height: 442
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -8849,10 +8849,10 @@ MonoBehaviour:
     m_TextWithWhitespace: "Timeline\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 280.80002
+    x: 337.6
     y: 79.200005
-    width: 846.8
-    height: 463.6
+    width: 817.2001
+    height: 442
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -23082,7 +23082,7 @@ MonoBehaviour:
     m_SelectedIDs:
     - m_Data: 96432
     m_LastClickedID:
-      m_Data: 0
+      m_Data: 52162
     m_ExpandedIDs:
     - m_Data: 0
     - m_Data: 92870
