@@ -24208,6 +24208,34 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.x
       value: 0.21383667
       objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetUIVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 1453893377046416816, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 1550476947759340810, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -25323,6 +25351,34 @@ PrefabInstance:
     - target: {fileID: 3583909507070674556, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetAmbientVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 3586090128571598022, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
       objectReference: {fileID: 0}
     - target: {fileID: 3647314136942513567, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
@@ -27084,6 +27140,34 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetMasterVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 7144791953297495378, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 7163893294794322792, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -27624,6 +27708,34 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetMusicVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 8072499397792237544, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 8087365645221684766, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -27691,6 +27803,34 @@ PrefabInstance:
     - target: {fileID: 8170708943568034435, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -368
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetVoiceVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 8192329512555757876, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
       objectReference: {fileID: 0}
     - target: {fileID: 8199548742033198029, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
@@ -28231,6 +28371,34 @@ PrefabInstance:
     - target: {fileID: 8854564139925677025, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1160241407}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetSFXVolume
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: AudioManager, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 8884584511446574325, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
       objectReference: {fileID: 0}
     - target: {fileID: 8924629317817767707, guid: 154fcc839d342bd4d946d4fd83477b4f, type: 3}
       propertyPath: m_AnchorMax.y
@@ -57573,8 +57741,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 522811750}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.074671045, y: -0.86047256, z: 0.13558508, w: 0.48541522}
-  m_LocalPosition: {x: 108.907425, y: 38.730473, z: 70.60573}
+  m_LocalRotation: {x: 0.04789216, y: -0.9405773, z: 0.15712784, w: 0.29720616}
+  m_LocalPosition: {x: 39.179016, y: 32.329178, z: 67.32714}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -105858,6 +106026,14 @@ MonoBehaviour:
         Data3: -651174266
         Data4: -569208273
       Path: event:/UI/Purchase
+  uiGameOver:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerDash:
     fmodEvent:
       Guid:
@@ -105874,7 +106050,7 @@ MonoBehaviour:
         Data3: 1595772314
         Data4: 88098492
       Path: event:/Player/Swing
-  playerHitEnemy:
+  playerHitEnemySword:
     fmodEvent:
       Guid:
         Data1: -481280108
@@ -105882,7 +106058,31 @@ MonoBehaviour:
         Data3: -1907442767
         Data4: -1610699695
       Path: event:/Player/Hit_Enemy_Sword
-  playerHitResource:
+  playerHitEnemyBow:
+    fmodEvent:
+      Guid:
+        Data1: 2126182753
+        Data2: 1227569440
+        Data3: 1234770564
+        Data4: 479662618
+      Path: event:/Player/Hit_Enemy_Bow
+  playerHitEnemyHammer:
+    fmodEvent:
+      Guid:
+        Data1: 406549803
+        Data2: 1309184518
+        Data3: 946698664
+        Data4: -1304457811
+      Path: event:/Player/Hit_Enemy_Hammer
+  playerHitResourceStone:
+    fmodEvent:
+      Guid:
+        Data1: 1745867618
+        Data2: 1200906808
+        Data3: -1801414215
+        Data4: 283304331
+      Path: event:/Player/Hit_Stone
+  playerHitResourceWood:
     fmodEvent:
       Guid:
         Data1: 300303717
@@ -105933,19 +106133,19 @@ MonoBehaviour:
   enemyAgro:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1063462776
+        Data2: 1216245444
+        Data3: 2056979877
+        Data4: -1343345824
+      Path: event:/ENemy/Agro
   enemyTelegraph:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1262266861
+        Data2: 1200202773
+        Data3: -2116557643
+        Data4: -26057044
+      Path: event:/ENemy/Charge
   enemyAttack:
     fmodEvent:
       Guid:
@@ -105953,7 +106153,7 @@ MonoBehaviour:
         Data2: 1244269481
         Data3: 272835771
         Data4: 68754711
-      Path: event:/Enemy/Hit
+      Path: event:/ENemy/Hit
   enemyHurt:
     fmodEvent:
       Guid:
@@ -105961,7 +106161,7 @@ MonoBehaviour:
         Data2: 1160991230
         Data3: -272386912
         Data4: 1917118621
-      Path: event:/Enemy/Hurt
+      Path: event:/ENemy/Hurt
   enemyDie:
     fmodEvent:
       Guid:
@@ -105969,7 +106169,7 @@ MonoBehaviour:
         Data2: 1107401261
         Data3: 1621863552
         Data4: -565477885
-      Path: event:/Enemy/Die
+      Path: event:/ENemy/Die
   enemyFootstep:
     fmodEvent:
       Guid:
@@ -105977,7 +106177,15 @@ MonoBehaviour:
         Data2: 1323991254
         Data3: -2112112229
         Data4: -1304438184
-      Path: event:/Enemy/Footsteps
+      Path: event:/ENemy/Footsteps
+  enemyHit:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campCollectItem:
     fmodEvent:
       Guid:
@@ -106013,11 +106221,11 @@ MonoBehaviour:
   npcWork:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 256442602
+        Data2: 1100341043
+        Data3: 233136780
+        Data4: 1980959978
+      Path: event:/ENV/NPC_Work
   envThunder:
     fmodEvent:
       Guid:
@@ -106033,7 +106241,7 @@ MonoBehaviour:
         Data2: 1162263652
         Data3: 1545477536
         Data4: -37443179
-      Path: event:/EnV/WoodChestOpen
+      Path: event:/ENV/WoodChestOpen
   animalCatMeow:
     fmodEvent:
       Guid:
@@ -106053,115 +106261,115 @@ MonoBehaviour:
   bossRoar:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1612392752
+        Data2: 1254746842
+        Data3: -2121881679
+        Data4: -2002975019
+      Path: event:/ENemy/Boss/Roar
   bossStagger:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1917467362
+        Data2: 1213465785
+        Data3: -585801320
+        Data4: 114644234
+      Path: event:/ENemy/Stagger
   bossExecute:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -1492063085
+        Data2: 1327952398
+        Data3: -947395434
+        Data4: -15599563
+      Path: event:/ENemy/Boss/Boss Execute
   regionVictoryStinger:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1233641523
+        Data2: 1341393151
+        Data3: -92908915
+        Data4: 1016019402
+      Path: event:/ENemy/Boss/Victory Stinger
   regionShockwave:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1110858150
+        Data2: 1287294704
+        Data3: 593793950
+        Data4: -1205289067
+      Path: event:/ENemy/Shockwave
   cinematicWhoosh:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1066734674
+        Data2: 1132191787
+        Data3: 1964989079
+        Data4: -245983134
+      Path: event:/ENemy/Boss/Cinematic Whoosh
   encounterCleared:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -1635300041
+        Data2: 1089793008
+        Data3: 1328735149
+        Data4: -2058419140
+      Path: event:/UI/Encounter Cleared
   totemActivate:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 905996406
+        Data2: 1082043002
+        Data3: -600107865
+        Data4: -1590715004
+      Path: event:/UI/Activate Totem
   playerPerfectDodge:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -629385297
+        Data2: 1259237887
+        Data3: -185522261
+        Data4: -2128417550
+      Path: event:/Player/Player Perfect Dodge
   ambientWind:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -2103810906
+        Data2: 1248205352
+        Data3: 1137872263
+        Data4: -40351538
+      Path: event:/AMB/AMB_Wind
   ambientHowl:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -1840129684
+        Data2: 1247423786
+        Data3: -1299432010
+        Data4: -265638126
+      Path: event:/AMB/AMB_Howl
   ambientCrow:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 488879883
+        Data2: 1231444999
+        Data3: -1319577676
+        Data4: -1402412118
+      Path: event:/AMB/AMB_Crow
   ambientDistantThunder:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1445464367
+        Data2: 1209521328
+        Data3: -451331425
+        Data4: -1879353210
+      Path: event:/AMB/AMB_Distant_Thunder
   ambientLeafRustle:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -1149515787
+        Data2: 1327063369
+        Data3: 1891996549
+        Data4: -356795183
+      Path: event:/AMB/AMB_Leaf_Rustle
   musicCamp:
     fmodEvent:
       Guid:
@@ -106169,7 +106377,7 @@ MonoBehaviour:
         Data2: 1152121598
         Data3: -15586668
         Data4: 1499660520
-      Path: event:/AMB/AMB_Camp
+      Path: event:/Music/Music_Camp
   musicBattle:
     fmodEvent:
       Guid:
@@ -106177,13 +106385,87 @@ MonoBehaviour:
         Data2: 1146569717
         Data3: -1294364284
         Data4: -1267188723
-      Path: event:/AMB/AMB_Journey
-  globalMusicVolume: 1
-  globalSFXVolume: 1
-  musicSource: {fileID: 0}
-  globalUIVolume: 1
-  globalAmbientVolume: 1
-  globalVoiceVolume: 1
+      Path: event:/Music/Music_Journey
+  dialogue1:
+    fmodEvent:
+      Guid:
+        Data1: -56570961
+        Data2: 1112080766
+        Data3: 186498705
+        Data4: -1006490679
+      Path: event:/Dialogue/Dialogue1
+  dialogue2:
+    fmodEvent:
+      Guid:
+        Data1: -835453275
+        Data2: 1175108346
+        Data3: -1380227964
+        Data4: 1274974632
+      Path: event:/Dialogue/Dialogue2
+  dialogue3:
+    fmodEvent:
+      Guid:
+        Data1: -1581335787
+        Data2: 1252278220
+        Data3: 1397179576
+        Data4: -197192432
+      Path: event:/Dialogue/Dialogue3
+  dialogue4:
+    fmodEvent:
+      Guid:
+        Data1: -387594757
+        Data2: 1099872219
+        Data3: -910128474
+        Data4: 880927783
+      Path: event:/Dialogue/Dialogue4
+  dialogue5:
+    fmodEvent:
+      Guid:
+        Data1: 941721244
+        Data2: 1149008904
+        Data3: -1231348345
+        Data4: -1573884790
+      Path: event:/Dialogue/Dialogue5
+  dialogue6:
+    fmodEvent:
+      Guid:
+        Data1: -1274647598
+        Data2: 1113306871
+        Data3: 988026777
+        Data4: 2026982229
+      Path: event:/Dialogue/Dialogue6
+  dialogue7:
+    fmodEvent:
+      Guid:
+        Data1: -1014525079
+        Data2: 1318183965
+        Data3: 740381859
+        Data4: -144367151
+      Path: event:/Dialogue/Dialogue7
+  dialogue8:
+    fmodEvent:
+      Guid:
+        Data1: -294020184
+        Data2: 1133653142
+        Data3: -562419274
+        Data4: -540823255
+      Path: event:/Dialogue/Dialogue8
+  dialogue9:
+    fmodEvent:
+      Guid:
+        Data1: 1700423914
+        Data2: 1318461073
+        Data3: -879997552
+        Data4: 1074459988
+      Path: event:/Dialogue/Dialogue9
+  dialogue10:
+    fmodEvent:
+      Guid:
+        Data1: 1319556318
+        Data2: 1205044369
+        Data3: 630293942
+        Data4: -1736516694
+      Path: event:/Dialogue/Dialogue10
 --- !u!4 &1160241408
 Transform:
   m_ObjectHideFlags: 0

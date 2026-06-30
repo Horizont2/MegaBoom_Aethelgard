@@ -53,14 +53,14 @@
 			<destination>{fa4ba293-b417-4f65-968a-742b31faf15f}</destination>
 		</relationship>
 		<relationship name="output">
-			<destination>{27cc3988-d829-4d81-abe0-e336deaf90fc}</destination>
+			<destination>{ddbcb8b2-b064-432f-ad8a-ab32e5197553}</destination>
 		</relationship>
 	</object>
 	<object class="EventAutomatableProperties" id="{7ab8f6df-8e78-409a-acaf-f75ff4bfa0bf}" />
 	<object class="MarkerTrack" id="{54f8c0fc-9244-45ab-a501-96d2ffb0c2e5}" />
 	<object class="GroupTrack" id="{43ece85e-2199-4540-9d8d-99d67345d83e}">
 		<relationship name="modules">
-			<destination>{ce7380b5-69cb-46b9-972a-18edad40bde9}</destination>
+			<destination>{4de714bd-32a6-4258-a185-7ad9fdce9d04}</destination>
 		</relationship>
 		<relationship name="mixerGroup">
 			<destination>{bb6b4f51-7ac3-423d-82a4-1d9a26ec416f}</destination>
@@ -68,7 +68,7 @@
 	</object>
 	<object class="Timeline" id="{ab8cca33-cb03-4a3a-87ad-b2dadd3fe004}">
 		<relationship name="modules">
-			<destination>{ce7380b5-69cb-46b9-972a-18edad40bde9}</destination>
+			<destination>{4de714bd-32a6-4258-a185-7ad9fdce9d04}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerMaster" id="{1a2b349b-8336-4875-9385-052f96beceae}">
@@ -88,18 +88,18 @@
 		</relationship>
 	</object>
 	<object class="MixerBusPanner" id="{fa4ba293-b417-4f65-968a-742b31faf15f}" />
-	<object class="SingleSound" id="{ce7380b5-69cb-46b9-972a-18edad40bde9}">
+	<object class="SingleSound" id="{4de714bd-32a6-4258-a185-7ad9fdce9d04}">
 		<property name="length">
 			<value>2</value>
 		</property>
-		<property name="volume">
-			<value>-12</value>
-		</property>
 		<relationship name="audioFile">
-			<destination>{57835bdd-e56c-4112-94fd-a408c8a7c0eb}</destination>
+			<destination>{f052f48f-9c6e-4f61-b398-d550fe9aa0ef}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerGroup" id="{bb6b4f51-7ac3-423d-82a4-1d9a26ec416f}">
+		<property name="volume">
+			<value>-9</value>
+		</property>
 		<property name="name">
 			<value>Audio 1</value>
 		</property>
