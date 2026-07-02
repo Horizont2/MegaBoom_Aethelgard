@@ -214,7 +214,7 @@ public class AudioManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (scene.name == "CampScene") PlayMusic(AudioID.Music_Camp);
-        else if (scene.name == "WorldScene") PlayMusic(AudioID.Music_Battle);
+        else if (scene.name == "GameScene") PlayMusic(AudioID.Music_Battle);
     }
 
     private void LoadAudioSettings()

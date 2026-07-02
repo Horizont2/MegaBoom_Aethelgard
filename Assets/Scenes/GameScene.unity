@@ -7409,6 +7409,546 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!1 &290186581
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 290186583}
+  - component: {fileID: 290186582}
+  m_Layer: 0
+  m_Name: AudioManagerFMOD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &290186582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290186581}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb912440a83ff847b32e7ad84819e6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  uiClick:
+    fmodEvent:
+      Guid:
+        Data1: -1618122163
+        Data2: 1137819442
+        Data3: -1064010878
+        Data4: -488274434
+      Path: event:/UI/Click
+  uiHover:
+    fmodEvent:
+      Guid:
+        Data1: 1722241415
+        Data2: 1252055506
+        Data3: 974556052
+        Data4: -168615635
+      Path: event:/UI/Hover
+  uiQuestAccept:
+    fmodEvent:
+      Guid:
+        Data1: 492320643
+        Data2: 1174676965
+        Data3: -1923864898
+        Data4: 557103049
+      Path: event:/UI/QuestAccept
+  uiQuestComplete:
+    fmodEvent:
+      Guid:
+        Data1: -1362681147
+        Data2: 1298253128
+        Data3: -86333016
+        Data4: 1356606897
+      Path: event:/UI/QuestComplete
+  uiError:
+    fmodEvent:
+      Guid:
+        Data1: -187672074
+        Data2: 1219703516
+        Data3: -492917104
+        Data4: -1631327094
+      Path: event:/UI/Error
+  uiLevelUp:
+    fmodEvent:
+      Guid:
+        Data1: 1514384386
+        Data2: 1273233340
+        Data3: -952038230
+        Data4: 1254541772
+      Path: event:/UI/LVLUP
+  uiPurchase:
+    fmodEvent:
+      Guid:
+        Data1: 340674706
+        Data2: 1341018835
+        Data3: -651174266
+        Data4: -569208273
+      Path: event:/UI/Purchase
+  uiGameOver:
+    fmodEvent:
+      Guid:
+        Data1: 444357737
+        Data2: 1198399508
+        Data3: -201336950
+        Data4: 124923680
+      Path: event:/UI/GameOver
+  playerDash:
+    fmodEvent:
+      Guid:
+        Data1: 1792544028
+        Data2: 1330996492
+        Data3: -1396703567
+        Data4: -290020963
+      Path: event:/Player/Dash
+  playerSwing:
+    fmodEvent:
+      Guid:
+        Data1: -1206020815
+        Data2: 1239083769
+        Data3: 1595772314
+        Data4: 88098492
+      Path: event:/Player/Swing
+  playerHitEnemySword:
+    fmodEvent:
+      Guid:
+        Data1: -481280108
+        Data2: 1093987928
+        Data3: -1907442767
+        Data4: -1610699695
+      Path: event:/Player/Hit_Enemy_Sword
+  playerHitEnemyBow:
+    fmodEvent:
+      Guid:
+        Data1: 2126182753
+        Data2: 1227569440
+        Data3: 1234770564
+        Data4: 479662618
+      Path: event:/Player/Hit_Enemy_Bow
+  playerHitEnemyHammer:
+    fmodEvent:
+      Guid:
+        Data1: 406549803
+        Data2: 1309184518
+        Data3: 946698664
+        Data4: -1304457811
+      Path: event:/Player/Hit_Enemy_Hammer
+  playerHitResourceStone:
+    fmodEvent:
+      Guid:
+        Data1: 1745867618
+        Data2: 1200906808
+        Data3: -1801414215
+        Data4: 283304331
+      Path: event:/Player/Hit_Stone
+  playerHitResourceWood:
+    fmodEvent:
+      Guid:
+        Data1: 300303717
+        Data2: 1264253452
+        Data3: -519421789
+        Data4: -348900643
+      Path: event:/Player/Hit_Wood
+  playerHurt:
+    fmodEvent:
+      Guid:
+        Data1: 1512681972
+        Data2: 1230450877
+        Data3: 259746688
+        Data4: 1496089535
+      Path: event:/Player/Hurt
+  playerThrow:
+    fmodEvent:
+      Guid:
+        Data1: -882350821
+        Data2: 1321087204
+        Data3: -298616938
+        Data4: -839513339
+      Path: event:/Player/Throw
+  playerHeal:
+    fmodEvent:
+      Guid:
+        Data1: 1317903470
+        Data2: 1208248545
+        Data3: 644284803
+        Data4: 1304659324
+      Path: event:/Player/Heal
+  playerFootstep:
+    fmodEvent:
+      Guid:
+        Data1: 486520348
+        Data2: 1087596929
+        Data3: 812551599
+        Data4: -1131889617
+      Path: event:/Player/Footsteps
+  explosion:
+    fmodEvent:
+      Guid:
+        Data1: -341023071
+        Data2: 1320758291
+        Data3: 1826153090
+        Data4: 747019329
+      Path: event:/Player/Explosion
+  enemyAgro:
+    fmodEvent:
+      Guid:
+        Data1: 1063462776
+        Data2: 1216245444
+        Data3: 2056979877
+        Data4: -1343345824
+      Path: event:/ENemy/Agro
+  enemyTelegraph:
+    fmodEvent:
+      Guid:
+        Data1: 1262266861
+        Data2: 1200202773
+        Data3: -2116557643
+        Data4: -26057044
+      Path: event:/ENemy/Charge
+  enemyAttack:
+    fmodEvent:
+      Guid:
+        Data1: 1740202278
+        Data2: 1244269481
+        Data3: 272835771
+        Data4: 68754711
+      Path: event:/ENemy/Hit
+  enemyHurt:
+    fmodEvent:
+      Guid:
+        Data1: 1768254308
+        Data2: 1160991230
+        Data3: -272386912
+        Data4: 1917118621
+      Path: event:/ENemy/Hurt
+  enemyDie:
+    fmodEvent:
+      Guid:
+        Data1: 1009044467
+        Data2: 1107401261
+        Data3: 1621863552
+        Data4: -565477885
+      Path: event:/ENemy/Die
+  enemyFootstep:
+    fmodEvent:
+      Guid:
+        Data1: -1813958497
+        Data2: 1323991254
+        Data3: -2112112229
+        Data4: -1304438184
+      Path: event:/ENemy/Footsteps
+  enemyHit:
+    fmodEvent:
+      Guid:
+        Data1: 1740202278
+        Data2: 1244269481
+        Data3: 272835771
+        Data4: 68754711
+      Path: event:/ENemy/Hit
+  campCollectItem:
+    fmodEvent:
+      Guid:
+        Data1: 353179649
+        Data2: 1329775517
+        Data3: -1352649821
+        Data4: -89283583
+      Path: event:/ENV/Camp_Collect_Item
+  campCollectGem:
+    fmodEvent:
+      Guid:
+        Data1: 1482439877
+        Data2: 1142886581
+        Data3: -904170367
+        Data4: 1867173031
+      Path: event:/ENV/Camp_Collect_Gem
+  campBuildStart:
+    fmodEvent:
+      Guid:
+        Data1: 10221575
+        Data2: 1224880748
+        Data3: 1955255727
+        Data4: -1044329048
+      Path: event:/ENV/Camp_Build
+  campBuildDone:
+    fmodEvent:
+      Guid:
+        Data1: 882413884
+        Data2: 1334823877
+        Data3: 129793212
+        Data4: -133911966
+      Path: event:/ENV/Camp_Done
+  npcWork:
+    fmodEvent:
+      Guid:
+        Data1: 256442602
+        Data2: 1100341043
+        Data3: 233136780
+        Data4: 1980959978
+      Path: event:/ENV/NPC_Work
+  envThunder:
+    fmodEvent:
+      Guid:
+        Data1: -2130433249
+        Data2: 1157974612
+        Data3: 669768075
+        Data4: 1726526011
+      Path: event:/AMB/AMB_Thunder
+  envChestOpen:
+    fmodEvent:
+      Guid:
+        Data1: -895759569
+        Data2: 1162263652
+        Data3: 1545477536
+        Data4: -37443179
+      Path: event:/ENV/WoodChestOpen
+  animalCatMeow:
+    fmodEvent:
+      Guid:
+        Data1: -1740506411
+        Data2: 1210778287
+        Data3: -1995087988
+        Data4: -1303176203
+      Path: event:/Animals/CatMeow
+  animalChicken:
+    fmodEvent:
+      Guid:
+        Data1: -6397087
+        Data2: 1278236292
+        Data3: 885319560
+        Data4: 1960737469
+      Path: event:/Animals/Chicken
+  bossRoar:
+    fmodEvent:
+      Guid:
+        Data1: 1612392752
+        Data2: 1254746842
+        Data3: -2121881679
+        Data4: -2002975019
+      Path: event:/ENemy/Boss/Roar
+  bossStagger:
+    fmodEvent:
+      Guid:
+        Data1: 1917467362
+        Data2: 1213465785
+        Data3: -585801320
+        Data4: 114644234
+      Path: event:/ENemy/Stagger
+  bossExecute:
+    fmodEvent:
+      Guid:
+        Data1: -1492063085
+        Data2: 1327952398
+        Data3: -947395434
+        Data4: -15599563
+      Path: event:/ENemy/Boss/Boss Execute
+  regionVictoryStinger:
+    fmodEvent:
+      Guid:
+        Data1: 1233641523
+        Data2: 1341393151
+        Data3: -92908915
+        Data4: 1016019402
+      Path: event:/ENemy/Boss/Victory Stinger
+  regionShockwave:
+    fmodEvent:
+      Guid:
+        Data1: 1110858150
+        Data2: 1287294704
+        Data3: 593793950
+        Data4: -1205289067
+      Path: event:/ENemy/Shockwave
+  cinematicWhoosh:
+    fmodEvent:
+      Guid:
+        Data1: 1066734674
+        Data2: 1132191787
+        Data3: 1964989079
+        Data4: -245983134
+      Path: event:/ENemy/Boss/Cinematic Whoosh
+  encounterCleared:
+    fmodEvent:
+      Guid:
+        Data1: -1635300041
+        Data2: 1089793008
+        Data3: 1328735149
+        Data4: -2058419140
+      Path: event:/UI/Encounter Cleared
+  totemActivate:
+    fmodEvent:
+      Guid:
+        Data1: 905996406
+        Data2: 1082043002
+        Data3: -600107865
+        Data4: -1590715004
+      Path: event:/UI/Activate Totem
+  playerPerfectDodge:
+    fmodEvent:
+      Guid:
+        Data1: -629385297
+        Data2: 1259237887
+        Data3: -185522261
+        Data4: -2128417550
+      Path: event:/Player/Player Perfect Dodge
+  ambientWind:
+    fmodEvent:
+      Guid:
+        Data1: -2103810906
+        Data2: 1248205352
+        Data3: 1137872263
+        Data4: -40351538
+      Path: event:/AMB/AMB_Wind
+  ambientHowl:
+    fmodEvent:
+      Guid:
+        Data1: -1840129684
+        Data2: 1247423786
+        Data3: -1299432010
+        Data4: -265638126
+      Path: event:/AMB/AMB_Howl
+  ambientCrow:
+    fmodEvent:
+      Guid:
+        Data1: 488879883
+        Data2: 1231444999
+        Data3: -1319577676
+        Data4: -1402412118
+      Path: event:/AMB/AMB_Crow
+  ambientDistantThunder:
+    fmodEvent:
+      Guid:
+        Data1: 1445464367
+        Data2: 1209521328
+        Data3: -451331425
+        Data4: -1879353210
+      Path: event:/AMB/AMB_Distant_Thunder
+  ambientLeafRustle:
+    fmodEvent:
+      Guid:
+        Data1: -1149515787
+        Data2: 1327063369
+        Data3: 1891996549
+        Data4: -356795183
+      Path: event:/AMB/AMB_Leaf_Rustle
+  musicCamp:
+    fmodEvent:
+      Guid:
+        Data1: 2059486281
+        Data2: 1152121598
+        Data3: -15586668
+        Data4: 1499660520
+      Path: event:/Music/Music_Camp
+  musicBattle:
+    fmodEvent:
+      Guid:
+        Data1: 719038294
+        Data2: 1146569717
+        Data3: -1294364284
+        Data4: -1267188723
+      Path: event:/Music/Music_Journey
+  dialogue1:
+    fmodEvent:
+      Guid:
+        Data1: -56570961
+        Data2: 1112080766
+        Data3: 186498705
+        Data4: -1006490679
+      Path: event:/Dialogue/Dialogue1
+  dialogue2:
+    fmodEvent:
+      Guid:
+        Data1: -835453275
+        Data2: 1175108346
+        Data3: -1380227964
+        Data4: 1274974632
+      Path: event:/Dialogue/Dialogue2
+  dialogue3:
+    fmodEvent:
+      Guid:
+        Data1: -1581335787
+        Data2: 1252278220
+        Data3: 1397179576
+        Data4: -197192432
+      Path: event:/Dialogue/Dialogue3
+  dialogue4:
+    fmodEvent:
+      Guid:
+        Data1: -387594757
+        Data2: 1099872219
+        Data3: -910128474
+        Data4: 880927783
+      Path: event:/Dialogue/Dialogue4
+  dialogue5:
+    fmodEvent:
+      Guid:
+        Data1: 941721244
+        Data2: 1149008904
+        Data3: -1231348345
+        Data4: -1573884790
+      Path: event:/Dialogue/Dialogue5
+  dialogue6:
+    fmodEvent:
+      Guid:
+        Data1: -1274647598
+        Data2: 1113306871
+        Data3: 988026777
+        Data4: 2026982229
+      Path: event:/Dialogue/Dialogue6
+  dialogue7:
+    fmodEvent:
+      Guid:
+        Data1: -1014525079
+        Data2: 1318183965
+        Data3: 740381859
+        Data4: -144367151
+      Path: event:/Dialogue/Dialogue7
+  dialogue8:
+    fmodEvent:
+      Guid:
+        Data1: -294020184
+        Data2: 1133653142
+        Data3: -562419274
+        Data4: -540823255
+      Path: event:/Dialogue/Dialogue8
+  dialogue9:
+    fmodEvent:
+      Guid:
+        Data1: 1700423914
+        Data2: 1318461073
+        Data3: -879997552
+        Data4: 1074459988
+      Path: event:/Dialogue/Dialogue9
+  dialogue10:
+    fmodEvent:
+      Guid:
+        Data1: 1319556318
+        Data2: 1205044369
+        Data3: 630293942
+        Data4: -1736516694
+      Path: event:/Dialogue/Dialogue10
+--- !u!4 &290186583
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290186581}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 66.88833, y: 0, z: -5.74562}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &305011162
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25091,6 +25631,7 @@ PrefabInstance:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 290186583}
   - {fileID: 330585546}
   - {fileID: 410087041}
   - {fileID: 832575519}
