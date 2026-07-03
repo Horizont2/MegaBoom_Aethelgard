@@ -95,6 +95,20 @@ public class CampBuilding : MonoBehaviour
             originalModelPos = realModel.transform.localPosition;
             originalModelScale = realModel.transform.localScale;
         }
+
+        // Force the info panel closed before the first frame renders. Prefabs
+        // often ship with the panel active so designers can edit it, and if
+        // Start() runs late (or another script re-enables it via a lingering
+        // coroutine between scene loads) the raw "New Text" placeholder can
+        // flash on screen the moment the camp scene finishes loading.
+        if (aaaPanel != null && aaaPanel.activeSelf) aaaPanel.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        // Extra guard on scene reload — never come back with the panel visible
+        // unless the player explicitly opened it via [F].
+        if (aaaPanel != null && aaaPanel.activeSelf && !isPanelOpen) aaaPanel.SetActive(false);
     }
 
     private void Start()
