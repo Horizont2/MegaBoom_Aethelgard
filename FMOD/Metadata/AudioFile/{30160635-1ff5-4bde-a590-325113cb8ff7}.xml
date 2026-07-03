@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{30160635-1ff5-4bde-a590-325113cb8ff7}">
+		<property name="assetPath">
+			<value>AMB/Distant Thunder/AMB_Distant_Thunder-010.flac</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>12.095833333333333</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{a6c6607c-3815-4edd-9f7e-c199c085dc89}</destination>
+		</relationship>
+	</object>
+</objects>

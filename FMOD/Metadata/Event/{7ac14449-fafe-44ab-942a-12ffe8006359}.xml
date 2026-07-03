@@ -2,13 +2,13 @@
 <objects serializationModel="Studio.02.03.00">
 	<object class="Event" id="{7ac14449-fafe-44ab-942a-12ffe8006359}">
 		<property name="name">
-			<value>AMB_Camp</value>
+			<value>Music_Camp</value>
 		</property>
 		<property name="outputFormat">
 			<value>1</value>
 		</property>
 		<relationship name="folder">
-			<destination>{03fe5c3e-7243-4e77-a7d3-6a03d35e90fc}</destination>
+			<destination>{411bf3d2-68ec-48a4-b546-3b531966ac9d}</destination>
 		</relationship>
 		<relationship name="mixer">
 			<destination>{f5fd13a2-1c2e-41d4-b0a8-e3576a1c0f4a}</destination>
@@ -32,7 +32,6 @@
 			<destination>{cdd47f10-7ef1-4d6b-b35a-1bed90193064}</destination>
 		</relationship>
 		<relationship name="banks">
-			<destination>{2577b59a-6929-4add-b899-9c6cc7bf1386}</destination>
 			<destination>{c61caff9-3fef-40f3-9161-d4b63ca289c0}</destination>
 		</relationship>
 	</object>
@@ -54,7 +53,7 @@
 			<destination>{3a298a3a-ce52-49c9-9346-d8c9fbe03373}</destination>
 		</relationship>
 		<relationship name="output">
-			<destination>{27cc3988-d829-4d81-abe0-e336deaf90fc}</destination>
+			<destination>{e3d5351d-95e6-4f19-9e39-ccc1e6f6f083}</destination>
 		</relationship>
 	</object>
 	<object class="EventAutomatableProperties" id="{4644e2f7-9715-45dd-936d-49d9865863bd}" />
@@ -70,6 +69,9 @@
 	<object class="Timeline" id="{cdd47f10-7ef1-4d6b-b35a-1bed90193064}">
 		<relationship name="modules">
 			<destination>{93a08b98-aca6-48a5-aa2f-d57ec9d09290}</destination>
+		</relationship>
+		<relationship name="markers">
+			<destination>{9568e2ea-4821-4cfc-aeaa-6f4011b47a45}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerMaster" id="{58029b36-f766-4c09-b6f7-43ac8148f822}">
@@ -91,13 +93,16 @@
 	<object class="MixerBusPanner" id="{3a298a3a-ce52-49c9-9346-d8c9fbe03373}" />
 	<object class="SingleSound" id="{93a08b98-aca6-48a5-aa2f-d57ec9d09290}">
 		<property name="length">
-			<value>129.14310416666672</value>
+			<value>65</value>
 		</property>
 		<property name="startOffset">
 			<value>49.5</value>
 		</property>
 		<property name="timelockedOffset">
 			<value>1</value>
+		</property>
+		<property name="looping">
+			<value>true</value>
 		</property>
 		<relationship name="modulators">
 			<destination>{2ce8c895-0b37-49cb-ab5a-557efa3711f4}</destination>
@@ -121,6 +126,20 @@
 		</relationship>
 		<relationship name="output">
 			<destination>{58029b36-f766-4c09-b6f7-43ac8148f822}</destination>
+		</relationship>
+	</object>
+	<object class="LoopRegion" id="{9568e2ea-4821-4cfc-aeaa-6f4011b47a45}">
+		<property name="position">
+			<value>0</value>
+		</property>
+		<property name="length">
+			<value>65</value>
+		</property>
+		<relationship name="timeline">
+			<destination>{cdd47f10-7ef1-4d6b-b35a-1bed90193064}</destination>
+		</relationship>
+		<relationship name="markerTrack">
+			<destination>{bb6c4cb7-bf3d-4fcb-a8b6-ee1b840ec805}</destination>
 		</relationship>
 	</object>
 	<object class="MixerBusEffectChain" id="{615ff653-287d-4d3c-bf7c-ee7d4eaee015}">

@@ -103,6 +103,12 @@ public class CatAI : AnimalAI
 
     protected override void UpdateFlee()
     {
+        // Jeœli kot zaczyna uciekaæ, odtwarzamy dŸwiêk przestrzenny z jego pozycji
+        if (currentState != AnimalState.Flee && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX3D(AudioID.Animal_CatMeow, transform.position);
+        }
+
         WakeUp();
         agent.speed = runSpeed;
 
@@ -120,7 +126,6 @@ public class CatAI : AnimalAI
 
         if (dist < fleeDistance)
         {
-            // Ô²ÊÑ ÎÏÒÈÌ²ÇÀÖ²¯: Âèêîðèñòîâóºìî êåøîâàíèé playerCC
             if (playerCC != null && playerCC.velocity.magnitude > 3f && currentState != AnimalState.Flee)
             {
                 if (GlobalHUD.Instance != null && playerInRange) GlobalHUD.Instance.HidePrompt();
@@ -166,7 +171,12 @@ public class CatAI : AnimalAI
         }
 
         if (heartParticles != null) heartParticles.Play();
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Animal_CatMeow);
+
+        // ZMIANA: Zast¹piono PlaySFX now¹ metod¹ PlaySFX3D przekazuj¹c¹ pozycjê kota
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX3D(AudioID.Animal_CatMeow, transform.position);
+        }
     }
 
     private void WakeUp()

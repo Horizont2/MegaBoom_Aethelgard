@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{f6ccad5c-9699-42ca-ae65-0b7f3bbc3065}">
+		<property name="assetPath">
+			<value>Dialogue/Dialogue-001.flac</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>15.510937500000001</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{a6c6607c-3815-4edd-9f7e-c199c085dc89}</destination>
+		</relationship>
+	</object>
+</objects>

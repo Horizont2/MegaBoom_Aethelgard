@@ -634,9 +634,7 @@ MonoBehaviour:
   Plugins: []
   MasterBanks:
   - Master
-  Banks:
-  - Music
-  - UI
+  Banks: []
   BanksToLoad:
   - Master
   LiveUpdatePort: 9264

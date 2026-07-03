@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{8402df62-5d40-4843-acae-8b9bdae424f8}">
+		<property name="assetPath">
+			<value>Ui/UI_QuestAccept.flac</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>4</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{a6c6607c-3815-4edd-9f7e-c199c085dc89}</destination>
+		</relationship>
+	</object>
+</objects>

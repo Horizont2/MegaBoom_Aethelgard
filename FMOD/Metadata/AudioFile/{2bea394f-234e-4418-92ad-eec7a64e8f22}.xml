@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{2bea394f-234e-4418-92ad-eec7a64e8f22}">
+		<property name="assetPath">
+			<value>Enemy/Enemy_Die.flac</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>1.2420833333333334</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{a6c6607c-3815-4edd-9f7e-c199c085dc89}</destination>
+		</relationship>
+	</object>
+</objects>
