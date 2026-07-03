@@ -79,7 +79,8 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (isCinematicMode || Time.timeScale == 0f || target == null || TutorialPanelUI.IsTutorialActive) return;
+        // ДОДАНО: PauseSceneController.IsPauseActive, щоб скрипт відключався під час кінематографічної паузи
+        if (isCinematicMode || Time.timeScale == 0f || target == null || TutorialPanelUI.IsTutorialActive || PauseSceneController.IsPauseActive) return;
 
         float dt = Time.deltaTime;
         if (dt < 0.0001f) return;

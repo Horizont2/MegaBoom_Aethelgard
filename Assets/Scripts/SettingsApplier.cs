@@ -3,14 +3,6 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
-// Central applier: reads every "Settings_*" PlayerPref and pushes its
-// value into the engine system that actually controls it. The runtime
-// settings panel updates the PlayerPref immediately; this class applies
-// the side-effect (screen resolution, render-scale, volume, etc.) and
-// runs on game boot so prefs survive launches.
-//
-// All apply methods are null-safe — they no-op when the relevant
-// engine handle isn't ready yet.
 [DefaultExecutionOrder(-500)]
 public class SettingsApplier : MonoBehaviour
 {
@@ -23,10 +15,41 @@ public class SettingsApplier : MonoBehaviour
     private static void Bootstrap()
     {
         if (Instance != null) return;
+
+        // ФІКС: Конвертуємо старі зламані збереження (1%) у нормальні (100%)
+        SanitizeLegacyVolumes();
+
         GameObject go = new GameObject("[SettingsApplier]");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<SettingsApplier>();
         Instance.ApplyAll();
+
+        // ФІКС: Чекаємо завантаження AudioManager, щоб звук точно застосувався при старті
+        Instance.StartCoroutine(Instance.WaitAndApplyVolumes());
+    }
+
+    private static void SanitizeLegacyVolumes()
+    {
+        string[] volKeys = { "Settings_MasterVol", "Settings_MusicVol", "Settings_SFXVol", "Settings_VoiceVol", "Settings_UIVol", "Settings_AmbientVol" };
+        foreach (var key in volKeys)
+        {
+            if (PlayerPrefs.HasKey(key))
+            {
+                float val = PlayerPrefs.GetFloat(key);
+                // Якщо збережене значення <= 1 (це залишилося від старого багу 0-1)
+                if (val > 0f && val <= 1.0f)
+                {
+                    PlayerPrefs.SetFloat(key, val * 100f); // Перетворюємо на шкалу 0-100
+                }
+            }
+        }
+        PlayerPrefs.Save();
+    }
+
+    private System.Collections.IEnumerator WaitAndApplyVolumes()
+    {
+        while (AudioManager.Instance == null) yield return null;
+        ApplyVolumes();
     }
 
     public void ApplyAll()
@@ -50,7 +73,7 @@ public class SettingsApplier : MonoBehaviour
         ApplyBrightness();
         ApplyGamma();
         ApplyUIScale();
-        ApplyVolumes();
+        // Гучність тепер викликається з корутини
     }
 
     // ============================================================
@@ -63,20 +86,17 @@ public class SettingsApplier : MonoBehaviour
         int mode = PlayerPrefs.GetInt("Settings_WindowMode", 0);
         int rrIdx = PlayerPrefs.GetInt("Settings_RefreshRateIndex", -1);
 
-        // Resolve resolution
         Resolution[] all = Screen.resolutions;
         int width = Screen.width;
         int height = Screen.height;
         if (widthIndex >= 0)
         {
-            // Builder dedupes by (w,h) and lists unique pairs in order.
             var list = new System.Collections.Generic.List<(int, int)>();
             var seen = new System.Collections.Generic.HashSet<(int, int)>();
             foreach (var r in all) if (seen.Add((r.width, r.height))) list.Add((r.width, r.height));
             if (widthIndex < list.Count) { width = list[widthIndex].Item1; height = list[widthIndex].Item2; }
         }
 
-        // Resolve refresh rate
         int refresh = 60;
         var rates = new System.Collections.Generic.HashSet<int>();
         foreach (var r in all) rates.Add((int)System.Math.Round(r.refreshRateRatio.value));
@@ -106,15 +126,6 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyFpsCap()
     {
-        // Two PlayerPrefs work together here:
-        //   Settings_FPSLimit  (0/1)   — the global "Limit FPS" toggle
-        //   Settings_FpsCapIndex (0..6) — the per-cap dropdown
-        //
-        // Before this fix, the two were independent and ApplyFpsCap always
-        // wrote the dropdown's cap on top of an OFF toggle. In editor that
-        // didn't matter because vsync overrides, but in standalone builds
-        // the cap stuck — the "Limit FPS off" toggle did nothing. The
-        // toggle now wins: when it's off we always uncap.
         bool limited = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
         if (!limited)
         {
@@ -125,7 +136,7 @@ public class SettingsApplier : MonoBehaviour
         int idx = PlayerPrefs.GetInt("Settings_FpsCapIndex", 2);
         int[] caps = { -1, 30, 60, 90, 120, 144, 240 };
         if (idx < 0 || idx >= caps.Length) idx = 2;
-        QualitySettings.vSyncCount = 0; // never vsync when capping by frame rate
+        QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = caps[idx];
     }
 
@@ -147,14 +158,12 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyAntiAliasing()
     {
         int aa = PlayerPrefs.GetInt("Settings_AntiAliasing", 1);
-        // Off / FXAA / SMAA / TAA — map onto QualitySettings.antiAliasing (MSAA fallback).
         QualitySettings.antiAliasing = aa switch { 0 => 0, 1 => 2, 2 => 4, _ => 8 };
     }
 
     public static void ApplyTextureQuality()
     {
         int q = PlayerPrefs.GetInt("Settings_TextureQuality", 2);
-        // Low / Medium / High / Ultra → MasterTextureLimit 3 / 2 / 1 / 0
         QualitySettings.globalTextureMipmapLimit = Mathf.Clamp(3 - q, 0, 3);
     }
 
@@ -188,15 +197,11 @@ public class SettingsApplier : MonoBehaviour
         if (asset != null) asset.renderScale = rs;
     }
 
-    // For toggle-driven post-processing: we set a flag the project's
-    // Volume profile / Volume component reads. Concrete bindings can be
-    // tightened later by the gameplay team — these calls keep prefs
-    // consistent regardless.
-    public static void ApplyMotionBlur()      => Shader.SetGlobalFloat("_Settings_MotionBlur", PlayerPrefs.GetInt("Settings_MotionBlur", 0));
-    public static void ApplyDepthOfField()    => Shader.SetGlobalFloat("_Settings_DOF",        PlayerPrefs.GetInt("Settings_DepthOfField", 0));
-    public static void ApplyBloom()           => Shader.SetGlobalFloat("_Settings_Bloom",      PlayerPrefs.GetInt("Settings_Bloom", 1));
-    public static void ApplyAmbientOcclusion() => Shader.SetGlobalFloat("_Settings_AO",        PlayerPrefs.GetInt("Settings_AO", 1));
-    public static void ApplyVolumetrics()     => Shader.SetGlobalFloat("_Settings_Volumetrics",PlayerPrefs.GetInt("Settings_Volumetrics", 0));
+    public static void ApplyMotionBlur() => Shader.SetGlobalFloat("_Settings_MotionBlur", PlayerPrefs.GetInt("Settings_MotionBlur", 0));
+    public static void ApplyDepthOfField() => Shader.SetGlobalFloat("_Settings_DOF", PlayerPrefs.GetInt("Settings_DepthOfField", 0));
+    public static void ApplyBloom() => Shader.SetGlobalFloat("_Settings_Bloom", PlayerPrefs.GetInt("Settings_Bloom", 1));
+    public static void ApplyAmbientOcclusion() => Shader.SetGlobalFloat("_Settings_AO", PlayerPrefs.GetInt("Settings_AO", 1));
+    public static void ApplyVolumetrics() => Shader.SetGlobalFloat("_Settings_Volumetrics", PlayerPrefs.GetInt("Settings_Volumetrics", 0));
 
     // ============================================================
     // CAMERA
@@ -214,8 +219,6 @@ public class SettingsApplier : MonoBehaviour
     {
         float b = PlayerPrefs.GetFloat("Settings_Brightness", 1f);
         Shader.SetGlobalFloat("_Settings_Brightness", b);
-        // Multiply ambient intensity so scenes get visibly brighter even
-        // without a post-FX Volume profile bound.
         RenderSettings.ambientIntensity = b;
     }
 
@@ -250,25 +253,18 @@ public class SettingsApplier : MonoBehaviour
         AudioManager.Instance.SetAmbientVolume(PlayerPrefs.GetFloat("Settings_AmbientVol", 100f) / 100f);
     }
 
-    // ============================================================
-    // Mute on focus loss
-    // ============================================================
-
     private void OnApplicationFocus(bool hasFocus)
     {
         if (PlayerPrefs.GetInt("Settings_MuteWhenUnfocused", 1) != 1) return;
 
-        // Визначаємо, яка гучність має бути: 0 якщо згорнуто, або збережена якщо розгорнуто
         float targetVolume = hasFocus ? (PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f) : 0f;
 
         if (AudioManager.Instance != null)
         {
-            // Якщо є AudioManager (FMOD), передаємо значення через нього
             AudioManager.Instance.SetMasterVolume(targetVolume);
         }
         else
         {
-            // Резервний варіант для базового звуку Unity
             AudioListener.volume = targetVolume;
         }
     }

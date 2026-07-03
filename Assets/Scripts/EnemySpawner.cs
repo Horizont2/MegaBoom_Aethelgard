@@ -14,6 +14,7 @@ public class EnemySpawner : MonoBehaviour
     public static bool IsSpawningBlocked = false;
 
     [Header("Spawner Settings")]
+    public int maxEnemiesOnMap = 35; // Íîâèé ë³ì³ò
     public SpawnableEnemy[] enemyPool;
     public Transform player;
     public float baseSpawnInterval = 1.5f;
@@ -41,6 +42,8 @@ public class EnemySpawner : MonoBehaviour
         }
 
         if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
+
+        if (EnemyAI.ActiveEnemiesCount >= maxEnemiesOnMap) return;
 
         // ÇÍÀÕÎÄÈÌÎ ÃĞÀÂÖß ÏĞÈÌÓÑÎÂÎ
         if (player == null)

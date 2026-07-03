@@ -171,6 +171,21 @@ public class TutorialHints : MonoBehaviour
     private IEnumerator ShowOne(HintRequest req)
     {
         TutorialHintData data = library != null ? library.FindByKey(req.key) : null;
+
+        // ==========================================
+        // ФІКС: Створюємо дані "на льоту", якщо їх немає в бібліотеці, але передано текст.
+        // Це дозволить Path 1 (TutorialPanelUI) підхопити підказку!
+        // ==========================================
+        if (data == null && !string.IsNullOrEmpty(req.fallbackBody))
+        {
+            data = ScriptableObject.CreateInstance<TutorialHintData>();
+            data.key = req.key;
+            data.title = "TIP";
+            data.body = req.fallbackBody;
+            data.duration = req.fallbackDuration;
+            data.waitForInput = false;
+        }
+
         // Flip the shared "any hint visible" flag for the entire
         // display window so cutscene skip handlers and player movement
         // know to ignore inputs until the hint is dismissed.
@@ -178,41 +193,41 @@ public class TutorialHints : MonoBehaviour
         try
         {
 
-        // Path 1: styled panel
-        if (data != null && TutorialPanelUI.Instance != null)
-        {
-            if (verboseLogging) Debug.Log($"[TutorialHints] Show '{req.key}' via TutorialPanelUI.");
-            TutorialPanelUI.Instance.Show(data);
+            // Path 1: styled panel
+            if (data != null && TutorialPanelUI.Instance != null)
+            {
+                if (verboseLogging) Debug.Log($"[TutorialHints] Show '{req.key}' via TutorialPanelUI.");
+                TutorialPanelUI.Instance.Show(data);
 
-            float waitFor = data.waitForInput ? 60f : data.duration + 1f;
-            float deadline = Time.unscaledTime + waitFor;
-            while (TutorialPanelUI.Instance != null && TutorialPanelUI.Instance.IsVisible && Time.unscaledTime < deadline)
-                yield return null;
-            yield break;
-        }
+                float waitFor = data.waitForInput ? 60f : data.duration + 1f;
+                float deadline = Time.unscaledTime + waitFor;
+                while (TutorialPanelUI.Instance != null && TutorialPanelUI.Instance.IsVisible && Time.unscaledTime < deadline)
+                    yield return null;
+                yield break;
+            }
 
-        // Path 2: data exists but no panel — feed body into the prompt at least
-        if (data != null && GlobalHUD.Instance != null)
-        {
-            string text = fallbackPrefix + (string.IsNullOrEmpty(data.body) ? data.title : data.body);
-            GlobalHUD.Instance.ShowPrompt(text);
-            yield return new WaitForSecondsRealtime(data.duration);
-            GlobalHUD.Instance.HidePrompt();
-            yield break;
-        }
+            // Path 2: data exists but no panel — feed body into the prompt at least
+            if (data != null && GlobalHUD.Instance != null)
+            {
+                string text = fallbackPrefix + (string.IsNullOrEmpty(data.body) ? data.title : data.body);
+                GlobalHUD.Instance.ShowPrompt(text);
+                yield return new WaitForSecondsRealtime(data.duration);
+                GlobalHUD.Instance.HidePrompt();
+                yield break;
+            }
 
-        // Path 3: no library entry — fall back to whatever the call site passed
-        if (GlobalHUD.Instance != null && !string.IsNullOrEmpty(req.fallbackBody))
-        {
-            string text = fallbackPrefix + req.fallbackBody;
-            GlobalHUD.Instance.ShowPrompt(text);
-            yield return new WaitForSecondsRealtime(req.fallbackDuration);
-            GlobalHUD.Instance.HidePrompt();
-            yield break;
-        }
+            // Path 3: no library entry — fall back to whatever the call site passed
+            if (GlobalHUD.Instance != null && !string.IsNullOrEmpty(req.fallbackBody))
+            {
+                string text = fallbackPrefix + req.fallbackBody;
+                GlobalHUD.Instance.ShowPrompt(text);
+                yield return new WaitForSecondsRealtime(req.fallbackDuration);
+                GlobalHUD.Instance.HidePrompt();
+                yield break;
+            }
 
-        if (verboseLogging)
-            Debug.LogWarning($"[TutorialHints] No display path for '{req.key}' (no library entry, no fallback body, or no GlobalHUD).");
+            if (verboseLogging)
+                Debug.LogWarning($"[TutorialHints] No display path for '{req.key}' (no library entry, no fallback body, or no GlobalHUD).");
 
         }
         finally

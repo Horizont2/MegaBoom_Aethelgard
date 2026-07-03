@@ -396,6 +396,7 @@ GameObject:
   - component: {fileID: 288324477}
   - component: {fileID: 288324479}
   - component: {fileID: 288324478}
+  - component: {fileID: 288324480}
   m_Layer: 5
   m_Name: Hint_Text
   m_TagString: Untagged
@@ -522,6 +523,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 288324476}
   m_CullTransparentMesh: 1
+--- !u!114 &288324480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 288324476}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c55f80eba7190da409141c3d57f92503, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BlinkingSkipText
+  blinkSpeed: 1.5
+  minAlpha: 0.15
+  maxAlpha: 0.85
 --- !u!1 &404260732
 GameObject:
   m_ObjectHideFlags: 0
@@ -6099,7 +6115,6 @@ GameObject:
   - component: {fileID: 1739877182}
   - component: {fileID: 1739877181}
   - component: {fileID: 1739877180}
-  - component: {fileID: 1739877179}
   m_Layer: 5
   m_Name: PressAnyKey_Group
   m_TagString: Untagged
@@ -6127,21 +6142,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 79}
   m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0}
---- !u!114 &1739877179
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1739877177}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c55f80eba7190da409141c3d57f92503, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BlinkingSkipText
-  blinkSpeed: 1.5
-  minAlpha: 0.15
-  maxAlpha: 0.85
 --- !u!114 &1739877180
 MonoBehaviour:
   m_ObjectHideFlags: 0

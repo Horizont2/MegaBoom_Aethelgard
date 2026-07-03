@@ -4,6 +4,9 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PauseSceneController : MonoBehaviour
 {
+    // Публічний прапорець, щоб будь-який скрипт знав, що гра на паузі
+    public static bool IsPauseActive { get; private set; }
+
     [Tooltip("Camera inside the PauseLocation prefab (e.g. WaterfallPos). Enabled when the player opens pause, disabled otherwise.")]
     public Camera pauseCamera;
 
@@ -37,25 +40,20 @@ public class PauseSceneController : MonoBehaviour
         foreach (var p in pss)
         {
             if (p == null) continue;
-            var main = p.main;
-            main.useUnscaledTime = true;
+            var mainMod = p.main;
+            mainMod.useUnscaledTime = true;
             cachedParticles.Add(p);
         }
-
-        if (pauseCamera != null) pauseCamera.enabled = false;
-        if (pauseListener != null) pauseListener.enabled = false;
-        if (pauseOnlyObjects != null)
-            foreach (var go in pauseOnlyObjects) if (go != null) go.SetActive(false);
-
-        armed = true;
     }
 
     public void EnterPause()
     {
-        if (!armed) Awake();
+        IsPauseActive = true;
 
-        // Реєструємо дерева локації паузи в системі сезонів перед показом
-        if (!foliageRegistered && foliageRoots != null && foliageRoots.Length > 0)
+        var player = FindFirstObjectByType<PlayerController>();
+        if (player != null) player.isControlBlocked = true;
+
+        if (foliageRoots != null && foliageRoots.Length > 0)
         {
             SmartSeasonManager seasonMgr = SmartSeasonManager.Instance;
             if (seasonMgr == null) seasonMgr = FindFirstObjectByType<SmartSeasonManager>();
@@ -70,7 +68,12 @@ public class PauseSceneController : MonoBehaviour
             }
         }
 
-        if (Camera.main != null) prevMainCamera = Camera.main;
+        // ЖОРСТКЕ ВІДКЛЮЧЕННЯ ГОЛОВНОЇ КАМЕРИ
+        if (Camera.main != null)
+        {
+            prevMainCamera = Camera.main;
+            prevMainCamera.enabled = false;
+        }
         if (pauseCamera != null) pauseCamera.enabled = true;
 
         AudioListener[] listeners = Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
@@ -87,10 +90,31 @@ public class PauseSceneController : MonoBehaviour
 
     public void ExitPause()
     {
+        IsPauseActive = false;
+
+        var player = FindFirstObjectByType<PlayerController>();
+        if (player != null) player.isControlBlocked = false;
+
         if (pauseCamera != null) pauseCamera.enabled = false;
+
+        // ПОВЕРНЕННЯ ГОЛОВНОЇ КАМЕРИ
+        if (prevMainCamera != null) prevMainCamera.enabled = true;
+
         if (pauseListener != null) pauseListener.enabled = false;
         if (prevListener != null) prevListener.enabled = true;
+
         if (pauseOnlyObjects != null)
             foreach (var go in pauseOnlyObjects) if (go != null) go.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        if (armed) EnterPause();
+        armed = true;
+    }
+
+    private void OnDisable()
+    {
+        ExitPause();
     }
 }

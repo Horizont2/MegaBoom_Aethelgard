@@ -168,10 +168,7 @@ public class SettingsUI : MonoBehaviour
             if (panelCanvasGroup != null) panelCanvasGroup.alpha = 0f;
         }
 
-        // ==========================================
-        // ФІКС: Задаємо ліміти 0-100 ДО ініціалізації, щоб Unity 
-        // не обрізала збережені 100% до 1%, і звук не зникав!
-        // ==========================================
+        // Ініціалізація головних повзунків звуку
         if (masterSlider)
         {
             masterSlider.minValue = 0f;
@@ -191,11 +188,15 @@ public class SettingsUI : MonoBehaviour
             sfxSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_SFXVol", 100f));
         }
 
+        // Ініціалізація додаткових повзунків звуку
+        if (voiceSlider) voiceSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_VoiceVol", 100f));
+        if (uiSlider) uiSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_UIVol", 100f));
+        if (ambientSlider) ambientSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_AmbientVol", 100f));
+
         if (masterInput && masterSlider) masterInput.text = masterSlider.value.ToString("0");
         if (musicInput && musicSlider) musicInput.text = musicSlider.value.ToString("0");
         if (sfxInput && sfxSlider) sfxInput.text = sfxSlider.value.ToString("0");
 
-        // Тепер можна безпечно додавати лісенерів
         if (masterSlider) masterSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
         if (musicSlider) musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
         if (sfxSlider) sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
@@ -219,7 +220,7 @@ public class SettingsUI : MonoBehaviour
         if (invertYToggle) invertYToggle.onValueChanged.AddListener(v =>
         {
             PlayerPrefs.SetInt("Settings_InvertYAxis", v ? 1 : 0);
-            if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+            if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
         });
 
         if (subtitlesToggle) subtitlesToggle.onValueChanged.AddListener(v => { PlayerPrefs.SetInt("Settings_Subtitles", v ? 1 : 0); });
@@ -247,8 +248,8 @@ public class SettingsUI : MonoBehaviour
         if (languageDropdown) languageDropdown.onValueChanged.AddListener(v =>
         {
             PlayerPrefs.SetInt("Settings_Language", Mathf.Clamp(v, 0, 1));
-            LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5);
-            StartCoroutine(RebuildSettingsLayout()); // ФІКС: Змушуємо UI перемалюватися, щоб текст не з'їжджав
+            // LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5); // Un-comment if you use LocalizationManager
+            StartCoroutine(RebuildSettingsLayout());
         });
 
         if (voiceLanguageDropdown) voiceLanguageDropdown.onValueChanged.AddListener(v =>
@@ -375,7 +376,6 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
-    // ФІКС: Функція примусового оновлення розмірів сітки
     private IEnumerator RebuildSettingsLayout()
     {
         yield return new WaitForEndOfFrame();
@@ -427,7 +427,7 @@ public class SettingsUI : MonoBehaviour
         if (tabTexts == null || index < 0 || index >= tabTexts.Length) return;
 
         if (AudioManager.Instance != null && settingsPanel.activeSelf)
-            AudioManager.Instance.PlayUI(AudioID.UI_Click);
+            AudioManager.Instance.PlayUI("UI_Click");
 
         currentTabIndex = index;
         Vector3 targetWorldPos = tabTexts[index].rectTransform.position;
@@ -459,18 +459,11 @@ public class SettingsUI : MonoBehaviour
 
     public void OpenSettings()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
-
-        // НОВЕ: Приховуємо дошку місій та інші вікна ЗАМІСТЬ заморозки часу
-        if (GlobalHUD.Instance != null)
-        {
-            GlobalHUD.Instance.CloseAllOtherActivePanels();
-        }
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
 
         settingsPanel.SetActive(true);
         settingsPanel.transform.SetAsLastSibling();
 
-        // Твоя оригінальна логіка вкладок (яку я випадково видалив минулого разу)
         if (tabTexts != null && tabTexts.Length > 0 && tabPanels != null && tabPanels.Length > 0)
         {
             currentTabIndex = 0;
@@ -496,7 +489,6 @@ public class SettingsUI : MonoBehaviour
         if (panelAnimCoroutine != null) StopCoroutine(panelAnimCoroutine);
         panelAnimCoroutine = StartCoroutine(AnimatePanelIn());
 
-        // НОВЕ: Вмикаємо курсор для роботи з меню налаштувань
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
@@ -564,7 +556,6 @@ public class SettingsUI : MonoBehaviour
         if (fpsCapDropdown && fpsCapDropdown.options.Count > 0)
             fpsCapDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_FpsCapIndex", 2), 0, fpsCapDropdown.options.Count - 1);
 
-        // Використовуємо SetValueWithoutNotify, щоб налаштування не застосовувались намертво при відкритті меню
         if (fovSlider) fovSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("Settings_FOV", 75f));
         if (fovInput && fovSlider) fovInput.text = Mathf.RoundToInt(fovSlider.value).ToString();
 
@@ -638,7 +629,7 @@ public class SettingsUI : MonoBehaviour
 
     public void CloseSettings()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
 
         if (masterSlider) PlayerPrefs.SetFloat("Settings_MasterVol", masterSlider.value);
         if (musicSlider) PlayerPrefs.SetFloat("Settings_MusicVol", musicSlider.value);
@@ -761,20 +752,17 @@ public class SettingsUI : MonoBehaviour
         string currentScene = SceneManager.GetActiveScene().name;
         if (currentScene == "Menu") return;
 
-        // Перевіряємо, чи відкрите зараз ЗАГАЛЬНЕ меню паузи (GlobalHUD)
         bool isPauseMenuOpen = GlobalHUD.Instance != null &&
                                GlobalHUD.Instance.pausePanelGroup != null &&
                                GlobalHUD.Instance.pausePanelGroup.gameObject.activeInHierarchy;
 
         if (isPauseMenuOpen)
         {
-            // Якщо ми вийшли з налаштувань назад у меню паузи - залишаємо курсор!
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
         }
         else
         {
-            // Якщо ми вийшли з налаштувань у гру (немає паузи) - ховаємо курсор
             if (currentScene != "ShopScene")
             {
                 Cursor.visible = false;
@@ -792,21 +780,28 @@ public class SettingsUI : MonoBehaviour
         checkmark.color = c;
     }
 
+    // ФІКС: Зберігаємо гучність відразу, як тільки повзунок рухається
     private void OnMasterVolumeChanged(float value)
     {
         if (masterInput) masterInput.text = value.ToString("0");
+        PlayerPrefs.SetFloat("Settings_MasterVol", value);
+        PlayerPrefs.Save();
         if (AudioManager.Instance != null) AudioManager.Instance.SetMasterVolume(value / 100f);
     }
 
     private void OnMusicVolumeChanged(float value)
     {
         if (musicInput) musicInput.text = value.ToString("0");
+        PlayerPrefs.SetFloat("Settings_MusicVol", value);
+        PlayerPrefs.Save();
         if (AudioManager.Instance != null) AudioManager.Instance.SetMusicVolume(value / 100f);
     }
 
     private void OnSFXVolumeChanged(float value)
     {
         if (sfxInput) sfxInput.text = value.ToString("0");
+        PlayerPrefs.SetFloat("Settings_SFXVol", value);
+        PlayerPrefs.Save();
         if (AudioManager.Instance != null) AudioManager.Instance.SetSFXVolume(value / 100f);
     }
 
@@ -840,12 +835,12 @@ public class SettingsUI : MonoBehaviour
         else { if (sfxInput) sfxInput.text = sfxSlider.value.ToString("0"); }
     }
 
-    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
-    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover); }
+    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover"); }
+    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover"); }
 
     private void OnFPSLimitChanged(bool isOn)
     {
-        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
         ApplyFpsLimit(isOn);
     }
 
@@ -869,7 +864,7 @@ public class SettingsUI : MonoBehaviour
 
     private void OnShowFPSChanged(bool isOn)
     {
-        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
         PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
         if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
     }

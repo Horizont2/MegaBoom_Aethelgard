@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 using TMPro;
 using System.Collections;
-using System.Collections.Generic; // Додано для роботи зі списками
+using System.Collections.Generic;
 
 public class IntroCinematicManager : MonoBehaviour
 {
@@ -24,6 +24,9 @@ public class IntroCinematicManager : MonoBehaviour
     private Coroutine typingCoroutine;
     private bool isSkipping = false;
 
+    // ФІКС: Статична змінна запам'ятовує, чи гралося інтро в поточній ігровій сесії
+    private static bool hasPlayedThisSession = false;
+
     private void Awake()
     {
         if (cinematicCanvasGroup == null)
@@ -35,6 +38,21 @@ public class IntroCinematicManager : MonoBehaviour
     private void Start()
     {
         if (!gameObject.activeInHierarchy) return;
+
+        // ФІКС: Якщо ми вже бачили інтро після запуску гри — миттєво пропускаємо його
+        if (hasPlayedThisSession)
+        {
+            if (mainGameUI != null) mainGameUI.SetActive(true);
+            if (cinematicCanvasGroup != null)
+            {
+                cinematicCanvasGroup.alpha = 0f;
+                cinematicCanvasGroup.blocksRaycasts = false;
+                cinematicCanvasGroup.gameObject.SetActive(false);
+            }
+            return;
+        }
+
+        hasPlayedThisSession = true;
 
         if (mainGameUI != null) mainGameUI.SetActive(false);
         if (cinematicCanvasGroup != null)

@@ -90,6 +90,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private static float s_terrainOriginY;
     private static readonly Collider[] s_overlapBuffer = new Collider[32];
 
+    private CharacterController cc;
+    private float verticalVelocity = 0f; // Для гравітації
+
+    public static int ActiveEnemiesCount = 0;
+
     private static bool TryGetPlayer(out Transform t, out PlayerController pc)
     {
         if (s_player != null && s_playerController != null) { t = s_player; pc = s_playerController; return true; }
@@ -134,11 +139,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void OnEnable()
     {
+        ActiveEnemiesCount++;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
     private void OnDisable()
     {
+        ActiveEnemiesCount--;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
     }
 
@@ -167,6 +174,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void Awake()
     {
+        cc = GetComponent<CharacterController>();
+
         gameObject.layer = 9;
         int minimapLayer = LayerMask.NameToLayer("MinimapOnly");
 

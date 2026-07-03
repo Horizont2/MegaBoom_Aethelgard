@@ -105786,7 +105786,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1160241407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140827,7 +140827,7 @@ ParticleSystem:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  moveWithTransform: 0
+  moveWithTransform: 1
   moveWithCustomTransform: {fileID: 0}
   scalingMode: 1
   randomSeed: 0
@@ -198985,7 +198985,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].productionDescription
-      value: Unlocks Desert Map (16 Regions)
+      value: Unlocks next  8 regions (16 Regions)
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].productionDescription
@@ -199530,6 +199530,18 @@ PrefabInstance:
     - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
       propertyPath: resourceVisuals.Array.size
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
+      propertyPath: levels.Array.data[0].costWood
+      value: 60
+      objectReference: {fileID: 0}
+    - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
+      propertyPath: levels.Array.data[1].costWood
+      value: 80
+      objectReference: {fileID: 0}
+    - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
+      propertyPath: levels.Array.data[2].costWood
+      value: 110
       objectReference: {fileID: 0}
     - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
       propertyPath: 'resourceVisuals.Array.data[0]'

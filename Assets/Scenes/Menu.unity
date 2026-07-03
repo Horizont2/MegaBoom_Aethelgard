@@ -1829,7 +1829,7 @@ MonoBehaviour:
   mainGameUI: {fileID: 760049994}
   subtitleText: {fileID: 1337092808}
   typingSpeed: 0.05
-  delayBetweenChunks: 1.5
+  delayBetweenChunks: 1.7
   maxCharactersPerScreen: 70
 --- !u!320 &398757795
 PlayableDirector:
@@ -6649,7 +6649,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -7338,7 +7338,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1636507759
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,32 +1,28 @@
 using UnityEngine;
 using UnityEngine.Video;
 
-[CreateAssetMenu(fileName = "Hint_", menuName = "Tutorial/Hint Data")]
+[CreateAssetMenu(fileName = "NewTutorialHint", menuName = "Tutorial/Hint Data")]
 public class TutorialHintData : ScriptableObject
 {
-    [Header("Identity")]
-    [Tooltip("Унікальний ключ. Він і є аргумент TutorialHints.Instance.ShowIfNew(key).")]
+    [Tooltip("Унікальний ключ для PlayerPrefs (наприклад: 'move_hint')")]
     public string key;
 
-    [Header("Content")]
-    [Tooltip("Заголовок панелі ('MOVE', 'COMBAT', 'TOTEM' тощо)")]
     public string title = "TIP";
-    [Tooltip("Основний текст. Підтримує rich-text (<b>, <color=#...>)")]
-    [TextArea(2, 6)] public string body;
-    [Tooltip("Маленька іконка зліва від заголовку (опціонально)")]
-    public Sprite icon;
 
-    [Header("Video Guide (AC4-style)")]
-    [Tooltip("Короткий VideoClip, що циклічно програється поряд із текстом. Як у Assassin's Creed.")]
+    [TextArea(3, 5)]
+    public string body;
+
+    [Tooltip("Скільки секунд показувати підказку (якщо не чекаємо інпуту)")]
+    public float duration = 6f;
+
+    [Tooltip("Чи має панель висіти, поки гравець не натисне кнопку закриття?")]
+    public bool waitForInput = false;
+
+    [Header("Visuals (Optional)")]
+    public Sprite icon;
     public VideoClip videoClip;
 
-    [Header("Display")]
-    [Tooltip("Скільки секунд показувати, перш ніж приховати")]
-    public float duration = 6f;
-    [Tooltip("Чекати на натискання будь-якої клавіші для закриття замість таймера")]
-    public bool waitForInput = false;
-    [Tooltip("Поставити гру на паузу (Time.timeScale = 0) поки хінт показується")]
-    public bool pauseGameWhileShown = true;
-    [Tooltip("Звук, що грає при появі панелі (опціонально)")]
+    [Header("Audio (Optional)")]
+    [Tooltip("Звук, який грає при появі цієї конкретної підказки")]
     public AudioClip showSound;
 }

@@ -118,9 +118,6 @@ public class GlobalHUD : MonoBehaviour
     private void OnEnable() { SceneManager.sceneLoaded += OnSceneLoaded; }
     private void OnDisable() { SceneManager.sceneLoaded -= OnSceneLoaded; }
 
-    private float lastBossFill = -1f;
-    private float lastBossCatchupFill = -1f;
-
     private void Update()
     {
         if (bossUIGroup != null && bossUIGroup.alpha > 0f)
@@ -645,23 +642,25 @@ public class GlobalHUD : MonoBehaviour
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
 
+        // 1. ПОВЕРТАЄМО ВІДОБРАЖЕННЯ UI МЕНЮ
         if (isPaused)
         {
             try { CloseAllOtherActivePanels(); } catch (System.Exception) { }
+            StartCoroutine(ShowMenuRoutine());
+        }
+        else
+        {
+            StartCoroutine(HideMenuRoutine());
         }
 
-        // ==========================================
-        // НАДІЙНИЙ ПОШУК КОНТРОЛЕРА (як у твоєму оригіналі)
-        // ==========================================
+        // НАДІЙНИЙ ПОШУК КОНТРОЛЕРА
         try
         {
-            // Очищаємо "мертві" посилання
             if (pauseSceneController != null && !pauseSceneController.gameObject.scene.IsValid())
             {
                 pauseSceneController = null;
             }
 
-            // Шукаємо контролер найсучаснішим методом Unity
             if (pauseSceneController == null)
             {
                 pauseSceneController = UnityEngine.Object.FindFirstObjectByType<PauseSceneController>(FindObjectsInactive.Include);
@@ -669,47 +668,41 @@ public class GlobalHUD : MonoBehaviour
         }
         catch (System.Exception) { }
 
-        // ==========================================
-        // ОПТИМІЗАЦІЯ ТА ЧАС
-        // ==========================================
+        // 2. ЧИСТИЙ БЛОК ПАУЗИ (БЕЗ ВІДКЛЮЧЕННЯ ТЕРЕЙНУ)
         if (isPaused)
         {
             if (pauseSceneController != null)
             {
-                // ПРИМУСОВО вмикаємо об'єкт табору, якщо він був вимкнений, щоб його камера точно запрацювала
                 if (!pauseSceneController.gameObject.activeInHierarchy)
                 {
                     pauseSceneController.gameObject.SetActive(true);
                 }
-
-                // Вимикаємо террейн головної сцени для підвищення FPS
-                mainTerrainComponent = Terrain.activeTerrain;
-                if (mainTerrainComponent != null) mainTerrainComponent.enabled = false;
 
                 Time.timeScale = 1f;
                 try { pauseSceneController.EnterPause(); } catch { }
             }
             else
             {
-                Time.timeScale = 0f; // Глуха пауза для бою
+                Time.timeScale = 0f;
             }
         }
+        // Фрагмент методу TogglePause() при виході з паузи:
         else
         {
             if (pauseSceneController != null)
             {
                 Time.timeScale = 1f;
                 try { pauseSceneController.ExitPause(); } catch { }
-
-                // Вмикаємо террейн назад у гру
-                if (mainTerrainComponent != null) mainTerrainComponent.enabled = true;
             }
             else
             {
                 Time.timeScale = 1f;
             }
+
+            // ЖОРСТКИЙ FAILSAFE КАМЕРИ
+            CameraFollow camFollow = UnityEngine.Object.FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
+            if (camFollow != null) camFollow.SnapToTarget();
         }
-        // ==========================================
 
         if (dofEffect != null)
         {
@@ -719,16 +712,7 @@ public class GlobalHUD : MonoBehaviour
 
         try { ToggleGameplayUIForPause(isPaused); } catch (System.Exception) { }
 
-        if (isPaused)
-        {
-            try { ResetGiveUpState(); } catch { }
-            StartCoroutine(ShowMenuRoutine());
-        }
-        else
-        {
-            StartCoroutine(HideMenuRoutine());
-        }
-
+        // КЕРУВАННЯ КУРСОРOM
         if (currentScene == "ShopScene" || currentScene == "Menu" || currentScene == "MainMenu")
         {
             Cursor.visible = true;
@@ -746,7 +730,6 @@ public class GlobalHUD : MonoBehaviour
         if (isPausedMenuVisible)
         {
             objectsHiddenByPause.Clear();
-
             if (gameplayPanels != null)
             {
                 foreach (GameObject panel in gameplayPanels)
@@ -764,31 +747,26 @@ public class GlobalHUD : MonoBehaviour
                 objectsHiddenByPause.Add(promptCanvasGroup.gameObject);
                 promptCanvasGroup.gameObject.SetActive(false);
             }
-
             if (objectivePanelGroup != null && objectivePanelGroup.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(objectivePanelGroup.gameObject);
                 objectivePanelGroup.gameObject.SetActive(false);
             }
-
             if (bossUIGroup != null && bossUIGroup.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(bossUIGroup.gameObject);
                 bossUIGroup.gameObject.SetActive(false);
             }
-
             if (lowHealthVignette != null && lowHealthVignette.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(lowHealthVignette.gameObject);
                 lowHealthVignette.gameObject.SetActive(false);
             }
-
             if (pickupPopupContainer != null && pickupPopupContainer.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(pickupPopupContainer.gameObject);
                 pickupPopupContainer.gameObject.SetActive(false);
             }
-
             if (widgetContainer != null && widgetContainer.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(widgetContainer.gameObject);
@@ -796,7 +774,7 @@ public class GlobalHUD : MonoBehaviour
             }
 
             PlayerController pc = PlayerController.LocalInstance;
-            if (pc == null) pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc == null) pc = UnityEngine.Object.FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
             if (pc != null)
             {
                 HidePlayerHUDElementForPause(pc.hpFill?.transform);
@@ -808,11 +786,47 @@ public class GlobalHUD : MonoBehaviour
         }
         else
         {
-            foreach (GameObject obj in objectsHiddenByPause)
+            // ЖОРСТКИЙ FAILSAFE: Завжди вмикаємо UI назад, ігноруючи списки "що було вимкнено"
+            if (gameplayPanels != null)
             {
-                if (obj != null) obj.SetActive(true);
+                foreach (GameObject panel in gameplayPanels)
+                {
+                    if (panel != null) panel.SetActive(true);
+                }
             }
+
+            PlayerController pc = PlayerController.LocalInstance;
+            if (pc == null) pc = UnityEngine.Object.FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc != null)
+            {
+                ForceShowParentPanel(pc.hpFill?.transform);
+                ForceShowParentPanel(pc.dashStaminaFill?.transform);
+                ForceShowParentPanel(pc.xpFill?.transform);
+                ForceShowParentPanel(pc.levelText?.transform);
+                ForceShowParentPanel(pc.crystalText?.transform);
+            }
+
+            if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(true);
+            if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(true);
+            if (widgetContainer != null) widgetContainer.gameObject.SetActive(true);
+
             objectsHiddenByPause.Clear();
+        }
+    }
+
+    private void ForceShowParentPanel(Transform leaf)
+    {
+        if (leaf == null) return;
+        Transform t = leaf;
+        // Йдемо вгору, поки не знайдемо корінь панелі, який лежить прямо під Canvas
+        while (t != null && t.parent != null && t.parent.GetComponent<Canvas>() == null)
+        {
+            t = t.parent;
+        }
+
+        if (t != null && t.parent != null && t.parent.GetComponent<Canvas>() != null)
+        {
+            t.gameObject.SetActive(true); // Вмикаємо саму панель
         }
     }
 
@@ -843,30 +857,13 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.blocksRaycasts = true;
         pausePanelGroup.interactable = true;
 
-        if (pauseSceneController != null && Camera.main != null && pauseSceneController.pauseCamera != null)
+        float t = 0f;
+        while (t < 1f)
         {
-            float t = 0f;
-            Vector3 startPos = Camera.main.transform.position;
-            Quaternion startRot = Camera.main.transform.rotation;
-            while (t < 1f)
-            {
-                t += Time.unscaledDeltaTime * 3.5f;
-                pausePanelGroup.alpha = Mathf.Lerp(0f, 1f, t);
-                Camera.main.transform.position = Vector3.Lerp(startPos, pauseSceneController.pauseCamera.transform.position, t);
-                Camera.main.transform.rotation = Quaternion.Slerp(startRot, pauseSceneController.pauseCamera.transform.rotation, t);
-                yield return null;
-            }
+            t += Time.unscaledDeltaTime * 5f;
+            pausePanelGroup.alpha = Mathf.Lerp(0f, 1f, t);
+            yield return null;
         }
-        else
-        {
-            // БОЙОВА СЦЕНА АБО КАМЕРИ НЕМАЄ
-            while (pausePanelGroup.alpha < 1f)
-            {
-                pausePanelGroup.alpha += Time.unscaledDeltaTime * 5f;
-                yield return null;
-            }
-        }
-
         pausePanelGroup.alpha = 1f;
     }
 
@@ -877,28 +874,12 @@ public class GlobalHUD : MonoBehaviour
         pausePanelGroup.blocksRaycasts = false;
         pausePanelGroup.interactable = false;
 
-        if (pauseSceneController != null && Camera.main != null)
+        float t = 0f;
+        while (t < 1f)
         {
-            CameraFollow follower = Camera.main.GetComponent<CameraFollow>();
-            if (follower != null)
-            {
-                follower.BeginHandoffBlend(0.4f);
-                float t = 0f;
-                while (t < 1f)
-                {
-                    t += Time.unscaledDeltaTime * 4f;
-                    pausePanelGroup.alpha = Mathf.Lerp(1f, 0f, t);
-                    yield return null;
-                }
-            }
-        }
-        else
-        {
-            while (pausePanelGroup.alpha > 0f)
-            {
-                pausePanelGroup.alpha -= Time.unscaledDeltaTime * 5f;
-                yield return null;
-            }
+            t += Time.unscaledDeltaTime * 6f;
+            pausePanelGroup.alpha = Mathf.Lerp(1f, 0f, t);
+            yield return null;
         }
 
         pausePanelGroup.alpha = 0f;

@@ -3,11 +3,12 @@ using UnityEngine;
 public class MinimapCamera : MonoBehaviour
 {
     public Transform player;
-    public float cameraHeight = 30f;
+    public float cameraHeight = 50f;
+    [Tooltip("Чи обертати карту разом з гравцем (AAA стиль)")]
+    public bool rotateWithPlayer = true;
 
     private void Start()
     {
-        // Відкріплюємо камеру від гравця, якщо вона була всередині нього
         transform.parent = null;
     }
 
@@ -18,7 +19,7 @@ public class MinimapCamera : MonoBehaviour
             // Камера просто висить над гравцем
             transform.position = new Vector3(player.position.x, player.position.y + cameraHeight, player.position.z);
 
-            // Завжди дивиться вниз (на 90 градусів) і ніколи не крутиться!
+            // Завжди дивиться вниз (Північ зверху)
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         }
     }
