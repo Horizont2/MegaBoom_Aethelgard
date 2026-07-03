@@ -434,7 +434,7 @@ public class CampBuilding : MonoBehaviour
         {
             infoText += $"{prodLabel}: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Build Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
-            if (buildHintTMP != null) buildHintTMP.text = "HOLD TO BUILD";
+            if (buildHintTMP != null) buildHintTMP.text = "HOLD [E] TO BUILD";
         }
         else
         {
@@ -444,7 +444,7 @@ public class CampBuilding : MonoBehaviour
             infoText += $" ➔ <b><color=#A8E6CF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
 
-            if (buildHintTMP != null) buildHintTMP.text = "HOLD TO UPGRADE";
+            if (buildHintTMP != null) buildHintTMP.text = "HOLD [E] TO UPGRADE";
         }
 
         if (infoTMP != null) infoTMP.text = infoText;
