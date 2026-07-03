@@ -3,14 +3,18 @@ using UnityEngine;
 public class NPC_Dialogue : MonoBehaviour
 {
     [Header("Quest UI")]
-    public GameObject questMarker; // Посилання на літаючий знак оклику
+    public GameObject questMarker; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     private bool isPlayerInRange = false;
     private bool hasTalked = false;
 
+    // Used by MinimapQuestTracker to decide whether this NPC should show up as
+    // a quest target on the minimap.
+    public bool HasActiveQuestMarker => !hasTalked && questMarker != null && questMarker.activeSelf;
+
     private void Start()
     {
-        // Переконуємося, що знак оклику увімкнений на початку сцени
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (questMarker != null) questMarker.SetActive(true);
     }
 
@@ -41,16 +45,16 @@ public class NPC_Dialogue : MonoBehaviour
 
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
-            // ВИМИКАЄМО знак оклику, бо діалог розпочато
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (questMarker != null) questMarker.SetActive(false);
 
-            // Повертаємо ковбоя до гравця
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             Transform player = GameObject.FindGameObjectWithTag("Player").transform;
             Vector3 lookPos = player.position - transform.position;
             lookPos.y = 0;
             transform.rotation = Quaternion.LookRotation(lookPos);
 
-            // ЗАПУСКАЄМО ДІАЛОГ
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ДІпїЅпїЅпїЅпїЅ
             if (Level1_QuestManager.Instance != null)
             {
                 Level1_QuestManager.Instance.StartIntroDialogue();

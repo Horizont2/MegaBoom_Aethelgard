@@ -48,7 +48,7 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // ГАРАНТІЯ: Розморожуємо час, якщо діалог його зупинив!
+        // пїЅпїЅпїЅпїЅпїЅТІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
         Time.timeScale = 1f;
 
         survivalTime = 0f;
@@ -78,7 +78,7 @@ public class GameManager : MonoBehaviour
     {
         yield return null;
 
-        // Надійний запуск: чекаємо завершення генерації світу
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
         if (worldGen != null)
         {
@@ -134,6 +134,8 @@ public class GameManager : MonoBehaviour
 
         PlayerPrefs.SetInt("IsRunActive", 0);
         PlayerPrefs.Save();
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_GameOver);
 
         StartCoroutine(GameOverSequence());
     }

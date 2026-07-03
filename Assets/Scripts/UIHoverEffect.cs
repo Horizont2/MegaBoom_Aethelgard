@@ -1,23 +1,23 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI; // Додаємо для доступу до Button
+using UnityEngine.UI; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ Button
 
 public class UIHoverEffect : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {
-    [Header("Налаштування анімації")]
+    [Header("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
     public float hoverScale = 1.05f;
     public float clickScale = 0.95f;
     public float speed = 15f;
 
     private Vector3 originalScale;
     private Vector3 targetScale;
-    private Button myButton; // Посилання на кнопку
+    private Button myButton; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     void Start()
     {
         originalScale = transform.localScale;
         targetScale = originalScale;
-        myButton = GetComponent<Button>(); // Отримуємо компонент кнопки
+        myButton = GetComponent<Button>(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     }
 
     void Update()
@@ -27,9 +27,10 @@ public class UIHoverEffect : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        // Якщо кнопка є і вона вимкнена - нічого не робимо
+        // РЇРєС‰Рѕ РєРЅРѕРїРєР° С” С– РІРѕРЅР° РІРёРјРєРЅРµРЅР° - РІР·Р°РіР°Р»С– РЅРµ СЂРµР°РіСѓС”РјРѕ
         if (myButton != null && !myButton.interactable) return;
         targetScale = originalScale * hoverScale;
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
     }
 
     public void OnPointerExit(PointerEventData eventData)

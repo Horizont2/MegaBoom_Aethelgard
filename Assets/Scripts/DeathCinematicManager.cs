@@ -32,6 +32,7 @@ public class DeathCinematicManager : MonoBehaviour
 
     public void TriggerDeathCinematic()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_GameOver);
         StartCoroutine(DeathSequence());
     }
 
@@ -58,7 +59,7 @@ public class DeathCinematicManager : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / textFadeDuration;
 
-            // ФІКС: Тепер екран стає на 98% ЧОРНИМ (повна темрява)
+            // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ 98% пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             if (backgroundOverlay != null) backgroundOverlay.color = new Color(0f, 0f, 0f, t * 0.98f);
 
             if (textCanvasGroup != null) textCanvasGroup.alpha = t;
@@ -81,12 +82,12 @@ public class DeathCinematicManager : MonoBehaviour
         Time.timeScale = 0f;
     }
 
-    // --- ФІКС: ТЕПЕР ВИКОРИСТОВУЄМО ЕКРАН ЗАВАНТАЖЕННЯ ---
+    // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅУЄпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
     public void RetryLevel()
     {
         Time.timeScale = 1f;
 
-        // --- ФІКС: Миттєво ховаємо екран смерті перед завантаженням ---
+        // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);
@@ -99,7 +100,7 @@ public class DeathCinematicManager : MonoBehaviour
     {
         Time.timeScale = 1f;
 
-        // --- ФІКС: Миттєво ховаємо екран смерті перед завантаженням ---
+        // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);

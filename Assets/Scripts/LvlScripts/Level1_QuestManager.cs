@@ -34,7 +34,23 @@ public class Level1_QuestManager : MonoBehaviour
     private int defeatedSkeletonsW1 = 0;
     private bool isDialogueStarted = false;
 
-    private void Awake() { Instance = this; }
+    private void Awake()
+    {
+        Instance = this;
+
+        // Block player controls immediately so they can't move during the frame
+        // before LevelStartRoutine runs. Without this, WASD could slip through
+        // between Player.Update and our coroutine on frame 0.
+        if (introDirector != null)
+        {
+            GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+            if (pObj != null)
+            {
+                PlayerController pc = pObj.GetComponent<PlayerController>();
+                if (pc != null) pc.isControlBlocked = true;
+            }
+        }
+    }
 
     private void Start()
     {
@@ -91,12 +107,20 @@ public class Level1_QuestManager : MonoBehaviour
                 cf.BeginHandoffBlend(0.7f);
             }
 
-            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
-
             SetCinematicMode(false);
             var brain = Camera.main.GetComponent<CinemachineBrain>();
             if (brain != null) brain.enabled = false;
+
+            // Keep player controls locked until the camera finishes blending
+            // back to CameraFollow. Otherwise the player can already run around
+            // while the camera is mid-transition and it feels broken.
+            if (cf != null)
+            {
+                while (cf.IsHandoffBlending) yield return null;
+            }
+
+            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
             UpdateObjectiveUI();
         }
@@ -461,6 +485,7 @@ public class Level1_QuestManager : MonoBehaviour
 
     public void TriggerGameOver()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_GameOver);
         StartCoroutine(TutorialGameOverRoutine());
     }
 

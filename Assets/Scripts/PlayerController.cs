@@ -1458,6 +1458,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
+        bool hitStoneResource = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
@@ -1490,7 +1491,15 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                 damageable.TakeDamage(hitInfo);
                 if (col.CompareTag("Enemy")) { hitEnemy = true; totalLifestealDealt += finalDmg; }
-                else hitResource = true;
+                else
+                {
+                    hitResource = true;
+                    // Rock nodes use a different SFX. Without this every resource hit
+                    // (tree, rock, barrel) played the wood sound.
+                    ResourceNode rn = col.GetComponentInParent<ResourceNode>();
+                    if (rn != null && rn.nodeType == ResourceNode.NodeType.Rock)
+                        hitStoneResource = true;
+                }
 
                 if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
                 {
@@ -1517,7 +1526,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
         else if (hitResource)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX(hitStoneResource ? AudioID.Player_HitResource_Stone : AudioID.Player_HitResource_Wood);
             if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(-transform.forward, 0.3f, 0.1f, 0.05f);
         }
     }

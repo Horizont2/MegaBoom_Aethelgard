@@ -14,17 +14,17 @@ public class IntroCinematicManager : MonoBehaviour
     [Header("Subtitles")]
     public TextMeshProUGUI subtitleText;
     public float typingSpeed = 0.05f;
-    [Tooltip("Скільки секунд чекати перед очищенням екрану для наступного шматка")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ")]
     public float delayBetweenChunks = 1.5f;
 
     [Header("Auto Split Settings")]
-    [Tooltip("Максимальна кількість символів на екрані перед тим, як текст автоматично розіб'ється")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅ")]
     public int maxCharactersPerScreen = 70;
 
     private Coroutine typingCoroutine;
     private bool isSkipping = false;
 
-    // ФІКС: Статична змінна запам'ятовує, чи гралося інтро в поточній ігровій сесії
+    // ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
     private static bool hasPlayedThisSession = false;
 
     private void Awake()
@@ -39,9 +39,17 @@ public class IntroCinematicManager : MonoBehaviour
     {
         if (!gameObject.activeInHierarchy) return;
 
-        // ФІКС: Якщо ми вже бачили інтро після запуску гри — миттєво пропускаємо його
+        // РЇРєС‰Рѕ С†Рµ РІР¶Рµ РґСЂСѓРіР° РїРѕСЏРІР° РјРµРЅСЋ РІ С†С–Р№ СЃРµСЃС–С— вЂ” РїСЂРёС…РѕРІСѓС”РјРѕ РєР°С‚СЃС†РµРЅСѓ Р† Р·СѓРїРёРЅСЏС”РјРѕ
+        // director, С–РЅР°РєС€Рµ Timeline Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ Р·Р°РїСѓСЃС‚РёС‚СЊ СЃРІС–Р№ AudioTrack РЅР°РІС–С‚СЊ РєРѕР»Рё
+        // СЃР°РјР° РєР°С‚СЃС†РµРЅР° РІС–Р·СѓР°Р»СЊРЅРѕ РЅРµ РїРѕРєР°Р·СѓС”С‚СЊСЃСЏ.
         if (hasPlayedThisSession)
         {
+            if (director != null)
+            {
+                director.playOnAwake = false;
+                if (director.state == PlayState.Playing) director.Stop();
+                director.gameObject.SetActive(false);
+            }
             if (mainGameUI != null) mainGameUI.SetActive(true);
             if (cinematicCanvasGroup != null)
             {
@@ -68,10 +76,10 @@ public class IntroCinematicManager : MonoBehaviour
         }
     }
 
-    // МЕТОД ДЛЯ ВИКЛИКУ З TIMELINE
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ TIMELINE
     public void SetSubtitle(string fullText)
     {
-        // ЗАХИСТ: Якщо об'єкт уже вимкнений, нічого не робимо
+        // пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (!gameObject.activeInHierarchy) return;
 
         if (typingCoroutine != null) StopCoroutine(typingCoroutine);
@@ -80,19 +88,19 @@ public class IntroCinematicManager : MonoBehaviour
         typingCoroutine = StartCoroutine(TypeTextChunks(autoChunks));
     }
 
-    // ЛОГІКА АВТОМАТИЧНОГО РОЗДІЛЕННЯ ТЕКСТУ
+    // пїЅпїЅГІпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅДІпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     private List<string> AutoSplitText(string text)
     {
         List<string> chunks = new List<string>();
-        string[] words = text.Split(' '); // Розбиваємо весь текст на окремі слова
+        string[] words = text.Split(' '); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         string currentChunk = "";
 
         foreach (string word in words)
         {
-            // Якщо додавання наступного слова перевищить ліміт...
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ...
             if ((currentChunk.Length + word.Length + 1) > maxCharactersPerScreen)
             {
-                // ...зберігаємо поточний шматок і починаємо новий
+                // ...пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
                 chunks.Add(currentChunk.Trim());
                 currentChunk = word + " ";
             }
@@ -102,7 +110,7 @@ public class IntroCinematicManager : MonoBehaviour
             }
         }
 
-        // Додаємо залишок тексту, якщо він є
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ
         if (!string.IsNullOrWhiteSpace(currentChunk))
         {
             chunks.Add(currentChunk.Trim());
@@ -121,14 +129,14 @@ public class IntroCinematicManager : MonoBehaviour
 
             int totalVisibleCharacters = chunks[c].Length;
 
-            // Друкуємо поточний шматок
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             for (int i = 0; i <= totalVisibleCharacters; i++)
             {
                 subtitleText.maxVisibleCharacters = i;
                 yield return new WaitForSecondsRealtime(typingSpeed);
             }
 
-            // Якщо це НЕ останній шматок тексту, робимо паузу
+            // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             if (c < chunks.Count - 1)
             {
                 yield return new WaitForSecondsRealtime(delayBetweenChunks);
@@ -150,7 +158,7 @@ public class IntroCinematicManager : MonoBehaviour
 
     public void SkipCinematic()
     {
-        // ЗАХИСТ: Перевіряємо чи активний об'єкт
+        // пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ
         if (!gameObject.activeInHierarchy || isSkipping) return;
         isSkipping = true;
         StartCoroutine(FadeOutCinematic());
