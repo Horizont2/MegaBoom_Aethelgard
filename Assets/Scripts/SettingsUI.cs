@@ -247,8 +247,8 @@ public class SettingsUI : MonoBehaviour
 
         if (languageDropdown) languageDropdown.onValueChanged.AddListener(v =>
         {
-            PlayerPrefs.SetInt("Settings_Language", Mathf.Clamp(v, 0, 1));
-            // LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5); // Un-comment if you use LocalizationManager
+            // Apply immediately via LocalizationManager (also persists via its setter).
+            LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 6);
             StartCoroutine(RebuildSettingsLayout());
         });
 

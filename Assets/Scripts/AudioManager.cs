@@ -219,12 +219,15 @@ public class AudioManager : MonoBehaviour
 
     private void LoadAudioSettings()
     {
-        float masterVol = PlayerPrefs.GetFloat("Settings_MasterVol", 1f);
-        float musicVol = PlayerPrefs.GetFloat("Settings_MusicVol", 1f);
-        float sfxVol = PlayerPrefs.GetFloat("Settings_SFXVol", 1f);
-        float uiVol = PlayerPrefs.GetFloat("Settings_UIVol", 1f);
-        float ambientVol = PlayerPrefs.GetFloat("Settings_AmbientVol", 1f);
-        float voiceVol = PlayerPrefs.GetFloat("Settings_VoiceVol", 1f);
+        // Persisted volumes use the same 0-100 scale as SettingsUI/SettingsApplier.
+        // We divide by 100 here to feed FMOD its expected 0-1 bus volume.
+        // Default 100 (full) matches SettingsUI's initial slider fallback.
+        float masterVol = PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f;
+        float musicVol = PlayerPrefs.GetFloat("Settings_MusicVol", 100f) / 100f;
+        float sfxVol = PlayerPrefs.GetFloat("Settings_SFXVol", 100f) / 100f;
+        float uiVol = PlayerPrefs.GetFloat("Settings_UIVol", 100f) / 100f;
+        float ambientVol = PlayerPrefs.GetFloat("Settings_AmbientVol", 100f) / 100f;
+        float voiceVol = PlayerPrefs.GetFloat("Settings_VoiceVol", 100f) / 100f;
 
         masterBus.setVolume(masterVol);
         musicBus.setVolume(musicVol);
@@ -234,41 +237,16 @@ public class AudioManager : MonoBehaviour
         voiceBus.setVolume(voiceVol);
     }
 
-    public void SetMasterVolume(float vol)
-    {
-        masterBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_MasterVol", vol);
-    }
-
-    public void SetMusicVolume(float vol)
-    {
-        musicBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_MusicVol", vol);
-    }
-
-    public void SetSFXVolume(float vol)
-    {
-        sfxBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_SFXVol", vol);
-    }
-
-    public void SetUIVolume(float vol)
-    {
-        uiBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_UIVol", vol);
-    }
-
-    public void SetAmbientVolume(float vol)
-    {
-        ambientBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_AmbientVol", vol);
-    }
-
-    public void SetVoiceVolume(float vol)
-    {
-        voiceBus.setVolume(vol);
-        PlayerPrefs.SetFloat("Settings_VoiceVol", vol);
-    }
+    // Set* methods take a normalized 0-1 volume and only update the FMOD bus.
+    // Persistence is owned by SettingsUI (in 0-100 scale) — we must NOT write
+    // back here or we'd corrupt the stored value into a 0-1 float that the
+    // slider then reads as ~0% on the next launch.
+    public void SetMasterVolume(float vol) { masterBus.setVolume(vol); }
+    public void SetMusicVolume(float vol) { musicBus.setVolume(vol); }
+    public void SetSFXVolume(float vol) { sfxBus.setVolume(vol); }
+    public void SetUIVolume(float vol) { uiBus.setVolume(vol); }
+    public void SetAmbientVolume(float vol) { ambientBus.setVolume(vol); }
+    public void SetVoiceVolume(float vol) { voiceBus.setVolume(vol); }
 
     private void InitializeDictionaries()
     {
