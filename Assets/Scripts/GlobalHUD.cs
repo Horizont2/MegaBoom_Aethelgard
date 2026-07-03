@@ -645,11 +645,16 @@ public class GlobalHUD : MonoBehaviour
         // 1. ПОВЕРТАЄМО ВІДОБРАЖЕННЯ UI МЕНЮ
         if (isPaused)
         {
+            // Скидаємо стан підтвердження "Are you sure?" — інакше воно зависає
+            // з минулого сеансу паузи і при наступному відкритті всі інші кнопки
+            // одразу неактивні.
+            ResetGiveUpState();
             try { CloseAllOtherActivePanels(); } catch (System.Exception) { }
             StartCoroutine(ShowMenuRoutine());
         }
         else
         {
+            ResetGiveUpState();
             StartCoroutine(HideMenuRoutine());
         }
 
