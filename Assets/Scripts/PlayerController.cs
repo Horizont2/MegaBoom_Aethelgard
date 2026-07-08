@@ -1566,7 +1566,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (hitEnemy)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitEnemy);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(GetEquippedHitSfx());
             Vector3 recoilDir = -transform.forward;
             if (isCriticalHit) { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.5f, 0.3f, 0.2f); StartCoroutine(HitStopRoutine(0.12f)); }
             else { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f); StartCoroutine(HitStopRoutine(0.04f)); }
@@ -1828,6 +1828,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             if (GlobalHUD.Instance != null)
                 GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(actuallyHealed)} HP", new Color(0.55f, 1f, 0.55f));
+            // Same threshold as the popup — trickle heals stay quiet so
+            // lifesteal doesn't turn into a heal spam channel.
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX(AudioID.Player_Heal);
         }
         UpdateHUD();
     }
@@ -1842,6 +1846,21 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (result != null) return result;
         }
         return null;
+    }
+
+    // Map the shop's ItemCategory enum (0=Sword, 1=Axe, 2=Bow) to the
+    // matching FMOD hit event so bow/axe swings sound different from
+    // sword swings. Axe falls back to the hammer event (closest heavy
+    // weapon in the current bank). Missing pref → sword default.
+    private string GetEquippedHitSfx()
+    {
+        int cat = PlayerPrefs.GetInt("EquippedWeaponCategory", 0);
+        switch (cat)
+        {
+            case 2: return AudioID.Player_HitEnemy_Bow;
+            case 1: return AudioID.Player_HitEnemy_Hammer;
+            default: return AudioID.Player_HitEnemy_Sword;
+        }
     }
 
     private void OnDrawGizmosSelected() { if (meleePoint != null) { Gizmos.color = Color.red; Gizmos.DrawWireSphere(meleePoint.position, meleeRadius); } }

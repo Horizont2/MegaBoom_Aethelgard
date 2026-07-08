@@ -123,6 +123,12 @@ public class CampDirector : MonoBehaviour
         // to the English literal when the active locale doesn't ship
         // this line, so no key is ever "missing".
         text = LocalizationManager.Tr(text);
+
+        // Dip the score for the line so the reader isn't fighting the
+        // music. Ducks in fast, releases when the line finishes typing.
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.DuckMusic(0.35f, 0.25f, -1f, 0f);
+
         subtitleText.text = text;
         subtitleText.ForceMeshUpdate();
         int totalChars = subtitleText.textInfo.characterCount;
@@ -137,6 +143,9 @@ public class CampDirector : MonoBehaviour
         yield return new WaitForSeconds(stayDuration);
         subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
+
+        // Restore the score once the subtitle clears.
+        if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
     }
 
     private IEnumerator ShowTutorialHint(string text, float duration)

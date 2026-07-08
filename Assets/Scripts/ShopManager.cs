@@ -609,11 +609,16 @@ public class ShopManager : MonoBehaviour
                 WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 PlayerPrefs.SetInt("SelectedWeaponID", id);
+                // Persist the weapon's family so PlayerController can pick
+                // the right hit SFX (sword vs axe vs bow) without needing
+                // the full WeaponData asset available at runtime.
+                PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
             }
             else if (isBought)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Click);
                 PlayerPrefs.SetInt("SelectedWeaponID", id);
+                PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }

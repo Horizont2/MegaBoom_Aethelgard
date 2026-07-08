@@ -451,6 +451,11 @@ public class Level1_QuestManager : MonoBehaviour
         if (subtitleText != null)
         {
             text = LocalizationManager.Tr(text);
+            // Duck the score during the line so the reader isn't
+            // competing with battle music. Released once the subtitle
+            // clears below.
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.DuckMusic(0.35f, 0.25f, -1f, 0f);
             subtitleText.text = text;
             subtitleText.ForceMeshUpdate();
             int totalChars = subtitleText.textInfo.characterCount;
@@ -464,6 +469,7 @@ public class Level1_QuestManager : MonoBehaviour
 
             yield return new WaitForSeconds(duration);
             subtitleText.text = "";
+            if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
         }
     }
 

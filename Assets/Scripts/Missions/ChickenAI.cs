@@ -13,6 +13,7 @@ public class ChickenAI : AnimalAI
 
     private bool isPanicking = false;
     private float panicTimer = 0f;
+    private float nextIdleCluckTime = 0f;
 
     protected override void Awake()
     {
@@ -24,6 +25,15 @@ public class ChickenAI : AnimalAI
     {
         agent.speed = 0f;
         stateTimer += Time.deltaTime;
+
+        // Quiet idle cluck every 8â€“16s per bird so a camp full of hens
+        // has a bit of ambient life instead of eerie silence.
+        if (Time.time >= nextIdleCluckTime)
+        {
+            nextIdleCluckTime = Time.time + Random.Range(8f, 16f);
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX3D(AudioID.Animal_Chicken, transform.position);
+        }
 
         if (stateTimer >= Random.Range(minStateTime, maxStateTime))
         {
@@ -49,7 +59,7 @@ public class ChickenAI : AnimalAI
             isPanicking = true;
             agent.speed = panicSpeed;
             if (featherParticles != null) featherParticles.Play();
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Animal_Chicken);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Animal_Chicken, transform.position);
         }
 
         panicTimer += Time.deltaTime;
@@ -83,7 +93,7 @@ public class ChickenAI : AnimalAI
 
         if (dist < panicDistance)
         {
-            // Ô²ÊÑ ÎÏÒÈÌ²ÇÀÖ²¯: Âèêîðèñòîâóºìî êåøîâàíèé playerCC
+            // Ô²ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ì²ï¿½ï¿½Ö²ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ playerCC
             if (playerCC != null && playerCC.velocity.magnitude > 2f)
             {
                 Vector3 runDirection = (transform.position - player.position).normalized;
