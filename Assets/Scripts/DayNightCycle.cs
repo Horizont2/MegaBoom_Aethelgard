@@ -392,8 +392,21 @@ public class DayNightCycle : MonoBehaviour
                     Destroy(lightning, 2f);
                 }
             }
+
+            // Fire the thunder clap after a realistic gap so light + sound
+            // separation reads "distant strike"; ~0.3 s for a close ground
+            // bolt, longer for far air bolts. Env_Thunder was defined in
+            // the FMOD bank but no code triggered it before.
+            float thunderGap = strikeGround ? Random.Range(0.2f, 0.6f) : Random.Range(0.8f, 2.5f);
+            StartCoroutine(ThunderClapDelayed(thunderGap));
         }
         lightningCoroutine = null;
+    }
+
+    private IEnumerator ThunderClapDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Env_Thunder);
     }
 
     // Scale + child-disable pass for every strike.

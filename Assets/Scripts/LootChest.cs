@@ -57,7 +57,7 @@ public class LootChest : MonoBehaviour
 
         // Правильний звук відкриття скрині замість перевикористаного
         // звуку рубання дерева, який тут стояв раніше.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Env_ChestOpen, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Env_ChestOpen);
 
         float elapsed = 0f;
         while (elapsed < shakeDuration)

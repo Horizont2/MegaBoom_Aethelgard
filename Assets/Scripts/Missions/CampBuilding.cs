@@ -386,7 +386,30 @@ public class CampBuilding : MonoBehaviour
 
         if (aaaPanel != null)
         {
+            // Force every ancestor up to the canvas active. If the
+            // player HUD's ToggleGameplayUIForPause turn (or a scene
+            // controller) left the panel's parent container disabled,
+            // SetActive on the leaf would silently sit with
+            // activeInHierarchy=false and nothing would show up.
+            Transform t = aaaPanel.transform;
+            while (t != null)
+            {
+                if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+                t = t.parent;
+            }
             aaaPanel.SetActive(true);
+
+            // Some canvases carry a CanvasGroup that a previous close
+            // routine faded to 0; make sure the panel is actually
+            // interactable + visible when we reopen it.
+            CanvasGroup cg = aaaPanel.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.interactable = true;
+                cg.blocksRaycasts = true;
+            }
+
             StartCoroutine(PopUpUI(aaaPanel.transform));
         }
         else

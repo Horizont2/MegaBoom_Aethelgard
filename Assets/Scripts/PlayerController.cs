@@ -276,7 +276,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         // ФІКС: Прибрано !isCampMode, щоб звук відтворювався всюди
         if (AudioManager.Instance != null && !isDead)
         {
-            AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+            AudioManager.Instance.PlaySFX(AudioID.Player_Footstep);
             lastAnimFootstepTime = Time.unscaledTime;
         }
     }
@@ -309,7 +309,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             footstepDistanceAccum = 0f;
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+                AudioManager.Instance.PlaySFX(AudioID.Player_Footstep);
         }
     }
 
@@ -1503,6 +1503,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
         bool hitStoneResource = false;
+        bool resourceSfxFiredThisSwing = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
@@ -1543,6 +1544,18 @@ public class PlayerController : MonoBehaviour, IDamageable
                     ResourceNode rn = col.GetComponentInParent<ResourceNode>();
                     if (rn != null && rn.nodeType == ResourceNode.NodeType.Rock)
                         hitStoneResource = true;
+
+                    // Fire the impact SFX the moment contact is detected
+                    // instead of after the whole loop + post-loop dispatch
+                    // runs. The old flow made the stone thud arrive
+                    // ~1 frame + FMOD queue tail later than the visible
+                    // hit, so the player perceived a lag between axe
+                    // touching rock and the sound.
+                    if (!resourceSfxFiredThisSwing && AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlaySFX(hitStoneResource ? AudioID.Player_HitResource_Stone : AudioID.Player_HitResource_Wood);
+                        resourceSfxFiredThisSwing = true;
+                    }
                 }
 
                 if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
@@ -1570,8 +1583,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
         else if (hitResource)
         {
-            if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX(hitStoneResource ? AudioID.Player_HitResource_Stone : AudioID.Player_HitResource_Wood);
+            // SFX now fires in-loop at contact detection above; only the
+            // camera-shake feedback remains here.
             if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(-transform.forward, 0.3f, 0.1f, 0.05f);
         }
     }

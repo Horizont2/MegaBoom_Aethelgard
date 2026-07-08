@@ -144,8 +144,10 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator IntroDialogueRoutine()
     {
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.", 2.5f));
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f));
+        // dialogueId maps to AudioManager.dialogue6..10 FMOD slots (1-5
+        // are owned by the camp tutorial in CampDirector).
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.", 2.5f, 6));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
 
         AdvanceQuest();
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
@@ -284,7 +286,7 @@ public class Level1_QuestManager : MonoBehaviour
 
         TriggerGroupRise(skeletonsWave1.transform, 2.5f);
 
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Watch out! They're crawling from the dirt!", 2f));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Watch out! They're crawling from the dirt!", 2f, 8));
         yield return cameraFly;
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
@@ -336,7 +338,7 @@ public class Level1_QuestManager : MonoBehaviour
 
         TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!", 2f));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!", 2f, 9));
 
         if (evacuationHorse != null)
         {
@@ -344,7 +346,7 @@ public class Level1_QuestManager : MonoBehaviour
             yield return StartCoroutine(DroneCameraFlyAndTrack(evacuationHorse.transform.position, 2.5f));
         }
 
-        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: RUN TO THE HORSE, NOW!!", 2f));
+        yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: RUN TO THE HORSE, NOW!!", 2f, 10));
 
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>())
         {
@@ -446,7 +448,7 @@ public class Level1_QuestManager : MonoBehaviour
         enemy.position = finalPos;
     }
 
-    private IEnumerator ShowSubtitleTypewriter(string text, float duration)
+    private IEnumerator ShowSubtitleTypewriter(string text, float duration, int dialogueId = 0)
     {
         if (subtitleText != null)
         {
@@ -455,7 +457,10 @@ public class Level1_QuestManager : MonoBehaviour
             // competing with battle music. Released once the subtitle
             // clears below.
             if (AudioManager.Instance != null)
+            {
                 AudioManager.Instance.DuckMusic(0.35f, 0.25f, -1f, 0f);
+                if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
+            }
             subtitleText.text = text;
             subtitleText.ForceMeshUpdate();
             int totalChars = subtitleText.textInfo.characterCount;

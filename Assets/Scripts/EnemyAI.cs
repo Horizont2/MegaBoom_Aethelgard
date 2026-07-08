@@ -483,8 +483,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     }
 
     // Track XZ distance travelled between Update ticks and fire a
-    // spatial footstep clip once we cross the stride threshold. Gated
-    // by squared distance to the player so a crowd of far-away skeletons
+    // footstep clip once we cross the stride threshold. Gated by
+    // squared distance to the player so a crowd of far-away skeletons
     // doesn't burn PlayOneShots the listener can't hear.
     private void UpdateFootstepAudio()
     {
@@ -499,7 +499,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (footstepDistanceAccum < FOOTSTEP_STRIDE) return;
         footstepDistanceAccum = 0f;
         if (target != null && (target.position - pos).sqrMagnitude > FOOTSTEP_HEARING_RANGE_SQR) return;
-        AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Footstep, pos);
+        AudioManager.Instance.PlaySFX(AudioID.Enemy_Footstep);
     }
 
     private void UpdatePassiveBehavior()
@@ -587,9 +587,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         // Aggro bark — only for the first-agro moment so a horde
-        // doesn't chorus at once. 3D at enemy position for spatial cue.
+        // doesn't chorus at once. Uses 2D PlaySFX to match the rest of
+        // the enemy bank; the FMOD events in this project are authored
+        // 2D and PlaySFX3D silently attenuated them out on the listener.
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Agro, transform.position);
+            AudioManager.Instance.PlaySFX(AudioID.Enemy_Agro);
     }
 
     private void CheckNightBuff()
@@ -605,7 +607,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         isPreparingAttack = true;
         if (animator != null) animator.SetBool("isMoving", false);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
 
@@ -640,7 +642,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+                AudioManager.Instance.PlaySFX(AudioID.Enemy_Attack);
         }
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
@@ -655,7 +657,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Landed-hit impact SFX. Enemy_Hit is the meaty thud; the
             // player's own Hurt SFX plays inside TakeDamage.
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Hit, transform.position);
+                AudioManager.Instance.PlaySFX(AudioID.Enemy_Hit);
         }
     }
 
@@ -680,7 +682,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         targetHealthRatio = currentHealth / maxHealth;
         // -------------------------------------------------------------
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Hurt, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
         StartCoroutine(HitFlashRoutine());
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
@@ -794,7 +796,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             animator.SetTrigger("Die");
         }
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
 
         if (deathVFXPrefab != null)
         {
