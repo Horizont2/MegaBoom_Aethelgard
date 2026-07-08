@@ -18,7 +18,7 @@ MonoBehaviour:
     source of basic materials.
   regionIllustration: {fileID: 21300000, guid: 32b8b017c31c74d44b90bf93ea94796e, type: 3}
   regionBiome: 0
-  currentState: 0
+  currentState: 2
   neighboringRegions:
   - {fileID: 11400000, guid: 3c3fcc1ccecf411499b378991ea4b301, type: 2}
   - {fileID: 11400000, guid: 1f01d0843a6f2d443a25017a8b5b3dc1, type: 2}
@@ -26,7 +26,7 @@ MonoBehaviour:
   recommendedPower: 300
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
-  regionTotemPrefab: {fileID: 0}
+  regionTotemPrefab: {fileID: 8127212624578260654, guid: 1dcd439e2367b6846b80a8434ad2c209, type: 3}
   regionBossPrefabs: []
   woodReward: 130
   stoneReward: 70

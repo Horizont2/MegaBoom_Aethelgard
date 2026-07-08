@@ -273,10 +273,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (runDustParticles != null) runDustParticles.Emit(1);
 
-        // Piggyback the animation-event that already fires per foot-plant
-        // so footstep SFX play at the exact moment the boot hits the
-        // ground rather than on a heuristic timer.
-        if (AudioManager.Instance != null && !isDead && !isCampMode)
+        // ФІКС: Прибрано !isCampMode, щоб звук відтворювався всюди
+        if (AudioManager.Instance != null && !isDead)
         {
             AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
             lastAnimFootstepTime = Time.unscaledTime;
@@ -292,10 +290,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Vector3 footstepLastPos;
     private void UpdateFootstepFallback(bool grounded)
     {
-        if (!grounded || isDead || isCampMode) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
+        // ФІКС: Прибрано isCampMode з умови переривання
+        if (!grounded || isDead) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
         if (Time.timeScale <= 0.01f) return;
-        // If the animator's footstep event has fired within the last
-        // second, trust it and skip the fallback so we don't double up.
+
         if (Time.unscaledTime - lastAnimFootstepTime < 1.0f) { footstepLastPos = transform.position; return; }
 
         Vector3 delta = transform.position - footstepLastPos;
@@ -306,7 +304,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (dist < 0.001f) return;
         footstepDistanceAccum += dist;
 
-        // ~1.9m stride at walk, wider at sprint.
         float stride = currentVelocityMove.magnitude > moveSpeed * 0.8f ? 2.4f : 1.9f;
         if (footstepDistanceAccum >= stride)
         {
