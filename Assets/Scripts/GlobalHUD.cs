@@ -560,13 +560,16 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowPrompt(string message)
     {
-        // Route every prompt through the localiser. Call sites still
-        // pass English strings; those double as dictionary keys so the
-        // active locale wins automatically. Falls through to the raw
-        // English literal when no translation exists yet.
         string localised = LocalizationManager.Tr(message);
         if (promptCanvasGroup != null && promptCanvasGroup.alpha > 0f && currentPromptMessage == localised) return;
         currentPromptMessage = localised;
+
+        // ФІКС: Примусово вмикаємо об'єкт перед запуском корутин, 
+        // якщо його випадково вимкнула інша система (пауза чи катсцена)
+        if (promptCanvasGroup != null && !promptCanvasGroup.gameObject.activeSelf)
+        {
+            promptCanvasGroup.gameObject.SetActive(true);
+        }
 
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
@@ -815,6 +818,14 @@ public class GlobalHUD : MonoBehaviour
                 ForceShowParentPanel(pc.levelText?.transform);
                 ForceShowParentPanel(pc.crystalText?.transform);
             }
+
+            // ==========================================
+            // ФІКС: Відновлення Subtitle, Квестів та Босів
+            // ==========================================
+            if (promptCanvasGroup != null) promptCanvasGroup.gameObject.SetActive(true);
+            if (objectivePanelGroup != null) objectivePanelGroup.gameObject.SetActive(true);
+            if (bossUIGroup != null) bossUIGroup.gameObject.SetActive(true);
+            // ==========================================
 
             if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(true);
             if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(true);

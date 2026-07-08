@@ -231,9 +231,17 @@ public class AudioManager : MonoBehaviour
         switch (scene.name)
         {
             case "CampScene":
-            case "Menu":
             case "ShopScene":
                 PlayMusic(AudioID.Music_Camp);
+                break;
+            case "Menu":
+                // ААА Архітектура: Аудіоменеджер перевіряє стан гри.
+                // Якщо інтро ще НЕ грало в цій сесії, ми мовчимо і чекаємо,
+                // поки IntroCinematicManager сам не увімкне музику після завершення.
+                if (IntroCinematicManager.HasPlayedThisSession)
+                {
+                    PlayMusic(AudioID.Music_Camp);
+                }
                 break;
             case "GameScene":
             case "Lvl_1":

@@ -164,6 +164,31 @@ public class CampBuilding : MonoBehaviour
 
     private void Update()
     {
+
+        if (aaaPanel != null)
+        {
+            // Якщо стороння система примусово увімкнула панель, а гравець її не відкривав:
+            if (aaaPanel.activeSelf && !isPanelOpen)
+            {
+                aaaPanel.SetActive(false);
+            }
+            // Якщо GlobalHUD примусово вимкнув активну панель під час входу в паузу:
+            else if (!aaaPanel.activeSelf && isPanelOpen)
+            {
+                ClosePanel(); // Коректно скидаємо всі внутрішні змінні будівлі, щоб вона не зависла
+            }
+        }
+
+        // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: Читання кнопок завжди нагорі!
+        if (playerInRange)
+        {
+            if (Input.GetKeyDown(KeyCode.F))
+            {
+                if (isPanelOpen) ClosePanel();
+                else OpenPanel();
+            }
+        }
+
         // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: Читання кнопок завжди нагорі!
         // Навіть якщо код нижче зламається, панель відкриється.
         if (playerInRange)

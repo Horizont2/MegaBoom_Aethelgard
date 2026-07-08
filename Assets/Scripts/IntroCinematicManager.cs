@@ -26,6 +26,7 @@ public class IntroCinematicManager : MonoBehaviour
 
     // Բ��: �������� ����� �����'�����, �� ������� ����� � �������� ������ ���
     private static bool hasPlayedThisSession = false;
+    public static bool HasPlayedThisSession => hasPlayedThisSession;
 
     private void Awake()
     {
@@ -177,6 +178,14 @@ public class IntroCinematicManager : MonoBehaviour
         if (director != null && director.state == PlayState.Playing)
         {
             director.Stop();
+        }
+
+        // ==========================================
+        // ФІКС: Передаємо естафету аудіоменеджеру після катсцени
+        // ==========================================
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMusic(AudioID.Music_Camp);
         }
 
         if (subtitleText != null) StartCoroutine(FadeSubtitleOut());

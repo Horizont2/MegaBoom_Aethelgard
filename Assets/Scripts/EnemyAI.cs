@@ -778,7 +778,22 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         PlayerController.OnEnemyKilled?.Invoke();
 
-        if (animator != null) animator.SetTrigger("Die");
+        // ==========================================
+        // ФІКС АНІМАЦІЇ: Жорстке скидання всіх станів
+        // ==========================================
+        if (animator != null)
+        {
+            animator.SetBool("isMoving", false); // Змушуємо забути про біг
+            animator.SetFloat("Speed", 0f);
+
+            animator.ResetTrigger("Hit");        // Видаляємо всі "застряглі" тригери
+            animator.ResetTrigger("Attack");
+
+            // Якщо смерть все одно іноді не програється (через складні transitions),
+            // заміни рядок нижче на: animator.Play("Die", 0, 0f);
+            animator.SetTrigger("Die");
+        }
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
 
         if (deathVFXPrefab != null)
@@ -788,6 +803,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (vfx == null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
         }
 
+        // Вимикаємо всі колізії, включно з CharacterController.
+        // Ворог не провалиться крізь карту, бо isDead зупиняє Update(),
+        // відповідно гравітація (MoveEnemy) більше не застосовується.
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 

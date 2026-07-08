@@ -106575,6 +106575,14 @@ MonoBehaviour:
         Data3: -651174266
         Data4: -569208273
       Path: event:/UI/Purchase
+  uiGameOver:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerDash:
     fmodEvent:
       Guid:
@@ -106591,22 +106599,46 @@ MonoBehaviour:
         Data3: 1595772314
         Data4: 88098492
       Path: event:/Player/Swing
-  playerHitEnemy:
+  playerHitEnemySword:
     fmodEvent:
       Guid:
-        Data1: -481280108
-        Data2: 1093987928
-        Data3: -1907442767
-        Data4: -1610699695
-      Path: event:/Player/Hit_Enemy_Sword
-  playerHitResource:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerHitEnemyBow:
     fmodEvent:
       Guid:
-        Data1: 300303717
-        Data2: 1264253452
-        Data3: -519421789
-        Data4: -348900643
-      Path: event:/Player/Hit_Wood
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerHitEnemyHammer:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerHitResourceStone:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerHitResourceWood:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   playerHurt:
     fmodEvent:
       Guid:
@@ -106695,6 +106727,14 @@ MonoBehaviour:
         Data3: -2112112229
         Data4: -1304438184
       Path: event:/Enemy/Footsteps
+  enemyHit:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campCollectItem:
     fmodEvent:
       Guid:
@@ -106895,12 +106935,86 @@ MonoBehaviour:
         Data3: 0
         Data4: 0
       Path: 
-  globalMusicVolume: 1
-  globalSFXVolume: 1
-  musicSource: {fileID: 0}
-  globalUIVolume: 1
-  globalAmbientVolume: 1
-  globalVoiceVolume: 1
+  dialogue1:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue2:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue3:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue4:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue5:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue6:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue7:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue8:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue9:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  dialogue10:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
 --- !u!4 &1160241408
 Transform:
   m_ObjectHideFlags: 0
@@ -203467,3 +203581,4 @@ SceneRoots:
   - {fileID: 526781901}
   - {fileID: 695852555}
   - {fileID: 1569119642}
+  - {fileID: 1160241408}
