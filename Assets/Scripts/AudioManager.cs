@@ -208,6 +208,16 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
+        // Diagnostic — if the FMOD banks aren't loaded, nothing below
+        // will make sound and every PlaySFX call will emit a warning.
+        // Print the loaded bank count once at startup so it's obvious
+        // when the FMOD → Import Banks step was skipped.
+        FMOD.RESULT bcRes = RuntimeManager.StudioSystem.getBankCount(out int bankCount);
+        if (bcRes != FMOD.RESULT.OK || bankCount <= 1)
+        {
+            Debug.LogWarning($"[AudioManager] FMOD reports {bankCount} bank(s) loaded (result={bcRes}). Enemy / hit / build SFX will be silent until you run FMOD → Import Banks (or copy FMOD/Build/Desktop/*.bank into Assets/StreamingAssets/).");
+        }
+
         masterBus = RuntimeManager.GetBus("bus:/");
         musicBus = RuntimeManager.GetBus("bus:/Music");
         sfxBus = RuntimeManager.GetBus("bus:/Sound FX");
@@ -436,12 +446,40 @@ public class AudioManager : MonoBehaviour
 
     public void PlayUI(string soundName) { PlaySFX(soundName); }
 
+    // Warn once per missing sound so a broken bank / unwired SoundGroup
+    // stops being invisible. Previously PlaySFX silently returned when
+    // the FMOD event was null — that made "no enemy sounds" impossible
+    // to diagnose from console alone.
+    private HashSet<string> warnedMissingSounds;
+
     public void PlaySFX(string soundName)
     {
-        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
+        if (sfxDictionary.TryGetValue(soundName, out SoundGroup group))
         {
-            RuntimeManager.PlayOneShot(group.fmodEvent);
+            if (group != null && !group.fmodEvent.IsNull)
+            {
+                FMOD.RESULT r = RuntimeManager.StudioSystem.getEvent(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
+                if (r != FMOD.RESULT.OK || !desc.isValid())
+                {
+                    WarnMissing(soundName, $"FMOD event GUID {group.fmodEvent.Guid} resolves with error {r} — bank not loaded, or GUID stale. Reimport banks from FMOD → Import Banks menu.");
+                    return;
+                }
+                RuntimeManager.PlayOneShot(group.fmodEvent);
+                return;
+            }
+            WarnMissing(soundName, "SoundGroup fmodEvent is null — assign it in the AudioManager inspector or check the FMOD bank");
         }
+        else
+        {
+            WarnMissing(soundName, "no dictionary entry — key not registered in InitializeDictionaries");
+        }
+    }
+
+    private void WarnMissing(string soundName, string reason)
+    {
+        if (warnedMissingSounds == null) warnedMissingSounds = new HashSet<string>();
+        if (warnedMissingSounds.Add(soundName))
+            Debug.LogWarning($"[AudioManager] PlaySFX('{soundName}') failed: {reason}. Further warnings for this key are suppressed.");
     }
 
     public void PlaySFX3D(string soundName, Vector3 position)

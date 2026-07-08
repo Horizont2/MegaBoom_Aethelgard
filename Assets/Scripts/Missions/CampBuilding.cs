@@ -179,25 +179,16 @@ public class CampBuilding : MonoBehaviour
             }
         }
 
-        // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: Читання кнопок завжди нагорі!
-        if (playerInRange)
+        // ПРІОРИТЕТ: Читання F завжди нагорі — навіть якщо код нижче
+        // зламається, панель відкриється. Раніше цей блок був
+        // задубльований: перший виклик відкривав панель, другий у
+        // тому ж кадрі (Input.GetKeyDown лишається true впродовж
+        // усього кадру) миттєво її закривав, тому клік по F виглядав
+        // ніби ігнорується.
+        if (playerInRange && Input.GetKeyDown(KeyCode.F))
         {
-            if (Input.GetKeyDown(KeyCode.F))
-            {
-                if (isPanelOpen) ClosePanel();
-                else OpenPanel();
-            }
-        }
-
-        // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: Читання кнопок завжди нагорі!
-        // Навіть якщо код нижче зламається, панель відкриється.
-        if (playerInRange)
-        {
-            if (Input.GetKeyDown(KeyCode.F))
-            {
-                if (isPanelOpen) ClosePanel();
-                else OpenPanel();
-            }
+            if (isPanelOpen) ClosePanel();
+            else OpenPanel();
         }
 
         // Загортаємо решту логіки в try-catch, щоб вона не спамила помилками 
