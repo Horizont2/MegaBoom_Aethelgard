@@ -107,15 +107,22 @@ public class MainMenuManager : MonoBehaviour
         if (continueButton != null)
         {
             bool hasSave = PlayerPrefs.GetInt("HasCampSave", 0) == 1;
+            bool tutorialDone = PlayerPrefs.GetInt("TutorialCompleted", 0) == 1;
+            // Continue is only meaningful once the tutorial is behind us —
+            // otherwise the button loads Lvl_1 anyway (see ContinueGame),
+            // so pretend there's no save and show Start Adventure so the
+            // label matches what actually happens on click.
+            bool showContinue = hasSave && tutorialDone;
+
             TextMeshProUGUI btnText = continueButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null) btnText.text = hasSave ? "Continue" : "Start Adventure!";
+            if (btnText != null) btnText.text = showContinue ? "Continue" : "Start Adventure!";
 
             continueButton.interactable = true;
             CanvasGroup cg = continueButton.GetComponent<CanvasGroup>();
             if (cg != null) cg.alpha = 1f;
 
             continueButton.onClick.RemoveAllListeners();
-            if (hasSave) continueButton.onClick.AddListener(ContinueGame);
+            if (showContinue) continueButton.onClick.AddListener(ContinueGame);
             else continueButton.onClick.AddListener(StartNewRun);
         }
     }

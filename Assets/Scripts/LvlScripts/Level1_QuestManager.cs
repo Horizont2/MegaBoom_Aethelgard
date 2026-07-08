@@ -77,6 +77,13 @@ public class Level1_QuestManager : MonoBehaviour
             yield return null;
             while (introDirector.state == PlayState.Playing) yield return null;
 
+            // Disable CinemachineBrain FIRST. Otherwise brain keeps writing the
+            // final vcam position to Camera.main in LateUpdate (brain runs after
+            // CameraFollow), which overwrites the handoff blend and leaves the
+            // camera frozen at the intro's overview shot.
+            var brain = Camera.main.GetComponent<CinemachineBrain>();
+            if (brain != null) brain.enabled = false;
+
             CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
             if (cf != null)
             {
@@ -95,8 +102,6 @@ public class Level1_QuestManager : MonoBehaviour
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
             SetCinematicMode(false);
-            var brain = Camera.main.GetComponent<CinemachineBrain>();
-            if (brain != null) brain.enabled = false;
 
             UpdateObjectiveUI();
         }
