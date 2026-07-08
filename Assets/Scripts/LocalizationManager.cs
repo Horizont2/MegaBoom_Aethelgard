@@ -884,6 +884,289 @@ public static class LocalizationManager
              "Własne klawisze wkrótce.");
 
         SeedInGameRuntime();
+        SeedPolishBackfill();
+        SeedDialogues();
+        SeedPrompts();
+    }
+
+    // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
+    // through to English for ~65 keys (menu chrome, section headers,
+    // toggle rows). This backfill patches s_pl directly so nothing is
+    // still English when the player picks Polski.
+    private static void SeedPolishBackfill()
+    {
+        // Menu chrome
+        AddPl("RESUME", "WZNÓW");
+        AddPl("BACK TO MENU", "DO MENU");
+        AddPl("SETTINGS", "USTAWIENIA");
+        AddPl("BACK", "WSTECZ");
+        AddPl("CLOSE", "ZAMKNIJ");
+        AddPl("APPLY", "ZASTOSUJ");
+        AddPl("APPLY & CLOSE", "ZASTOSUJ I ZAMKNIJ");
+        AddPl("RESET DEFAULTS", "PRZYWRÓĆ DOMYŚLNE");
+        AddPl("DISCARD", "ODRZUĆ");
+        AddPl("NEW GAME", "NOWA GRA");
+        AddPl("LOAD GAME", "WCZYTAJ GRĘ");
+        AddPl("LOAD", "WCZYTAJ");
+        AddPl("QUIT", "WYJDŹ");
+        AddPl("QUIT TO DESKTOP", "WYJDŹ DO PULPITU");
+        AddPl("EXIT", "WYJDŹ");
+        AddPl("PLAY", "GRAJ");
+        AddPl("START", "START");
+        AddPl("PAUSED", "PAUZA");
+        AddPl("CONTINUE", "KONTYNUUJ");
+
+        // Section headers
+        AddPl("HUD", "HUD");
+        AddPl("SAVE", "ZAPIS");
+        AddPl("MIX", "MIKS");
+        AddPl("DISPLAY", "WYŚWIETLANIE");
+        AddPl("CAMERA", "KAMERA");
+        AddPl("QUALITY PRESET", "PROFIL JAKOŚCI");
+        AddPl("TIERS", "POZIOMY");
+        AddPl("POST-FX", "POST-FX");
+        AddPl("MOUSE & KEYBOARD", "MYSZ I KLAWIATURA");
+        AddPl("MOUSE & CAMERA", "MYSZ I KAMERA");
+        AddPl("GAMEPAD", "PAD");
+        AddPl("BINDINGS", "PRZYPISANIA");
+        AddPl("FEEDBACK", "REAKCJA");
+        AddPl("DIFFICULTY", "TRUDNOŚĆ");
+        AddPl("TUTORIAL", "SAMOUCZEK");
+        AddPl("BEHAVIOUR", "ZACHOWANIE");
+        AddPl("VISUAL AIDS", "POMOCE WIZUALNE");
+        AddPl("UI", "INTERFEJS");
+        AddPl("TEXT", "TEKST");
+        AddPl("SUBTITLES", "NAPISY");
+        AddPl("PREVIEW", "PODGLĄD");
+        AddPl("DESCRIPTION", "OPIS");
+
+        // Toggle rows
+        AddPl("Show FPS", "Pokaż FPS");
+        AddPl("Limit FPS", "Ogranicz FPS");
+        AddPl("Auto-Save", "Autozapis");
+        AddPl("Damage Popups", "Cyfry obrażeń");
+        AddPl("Screen Shake", "Wstrząsy ekranu");
+        AddPl("Hit-Stop FX", "Pauza przy trafieniu");
+        AddPl("Low HP Vignette", "Winieta niskiego HP");
+        AddPl("Tutorial Hints", "Wskazówki samouczka");
+        AddPl("Master", "Główna");
+        AddPl("Music", "Muzyka");
+        AddPl("Sound FX", "Efekty");
+        AddPl("Voice", "Głos");
+        AddPl("Ambient", "Otoczenie");
+        AddPl("Mute When Unfocused", "Wycisz przy utracie fokusu");
+        AddPl("Resolution", "Rozdzielczość");
+        AddPl("Window Mode", "Tryb okna");
+        AddPl("Refresh Rate", "Częst. odświeżania");
+        AddPl("Monitor", "Monitor");
+        AddPl("FPS Cap", "Limit FPS");
+        AddPl("V-Sync", "Synchr. pionowa");
+        AddPl("Field of View", "Pole widzenia");
+        AddPl("Brightness", "Jasność");
+        AddPl("Gamma", "Gamma");
+
+        // Runtime-set button labels from MainMenuManager (mixed case)
+        AddPl("Continue", "Kontynuuj");
+        AddPl("Start Adventure!", "Rozpocznij przygodę!");
+        AddPl("Give Up", "Poddaj się");
+        AddPl("Back to Menu", "Do menu");
+        AddPl("You sure?\nAll journey progress will be lost", "Na pewno?\nCały postęp wyprawy zostanie utracony");
+        AddPl("Are you sure?", "Na pewno?");
+
+        // Same mixed-case pair for the other locales — MainMenuManager
+        // sets these at runtime, they aren't inspector-baked.
+        Add7("Continue", "Continue", "Продовжити", "Продолжить", "Continuar", "Fortsetzen", "Continuer", "Kontynuuj");
+        Add7("Start Adventure!", "Start Adventure!", "Почати пригоду!", "Начать приключение!", "¡Comenzar aventura!", "Abenteuer starten!", "Commencer l'aventure !", "Rozpocznij przygodę!");
+        Add7("You sure?\nAll journey progress will be lost",
+             "You sure?\nAll journey progress will be lost",
+             "Точно?\nВесь прогрес подорожі буде втрачено",
+             "Точно?\nВесь прогресс путешествия будет потерян",
+             "¿Seguro?\nSe perderá todo el progreso del viaje",
+             "Sicher?\nDer gesamte Reisefortschritt geht verloren",
+             "Sûr ?\nToute la progression du voyage sera perdue",
+             "Na pewno?\nCały postęp wyprawy zostanie utracony");
+        Add7("Are you sure?", "Are you sure?", "Ти впевнений?", "Ты уверен?", "¿Estás seguro?", "Bist du sicher?", "Es-tu sûr ?", "Na pewno?");
+    }
+
+    private static void AddPl(string key, string pl)
+    {
+        s_pl[key] = pl;
+    }
+
+    // Camp intro + tutorial subtitle lines. Keys stay as the English
+    // string so the call sites read naturally (Tr("Stranger: ...")).
+    private static void SeedDialogues()
+    {
+        // Camp intro (CampDirector.IntroCoroutine)
+        Add7("Stranger: Welcome to your new Camp. This is your safe haven between dangerous journeys.",
+             "Stranger: Welcome to your new Camp. This is your safe haven between dangerous journeys.",
+             "Незнайомець: Ласкаво просимо до твого табору. Це твій безпечний прихисток між небезпечними подорожами.",
+             "Незнакомец: Добро пожаловать в твой лагерь. Это твоё безопасное убежище между опасными путешествиями.",
+             "Extraño: Bienvenido a tu campamento. Es tu refugio seguro entre viajes peligrosos.",
+             "Fremder: Willkommen in deinem Lager. Es ist dein sicherer Hafen zwischen gefährlichen Reisen.",
+             "Étranger : Bienvenue dans ton camp. C'est ton havre entre les voyages dangereux.",
+             "Nieznajomy: Witaj w swoim obozie. To twoje bezpieczne schronienie między niebezpiecznymi wyprawami.");
+        Add7("Stranger: Up there is the Camp Stash. All the resources you manage to bring back from the forest are stored here safely.",
+             "Stranger: Up there is the Camp Stash. All the resources you manage to bring back from the forest are stored here safely.",
+             "Незнайомець: Там нагорі — Запаси Табору. Усі ресурси, які ти приносиш із лісу, зберігаються там у безпеці.",
+             "Незнакомец: Там наверху — Запасы Лагеря. Все ресурсы, что ты приносишь из леса, хранятся там в безопасности.",
+             "Extraño: Allí arriba está el Almacén del Campamento. Todos los recursos que traes del bosque se guardan allí.",
+             "Fremder: Dort oben ist der Lagervorrat. Alle Ressourcen, die du aus dem Wald bringst, sind dort sicher.",
+             "Étranger : Là-haut se trouve la Réserve du Camp. Toutes les ressources rapportées de la forêt y sont stockées.",
+             "Nieznajomy: Tam na górze są Zapasy Obozu. Wszystkie zasoby, które przyniesiesz z lasu, są tam bezpieczne.");
+        Add7("Stranger: You can use those resources to rebuild this place. Walk up to a plot and hold [E]. Restored buildings will generate resources over time!",
+             "Stranger: You can use those resources to rebuild this place. Walk up to a plot and hold [E]. Restored buildings will generate resources over time!",
+             "Незнайомець: Ти можеш використовувати ці ресурси, щоб відбудовувати це місце. Підійди до ділянки й утримуй [E]. Відновлені будівлі даватимуть ресурси з часом!",
+             "Незнакомец: Используй эти ресурсы, чтобы восстанавливать это место. Подойди к участку и удерживай [E]. Восстановленные постройки будут давать ресурсы со временем!",
+             "Extraño: Puedes usar esos recursos para reconstruir este lugar. Acércate a una parcela y mantén [E]. ¡Los edificios restaurados generarán recursos con el tiempo!",
+             "Fremder: Nutze diese Ressourcen, um diesen Ort wiederaufzubauen. Geh zu einem Grundstück und halte [E]. Wiederhergestellte Gebäude erzeugen mit der Zeit Ressourcen!",
+             "Étranger : Utilise ces ressources pour reconstruire cet endroit. Approche-toi d'une parcelle et maintiens [E]. Les bâtiments restaurés génèrent des ressources avec le temps !",
+             "Nieznajomy: Możesz użyć tych zasobów, by odbudować to miejsce. Podejdź do działki i przytrzymaj [E]. Odbudowane budynki będą z czasem generować zasoby!");
+        Add7("Stranger: Check the Notice Board over there. You can take on special missions to earn resources and valuable Diamonds.",
+             "Stranger: Check the Notice Board over there. You can take on special missions to earn resources and valuable Diamonds.",
+             "Незнайомець: Глянь на Дошку Оголошень. Там можна брати особливі місії, щоб заробляти ресурси й цінні Алмази.",
+             "Незнакомец: Проверь Доску Объявлений. Там можно брать особые миссии, чтобы получать ресурсы и ценные Алмазы.",
+             "Extraño: Revisa el Tablón de Anuncios. Puedes aceptar misiones especiales para ganar recursos y valiosos Diamantes.",
+             "Fremder: Schau am Anschlagbrett vorbei. Dort kannst du besondere Missionen annehmen für Ressourcen und wertvolle Diamanten.",
+             "Étranger : Regarde le Tableau d'Annonces. Tu peux y prendre des missions spéciales pour gagner ressources et précieux Diamants.",
+             "Nieznajomy: Sprawdź Tablicę Ogłoszeń. Możesz podjąć specjalne misje po zasoby i cenne Diamenty.");
+        Add7("Stranger: At the edge of the camp is the mysterious Shop. Use your Diamonds there to buy permanent meta-upgrades for your future runs.",
+             "Stranger: At the edge of the camp is the mysterious Shop. Use your Diamonds there to buy permanent meta-upgrades for your future runs.",
+             "Незнайомець: На краю табору стоїть таємничий Магазин. Витрачай там Алмази на постійні мета-покращення для майбутніх забігів.",
+             "Незнакомец: На краю лагеря — загадочный Магазин. Трать там Алмазы на постоянные мета-улучшения для будущих забегов.",
+             "Extraño: Al borde del campamento hay una Tienda misteriosa. Usa tus Diamantes para comprar mejoras meta permanentes para tus futuras partidas.",
+             "Fremder: Am Rand des Lagers steht der geheimnisvolle Laden. Gib deine Diamanten dort für permanente Meta-Upgrades aus.",
+             "Étranger : À la lisière du camp se trouve la mystérieuse Boutique. Dépense tes Diamants pour des méta-améliorations permanentes.",
+             "Nieznajomy: Na skraju obozu jest tajemniczy Sklep. Wydawaj tam Diamenty na trwałe meta-ulepszenia na przyszłe wyprawy.");
+        Add7("[TIP] Try to prioritize upgrading your Storage Vault early on, so you have enough space for all your hard-earned loot!",
+             "[TIP] Try to prioritize upgrading your Storage Vault early on, so you have enough space for all your hard-earned loot!",
+             "[ПОРАДА] Постарайся спочатку прокачати Сховище — щоб було місце для всієї здобичі!",
+             "[СОВЕТ] Постарайся сначала прокачать Хранилище — чтобы было место для всей добычи!",
+             "[CONSEJO] Prioriza mejorar la Bóveda de Almacenamiento cuanto antes para tener sitio para todo el botín.",
+             "[TIPP] Baue früh das Lagergewölbe aus, damit du Platz für die ganze Beute hast!",
+             "[ASTUCE] Améliore ta Réserve tôt pour avoir la place pour tout ton butin !",
+             "[WSKAZÓWKA] Ulepsz najpierw Skarbiec, byś miał miejsce na cały łup!");
+
+        // Level_1 tutorial subtitles + hints
+        Add7("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.",
+             "Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.",
+             "Незнайомець: Слава небесам, ти тут! Мій віз зламався, а цей ліс проклятий.",
+             "Незнакомец: Слава небесам, ты здесь! Моя телега сломалась, а этот лес проклят.",
+             "Extraño: ¡Gracias al cielo estás aquí! Mi carro se ha roto y este bosque está maldito.",
+             "Fremder: Dem Himmel sei Dank, du bist hier! Mein Karren ist kaputt und dieser Wald ist verflucht.",
+             "Étranger : Dieu merci, tu es là ! Ma charrette est en panne et cette forêt est maudite.",
+             "Nieznajomy: Dzięki niebiosom, że jesteś! Mój wóz się zepsuł, a ten las jest przeklęty.");
+        Add7("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!",
+             "Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!",
+             "Незнайомець: Мені потрібне дерево, щоб полагодити колеса. Збери 12 шматків, інакше живими звідси не виберемось!",
+             "Незнакомец: Мне нужно дерево, чтобы починить колёса. Собери 12 кусков, иначе живыми отсюда не выберемся!",
+             "Extraño: Necesito madera para arreglar las ruedas. Reúne 12 piezas o no saldremos vivos.",
+             "Fremder: Ich brauche Holz für die Räder. Sammle 12 Stück, sonst kommen wir hier nicht lebend raus!",
+             "Étranger : Il me faut du bois pour réparer les roues. Récupère 12 morceaux, sinon on ne sortira pas vivants !",
+             "Nieznajomy: Potrzebuję drewna do naprawy kół. Zbierz 12 sztuk, inaczej stąd nie wyjdziemy żywi!");
+        Add7("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.",
+             "[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.",
+             "[ПОРАДА] Підійди до дерева і натисни ліву кнопку миші, щоб рубати і збирати дерево.",
+             "[СОВЕТ] Подойди к дереву и нажми левую кнопку мыши, чтобы рубить и собирать древесину.",
+             "[CONSEJO] Acércate a un árbol y pulsa el botón izquierdo del ratón para atacar y recolectar madera.",
+             "[TIPP] Geh zu einem Baum und drücke die linke Maustaste, um zu schlagen und Holz zu sammeln.",
+             "[ASTUCE] Approche-toi d'un arbre et clique gauche pour l'attaquer et récolter du bois.",
+             "[WSKAZÓWKA] Podejdź do drzewa i wciśnij lewy przycisk myszy, by atakować i zbierać drewno.");
+        Add7("Stranger: Watch out! They're crawling from the dirt!",
+             "Stranger: Watch out! They're crawling from the dirt!",
+             "Незнайомець: Обережно! Вони лізуть із землі!",
+             "Незнакомец: Осторожно! Они вылезают из земли!",
+             "Extraño: ¡Cuidado! ¡Salen del suelo!",
+             "Fremder: Vorsicht! Sie kriechen aus der Erde!",
+             "Étranger : Attention ! Ils sortent de terre !",
+             "Nieznajomy: Uważaj! Wypełzają spod ziemi!");
+        Add7("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
+             "[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
+             "[ПОРАДА] Вороги атакують! Ліва кнопка миші — атака, стеж за здоров'ям.",
+             "[СОВЕТ] Враги атакуют! Левая кнопка мыши — атака, следи за здоровьем.",
+             "[CONSEJO] ¡Los enemigos atacan! Usa el botón izquierdo del ratón y vigila tu salud.",
+             "[TIPP] Feinde greifen an! Linke Maustaste zum Kämpfen, achte auf deine Gesundheit.",
+             "[ASTUCE] Ennemis en approche ! Clic gauche pour attaquer, surveille ta santé.",
+             "[WSKAZÓWKA] Wrogowie atakują! Lewy przycisk myszy do walki, uważaj na zdrowie.");
+        Add7("Stranger: Good job! Wait... do you hear that?",
+             "Stranger: Good job! Wait... do you hear that?",
+             "Незнайомець: Молодець! Стривай… ти це чуєш?",
+             "Незнакомец: Молодец! Погоди… ты это слышишь?",
+             "Extraño: ¡Bien hecho! Espera… ¿oyes eso?",
+             "Fremder: Gut gemacht! Warte… hörst du das?",
+             "Étranger : Bien joué ! Attends… tu entends ça ?",
+             "Nieznajomy: Dobra robota! Czekaj… słyszysz to?");
+        Add7("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!",
+             "Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!",
+             "Незнайомець: ЦЕ ЦІЛА АРМІЯ! ЇХ ЗАБАГАТО!",
+             "Незнакомец: ЭТО ЦЕЛАЯ АРМИЯ! ИХ СЛИШКОМ МНОГО!",
+             "Extraño: ¡ES UN EJÉRCITO ENTERO! ¡SON DEMASIADOS!",
+             "Fremder: DAS IST EINE GANZE ARMEE! ES SIND ZU VIELE!",
+             "Étranger : C'EST UNE ARMÉE ENTIÈRE ! ILS SONT TROP NOMBREUX !",
+             "Nieznajomy: TO CAŁA ARMIA! JEST ICH ZA DUŻO!");
+        Add7("Stranger: RUN TO THE HORSE, NOW!!",
+             "Stranger: RUN TO THE HORSE, NOW!!",
+             "Незнайомець: ДО КОНЯ, ШВИДКО!!",
+             "Незнакомец: К КОНЮ, БЫСТРО!!",
+             "Extraño: ¡AL CABALLO, YA!!",
+             "Fremder: ZUM PFERD, SOFORT!!",
+             "Étranger : AU CHEVAL, TOUT DE SUITE !!",
+             "Nieznajomy: DO KONIA, JUŻ!!");
+        Add7("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
+             "[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
+             "[ПОРАДА] Їх не вбити! Утримуй SHIFT, щоб бігти, і дістанься точки евакуації!",
+             "[СОВЕТ] Их не убить! Удерживай SHIFT для спринта и добеги до точки эвакуации!",
+             "[CONSEJO] ¡No puedes matarlos! Mantén SHIFT para esprintar y llega al Punto de Extracción.",
+             "[TIPP] Sie sind unbesiegbar! Halte SHIFT zum Sprinten und erreiche den Fluchtpunkt!",
+             "[ASTUCE] Impossible de les tuer ! Maintiens SHIFT pour sprinter jusqu'au Point d'Extraction !",
+             "[WSKAZÓWKA] Nie da się ich zabić! Trzymaj SHIFT, by biec, i dotrzyj do Punktu Ewakuacji!");
+        Add7("YOU HAVE FALLEN...",
+             "<color=#8B0000>YOU HAVE FALLEN...</color>",
+             "<color=#8B0000>ТИ ЗАГИНУВ...</color>",
+             "<color=#8B0000>ТЫ ПАЛ...</color>",
+             "<color=#8B0000>HAS CAÍDO...</color>",
+             "<color=#8B0000>DU BIST GEFALLEN...</color>",
+             "<color=#8B0000>TU ES TOMBÉ...</color>",
+             "<color=#8B0000>ZGINĄŁEŚ...</color>");
+
+        // Objective / mission text (Level1_QuestManager.UpdateObjectiveUI)
+        Add7("Main Quest",         "Main Quest",         "Головне завдання",  "Главный квест",   "Misión principal",   "Hauptquest",         "Quête principale",     "Główna misja");
+        Add7("Investigate the Outpost","Investigate the Outpost","Дослідити застава","Разведать заставу","Investigar el puesto","Vorposten untersuchen","Enquêter au poste","Zbadaj placówkę");
+        Add7("Stranger's Request", "Stranger's Request", "Прохання незнайомця","Просьба незнакомца","Petición del extraño","Bitte des Fremden","Requête de l'étranger", "Prośba Nieznajomego");
+        Add7("Gather Wood",        "Gather Wood",        "Збирай дерево",     "Собери дерево",   "Recoge madera",      "Sammle Holz",        "Récolter du bois",     "Zbierz drewno");
+        Add7("Ambush!",            "Ambush!",            "Засідка!",          "Засада!",         "¡Emboscada!",        "Hinterhalt!",        "Embuscade !",          "Zasadzka!");
+        Add7("Survive the Skeletons","Survive the Skeletons","Виживи проти скелетів","Выживи против скелетов","Sobrevive a los esqueletos","Überlebe die Skelette","Survivre aux squelettes","Przetrwaj szkielety");
+        Add7("Escape!",            "Escape!",            "Тікай!",            "Беги!",           "¡Escapa!",           "Flieh!",             "Fuir !",               "Uciekaj!");
+        Add7("REACH THE HORSE BEFORE THEY KILL YOU!",
+             "REACH THE HORSE BEFORE THEY KILL YOU!",
+             "ДОБІГАЙ ДО КОНЯ, ДОКИ ЇХ НЕ УБИЛИ!",
+             "ДОБЕГИ ДО КОНЯ, ПОКА ТЕБЯ НЕ УБИЛИ!",
+             "¡LLEGA AL CABALLO ANTES DE QUE TE MATEN!",
+             "ERREICHE DAS PFERD, BEVOR SIE DICH TÖTEN!",
+             "ATTEINS LE CHEVAL AVANT QU'ILS NE TE TUENT !",
+             "DOTRZYJ DO KONIA, ZANIM CIĘ ZABIJĄ!");
+    }
+
+    // Prompt strings shown via GlobalHUD.ShowPrompt across the world.
+    private static void SeedPrompts()
+    {
+        Add7("Press E to Enter Shop",   "Press E to Enter Shop",   "E — увійти в магазин", "E — войти в магазин",  "Pulsa E para entrar en la tienda","E zum Betreten des Ladens","Appuie E pour la boutique","E — wejdź do sklepu");
+        Add7("Press E to Evacuate",     "Press E to Evacuate",     "E — евакуюватися",     "E — эвакуироваться",   "Pulsa E para evacuar",           "E zum Evakuieren",         "Appuie E pour évacuer",     "E — ewakuuj się");
+        Add7("Press E to Open Board",   "Press E to Open Board",   "E — відкрити дошку",   "E — открыть доску",    "Pulsa E para abrir el tablero",  "E öffnet das Brett",       "Appuie E pour ouvrir le tableau","E — otwórz tablicę");
+        Add7("[E] Talk to Elias",       "[E] Talk to Elias",       "[E] Говорити з Еліасом","[E] Говорить с Элиасом","[E] Hablar con Elias",         "[E] Mit Elias sprechen",    "[E] Parler à Elias",        "[E] Rozmowa z Eliasem");
+        Add7("[E] Talk to Stranger",   "[E] Talk to Stranger",   "[E] Говорити з Незнайомцем","[E] Говорить с Незнакомцем","[E] Hablar con el Extraño","[E] Mit dem Fremden sprechen","[E] Parler à l'Étranger","[E] Rozmowa z Nieznajomym");
+        Add7("[E] Pet Cat",             "[E] Pet Cat",             "[E] Погладити кота",   "[E] Погладить кота",   "[E] Acariciar al gato",          "[E] Katze streicheln",     "[E] Caresser le chat",      "[E] Pogłaskaj kota");
+        Add7("[E] Mount Horse & Escape","[E] Mount Horse & Escape","[E] На коня і тікати","[E] На коня и бежать","[E] Montar y escapar",           "[E] Aufsteigen & Fliehen","[E] Monter et fuir",        "[E] Wsiądź i uciekaj");
+        Add7("REGION CONQUERED!",       "REGION CONQUERED!",       "РЕГІОН ЗАХОПЛЕНО!",    "РЕГИОН ЗАХВАЧЕН!",     "¡REGIÓN CONQUISTADA!",           "REGION EROBERT!",          "RÉGION CONQUISE !",         "REGION PODBITY!");
+        Add7("[F] PURIFY TOTEM",        "[F] PURIFY TOTEM",        "[F] ОЧИСТИТИ ТОТЕМ",   "[F] ОЧИСТИТЬ ТОТЕМ",   "[F] PURIFICAR TÓTEM",            "[F] TOTEM REINIGEN",       "[F] PURIFIER LE TOTEM",     "[F] OCZYŚĆ TOTEM");
+        Add7("[F] EXECUTE",             "[F] EXECUTE",             "[F] СТРАТИТИ",         "[F] КАЗНИТЬ",          "[F] EJECUTAR",                   "[F] HINRICHTEN",           "[F] EXÉCUTER",              "[F] EGZEKUCJA");
+        Add7("Upgrade Elias's Lodge first!","<color=#FF4444>Upgrade Elias's Lodge first!</color>",
+             "<color=#FF4444>Спершу покращ Хатину Еліаса!</color>",
+             "<color=#FF4444>Сначала улучши Хижину Элиаса!</color>",
+             "<color=#FF4444>¡Primero mejora la Cabaña de Elias!</color>",
+             "<color=#FF4444>Rüste zuerst Elias' Hütte auf!</color>",
+             "<color=#FF4444>Améliore d'abord la Cabane d'Elias !</color>",
+             "<color=#FF4444>Najpierw ulepsz Chatę Eliasa!</color>");
     }
 
     // Runtime-set labels that AutoLocalize can't reach (their text is

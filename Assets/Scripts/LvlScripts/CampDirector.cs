@@ -21,13 +21,13 @@ public class CampDirector : MonoBehaviour
             PlayerPrefs.Save();
         }
 
-        // --- ФІКС БАГУ З ТУТОРІАЛОМ ---
-        // Якщо гравець потрапив у сцену табору, значить вступний рівень (Lvl_1) точно пройдено!
+        // --- ФІпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅРІпїЅпїЅпїЅпїЅ ---
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (Lvl_1) пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
         if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
         {
             PlayerPrefs.SetInt("TutorialCompleted", 1);
             PlayerPrefs.Save();
-            Debug.Log("[CampDirector] Туторіал успішно відмічено як пройдений!");
+            Debug.Log("[CampDirector] пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!");
         }
     }
 
@@ -118,6 +118,11 @@ public class CampDirector : MonoBehaviour
     {
         if (subtitleText == null) yield break;
 
+        // Localise the incoming line. Callers pass English strings that
+        // double as dictionary keys вЂ” LocalizationManager.Tr falls back
+        // to the English literal when the active locale doesn't ship
+        // this line, so no key is ever "missing".
+        text = LocalizationManager.Tr(text);
         subtitleText.text = text;
         subtitleText.ForceMeshUpdate();
         int totalChars = subtitleText.textInfo.characterCount;
@@ -138,6 +143,7 @@ public class CampDirector : MonoBehaviour
     {
         if (subtitleText == null) yield break;
 
+        text = LocalizationManager.Tr(text);
         subtitleText.text = $"<color=#88CCFF>{text}</color>";
         subtitleText.ForceMeshUpdate();
         int totalChars = subtitleText.textInfo.characterCount;

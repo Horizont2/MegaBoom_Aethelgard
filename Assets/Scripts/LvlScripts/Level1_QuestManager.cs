@@ -450,6 +450,7 @@ public class Level1_QuestManager : MonoBehaviour
     {
         if (subtitleText != null)
         {
+            text = LocalizationManager.Tr(text);
             subtitleText.text = text;
             subtitleText.ForceMeshUpdate();
             int totalChars = subtitleText.textInfo.characterCount;
@@ -470,7 +471,7 @@ public class Level1_QuestManager : MonoBehaviour
     {
         if (GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.ShowPrompt(text);
+            GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(text));
             yield return new WaitForSeconds(duration);
             GlobalHUD.Instance.HidePrompt();
         }
@@ -481,10 +482,10 @@ public class Level1_QuestManager : MonoBehaviour
         if (objectiveUI == null) return;
         switch (currentQuestStep)
         {
-            case 0: objectiveUI.Setup("Main Quest", "Investigate the Outpost", 0, 1); break;
-            case 1: objectiveUI.Setup("Stranger's Request", "Gather Wood", 0, requiredWood); break;
-            case 2: objectiveUI.Setup("Ambush!", "Survive the Skeletons", 0, totalSkeletonsW1); break;
-            case 3: objectiveUI.Setup("Escape!", "REACH THE HORSE BEFORE THEY KILL YOU!", 0, 1); break;
+            case 0: objectiveUI.Setup(LocalizationManager.Tr("Main Quest"), LocalizationManager.Tr("Investigate the Outpost"), 0, 1); break;
+            case 1: objectiveUI.Setup(LocalizationManager.Tr("Stranger's Request"), LocalizationManager.Tr("Gather Wood"), 0, requiredWood); break;
+            case 2: objectiveUI.Setup(LocalizationManager.Tr("Ambush!"), LocalizationManager.Tr("Survive the Skeletons"), 0, totalSkeletonsW1); break;
+            case 3: objectiveUI.Setup(LocalizationManager.Tr("Escape!"), LocalizationManager.Tr("REACH THE HORSE BEFORE THEY KILL YOU!"), 0, 1); break;
         }
     }
 
@@ -499,7 +500,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (subtitleText != null)
         {
             subtitleText.maxVisibleCharacters = 99999;
-            subtitleText.text = "<color=#8B0000>YOU HAVE FALLEN...</color>";
+            subtitleText.text = LocalizationManager.Tr("YOU HAVE FALLEN...");
         }
 
         yield return new WaitForSeconds(2.5f);

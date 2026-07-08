@@ -560,13 +560,18 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowPrompt(string message)
     {
-        if (promptCanvasGroup != null && promptCanvasGroup.alpha > 0f && currentPromptMessage == message) return;
-        currentPromptMessage = message;
+        // Route every prompt through the localiser. Call sites still
+        // pass English strings; those double as dictionary keys so the
+        // active locale wins automatically. Falls through to the raw
+        // English literal when no translation exists yet.
+        string localised = LocalizationManager.Tr(message);
+        if (promptCanvasGroup != null && promptCanvasGroup.alpha > 0f && currentPromptMessage == localised) return;
+        currentPromptMessage = localised;
 
         if (promptFadeCoroutine != null) StopCoroutine(promptFadeCoroutine);
         if (promptTypingCoroutine != null) StopCoroutine(promptTypingCoroutine);
         promptFadeCoroutine = StartCoroutine(FadeCanvasGroup(1f));
-        promptTypingCoroutine = StartCoroutine(TypeTextRoutine(message, promptText));
+        promptTypingCoroutine = StartCoroutine(TypeTextRoutine(localised, promptText));
     }
 
     public void HidePrompt()
@@ -907,7 +912,7 @@ public class GlobalHUD : MonoBehaviour
         if (!isConfirmingGiveUp)
         {
             isConfirmingGiveUp = true;
-            if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?";
+            if (giveUpText != null) giveUpText.text = LocalizationManager.Tr((currentScene == "GameScene") ? "You sure?\nAll journey progress will be lost" : "Are you sure?");
             foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
         }
         else
@@ -925,7 +930,7 @@ public class GlobalHUD : MonoBehaviour
     {
         isConfirmingGiveUp = false;
         string currentScene = SceneManager.GetActiveScene().name;
-        if (giveUpText != null) giveUpText.text = (currentScene == "GameScene") ? "Give Up" : "Back to Menu";
+        if (giveUpText != null) giveUpText.text = LocalizationManager.Tr((currentScene == "GameScene") ? "Give Up" : "Back to Menu");
         foreach (var btn in pauseButtonGroups) { if (btn != null) { btn.alpha = 1f; btn.interactable = true; } }
     }
 
