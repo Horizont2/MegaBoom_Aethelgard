@@ -852,15 +852,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                             if (anim != null) anim.SetInteger("AttackIndex", randAnim);
                             LockAction("Attack", 0.6f);
-
-                            // Predictive impact SFX. The ExecuteAttack anim
-                            // event fires near the tail of the swing on
-                            // some clips, which made the stone/wood thud
-                            // read as delayed vs. the visible contact.
-                            // Schedule a fixed-timing sound cue that
-                            // matches the average contact frame, and mark
-                            // it so ExecuteAttack skips the redundant one.
-                            StartCoroutine(PredictedResourceImpactSFX(0.18f));
                         }
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
@@ -1511,8 +1502,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
-        bool hitStoneResource = false;
-        bool resourceSfxFiredThisSwing = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
@@ -1548,23 +1537,13 @@ public class PlayerController : MonoBehaviour, IDamageable
                 else
                 {
                     hitResource = true;
-                    // Rock nodes use a different SFX. Without this every resource hit
-                    // (tree, rock, barrel) played the wood sound.
-                    ResourceNode rn = col.GetComponentInParent<ResourceNode>();
-                    if (rn != null && rn.nodeType == ResourceNode.NodeType.Rock)
-                        hitStoneResource = true;
-
-                    // Fire the impact SFX the moment contact is detected
-                    // instead of after the whole loop + post-loop dispatch
-                    // runs. Skipped if the predictive routine already
-                    // played it — that path fires at a fixed 180 ms
-                    // offset from mouse-down, which matches the visible
-                    // contact frame better than a late anim event.
-                    if (!resourceSfxFiredThisSwing && !predictedResourceSfxFired && AudioManager.Instance != null)
-                    {
-                        AudioManager.Instance.PlaySFX(hitStoneResource ? AudioID.Player_HitResource_Stone : AudioID.Player_HitResource_Wood);
-                        resourceSfxFiredThisSwing = true;
-                    }
+                    // Impact SFX (Player_HitResource_Stone / Wood) fires
+                    // from inside ResourceNode.TakeDamage, which runs
+                    // synchronously as part of the loop above. That IS
+                    // the frame the axe visually connects with the rock
+                    // or tree, so the sound lands with the hit instead
+                    // of leading it or trailing behind a late animation
+                    // event. This block is left only for camera-shake.
                 }
 
                 if (hitSparkVFXPrefab != null && ObjectPoolManager.Instance != null)
@@ -1884,42 +1863,6 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void OnDrawGizmosSelected() { if (meleePoint != null) { Gizmos.color = Color.red; Gizmos.DrawWireSphere(meleePoint.position, meleeRadius); } }
     public void StartSwing() { if (weaponTrail != null) weaponTrail.emitting = true; }
-
-    // Fires the resource-impact SFX at a fixed offset after the click
-    // instead of waiting for the animation event. Some attack clips
-    // trigger ExecuteAttack near the end of the swing, which pushes the
-    // wood/stone thud noticeably later than the visible axe-on-rock
-    // contact. Running this in parallel means the sound peaks when the
-    // swing actually looks like it lands; ExecuteAttack still runs (for
-    // damage/VFX) but its own SFX call is gated by the flag we set
-    // here so the same swing never plays two impact clips.
-    private bool predictedResourceSfxFired;
-    private IEnumerator PredictedResourceImpactSFX(float delay)
-    {
-        predictedResourceSfxFired = false;
-        yield return new WaitForSeconds(delay);
-
-        if (meleePoint == null || AudioManager.Instance == null) yield break;
-
-        int count = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
-        bool isStone = false;
-        bool anyResource = false;
-        for (int i = 0; i < count; i++)
-        {
-            Collider c = s_overlapBuffer[i];
-            if (c == null || c.CompareTag("Enemy")) continue;
-            if (c.TryGetComponent(out IDamageable _))
-            {
-                anyResource = true;
-                ResourceNode rn = c.GetComponentInParent<ResourceNode>();
-                if (rn != null && rn.nodeType == ResourceNode.NodeType.Rock) { isStone = true; break; }
-            }
-        }
-        if (!anyResource) yield break;
-
-        AudioManager.Instance.PlaySFX(isStone ? AudioID.Player_HitResource_Stone : AudioID.Player_HitResource_Wood);
-        predictedResourceSfxFired = true;
-    }
     public void EndSwing() { if (weaponTrail != null) weaponTrail.emitting = false; }
 
     private void OnDestroy()

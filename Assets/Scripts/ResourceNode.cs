@@ -37,6 +37,20 @@ public class ResourceNode : MonoBehaviour, IDamageable
 
         currentHealth -= info.Amount;
 
+        // Fire the impact SFX at the exact moment damage lands. The old
+        // code fired it back in PlayerController.ExecuteAttack, which is
+        // driven by an animation event whose placement varies per swing
+        // clip вЂ” some clips triggered it late (thud after the visible
+        // contact), some very early (thud on mouse-down instead of on
+        // impact). Playing here couples the sound to the actual
+        // physics moment the axe connects with the resource.
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(nodeType == NodeType.Rock
+                ? AudioID.Player_HitResource_Stone
+                : AudioID.Player_HitResource_Wood);
+        }
+
         if (hitEffect != null)
         {
             if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);
@@ -98,18 +112,18 @@ public class ResourceNode : MonoBehaviour, IDamageable
             Vector3 pivotPoint = transform.position;
             Collider[] cols = GetComponentsInChildren<Collider>();
 
-            // Знаходимо найнижчу точку (корінь) для осі обертання
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (cols.Length > 0 && cols[0] != null) pivotPoint.y = cols[0].bounds.min.y;
 
             // ==========================================
-            // ФІКС 2: Одразу вимикаємо всі колайдери дерева, щоб воно не вдавлювало гравця
+            // ФІпїЅпїЅ 2: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             // ==========================================
             foreach (Collider c in cols)
             {
                 if (c != null) c.enabled = false;
             }
 
-            // ЗБЕРІГАЄМО ПОЧАТКОВУ РОТАЦІЮ ДЕРЕВА ДО ТОГО ЯК ВОНО ВПАДЕ
+            // пїЅпїЅпїЅРІпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅЦІпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             Quaternion initialRotation = transform.rotation;
 
             float fallDuration = 0.5f;
@@ -129,7 +143,7 @@ public class ResourceNode : MonoBehaviour, IDamageable
                 hitEffect.Play();
             }
 
-            // ВИКОРИСТОВУЄМО ПОЧАТКОВУ РОТАЦІЮ ДЛЯ ПЕНЬКА
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅУЄпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅЦІпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             if (stumpPrefab != null) Instantiate(stumpPrefab, pivotPoint, initialRotation);
 
             yield return new WaitForSeconds(0.5f);
