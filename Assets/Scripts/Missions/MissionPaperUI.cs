@@ -52,6 +52,8 @@ public class MissionPaperUI : MonoBehaviour
     {
         acceptButton.interactable = false;
 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+
         transform.SetParent(transform.root);
         transform.SetAsLastSibling();
 
@@ -71,9 +73,9 @@ public class MissionPaperUI : MonoBehaviour
     {
         Vector3 startPos = rectTransform.localPosition;
 
-        // Замість координат екрану беремо локальне зміщення: летимо вгору і вправо 
-        // (Приблизно туди, де зазвичай лежить To-Do лист)
-        // -600 по осі X відправить папірець різко вліво!
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 
+        // (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ To-Do пїЅпїЅпїЅпїЅ)
+        // -600 пїЅпїЅ пїЅпїЅ X пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ!
         Vector3 targetPos = startPos + new Vector3(-600f, 300f, 0f);
         Vector3 startScale = rectTransform.localScale;
 
@@ -83,14 +85,14 @@ public class MissionPaperUI : MonoBehaviour
             timer += Time.deltaTime;
             float progress = timer / flyDuration;
 
-            // Математика для ефекту віддалення (спочатку трохи збільшується, потім різко летить)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
             float easeInBack = progress * progress * (2.70158f * progress - 1.70158f);
 
-            // Інтерполяція
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             rectTransform.localPosition = Vector3.LerpUnclamped(startPos, targetPos, easeInBack);
             rectTransform.localScale = Vector3.Lerp(startScale, Vector3.zero, progress);
 
-            // Легке обертання під час польоту для краси
+            // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Lerp(0, -25f, progress));
 
             canvasGroup.alpha = Mathf.Lerp(1f, 0f, progress);

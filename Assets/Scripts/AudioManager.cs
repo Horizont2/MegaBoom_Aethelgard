@@ -176,6 +176,18 @@ public class AudioManager : MonoBehaviour
     private FMOD.Studio.Bus ambientBus;
     private FMOD.Studio.Bus voiceBus;
 
+    // Cache the settings-driven bus volumes so runtime fades (music
+    // crossfade, focus loss, dialogue ducking) can multiply them
+    // without permanently trampling the user's slider values.
+    private float musicUserVol = 1f;
+    private float masterUserVol = 1f;
+    private float musicDuckMultiplier = 1f;
+    private float masterFadeMultiplier = 1f;
+
+    private Coroutine masterFadeRoutine;
+    private Coroutine musicFadeRoutine;
+    private Coroutine musicDuckRoutine;
+
     private void Awake()
     {
         if (Instance == null)
@@ -213,24 +225,40 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (scene.name == "CampScene") PlayMusic(AudioID.Music_Camp);
-        else if (scene.name == "GameScene") PlayMusic(AudioID.Music_Battle);
+        // Match every gameplay context to a track so the game is never
+        // silent on scene entry. Menu / Shop / camp share the calmer
+        // camp theme; combat scenes get the battle score.
+        switch (scene.name)
+        {
+            case "CampScene":
+            case "Menu":
+            case "ShopScene":
+                PlayMusic(AudioID.Music_Camp);
+                break;
+            case "GameScene":
+            case "Lvl_1":
+                PlayMusic(AudioID.Music_Battle);
+                break;
+        }
     }
 
     private void LoadAudioSettings()
     {
         // Persisted volumes use the same 0-100 scale as SettingsUI/SettingsApplier.
-        // We divide by 100 here to feed FMOD its expected 0-1 bus volume.
-        // Default 100 (full) matches SettingsUI's initial slider fallback.
-        float masterVol = PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f;
-        float musicVol = PlayerPrefs.GetFloat("Settings_MusicVol", 100f) / 100f;
-        float sfxVol = PlayerPrefs.GetFloat("Settings_SFXVol", 100f) / 100f;
-        float uiVol = PlayerPrefs.GetFloat("Settings_UIVol", 100f) / 100f;
-        float ambientVol = PlayerPrefs.GetFloat("Settings_AmbientVol", 100f) / 100f;
+        // Defaults leave headroom below max so nothing clips out of the box
+        // — master 80, music 65, sfx 90, ui 70, ambient 75, voice 100.
+        float masterVol = PlayerPrefs.GetFloat("Settings_MasterVol", 80f) / 100f;
+        float musicVol = PlayerPrefs.GetFloat("Settings_MusicVol", 65f) / 100f;
+        float sfxVol = PlayerPrefs.GetFloat("Settings_SFXVol", 90f) / 100f;
+        float uiVol = PlayerPrefs.GetFloat("Settings_UIVol", 70f) / 100f;
+        float ambientVol = PlayerPrefs.GetFloat("Settings_AmbientVol", 75f) / 100f;
         float voiceVol = PlayerPrefs.GetFloat("Settings_VoiceVol", 100f) / 100f;
 
-        masterBus.setVolume(masterVol);
-        musicBus.setVolume(musicVol);
+        masterUserVol = masterVol;
+        musicUserVol = musicVol;
+
+        masterBus.setVolume(masterVol * masterFadeMultiplier);
+        musicBus.setVolume(musicVol * musicDuckMultiplier);
         sfxBus.setVolume(sfxVol);
         uiBus.setVolume(uiVol);
         ambientBus.setVolume(ambientVol);
@@ -241,12 +269,81 @@ public class AudioManager : MonoBehaviour
     // Persistence is owned by SettingsUI (in 0-100 scale) — we must NOT write
     // back here or we'd corrupt the stored value into a 0-1 float that the
     // slider then reads as ~0% on the next launch.
-    public void SetMasterVolume(float vol) { masterBus.setVolume(vol); }
-    public void SetMusicVolume(float vol) { musicBus.setVolume(vol); }
+    public void SetMasterVolume(float vol) { masterUserVol = vol; masterBus.setVolume(vol * masterFadeMultiplier); }
+    public void SetMusicVolume(float vol)  { musicUserVol = vol;  musicBus.setVolume(vol * musicDuckMultiplier); }
     public void SetSFXVolume(float vol) { sfxBus.setVolume(vol); }
     public void SetUIVolume(float vol) { uiBus.setVolume(vol); }
     public void SetAmbientVolume(float vol) { ambientBus.setVolume(vol); }
     public void SetVoiceVolume(float vol) { voiceBus.setVolume(vol); }
+
+    // Smoothly ramp the master bus to `targetMultiplier * user volume`.
+    // Used by focus loss / recovery so Alt-Tab no longer hard-snaps
+    // audio in and out. Runs on unscaled time so it still eases when
+    // the game is paused.
+    public void FadeMasterVolume(float targetMultiplier, float duration)
+    {
+        if (!masterBus.isValid()) return;
+        if (masterFadeRoutine != null) StopCoroutine(masterFadeRoutine);
+        masterFadeRoutine = StartCoroutine(FadeMasterRoutine(targetMultiplier, Mathf.Max(0.01f, duration)));
+    }
+
+    private IEnumerator FadeMasterRoutine(float target, float duration)
+    {
+        float start = masterFadeMultiplier;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            masterFadeMultiplier = Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / duration));
+            masterBus.setVolume(masterUserVol * masterFadeMultiplier);
+            yield return null;
+        }
+        masterFadeMultiplier = target;
+        masterBus.setVolume(masterUserVol * masterFadeMultiplier);
+        masterFadeRoutine = null;
+    }
+
+    // Duck the music bus to `duckLevel` (0-1) of the user's set volume
+    // for the given hold duration, then release. Used by the death
+    // cinematic + dialogue system so voiceover isn't fighting the
+    // score. Zero or negative `holdSeconds` keeps ducking until
+    // UnduckMusic is called.
+    public void DuckMusic(float duckLevel, float fadeIn, float holdSeconds, float fadeOut)
+    {
+        if (!musicBus.isValid()) return;
+        if (musicDuckRoutine != null) StopCoroutine(musicDuckRoutine);
+        musicDuckRoutine = StartCoroutine(MusicDuckRoutine(Mathf.Clamp01(duckLevel), fadeIn, holdSeconds, fadeOut));
+    }
+
+    public void UnduckMusic(float fadeOut = 0.6f)
+    {
+        if (!musicBus.isValid()) return;
+        if (musicDuckRoutine != null) StopCoroutine(musicDuckRoutine);
+        musicDuckRoutine = StartCoroutine(RampMusicMultiplier(1f, Mathf.Max(0.01f, fadeOut)));
+    }
+
+    private IEnumerator MusicDuckRoutine(float target, float fadeIn, float hold, float fadeOut)
+    {
+        yield return StartCoroutine(RampMusicMultiplier(target, Mathf.Max(0.01f, fadeIn)));
+        if (hold > 0f) yield return new WaitForSecondsRealtime(hold);
+        if (hold > 0f) yield return StartCoroutine(RampMusicMultiplier(1f, Mathf.Max(0.01f, fadeOut)));
+        musicDuckRoutine = null;
+    }
+
+    private IEnumerator RampMusicMultiplier(float target, float duration)
+    {
+        float start = musicDuckMultiplier;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            musicDuckMultiplier = Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / duration));
+            musicBus.setVolume(musicUserVol * musicDuckMultiplier);
+            yield return null;
+        }
+        musicDuckMultiplier = target;
+        musicBus.setVolume(musicUserVol * musicDuckMultiplier);
+    }
 
     private void InitializeDictionaries()
     {
@@ -349,20 +446,69 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMusic(string soundName)
     {
-        if (currentMusicName == soundName) return;
-
-        if (currentMusicInstance.isValid())
-        {
-            currentMusicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-            currentMusicInstance.release();
-        }
+        if (currentMusicName == soundName && currentMusicInstance.isValid()) return;
 
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
+            if (musicFadeRoutine != null) StopCoroutine(musicFadeRoutine);
+            EventInstance oldInstance = currentMusicInstance;
             currentMusicInstance = RuntimeManager.CreateInstance(group.fmodEvent);
-            currentMusicInstance.start();
             currentMusicName = soundName;
+            musicFadeRoutine = StartCoroutine(MusicCrossfadeRoutine(oldInstance, currentMusicInstance, 1.5f));
         }
+    }
+
+    // Ramp the incoming FMOD instance from silence to full over `duration`
+    // while releasing the outgoing one with ALLOWFADEOUT so any per-event
+    // fade-out AHDSR gets its time. Without this the switch clashed hard
+    // (menu → camp → battle all cut in at full volume on frame 0).
+    private IEnumerator MusicCrossfadeRoutine(EventInstance outgoing, EventInstance incoming, float duration)
+    {
+        if (incoming.isValid())
+        {
+            incoming.setVolume(0f);
+            incoming.start();
+        }
+        if (outgoing.isValid())
+        {
+            outgoing.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+        }
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / duration);
+            if (incoming.isValid()) incoming.setVolume(k);
+            yield return null;
+        }
+        if (incoming.isValid()) incoming.setVolume(1f);
+        if (outgoing.isValid()) outgoing.release();
+
+        musicFadeRoutine = null;
+    }
+
+    // Public helper for scripted stops (death cinematic, credits).
+    public void StopMusic(float fadeSeconds = 1.5f)
+    {
+        if (!currentMusicInstance.isValid()) return;
+        if (musicFadeRoutine != null) StopCoroutine(musicFadeRoutine);
+        EventInstance target = currentMusicInstance;
+        currentMusicInstance = default;
+        currentMusicName = null;
+        StartCoroutine(FadeAndReleaseRoutine(target, Mathf.Max(0.01f, fadeSeconds)));
+    }
+
+    private IEnumerator FadeAndReleaseRoutine(EventInstance inst, float duration)
+    {
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            if (inst.isValid()) inst.setVolume(1f - Mathf.Clamp01(t / duration));
+            yield return null;
+        }
+        if (inst.isValid()) { inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT); inst.release(); }
     }
 
     public void PlayDialogue(int dialogueNumber)

@@ -150,6 +150,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Vector3 velocity;
     private Animator anim;
     private bool isDead = false;
+    public bool IsDead => isDead;
 
     private Transform visualModel;
     private bool wasGroundedLastFrame = true;
@@ -266,9 +267,53 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TriggerFootstepDust()
     {
-        if (characterController == null || runDustParticles == null) return;
+        if (characterController == null) return;
         Vector3 horizontalVel = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
-        if (characterController.isGrounded && horizontalVel.sqrMagnitude > 0.1f) runDustParticles.Emit(1);
+        if (!characterController.isGrounded || horizontalVel.sqrMagnitude <= 0.1f) return;
+
+        if (runDustParticles != null) runDustParticles.Emit(1);
+
+        // Piggyback the animation-event that already fires per foot-plant
+        // so footstep SFX play at the exact moment the boot hits the
+        // ground rather than on a heuristic timer.
+        if (AudioManager.Instance != null && !isDead && !isCampMode)
+        {
+            AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+            lastAnimFootstepTime = Time.unscaledTime;
+        }
+    }
+
+    // Fallback footstep trigger for movement not driven by an animator
+    // event. Fires at a travel-distance interval that scales with speed
+    // so walk and sprint stay rhythmically believable. Suppressed if
+    // the animation events have been firing recently — no double taps.
+    private float lastAnimFootstepTime = -10f;
+    private float footstepDistanceAccum;
+    private Vector3 footstepLastPos;
+    private void UpdateFootstepFallback(bool grounded)
+    {
+        if (!grounded || isDead || isCampMode) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
+        if (Time.timeScale <= 0.01f) return;
+        // If the animator's footstep event has fired within the last
+        // second, trust it and skip the fallback so we don't double up.
+        if (Time.unscaledTime - lastAnimFootstepTime < 1.0f) { footstepLastPos = transform.position; return; }
+
+        Vector3 delta = transform.position - footstepLastPos;
+        delta.y = 0f;
+        footstepLastPos = transform.position;
+
+        float dist = delta.magnitude;
+        if (dist < 0.001f) return;
+        footstepDistanceAccum += dist;
+
+        // ~1.9m stride at walk, wider at sprint.
+        float stride = currentVelocityMove.magnitude > moveSpeed * 0.8f ? 2.4f : 1.9f;
+        if (footstepDistanceAccum >= stride)
+        {
+            footstepDistanceAccum = 0f;
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+        }
     }
 
     private void InitAoEMarker()
@@ -739,6 +784,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         wasGroundedLastFrame = isGroundedNow;
+
+        UpdateFootstepFallback(isGroundedNow);
 
         if (visualModel != null && visualModel != transform && !isCampMode)
         {

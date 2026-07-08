@@ -245,27 +245,30 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyVolumes()
     {
         if (AudioManager.Instance == null) return;
-        AudioManager.Instance.SetMasterVolume(PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f);
-        AudioManager.Instance.SetMusicVolume(PlayerPrefs.GetFloat("Settings_MusicVol", 100f) / 100f);
-        AudioManager.Instance.SetSFXVolume(PlayerPrefs.GetFloat("Settings_SFXVol", 100f) / 100f);
-        AudioManager.Instance.SetUIVolume(PlayerPrefs.GetFloat("Settings_UIVol", 100f) / 100f);
+        // Defaults leave headroom — full-blast 100/100 everywhere had no
+        // mix headroom and made UI clicks / dodges clip against the score.
+        AudioManager.Instance.SetMasterVolume(PlayerPrefs.GetFloat("Settings_MasterVol", 80f) / 100f);
+        AudioManager.Instance.SetMusicVolume(PlayerPrefs.GetFloat("Settings_MusicVol", 65f) / 100f);
+        AudioManager.Instance.SetSFXVolume(PlayerPrefs.GetFloat("Settings_SFXVol", 90f) / 100f);
+        AudioManager.Instance.SetUIVolume(PlayerPrefs.GetFloat("Settings_UIVol", 70f) / 100f);
         AudioManager.Instance.SetVoiceVolume(PlayerPrefs.GetFloat("Settings_VoiceVol", 100f) / 100f);
-        AudioManager.Instance.SetAmbientVolume(PlayerPrefs.GetFloat("Settings_AmbientVol", 100f) / 100f);
+        AudioManager.Instance.SetAmbientVolume(PlayerPrefs.GetFloat("Settings_AmbientVol", 75f) / 100f);
     }
 
     private void OnApplicationFocus(bool hasFocus)
     {
         if (PlayerPrefs.GetInt("Settings_MuteWhenUnfocused", 1) != 1) return;
 
-        float targetVolume = hasFocus ? (PlayerPrefs.GetFloat("Settings_MasterVol", 100f) / 100f) : 0f;
-
+        // Smooth ramp — hard-snapping master to 0 on Alt-Tab clicked
+        // the speakers audibly. The AudioManager fade multiplies on
+        // top of the user's slider so we don't corrupt their setting.
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.SetMasterVolume(targetVolume);
+            AudioManager.Instance.FadeMasterVolume(hasFocus ? 1f : 0f, 0.35f);
         }
         else
         {
-            AudioListener.volume = targetVolume;
+            AudioListener.volume = hasFocus ? (PlayerPrefs.GetFloat("Settings_MasterVol", 80f) / 100f) : 0f;
         }
     }
 }

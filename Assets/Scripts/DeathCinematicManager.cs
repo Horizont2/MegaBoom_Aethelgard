@@ -32,7 +32,13 @@ public class DeathCinematicManager : MonoBehaviour
 
     public void TriggerDeathCinematic()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_GameOver);
+        if (AudioManager.Instance != null)
+        {
+            // Duck the score hard so the game-over stinger reads clearly
+            // and the slow-mo doesn't feel like the fight is still going.
+            AudioManager.Instance.DuckMusic(0.15f, 0.3f, -1f, 0f);
+            AudioManager.Instance.PlaySFX(AudioID.UI_GameOver);
+        }
         StartCoroutine(DeathSequence());
     }
 
@@ -86,6 +92,7 @@ public class DeathCinematicManager : MonoBehaviour
     public void RetryLevel()
     {
         Time.timeScale = 1f;
+        if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
         // --- Բ��: ������ ������ ����� ����� ����� ������������� ---
         Canvas canvas = GetComponent<Canvas>();
@@ -99,6 +106,7 @@ public class DeathCinematicManager : MonoBehaviour
     public void ReturnToCamp()
     {
         Time.timeScale = 1f;
+        if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
         // --- Բ��: ������ ������ ����� ����� ����� ������������� ---
         Canvas canvas = GetComponent<Canvas>();

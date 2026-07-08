@@ -85,6 +85,21 @@ public class AmbientSoundscape : MonoBehaviour
         if (AudioManager.Instance == null) return;
         if (Time.unscaledTime < nextPlayTime) return;
 
+        // Suppress crow / thunder / howl beats while the game world is
+        // frozen for a dramatic beat (death cinematic, pause menu, boss
+        // executes). The ambient bed keeps playing via FMOD, but we no
+        // longer schedule new one-shots on top of it.
+        if (Time.timeScale <= 0.05f)
+        {
+            ScheduleNext(2f);
+            return;
+        }
+        if (PlayerController.LocalInstance != null && PlayerController.LocalInstance.IsDead)
+        {
+            ScheduleNext(4f);
+            return;
+        }
+
         List<AmbientEntry> pool = isCombatScene ? combatEntries : calmEntries;
 
         // Weighted pick; avoid replaying the immediately previous clip so the
