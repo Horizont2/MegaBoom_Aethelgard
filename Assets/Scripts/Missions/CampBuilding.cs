@@ -430,7 +430,7 @@ public class CampBuilding : MonoBehaviour
             if (infoTMP != null)
                 infoTMP.text = $"{prodLabel}: <b><color=#A8E6CF>{maxLevelData.productionDescription}</color></b>\n<color=#F1C40F>Max Level Reached</color>";
 
-            if (buildHintTMP != null) buildHintTMP.text = "MAX LEVEL";
+            if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("MAX LEVEL");
 
             // Ховаємо вартість, бо купувати більше нічого
             if (costWoodTMP != null) costWoodTMP.text = "-";
@@ -448,7 +448,7 @@ public class CampBuilding : MonoBehaviour
         {
             infoText += $"{prodLabel}: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Build Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
-            if (buildHintTMP != null) buildHintTMP.text = "HOLD [E] TO BUILD";
+            if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO BUILD");
         }
         else
         {
@@ -458,7 +458,7 @@ public class CampBuilding : MonoBehaviour
             infoText += $" ➔ <b><color=#A8E6CF>{nextLevelData.productionDescription}</color></b>\n";
             infoText += $"Upgrade Time: <b><color=#FFFFFF>{nextLevelData.buildTime}s</color></b>";
 
-            if (buildHintTMP != null) buildHintTMP.text = "HOLD [E] TO UPGRADE";
+            if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO UPGRADE");
         }
 
         if (infoTMP != null) infoTMP.text = infoText;

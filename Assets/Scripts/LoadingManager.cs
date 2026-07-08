@@ -70,7 +70,7 @@ public class LoadingManager : MonoBehaviour
     {
         isLoading = true;
 
-        // 1. Fade Out (Затемнення екрану)
+        // 1. Fade Out (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         if (blackFadeGroup != null)
         {
             blackFadeGroup.gameObject.SetActive(true);
@@ -81,7 +81,7 @@ public class LoadingManager : MonoBehaviour
             }
         }
 
-        // 2. Вмикаємо UI завантаження
+        // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (loadingCanvasGroup != null)
         {
             loadingCanvasGroup.gameObject.SetActive(true);
@@ -91,49 +91,49 @@ public class LoadingManager : MonoBehaviour
         if (hintCoroutine != null) StopCoroutine(hintCoroutine);
         if (gameHints.Length > 0) hintCoroutine = StartCoroutine(HintRoutine());
 
-        // Знижуємо пріоритет фонового потоку, щоб не фризило анімацію завантаження
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Application.backgroundLoadingPriority = ThreadPriority.Low;
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
         asyncLoad.allowSceneActivation = false;
 
-        // ФАЗА 1: Завантаження асетів рушієм
+        // пїЅпїЅпїЅпїЅ 1: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         while (asyncLoad.progress < 0.9f)
         {
             float rawProgress = Mathf.Clamp01(asyncLoad.progress / 0.9f);
             int displayPercent = Mathf.FloorToInt(rawProgress * 50f);
-            if (loadingText != null) loadingText.text = $"LOADING ASSETS... {displayPercent}%";
+            if (loadingText != null) loadingText.text = LocalizationManager.Tr("LOADING ASSETS... {0}%", displayPercent);
             yield return null;
         }
 
-        // ВАЖЛИВИЙ ФІКС: Віддаємо всі ресурси процесора на генерацію сцени!
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ФІпїЅпїЅ: ВіпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ!
         Application.backgroundLoadingPriority = ThreadPriority.High;
 
-        // 3. Активація сцени (Тут буде основний спайк процесора)
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         asyncLoad.allowSceneActivation = true;
         while (!asyncLoad.isDone) yield return null;
 
-        // Повертаємо нормальний пріоритет після важкого завантаження
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Application.backgroundLoadingPriority = ThreadPriority.Normal;
 
-        // ФАЗА 2: Генерація світу
+        // пїЅпїЅпїЅпїЅ 2: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
 
         if (worldGen != null)
         {
             while (!WorldGenerator.IsGenerationDone)
             {
-                // Отримуємо прогрес генерації (0.0 до 1.0) і конвертуємо в діапазон 50-100%
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (0.0 пїЅпїЅ 1.0) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 50-100%
                 int displayPercent = Mathf.FloorToInt(50f + (Mathf.Clamp01(WorldGenerator.CurrentProgress) * 50f));
-                if (loadingText != null) loadingText.text = $"GENERATING WORLD... {displayPercent}%";
+                if (loadingText != null) loadingText.text = LocalizationManager.Tr("GENERATING WORLD... {0}%", displayPercent);
                 yield return null;
             }
         }
 
-        if (loadingText != null) loadingText.text = "READY";
-        yield return new WaitForSecondsRealtime(0.5f); // Коротка пауза, щоб гравець побачив 100%
+        if (loadingText != null) loadingText.text = LocalizationManager.Tr("READY");
+        yield return new WaitForSecondsRealtime(0.5f); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 100%
 
-        // 4. Fade In (Прибираємо екрани завантаження)
+        // 4. Fade In (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         if (loadingCanvasGroup != null)
         {
             while (loadingCanvasGroup.alpha > 0f)
@@ -157,7 +157,7 @@ public class LoadingManager : MonoBehaviour
         if (hintCoroutine != null) StopCoroutine(hintCoroutine);
         isLoading = false;
 
-        // 5. Запуск логіки гри
+        // 5. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         if (GameManager.Instance != null)
         {
             GameManager.Instance.StartLevelTimer();

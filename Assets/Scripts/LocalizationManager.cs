@@ -882,6 +882,120 @@ public static class LocalizationManager
              "Eigene Tastenbelegung folgt bald.",
              "Touches personnalisées bientôt.",
              "Własne klawisze wkrótce.");
+
+        SeedInGameRuntime();
+    }
+
+    // Runtime-set labels that AutoLocalize can't reach (their text is
+    // assigned in code AFTER the language flip fires). Callers use
+    // LocalizationManager.Tr(key) directly; this table just supplies
+    // the translations.
+    private static void SeedInGameRuntime()
+    {
+        // --- Shop scene runtime labels ---
+        Add7("DAMAGE",         "DAMAGE",         "УРОН",             "УРОН",            "DAÑO",              "SCHADEN",            "DÉGÂTS",              "OBRAŻENIA");
+        Add7("ATK SPEED",      "ATK SPEED",      "ШВ. АТАКИ",        "СКОР. АТАКИ",     "VEL. ATAQUE",       "ANGRIFFSTEMPO",      "VIT. ATTAQUE",        "SZYB. ATAKU");
+        Add7("CRIT",           "CRIT",           "КРИТ",             "КРИТ",            "CRÍTICO",           "KRIT",               "CRIT",                "KRYT.");
+        Add7("HEALTH",         "HEALTH",         "ЗДОРОВ'Я",         "ЗДОРОВЬЕ",        "SALUD",             "GESUNDHEIT",         "SANTÉ",               "ZDROWIE");
+        Add7("DEFENSE",        "DEFENSE",        "ЗАХИСТ",           "ЗАЩИТА",          "DEFENSA",           "VERTEIDIGUNG",       "DÉFENSE",             "OBRONA");
+        Add7("POWER",          "POWER",          "СИЛА",             "СИЛА",            "PODER",             "MACHT",              "PUISSANCE",           "MOC");
+        Add7("EQUIP",          "EQUIP",          "СПОРЯДИТИ",        "ЭКИПИРОВАТЬ",     "EQUIPAR",           "AUSRÜSTEN",          "ÉQUIPER",             "ZAŁÓŻ");
+        Add7("EQUIPPED",       "EQUIPPED",       "СПОРЯДЖЕНО",       "ЭКИПИРОВАНО",     "EQUIPADO",          "AUSGERÜSTET",        "ÉQUIPÉ",              "ZAŁOŻONO");
+        Add7("MAX",            "MAX",            "МАКС",             "МАКС",            "MÁX",               "MAX",                "MAX",                 "MAKS");
+        Add7("Diamonds:",      "Diamonds:",      "Алмази:",          "Алмазы:",         "Diamantes:",        "Diamanten:",         "Diamants:",           "Diamenty:");
+        Add7("Empty Category", "Empty Category", "Порожня категорія","Пустая категория","Categoría vacía",   "Leere Kategorie",    "Catégorie vide",      "Pusta kategoria");
+        Add7("There are no items in this category yet.",
+             "There are no items in this category yet.",
+             "У цій категорії ще немає предметів.",
+             "В этой категории пока нет предметов.",
+             "Aún no hay artículos en esta categoría.",
+             "In dieser Kategorie sind noch keine Gegenstände.",
+             "Aucun objet dans cette catégorie pour l'instant.",
+             "W tej kategorii nie ma jeszcze przedmiotów.");
+        Add7("Upgrade for {0}",
+             "Upgrade for {0}",
+             "Покращити за {0}",
+             "Улучшить за {0}",
+             "Mejorar por {0}",
+             "Verbessern für {0}",
+             "Améliorer pour {0}",
+             "Ulepsz za {0}");
+
+        // --- HUD runtime labels ---
+        Add7("LVL: {0}",       "LVL: {0}",       "РІВ: {0}",         "УР: {0}",         "NV: {0}",           "STUFE: {0}",         "NV: {0}",             "POZ.: {0}");
+        Add7("STACK: {0}  |  x{1}",
+             "STACK: {0}  |  x{1}",
+             "СТЕК: {0}  |  x{1}",
+             "СТЕК: {0}  |  x{1}",
+             "ACUMUL.: {0}  |  x{1}",
+             "STACK: {0}  |  x{1}",
+             "PILE : {0}  |  x{1}",
+             "STOS: {0}  |  x{1}");
+        Add7("Diamonds: {0}",  "Diamonds: {0}",  "Алмази: {0}",      "Алмазы: {0}",     "Diamantes: {0}",    "Diamanten: {0}",     "Diamants: {0}",       "Diamenty: {0}");
+
+        // --- Loading screen ---
+        Add7("LOADING ASSETS... {0}%",
+             "LOADING ASSETS... {0}%",
+             "ЗАВАНТАЖЕННЯ РЕСУРСІВ... {0}%",
+             "ЗАГРУЗКА РЕСУРСОВ... {0}%",
+             "CARGANDO RECURSOS... {0}%",
+             "LADE RESSOURCEN... {0}%",
+             "CHARGEMENT... {0}%",
+             "ŁADOWANIE ZASOBÓW... {0}%");
+        Add7("GENERATING WORLD... {0}%",
+             "GENERATING WORLD... {0}%",
+             "ГЕНЕРАЦІЯ СВІТУ... {0}%",
+             "ГЕНЕРАЦИЯ МИРА... {0}%",
+             "GENERANDO MUNDO... {0}%",
+             "GENERIERE WELT... {0}%",
+             "GÉNÉRATION DU MONDE... {0}%",
+             "GENEROWANIE ŚWIATA... {0}%");
+        Add7("READY",          "READY",          "ГОТОВО",           "ГОТОВО",          "LISTO",             "BEREIT",             "PRÊT",                "GOTOWE");
+
+        // --- Camp building prompts ---
+        Add7("MAX LEVEL",      "MAX LEVEL",      "МАКС. РІВЕНЬ",     "МАКС. УРОВЕНЬ",   "NIVEL MÁX",         "MAX. STUFE",         "NIVEAU MAX",          "MAKS. POZIOM");
+        Add7("HOLD [E] TO BUILD","HOLD [E] TO BUILD","УТРИМУЙ [E] ЩОБ БУДУВАТИ","УДЕРЖИВАЙ [E] ЧТОБЫ СТРОИТЬ","MANTÉN [E] PARA CONSTRUIR","[E] HALTEN ZUM BAUEN","MAINTENIR [E] POUR CONSTRUIRE","TRZYMAJ [E] BY BUDOWAĆ");
+        Add7("HOLD [E] TO UPGRADE","HOLD [E] TO UPGRADE","УТРИМУЙ [E] ЩОБ ПОКРАЩИТИ","УДЕРЖИВАЙ [E] ЧТОБЫ УЛУЧШИТЬ","MANTÉN [E] PARA MEJORAR","[E] HALTEN ZUM AUFRÜSTEN","MAINTENIR [E] POUR AMÉLIORER","TRZYMAJ [E] BY ULEPSZYĆ");
+
+        // --- Map / Region UI ---
+        Add7("UPGRADE",        "UPGRADE",        "ПОКРАЩИТИ",        "УЛУЧШИТЬ",        "MEJORAR",           "VERBESSERN",         "AMÉLIORER",           "ULEPSZ");
+        Add7("TRAVEL",         "TRAVEL",         "ПОДОРОЖУВАТИ",     "ПУТЕШЕСТВОВАТЬ",  "VIAJAR",            "REISEN",             "VOYAGER",             "PODRÓŻUJ");
+        Add7("MAX LEVEL REACHED","MAX LEVEL REACHED","ДОСЯГНУТО МАКС. РІВНЯ","ДОСТИГНУТ МАКС. УРОВЕНЬ","NIVEL MÁX. ALCANZADO","MAXIMALSTUFE ERREICHT","NIVEAU MAX ATTEINT","OSIĄGNIĘTO MAKS. POZIOM");
+        Add7("AREA LOCKED",   "AREA LOCKED",   "ЗОНА ЗАБЛОКОВАНА", "ЗОНА ЗАБЛОКИРОВАНА","ZONA BLOQUEADA",    "GEBIET GESPERRT",    "ZONE VERROUILLÉE",    "OBSZAR ZAMKNIĘTY");
+        Add7("START JOURNEY", "START JOURNEY", "ПОЧАТИ ПОДОРОЖ",   "НАЧАТЬ ПУТЕШЕСТВИЕ","INICIAR VIAJE",     "REISE BEGINNEN",     "COMMENCER LE VOYAGE", "ROZPOCZNIJ WYPRAWĘ");
+        Add7("RECOMMENDED",   "RECOMMENDED",   "РЕКОМЕНДОВАНО",    "РЕКОМЕНДУЕТСЯ",   "RECOMENDADO",       "EMPFOHLEN",          "RECOMMANDÉ",          "ZALECANE");
+        Add7("YOUR POWER",    "YOUR POWER",    "ТВОЯ СИЛА",        "ТВОЯ СИЛА",       "TU PODER",          "DEINE MACHT",        "VOTRE PUISSANCE",     "TWOJA MOC");
+
+        // --- Notice board ---
+        Add7("You already have 3 active missions.\nComplete them first!",
+             "You already have 3 active missions.\nComplete them first!",
+             "У вас вже 3 активні місії.\nСпершу завершіть їх!",
+             "У вас уже 3 активные миссии.\nСначала завершите их!",
+             "Ya tienes 3 misiones activas.\n¡Termínalas primero!",
+             "Du hast bereits 3 aktive Missionen.\nSchließe sie zuerst ab!",
+             "Vous avez déjà 3 missions actives.\nTerminez-les d'abord !",
+             "Masz już 3 aktywne misje.\nNajpierw je ukończ!");
+        Add7("No new missions available right now.\nCheck back later.",
+             "No new missions available right now.\nCheck back later.",
+             "Нових місій зараз немає.\nПеревір пізніше.",
+             "Новых миссий сейчас нет.\nЗайди позже.",
+             "No hay misiones nuevas ahora.\nVuelve más tarde.",
+             "Zurzeit keine neuen Missionen.\nSchau später vorbei.",
+             "Aucune mission disponible pour le moment.\nRevenez plus tard.",
+             "Brak nowych misji.\nWróć później.");
+
+        // --- Cinematic skip prompt ---
+        Add7("Press <b>SPACE</b> to Skip",
+             "Press <b>SPACE</b> to Skip",
+             "Натисни <b>ПРОБІЛ</b> щоб пропустити",
+             "Нажми <b>ПРОБЕЛ</b> чтобы пропустить",
+             "Pulsa <b>ESPACIO</b> para saltar",
+             "<b>LEERTASTE</b> zum Überspringen",
+             "Appuyez sur <b>ESPACE</b> pour passer",
+             "Wciśnij <b>SPACJĘ</b>, by pominąć");
+
+        // --- Save & Close ---
+        Add7("SAVE & CLOSE",   "SAVE & CLOSE",   "ЗБЕРЕГТИ І ЗАКРИТИ","СОХРАНИТЬ И ЗАКРЫТЬ","GUARDAR Y CERRAR","SPEICHERN & SCHLIESSEN","SAUVEGARDER ET FERMER","ZAPISZ I ZAMKNIJ");
     }
 
     // Full-locale add — feed all 6 translations at once. Polish silently

@@ -173,7 +173,7 @@ public class MapPanelUI : MonoBehaviour
     {
         if (regionNameText != null) regionNameText.text = currentRegion.regionName.ToUpper();
         if (descriptionText != null) descriptionText.text = currentRegion.loreDescription;
-        if (upgradeButtonText != null) upgradeButtonText.text = "UPGRADE";
+        if (upgradeButtonText != null) upgradeButtonText.text = LocalizationManager.Tr("UPGRADE");
 
         if (illustrationImage != null)
         {
@@ -233,7 +233,7 @@ public class MapPanelUI : MonoBehaviour
                 if (upgMaxLevelText) upgMaxLevelText.gameObject.SetActive(false);
                 if (upgradeButton) upgradeButton.gameObject.SetActive(false);
 
-                if (actionButtonText != null) actionButtonText.text = currentRegion.currentState == RegionState.Locked ? "AREA LOCKED" : "START JOURNEY";
+                if (actionButtonText != null) actionButtonText.text = currentRegion.currentState == RegionState.Locked ? LocalizationManager.Tr("AREA LOCKED") : LocalizationManager.Tr("START JOURNEY");
                 if (actionButton != null) actionButton.interactable = currentRegion.currentState == RegionState.Available;
                 break;
 
@@ -241,7 +241,7 @@ public class MapPanelUI : MonoBehaviour
                 if (conquerTitleObj) conquerTitleObj.SetActive(false);
                 if (conquerContainerObj) conquerContainerObj.SetActive(false);
 
-                if (actionButtonText != null) actionButtonText.text = "TRAVEL";
+                if (actionButtonText != null) actionButtonText.text = LocalizationManager.Tr("TRAVEL");
                 if (actionButton != null) actionButton.interactable = !isConfirmingUpgrade;
                 if (upgradeButton) upgradeButton.gameObject.SetActive(true);
 
@@ -263,8 +263,8 @@ public class MapPanelUI : MonoBehaviour
         int currentPlayerPower = PlayerPrefs.GetInt("PlayerTotalPower", 70);
 
         string powerColor = (currentPlayerPower >= currentRegion.recommendedPower) ? ColorToHex(affordableColor) : ColorToHex(unaffordableColor);
-        if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>RECOMMENDED</color></size>\n{currentRegion.recommendedPower}";
-        if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>YOUR POWER</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
+        if (recommendedPowerText != null) recommendedPowerText.text = $"<size=50%><color=#D4AF37>{LocalizationManager.Tr("RECOMMENDED")}</color></size>\n{currentRegion.recommendedPower}";
+        if (playerPowerText != null) playerPowerText.text = $"<size=50%><color=#D4AF37>{LocalizationManager.Tr("YOUR POWER")}</color></size>\n<color={powerColor}>{currentPlayerPower}</color>";
     }
 
     private void UpdateUpgradeUI(int currentLevel)
@@ -308,7 +308,7 @@ public class MapPanelUI : MonoBehaviour
             if (upgMaxLevelText)
             {
                 upgMaxLevelText.gameObject.SetActive(true);
-                upgMaxLevelText.text = "MAX LEVEL REACHED";
+                upgMaxLevelText.text = LocalizationManager.Tr("MAX LEVEL REACHED");
             }
             if (upgradeButton) upgradeButton.interactable = false;
         }

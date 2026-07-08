@@ -322,7 +322,7 @@ public class GlobalHUD : MonoBehaviour
         txtRect.offsetMax = Vector2.zero;
 
         skipPromptText = txtObj.AddComponent<TextMeshProUGUI>();
-        skipPromptText.text = "Press <b>SPACE</b> to Skip";
+        skipPromptText.text = LocalizationManager.Tr("Press <b>SPACE</b> to Skip");
         skipPromptText.fontSize = 24f;
         skipPromptText.alignment = TextAlignmentOptions.Center;
         skipPromptText.color = new Color(1f, 0.92f, 0.72f, 0.9f);

@@ -620,7 +620,7 @@ public class SettingsUI : MonoBehaviour
         if (saveButton != null)
         {
             TextMeshProUGUI btnText = saveButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null) btnText.text = "SAVE & CLOSE";
+            if (btnText != null) btnText.text = LocalizationManager.Tr("SAVE & CLOSE");
         }
 
         if (panelAnimCoroutine != null) StopCoroutine(panelAnimCoroutine);

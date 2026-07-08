@@ -302,7 +302,7 @@ public class ResourceManager : MonoBehaviour
             if (foodText) foodText.text = $"( {fColor}{runFood}{fEnd} / {maxRunFood} )";
         }
 
-        if (diamondsText) diamondsText.text = $"Diamonds: {diamonds}";
+        if (diamondsText) diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", diamonds);
     }
 
     // Unified pickup toast — replaces the old per-resource popup

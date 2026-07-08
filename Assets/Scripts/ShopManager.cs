@@ -169,6 +169,91 @@ public class ShopManager : MonoBehaviour
         SetGroupAlphaInstant(arsenalDescriptionGroup, 0f);
         SetGroupAlphaInstant(statsPanelGroup, 0f);
         SetGroupAlphaInstant(arsenalGridGroup, 1f);
+
+        AutoResolveScrollRect();
+        EnsureVerticalScrollbar();
+    }
+
+    private void OnEnable()
+    {
+        LocalizationManager.OnLanguageChanged += HandleLanguageChanged;
+    }
+
+    private void OnDisable()
+    {
+        LocalizationManager.OnLanguageChanged -= HandleLanguageChanged;
+    }
+
+    private void HandleLanguageChanged()
+    {
+        // Runtime-written labels (stat headers, price, MAX / EQUIP badges)
+        // don't go through AutoLocalize — refresh them when the player
+        // flips locale mid-browse.
+        if (IsInsideCategory) SetupDynamicUI(isViewingWeapon);
+        UpdateUI(false);
+    }
+
+    // ScrollRect wire-up is Inspector-optional. If it's missing, walk up
+    // from itemListContent so ScrollListToTop actually has a rect to
+    // reset. Without this the "reset scroll on category switch" fix was
+    // silently doing nothing whenever the field was blank.
+    private void AutoResolveScrollRect()
+    {
+        if (itemListScrollRect != null || itemListContent == null) return;
+        itemListScrollRect = itemListContent.GetComponentInParent<ScrollRect>();
+    }
+
+    // Add a visible vertical scrollbar if the item list ScrollRect
+    // doesn't have one wired. Runs once at Start — designers can still
+    // author their own scrollbar and this becomes a no-op.
+    private void EnsureVerticalScrollbar()
+    {
+        if (itemListScrollRect == null) return;
+        if (itemListScrollRect.verticalScrollbar != null) return;
+
+        RectTransform parent = itemListScrollRect.GetComponent<RectTransform>();
+        if (parent == null) return;
+
+        GameObject barGo = new GameObject("Scrollbar Vertical", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        barGo.transform.SetParent(parent, false);
+        RectTransform barRect = barGo.GetComponent<RectTransform>();
+        barRect.anchorMin = new Vector2(1, 0);
+        barRect.anchorMax = new Vector2(1, 1);
+        barRect.pivot = new Vector2(1, 1);
+        barRect.sizeDelta = new Vector2(12f, 0f);
+        barRect.anchoredPosition = Vector2.zero;
+        Image barImg = barGo.GetComponent<Image>();
+        barImg.color = new Color(0f, 0f, 0f, 0.35f);
+        barImg.raycastTarget = true;
+
+        GameObject slidingArea = new GameObject("Sliding Area", typeof(RectTransform));
+        slidingArea.transform.SetParent(barGo.transform, false);
+        RectTransform saRect = slidingArea.GetComponent<RectTransform>();
+        saRect.anchorMin = Vector2.zero;
+        saRect.anchorMax = Vector2.one;
+        saRect.pivot = new Vector2(0.5f, 0.5f);
+        saRect.sizeDelta = new Vector2(-4f, -4f);
+        saRect.anchoredPosition = Vector2.zero;
+
+        GameObject handle = new GameObject("Handle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        handle.transform.SetParent(slidingArea.transform, false);
+        RectTransform hRect = handle.GetComponent<RectTransform>();
+        hRect.anchorMin = Vector2.zero;
+        hRect.anchorMax = Vector2.one;
+        hRect.pivot = new Vector2(0.5f, 0.5f);
+        hRect.sizeDelta = Vector2.zero;
+        hRect.anchoredPosition = Vector2.zero;
+        Image handleImg = handle.GetComponent<Image>();
+        handleImg.color = new Color(0.9f, 0.85f, 0.7f, 0.85f);
+
+        Scrollbar scrollbar = barGo.AddComponent<Scrollbar>();
+        scrollbar.direction = Scrollbar.Direction.BottomToTop;
+        scrollbar.handleRect = hRect;
+        scrollbar.targetGraphic = handleImg;
+
+        itemListScrollRect.verticalScrollbar = scrollbar;
+        itemListScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+        itemListScrollRect.vertical = true;
     }
 
     private void AssignButtonListeners()
@@ -221,7 +306,7 @@ public class ShopManager : MonoBehaviour
             if (live != lastDisplayedDiamonds)
             {
                 lastDisplayedDiamonds = live;
-                diamondBalanceText.text = "Diamonds: " + live.ToString("N0");
+                diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + live.ToString("N0");
             }
         }
     }
@@ -376,14 +461,34 @@ public class ShopManager : MonoBehaviour
     // player switches categories. Previously the list inherited the
     // previous category's scroll offset — open a category, scroll to
     // the bottom, switch to another category, and you'd see the new
-    // list scrolled below its first row.
+    // list scrolled below its first row. The one-frame delay is
+    // required because Layout Groups defer their rebuild until the
+    // next canvas update; setting verticalNormalizedPosition against
+    // still-stale content sizes leaves the ScrollRect halfway.
     private void ScrollListToTop()
     {
-        if (itemListScrollRect != null)
-        {
-            Canvas.ForceUpdateCanvases();
-            itemListScrollRect.verticalNormalizedPosition = 1f;
-        }
+        AutoResolveScrollRect();
+        if (itemListScrollRect == null) return;
+
+        StopCoroutine(nameof(ScrollToTopRoutine));
+        StartCoroutine(ScrollToTopRoutine());
+    }
+
+    private IEnumerator ScrollToTopRoutine()
+    {
+        itemListScrollRect.velocity = Vector2.zero;
+        itemListScrollRect.verticalNormalizedPosition = 1f;
+
+        RectTransform contentRect = itemListScrollRect.content;
+        if (contentRect != null) LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+        Canvas.ForceUpdateCanvases();
+        itemListScrollRect.verticalNormalizedPosition = 1f;
+
+        // Layout Groups on the content spawn one more rebuild next
+        // frame — reset again after that lands.
+        yield return null;
+        itemListScrollRect.velocity = Vector2.zero;
+        itemListScrollRect.verticalNormalizedPosition = 1f;
     }
 
     private void SelectArmor(ArmorData a)
@@ -432,8 +537,8 @@ public class ShopManager : MonoBehaviour
 
     private void SetEmptyUI()
     {
-        if (itemNameText) itemNameText.text = "Empty Category";
-        if (itemDescriptionText) itemDescriptionText.text = "There are no items in this category yet.";
+        if (itemNameText) itemNameText.text = LocalizationManager.Tr("Empty Category");
+        if (itemDescriptionText) itemDescriptionText.text = LocalizationManager.Tr("There are no items in this category yet.");
         UpdateUI(false);
     }
 
@@ -470,21 +575,21 @@ public class ShopManager : MonoBehaviour
     {
         if (isWeapon)
         {
-            if (stat1Label) stat1Label.text = "DAMAGE";
-            if (stat2Label) stat2Label.text = "ATK SPEED";
-            if (stat3Label) { stat3Label.gameObject.SetActive(true); stat3Label.text = "CRIT"; }
+            if (stat1Label) stat1Label.text = LocalizationManager.Tr("DAMAGE");
+            if (stat2Label) stat2Label.text = LocalizationManager.Tr("ATK SPEED");
+            if (stat3Label) { stat3Label.gameObject.SetActive(true); stat3Label.text = LocalizationManager.Tr("CRIT"); }
             if (stat3Fill) stat3Fill.gameObject.SetActive(true);
             if (stat3PercentText) stat3PercentText.gameObject.SetActive(true);
         }
         else
         {
-            if (stat1Label) stat1Label.text = "HEALTH";
-            if (stat2Label) stat2Label.text = "DEFENSE";
+            if (stat1Label) stat1Label.text = LocalizationManager.Tr("HEALTH");
+            if (stat2Label) stat2Label.text = LocalizationManager.Tr("DEFENSE");
             if (stat3Label) stat3Label.gameObject.SetActive(false);
             if (stat3Fill) stat3Fill.gameObject.SetActive(false);
             if (stat3PercentText) stat3PercentText.gameObject.SetActive(false);
         }
-        if (powerLabel) powerLabel.text = "POWER";
+        if (powerLabel) powerLabel.text = LocalizationManager.Tr("POWER");
     }
 
     public void OnBuyOrSelectPressed()
@@ -574,7 +679,7 @@ public class ShopManager : MonoBehaviour
     private void UpdateUI(bool animateText)
     {
         if (buyButton) buyButton.gameObject.SetActive(true);
-        if (diamondBalanceText != null) diamondBalanceText.text = "Diamonds: " + ReadDiamonds().ToString("N0");
+        if (diamondBalanceText != null) diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + ReadDiamonds().ToString("N0");
         int myDiamonds = ReadDiamonds();
 
         if (isViewingWeapon && selectedWeaponData != null)
@@ -621,13 +726,13 @@ public class ShopManager : MonoBehaviour
         }
         else if (!isEquipped)
         {
-            priceText.text = "EQUIP";
+            priceText.text = LocalizationManager.Tr("EQUIP");
             buyButton.interactable = true;
             priceText.color = textNormalColor;
         }
         else
         {
-            priceText.text = "EQUIPPED";
+            priceText.text = LocalizationManager.Tr("EQUIPPED");
             buyButton.interactable = false;
             priceText.color = textSuccessColor;
         }
@@ -637,13 +742,13 @@ public class ShopManager : MonoBehaviour
             upgradeButton.gameObject.SetActive(true);
             if (lvl < maxLvl)
             {
-                upgradePriceText.text = "Upgrade for " + upgCost.ToString("N0");
+                upgradePriceText.text = LocalizationManager.Tr("Upgrade for {0}", upgCost.ToString("N0"));
                 upgradePriceText.color = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
                 upgradeButton.interactable = (myDiamonds >= upgCost);
             }
             else
             {
-                upgradePriceText.text = "MAX";
+                upgradePriceText.text = LocalizationManager.Tr("MAX");
                 upgradePriceText.color = new Color(1f, 0.8f, 0.2f);
                 upgradeButton.interactable = false;
             }

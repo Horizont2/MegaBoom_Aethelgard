@@ -34,11 +34,11 @@ public class NoticeBoardManager : MonoBehaviour
         if (embarkButton != null) embarkButton.onClick.AddListener(EmbarkOnJourney);
         boardCanvas.SetActive(false);
 
-        // "Тихо" генеруємо місії при старті сцени (без показу UI), 
-        // щоб скрипт знав, чи є на дошці папірці
+        // "пїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ UI), 
+        // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         CheckAndGenerateMissions();
 
-        // Оновлюємо стан руни
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         UpdateRuneVisibility();
     }
 
@@ -75,7 +75,7 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = true;
         boardCanvas.SetActive(true);
 
-        // Відмічаємо, що гравець вперше ознайомився з дошкою
+        // ВіпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0)
         {
             PlayerPrefs.SetInt("HasInteractedWithBoard", 1);
@@ -99,7 +99,7 @@ public class NoticeBoardManager : MonoBehaviour
         isBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        // Перевіряємо, чи треба повертати руну (якщо місії ще залишилися)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         UpdateRuneVisibility();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
@@ -114,7 +114,7 @@ public class NoticeBoardManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    // НОВИЙ МЕТОД: Керує видимістю руни
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     public void UpdateRuneVisibility()
     {
         if (interactionRune == null) return;
@@ -122,10 +122,10 @@ public class NoticeBoardManager : MonoBehaviour
         bool isFirstTime = PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0;
         bool hasMissions = paperLayoutGroup.childCount > 0;
 
-        // Руна активна ТІЛЬКИ якщо:
-        // 1. Це перша гра (гравець ще не взаємодіяв з дошкою)
-        // АБО 2. На дошці є місії
-        // І ПРИ ЦЬОМУ дошка зараз закрита.
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ТІпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ:
+        // 1. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+        // пїЅпїЅпїЅ 2. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ
+        // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         interactionRune.SetActive((isFirstTime || hasMissions) && !isBoardOpen);
     }
 
@@ -134,7 +134,7 @@ public class NoticeBoardManager : MonoBehaviour
         bool isFirstTime = PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0;
         string lastRestockStr = PlayerPrefs.GetString("LastMissionRestockTime", "");
 
-        // Якщо це перша гра — ІГНОРУЄМО ТАЙМЕР і гарантовано оновлюємо місії
+        // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅУЄпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ
         bool needsRestock = string.IsNullOrEmpty(lastRestockStr) || isFirstTime;
 
         if (!needsRestock)
@@ -166,20 +166,20 @@ public class NoticeBoardManager : MonoBehaviour
 
             if (emptyBoardMessage != null)
             {
-                emptyBoardMessage.text = "You already have 3 active missions.\nComplete them first!";
+                emptyBoardMessage.text = LocalizationManager.Tr("You already have 3 active missions.\nComplete them first!");
             }
         }
         else
         {
             if (emptyBoardMessage != null)
             {
-                emptyBoardMessage.text = "No new missions available right now.\nCheck back later.";
+                emptyBoardMessage.text = LocalizationManager.Tr("No new missions available right now.\nCheck back later.");
             }
         }
 
         if (needsRestock)
         {
-            GenerateNewMissions(3 - currentActiveMissions); // Гарантовано згенерує 1-3 місії для новачка
+            GenerateNewMissions(3 - currentActiveMissions); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 1-3 пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
             PlayerPrefs.Save();
         }
@@ -264,7 +264,7 @@ public class NoticeBoardManager : MonoBehaviour
         int paperCount = paperLayoutGroup.childCount;
         if (emptyBoardMessage != null) emptyBoardMessage.gameObject.SetActive(paperCount == 0);
 
-        // Оновлюємо руну щоразу, коли гравець приймає місію
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         if (!isBoardOpen) UpdateRuneVisibility();
     }
 

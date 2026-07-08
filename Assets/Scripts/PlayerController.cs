@@ -471,7 +471,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (stackText != null)
         {
-            stackText.text = "STACK: " + currentStack + "  |  x" + currentMultiplier;
+            stackText.text = LocalizationManager.Tr("STACK: {0}  |  x{1}", currentStack, currentMultiplier);
             if (currentStack >= 30) stackText.color = Color.red;
             else if (currentStack >= 15) stackText.color = Color.yellow;
             else stackText.color = Color.white;
@@ -1764,8 +1764,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (hpCatchupFill != null && hpCatchupFill.fillAmount < hpRatio) hpCatchupFill.fillAmount = hpRatio;
         if (hpText != null) hpText.text = Mathf.CeilToInt(currentHealth) + " / " + Mathf.CeilToInt(maxHealth);
         if (xpFill != null) xpFill.fillAmount = currentXP / xpToNextLevel;
-        if (levelText != null) levelText.text = "LVL: " + currentLevel;
-        if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = $"Diamonds: {displayDiamonds}"; }
+        if (levelText != null) levelText.text = LocalizationManager.Tr("LVL: {0}", currentLevel);
+        if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = LocalizationManager.Tr("Diamonds: {0}", displayDiamonds); }
     }
 
     public void Heal(float amount)
