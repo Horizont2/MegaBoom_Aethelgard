@@ -458,7 +458,7 @@ public class AudioManager : MonoBehaviour
         {
             if (group != null && !group.fmodEvent.IsNull)
             {
-                FMOD.RESULT r = RuntimeManager.StudioSystem.getEvent(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
+                FMOD.RESULT r = RuntimeManager.StudioSystem.getEventByID(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
                 if (r != FMOD.RESULT.OK || !desc.isValid())
                 {
                     WarnMissing(soundName, $"FMOD event GUID {group.fmodEvent.Guid} resolves with error {r} — bank not loaded, or GUID stale. Reimport banks from FMOD → Import Banks menu.");
