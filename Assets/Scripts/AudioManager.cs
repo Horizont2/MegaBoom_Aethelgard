@@ -219,6 +219,7 @@ public class AudioManager : MonoBehaviour
         }
 
         masterBus = RuntimeManager.GetBus("bus:/");
+        PreloadAllSampleData();
         musicBus = RuntimeManager.GetBus("bus:/Music");
         sfxBus = RuntimeManager.GetBus("bus:/Sound FX");
         uiBus = RuntimeManager.GetBus("bus:/Ui");
@@ -258,6 +259,43 @@ public class AudioManager : MonoBehaviour
                 PlayMusic(AudioID.Music_Battle);
                 break;
         }
+    }
+
+    // Walk every SoundGroup once and pre-load its sample data. FMOD's
+    // AutomaticSampleLoading is disabled in this project's settings, so
+    // PlayOneShot on an unloaded sample plays as silence until the load
+    // finishes — for very short events (footsteps, hits, clicks) the
+    // one-shot ends before the audio ever reaches the mixer, which is
+    // why the same key sometimes made sound and sometimes didn't.
+    // Also logs every event that fails to resolve so misconfigured FMOD
+    // references become visible in the Console instead of silent.
+    private void PreloadAllSampleData()
+    {
+        if (sfxDictionary == null) return;
+        int loaded = 0, failed = 0;
+        var reported = new HashSet<System.Guid>();
+        foreach (var kv in sfxDictionary)
+        {
+            SoundGroup g = kv.Value;
+            if (g == null || g.fmodEvent.IsNull) continue;
+            System.Guid gidNet;
+            try { gidNet = System.Guid.Parse(g.fmodEvent.Guid.ToString()); } catch { gidNet = System.Guid.Empty; }
+            if (!reported.Add(gidNet)) continue; // avoid loading same event twice
+
+            FMOD.RESULT r = RuntimeManager.StudioSystem.getEventByID(g.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
+            if (r != FMOD.RESULT.OK || !desc.isValid())
+            {
+                Debug.LogWarning($"[AudioManager] Event '{kv.Key}' GUID {g.fmodEvent.Guid} does NOT resolve: {r}. Bank not loaded or GUID stale — reimport banks via FMOD → Import Banks.");
+                failed++;
+                continue;
+            }
+            FMOD.RESULT lr = desc.loadSampleData();
+            if (lr != FMOD.RESULT.OK)
+                Debug.LogWarning($"[AudioManager] loadSampleData for '{kv.Key}' returned {lr} — sample may play silent on first use.");
+            else
+                loaded++;
+        }
+        Debug.Log($"[AudioManager] Preloaded {loaded} FMOD event(s), {failed} failed to resolve.");
     }
 
     private void LoadAudioSettings()
