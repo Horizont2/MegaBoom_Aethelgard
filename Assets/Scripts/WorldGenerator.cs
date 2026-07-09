@@ -1336,14 +1336,26 @@ public class WorldGenerator : MonoBehaviour
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
         Vector3 bestPos = Vector3.zero; bool found = false;
 
-        for (int i = 0; i < 500; i++)
+        // Two-pass search: first pass restricts to "summer" (grass) cells only —
+        // matching the paint biome classifier so the arena avoids sand beaches,
+        // snow peaks and rock slopes. Second pass loosens back to any flat spot
+        // above water so a bad region seed still gets a valid spawn.
+        for (int pass = 0; pass < 2 && !found; pass++)
         {
-            float px = GetRandomRange(w * 0.2f, w * 0.8f); float pz = GetRandomRange(l * 0.2f, l * 0.8f);
-            if (terrain.terrainData.GetSteepness(px / w, pz / l) < 20f)
+            bool summerOnly = pass == 0;
+            for (int i = 0; i < 500; i++)
             {
+                float px = GetRandomRange(w * 0.2f, w * 0.8f); float pz = GetRandomRange(l * 0.2f, l * 0.8f);
+                float normX = px / w; float normZ = pz / l;
+                if (terrain.terrainData.GetSteepness(normX, normZ) >= 20f) continue;
+
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
-                if (worldY > absoluteWaterHeight + 5f) { bestPos = new Vector3(worldX, worldY, worldZ); found = true; break; }
+                if (worldY <= absoluteWaterHeight + 5f) continue;
+
+                if (summerOnly && !IsSummerZone(normX, normZ, worldY)) continue;
+
+                bestPos = new Vector3(worldX, worldY, worldZ); found = true; break;
             }
         }
         if (!found) { bestPos = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2); bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y; }
@@ -1360,6 +1372,25 @@ public class WorldGenerator : MonoBehaviour
         spawnedTotemPos = bestPos;
         forbiddenZones.Add(bestPos);
         yield return null;
+    }
+
+    // Mirrors PaintTerrainRoutine's biome classifier so the region location
+    // only lands on cells that get painted as grass ("summer" green). Purely a
+    // filter — does not modify terrain or prefab position.
+    private bool IsSummerZone(float normX, float normZ, float worldY)
+    {
+        float normalizedHeight = (worldY - transform.position.y) / depth;
+        if (normalizedHeight > 0.65f) return false;                   // snow / mountaintop
+        if (normalizedHeight <= waterLevel + 0.02f) return false;     // sandy shoreline
+
+        float temp = GetTemperature(normX, normZ);
+        if (temp >= 0.65f) return false;                              // desert
+        if (temp <= 0.35f) return false;                              // snow biome
+
+        float steepness = terrain.terrainData.GetSteepness(normX, normZ);
+        if (steepness > 25f) return false;                            // painted rock
+
+        return true;
     }
 
     private void FlattenTerrainAt(Vector3 worldPos, float flatRadius, float blendRadius)
