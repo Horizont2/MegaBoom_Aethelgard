@@ -84,6 +84,14 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void SetTierColor(Color c)
     {
         if (tierFrame != null) tierFrame.color = c;
+        // Tint the item's name to match its tier for at-a-glance rarity read.
+        // Small alpha lift keeps the text legible on dark cards.
+        if (nameText != null)
+        {
+            Color nameC = c;
+            nameC.a = 1f;
+            nameText.color = nameC;
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData) { OnHoverEnter?.Invoke(this); }

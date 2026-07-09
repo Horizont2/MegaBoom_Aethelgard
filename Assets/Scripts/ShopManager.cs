@@ -105,6 +105,16 @@ public class ShopManager : MonoBehaviour
     [Header("Rotation Settings")]
     public float rotationSpeed = 500f;
 
+    [Header("Active Category Highlight (optional)")]
+    [Tooltip("Optional Image that slides to sit behind the currently-selected category button. Give it a soft glow / outline sprite for a nice \"you are here\" affordance.")]
+    public RectTransform activeCategoryHighlight;
+    [Tooltip("How fast the highlight slides toward the newly-pressed category button. Seconds to reach position.")]
+    public float highlightSlideDuration = 0.25f;
+
+    [Header("Category Counters (optional, one per category button)")]
+    [Tooltip("Optional TMP labels to receive an \"X / Y\" unlocked count. Order matches the category button fields above (Swords, Axes, Bows, Helmets, Armor, Gloves, Belts, Legs, Feet).")]
+    public TextMeshProUGUI[] categoryCounterTexts;
+
     [Header("Purchase Celebration (optional)")]
     [Tooltip("Optional ParticleSystem to Play() when the player buys or upgrades an item. Confetti / shockwave / sparkles all work.")]
     public ParticleSystem purchaseVFX;
@@ -194,6 +204,12 @@ public class ShopManager : MonoBehaviour
 
         AutoResolveScrollRect();
         EnsureVerticalScrollbar();
+
+        RefreshCategoryCounters();
+
+        // Hide the highlight until a category is picked so it doesn't sit
+        // stranded on top of a non-existent button on scene load.
+        if (activeCategoryHighlight != null) activeCategoryHighlight.gameObject.SetActive(false);
     }
 
     private void OnEnable()
@@ -274,7 +290,13 @@ public class ShopManager : MonoBehaviour
         scrollbar.targetGraphic = handleImg;
 
         itemListScrollRect.verticalScrollbar = scrollbar;
-        itemListScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+        // Deliberately NOT AutoHideAndExpandViewport — that mode makes the
+        // ScrollRect resize the viewport at runtime based on scrollbar
+        // visibility, which overrode the inspector-authored anchors and
+        // caused the viewport to drop past the "Back" button. AutoHide only
+        // toggles the scrollbar visibility and leaves the viewport RectTransform
+        // exactly where the designer placed it.
+        itemListScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
         itemListScrollRect.vertical = true;
     }
 
@@ -399,6 +421,7 @@ public class ShopManager : MonoBehaviour
         isViewingWeapon = true;
         IsInsideCategory = true;
         SetupDynamicUI(true);
+        SlideHighlightToWeaponCategory(cat);
 
         FadeGroup(arsenalGridGroup, 0f);
 
@@ -453,6 +476,7 @@ public class ShopManager : MonoBehaviour
         isViewingWeapon = false;
         IsInsideCategory = true;
         SetupDynamicUI(false);
+        SlideHighlightToArmorCategory(cat);
 
         FadeGroup(arsenalGridGroup, 0f);
 
@@ -729,6 +753,10 @@ public class ShopManager : MonoBehaviour
         isViewingWeapon = false;
         IsInsideCategory = false;
 
+        // No category is "active" on the top-level grid — hide the highlight
+        // so it doesn't hover behind a random button.
+        if (activeCategoryHighlight != null) activeCategoryHighlight.gameObject.SetActive(false);
+
         // Reset the shop camera back to the default view. When a
         // category button is clicked, ShopCameraController.MoveToCategory
         // is wired via the inspector OnClick event and slides the camera
@@ -832,6 +860,7 @@ public class ShopManager : MonoBehaviour
         PlayerPrefs.Save();
         UpdateUI(true);
         RefreshItemListStates();
+        if (didPurchase) RefreshCategoryCounters();
     }
 
     public void OnUpgradePressed()
@@ -913,6 +942,145 @@ public class ShopManager : MonoBehaviour
                 btn.SetState(state, lvl, a.maxUpgradeLevel, a.price, myDiamonds);
             }
         }
+    }
+
+    // Slides the activeCategoryHighlight (if wired) so it sits behind the
+    // pressed category button. Uses a smoothdamp-style lerp so the highlight
+    // "chases" the pointer between categories rather than teleporting.
+    private Coroutine highlightSlideCoroutine;
+
+    private void SlideHighlightToWeaponCategory(ItemCategory cat)
+    {
+        Button target = null;
+        switch (cat)
+        {
+            case ItemCategory.Sword: target = btnCategorySwords; break;
+            case ItemCategory.Axe: target = btnCategoryAxes; break;
+            case ItemCategory.Bow: target = btnCategoryBows; break;
+            case ItemCategory.Helmet: target = btnCategoryHelmets; break;
+            case ItemCategory.Armor: target = btnCategoryArmor; break;
+            case ItemCategory.Gloves: target = btnCategoryGloves; break;
+        }
+        SlideHighlightToButton(target);
+    }
+
+    private void SlideHighlightToArmorCategory(ArmorCategory cat)
+    {
+        Button target = null;
+        switch (cat)
+        {
+            case ArmorCategory.Head: target = btnCategoryHelmets; break;
+            case ArmorCategory.Chest: target = btnCategoryArmor; break;
+            case ArmorCategory.Arms: target = btnCategoryGloves; break;
+            case ArmorCategory.Belt: target = btnCategoryBelts; break;
+            case ArmorCategory.Legs: target = btnCategoryLegs; break;
+            case ArmorCategory.Feet: target = btnCategoryFeet; break;
+        }
+        SlideHighlightToButton(target);
+    }
+
+    private void SlideHighlightToButton(Button target)
+    {
+        if (activeCategoryHighlight == null || target == null) return;
+        RectTransform targetRect = target.GetComponent<RectTransform>();
+        if (targetRect == null) return;
+
+        if (highlightSlideCoroutine != null) StopCoroutine(highlightSlideCoroutine);
+        highlightSlideCoroutine = StartCoroutine(SlideHighlightRoutine(targetRect));
+    }
+
+    private IEnumerator SlideHighlightRoutine(RectTransform targetRect)
+    {
+        if (!activeCategoryHighlight.gameObject.activeSelf) activeCategoryHighlight.gameObject.SetActive(true);
+
+        // Reparent so anchoredPosition/sizeDelta lerp inside the same
+        // coordinate space as the target. Uses SetSiblingIndex 0 so the
+        // highlight paints BEHIND the button.
+        Transform parent = targetRect.parent;
+        activeCategoryHighlight.SetParent(parent, worldPositionStays: false);
+        activeCategoryHighlight.SetSiblingIndex(0);
+
+        Vector2 targetPos = targetRect.anchoredPosition;
+        Vector2 targetSize = targetRect.sizeDelta;
+
+        Vector2 startPos = activeCategoryHighlight.anchoredPosition;
+        Vector2 startSize = activeCategoryHighlight.sizeDelta;
+
+        activeCategoryHighlight.anchorMin = targetRect.anchorMin;
+        activeCategoryHighlight.anchorMax = targetRect.anchorMax;
+        activeCategoryHighlight.pivot = targetRect.pivot;
+
+        float dur = Mathf.Max(0.01f, highlightSlideDuration);
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / dur;
+            float e = 1f - (1f - Mathf.Clamp01(t)) * (1f - Mathf.Clamp01(t));
+            activeCategoryHighlight.anchoredPosition = Vector2.Lerp(startPos, targetPos, e);
+            activeCategoryHighlight.sizeDelta = Vector2.Lerp(startSize, targetSize, e);
+            yield return null;
+        }
+        activeCategoryHighlight.anchoredPosition = targetPos;
+        activeCategoryHighlight.sizeDelta = targetSize;
+    }
+
+    // Updates the "X / Y" unlocked counter next to each category button.
+    // Called after Start and after every purchase. If a slot is null (i.e.
+    // the designer didn't wire that category's counter TMP), it's skipped.
+    private void RefreshCategoryCounters()
+    {
+        if (categoryCounterTexts == null || categoryCounterTexts.Length == 0) return;
+
+        // Order MUST match categoryCounterTexts inspector array order:
+        // 0 Swords, 1 Axes, 2 Bows, 3 Helmets, 4 Armor,
+        // 5 Gloves, 6 Belts, 7 Legs, 8 Feet.
+        SetCounter(0, CountWeaponsInCategory(ItemCategory.Sword,   out int totalW0), CountUnlockedWeapons(ItemCategory.Sword),  totalW0);
+        SetCounter(1, CountWeaponsInCategory(ItemCategory.Axe,     out int totalW1), CountUnlockedWeapons(ItemCategory.Axe),    totalW1);
+        SetCounter(2, CountWeaponsInCategory(ItemCategory.Bow,     out int totalW2), CountUnlockedWeapons(ItemCategory.Bow),    totalW2);
+        SetCounter(3, CountArmorsInCategory(ArmorCategory.Head,    out int totalA3), CountUnlockedArmors(ArmorCategory.Head),   totalA3);
+        SetCounter(4, CountArmorsInCategory(ArmorCategory.Chest,   out int totalA4), CountUnlockedArmors(ArmorCategory.Chest),  totalA4);
+        SetCounter(5, CountArmorsInCategory(ArmorCategory.Arms,    out int totalA5), CountUnlockedArmors(ArmorCategory.Arms),   totalA5);
+        SetCounter(6, CountArmorsInCategory(ArmorCategory.Belt,    out int totalA6), CountUnlockedArmors(ArmorCategory.Belt),   totalA6);
+        SetCounter(7, CountArmorsInCategory(ArmorCategory.Legs,    out int totalA7), CountUnlockedArmors(ArmorCategory.Legs),   totalA7);
+        SetCounter(8, CountArmorsInCategory(ArmorCategory.Feet,    out int totalA8), CountUnlockedArmors(ArmorCategory.Feet),   totalA8);
+    }
+
+    private int CountWeaponsInCategory(ItemCategory cat, out int total)
+    {
+        total = 0;
+        if (weapons == null) return 0;
+        foreach (var w in weapons) if (w != null && w.category == cat) total++;
+        return total;
+    }
+    private int CountUnlockedWeapons(ItemCategory cat)
+    {
+        if (weapons == null) return 0;
+        int c = 0;
+        foreach (var w in weapons)
+            if (w != null && w.category == cat && PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1) c++;
+        return c;
+    }
+    private int CountArmorsInCategory(ArmorCategory cat, out int total)
+    {
+        total = 0;
+        if (armors == null) return 0;
+        foreach (var a in armors) if (a != null && a.category == cat) total++;
+        return total;
+    }
+    private int CountUnlockedArmors(ArmorCategory cat)
+    {
+        if (armors == null) return 0;
+        int c = 0;
+        foreach (var a in armors)
+            if (a != null && a.category == cat && PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1) c++;
+        return c;
+    }
+    private void SetCounter(int index, int _unusedTotalDup, int unlocked, int total)
+    {
+        if (index < 0 || index >= categoryCounterTexts.Length) return;
+        TextMeshProUGUI txt = categoryCounterTexts[index];
+        if (txt == null) return;
+        txt.text = total > 0 ? $"{unlocked}/{total}" : "";
     }
 
     // Plays the "you got it!" flourish. Optional pieces (particle system,
