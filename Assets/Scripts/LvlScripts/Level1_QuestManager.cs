@@ -286,12 +286,28 @@ public class Level1_QuestManager : MonoBehaviour
 
     private Vector3 GetTerrainPos(Vector3 pos)
     {
+        return new Vector3(pos.x, FindGroundY(pos), pos.z);
+    }
+
+    // Finds the actual visual ground Y at a world XZ. Uses a raycast from
+    // 500m above straight down so it works with Unity Terrain OR mesh
+    // terrain OR any other MeshCollider surface — Terrain.SampleHeight
+    // silently returns 0 when the scene has no Terrain.activeTerrain,
+    // which was placing tutorial enemies at whatever elevated Y the
+    // player happened to be at.
+    private float FindGroundY(Vector3 pos)
+    {
+        Vector3 origin = new Vector3(pos.x, pos.y + 500f, pos.z);
+        // ~0 = every layer; ignore triggers so region trigger volumes and
+        // extraction-portal sensors don't count as ground.
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1000f, ~0, QueryTriggerInteraction.Ignore))
+            return hit.point.y;
+
+        // Fall back to Terrain if the raycast missed absolutely everything.
         if (Terrain.activeTerrain != null)
-        {
-            float terrainHeight = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-            return new Vector3(pos.x, terrainHeight, pos.z);
-        }
-        return pos;
+            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+
+        return pos.y;
     }
 
     private IEnumerator TriggerAmbushWave1Routine()
@@ -363,12 +379,11 @@ public class Level1_QuestManager : MonoBehaviour
         StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
     }
 
-    // Places every EnemyAI child in a fan-shaped formation on the SAME
-    // ground plane as the player. We deliberately use the player's own
-    // terrain-sampled Y for every slot rather than resampling at each
-    // "behind the player" position — the previous approach let enemies
-    // land on a mountainside directly behind the player and appear to
-    // float in the sky once the camera framed them.
+    // Places every EnemyAI child in a fan-shaped formation on the ACTUAL
+    // physical ground under each slot. Uses FindGroundY (a raycast) rather
+    // than Terrain.SampleHeight because the tutorial scene doesn't have a
+    // Unity Terrain component set as activeTerrain — SampleHeight was
+    // returning 0/player.y which is why enemies kept floating.
     private void LayoutEnemyFormation(Transform groupParent, Vector3 lookAtTarget)
     {
         List<EnemyAI> enemies = new List<EnemyAI>();
@@ -376,24 +391,19 @@ public class Level1_QuestManager : MonoBehaviour
             if (e != null) enemies.Add(e);
         if (enemies.Count == 0) return;
 
-        // Ground Y: sample terrain at the PLAYER's XZ (guaranteed to be on
-        // solid ground since the player is standing on it) and fall back to
-        // the player's own transform.y if terrain sampling fails.
-        Vector3 playerGround = playerTransform != null ? playerTransform.position : lookAtTarget;
-        float groundY = SampleGroundY(playerGround);
-        if (Terrain.activeTerrain == null) groundY = playerGround.y;
+        // Base plane = ground directly under the player. Player is standing
+        // on something solid by definition, so this is the safest reference.
+        Vector3 playerPos = playerTransform != null ? playerTransform.position : lookAtTarget;
+        float playerGroundY = FindGroundY(playerPos);
 
         Vector3 groupCenter = groupParent.position;
-        groupCenter.y = groundY;
+        groupCenter.y = playerGroundY;
         groupParent.position = groupCenter;
 
-        Vector3 forward = (new Vector3(lookAtTarget.x, groundY, lookAtTarget.z) - groupCenter).normalized;
+        Vector3 forward = (new Vector3(lookAtTarget.x, playerGroundY, lookAtTarget.z) - groupCenter).normalized;
         if (forward.sqrMagnitude < 0.001f) forward = groupParent.forward;
         Vector3 right = Vector3.Cross(Vector3.up, forward);
 
-        // Fan enemies across a 6m front, two rows deep, offset so they're
-        // visible and don't all pile on the same spot. Every slot pins Y to
-        // groundY — nobody floats even if the raw XZ ends up over slope.
         int count = enemies.Count;
         float lateralSpread = 6f;
         float rowDepth = 2.2f;
@@ -402,7 +412,12 @@ public class Level1_QuestManager : MonoBehaviour
             float tx = count == 1 ? 0f : Mathf.Lerp(-1f, 1f, (float)i / (count - 1));
             int row = i % 2;
             Vector3 slot = groupCenter + right * (tx * lateralSpread * 0.5f) - forward * (row * rowDepth);
-            slot.y = groundY;
+
+            // Raycast for the actual ground at this slot's XZ. If it fails
+            // (slot is over a hole / off-mesh), pin to the player's ground
+            // plane so we never end up floating.
+            float slotGround = FindGroundY(slot);
+            slot.y = Mathf.Abs(slotGround - playerGroundY) < 8f ? slotGround : playerGroundY;
 
             Transform et = enemies[i].transform;
             et.position = slot;
