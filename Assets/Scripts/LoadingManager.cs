@@ -70,7 +70,13 @@ public class LoadingManager : MonoBehaviour
     {
         isLoading = true;
 
-        // 1. Fade Out (���������� ������)
+        // Блокуємо керування гравцем відразу при початку завантаження
+        if (PlayerController.LocalInstance != null)
+        {
+            PlayerController.LocalInstance.isControlBlocked = true;
+        }
+
+        // 1. Fade Out (затемнення екрану)
         if (blackFadeGroup != null)
         {
             blackFadeGroup.gameObject.SetActive(true);
@@ -81,7 +87,7 @@ public class LoadingManager : MonoBehaviour
             }
         }
 
-        // 2. ������� UI ������������
+        // 2. Показуємо UI завантаження
         if (loadingCanvasGroup != null)
         {
             loadingCanvasGroup.gameObject.SetActive(true);
@@ -91,13 +97,12 @@ public class LoadingManager : MonoBehaviour
         if (hintCoroutine != null) StopCoroutine(hintCoroutine);
         if (gameHints.Length > 0) hintCoroutine = StartCoroutine(HintRoutine());
 
-        // ������� �������� �������� ������, ��� �� ������� �������� ������������
         Application.backgroundLoadingPriority = ThreadPriority.Low;
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
         asyncLoad.allowSceneActivation = false;
 
-        // ���� 1: ������������ ����� ������
+        // Чекаємо готовності сцени на 90%
         while (asyncLoad.progress < 0.9f)
         {
             float rawProgress = Mathf.Clamp01(asyncLoad.progress / 0.9f);
@@ -106,34 +111,36 @@ public class LoadingManager : MonoBehaviour
             yield return null;
         }
 
-        // �������� Բ��: ³����� �� ������� ��������� �� ��������� �����!
         Application.backgroundLoadingPriority = ThreadPriority.High;
 
-        // 3. ��������� ����� (��� ���� �������� ����� ���������)
+        // Активуємо сцену
         asyncLoad.allowSceneActivation = true;
         while (!asyncLoad.isDone) yield return null;
 
-        // ��������� ���������� �������� ���� ������� ������������
         Application.backgroundLoadingPriority = ThreadPriority.Normal;
 
-        // ���� 2: ��������� ����
+        // 3. Чекаємо поки WorldGenerator згенерує світ
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
-
         if (worldGen != null)
         {
             while (!WorldGenerator.IsGenerationDone)
             {
-                // �������� ������� ��������� (0.0 �� 1.0) � ���������� � ������� 50-100%
                 int displayPercent = Mathf.FloorToInt(50f + (Mathf.Clamp01(WorldGenerator.CurrentProgress) * 50f));
                 if (loadingText != null) loadingText.text = LocalizationManager.Tr("GENERATING WORLD... {0}%", displayPercent);
                 yield return null;
             }
         }
 
-        if (loadingText != null) loadingText.text = LocalizationManager.Tr("READY");
-        yield return new WaitForSecondsRealtime(0.5f); // ������� �����, ��� ������� ������� 100%
+        // Розблоковуємо гравця, бо сцена завантажена і світ згенеровано
+        if (PlayerController.LocalInstance != null)
+        {
+            PlayerController.LocalInstance.isControlBlocked = false;
+        }
 
-        // 4. Fade In (��������� ������ ������������)
+        if (loadingText != null) loadingText.text = LocalizationManager.Tr("READY");
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        // 4. Fade In (плавне повернення до гри)
         if (loadingCanvasGroup != null)
         {
             while (loadingCanvasGroup.alpha > 0f)
@@ -157,7 +164,6 @@ public class LoadingManager : MonoBehaviour
         if (hintCoroutine != null) StopCoroutine(hintCoroutine);
         isLoading = false;
 
-        // 5. ������ ����� ���
         if (GameManager.Instance != null)
         {
             GameManager.Instance.StartLevelTimer();
