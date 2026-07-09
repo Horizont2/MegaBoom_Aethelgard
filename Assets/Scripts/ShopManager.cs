@@ -85,6 +85,8 @@ public class ShopManager : MonoBehaviour
     public Button upgradeButton;
     public TextMeshProUGUI upgradePriceText;
     public Button backToCampButton;
+    [Tooltip("Optional TMP shown under/next to the Buy button when the player can't afford the current item. Reads e.g. \"Need +45 diamonds\". Hidden otherwise.")]
+    public TextMeshProUGUI affordabilityHintText;
 
     [Header("UI Stats Values")]
     public TextMeshProUGUI stat1PercentText;
@@ -333,10 +335,52 @@ public class ShopManager : MonoBehaviour
             int live = ReadDiamonds();
             if (live != lastDisplayedDiamonds)
             {
+                // Kick off the animated count-up so the number rolls between
+                // the previous value and the new one instead of snapping.
+                if (lastDisplayedDiamonds >= 0)
+                    StartCoroutine(DiamondCounterRoutine(lastDisplayedDiamonds, live));
+                else
+                    diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + live.ToString("N0");
                 lastDisplayedDiamonds = live;
-                diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + live.ToString("N0");
             }
         }
+    }
+
+    // Animated ticker between two diamond values with a punch pulse at the end.
+    // Increases and decreases both look punchy: the text bounces from 1.0 to
+    // 1.15 scale over ~0.15s and back — same "you got something!" cadence as
+    // a level-up popup.
+    private Coroutine diamondCounterCoroutine;
+    private IEnumerator DiamondCounterRoutine(int from, int to)
+    {
+        if (diamondBalanceText == null) yield break;
+        if (diamondCounterCoroutine != null) StopCoroutine(diamondCounterCoroutine);
+
+        float dur = 0.35f;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / dur;
+            float e = 1f - (1f - Mathf.Clamp01(t)) * (1f - Mathf.Clamp01(t));
+            int shown = Mathf.RoundToInt(Mathf.Lerp(from, to, e));
+            diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + shown.ToString("N0");
+            yield return null;
+        }
+        diamondBalanceText.text = LocalizationManager.Tr("Diamonds:") + " " + to.ToString("N0");
+
+        // Quick scale pulse punch after the roll.
+        Transform tr = diamondBalanceText.transform;
+        Vector3 baseS = tr.localScale;
+        float pulseDur = 0.18f;
+        float pt = 0f;
+        while (pt < 1f)
+        {
+            pt += Time.unscaledDeltaTime / pulseDur;
+            float k = Mathf.Sin(Mathf.Clamp01(pt) * Mathf.PI);
+            tr.localScale = baseS * (1f + 0.15f * k);
+            yield return null;
+        }
+        tr.localScale = baseS;
     }
 
     private void SetGroupAlphaInstant(CanvasGroup group, float targetAlpha)
@@ -1022,8 +1066,29 @@ public class ShopManager : MonoBehaviour
         {
             if (itemNameText != null) StartCoroutine(PopText(itemNameText));
             if (priceText != null) StartCoroutine(PopText(priceText));
+            // Icon punch — quick scale bounce so the descriptionItemIcon
+            // feels responsive to selection. Uses the same PopText coroutine
+            // style on the icon's Transform for consistency.
+            if (descriptionItemIcon != null) StartCoroutine(IconPunch(descriptionItemIcon.transform));
         }
         CalculateAndSaveTotalPower();
+    }
+
+    private IEnumerator IconPunch(Transform t)
+    {
+        if (t == null) yield break;
+        Vector3 baseS = Vector3.one;
+        // 1.15 -> 1.0 with sine ease
+        float dur = 0.28f;
+        float e = 0f;
+        while (e < 1f)
+        {
+            e += Time.unscaledDeltaTime / dur;
+            float k = 1f - Mathf.Clamp01(e);
+            t.localScale = baseS * (1f + 0.15f * (k * k));
+            yield return null;
+        }
+        t.localScale = baseS;
     }
 
     private void UpdateItemDetails(string name, string desc, Sprite icn, int lvl, int maxLvl, int price, bool isBought, bool isEquipped, int myDiamonds, int upgCost)
@@ -1038,18 +1103,23 @@ public class ShopManager : MonoBehaviour
             buyButton.interactable = (myDiamonds >= price);
             priceText.color = (myDiamonds >= price) ? textNormalColor : textErrorColor;
             if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
+
+            SetAffordabilityHint(myDiamonds >= price ? "" :
+                LocalizationManager.Tr("Need +{0} diamonds", (price - myDiamonds).ToString("N0")));
         }
         else if (!isEquipped)
         {
             priceText.text = LocalizationManager.Tr("EQUIP");
             buyButton.interactable = true;
             priceText.color = textNormalColor;
+            SetAffordabilityHint("");
         }
         else
         {
             priceText.text = LocalizationManager.Tr("EQUIPPED");
             buyButton.interactable = false;
             priceText.color = textSuccessColor;
+            SetAffordabilityHint("");
         }
 
         if (isBought && upgradeButton != null)
@@ -1060,15 +1130,30 @@ public class ShopManager : MonoBehaviour
                 upgradePriceText.text = LocalizationManager.Tr("Upgrade for {0}", upgCost.ToString("N0"));
                 upgradePriceText.color = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
                 upgradeButton.interactable = (myDiamonds >= upgCost);
+
+                // Also hint the shortfall on the upgrade side (overwrites the
+                // buy hint if the item is owned but not equipped and unaffordable
+                // for upgrade). Owned + affordable upgrade = no hint.
+                if (myDiamonds < upgCost)
+                    SetAffordabilityHint(LocalizationManager.Tr("Need +{0} diamonds", (upgCost - myDiamonds).ToString("N0")));
             }
             else
             {
                 upgradePriceText.text = LocalizationManager.Tr("MAX");
-                upgradePriceText.color = new Color(1f, 0.8f, 0.2f);
+                upgradePriceText.color = new Color(0.95f, 0.80f, 0.45f);
                 upgradeButton.interactable = false;
             }
         }
     }
+
+    private void SetAffordabilityHint(string text)
+    {
+        if (affordabilityHintText == null) return;
+        affordabilityHintText.text = text;
+        affordabilityHintText.gameObject.SetActive(!string.IsNullOrEmpty(text));
+    }
+
+    private Coroutine[] statBarLerps = new Coroutine[4];
 
     private void UpdateStatsUI(float val1, float max1, float val2, float max2, float val3, float max3, int power)
     {
@@ -1077,10 +1162,34 @@ public class ShopManager : MonoBehaviour
         if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt((val3 / max3) * 100) + "%";
         if (powerPercentText) powerPercentText.text = power.ToString();
 
-        if (stat1Fill) stat1Fill.fillAmount = Mathf.Clamp01(val1 / max1);
-        if (stat2Fill) stat2Fill.fillAmount = Mathf.Clamp01(val2 / max2);
-        if (stat3Fill) stat3Fill.fillAmount = Mathf.Clamp01(val3 / max3);
-        if (powerFill) powerFill.fillAmount = Mathf.Clamp01((float)power / 1000f);
+        LerpBar(0, stat1Fill, Mathf.Clamp01(val1 / max1));
+        LerpBar(1, stat2Fill, Mathf.Clamp01(val2 / max2));
+        LerpBar(2, stat3Fill, Mathf.Clamp01(val3 / max3));
+        LerpBar(3, powerFill, Mathf.Clamp01((float)power / 1000f));
+    }
+
+    private void LerpBar(int slot, Image bar, float target)
+    {
+        if (bar == null) return;
+        if (statBarLerps[slot] != null) StopCoroutine(statBarLerps[slot]);
+        statBarLerps[slot] = StartCoroutine(BarLerpRoutine(bar, target));
+    }
+
+    private IEnumerator BarLerpRoutine(Image bar, float target)
+    {
+        // Ease-out from current to target over ~0.35s. Gives the stat bars
+        // the feel of "the value is being weighed" rather than snapping.
+        float from = bar.fillAmount;
+        float dur = 0.35f;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / dur;
+            float e = 1f - (1f - Mathf.Clamp01(t)) * (1f - Mathf.Clamp01(t));
+            bar.fillAmount = Mathf.Lerp(from, target, e);
+            yield return null;
+        }
+        bar.fillAmount = target;
     }
 
     private void CalculateAndSaveTotalPower()

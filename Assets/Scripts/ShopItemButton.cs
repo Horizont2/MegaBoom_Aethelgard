@@ -42,6 +42,24 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [Tooltip("Optional Image to tint by the item's tier (usually the card frame).")]
     public Image tierFrame;
 
+    [Header("Desaturation for Locked")]
+    [Tooltip("If true, dim iconImage + nameText + tierFrame while the item is Locked. Owned/Equipped tiles show their full colour.")]
+    public bool desaturateWhenLocked = true;
+    [Tooltip("How dark the card looks when locked (multiplier on iconImage color). 0 = pure black, 1 = normal.")]
+    [Range(0.1f, 1f)] public float lockedDimAmount = 0.35f;
+
+    private Color iconOriginalColor = Color.white;
+    private Color nameOriginalColor = Color.white;
+    private bool colorCacheDone;
+
+    private void CacheOriginalColors()
+    {
+        if (colorCacheDone) return;
+        if (iconImage != null) iconOriginalColor = iconImage.color;
+        if (nameText != null) nameOriginalColor = nameText.color;
+        colorCacheDone = true;
+    }
+
     // Fires when the pointer enters this card. ShopManager listens to power
     // the delta-stat hover preview.
     public System.Action<ShopItemButton> OnHoverEnter;
@@ -55,9 +73,37 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     public void SetState(OwnedState state, int currentLevel, int maxLevel, int price, int playerDiamonds)
     {
+        CacheOriginalColors();
+
         if (lockedOverlay != null) lockedOverlay.SetActive(state == OwnedState.Locked);
         if (ownedCheckmark != null) ownedCheckmark.SetActive(state == OwnedState.Owned);
         if (equippedRibbon != null) equippedRibbon.SetActive(state == OwnedState.Equipped);
+
+        // Silhouette / dim look for locked items — desaturates icon + darkens
+        // the card so at-a-glance the eye sees "unlocked = colourful, locked
+        // = ghosted". Reverses cleanly when the state flips to Owned.
+        if (desaturateWhenLocked)
+        {
+            if (state == OwnedState.Locked)
+            {
+                if (iconImage != null)
+                {
+                    Color g = Grayscale(iconOriginalColor);
+                    iconImage.color = g * lockedDimAmount + new Color(0, 0, 0, iconOriginalColor.a * 0.9f);
+                }
+                if (nameText != null)
+                {
+                    Color dim = nameText.color;
+                    dim.r *= 0.6f; dim.g *= 0.6f; dim.b *= 0.6f;
+                    nameText.color = dim;
+                }
+            }
+            else
+            {
+                if (iconImage != null) iconImage.color = iconOriginalColor;
+                // nameText will be restored by SetTierColor from ShopManager
+            }
+        }
 
         bool atMax = currentLevel >= maxLevel;
         if (priceBadgeText != null)
@@ -83,6 +129,7 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     public void SetTierColor(Color c)
     {
+        CacheOriginalColors();
         if (tierFrame != null) tierFrame.color = c;
         // Tint the item's name to match its tier for at-a-glance rarity read.
         // Small alpha lift keeps the text legible on dark cards.
@@ -94,6 +141,68 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
     }
 
-    public void OnPointerEnter(PointerEventData eventData) { OnHoverEnter?.Invoke(this); }
-    public void OnPointerExit(PointerEventData eventData) { OnHoverExit?.Invoke(this); }
+    private static Color Grayscale(Color c)
+    {
+        float l = c.r * 0.299f + c.g * 0.587f + c.b * 0.114f;
+        return new Color(l, l, l, c.a);
+    }
+
+    [Header("Hover Juice")]
+    [Tooltip("How high (px in local space) the card lifts on pointer enter.")]
+    public float hoverLift = 6f;
+    [Tooltip("Extra scale multiplier on hover. 1 = no scale, 1.05 = 5% bigger.")]
+    public float hoverScale = 1.03f;
+    [Tooltip("Seconds to reach hover / rest state (unscaled time so pause doesn't freeze it).")]
+    public float hoverAnimSpeed = 10f;
+
+    private RectTransform selfRect;
+    private Vector2 restAnchoredPos;
+    private Vector3 restScale = Vector3.one;
+    private bool hovering;
+    private bool restCached;
+
+    private void OnEnable()
+    {
+        CacheRestTransform();
+    }
+
+    private void CacheRestTransform()
+    {
+        if (restCached) return;
+        selfRect = transform as RectTransform;
+        if (selfRect != null)
+        {
+            restAnchoredPos = selfRect.anchoredPosition;
+            restScale = selfRect.localScale;
+        }
+        restCached = true;
+    }
+
+    private void Update()
+    {
+        if (selfRect == null) return;
+
+        Vector2 targetPos = restAnchoredPos + (hovering ? new Vector2(0f, hoverLift) : Vector2.zero);
+        Vector3 targetScl = hovering ? restScale * hoverScale : restScale;
+
+        float k = Mathf.Clamp01(Time.unscaledDeltaTime * hoverAnimSpeed);
+        selfRect.anchoredPosition = Vector2.Lerp(selfRect.anchoredPosition, targetPos, k);
+        selfRect.localScale = Vector3.Lerp(selfRect.localScale, targetScl, k);
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        // Ignore hover while the button is uninteractable (locked cards can
+        // still be visually indicated, but we don't want the "you can pick me"
+        // lift for something the click won't do anything with).
+        if (buttonComponent != null && !buttonComponent.interactable) return;
+        hovering = true;
+        OnHoverEnter?.Invoke(this);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        hovering = false;
+        OnHoverExit?.Invoke(this);
+    }
 }
