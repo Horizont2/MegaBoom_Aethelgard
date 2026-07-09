@@ -1351,15 +1351,85 @@ public class WorldGenerator : MonoBehaviour
         GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
         camp.transform.SetParent(this.transform);
 
-        Collider campCol = camp.GetComponent<Collider>();
-        float dynamicRadius = campCol != null ? (Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f) + 3f : 20f;
+        // Compute the true world-space bounds from every renderer, not just the
+        // root Collider. Some region prefabs put their collider (often a
+        // trigger sensor) at the arena centre while the visible mesh spans a
+        // much larger footprint — the old radius fallback of 20f was way too
+        // small for those, so parts of the prefab hung outside the flattened
+        // area and either sank into an unflattened hill or floated above a
+        // valley depending on which side got sampled.
+        Bounds worldBounds = ComputeRendererBounds(camp);
+        bool boundsValid = worldBounds.extents.sqrMagnitude > 0.0001f;
+
+        Vector3 clampedPos = bestPos;
+        if (boundsValid)
+        {
+            // Keep the prefab's full footprint on the terrain — if it would
+            // stick out past the edge, slide it inward instead of leaving the
+            // outer chunk hanging over nothing (that's what caused region 4 to
+            // spawn "behind" the terrain).
+            float halfW = worldBounds.extents.x;
+            float halfL = worldBounds.extents.z;
+            float minX = transform.position.x + halfW + 2f;
+            float maxX = transform.position.x + w - halfW - 2f;
+            float minZ = transform.position.z + halfL + 2f;
+            float maxZ = transform.position.z + l - halfL - 2f;
+            if (maxX > minX) clampedPos.x = Mathf.Clamp(clampedPos.x, minX, maxX);
+            if (maxZ > minZ) clampedPos.z = Mathf.Clamp(clampedPos.z, minZ, maxZ);
+
+            Vector3 shiftXZ = new Vector3(clampedPos.x - bestPos.x, 0, clampedPos.z - bestPos.z);
+            if (shiftXZ.sqrMagnitude > 0.001f)
+            {
+                camp.transform.position += shiftXZ;
+                worldBounds.center += shiftXZ;
+            }
+            bestPos = clampedPos;
+        }
+
+        float dynamicRadius;
+        if (boundsValid)
+            dynamicRadius = Mathf.Max(worldBounds.extents.x, worldBounds.extents.z) + 3f;
+        else
+        {
+            Collider campCol = camp.GetComponentInChildren<Collider>();
+            dynamicRadius = campCol != null ? (Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f) + 3f : 20f;
+        }
 
         FlattenTerrainAt(bestPos, dynamicRadius, 15f);
-        bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
-        camp.transform.position = bestPos;
-        spawnedTotemPos = bestPos;
-        forbiddenZones.Add(bestPos);
+
+        // After flattening, re-sample the terrain and re-anchor the prefab so
+        // that the BOTTOM of its bounds touches the ground, not its pivot.
+        // Prefabs whose pivot sits at the top (or somewhere inside the
+        // building) used to bury themselves or float — this shifts them by
+        // exactly the pivot-to-base offset so they always land flush.
+        float groundY = terrain.SampleHeight(new Vector3(bestPos.x, 0, bestPos.z)) + transform.position.y;
+        if (boundsValid)
+        {
+            float pivotToBase = camp.transform.position.y - worldBounds.min.y;
+            camp.transform.position = new Vector3(bestPos.x, groundY + pivotToBase, bestPos.z);
+        }
+        else
+        {
+            camp.transform.position = new Vector3(bestPos.x, groundY, bestPos.z);
+        }
+
+        spawnedTotemPos = new Vector3(bestPos.x, groundY, bestPos.z);
+        forbiddenZones.Add(spawnedTotemPos);
         yield return null;
+    }
+
+    private Bounds ComputeRendererBounds(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(false);
+        if (renderers == null || renderers.Length == 0) return new Bounds(root.transform.position, Vector3.zero);
+
+        Bounds b = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+        {
+            if (renderers[i] == null) continue;
+            b.Encapsulate(renderers[i].bounds);
+        }
+        return b;
     }
 
     private void FlattenTerrainAt(Vector3 worldPos, float flatRadius, float blendRadius)
