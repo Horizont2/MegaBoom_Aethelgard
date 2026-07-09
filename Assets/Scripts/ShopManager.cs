@@ -92,8 +92,30 @@ public class ShopManager : MonoBehaviour
     public TextMeshProUGUI stat3PercentText;
     public TextMeshProUGUI powerPercentText;
 
+    [Header("Delta Preview (Hover)")]
+    [Tooltip("Optional. Small text next to stat1 that reads e.g. \"+15\" or \"-3\" when the player hovers over another item vs. the currently-equipped one. Colour is set automatically.")]
+    public TextMeshProUGUI stat1DeltaText;
+    public TextMeshProUGUI stat2DeltaText;
+    public TextMeshProUGUI stat3DeltaText;
+    public TextMeshProUGUI powerDeltaText;
+    public Color deltaPositiveColor = new Color(0.35f, 0.95f, 0.35f);
+    public Color deltaNegativeColor = new Color(0.95f, 0.35f, 0.35f);
+    public Color deltaNeutralColor = new Color(0.7f, 0.7f, 0.7f);
+
     [Header("Rotation Settings")]
     public float rotationSpeed = 500f;
+
+    [Header("Purchase Celebration (optional)")]
+    [Tooltip("Optional ParticleSystem to Play() when the player buys or upgrades an item. Confetti / shockwave / sparkles all work.")]
+    public ParticleSystem purchaseVFX;
+    [Tooltip("Optional Image (full-screen faint overlay) that flashes on purchase. Colour is tweenable.")]
+    public Image purchaseFlashOverlay;
+    [Tooltip("Peak alpha of the full-screen flash overlay (0..1).")]
+    [Range(0f, 1f)] public float purchaseFlashAlpha = 0.35f;
+    [Tooltip("How long the flash overlay takes to fade back to 0.")]
+    public float purchaseFlashDuration = 0.45f;
+    [Tooltip("Scale multiplier used by the character-model \"got it!\" pulse.")]
+    public float purchasePulseScale = 1.08f;
 
     private GameObject currentHeroModel;
     private GameObject currentWeaponModel;
@@ -383,13 +405,29 @@ public class ShopManager : MonoBehaviour
         ClearItemList();
 
         WeaponData firstWep = null;
+        int myDiamonds = ReadDiamonds();
+        int equippedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)
         {
             if (w.category == cat)
             {
                 if (firstWep == null) firstWep = w;
                 WeaponData captured = w;
-                CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
+                ShopItemButton btn = CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
+                if (btn != null)
+                {
+                    btn.boundWeapon = w;
+                    int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
+                    bool owned = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
+                    bool equipped = owned && w.weaponID == equippedWepID;
+                    var state = equipped ? ShopItemButton.OwnedState.Equipped
+                              : owned ? ShopItemButton.OwnedState.Owned
+                                      : ShopItemButton.OwnedState.Locked;
+                    btn.SetState(state, lvl, w.maxUpgradeLevel, w.price, myDiamonds);
+                    btn.SetTierColor(GetWeaponTierColor(w));
+                    btn.OnHoverEnter += HandleItemHoverEnter;
+                    btn.OnHoverExit += HandleItemHoverExit;
+                }
             }
         }
 
@@ -421,6 +459,8 @@ public class ShopManager : MonoBehaviour
         ClearItemList();
 
         ArmorData firstArm = null;
+        int myDiamondsArm = ReadDiamonds();
+        int equippedIndex = PlayerPrefs.GetInt($"EquippedArmor_{cat}", 0);
         if (armors != null)
         {
             foreach (var a in armors)
@@ -429,7 +469,21 @@ public class ShopManager : MonoBehaviour
                 {
                     if (firstArm == null) firstArm = a;
                     ArmorData captured = a;
-                    CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
+                    ShopItemButton btn = CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
+                    if (btn != null)
+                    {
+                        btn.boundArmor = a;
+                        int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
+                        bool owned = PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1;
+                        bool equipped = owned && a.prefabIndex == equippedIndex;
+                        var state = equipped ? ShopItemButton.OwnedState.Equipped
+                                  : owned ? ShopItemButton.OwnedState.Owned
+                                          : ShopItemButton.OwnedState.Locked;
+                        btn.SetState(state, lvl, a.maxUpgradeLevel, a.price, myDiamondsArm);
+                        btn.SetTierColor(GetArmorTierColor(a));
+                        btn.OnHoverEnter += HandleItemHoverEnter;
+                        btn.OnHoverExit += HandleItemHoverExit;
+                    }
                 }
             }
         }
@@ -499,7 +553,7 @@ public class ShopManager : MonoBehaviour
         UpdateUI(true);
     }
 
-    private void CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
+    private ShopItemButton CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
     {
         GameObject btnObj = Instantiate(itemButtonPrefab, itemListContent);
         btnObj.SetActive(true);
@@ -526,6 +580,132 @@ public class ShopManager : MonoBehaviour
                 });
             }
         }
+        return itemSlot;
+    }
+
+    // Rarity/tier tint driven by the item's base Power. Cheap-and-cheerful
+    // mapping: <30 grey (common), <60 green (uncommon), <100 blue (rare),
+    // <160 purple (epic), else gold (legendary). Feel free to tune from the
+    // inspector-authored value later.
+    private static readonly Color TIER_COMMON     = new Color(0.70f, 0.70f, 0.70f);
+    private static readonly Color TIER_UNCOMMON   = new Color(0.35f, 0.90f, 0.35f);
+    private static readonly Color TIER_RARE       = new Color(0.30f, 0.60f, 1.00f);
+    private static readonly Color TIER_EPIC       = new Color(0.75f, 0.35f, 1.00f);
+    private static readonly Color TIER_LEGENDARY  = new Color(1.00f, 0.75f, 0.20f);
+
+    private Color GetWeaponTierColor(WeaponData w)
+    {
+        int p = w.basePower + w.powerPerLevel * w.maxUpgradeLevel;
+        return PickTier(p);
+    }
+
+    private Color GetArmorTierColor(ArmorData a)
+    {
+        int p = a.basePower + a.powerPerLevel * a.maxUpgradeLevel;
+        return PickTier(p);
+    }
+
+    private Color PickTier(int totalPower)
+    {
+        if (totalPower < 30) return TIER_COMMON;
+        if (totalPower < 60) return TIER_UNCOMMON;
+        if (totalPower < 100) return TIER_RARE;
+        if (totalPower < 160) return TIER_EPIC;
+        return TIER_LEGENDARY;
+    }
+
+    // Hover previews compare the hovered item's stats against the currently
+    // EQUIPPED item of the same category and display deltas next to each
+    // stat (e.g. DMG "+15", ATK SPEED "-0.2"). When the pointer leaves the
+    // card, we clear the delta so the panel goes back to plain stats.
+    private void HandleItemHoverEnter(ShopItemButton btn)
+    {
+        if (btn == null) return;
+
+        if (btn.boundWeapon != null)
+        {
+            WeaponData hovered = btn.boundWeapon;
+            WeaponData equipped = FindEquippedWeaponInCategory(hovered.category);
+            int hLvl = PlayerPrefs.GetInt("WeaponLevel_" + hovered.weaponID, 0);
+            int eLvl = equipped != null ? PlayerPrefs.GetInt("WeaponLevel_" + equipped.weaponID, 0) : 0;
+
+            float dHDamage = (hovered.damageBonus + hLvl * hovered.damagePerLevel)
+                           - (equipped != null ? equipped.damageBonus + eLvl * equipped.damagePerLevel : 0f);
+            float dHSpeed = (hovered.attackSpeed + hLvl * hovered.attackSpeedPerLevel)
+                          - (equipped != null ? equipped.attackSpeed + eLvl * equipped.attackSpeedPerLevel : 0f);
+            float dHCrit = (hovered.critChance + hLvl * hovered.critChancePerLevel)
+                         - (equipped != null ? equipped.critChance + eLvl * equipped.critChancePerLevel : 0f);
+            int dHPower = (hovered.basePower + hLvl * hovered.powerPerLevel)
+                        - (equipped != null ? equipped.basePower + eLvl * equipped.powerPerLevel : 0);
+
+            SetDelta(stat1DeltaText, dHDamage, "F0", "");
+            SetDelta(stat2DeltaText, dHSpeed, "F2", "");
+            SetDelta(stat3DeltaText, dHCrit * 100f, "F1", "%");
+            SetDelta(powerDeltaText, dHPower, "F0", "");
+        }
+        else if (btn.boundArmor != null)
+        {
+            ArmorData hovered = btn.boundArmor;
+            ArmorData equipped = FindEquippedArmorInCategory(hovered.category);
+            int hLvl = PlayerPrefs.GetInt("ArmorLevel_" + hovered.armorID, 0);
+            int eLvl = equipped != null ? PlayerPrefs.GetInt("ArmorLevel_" + equipped.armorID, 0) : 0;
+
+            float dHHealth = (hovered.baseHealthBonus + hLvl * hovered.healthPerLevel)
+                           - (equipped != null ? equipped.baseHealthBonus + eLvl * equipped.healthPerLevel : 0f);
+            float dHReduction = (hovered.baseDamageReduction + hLvl * hovered.reductionPerLevel)
+                              - (equipped != null ? equipped.baseDamageReduction + eLvl * equipped.reductionPerLevel : 0f);
+            int dHPower = (hovered.basePower + hLvl * hovered.powerPerLevel)
+                        - (equipped != null ? equipped.basePower + eLvl * equipped.powerPerLevel : 0);
+
+            SetDelta(stat1DeltaText, dHHealth, "F0", " HP");
+            SetDelta(stat2DeltaText, dHReduction * 100f, "F1", "%");
+            SetDelta(stat3DeltaText, 0f, "F0", "");
+            SetDelta(powerDeltaText, dHPower, "F0", "");
+        }
+    }
+
+    private void HandleItemHoverExit(ShopItemButton btn)
+    {
+        ClearDeltas();
+    }
+
+    private void SetDelta(TextMeshProUGUI txt, float delta, string fmt, string suffix)
+    {
+        if (txt == null) return;
+        if (Mathf.Abs(delta) < 0.001f)
+        {
+            txt.text = "";
+            return;
+        }
+        string sign = delta > 0 ? "+" : "";
+        txt.text = sign + delta.ToString(fmt) + suffix;
+        txt.color = delta > 0 ? deltaPositiveColor : delta < 0 ? deltaNegativeColor : deltaNeutralColor;
+    }
+
+    private void ClearDeltas()
+    {
+        if (stat1DeltaText != null) stat1DeltaText.text = "";
+        if (stat2DeltaText != null) stat2DeltaText.text = "";
+        if (stat3DeltaText != null) stat3DeltaText.text = "";
+        if (powerDeltaText != null) powerDeltaText.text = "";
+    }
+
+    private WeaponData FindEquippedWeaponInCategory(ItemCategory cat)
+    {
+        int equippedID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+        if (weapons == null) return null;
+        foreach (var w in weapons)
+            if (w != null && w.category == cat && w.weaponID == equippedID) return w;
+        return null;
+    }
+
+    private ArmorData FindEquippedArmorInCategory(ArmorCategory cat)
+    {
+        int equippedIndex = PlayerPrefs.GetInt($"EquippedArmor_{cat}", 0);
+        if (armors == null) return null;
+        foreach (var a in armors)
+            if (a != null && a.category == cat && a.prefabIndex == equippedIndex) return a;
+        return null;
     }
 
     private void ShowContentPanels()
@@ -595,6 +775,7 @@ public class ShopManager : MonoBehaviour
     public void OnBuyOrSelectPressed()
     {
         int myDiamonds = ReadDiamonds();
+        bool didPurchase = false;
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -613,6 +794,7 @@ public class ShopManager : MonoBehaviour
                 // the right hit SFX (sword vs axe vs bow) without needing
                 // the full WeaponData asset available at runtime.
                 PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
+                didPurchase = true;
             }
             else if (isBought)
             {
@@ -635,6 +817,7 @@ public class ShopManager : MonoBehaviour
                 WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
                 dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
+                didPurchase = true;
             }
             else if (isBought)
             {
@@ -644,12 +827,17 @@ public class ShopManager : MonoBehaviour
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
 
-        PlayerPrefs.Save(); UpdateUI(true);
+        if (didPurchase) PlayPurchaseCelebration();
+
+        PlayerPrefs.Save();
+        UpdateUI(true);
+        RefreshItemListStates();
     }
 
     public void OnUpgradePressed()
     {
         int myDiamonds = ReadDiamonds();
+        bool didUpgrade = false;
 
         if (isViewingWeapon && selectedWeaponData != null)
         {
@@ -661,6 +849,7 @@ public class ShopManager : MonoBehaviour
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
                 WriteDiamonds(myDiamonds - selectedWeaponData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
+                didUpgrade = true;
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
@@ -674,11 +863,126 @@ public class ShopManager : MonoBehaviour
                 AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
                 WriteDiamonds(myDiamonds - selectedArmorData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("ArmorLevel_" + id, level + 1);
+                didUpgrade = true;
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
 
-        PlayerPrefs.Save(); UpdateUI(true);
+        if (didUpgrade) PlayPurchaseCelebration();
+
+        PlayerPrefs.Save();
+        UpdateUI(true);
+        RefreshItemListStates();
+    }
+
+    // Reruns the SetState pass on every ShopItemButton in the currently
+    // visible list. Called after a buy or upgrade so the tile flips from
+    // Locked→Owned or Owned→Equipped without needing a full re-open of
+    // the category.
+    private void RefreshItemListStates()
+    {
+        if (itemListContent == null) return;
+        int myDiamonds = ReadDiamonds();
+        int equippedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+
+        for (int i = 0; i < itemListContent.childCount; i++)
+        {
+            var btn = itemListContent.GetChild(i).GetComponent<ShopItemButton>();
+            if (btn == null) continue;
+            if (btn.boundWeapon != null)
+            {
+                WeaponData w = btn.boundWeapon;
+                int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
+                bool owned = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
+                bool equipped = owned && w.weaponID == equippedWepID;
+                var state = equipped ? ShopItemButton.OwnedState.Equipped
+                          : owned ? ShopItemButton.OwnedState.Owned
+                                  : ShopItemButton.OwnedState.Locked;
+                btn.SetState(state, lvl, w.maxUpgradeLevel, w.price, myDiamonds);
+            }
+            else if (btn.boundArmor != null)
+            {
+                ArmorData a = btn.boundArmor;
+                int equippedIndex = PlayerPrefs.GetInt($"EquippedArmor_{a.category}", 0);
+                int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
+                bool owned = PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1;
+                bool equipped = owned && a.prefabIndex == equippedIndex;
+                var state = equipped ? ShopItemButton.OwnedState.Equipped
+                          : owned ? ShopItemButton.OwnedState.Owned
+                                  : ShopItemButton.OwnedState.Locked;
+                btn.SetState(state, lvl, a.maxUpgradeLevel, a.price, myDiamonds);
+            }
+        }
+    }
+
+    // Plays the "you got it!" flourish. Optional pieces (particle system,
+    // full-screen flash overlay) are inspector-optional so leaving any
+    // field null just gracefully skips that part.
+    private void PlayPurchaseCelebration()
+    {
+        if (purchaseVFX != null)
+        {
+            purchaseVFX.gameObject.SetActive(true);
+            purchaseVFX.Stop();
+            purchaseVFX.Clear();
+            purchaseVFX.Play();
+        }
+        // Reuse existing audio slots so we don't need new FMOD events:
+        // Boss_Stagger is a punchy metallic hit, Region_VictoryStinger is a
+        // celebration sting for the upgrade-level pop.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Stagger);
+        if (purchaseFlashOverlay != null) StartCoroutine(FlashOverlayRoutine());
+        if (currentHeroModel != null) StartCoroutine(HeroPulseRoutine(currentHeroModel.transform));
+    }
+
+    private IEnumerator FlashOverlayRoutine()
+    {
+        Image img = purchaseFlashOverlay;
+        if (img == null) yield break;
+        img.gameObject.SetActive(true);
+        img.raycastTarget = false;
+
+        Color baseC = img.color;
+        float peak = purchaseFlashAlpha;
+        float dur = Mathf.Max(0.05f, purchaseFlashDuration);
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = 1f - Mathf.Clamp01(t / dur);
+            k = k * k;
+            img.color = new Color(baseC.r, baseC.g, baseC.b, k * peak);
+            yield return null;
+        }
+        img.color = new Color(baseC.r, baseC.g, baseC.b, 0f);
+    }
+
+    private IEnumerator HeroPulseRoutine(Transform t)
+    {
+        if (t == null) yield break;
+        Vector3 originalScale = t.localScale;
+        Vector3 peak = originalScale * Mathf.Max(1.01f, purchasePulseScale);
+
+        float up = 0.12f, down = 0.22f;
+        float e = 0f;
+        while (e < up)
+        {
+            e += Time.unscaledDeltaTime;
+            float k = e / up;
+            k = 1f - (1f - k) * (1f - k);
+            t.localScale = Vector3.Lerp(originalScale, peak, k);
+            yield return null;
+        }
+        e = 0f;
+        while (e < down)
+        {
+            e += Time.unscaledDeltaTime;
+            float k = e / down;
+            k = k * k;
+            t.localScale = Vector3.Lerp(peak, originalScale, k);
+            yield return null;
+        }
+        t.localScale = originalScale;
     }
 
     private void UpdateUI(bool animateText)
