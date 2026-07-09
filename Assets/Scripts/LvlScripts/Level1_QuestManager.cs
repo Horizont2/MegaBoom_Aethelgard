@@ -313,19 +313,20 @@ public class Level1_QuestManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         // Anchor the group on flat ground behind the player, then LAY OUT the
-        // children in a small formation. Order matters here:
-        //  1) reposition inactive children,
-        //  2) mark them isCinematicFrozen (public field on the still-inactive
-        //     component — that's fine),
-        //  3) SetActive(true). If we activate first, EnemyAI.Start kicks off
-        //     its OWN SpawnRoutine which caches transform.position AS-IS and
-        //     lerps to it — that overrode our formation slots and made the
-        //     wave "disappear" a second after rising.
+        // children in a small formation. Precise order matters:
+        //  1) Freeze children FIRST (public field write works on inactive
+        //     components) so EnemyAI.SpawnRoutine takes the "just wait" branch
+        //     when Start fires.
+        //  2) SetActive(true) — Awake/Start run, SpawnRoutine is a no-op
+        //     because we already froze it.
+        //  3) THEN LayoutEnemyFormation. Setting transform.position on the
+        //     children of an INACTIVE parent doesn't persist reliably —
+        //     Unity recomputes world position from stale local coords when
+        //     the parent activates. That's why the wave came back "high in
+        //     the air" even after freezing.
         Vector3 spawnPos = GetTerrainPos(playerTransform.position - playerTransform.forward * spawnDistanceBehind);
         skeletonsWave1.transform.position = spawnPos;
         skeletonsWave1.transform.LookAt(new Vector3(playerTransform.position.x, spawnPos.y, playerTransform.position.z));
-
-        LayoutEnemyFormation(skeletonsWave1.transform, playerTransform.position);
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>(true))
         {
@@ -333,6 +334,10 @@ public class Level1_QuestManager : MonoBehaviour
         }
 
         skeletonsWave1.SetActive(true);
+
+        // Now that the hierarchy is active, place every enemy on the ground.
+        LayoutEnemyFormation(skeletonsWave1.transform, playerTransform.position);
+        Physics.SyncTransforms();
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
 
@@ -428,11 +433,10 @@ public class Level1_QuestManager : MonoBehaviour
         skeletonsHordeWave2.transform.position = hordePos;
         skeletonsHordeWave2.transform.LookAt(new Vector3(playerTransform.position.x, hordePos.y, playerTransform.position.z));
 
-        // Same order as wave 1: lay out slots and freeze before SetActive so
-        // EnemyAI.SpawnRoutine takes the "already frozen" branch and leaves
-        // our positions alone.
-        LayoutEnemyFormation(skeletonsHordeWave2.transform, playerTransform.position);
-
+        // Freeze BEFORE SetActive so SpawnRoutine's first-frame position-cache
+        // takes the else branch. LayoutEnemyFormation runs AFTER SetActive
+        // (see wave 1 comment) because setting positions on inactive children
+        // doesn't persist through the activation transform-recompute.
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
         {
             if (ai != null)
@@ -444,6 +448,9 @@ public class Level1_QuestManager : MonoBehaviour
 
         skeletonsHordeWave2.SetActive(true);
 
+        LayoutEnemyFormation(skeletonsHordeWave2.transform, playerTransform.position);
+        Physics.SyncTransforms();
+
         TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: IT'S A WHOLE ARMY! THERE'S TOO MANY!", 2f, 9));
@@ -451,6 +458,15 @@ public class Level1_QuestManager : MonoBehaviour
         if (evacuationHorse != null)
         {
             evacuationHorse.SetActive(true);
+            // Guarantee the horse is on the ground and visible before the
+            // camera flies to it. Belt & braces: some scene-authored horses
+            // ended up at Y=0 world (below terrain) OR with a disabled child
+            // renderer, which is what made the escape shot look empty.
+            evacuationHorse.transform.position = GetTerrainPos(evacuationHorse.transform.position);
+            foreach (Renderer r in evacuationHorse.GetComponentsInChildren<Renderer>(true))
+                if (r != null) r.enabled = true;
+            Physics.SyncTransforms();
+
             yield return StartCoroutine(DroneCameraFlyAndTrack(evacuationHorse.transform.position, 2.5f));
         }
 
@@ -519,11 +535,13 @@ public class Level1_QuestManager : MonoBehaviour
             Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
             Vector3 camPos = Vector3.Lerp(m1, m2, t);
 
-            // Terrain clearance floor AND ceiling — the previous version only
-            // floored the camera, so if a stale interpolant sent it high it
-            // stayed high. 20m above ground is plenty for any framing.
+            // Terrain clearance floor AND ceiling — tight bounds. 10m above
+            // ground is enough for an ambush framing; any higher and the
+            // enemies look like ants. If the target itself is above ground
+            // (broken spawn placement) the camera stays low and the audience
+            // sees empty sky above rather than a helicopter shot.
             float g = SampleGroundY(camPos);
-            camPos.y = Mathf.Clamp(camPos.y, g + 1.5f, g + 20f);
+            camPos.y = Mathf.Clamp(camPos.y, g + 1.5f, g + 10f);
 
             mainCam.transform.position = camPos;
 
