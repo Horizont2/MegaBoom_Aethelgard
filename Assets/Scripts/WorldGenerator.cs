@@ -1407,19 +1407,63 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
+        // Flatten the terrain FIRST, then re-sample the ground so we know the
+        // exact height of the pad we just carved.
         FlattenTerrainAt(bestPos, dynamicRadius, 15f);
-
-        // Anchor the prefab's PIVOT to the flattened ground, then apply the
-        // per-region locationYOffset from RegionData. No collider/renderer
-        // guessing — that repeatedly buried or floated arenas because every
-        // prefab has its pivot in a different spot. The offset is authored
-        // once per region in the inspector and is 100% predictable.
         float groundY = terrain.SampleHeight(new Vector3(bestPos.x, 0, bestPos.z)) + transform.position.y;
-        camp.transform.position = new Vector3(bestPos.x, groundY + locationYOffset, bestPos.z);
+
+        // Rest the arena's SOLID base on the flattened pad. We measure the
+        // lowest point of the mesh geometry only (MeshRenderer +
+        // SkinnedMeshRenderer), explicitly excluding ParticleSystemRenderers —
+        // waterfall / mist / fog particles hang far below the arena and were
+        // what floated the whole prefab into the air on the earlier attempt.
+        //
+        // pivotToBase = how far the pivot sits above the solid base. Adding it
+        // to groundY places that base exactly on the ground regardless of
+        // where the prefab's pivot happens to be. locationYOffset is an
+        // optional per-region inspector nudge on top of that.
+        if (TryGetSolidBaseOffset(camp, out float pivotToBase))
+        {
+            pivotToBase = Mathf.Clamp(pivotToBase, -25f, 25f);
+            camp.transform.position = new Vector3(bestPos.x, groundY + pivotToBase + locationYOffset, bestPos.z);
+        }
+        else
+        {
+            camp.transform.position = new Vector3(bestPos.x, groundY + locationYOffset, bestPos.z);
+        }
 
         spawnedTotemPos = new Vector3(bestPos.x, groundY, bestPos.z);
         forbiddenZones.Add(spawnedTotemPos);
         yield return null;
+    }
+
+    // Returns how far the prefab's pivot sits above the lowest point of its
+    // SOLID mesh geometry (MeshRenderer + SkinnedMeshRenderer only). Particle
+    // renderers are ignored so decorative waterfalls/mist can't skew the base.
+    private bool TryGetSolidBaseOffset(GameObject root, out float pivotToBase)
+    {
+        pivotToBase = 0f;
+        float lowest = float.MaxValue;
+        bool any = false;
+
+        MeshRenderer[] meshes = root.GetComponentsInChildren<MeshRenderer>(false);
+        for (int i = 0; i < meshes.Length; i++)
+        {
+            if (meshes[i] == null) continue;
+            lowest = Mathf.Min(lowest, meshes[i].bounds.min.y);
+            any = true;
+        }
+        SkinnedMeshRenderer[] skinned = root.GetComponentsInChildren<SkinnedMeshRenderer>(false);
+        for (int i = 0; i < skinned.Length; i++)
+        {
+            if (skinned[i] == null) continue;
+            lowest = Mathf.Min(lowest, skinned[i].bounds.min.y);
+            any = true;
+        }
+
+        if (!any) return false;
+        pivotToBase = root.transform.position.y - lowest;
+        return true;
     }
 
     // True if worldPos is within radiusMeters of any carved river path point
