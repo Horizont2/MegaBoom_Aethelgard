@@ -1363,14 +1363,74 @@ public class WorldGenerator : MonoBehaviour
         GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
         camp.transform.SetParent(this.transform);
 
+        // Prefer the root collider (the arena "footprint" trigger the user
+        // authored at ground level). Fall back to the first child collider so
+        // prefabs that only have their footprint on a child still work. This
+        // deliberately does NOT scan renderers — waterfalls, mist particles,
+        // etc. have visible extents below the arena base and would otherwise
+        // lift the whole prefab into the air.
         Collider campCol = camp.GetComponent<Collider>();
-        float dynamicRadius = campCol != null ? (Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f) + 3f : 20f;
+        if (campCol == null) campCol = camp.GetComponentInChildren<Collider>();
+
+        float dynamicRadius;
+        if (campCol != null)
+            dynamicRadius = Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f + 3f;
+        else
+            dynamicRadius = 20f;
+
+        // Clamp XZ so the collider's footprint fits inside the terrain. This
+        // is what stopped region 4 from spawning behind the edge of the map.
+        if (campCol != null)
+        {
+            float halfW = campCol.bounds.extents.x;
+            float halfL = campCol.bounds.extents.z;
+            float minX = transform.position.x + halfW + 2f;
+            float maxX = transform.position.x + w - halfW - 2f;
+            float minZ = transform.position.z + halfL + 2f;
+            float maxZ = transform.position.z + l - halfL - 2f;
+            if (maxX > minX && maxZ > minZ)
+            {
+                Vector3 clamped = new Vector3(
+                    Mathf.Clamp(bestPos.x, minX, maxX), bestPos.y,
+                    Mathf.Clamp(bestPos.z, minZ, maxZ));
+                Vector3 shift = clamped - bestPos;
+                if (shift.sqrMagnitude > 0.001f)
+                {
+                    camp.transform.position += new Vector3(shift.x, 0, shift.z);
+                    bestPos = new Vector3(clamped.x, bestPos.y, clamped.z);
+                }
+            }
+        }
 
         FlattenTerrainAt(bestPos, dynamicRadius, 15f);
-        bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y;
-        camp.transform.position = bestPos;
-        spawnedTotemPos = bestPos;
-        forbiddenZones.Add(bestPos);
+
+        // Re-sample terrain after flattening so we know the exact ground Y at
+        // the arena centre.
+        float groundY = terrain.SampleHeight(new Vector3(bestPos.x, 0, bestPos.z)) + transform.position.y;
+
+        // If the arena's root/footprint collider bottom sits above its own
+        // pivot (pivot inside the mesh, base below it), keep the visible base
+        // flush with the ground. Using ONLY the collider — not renderers —
+        // means water/mist/fog particles that extend below the pivot cannot
+        // lift the prefab off the ground.
+        if (campCol != null)
+        {
+            float pivotToBase = camp.transform.position.y - campCol.bounds.min.y;
+            // Guard: cap the correction so a wildly-placed collider can't
+            // teleport the arena into the sky. 15 units covers legitimate
+            // arena bases; anything larger falls back to plain terrain-anchor.
+            if (Mathf.Abs(pivotToBase) <= 15f)
+                camp.transform.position = new Vector3(bestPos.x, groundY + pivotToBase, bestPos.z);
+            else
+                camp.transform.position = new Vector3(bestPos.x, groundY, bestPos.z);
+        }
+        else
+        {
+            camp.transform.position = new Vector3(bestPos.x, groundY, bestPos.z);
+        }
+
+        spawnedTotemPos = new Vector3(bestPos.x, groundY, bestPos.z);
+        forbiddenZones.Add(spawnedTotemPos);
         yield return null;
     }
 

@@ -23,6 +23,8 @@ public class RegionTotem : MonoBehaviour
     public ParticleSystem idleCorruptionVFX;
     public ParticleSystem activationShieldVFX;
     public ParticleSystem skyBeamVFX;
+    [Tooltip("Local-Y offset applied to the sky beam so it looks like it emerges from the top of the totem instead of the totem's origin. Negative = lower.")]
+    public float skyBeamYOffset = -1.5f;
     public Light totemLight;
 
     [Tooltip("Ефект, який працює як маяк і показує, що з тотемом можна взаємодіяти")]
@@ -47,6 +49,16 @@ public class RegionTotem : MonoBehaviour
         if (activationShieldVFX != null) { activationShieldVFX.Stop(); activationShieldVFX.gameObject.SetActive(false); }
 
         if (interactHintVFX != null) interactHintVFX.SetActive(true);
+
+        // Nudge the sky beam down along local Y so it visually plugs into the
+        // totem instead of hanging above it. Done once in Start so it applies
+        // whether the beam is triggered by purification or by re-entering an
+        // already-conquered region.
+        if (skyBeamVFX != null && Mathf.Abs(skyBeamYOffset) > 0.001f)
+        {
+            Vector3 lp = skyBeamVFX.transform.localPosition;
+            skyBeamVFX.transform.localPosition = new Vector3(lp.x, lp.y + skyBeamYOffset, lp.z);
+        }
     }
 
     private void FindPlayer()
