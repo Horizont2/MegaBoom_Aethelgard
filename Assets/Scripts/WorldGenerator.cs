@@ -1328,21 +1328,28 @@ public class WorldGenerator : MonoBehaviour
     private IEnumerator SpawnRegionTotemRoutine()
     {
         GameObject totemPrefab = null;
-        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) totemPrefab = GameManager.Instance.currentRegion.regionTotemPrefab;
-        else if (MissionInitializer.PendingMissionRegion != null) totemPrefab = MissionInitializer.PendingMissionRegion.regionTotemPrefab;
+        float locationYOffset = 0f;
+        RegionData activeRegionData = null;
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) activeRegionData = GameManager.Instance.currentRegion;
+        else if (MissionInitializer.PendingMissionRegion != null) activeRegionData = MissionInitializer.PendingMissionRegion;
+        if (activeRegionData != null) { totemPrefab = activeRegionData.regionTotemPrefab; locationYOffset = activeRegionData.locationYOffset; }
 
         if (totemPrefab == null) yield break;
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
         Vector3 bestPos = Vector3.zero; bool found = false;
 
-        // Two-pass search: first pass restricts to "summer" (grass) cells only —
-        // matching the paint biome classifier so the arena avoids sand beaches,
-        // snow peaks and rock slopes. Second pass loosens back to any flat spot
-        // above water so a bad region seed still gets a valid spawn.
-        for (int pass = 0; pass < 2 && !found; pass++)
+        // Three-pass search:
+        //   pass 0 — summer (grass) cells that are also clear of rivers,
+        //   pass 1 — any flat above-water cell clear of rivers,
+        //   pass 2 — last-resort flat above-water cell (rivers allowed).
+        // River avoidance matters because flattening the arena pad on top of a
+        // carved river bed raises the terrain back up and leaves the water
+        // plane hanging in the air.
+        for (int pass = 0; pass < 3 && !found; pass++)
         {
             bool summerOnly = pass == 0;
+            bool avoidRivers = pass < 2;
             for (int i = 0; i < 500; i++)
             {
                 float px = GetRandomRange(w * 0.2f, w * 0.8f); float pz = GetRandomRange(l * 0.2f, l * 0.8f);
@@ -1354,6 +1361,7 @@ public class WorldGenerator : MonoBehaviour
                 if (worldY <= absoluteWaterHeight + 5f) continue;
 
                 if (summerOnly && !IsSummerZone(normX, normZ, worldY)) continue;
+                if (avoidRivers && IsNearRiver(new Vector3(worldX, worldY, worldZ), 30f)) continue;
 
                 bestPos = new Vector3(worldX, worldY, worldZ); found = true; break;
             }
@@ -1363,23 +1371,20 @@ public class WorldGenerator : MonoBehaviour
         GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
         camp.transform.SetParent(this.transform);
 
-        // Prefer the root collider (the arena "footprint" trigger the user
-        // authored at ground level). Fall back to the first child collider so
-        // prefabs that only have their footprint on a child still work. This
-        // deliberately does NOT scan renderers — waterfalls, mist particles,
-        // etc. have visible extents below the arena base and would otherwise
-        // lift the whole prefab into the air.
+        // Footprint radius for the flatten pad. Prefer the root collider, fall
+        // back to a child collider, then a fixed default. Capped so a huge
+        // trigger volume can't flatten half the map (which is what raised the
+        // terrain under the rivers last time).
         Collider campCol = camp.GetComponent<Collider>();
         if (campCol == null) campCol = camp.GetComponentInChildren<Collider>();
 
-        float dynamicRadius;
+        float dynamicRadius = 20f;
         if (campCol != null)
-            dynamicRadius = Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f + 3f;
-        else
-            dynamicRadius = 20f;
+            dynamicRadius = Mathf.Clamp(Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f + 3f, 8f, 35f);
 
-        // Clamp XZ so the collider's footprint fits inside the terrain. This
-        // is what stopped region 4 from spawning behind the edge of the map.
+        // Clamp XZ so the collider's footprint fits inside the terrain. Purely
+        // horizontal — does not touch Y or rivers. Fixes region 4 spawning
+        // past the edge of the map.
         if (campCol != null)
         {
             float halfW = campCol.bounds.extents.x;
@@ -1404,34 +1409,38 @@ public class WorldGenerator : MonoBehaviour
 
         FlattenTerrainAt(bestPos, dynamicRadius, 15f);
 
-        // Re-sample terrain after flattening so we know the exact ground Y at
-        // the arena centre.
+        // Anchor the prefab's PIVOT to the flattened ground, then apply the
+        // per-region locationYOffset from RegionData. No collider/renderer
+        // guessing — that repeatedly buried or floated arenas because every
+        // prefab has its pivot in a different spot. The offset is authored
+        // once per region in the inspector and is 100% predictable.
         float groundY = terrain.SampleHeight(new Vector3(bestPos.x, 0, bestPos.z)) + transform.position.y;
-
-        // If the arena's root/footprint collider bottom sits above its own
-        // pivot (pivot inside the mesh, base below it), keep the visible base
-        // flush with the ground. Using ONLY the collider — not renderers —
-        // means water/mist/fog particles that extend below the pivot cannot
-        // lift the prefab off the ground.
-        if (campCol != null)
-        {
-            float pivotToBase = camp.transform.position.y - campCol.bounds.min.y;
-            // Guard: cap the correction so a wildly-placed collider can't
-            // teleport the arena into the sky. 15 units covers legitimate
-            // arena bases; anything larger falls back to plain terrain-anchor.
-            if (Mathf.Abs(pivotToBase) <= 15f)
-                camp.transform.position = new Vector3(bestPos.x, groundY + pivotToBase, bestPos.z);
-            else
-                camp.transform.position = new Vector3(bestPos.x, groundY, bestPos.z);
-        }
-        else
-        {
-            camp.transform.position = new Vector3(bestPos.x, groundY, bestPos.z);
-        }
+        camp.transform.position = new Vector3(bestPos.x, groundY + locationYOffset, bestPos.z);
 
         spawnedTotemPos = new Vector3(bestPos.x, groundY, bestPos.z);
         forbiddenZones.Add(spawnedTotemPos);
         yield return null;
+    }
+
+    // True if worldPos is within radiusMeters of any carved river path point
+    // or waterfall pool. Used to keep the region arena off rivers so the
+    // flatten pad doesn't raise terrain under an already-placed water plane.
+    private bool IsNearRiver(Vector3 worldPos, float radiusMeters)
+    {
+        if (generatedRivers == null || generatedRivers.Count == 0) return false;
+        float rSqr = radiusMeters * radiusMeters;
+        Vector2 p = new Vector2(worldPos.x, worldPos.z);
+        foreach (RiverSystem river in generatedRivers)
+        {
+            for (int i = 0; i < river.path.Count; i++)
+            {
+                Vector2 rp = new Vector2(river.path[i].x, river.path[i].z);
+                if ((p - rp).sqrMagnitude <= rSqr) return true;
+            }
+            Vector2 lp = new Vector2(river.lakePos.x, river.lakePos.z);
+            if ((p - lp).sqrMagnitude <= rSqr) return true;
+        }
+        return false;
     }
 
     // Mirrors PaintTerrainRoutine's biome classifier so the region location

@@ -41,20 +41,22 @@ public class RegionData : ScriptableObject
     public float enemyHpMultiplier = 1f;
     public float enemyDamageMultiplier = 1f;
 
-    // --- НОВИЙ БЛОК: СИСТЕМА БОСІВ ТА КВЕСТІВ ---
+    // --- пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅСІпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅТІпїЅ ---
     [Header("Region Objective (Totem & Bosses)")]
-    [Tooltip("Префаб Тотему/Обеліска, який гравець має знайти на локації")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
     public GameObject regionTotemPrefab;
-    [Tooltip("Список босів, які заспавняться під час активації Тотему")]
+    [Tooltip("Vertical nudge (metres) applied to this region's location prefab after it is placed on the ground. Use it to fix prefabs whose pivot is not at their base вЂ” positive lifts up, negative sinks down. Leave 0 if the prefab pivot is authored at ground level.")]
+    public float locationYOffset = 0f;
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ")]
     public GameObject[] regionBossPrefabs;
 
-    [Header("One-Time Rewards (За проходження)")]
+    [Header("One-Time Rewards (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public int woodReward = 100;
     public int stoneReward = 50;
     public int foodReward = 20;
     public int diamondReward = 5;
 
     [Header("Upgrade System (5 Levels)")]
-    [Tooltip("Заповніть 5 елементів. Element 0 = Level 1 (Безкоштовно)")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 5 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. Element 0 = Level 1 (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public RegionLevelData[] upgradeLevels = new RegionLevelData[5];
 }
