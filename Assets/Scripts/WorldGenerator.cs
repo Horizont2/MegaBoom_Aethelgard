@@ -1378,9 +1378,19 @@ public class WorldGenerator : MonoBehaviour
         Collider campCol = camp.GetComponent<Collider>();
         if (campCol == null) campCol = camp.GetComponentInChildren<Collider>();
 
+        // Flatten radius must cover the ENTIRE rotated collider footprint,
+        // not just the axis-aligned half-extent. Using max(sizeX, sizeZ) / 2
+        // left the far corners of the arena hanging off hillsides (front OK,
+        // back on a slope). Half-diagonal of the world AABB encloses the
+        // arena no matter what random Y rotation it gets.
         float dynamicRadius = 20f;
         if (campCol != null)
-            dynamicRadius = Mathf.Clamp(Mathf.Max(campCol.bounds.size.x, campCol.bounds.size.z) / 2f + 3f, 8f, 35f);
+        {
+            float sx = campCol.bounds.size.x;
+            float sz = campCol.bounds.size.z;
+            float halfDiag = Mathf.Sqrt(sx * sx + sz * sz) * 0.5f;
+            dynamicRadius = Mathf.Clamp(halfDiag + 5f, 8f, 60f);
+        }
 
         // Clamp XZ so the collider's footprint fits inside the terrain. Purely
         // horizontal — does not touch Y or rivers. Fixes region 4 spawning

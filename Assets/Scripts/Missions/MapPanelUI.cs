@@ -443,6 +443,12 @@ public class MapPanelUI : MonoBehaviour
             if (fullScreenCloudOverlay != null)
             {
                 fullScreenCloudOverlay.gameObject.SetActive(true);
+                // Start already half-visible so as soon as the zoom starts,
+                // the camp scene behind the scaled map is already hidden.
+                // Previously the overlay only reached full opacity right at
+                // the end (easeInCubic keeps it near 0 for most of the
+                // duration), which made the raw camp poke through the sides.
+                fullScreenCloudOverlay.color = new Color(1, 1, 1, 0.5f);
             }
 
             while (elapsed < duration)
@@ -456,11 +462,18 @@ public class MapPanelUI : MonoBehaviour
 
                 if (fullScreenCloudOverlay != null)
                 {
-                    fullScreenCloudOverlay.color = new Color(1, 1, 1, Mathf.Lerp(0f, 1f, easeInCubic));
+                    // Ramp to opaque in the first ~30% of the zoom so the camp
+                    // scene is fully covered before the map has scaled far
+                    // enough for its edges to leave the viewport.
+                    float overlayAlpha = Mathf.Clamp01(0.5f + t * 2.5f);
+                    fullScreenCloudOverlay.color = new Color(1, 1, 1, overlayAlpha);
                 }
 
                 yield return null;
             }
+
+            if (fullScreenCloudOverlay != null)
+                fullScreenCloudOverlay.color = new Color(1, 1, 1, 1f);
         }
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("GameScene");
