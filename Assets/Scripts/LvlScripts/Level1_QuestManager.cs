@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.Playables;
 using Unity.Cinemachine;
 
@@ -265,22 +266,37 @@ public class Level1_QuestManager : MonoBehaviour
     {
         isAmbushTriggered = true;
 
+        // Guard against missing player — was a hidden source of NullRef that
+        // silently killed the coroutine, leaving the wave unspawned.
+        if (playerTransform == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerTransform = p.transform;
+            if (playerTransform == null) yield break;
+        }
+
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
         if (pController != null) pController.isControlBlocked = true;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
-        Vector3 spawnPos = playerTransform.position - (playerTransform.forward * spawnDistanceBehind);
-        spawnPos = GetTerrainPos(spawnPos);
+        // Anchor the group on flat ground behind the player, then LAY OUT the
+        // children in a small formation. The scene prefab had children at
+        // baked local offsets so a plain SetActive(true) left them floating
+        // above the terrain or off-screen — that's why "the squad doesn't
+        // spawn at all". We now place each enemy directly on terrain in a
+        // 2-row arc facing the player.
+        Vector3 spawnPos = GetTerrainPos(playerTransform.position - playerTransform.forward * spawnDistanceBehind);
+        skeletonsWave1.transform.position = spawnPos;
+        skeletonsWave1.transform.LookAt(new Vector3(playerTransform.position.x, spawnPos.y, playerTransform.position.z));
+        skeletonsWave1.SetActive(true);
+
+        LayoutEnemyFormation(skeletonsWave1.transform, playerTransform.position);
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>(true))
         {
             if (ai != null) ai.isCinematicFrozen = true;
         }
-
-        skeletonsWave1.transform.position = spawnPos;
-        skeletonsWave1.transform.LookAt(playerTransform);
-        skeletonsWave1.SetActive(true);
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
 
@@ -291,14 +307,53 @@ public class Level1_QuestManager : MonoBehaviour
 
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
         {
-            if (ai != null) ai.ForceStop();
+            if (ai != null) { ai.ForceStop(); ai.isCinematicFrozen = false; }
         }
+
+        // Short breather before the player is thrown into combat — otherwise
+        // the ambush cutscene ends and enemies immediately swarm before the
+        // control-lock UI even fades out.
+        yield return new WaitForSeconds(0.4f);
 
         if (pController != null) pController.isControlBlocked = false;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
+    }
+
+    // Places every EnemyAI child in a fan-shaped formation around the parent
+    // group facing toward the player. Terrain-samples each slot so nobody
+    // floats. Called after SetActive to override the prefab's baked local
+    // positions (which were the reason wave 1 sometimes didn't visibly spawn).
+    private void LayoutEnemyFormation(Transform groupParent, Vector3 lookAtTarget)
+    {
+        List<EnemyAI> enemies = new List<EnemyAI>();
+        foreach (EnemyAI e in groupParent.GetComponentsInChildren<EnemyAI>(true))
+            if (e != null) enemies.Add(e);
+        if (enemies.Count == 0) return;
+
+        Vector3 groupCenter = groupParent.position;
+        Vector3 forward = (new Vector3(lookAtTarget.x, groupCenter.y, lookAtTarget.z) - groupCenter).normalized;
+        if (forward.sqrMagnitude < 0.001f) forward = groupParent.forward;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+
+        // Fan enemies across a 6m front, two rows deep, offset so they're
+        // visible and don't all pile on the same spot.
+        int count = enemies.Count;
+        float lateralSpread = 6f;
+        float rowDepth = 2.2f;
+        for (int i = 0; i < count; i++)
+        {
+            float tx = count == 1 ? 0f : Mathf.Lerp(-1f, 1f, (float)i / (count - 1));
+            int row = i % 2;
+            Vector3 slot = groupCenter + right * (tx * lateralSpread * 0.5f) - forward * (row * rowDepth);
+            slot = GetTerrainPos(slot);
+
+            Transform et = enemies[i].transform;
+            et.position = slot;
+            et.rotation = Quaternion.LookRotation(forward);
+        }
     }
 
     public void EnemyDefeated()
@@ -313,6 +368,13 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator TriggerHordeAndFleeRoutine()
     {
+        if (playerTransform == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerTransform = p.transform;
+            if (playerTransform == null) yield break;
+        }
+
         PlayerController pController = playerTransform.GetComponent<PlayerController>();
         if (pController != null) pController.isControlBlocked = true;
 
@@ -320,8 +382,13 @@ public class Level1_QuestManager : MonoBehaviour
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
 
-        Vector3 hordePos = playerTransform.position + (playerTransform.right * spawnDistanceBehind);
-        hordePos = GetTerrainPos(hordePos);
+        Vector3 hordePos = GetTerrainPos(playerTransform.position + playerTransform.right * spawnDistanceBehind);
+
+        skeletonsHordeWave2.transform.position = hordePos;
+        skeletonsHordeWave2.transform.LookAt(new Vector3(playerTransform.position.x, hordePos.y, playerTransform.position.z));
+        skeletonsHordeWave2.SetActive(true);
+
+        LayoutEnemyFormation(skeletonsHordeWave2.transform, playerTransform.position);
 
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
         {
@@ -331,10 +398,6 @@ public class Level1_QuestManager : MonoBehaviour
                 ai.isCinematicFrozen = true;
             }
         }
-
-        skeletonsHordeWave2.transform.position = hordePos;
-        skeletonsHordeWave2.transform.LookAt(playerTransform);
-        skeletonsHordeWave2.SetActive(true);
 
         TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
@@ -350,8 +413,10 @@ public class Level1_QuestManager : MonoBehaviour
 
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>())
         {
-            if (ai != null) ai.ForceStop();
+            if (ai != null) { ai.ForceStop(); ai.isCinematicFrozen = false; }
         }
+
+        yield return new WaitForSeconds(0.4f);
 
         if (pController != null) pController.isControlBlocked = false;
 
@@ -370,10 +435,26 @@ public class Level1_QuestManager : MonoBehaviour
         Vector3 startPos = mainCam.transform.position;
         Quaternion startRot = mainCam.transform.rotation;
 
-        Vector3 midPos = Vector3.Lerp(startPos, targetPosition + new Vector3(0, 8f, -10f), 0.5f);
-        midPos += new Vector3(15f, 5f, 0f);
+        // Compute the final framing: 8m back and 5m above the target, based
+        // on the direction from the player to the enemy group. This keeps the
+        // squad centred in frame no matter which direction they spawned in.
+        Vector3 toTarget = new Vector3(targetPosition.x - startPos.x, 0, targetPosition.z - startPos.z);
+        Vector3 approachDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : Vector3.forward;
+        Vector3 endPos = targetPosition - approachDir * 8f + Vector3.up * 5f;
 
-        Vector3 endPos = targetPosition + new Vector3(8f, 6f, -8f);
+        // Clamp the end height so it stays near enemy eye-level rather than
+        // shooting into orbit if the terrain sample fails.
+        float endGround = SampleGroundY(endPos);
+        endPos.y = Mathf.Min(endPos.y, endGround + 6f);
+        endPos.y = Mathf.Max(endPos.y, endGround + 3f);
+
+        // Midpoint arc: halfway between start and end, +2m up. The old code
+        // added (15, 5, 0) unconditionally which threw the arc off-screen —
+        // now the arc height scales with the horizontal distance so long
+        // flights get a gentle rise, short ones stay tight.
+        float dist = Vector3.Distance(startPos, endPos);
+        float arcHeight = Mathf.Clamp(dist * 0.15f, 1f, 5f);
+        Vector3 midPos = Vector3.Lerp(startPos, endPos, 0.5f) + Vector3.up * arcHeight;
 
         float elapsed = 0f;
         while (elapsed < flyDuration)
@@ -381,20 +462,21 @@ public class Level1_QuestManager : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.SmoothStep(0, 1, elapsed / flyDuration);
 
+            // Quadratic Bezier via De Casteljau (start -> mid -> end).
             Vector3 m1 = Vector3.Lerp(startPos, midPos, t);
             Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
             Vector3 camPos = Vector3.Lerp(m1, m2, t);
 
-            if (Terrain.activeTerrain != null)
-            {
-                float minHeight = Terrain.activeTerrain.SampleHeight(camPos) + Terrain.activeTerrain.transform.position.y + 1.5f;
-                if (camPos.y < minHeight) camPos.y = minHeight;
-            }
+            // Terrain clearance floor AND ceiling — the previous version only
+            // floored the camera, so if a stale interpolant sent it high it
+            // stayed high. 20m above ground is plenty for any framing.
+            float g = SampleGroundY(camPos);
+            camPos.y = Mathf.Clamp(camPos.y, g + 1.5f, g + 20f);
 
             mainCam.transform.position = camPos;
 
-            Vector3 lookDir = targetPosition - mainCam.transform.position;
-            if (lookDir != Vector3.zero)
+            Vector3 lookDir = targetPosition - camPos;
+            if (lookDir.sqrMagnitude > 0.001f)
             {
                 Quaternion cinematicRot = Quaternion.LookRotation(lookDir);
                 mainCam.transform.rotation = Quaternion.Slerp(startRot, cinematicRot, t);
@@ -410,8 +492,18 @@ public class Level1_QuestManager : MonoBehaviour
             float pitchX = currentRot.x;
             if (pitchX > 180f) pitchX -= 360f;
             cf.SyncRotation(currentRot.y, pitchX);
+            // Smooth-blend back to the follow rig instead of snapping — makes
+            // the transition after each cinematic feel like one continuous
+            // camera instead of a cut.
+            cf.BeginHandoffBlend(0.5f);
         }
         SetCinematicMode(false);
+    }
+
+    private float SampleGroundY(Vector3 worldPos)
+    {
+        if (Terrain.activeTerrain == null) return worldPos.y;
+        return Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y;
     }
 
     private void TriggerGroupRise(Transform groupParent, float duration)
