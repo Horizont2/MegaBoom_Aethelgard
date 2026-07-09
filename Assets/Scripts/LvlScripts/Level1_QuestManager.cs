@@ -41,9 +41,42 @@ public class Level1_QuestManager : MonoBehaviour
     private int defeatedSkeletonsW1 = 0;
     private bool isDialogueStarted = false;
 
+    // Cached at Awake time so pause-scene camera switching (which retargets
+    // Camera.main to the WaterfallPos camera) can't make us disable the
+    // wrong CinemachineBrain / never clear isCinematicMode on the real
+    // gameplay camera. Without this, pausing during the intro left the
+    // gameplay CameraFollow stuck in cinematic mode after unpause and the
+    // camera just froze in place while the player could still run around.
+    private Camera cachedGameplayCam;
+    private CameraFollow cachedGameplayFollow;
+    private CameraCollision cachedGameplayCollision;
+    private CinemachineBrain cachedGameplayBrain;
+
     private void Awake()
     {
         Instance = this;
+
+        // Cache references to the gameplay camera BEFORE anything else can
+        // mess with Camera.main (pause scene switches it away). Fall back
+        // to Camera.main if we don't have any better handle.
+        CameraFollow follow = FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
+        if (follow != null)
+        {
+            cachedGameplayFollow = follow;
+            cachedGameplayCam = follow.GetComponent<Camera>();
+            if (cachedGameplayCam == null) cachedGameplayCam = follow.GetComponentInChildren<Camera>();
+            cachedGameplayCollision = follow.GetComponent<CameraCollision>();
+            cachedGameplayBrain = follow.GetComponent<CinemachineBrain>();
+            if (cachedGameplayBrain == null && cachedGameplayCam != null)
+                cachedGameplayBrain = cachedGameplayCam.GetComponent<CinemachineBrain>();
+        }
+        if (cachedGameplayCam == null) cachedGameplayCam = Camera.main;
+        if (cachedGameplayFollow == null && cachedGameplayCam != null)
+            cachedGameplayFollow = cachedGameplayCam.GetComponent<CameraFollow>();
+        if (cachedGameplayCollision == null && cachedGameplayCam != null)
+            cachedGameplayCollision = cachedGameplayCam.GetComponent<CameraCollision>();
+        if (cachedGameplayBrain == null && cachedGameplayCam != null)
+            cachedGameplayBrain = cachedGameplayCam.GetComponent<CinemachineBrain>();
 
         // Block player controls immediately so they can't move during the frame
         // before LevelStartRoutine runs. Without this, WASD could slip through
@@ -87,8 +120,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (introDirector != null)
         {
             SetCinematicMode(true);
-            var brain = Camera.main.GetComponent<CinemachineBrain>();
-            if (brain != null) brain.enabled = true;
+            if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = true;
             introDirector.Play();
         }
 
@@ -109,16 +141,18 @@ public class Level1_QuestManager : MonoBehaviour
             while (introDirector.state == PlayState.Playing) yield return null;
 
             // Disable CinemachineBrain FIRST. Otherwise brain keeps writing the
-            // final vcam position to Camera.main in LateUpdate (brain runs after
-            // CameraFollow), which overwrites the handoff blend and leaves the
-            // camera frozen at the intro's overview shot.
-            var brain = Camera.main.GetComponent<CinemachineBrain>();
-            if (brain != null) brain.enabled = false;
+            // final vcam position to the gameplay camera in LateUpdate (brain
+            // runs after CameraFollow), which overwrites the handoff blend and
+            // leaves the camera frozen at the intro's overview shot.
+            // Uses the CACHED brain rather than Camera.main.GetComponent
+            // because Camera.main may point at the pause scene's camera by
+            // the time this line runs (see PauseSceneController).
+            if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = false;
 
-            CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
-            if (cf != null)
+            CameraFollow cf = cachedGameplayFollow;
+            if (cf != null && cachedGameplayCam != null)
             {
-                Vector3 currentRot = Camera.main.transform.eulerAngles;
+                Vector3 currentRot = cachedGameplayCam.transform.eulerAngles;
                 float pitchX = currentRot.x;
                 if (pitchX > 180f) pitchX -= 360f;
                 cf.SyncRotation(currentRot.y, pitchX);
@@ -169,10 +203,13 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void SetCinematicMode(bool isCinematic)
     {
-        CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
-        if (cf != null) cf.isCinematicMode = isCinematic;
-        CameraCollision cc = Camera.main.GetComponent<CameraCollision>();
-        if (cc != null) cc.isCinematicMode = isCinematic;
+        // Deliberately uses the cached gameplay CameraFollow / CameraCollision
+        // instead of Camera.main.GetComponent<>(): when the pause scene camera
+        // is active, Camera.main points at THAT camera, so isCinematicMode
+        // never gets cleared on the real gameplay camera and it stays frozen
+        // after unpause.
+        if (cachedGameplayFollow != null) cachedGameplayFollow.isCinematicMode = isCinematic;
+        if (cachedGameplayCollision != null) cachedGameplayCollision.isCinematicMode = isCinematic;
     }
 
     private IEnumerator IntroDialogueRoutine()
@@ -244,8 +281,7 @@ public class Level1_QuestManager : MonoBehaviour
         StopAllCoroutines(); // ��������� �� ������ � ���-�����
         if (introDirector != null) introDirector.Stop();
 
-        var brain = Camera.main.GetComponent<CinemachineBrain>();
-        if (brain != null) brain.enabled = false;
+        if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = false;
         SetCinematicMode(false);
 
         if (playerTransform != null)
@@ -523,7 +559,10 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
     {
-        Camera mainCam = Camera.main;
+        // Use the cached gameplay camera — Camera.main might point at the
+        // pause scene's WaterfallPos camera if the player paused just before
+        // this coroutine started.
+        Camera mainCam = cachedGameplayCam != null ? cachedGameplayCam : Camera.main;
         if (mainCam == null) yield break;
 
         SetCinematicMode(true);
@@ -583,8 +622,8 @@ public class Level1_QuestManager : MonoBehaviour
             yield return null;
         }
 
-        CameraFollow cf = mainCam.GetComponent<CameraFollow>();
-        if (cf != null)
+        CameraFollow cf = cachedGameplayFollow;
+        if (cf != null && mainCam != null)
         {
             Vector3 currentRot = mainCam.transform.eulerAngles;
             float pitchX = currentRot.x;
