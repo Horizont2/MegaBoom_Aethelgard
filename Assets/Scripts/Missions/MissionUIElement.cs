@@ -10,10 +10,10 @@ public class MissionUIElement : MonoBehaviour
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI descriptionText;
 
-    public Image backgroundImage; // Це наш об'єкт Bg, який ми будемо рухати
+    public Image backgroundImage; // пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ Bg, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Settings")]
-    [Tooltip("Увімкни це ТІЛЬКИ для сюжетної місії на сцені (щоб вона гарно виїжджала)")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ ТІпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)")]
     public bool animateAppearance = false;
     public float animationDuration = 0.5f;
 
@@ -21,10 +21,22 @@ public class MissionUIElement : MonoBehaviour
     public bool isCompleted = false;
 
     private string baseDescription = "";
+    // Cache the background image's authored colour so we can restore it if
+    // the CompleteMission flash coroutine gets StopAllCoroutines'd mid-flash
+    // (which happened when Setup was called during the 0.5s white flash вЂ”
+    // the flash never lerped back and the tile stayed pure white).
+    private Color originalBgColor = Color.white;
+    private bool originalBgCached = false;
 
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+
+        if (backgroundImage != null)
+        {
+            originalBgColor = backgroundImage.color;
+            originalBgCached = true;
+        }
 
         if (animateAppearance)
         {
@@ -37,6 +49,12 @@ public class MissionUIElement : MonoBehaviour
         isCompleted = false;
         StopAllCoroutines();
 
+        // Restore the background if a previous CompleteMission flash was
+        // interrupted before its own lerp finished, otherwise the tile shows
+        // the raw white flash sprite instead of the mission background.
+        if (originalBgCached && backgroundImage != null)
+            backgroundImage.color = originalBgColor;
+
         if (titleText != null) titleText.text = title;
 
         baseDescription = description;
@@ -45,7 +63,7 @@ public class MissionUIElement : MonoBehaviour
         if (animateAppearance)
         {
             StartCoroutine(AppearRoutine());
-            animateAppearance = false; // Скидаємо, щоб наступні оновлення не викликали виїзд знову
+            animateAppearance = false; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         }
         else
         {
@@ -55,16 +73,16 @@ public class MissionUIElement : MonoBehaviour
 
     private IEnumerator AppearRoutine()
     {
-        // МАГІЯ ТУТ: Ми не чіпаємо головний об'єкт (його тримає Layout Group).
-        // Ми беремо тільки внутрішню графіку (Bg) і рухаємо її!
+        // пїЅпїЅГІпїЅ пїЅпїЅпїЅ: пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Layout Group).
+        // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Bg) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ!
         if (backgroundImage == null) yield break;
 
         Transform visualTransform = backgroundImage.transform;
 
-        // Зчитуємо локальну позицію Bg (зазвичай це 0,0,0)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Bg (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 0,0,0)
         Vector3 targetPos = visualTransform.localPosition;
 
-        // Відсуваємо її на 300 пікселів вліво для старту
+        // ВіпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ 300 пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 startPos = targetPos + new Vector3(-300f, 0, 0);
 
         float t = 0;
@@ -73,10 +91,10 @@ public class MissionUIElement : MonoBehaviour
             t += Time.deltaTime / animationDuration;
             float curve = Mathf.SmoothStep(0, 1, t);
 
-            // Плавно проявляємо головний об'єкт
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ
             if (canvasGroup != null) canvasGroup.alpha = curve;
 
-            // Плавно висуваємо графіку
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             visualTransform.localPosition = Vector3.Lerp(startPos, targetPos, curve);
             yield return null;
         }

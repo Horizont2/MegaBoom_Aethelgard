@@ -22,6 +22,12 @@ public class Level1_QuestManager : MonoBehaviour
     public GameObject skeletonsHordeWave2;
     public GameObject evacuationHorse;
 
+    [Header("Tutorial Trail")]
+    [Tooltip("Animated dashed trail that leads the player toward the current tutorial objective (Stranger, then horse).")]
+    public TutorialTrail tutorialTrail;
+    [Tooltip("Stranger NPC transform — the first target of the tutorial trail.")]
+    public Transform strangerTransform;
+
     [Header("Cinematic Settings")]
     public float spawnDistanceBehind = 15f;
     public float typingSpeed = 0.04f;
@@ -50,6 +56,14 @@ public class Level1_QuestManager : MonoBehaviour
                 PlayerController pc = pObj.GetComponent<PlayerController>();
                 if (pc != null) pc.isControlBlocked = true;
             }
+
+            // Hide the HUD immediately — SetGameplayPanelsActive from inside
+            // LevelStartRoutine runs a frame later, and the HP/stamina bars
+            // were briefly visible during the very first frame of the intro
+            // cutscene. Hide the objective tile too so the placeholder from
+            // last run doesn't flash on screen.
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
+            if (objectiveUI != null) objectiveUI.gameObject.SetActive(false);
         }
     }
 
@@ -127,13 +141,31 @@ public class Level1_QuestManager : MonoBehaviour
 
             if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+            // Bring the objective tile back — Awake hid it so its default
+            // "New Mission" state wouldn't flash during the intro.
+            if (objectiveUI != null && !objectiveUI.gameObject.activeSelf) objectiveUI.gameObject.SetActive(true);
+
+            // Point the animated dashed trail at the Stranger so the first
+            // thing the player sees after the cutscene is a clear golden
+            // path toward their objective.
+            if (tutorialTrail != null && strangerTransform != null)
+                tutorialTrail.SetTarget(strangerTransform);
 
             UpdateObjectiveUI();
         }
         else UpdateObjectiveUI();
     }
 
-    public void StartIntroDialogue() { if (isDialogueStarted) return; isDialogueStarted = true; StartCoroutine(IntroDialogueRoutine()); }
+    public void StartIntroDialogue()
+    {
+        if (isDialogueStarted) return;
+        isDialogueStarted = true;
+        // Player reached the Stranger — hide the "walk here" trail so it
+        // doesn't distract during the dialogue and the tree-chopping phase.
+        // The trail comes back on for the escape phase.
+        if (tutorialTrail != null) tutorialTrail.Hide();
+        StartCoroutine(IntroDialogueRoutine());
+    }
 
     private void SetCinematicMode(bool isCinematic)
     {
@@ -281,15 +313,17 @@ public class Level1_QuestManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
         // Anchor the group on flat ground behind the player, then LAY OUT the
-        // children in a small formation. The scene prefab had children at
-        // baked local offsets so a plain SetActive(true) left them floating
-        // above the terrain or off-screen — that's why "the squad doesn't
-        // spawn at all". We now place each enemy directly on terrain in a
-        // 2-row arc facing the player.
+        // children in a small formation. Order matters here:
+        //  1) reposition inactive children,
+        //  2) mark them isCinematicFrozen (public field on the still-inactive
+        //     component — that's fine),
+        //  3) SetActive(true). If we activate first, EnemyAI.Start kicks off
+        //     its OWN SpawnRoutine which caches transform.position AS-IS and
+        //     lerps to it — that overrode our formation slots and made the
+        //     wave "disappear" a second after rising.
         Vector3 spawnPos = GetTerrainPos(playerTransform.position - playerTransform.forward * spawnDistanceBehind);
         skeletonsWave1.transform.position = spawnPos;
         skeletonsWave1.transform.LookAt(new Vector3(playerTransform.position.x, spawnPos.y, playerTransform.position.z));
-        skeletonsWave1.SetActive(true);
 
         LayoutEnemyFormation(skeletonsWave1.transform, playerTransform.position);
 
@@ -297,6 +331,8 @@ public class Level1_QuestManager : MonoBehaviour
         {
             if (ai != null) ai.isCinematicFrozen = true;
         }
+
+        skeletonsWave1.SetActive(true);
 
         Coroutine cameraFly = StartCoroutine(DroneCameraFlyAndTrack(spawnPos, 3.5f));
 
@@ -379,6 +415,11 @@ public class Level1_QuestManager : MonoBehaviour
         if (pController != null) pController.isControlBlocked = true;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
+        // Explicitly hide the tutorial's mission tile and any auxiliary HUD
+        // groups so the escape cutscene reads clean. SetGameplayPanelsActive
+        // only touches the panels registered on GlobalHUD; scene-authored
+        // pieces like the objective tile need to be hidden by hand.
+        if (objectiveUI != null) objectiveUI.gameObject.SetActive(false);
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
 
@@ -386,8 +427,10 @@ public class Level1_QuestManager : MonoBehaviour
 
         skeletonsHordeWave2.transform.position = hordePos;
         skeletonsHordeWave2.transform.LookAt(new Vector3(playerTransform.position.x, hordePos.y, playerTransform.position.z));
-        skeletonsHordeWave2.SetActive(true);
 
+        // Same order as wave 1: lay out slots and freeze before SetActive so
+        // EnemyAI.SpawnRoutine takes the "already frozen" branch and leaves
+        // our positions alone.
         LayoutEnemyFormation(skeletonsHordeWave2.transform, playerTransform.position);
 
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
@@ -398,6 +441,8 @@ public class Level1_QuestManager : MonoBehaviour
                 ai.isCinematicFrozen = true;
             }
         }
+
+        skeletonsHordeWave2.SetActive(true);
 
         TriggerGroupRise(skeletonsHordeWave2.transform, 2.5f);
         yield return StartCoroutine(DroneCameraFlyAndTrack(hordePos, 3f));
@@ -421,6 +466,13 @@ public class Level1_QuestManager : MonoBehaviour
         if (pController != null) pController.isControlBlocked = false;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+        if (objectiveUI != null && !objectiveUI.gameObject.activeSelf) objectiveUI.gameObject.SetActive(true);
+
+        // Show the golden dashed trail toward the horse so the player has an
+        // unmistakable visual guide while sprinting away from the invincible
+        // horde.
+        if (tutorialTrail != null && evacuationHorse != null)
+            tutorialTrail.SetTarget(evacuationHorse.transform);
 
         StartCoroutine(ShowTutorialHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!", 6f));
     }
@@ -508,12 +560,12 @@ public class Level1_QuestManager : MonoBehaviour
 
     private void TriggerGroupRise(Transform groupParent, float duration)
     {
-        foreach (Transform child in groupParent)
+        // GetComponentsInChildren so enemies nested inside sub-groups still
+        // get the rise animation. The old foreach over direct children silently
+        // skipped anyone one level deeper.
+        foreach (EnemyAI ai in groupParent.GetComponentsInChildren<EnemyAI>(true))
         {
-            if (child.GetComponent<EnemyAI>() != null)
-            {
-                StartCoroutine(RiseSingleAnim(child, duration));
-            }
+            if (ai != null) StartCoroutine(RiseSingleAnim(ai.transform, duration));
         }
     }
 
