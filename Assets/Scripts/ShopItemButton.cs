@@ -35,8 +35,8 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [Tooltip("The parent GameObject of priceBadgeText — toggled off when the item is Owned/Equipped and not at MAX so we don't show a stray price.")]
     public GameObject priceBadgeRoot;
     public Color affordableColor = new Color(0.92f, 0.85f, 0.55f);
-    public Color unaffordableColor = new Color(0.85f, 0.35f, 0.35f);
-    public Color maxColor = new Color(1f, 0.75f, 0.15f);
+    public Color unaffordableColor = new Color(0.90f, 0.55f, 0.55f);
+    public Color maxColor = new Color(0.95f, 0.80f, 0.45f);
 
     [Header("Rarity / Tier Tint (optional)")]
     [Tooltip("Optional Image to tint by the item's tier (usually the card frame).")]
