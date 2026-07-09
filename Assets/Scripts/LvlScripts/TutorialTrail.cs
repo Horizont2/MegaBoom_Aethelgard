@@ -223,8 +223,17 @@ public class TutorialTrail : MonoBehaviour
 
     private static float SampleGroundY(Vector3 worldPos)
     {
+        Vector3 origin = new Vector3(worldPos.x, worldPos.y + 10f, worldPos.z);
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 20f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (!hit.collider.CompareTag("Player") && !hit.collider.CompareTag("Enemy"))
+            {
+                return hit.point.y;
+            }
+        }
         Terrain t = Terrain.activeTerrain;
-        if (t == null) return worldPos.y;
-        return t.SampleHeight(worldPos) + t.transform.position.y;
+        if (t != null) return t.SampleHeight(worldPos) + t.transform.position.y;
+
+        return worldPos.y;
     }
 }

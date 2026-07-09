@@ -56,9 +56,6 @@ public class Level1_QuestManager : MonoBehaviour
     {
         Instance = this;
 
-        // Cache references to the gameplay camera BEFORE anything else can
-        // mess with Camera.main (pause scene switches it away). Fall back
-        // to Camera.main if we don't have any better handle.
         CameraFollow follow = FindFirstObjectByType<CameraFollow>(FindObjectsInactive.Include);
         if (follow != null)
         {
@@ -78,9 +75,6 @@ public class Level1_QuestManager : MonoBehaviour
         if (cachedGameplayBrain == null && cachedGameplayCam != null)
             cachedGameplayBrain = cachedGameplayCam.GetComponent<CinemachineBrain>();
 
-        // Block player controls immediately so they can't move during the frame
-        // before LevelStartRoutine runs. Without this, WASD could slip through
-        // between Player.Update and our coroutine on frame 0.
         if (introDirector != null)
         {
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
@@ -90,13 +84,20 @@ public class Level1_QuestManager : MonoBehaviour
                 if (pc != null) pc.isControlBlocked = true;
             }
 
-            // Hide the HUD immediately — SetGameplayPanelsActive from inside
-            // LevelStartRoutine runs a frame later, and the HP/stamina bars
-            // were briefly visible during the very first frame of the intro
-            // cutscene. Hide the objective tile too so the placeholder from
-            // last run doesn't flash on screen.
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
-            if (objectiveUI != null) objectiveUI.gameObject.SetActive(false);
+            if (objectiveUI != null) objectiveUI.gameObject.SetActive(true);
+
+            // ФІКС ТРЕЙЛУ: Тепер зі старту він веде до Незнайомця, а не до Коня!
+            if (tutorialTrail != null && strangerTransform != null)
+            {
+                tutorialTrail.gameObject.SetActive(false);
+                tutorialTrail.gameObject.SetActive(true);
+                tutorialTrail.enabled = true;
+                tutorialTrail.SetTarget(strangerTransform);
+            }
+            Canvas.ForceUpdateCanvases();
+
+            // (Видалено помилковий спам підказки про коня зі старту гри)
         }
     }
 
@@ -140,13 +141,6 @@ public class Level1_QuestManager : MonoBehaviour
             yield return null;
             while (introDirector.state == PlayState.Playing) yield return null;
 
-            // Disable CinemachineBrain FIRST. Otherwise brain keeps writing the
-            // final vcam position to the gameplay camera in LateUpdate (brain
-            // runs after CameraFollow), which overwrites the handoff blend and
-            // leaves the camera frozen at the intro's overview shot.
-            // Uses the CACHED brain rather than Camera.main.GetComponent
-            // because Camera.main may point at the pause scene's camera by
-            // the time this line runs (see PauseSceneController).
             if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = false;
 
             CameraFollow cf = cachedGameplayFollow;
@@ -156,18 +150,11 @@ public class Level1_QuestManager : MonoBehaviour
                 float pitchX = currentRot.x;
                 if (pitchX > 180f) pitchX -= 360f;
                 cf.SyncRotation(currentRot.y, pitchX);
-
-                // Smoothly blend from wherever Cinemachine left the camera into
-                // CameraFollow's natural orbit. Without this the camera snapped
-                // on frame 0 of gameplay and felt jarring.
                 cf.BeginHandoffBlend(0.7f);
             }
 
             SetCinematicMode(false);
 
-            // Keep player controls locked until the camera finishes blending
-            // back to CameraFollow. Otherwise the player can already run around
-            // while the camera is mid-transition and it feels broken.
             if (cf != null)
             {
                 while (cf.IsHandoffBlending) yield return null;
@@ -175,15 +162,18 @@ public class Level1_QuestManager : MonoBehaviour
 
             if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
-            // Bring the objective tile back — Awake hid it so its default
-            // "New Mission" state wouldn't flash during the intro.
-            if (objectiveUI != null && !objectiveUI.gameObject.activeSelf) objectiveUI.gameObject.SetActive(true);
 
-            // Point the animated dashed trail at the Stranger so the first
-            // thing the player sees after the cutscene is a clear golden
-            // path toward their objective.
+            // ФІКС UI: Прибрано Canvas.ForceUpdateCanvases() та маніпуляції з альфою, 
+            // щоб не переривати рідну анімацію плашки!
+            if (objectiveUI != null) objectiveUI.gameObject.SetActive(true);
+
             if (tutorialTrail != null && strangerTransform != null)
+            {
+                tutorialTrail.gameObject.SetActive(false);
+                tutorialTrail.gameObject.SetActive(true);
+                tutorialTrail.enabled = true;
                 tutorialTrail.SetTarget(strangerTransform);
+            }
 
             UpdateObjectiveUI();
         }
@@ -333,25 +323,40 @@ public class Level1_QuestManager : MonoBehaviour
     // player happened to be at.
     private float FindGroundY(Vector3 pos)
     {
-        Vector3 origin = new Vector3(pos.x, pos.y + 500f, pos.z);
-        // ~0 = every layer; ignore triggers so region trigger volumes and
-        // extraction-portal sensors don't count as ground.
-        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1000f, ~0, QueryTriggerInteraction.Ignore))
-            return hit.point.y;
+        float startY = playerTransform != null ? playerTransform.position.y + 50f : pos.y + 50f;
+        Vector3 origin = new Vector3(pos.x, startY, pos.z);
 
-        // Fall back to Terrain if the raycast missed absolutely everything.
-        if (Terrain.activeTerrain != null)
-            return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 150f, ~0, QueryTriggerInteraction.Ignore);
+        float bestY = -9999f;
+        bool found = false;
 
-        return pos.y;
+        foreach (var hit in hits)
+        {
+            Collider col = hit.collider;
+            if (col.isTrigger) continue;
+
+            string n = col.name.ToLower();
+            // ФІКС: Більше ніяких дерев! Приймаємо тільки справжню землю.
+            if (n.Contains("terrain") || n.Contains("floor") || n.Contains("ground"))
+            {
+                if (hit.point.y > bestY)
+                {
+                    bestY = hit.point.y;
+                    found = true;
+                }
+            }
+        }
+
+        // Якщо раптом під ворогами немає Terrain, безпечно ставимо їх на висоту гравця
+        if (!found) return playerTransform != null ? playerTransform.position.y : pos.y;
+
+        return bestY;
     }
 
     private IEnumerator TriggerAmbushWave1Routine()
     {
         isAmbushTriggered = true;
 
-        // Guard against missing player — was a hidden source of NullRef that
-        // silently killed the coroutine, leaving the wave unspawned.
         if (playerTransform == null)
         {
             GameObject p = GameObject.FindGameObjectWithTag("Player");
@@ -364,30 +369,22 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
-        // Anchor the group on flat ground behind the player, then LAY OUT the
-        // children in a small formation. Precise order matters:
-        //  1) Freeze children FIRST (public field write works on inactive
-        //     components) so EnemyAI.SpawnRoutine takes the "just wait" branch
-        //     when Start fires.
-        //  2) SetActive(true) — Awake/Start run, SpawnRoutine is a no-op
-        //     because we already froze it.
-        //  3) THEN LayoutEnemyFormation. Setting transform.position on the
-        //     children of an INACTIVE parent doesn't persist reliably —
-        //     Unity recomputes world position from stale local coords when
-        //     the parent activates. That's why the wave came back "high in
-        //     the air" even after freezing.
         Vector3 spawnPos = GetTerrainPos(playerTransform.position - playerTransform.forward * spawnDistanceBehind);
         skeletonsWave1.transform.position = spawnPos;
         skeletonsWave1.transform.LookAt(new Vector3(playerTransform.position.x, spawnPos.y, playerTransform.position.z));
 
+        // АБСОЛЮТНИЙ ЗАХИСТ ВІД ВИБУХІВ: Вимикаємо КОЛАЙДЕРИ та фізику ДО активації об'єкта
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>(true))
-        {
             if (ai != null) ai.isCinematicFrozen = true;
-        }
+        foreach (var agent in skeletonsWave1.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true))
+            if (agent != null) agent.enabled = false;
+        foreach (var rb in skeletonsWave1.GetComponentsInChildren<Rigidbody>(true))
+            if (rb != null) rb.isKinematic = true;
+        foreach (var col in skeletonsWave1.GetComponentsInChildren<Collider>(true))
+            if (col != null && !col.isTrigger) col.enabled = false;
 
         skeletonsWave1.SetActive(true);
 
-        // Now that the hierarchy is active, place every enemy on the ground.
         LayoutEnemyFormation(skeletonsWave1.transform, playerTransform.position);
         Physics.SyncTransforms();
 
@@ -398,14 +395,8 @@ public class Level1_QuestManager : MonoBehaviour
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Watch out! They're crawling from the dirt!", 2f, 8));
         yield return cameraFly;
 
-        foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>())
-        {
-            if (ai != null) { ai.ForceStop(); ai.isCinematicFrozen = false; }
-        }
+        UnfreezeEnemiesSecurely(skeletonsWave1);
 
-        // Short breather before the player is thrown into combat — otherwise
-        // the ambush cutscene ends and enemies immediately swarm before the
-        // control-lock UI even fades out.
         yield return new WaitForSeconds(0.4f);
 
         if (pController != null) pController.isControlBlocked = false;
@@ -427,8 +418,6 @@ public class Level1_QuestManager : MonoBehaviour
             if (e != null) enemies.Add(e);
         if (enemies.Count == 0) return;
 
-        // Base plane = ground directly under the player. Player is standing
-        // on something solid by definition, so this is the safest reference.
         Vector3 playerPos = playerTransform != null ? playerTransform.position : lookAtTarget;
         float playerGroundY = FindGroundY(playerPos);
 
@@ -449,12 +438,11 @@ public class Level1_QuestManager : MonoBehaviour
             int row = i % 2;
             Vector3 slot = groupCenter + right * (tx * lateralSpread * 0.5f) - forward * (row * rowDepth);
 
-            // Raycast for the actual ground at this slot's XZ. If it fails
-            // (slot is over a hole / off-mesh), pin to the player's ground
-            // plane so we never end up floating.
             float slotGround = FindGroundY(slot);
             slot.y = Mathf.Abs(slotGround - playerGroundY) < 8f ? slotGround : playerGroundY;
 
+            // ФІКС ПОЛЬОТІВ: Повністю видалено NavMesh.SamplePosition. 
+            // Вороги залишаться рівно на координатах землі, які ми вирахували!
             Transform et = enemies[i].transform;
             et.position = slot;
             et.rotation = Quaternion.LookRotation(forward);
@@ -484,31 +472,23 @@ public class Level1_QuestManager : MonoBehaviour
         if (pController != null) pController.isControlBlocked = true;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
-        // Explicitly hide the tutorial's mission tile and any auxiliary HUD
-        // groups so the escape cutscene reads clean. SetGameplayPanelsActive
-        // only touches the panels registered on GlobalHUD; scene-authored
-        // pieces like the objective tile need to be hidden by hand.
         if (objectiveUI != null) objectiveUI.gameObject.SetActive(false);
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Good job! Wait... do you hear that?", 1.5f));
 
         Vector3 hordePos = GetTerrainPos(playerTransform.position + playerTransform.right * spawnDistanceBehind);
-
         skeletonsHordeWave2.transform.position = hordePos;
         skeletonsHordeWave2.transform.LookAt(new Vector3(playerTransform.position.x, hordePos.y, playerTransform.position.z));
 
-        // Freeze BEFORE SetActive so SpawnRoutine's first-frame position-cache
-        // takes the else branch. LayoutEnemyFormation runs AFTER SetActive
-        // (see wave 1 comment) because setting positions on inactive children
-        // doesn't persist through the activation transform-recompute.
+        // АБСОЛЮТНИЙ ЗАХИСТ ВІД ВИБУХІВ: Вимикаємо КОЛАЙДЕРИ та фізику ДО активації об'єкта
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
-        {
-            if (ai != null)
-            {
-                ai.MakeInvincibleAndFurious();
-                ai.isCinematicFrozen = true;
-            }
-        }
+            if (ai != null) ai.isCinematicFrozen = true;
+        foreach (var agent in skeletonsHordeWave2.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true))
+            if (agent != null) agent.enabled = false;
+        foreach (var rb in skeletonsHordeWave2.GetComponentsInChildren<Rigidbody>(true))
+            if (rb != null) rb.isKinematic = true;
+        foreach (var col in skeletonsHordeWave2.GetComponentsInChildren<Collider>(true))
+            if (col != null && !col.isTrigger) col.enabled = false;
 
         skeletonsHordeWave2.SetActive(true);
 
@@ -522,10 +502,6 @@ public class Level1_QuestManager : MonoBehaviour
         if (evacuationHorse != null)
         {
             evacuationHorse.SetActive(true);
-            // Guarantee the horse is on the ground and visible before the
-            // camera flies to it. Belt & braces: some scene-authored horses
-            // ended up at Y=0 world (below terrain) OR with a disabled child
-            // renderer, which is what made the escape shot look empty.
             evacuationHorse.transform.position = GetTerrainPos(evacuationHorse.transform.position);
             foreach (Renderer r in evacuationHorse.GetComponentsInChildren<Renderer>(true))
                 if (r != null) r.enabled = true;
@@ -536,10 +512,7 @@ public class Level1_QuestManager : MonoBehaviour
 
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: RUN TO THE HORSE, NOW!!", 2f, 10));
 
-        foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>())
-        {
-            if (ai != null) { ai.ForceStop(); ai.isCinematicFrozen = false; }
-        }
+        UnfreezeEnemiesSecurely(skeletonsHordeWave2);
 
         yield return new WaitForSeconds(0.4f);
 
@@ -548,9 +521,6 @@ public class Level1_QuestManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
         if (objectiveUI != null && !objectiveUI.gameObject.activeSelf) objectiveUI.gameObject.SetActive(true);
 
-        // Show the golden dashed trail toward the horse so the player has an
-        // unmistakable visual guide while sprinting away from the invincible
-        // horde.
         if (tutorialTrail != null && evacuationHorse != null)
             tutorialTrail.SetTarget(evacuationHorse.transform);
 
@@ -559,9 +529,6 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
     {
-        // Use the cached gameplay camera — Camera.main might point at the
-        // pause scene's WaterfallPos camera if the player paused just before
-        // this coroutine started.
         Camera mainCam = cachedGameplayCam != null ? cachedGameplayCam : Camera.main;
         if (mainCam == null) yield break;
 
@@ -570,23 +537,15 @@ public class Level1_QuestManager : MonoBehaviour
         Vector3 startPos = mainCam.transform.position;
         Quaternion startRot = mainCam.transform.rotation;
 
-        // Compute the final framing: 8m back and 5m above the target, based
-        // on the direction from the player to the enemy group. This keeps the
-        // squad centred in frame no matter which direction they spawned in.
         Vector3 toTarget = new Vector3(targetPosition.x - startPos.x, 0, targetPosition.z - startPos.z);
         Vector3 approachDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : Vector3.forward;
         Vector3 endPos = targetPosition - approachDir * 8f + Vector3.up * 5f;
 
-        // Clamp the end height so it stays near enemy eye-level rather than
-        // shooting into orbit if the terrain sample fails.
+        // Перевіряємо землю ТІЛЬКИ для кінцевої точки, щоб камера не впала під карту
         float endGround = SampleGroundY(endPos);
         endPos.y = Mathf.Min(endPos.y, endGround + 6f);
         endPos.y = Mathf.Max(endPos.y, endGround + 3f);
 
-        // Midpoint arc: halfway between start and end, +2m up. The old code
-        // added (15, 5, 0) unconditionally which threw the arc off-screen —
-        // now the arc height scales with the horizontal distance so long
-        // flights get a gentle rise, short ones stay tight.
         float dist = Vector3.Distance(startPos, endPos);
         float arcHeight = Mathf.Clamp(dist * 0.15f, 1f, 5f);
         Vector3 midPos = Vector3.Lerp(startPos, endPos, 0.5f) + Vector3.up * arcHeight;
@@ -597,18 +556,13 @@ public class Level1_QuestManager : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.SmoothStep(0, 1, elapsed / flyDuration);
 
-            // Quadratic Bezier via De Casteljau (start -> mid -> end).
+            // Крива Безьє (старт -> центр -> кінець)
             Vector3 m1 = Vector3.Lerp(startPos, midPos, t);
             Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
             Vector3 camPos = Vector3.Lerp(m1, m2, t);
 
-            // Terrain clearance floor AND ceiling — tight bounds. 10m above
-            // ground is enough for an ambush framing; any higher and the
-            // enemies look like ants. If the target itself is above ground
-            // (broken spawn placement) the camera stays low and the audience
-            // sees empty sky above rather than a helicopter shot.
-            float g = SampleGroundY(camPos);
-            camPos.y = Mathf.Clamp(camPos.y, g + 1.5f, g + 10f);
+            // ВИДАЛЕНО: жорстке вирівнювання (Clamp) по землі під час польоту.
+            // Тепер камера просто плавно пролетить по ідеальній дузі без стрибків!
 
             mainCam.transform.position = camPos;
 
@@ -629,9 +583,6 @@ public class Level1_QuestManager : MonoBehaviour
             float pitchX = currentRot.x;
             if (pitchX > 180f) pitchX -= 360f;
             cf.SyncRotation(currentRot.y, pitchX);
-            // Smooth-blend back to the follow rig instead of snapping — makes
-            // the transition after each cinematic feel like one continuous
-            // camera instead of a cut.
             cf.BeginHandoffBlend(0.5f);
         }
         SetCinematicMode(false);
@@ -639,8 +590,9 @@ public class Level1_QuestManager : MonoBehaviour
 
     private float SampleGroundY(Vector3 worldPos)
     {
-        if (Terrain.activeTerrain == null) return worldPos.y;
-        return Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y;
+        // Більше ніяких старих багованих перевірок! 
+        // Просто змушуємо камеру використовувати той самий ідеальний лазерний пошук, що й вороги.
+        return FindGroundY(worldPos);
     }
 
     private void TriggerGroupRise(Transform groupParent, float duration)
@@ -656,11 +608,11 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator RiseSingleAnim(Transform enemy, float duration)
     {
-        // finalPos = wherever LayoutEnemyFormation just placed this enemy.
-        // DELIBERATELY do NOT re-sample the terrain here — if the enemy's
-        // XZ happens to lie over a mountain slope, SampleHeight returns
-        // that slope's Y and the enemy rises out of a mountain instead of
-        // out of the flat ground next to the player.
+        // ФІКС ЗІШТОВХУВАННЯ: Вимикаємо CharacterController на час анімації, 
+        // щоб він не вистрілював скелета з-під землі.
+        CharacterController cc = enemy.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
         Vector3 finalPos = enemy.position;
         Vector3 startPos = finalPos - new Vector3(0, 2.5f, 0);
         enemy.position = startPos;
@@ -676,6 +628,8 @@ public class Level1_QuestManager : MonoBehaviour
             yield return null;
         }
         enemy.position = finalPos;
+
+        if (cc != null) cc.enabled = true;
     }
 
     private IEnumerator ShowSubtitleTypewriter(string text, float duration, int dialogueId = 0)
@@ -749,5 +703,26 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
         else UnityEngine.SceneManagement.SceneManager.LoadScene("Lvl_1");
+    }
+
+    private void UnfreezeEnemiesSecurely(GameObject group)
+    {
+        // 1. Вмикаємо звичайні колайдери
+        foreach (var col in group.GetComponentsInChildren<Collider>(true))
+        {
+            if (col != null && !col.isTrigger) col.enabled = true;
+        }
+
+        foreach (EnemyAI ai in group.GetComponentsInChildren<EnemyAI>())
+        {
+            if (ai != null)
+            {
+                // 2. Більше жодних маніпуляцій з NavMeshAgent чи Rigidbody! 
+                // Ми просто даємо скрипту EnemyAI зелене світло на рух, 
+                // і він почне бігти до гравця за власною математикою.
+                ai.ForceStop();
+                ai.isCinematicFrozen = false;
+            }
+        }
     }
 }

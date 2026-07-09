@@ -123,9 +123,30 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private static float SampleTerrainHeight(Vector3 worldPos)
     {
-        Terrain t = CachedTerrain;
-        if (t == null) return worldPos.y;
-        return t.SampleHeight(worldPos) + s_terrainOriginY;
+        Vector3 origin = new Vector3(worldPos.x, worldPos.y + 50f, worldPos.z);
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 150f, ~0, QueryTriggerInteraction.Ignore);
+
+        float bestY = -9999f;
+        bool found = false;
+
+        foreach (var hit in hits)
+        {
+            Collider col = hit.collider;
+            if (col.isTrigger) continue;
+
+            string n = col.name.ToLower();
+            // ФІКС: Ігноруємо ліс та гори, шукаємо тільки землю
+            if (n.Contains("terrain") || n.Contains("floor") || n.Contains("ground"))
+            {
+                if (hit.point.y > bestY)
+                {
+                    bestY = hit.point.y;
+                    found = true;
+                }
+            }
+        }
+
+        return found ? bestY : worldPos.y;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -443,7 +464,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                transform.position = nextPos;
+                SetPositionSafe(nextPos);
             }
             else
             {
@@ -458,7 +479,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.7f) * Time.deltaTime;
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                transform.position = nextPos;
+                SetPositionSafe(nextPos);
             }
         }
         else
@@ -470,7 +491,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-            transform.position = nextPos;
+            SetPositionSafe(nextPos);
 
             if (finalDirection != Vector3.zero)
             {
@@ -545,7 +566,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             float passiveSpeed = actualMoveSpeed * 0.4f;
             Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-            transform.position = nextPos;
+            SetPositionSafe(nextPos);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
             SetMovingAnim(true, passiveSpeed);
             UpdateFootstepAudio();
@@ -859,5 +880,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         Destroy(gameObject);
+    }
+
+    private void SetPositionSafe(Vector3 newPos)
+    {
+        if (cc != null && cc.enabled)
+        {
+            // Більше жодного вимикання колайдерів! 
+            // Move() автоматично застосовує дельту переміщення і коректно взаємодіє з землею.
+            Vector3 movementDelta = newPos - transform.position;
+            cc.Move(movementDelta);
+        }
+        else
+        {
+            transform.position = newPos;
+        }
     }
 }
