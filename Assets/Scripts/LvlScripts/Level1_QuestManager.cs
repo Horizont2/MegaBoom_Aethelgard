@@ -363,10 +363,12 @@ public class Level1_QuestManager : MonoBehaviour
         StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
     }
 
-    // Places every EnemyAI child in a fan-shaped formation around the parent
-    // group facing toward the player. Terrain-samples each slot so nobody
-    // floats. Called after SetActive to override the prefab's baked local
-    // positions (which were the reason wave 1 sometimes didn't visibly spawn).
+    // Places every EnemyAI child in a fan-shaped formation on the SAME
+    // ground plane as the player. We deliberately use the player's own
+    // terrain-sampled Y for every slot rather than resampling at each
+    // "behind the player" position — the previous approach let enemies
+    // land on a mountainside directly behind the player and appear to
+    // float in the sky once the camera framed them.
     private void LayoutEnemyFormation(Transform groupParent, Vector3 lookAtTarget)
     {
         List<EnemyAI> enemies = new List<EnemyAI>();
@@ -374,13 +376,24 @@ public class Level1_QuestManager : MonoBehaviour
             if (e != null) enemies.Add(e);
         if (enemies.Count == 0) return;
 
+        // Ground Y: sample terrain at the PLAYER's XZ (guaranteed to be on
+        // solid ground since the player is standing on it) and fall back to
+        // the player's own transform.y if terrain sampling fails.
+        Vector3 playerGround = playerTransform != null ? playerTransform.position : lookAtTarget;
+        float groundY = SampleGroundY(playerGround);
+        if (Terrain.activeTerrain == null) groundY = playerGround.y;
+
         Vector3 groupCenter = groupParent.position;
-        Vector3 forward = (new Vector3(lookAtTarget.x, groupCenter.y, lookAtTarget.z) - groupCenter).normalized;
+        groupCenter.y = groundY;
+        groupParent.position = groupCenter;
+
+        Vector3 forward = (new Vector3(lookAtTarget.x, groundY, lookAtTarget.z) - groupCenter).normalized;
         if (forward.sqrMagnitude < 0.001f) forward = groupParent.forward;
         Vector3 right = Vector3.Cross(Vector3.up, forward);
 
         // Fan enemies across a 6m front, two rows deep, offset so they're
-        // visible and don't all pile on the same spot.
+        // visible and don't all pile on the same spot. Every slot pins Y to
+        // groundY — nobody floats even if the raw XZ ends up over slope.
         int count = enemies.Count;
         float lateralSpread = 6f;
         float rowDepth = 2.2f;
@@ -389,7 +402,7 @@ public class Level1_QuestManager : MonoBehaviour
             float tx = count == 1 ? 0f : Mathf.Lerp(-1f, 1f, (float)i / (count - 1));
             int row = i % 2;
             Vector3 slot = groupCenter + right * (tx * lateralSpread * 0.5f) - forward * (row * rowDepth);
-            slot = GetTerrainPos(slot);
+            slot.y = groundY;
 
             Transform et = enemies[i].transform;
             et.position = slot;
@@ -589,13 +602,14 @@ public class Level1_QuestManager : MonoBehaviour
 
     private IEnumerator RiseSingleAnim(Transform enemy, float duration)
     {
+        // finalPos = wherever LayoutEnemyFormation just placed this enemy.
+        // DELIBERATELY do NOT re-sample the terrain here — if the enemy's
+        // XZ happens to lie over a mountain slope, SampleHeight returns
+        // that slope's Y and the enemy rises out of a mountain instead of
+        // out of the flat ground next to the player.
         Vector3 finalPos = enemy.position;
-        if (Terrain.activeTerrain != null)
-        {
-            finalPos.y = Terrain.activeTerrain.SampleHeight(finalPos) + Terrain.activeTerrain.transform.position.y;
-        }
-
-        enemy.position = finalPos - new Vector3(0, 2.5f, 0);
+        Vector3 startPos = finalPos - new Vector3(0, 2.5f, 0);
+        enemy.position = startPos;
 
         float elapsed = 0f;
         while (elapsed < duration)
@@ -604,7 +618,7 @@ public class Level1_QuestManager : MonoBehaviour
             float t = elapsed / duration;
             t = t * t * (3f - 2f * t);
 
-            enemy.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
+            enemy.position = Vector3.Lerp(startPos, finalPos, t);
             yield return null;
         }
         enemy.position = finalPos;
