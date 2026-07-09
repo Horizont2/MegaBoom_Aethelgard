@@ -247,6 +247,7 @@ GameObject:
   - component: {fileID: 7828384733099038456}
   - component: {fileID: 2985723483582462938}
   - component: {fileID: 3573815058512976385}
+  - component: {fileID: 3262357996118360839}
   m_Layer: 2
   m_Name: Arena_Region_01
   m_TagString: Untagged
@@ -393,6 +394,21 @@ MonoBehaviour:
   totems:
   - {fileID: 3173021661247172437}
   corruptionTransferVFX: {fileID: 0}
+--- !u!114 &3262357996118360839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8299824053145540121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::POISettings
+  flattenRadius: 30
+  yOffset: -0.5
+  maxAllowedSlope: 6
 --- !u!1001 &676317513453284647
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3248,6 +3264,7 @@ MonoBehaviour:
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 1642973783109358599}
   skyBeamVFX: {fileID: 0}
+  skyBeamYOffset: -1.5
   totemLight: {fileID: 6164180292499216443}
   interactHintVFX: {fileID: 5713345460161418595}
   interactionRadius: 3

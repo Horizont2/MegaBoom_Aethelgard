@@ -1330,120 +1330,144 @@ public class WorldGenerator : MonoBehaviour
         GameObject totemPrefab = null;
         float locationYOffset = 0f;
         RegionData activeRegionData = null;
-        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null) activeRegionData = GameManager.Instance.currentRegion;
-        else if (MissionInitializer.PendingMissionRegion != null) activeRegionData = MissionInitializer.PendingMissionRegion;
-        if (activeRegionData != null) { totemPrefab = activeRegionData.regionTotemPrefab; locationYOffset = activeRegionData.locationYOffset; }
+
+        if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+            activeRegionData = GameManager.Instance.currentRegion;
+        else if (MissionInitializer.PendingMissionRegion != null)
+            activeRegionData = MissionInitializer.PendingMissionRegion;
+
+        if (activeRegionData != null)
+        {
+            totemPrefab = activeRegionData.regionTotemPrefab;
+            locationYOffset = activeRegionData.locationYOffset;
+        }
 
         if (totemPrefab == null) yield break;
-        float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z;
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
-        Vector3 bestPos = Vector3.zero; bool found = false;
 
-        // Three-pass search:
-        //   pass 0 — summer (grass) cells that are also clear of rivers,
-        //   pass 1 — any flat above-water cell clear of rivers,
-        //   pass 2 — last-resort flat above-water cell (rivers allowed).
-        // River avoidance matters because flattening the arena pad on top of a
-        // carved river bed raises the terrain back up and leaves the water
-        // plane hanging in the air.
-        for (int pass = 0; pass < 3 && !found; pass++)
+        // ==========================================
+        // 1. ЧИТАЄМО ДАНІ З BOX COLLIDER
+        // ==========================================
+        BoxCollider rootBox = totemPrefab.GetComponent<BoxCollider>();
+        float flatRadius = 40f;
+        float bottomOfCollider = 0f;
+
+        if (rootBox != null)
         {
-            bool summerOnly = pass == 0;
-            bool avoidRivers = pass < 2;
-            for (int i = 0; i < 500; i++)
-            {
-                float px = GetRandomRange(w * 0.2f, w * 0.8f); float pz = GetRandomRange(l * 0.2f, l * 0.8f);
-                float normX = px / w; float normZ = pz / l;
-                if (terrain.terrainData.GetSteepness(normX, normZ) >= 20f) continue;
+            // Радіус вирівнювання - це половина діагоналі Box Collider + 5м запасу
+            float sx = rootBox.size.x * totemPrefab.transform.localScale.x;
+            float sz = rootBox.size.z * totemPrefab.transform.localScale.z;
+            flatRadius = Mathf.Max(20f, Mathf.Sqrt(sx * sx + sz * sz) * 0.5f + 5f);
 
-                float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
-                float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
-                if (worldY <= absoluteWaterHeight + 5f) continue;
-
-                if (summerOnly && !IsSummerZone(normX, normZ, worldY)) continue;
-                if (avoidRivers && IsNearRiver(new Vector3(worldX, worldY, worldZ), 30f)) continue;
-
-                bestPos = new Vector3(worldX, worldY, worldZ); found = true; break;
-            }
+            // Знаходимо точне дно колайдера по осі Y відносно нульової точки префабу
+            float sy = rootBox.size.y * totemPrefab.transform.localScale.y;
+            float cy = rootBox.center.y * totemPrefab.transform.localScale.y;
+            bottomOfCollider = cy - (sy / 2f);
         }
-        if (!found) { bestPos = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2); bestPos.y = terrain.SampleHeight(bestPos) + transform.position.y; }
-
-        GameObject camp = Instantiate(totemPrefab, bestPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
-        camp.transform.SetParent(this.transform);
-
-        // Footprint radius for the flatten pad. Prefer the root collider, fall
-        // back to a child collider, then a fixed default. Capped so a huge
-        // trigger volume can't flatten half the map (which is what raised the
-        // terrain under the rivers last time).
-        Collider campCol = camp.GetComponent<Collider>();
-        if (campCol == null) campCol = camp.GetComponentInChildren<Collider>();
-
-        // Flatten radius must cover the ENTIRE rotated collider footprint,
-        // not just the axis-aligned half-extent. Using max(sizeX, sizeZ) / 2
-        // left the far corners of the arena hanging off hillsides (front OK,
-        // back on a slope). Half-diagonal of the world AABB encloses the
-        // arena no matter what random Y rotation it gets.
-        float dynamicRadius = 20f;
-        if (campCol != null)
+        else
         {
-            float sx = campCol.bounds.size.x;
-            float sz = campCol.bounds.size.z;
-            float halfDiag = Mathf.Sqrt(sx * sx + sz * sz) * 0.5f;
-            dynamicRadius = Mathf.Clamp(halfDiag + 5f, 8f, 60f);
+            Debug.LogWarning($"[Спавн] На префабі {totemPrefab.name} НЕМАЄ BoxCollider на руті!");
         }
 
-        // Clamp XZ so the collider's footprint fits inside the terrain. Purely
-        // horizontal — does not touch Y or rivers. Fixes region 4 spawning
-        // past the edge of the map.
-        if (campCol != null)
+        Vector2 bestSpot = Vector2.zero;
+        bool foundSpot = false;
+
+        // 2. СКАНОР ТЕРИТОРІЇ
+        List<Vector2> validSpots = new List<Vector2>();
+        float scanStep = 30f;
+        float edgeMargin = flatRadius + 30f;
+
+        for (float x = edgeMargin; x < w - edgeMargin; x += scanStep)
         {
-            float halfW = campCol.bounds.extents.x;
-            float halfL = campCol.bounds.extents.z;
-            float minX = transform.position.x + halfW + 2f;
-            float maxX = transform.position.x + w - halfW - 2f;
-            float minZ = transform.position.z + halfL + 2f;
-            float maxZ = transform.position.z + l - halfL - 2f;
-            if (maxX > minX && maxZ > minZ)
+            for (float z = edgeMargin; z < l - edgeMargin; z += scanStep)
             {
-                Vector3 clamped = new Vector3(
-                    Mathf.Clamp(bestPos.x, minX, maxX), bestPos.y,
-                    Mathf.Clamp(bestPos.z, minZ, maxZ));
-                Vector3 shift = clamped - bestPos;
-                if (shift.sqrMagnitude > 0.001f)
+                float pX = transform.position.x + x;
+                float pZ = transform.position.z + z;
+
+                float h = terrain.SampleHeight(new Vector3(pX, 0, pZ)) + transform.position.y;
+                if (h <= absoluteWaterHeight + 4f) continue;
+
+                float normX = x / w; float normZ = z / l;
+                if (terrain.terrainData.GetSteepness(normX, normZ) > 15f) continue;
+
+                float minH = float.MaxValue;
+                float maxH = float.MinValue;
+                bool touchesWater = false;
+
+                Vector3[] scanPts = new Vector3[] {
+                    new Vector3(pX, 0, pZ),
+                    new Vector3(pX + flatRadius, 0, pZ),
+                    new Vector3(pX - flatRadius, 0, pZ),
+                    new Vector3(pX, 0, pZ + flatRadius),
+                    new Vector3(pX, 0, pZ - flatRadius)
+                };
+
+                foreach (var pt in scanPts)
                 {
-                    camp.transform.position += new Vector3(shift.x, 0, shift.z);
-                    bestPos = new Vector3(clamped.x, bestPos.y, clamped.z);
+                    float ch = terrain.SampleHeight(pt) + transform.position.y;
+                    if (ch <= absoluteWaterHeight + 1.5f) touchesWater = true;
+                    if (ch > maxH) maxH = ch;
+                    if (ch < minH) minH = ch;
+                }
+
+                if (!touchesWater && (maxH - minH) <= 12f)
+                {
+                    if (IsSummerZone(normX, normZ, minH) && !IsNearRiver(new Vector3(pX, minH, pZ), flatRadius + 15f))
+                    {
+                        validSpots.Add(new Vector2(pX, pZ));
+                    }
                 }
             }
         }
 
-        // Flatten the terrain FIRST, then re-sample the ground so we know the
-        // exact height of the pad we just carved.
-        FlattenTerrainAt(bestPos, dynamicRadius, 15f);
-        float groundY = terrain.SampleHeight(new Vector3(bestPos.x, 0, bestPos.z)) + transform.position.y;
-
-        // Rest the arena's SOLID base on the flattened pad. We measure the
-        // lowest point of the mesh geometry only (MeshRenderer +
-        // SkinnedMeshRenderer), explicitly excluding ParticleSystemRenderers —
-        // waterfall / mist / fog particles hang far below the arena and were
-        // what floated the whole prefab into the air on the earlier attempt.
-        //
-        // pivotToBase = how far the pivot sits above the solid base. Adding it
-        // to groundY places that base exactly on the ground regardless of
-        // where the prefab's pivot happens to be. locationYOffset is an
-        // optional per-region inspector nudge on top of that.
-        if (TryGetSolidBaseOffset(camp, out float pivotToBase))
+        if (validSpots.Count > 0)
         {
-            pivotToBase = Mathf.Clamp(pivotToBase, -25f, 25f);
-            camp.transform.position = new Vector3(bestPos.x, groundY + pivotToBase + locationYOffset, bestPos.z);
+            bestSpot = validSpots[UnityEngine.Random.Range(0, validSpots.Count)];
+            foundSpot = true;
         }
         else
         {
-            camp.transform.position = new Vector3(bestPos.x, groundY + locationYOffset, bestPos.z);
+            bestSpot = new Vector2(transform.position.x + w / 2, transform.position.z + l / 2);
         }
 
-        spawnedTotemPos = new Vector3(bestPos.x, groundY, bestPos.z);
+        Vector3 centerPos = new Vector3(bestSpot.x, 0, bestSpot.y);
+        float exactGroundY = terrain.SampleHeight(centerPos) + transform.position.y;
+        centerPos.y = exactGroundY;
+
+        // 3. ЖОРСТКЕ ТЕРАФОРМУВАННЯ
+        FlattenTerrainRobust(centerPos, flatRadius, 18f, exactGroundY);
+
+        terrain.Flush();
+        TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
+        if (tc != null) { tc.enabled = false; tc.enabled = true; }
+
+        yield return new WaitForFixedUpdate();
+        yield return new WaitForFixedUpdate();
+
+        // ==========================================
+        // 4. ФІНАЛЬНИЙ СПАВН НА ОСНОВІ BOX COLLIDER
+        // ==========================================
+
+        // Математика: Беремо ідеальну землю, ВІДНІМАЄМО дно колайдера (щоб воно стало на землю), 
+        // і додаємо locationYOffset для ручного занурення (наприклад, -1 для фундаменту).
+        float finalY = exactGroundY - bottomOfCollider + locationYOffset;
+
+        Vector3 finalSpawnPos = new Vector3(centerPos.x, finalY, centerPos.z);
+
+        // Множимо поворот, щоб будівля ніколи не падала на бік
+        Quaternion randomRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
+        Quaternion finalRot = randomRot * totemPrefab.transform.rotation;
+
+        GameObject camp = Instantiate(totemPrefab, finalSpawnPos, finalRot);
+        camp.transform.SetParent(this.transform);
+
+        spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
+
+        Debug.Log($"[Totem BoxCollider Spawn] Ground: {exactGroundY} | Дно Колайдера: {bottomOfCollider} | Фінальна Y: {finalY}");
         yield return null;
     }
 
@@ -2014,44 +2038,230 @@ public class WorldGenerator : MonoBehaviour
         return spawned;
     }
 
+    private void FlattenTerrainRobust(Vector3 center, float radius, float falloff, float targetWorldY)
+    {
+        TerrainData td = terrain.terrainData;
+        int resolution = td.heightmapResolution;
+        float w = td.size.x;
+        float l = td.size.z;
+
+        float localX = center.x - transform.position.x;
+        float localZ = center.z - transform.position.z;
+
+        int tX = Mathf.RoundToInt((localX / w) * resolution);
+        int tZ = Mathf.RoundToInt((localZ / l) * resolution);
+
+        int r = Mathf.CeilToInt((radius + falloff) / w * resolution);
+        int startX = Mathf.Clamp(tX - r, 0, resolution - 1);
+        int startZ = Mathf.Clamp(tZ - r, 0, resolution - 1);
+        int endX = Mathf.Clamp(tX + r, 0, resolution - 1);
+        int endZ = Mathf.Clamp(tZ + r, 0, resolution - 1);
+
+        int width = endX - startX;
+        int height = endZ - startZ;
+        if (width <= 0 || height <= 0) return;
+
+        float[,] heights = td.GetHeights(startX, startZ, width, height);
+        float normalizedTarget = (targetWorldY - transform.position.y) / td.size.y;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                float curWorldX = (startX + x) * w / resolution;
+                float curWorldZ = (startZ + y) * l / resolution;
+                float dist = Vector2.Distance(new Vector2(curWorldX, curWorldZ), new Vector2(localX, localZ));
+
+                if (dist <= radius)
+                {
+                    heights[y, x] = normalizedTarget;
+                }
+                else if (dist <= radius + falloff)
+                {
+                    // Плавний спуск (Smoothstep) від рівнини до гір
+                    float t = (dist - radius) / falloff;
+                    t = t * t * (3f - 2f * t);
+                    heights[y, x] = Mathf.Lerp(normalizedTarget, heights[y, x], t);
+                }
+            }
+        }
+        td.SetHeights(startX, startZ, heights);
+    }
+
     private IEnumerator SpawnPOIsRoutine()
     {
         if (poiPrefabs == null || poiPrefabs.Length == 0) yield break;
-        Transform poiContainer = new GameObject("POIContainer").transform; poiContainer.SetParent(this.transform);
-        float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; int spawnedCount = 0;
+        Transform poiContainer = new GameObject("POIContainer").transform;
+        poiContainer.SetParent(this.transform);
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
-        float startTime = Time.realtimeSinceStartup;
+        List<POIVirtualData> plannedPOIs = new List<POIVirtualData>();
 
-        for (int i = 0; i < 3000; i++)
+        // ==========================================
+        // ФАЗА 1: VIRTUAL GRID (Створюємо список потенційних точок)
+        // ==========================================
+        List<Vector2> masterGrid = new List<Vector2>();
+        float scanStep = 40f;
+        float edgeMargin = 120f; // Ближче ніж 120м до краю карти нічого не будуємо
+
+        for (float x = edgeMargin; x < w - edgeMargin; x += scanStep)
         {
-            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
-
-            if (spawnedCount >= maxPOIs) break;
-            try
+            for (float z = edgeMargin; z < l - edgeMargin; z += scanStep)
             {
-                float px = GetRandomRange(20f, w - 20f); float pz = GetRandomRange(20f, l - 20f);
-                if (terrain.terrainData.GetSteepness(px / w, pz / l) > maxPOISteepness) continue;
-                float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
-                float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
-                if (worldY <= absoluteWaterHeight + 1.5f) continue;
-                Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
+                float pX = transform.position.x + x;
+                float pZ = transform.position.z + z;
+                float h = terrain.SampleHeight(new Vector3(pX, 0, pZ)) + transform.position.y;
 
-                if (IsPositionClear(spawnPos, poiClearanceRadius))
+                // Відсіюємо воду і відверті гори
+                if (h > absoluteWaterHeight + 3f && terrain.terrainData.GetSteepness(x / w, z / l) < maxPOISteepness)
                 {
-                    GameObject prefab = GetRandomPrefab(poiPrefabs);
-                    GameObject poi = Instantiate(prefab, spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), poiContainer);
-                    Collider col = poi.GetComponent<Collider>();
-                    float dynamicRadius = col != null ? (Mathf.Max(col.bounds.size.x, col.bounds.size.z) / 2f) + 2f : 8f;
-                    FlattenTerrainAt(spawnPos, dynamicRadius, 6f);
-                    spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y; poi.transform.position = spawnPos;
-
-                    forbiddenZones.Add(spawnPos);
-                    spawnedCount++;
+                    masterGrid.Add(new Vector2(pX, pZ));
                 }
             }
-            catch (System.Exception e) { Debug.LogWarning($"POI Spawn Skip: {e.Message}"); }
         }
+
+        // Перемішуємо точки для рандомності
+        for (int i = 0; i < masterGrid.Count; i++)
+        {
+            Vector2 temp = masterGrid[i];
+            int rnd = UnityEngine.Random.Range(i, masterGrid.Count);
+            masterGrid[i] = masterGrid[rnd];
+            masterGrid[rnd] = temp;
+        }
+
+        // ==========================================
+        // ФАЗА 2: ВІРТУАЛЬНИЙ РОЗПОДІЛ (Без спавну об'єктів)
+        // ==========================================
+        int prefabsAssigned = 0;
+
+        foreach (Vector2 gridPoint in masterGrid)
+        {
+            if (prefabsAssigned >= maxPOIs) break;
+
+            GameObject prefab = GetRandomPrefab(poiPrefabs);
+            POISettings settings = prefab.GetComponent<POISettings>();
+
+            if (settings == null)
+            {
+                Debug.LogError($"[AAA Gen] Префаб {prefab.name} не має скрипта POISettings! Пропускаємо.");
+                continue;
+            }
+
+            Vector3 centerPos = new Vector3(gridPoint.x, 0, gridPoint.y);
+
+            // Перевіряємо, чи не накладається на інші заплановані локації
+            bool isOverlap = false;
+            foreach (var planned in plannedPOIs)
+            {
+                if (Vector3.Distance(centerPos, planned.worldPosition) < (settings.flattenRadius + planned.settings.flattenRadius + 20f))
+                {
+                    isOverlap = true; break;
+                }
+            }
+            if (isOverlap) continue;
+
+            // AREA VARIANCE SCAN: Перевіряємо перепад висот під радіусом конкретного префабу
+            float minH = float.MaxValue;
+            float maxH = float.MinValue;
+            bool touchesWater = false;
+
+            Vector3[] scanPts = new Vector3[] {
+                centerPos,
+                centerPos + new Vector3(settings.flattenRadius, 0, 0),
+                centerPos + new Vector3(-settings.flattenRadius, 0, 0),
+                centerPos + new Vector3(0, 0, settings.flattenRadius),
+                centerPos + new Vector3(0, 0, -settings.flattenRadius)
+            };
+
+            foreach (var pt in scanPts)
+            {
+                float ch = terrain.SampleHeight(pt) + transform.position.y;
+                if (ch <= absoluteWaterHeight + 1.5f) touchesWater = true;
+                if (ch > maxH) maxH = ch;
+                if (ch < minH) minH = ch;
+            }
+
+            // Якщо води немає і перепад висот в межах норми паспорта - ЗАТВЕРДЖУЄМО ТОЧКУ
+            if (!touchesWater && (maxH - minH) <= settings.maxAllowedSlope)
+            {
+                centerPos.y = minH; // Беремо найнижчу точку як базову для вирівнювання
+
+                plannedPOIs.Add(new POIVirtualData
+                {
+                    worldPosition = centerPos,
+                    prefab = prefab,
+                    settings = settings
+                });
+                prefabsAssigned++;
+            }
+        }
+
+        // ==========================================
+        // ФАЗА 3: ТЕРАФОРМУВАННЯ
+        // ==========================================
+        foreach (var poi in plannedPOIs)
+        {
+            FlattenTerrainRobust(poi.worldPosition, poi.settings.flattenRadius, 15f, poi.worldPosition.y);
+            forbiddenZones.Add(poi.worldPosition);
+        }
+
+        // ЖОРСТКИЙ СИНХРОН ФІЗИКИ: 
+        // Миттєво перебудовуємо TerrainCollider, щоб старі гори зникли і фізично!
+        terrain.Flush();
+        TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
+        if (tc != null)
+        {
+            tc.enabled = false;
+            tc.enabled = true; // Цей трюк змушує Unity миттєво перерахувати колізію землі
+        }
+
+        yield return new WaitForFixedUpdate();
+        yield return new WaitForFixedUpdate();
+
+        // ==========================================
+        // ФАЗА 4: ФІЗИЧНИЙ СПАВН ОБ'ЄКТІВ
+        // ==========================================
+        foreach (var poi in plannedPOIs)
+        {
+            // Беремо ідеальну висоту рівної землі (без жодних офсетів)
+            float exactGroundY = poi.worldPosition.y;
+
+            // 1. Координати поверхні землі
+            Vector3 groundPos = new Vector3(poi.worldPosition.x, exactGroundY, poi.worldPosition.z);
+
+            // 2. ААА-ФІКС ПОВОРОТУ: 
+            // Множимо випадковий поворот на оригінальний нахил префабу (напр. X = -90), 
+            // щоб локація більше НІКОЛИ не падала на бік!
+            Quaternion randomRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
+            Quaternion finalRot = randomRot * poi.prefab.transform.rotation;
+
+            // 3. Спавнимо об'єкт з правильним поворотом
+            GameObject instance = Instantiate(poi.prefab, groundPos, finalRot, poiContainer);
+
+            // 4. Оскільки будівля тепер стоїть рівно на ногах, глобальний Vector3.up 
+            // ідеально і слухняно вдавить її в землю на величину твого yOffset
+            instance.transform.position += (Vector3.up * poi.settings.yOffset);
+        }
+
+        Debug.Log($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
+    }
+
+    private float GetPOIClearanceRadius(GameObject prefab)
+    {
+        // Шукаємо BoxCollider на кореневому об'єкті
+        BoxCollider rootBox = prefab.GetComponent<BoxCollider>();
+        if (rootBox != null)
+        {
+            float sx = rootBox.size.x * prefab.transform.localScale.x;
+            float sz = rootBox.size.z * prefab.transform.localScale.z;
+            // Теорема Піфагора: половина діагоналі (радіус описаного кола)
+            return (Mathf.Sqrt(sx * sx + sz * sz) * 0.5f);
+        }
+        // Запасний варіант, якщо колайдера немає
+        return 30f;
     }
 
     private IEnumerator SpawnExtractionCartsRoutine()
@@ -2174,4 +2384,11 @@ public class WorldGenerator : MonoBehaviour
     }
 
     private GameObject GetRandomPrefab(GameObject[] array) => (array == null || array.Length == 0) ? null : array[GetRandomRangeInt(0, array.Length)];
+
+    private class POIVirtualData
+    {
+        public Vector3 worldPosition;
+        public GameObject prefab;
+        public POISettings settings;
+    }
 }
