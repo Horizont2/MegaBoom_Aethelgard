@@ -148,53 +148,38 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     }
 
     [Header("Hover Juice")]
-    [Tooltip("How high (px in local space) the card lifts on pointer enter.")]
-    public float hoverLift = 6f;
     [Tooltip("Extra scale multiplier on hover. 1 = no scale, 1.05 = 5% bigger.")]
-    public float hoverScale = 1.03f;
+    public float hoverScale = 1.05f;
     [Tooltip("Seconds to reach hover / rest state (unscaled time so pause doesn't freeze it).")]
-    public float hoverAnimSpeed = 10f;
+    public float hoverAnimSpeed = 12f;
 
-    private RectTransform selfRect;
-    private Vector2 restAnchoredPos;
     private Vector3 restScale = Vector3.one;
     private bool hovering;
     private bool restCached;
 
-    private void OnEnable()
-    {
-        CacheRestTransform();
-    }
-
-    private void CacheRestTransform()
+    private void CacheRestScale()
     {
         if (restCached) return;
-        selfRect = transform as RectTransform;
-        if (selfRect != null)
-        {
-            restAnchoredPos = selfRect.anchoredPosition;
-            restScale = selfRect.localScale;
-        }
+        restScale = transform.localScale;
         restCached = true;
     }
 
     private void Update()
     {
-        if (selfRect == null) return;
-
-        Vector2 targetPos = restAnchoredPos + (hovering ? new Vector2(0f, hoverLift) : Vector2.zero);
+        // Scale-only hover. DELIBERATELY does NOT touch anchoredPosition —
+        // shop cards are laid out by a LayoutGroup which re-runs every frame,
+        // so writing to anchoredPosition from here fights the layout and
+        // stacks every card on top of each other.
         Vector3 targetScl = hovering ? restScale * hoverScale : restScale;
-
         float k = Mathf.Clamp01(Time.unscaledDeltaTime * hoverAnimSpeed);
-        selfRect.anchoredPosition = Vector2.Lerp(selfRect.anchoredPosition, targetPos, k);
-        selfRect.localScale = Vector3.Lerp(selfRect.localScale, targetScl, k);
+        transform.localScale = Vector3.Lerp(transform.localScale, targetScl, k);
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        // Ignore hover while the button is uninteractable (locked cards can
-        // still be visually indicated, but we don't want the "you can pick me"
-        // lift for something the click won't do anything with).
+        CacheRestScale();
+        // Ignore hover while the button is uninteractable so the user's cursor
+        // doesn't grow-highlight a card that won't respond to a click.
         if (buttonComponent != null && !buttonComponent.interactable) return;
         hovering = true;
         OnHoverEnter?.Invoke(this);
