@@ -172,7 +172,10 @@ public class CampWorkerAI : MonoBehaviour
                     transform.LookAt(lookPos);
 
                     if (anim != null) anim.SetTrigger("Work");
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.NPC_Work);
+                    // 3D so the chopping sound sits at the worker/tree in
+                    // the world instead of glued to the player's ears.
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySFX3D(AudioID.NPC_Work, transform.position);
 
                     yield return new WaitForSeconds(timeBetweenHits);
 

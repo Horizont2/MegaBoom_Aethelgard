@@ -188,6 +188,15 @@ public class AudioManager : MonoBehaviour
     private Coroutine musicFadeRoutine;
     private Coroutine musicDuckRoutine;
 
+    // Long-running / looped SFX instances keyed by an integer handle.
+    // Callers keep the handle around and pass it to StopLoopingSFX so
+    // the sound can be cleanly stopped (with fade) — used for things
+    // like the camp-building loop that would otherwise keep hammering
+    // after construction ended, or the bush-rustle that outlived the
+    // bush.
+    private readonly Dictionary<int, EventInstance> loopedInstances = new Dictionary<int, EventInstance>();
+    private int nextLoopId = 1;
+
     private void Awake()
     {
         if (Instance == null)
@@ -525,6 +534,89 @@ public class AudioManager : MonoBehaviour
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
             RuntimeManager.PlayOneShot(group.fmodEvent, position);
+        }
+    }
+
+    // Create a tracked EventInstance and start it 3D at `position`. Returns
+    // a handle the caller keeps around for StopLoopingSFX. Suitable for
+    // build hammers, ambient loops, chopping SFX etc. — anything that
+    // needs an explicit end and should NOT keep playing past the moment
+    // that triggered it. Returns -1 if the sound is unregistered or the
+    // FMOD event is missing.
+    public int PlayLoopingSFX3D(string soundName, Vector3 position)
+    {
+        if (!sfxDictionary.TryGetValue(soundName, out SoundGroup group) || group == null || group.fmodEvent.IsNull)
+        {
+            WarnMissing(soundName, "PlayLoopingSFX3D: no valid FMOD event");
+            return -1;
+        }
+        EventInstance inst = RuntimeManager.CreateInstance(group.fmodEvent);
+        if (!inst.isValid())
+        {
+            WarnMissing(soundName, "PlayLoopingSFX3D: CreateInstance failed");
+            return -1;
+        }
+        inst.set3DAttributes(FMODUnity.RuntimeUtils.To3DAttributes(position));
+        inst.start();
+
+        int id = nextLoopId++;
+        loopedInstances[id] = inst;
+        return id;
+    }
+
+    // Follow-a-transform variant — updates 3D attributes each frame via
+    // FMOD's built-in AttachInstanceToGameObject helper. Use this for
+    // moving sources (walking NPC, roaming enemy).
+    public int PlayLoopingSFX3D(string soundName, Transform followTarget)
+    {
+        if (followTarget == null) return PlayLoopingSFX3D(soundName, Vector3.zero);
+        int id = PlayLoopingSFX3D(soundName, followTarget.position);
+        if (id != -1 && loopedInstances.TryGetValue(id, out EventInstance inst))
+        {
+            Rigidbody rb = followTarget.GetComponent<Rigidbody>();
+            RuntimeManager.AttachInstanceToGameObject(inst, followTarget, rb);
+        }
+        return id;
+    }
+
+    // Stop a looping instance with an optional manual volume fade before
+    // release. FMOD's ALLOWFADEOUT only applies the AHDSR release the sound
+    // designer authored — if the event has none, the sound would still
+    // snap off. The manual fade guarantees a graceful tail.
+    public void StopLoopingSFX(int handle, float fadeSeconds = 0.4f)
+    {
+        if (handle < 0) return;
+        if (!loopedInstances.TryGetValue(handle, out EventInstance inst)) return;
+        loopedInstances.Remove(handle);
+        if (!inst.isValid()) return;
+
+        if (fadeSeconds <= 0f)
+        {
+            inst.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+            inst.release();
+        }
+        else
+        {
+            StartCoroutine(FadeAndStopInstanceRoutine(inst, fadeSeconds));
+        }
+    }
+
+    private IEnumerator FadeAndStopInstanceRoutine(EventInstance inst, float duration)
+    {
+        if (!inst.isValid()) yield break;
+        inst.getVolume(out float startVol, out _);
+        float t = 0f;
+        while (t < duration && inst.isValid())
+        {
+            t += Time.unscaledDeltaTime;
+            float k = 1f - Mathf.Clamp01(t / duration);
+            inst.setVolume(startVol * (k * k));
+            yield return null;
+        }
+        if (inst.isValid())
+        {
+            inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+            inst.release();
         }
     }
 

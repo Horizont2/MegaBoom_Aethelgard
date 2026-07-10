@@ -24,11 +24,27 @@ public class ResourceNode : MonoBehaviour, IDamageable
     private Vector3 originalScale;
     private bool isDead = false;
 
+    // Tracked handle for the last hit-SFX instance so we can manually stop
+    // it before the FMOD event's tail finishes — otherwise the rustle
+    // outlived the bush that made it and stacked over the next chop.
+    private int hitSfxHandle = -1;
+
     private void Start()
     {
         actualMaxHealth = Random.Range(minHealth, maxHealth);
         currentHealth = actualMaxHealth;
         originalScale = transform.localScale;
+    }
+
+    private void OnDestroy()
+    {
+        // Belt & braces — if the node is destroyed by an external system
+        // (pool return, scene unload) mid-hit, don't leak the FMOD instance.
+        if (hitSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(hitSfxHandle, 0f);
+            hitSfxHandle = -1;
+        }
     }
 
     public void TakeDamage(DamageInfo info)
@@ -46,9 +62,17 @@ public class ResourceNode : MonoBehaviour, IDamageable
         // physics moment the axe connects with the resource.
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX(nodeType == NodeType.Rock
+            string clip = nodeType == NodeType.Rock
                 ? AudioID.Player_HitResource_Stone
-                : AudioID.Player_HitResource_Wood);
+                : AudioID.Player_HitResource_Wood;
+
+            // Tracked 3D instance: kill any previous hit-sfx from THIS node
+            // before starting the new one so successive chops don't stack a
+            // long-tailed rustle on top of itself. Handle is stopped again
+            // in DeathRoutine so the sound cannot outlive the bush.
+            if (hitSfxHandle != -1)
+                AudioManager.Instance.StopLoopingSFX(hitSfxHandle, 0.05f);
+            hitSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(clip, transform.position);
         }
 
         if (hitEffect != null)
@@ -101,6 +125,14 @@ public class ResourceNode : MonoBehaviour, IDamageable
 
     private IEnumerator DeathRoutine()
     {
+        // Kill the last hit rustle with a short fade so it doesn't sing
+        // out over the destroyed bush / falling tree.
+        if (hitSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(hitSfxHandle, 0.25f);
+            hitSfxHandle = -1;
+        }
+
         int dropCount = Random.Range(minDrops, maxDrops + 1);
         for (int i = 0; i < dropCount; i++)
         {

@@ -88,6 +88,11 @@ public class CampBuilding : MonoBehaviour
 
     private static CampBuilding storageBuildingCached;
 
+    // Handle for the looping 3D build SFX. -1 = nothing playing. Kept so
+    // we can Stop it exactly when the animation ends instead of letting
+    // FMOD's PlayOneShot finish a too-long clip after construction.
+    private int buildSfxHandle = -1;
+
     private void Awake()
     {
         if (realModel != null)
@@ -109,6 +114,18 @@ public class CampBuilding : MonoBehaviour
         // Extra guard on scene reload — never come back with the panel visible
         // unless the player explicitly opened it via [F].
         if (aaaPanel != null && aaaPanel.activeSelf && !isPanelOpen) aaaPanel.SetActive(false);
+    }
+
+    private void OnDestroy()
+    {
+        // Kill the looping build SFX if the building is torn down mid-hammer
+        // (scene unload, prefab replaced, etc.) — otherwise the FMOD event
+        // instance keeps playing until natural end.
+        if (buildSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0f);
+            buildSfxHandle = -1;
+        }
     }
 
     private void Start()
@@ -317,7 +334,17 @@ public class CampBuilding : MonoBehaviour
                         PlayerPrefs.Save();
 
                         StartDustEffect();
-                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildStart);
+                        // 3D-positioned looping SFX so the sound sits at the
+                        // building in space (not glued to the player's ears)
+                        // and can be cleanly stopped when construction ends —
+                        // one-shot fires the whole clip regardless of build
+                        // length, which is why hammering kept ringing after
+                        // the building was already up.
+                        if (AudioManager.Instance != null)
+                        {
+                            if (buildSfxHandle != -1) AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0f);
+                            buildSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Camp_BuildStart, transform);
+                        }
 
                         if (GlobalHUD.Instance != null && nextLevelData != null)
                             GlobalHUD.Instance.StartTrackingUpgrade(buildingID, buildingName, buildingIconSprite, nextLevelData.buildTime, startTimeBinary);
@@ -557,7 +584,17 @@ public class CampBuilding : MonoBehaviour
         if (realModel != null) realModel.transform.localScale = originalModelScale;
 
         StopDustEffect();
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
+        // Kill the looping hammering with a short fade first, then fire the
+        // completion sting in 3D so it comes from the building.
+        if (AudioManager.Instance != null)
+        {
+            if (buildSfxHandle != -1)
+            {
+                AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0.3f);
+                buildSfxHandle = -1;
+            }
+            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildDone, transform.position);
+        }
 
         currentLevel = targetLevel;
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);

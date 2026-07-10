@@ -190,7 +190,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         isPreparingAttack = true;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
         SetColor(new Color(2f, 0.5f, 0f));
 
@@ -260,7 +260,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical);
         }
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Hurt);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Hurt, transform.position);
 
         StartCoroutine(HitFlashRoutine());
 
@@ -515,8 +515,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (animator != null) animator.SetTrigger("Die");
             if (AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
-                AudioManager.Instance.PlaySFX(AudioID.Enemy_Die);
+                AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
+                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
             }
             camFollow?.TriggerShake(0.45f, 0.45f);
             SetColor(Color.white);
