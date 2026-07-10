@@ -9900,7 +9900,7 @@ MonoBehaviour:
   stat3DeltaText: {fileID: 0}
   powerDeltaText: {fileID: 619884448}
   deltaPositiveColor: {r: 0.35, g: 0.95, b: 0.35, a: 1}
-  deltaNegativeColor: {r: 0.95, g: 0.35, b: 0.35, a: 1}
+  deltaNegativeColor: {r: 0.8867924, g: 0.23257379, b: 0.23257379, a: 1}
   deltaNeutralColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
   rotationSpeed: 500
   ownedOnlyToggle: {fileID: 0}
