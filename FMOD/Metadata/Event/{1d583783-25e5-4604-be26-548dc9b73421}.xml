@@ -90,8 +90,11 @@
 	<object class="MixerBusPanner" id="{89367902-dfe0-4480-920a-75ae5154aac9}" />
 	<object class="SingleSound" id="{3c2cf5e3-28b3-4480-92b9-2019b4c55213}">
 		<property name="length">
-			<value>1.2000000000000002</value>
+			<value>0.40000000000000002</value>
 		</property>
+		<relationship name="fadeInCurve">
+			<destination>{643ae66f-3c30-444e-b9d8-f64a9354cd17}</destination>
+		</relationship>
 		<relationship name="audioFile">
 			<destination>{8402df62-5d40-4843-acae-8b9bdae424f8}</destination>
 		</relationship>
@@ -117,6 +120,14 @@
 	</object>
 	<object class="MixerBusPanner" id="{80090dd1-2408-43c1-9655-8b0dc62dacba}" />
 	<object class="MixerBusFader" id="{8b0b3f0c-0b92-4296-a17c-982e97557032}" />
+	<object class="FadeCurve" id="{643ae66f-3c30-444e-b9d8-f64a9354cd17}">
+		<relationship name="startPoint">
+			<destination>{d8dff566-9921-4756-bfb9-8381c25db5d0}</destination>
+		</relationship>
+		<relationship name="endPoint">
+			<destination>{43e2aa8e-1aba-494b-820a-b85f6d92b900}</destination>
+		</relationship>
+	</object>
 	<object class="MixerBusEffectChain" id="{847399c4-1792-4abc-9d28-0d4198d5cd0c}">
 		<relationship name="effects">
 			<destination>{9cd4b495-0904-4272-9a02-30137373c4f3}</destination>
@@ -124,5 +135,24 @@
 	</object>
 	<object class="MixerBusPanner" id="{7231a764-f157-453d-b4c4-939cf75e74a4}" />
 	<object class="MixerBusFader" id="{4117921d-3b38-41ae-8ba5-8fda5929b21a}" />
+	<object class="AutomationPoint" id="{d8dff566-9921-4756-bfb9-8381c25db5d0}">
+		<property name="position">
+			<value>0</value>
+		</property>
+		<property name="value">
+			<value>0</value>
+		</property>
+		<property name="curveShape">
+			<value>-0.2547189</value>
+		</property>
+	</object>
+	<object class="AutomationPoint" id="{43e2aa8e-1aba-494b-820a-b85f6d92b900}">
+		<property name="position">
+			<value>0.080000000000000002</value>
+		</property>
+		<property name="value">
+			<value>1</value>
+		</property>
+	</object>
 	<object class="MixerBusFader" id="{9cd4b495-0904-4272-9a02-30137373c4f3}" />
 </objects>

@@ -95,6 +95,9 @@
 		<property name="length">
 			<value>121.40000000000001</value>
 		</property>
+		<property name="volume">
+			<value>-5</value>
+		</property>
 		<property name="looping">
 			<value>true</value>
 		</property>

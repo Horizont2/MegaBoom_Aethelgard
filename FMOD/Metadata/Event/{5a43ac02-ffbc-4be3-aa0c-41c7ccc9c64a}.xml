@@ -90,8 +90,11 @@
 	<object class="MixerBusPanner" id="{3b555129-9450-4b4a-8cbf-89464fd42cea}" />
 	<object class="SingleSound" id="{b74ac180-a7ea-4ffd-8e83-567016d746fb}">
 		<property name="length">
-			<value>4</value>
+			<value>2.4000000000000004</value>
 		</property>
+		<relationship name="fadeInCurve">
+			<destination>{78edf242-8728-4d21-b282-ad7842bfeaf1}</destination>
+		</relationship>
 		<relationship name="audioFile">
 			<destination>{a6d112b6-fd26-4507-b190-b633db2309e8}</destination>
 		</relationship>
@@ -120,6 +123,14 @@
 	</object>
 	<object class="MixerBusPanner" id="{0bd2b82f-7b7a-4495-a6f8-c168722faefb}" />
 	<object class="MixerBusFader" id="{619134f9-2cf9-4541-a0e3-9a6a1f69cd01}" />
+	<object class="FadeCurve" id="{78edf242-8728-4d21-b282-ad7842bfeaf1}">
+		<relationship name="startPoint">
+			<destination>{7a0f7a32-5d89-4806-a6ff-c9eb9914f4da}</destination>
+		</relationship>
+		<relationship name="endPoint">
+			<destination>{6cdae9b3-3e87-4eda-af20-d45c645d45a7}</destination>
+		</relationship>
+	</object>
 	<object class="MixerBusEffectChain" id="{ae3172a8-4b5f-4613-b3aa-171807cead4a}">
 		<relationship name="effects">
 			<destination>{95e0b1c5-b428-423b-ab89-328e0bfb072b}</destination>
@@ -127,5 +138,24 @@
 	</object>
 	<object class="MixerBusPanner" id="{aa902923-1480-4665-bcab-d8404ffe66f5}" />
 	<object class="MixerBusFader" id="{e103a6ce-94f8-4592-9859-416de6c5ae35}" />
+	<object class="AutomationPoint" id="{7a0f7a32-5d89-4806-a6ff-c9eb9914f4da}">
+		<property name="position">
+			<value>0</value>
+		</property>
+		<property name="value">
+			<value>0</value>
+		</property>
+		<property name="curveShape">
+			<value>-0.2547189</value>
+		</property>
+	</object>
+	<object class="AutomationPoint" id="{6cdae9b3-3e87-4eda-af20-d45c645d45a7}">
+		<property name="position">
+			<value>0.40000000000000002</value>
+		</property>
+		<property name="value">
+			<value>1</value>
+		</property>
+	</object>
 	<object class="MixerBusFader" id="{95e0b1c5-b428-423b-ab89-328e0bfb072b}" />
 </objects>
