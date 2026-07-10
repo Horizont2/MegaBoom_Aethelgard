@@ -93,7 +93,8 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         // Silhouette / dim look for locked items — desaturates icon + darkens
         // the card so at-a-glance the eye sees "unlocked = colourful, locked
-        // = ghosted". Reverses cleanly when the state flips to Owned.
+        // = ghosted". Both branches restore from the CACHED original so we
+        // never compound dimming across successive state changes.
         if (desaturateWhenLocked)
         {
             if (state == OwnedState.Locked)
@@ -105,7 +106,7 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 }
                 if (nameText != null)
                 {
-                    Color dim = nameText.color;
+                    Color dim = nameOriginalColor;
                     dim.r *= 0.6f; dim.g *= 0.6f; dim.b *= 0.6f;
                     nameText.color = dim;
                 }
@@ -113,7 +114,7 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             else
             {
                 if (iconImage != null) iconImage.color = iconOriginalColor;
-                // nameText will be restored by SetTierColor from ShopManager
+                if (nameText != null) nameText.color = nameOriginalColor;
             }
         }
 
@@ -142,15 +143,10 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void SetTierColor(Color c)
     {
         CacheOriginalColors();
+        // Deliberately DOES NOT tint nameText — if the tier frame behind it
+        // is also the same colour the title would fade into the background
+        // and become unreadable. Only the frame carries the rarity tint.
         if (tierFrame != null) tierFrame.color = c;
-        // Tint the item's name to match its tier for at-a-glance rarity read.
-        // Small alpha lift keeps the text legible on dark cards.
-        if (nameText != null)
-        {
-            Color nameC = c;
-            nameC.a = 1f;
-            nameText.color = nameC;
-        }
     }
 
     private static Color Grayscale(Color c)
