@@ -888,7 +888,6 @@ GameObject:
   - component: {fileID: -5074911530213746190}
   - component: {fileID: 2597130611666321287}
   - component: {fileID: -8669727939888771442}
-  - component: {fileID: 246001439221487073}
   m_Layer: 0
   m_Name: Skeleton_Minion
   m_TagString: Enemy
@@ -1035,31 +1034,6 @@ MonoBehaviour:
   - {fileID: 4639509076422919597}
   - {fileID: 6867747440997005975}
   isCurrentlyVisible: 1
---- !u!143 &246001439221487073
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4198843849923204017}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4229068581261606948
 GameObject:
   m_ObjectHideFlags: 0

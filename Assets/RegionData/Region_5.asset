@@ -26,8 +26,11 @@ MonoBehaviour:
   recommendedPower: 360
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
-  regionTotemPrefab: {fileID: 0}
-  regionBossPrefabs: []
+  regionTotemPrefab: {fileID: 551460717933574289, guid: 832e01f23fad9de42876e3c45e13640c, type: 3}
+  locationYOffset: 0
+  regionBossPrefabs:
+  - {fileID: 4198843849923204017, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
+  - {fileID: 2058852120935944091, guid: 566386cdff57847489df448d42981283, type: 3}
   woodReward: 160
   stoneReward: 100
   foodReward: 45
