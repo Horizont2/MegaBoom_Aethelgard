@@ -107,6 +107,12 @@ public class ShopManager : MonoBehaviour
     [Header("Rotation Settings")]
     public float rotationSpeed = 500f;
 
+    [Header("Filter / Search (optional)")]
+    [Tooltip("Optional Toggle that hides Locked items when checked. Wired to rebuild the currently-open category.")]
+    public UnityEngine.UI.Toggle ownedOnlyToggle;
+    [Tooltip("Optional TMP input field. Whatever the player types is used as a case-insensitive substring filter on item names.")]
+    public TMP_InputField searchInput;
+
     [Header("Purchase Celebration (optional)")]
     [Tooltip("Optional ParticleSystem to Play() when the player buys or upgrades an item. Confetti / shockwave / sparkles all work.")]
     public ParticleSystem purchaseVFX;
@@ -156,6 +162,12 @@ public class ShopManager : MonoBehaviour
     }
 
     private Dictionary<CanvasGroup, Coroutine> activeFades = new Dictionary<CanvasGroup, Coroutine>();
+
+    // Tracks the last category opened so search / owned-only filter refresh
+    // can rebuild the SAME list. Only one of these is populated at a time.
+    private ItemCategory? currentWeaponCat;
+    private ArmorCategory? currentArmorCat;
+    private ShopItemButton currentSelectedButton;
 
     private void Awake()
     {
@@ -303,6 +315,29 @@ public class ShopManager : MonoBehaviour
         if (btnCategoryBelts) btnCategoryBelts.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Belt));
         if (btnCategoryLegs) btnCategoryLegs.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Legs));
         if (btnCategoryFeet) btnCategoryFeet.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Feet));
+
+        // Filter / search: rebuild the currently open category when the
+        // player toggles ownedOnly or types into the search field.
+        if (ownedOnlyToggle != null) ownedOnlyToggle.onValueChanged.AddListener(_ => RefreshCurrentCategory());
+        if (searchInput != null) searchInput.onValueChanged.AddListener(_ => RefreshCurrentCategory());
+    }
+
+    private void RefreshCurrentCategory()
+    {
+        if (currentWeaponCat.HasValue) OpenWeaponCategory(currentWeaponCat.Value);
+        else if (currentArmorCat.HasValue) OpenArmorCategory(currentArmorCat.Value);
+    }
+
+    private bool PassesFilter(string itemName, bool isOwned)
+    {
+        if (ownedOnlyToggle != null && ownedOnlyToggle.isOn && !isOwned) return false;
+        if (searchInput != null)
+        {
+            string s = searchInput.text;
+            if (!string.IsNullOrWhiteSpace(s) && itemName.IndexOf(s, System.StringComparison.OrdinalIgnoreCase) < 0)
+                return false;
+        }
+        return true;
     }
 
     private int lastDisplayedDiamonds = -1;
@@ -448,6 +483,9 @@ public class ShopManager : MonoBehaviour
 
         isViewingWeapon = true;
         IsInsideCategory = true;
+        currentWeaponCat = cat;
+        currentArmorCat = null;
+        currentSelectedButton = null;
         SetupDynamicUI(true);
 
         FadeGroup(arsenalGridGroup, 0f);
@@ -459,25 +497,26 @@ public class ShopManager : MonoBehaviour
         int equippedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)
         {
-            if (w.category == cat)
+            if (w.category != cat) continue;
+
+            bool owned = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
+            if (!PassesFilter(w.weaponName, owned)) continue;
+
+            if (firstWep == null) firstWep = w;
+            WeaponData captured = w;
+            ShopItemButton btn = CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
+            if (btn != null)
             {
-                if (firstWep == null) firstWep = w;
-                WeaponData captured = w;
-                ShopItemButton btn = CreateListButton(w.weaponName, w.icon, () => SelectWeapon(captured));
-                if (btn != null)
-                {
-                    btn.boundWeapon = w;
-                    int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
-                    bool owned = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
-                    bool equipped = owned && w.weaponID == equippedWepID;
-                    var state = equipped ? ShopItemButton.OwnedState.Equipped
-                              : owned ? ShopItemButton.OwnedState.Owned
-                                      : ShopItemButton.OwnedState.Locked;
-                    btn.SetState(state, lvl, w.maxUpgradeLevel, w.price, myDiamonds);
-                    btn.SetTierColor(GetWeaponTierColor(w));
-                    btn.OnHoverEnter += HandleItemHoverEnter;
-                    btn.OnHoverExit += HandleItemHoverExit;
-                }
+                btn.boundWeapon = w;
+                int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
+                bool equipped = owned && w.weaponID == equippedWepID;
+                var state = equipped ? ShopItemButton.OwnedState.Equipped
+                          : owned ? ShopItemButton.OwnedState.Owned
+                                  : ShopItemButton.OwnedState.Locked;
+                btn.SetState(state, lvl, w.maxUpgradeLevel, w.price, myDiamonds);
+                btn.SetTierColor(GetWeaponTierColor(w));
+                btn.OnHoverEnter += HandleItemHoverEnter;
+                btn.OnHoverExit += HandleItemHoverExit;
             }
         }
 
@@ -494,6 +533,7 @@ public class ShopManager : MonoBehaviour
         selectedWeaponData = w;
         EquipWeaponToHero(w);
         UpdateUI(true);
+        HighlightSelectedButtonForWeapon(w);
     }
 
     public void OpenArmorCategory(ArmorCategory cat)
@@ -502,6 +542,9 @@ public class ShopManager : MonoBehaviour
 
         isViewingWeapon = false;
         IsInsideCategory = true;
+        currentArmorCat = cat;
+        currentWeaponCat = null;
+        currentSelectedButton = null;
         SetupDynamicUI(false);
 
         FadeGroup(arsenalGridGroup, 0f);
@@ -515,25 +558,26 @@ public class ShopManager : MonoBehaviour
         {
             foreach (var a in armors)
             {
-                if (a != null && a.category == cat)
+                if (a == null || a.category != cat) continue;
+
+                bool owned = PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1;
+                if (!PassesFilter(a.armorName, owned)) continue;
+
+                if (firstArm == null) firstArm = a;
+                ArmorData captured = a;
+                ShopItemButton btn = CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
+                if (btn != null)
                 {
-                    if (firstArm == null) firstArm = a;
-                    ArmorData captured = a;
-                    ShopItemButton btn = CreateListButton(a.armorName, a.icon, () => SelectArmor(captured));
-                    if (btn != null)
-                    {
-                        btn.boundArmor = a;
-                        int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
-                        bool owned = PlayerPrefs.GetInt("ArmorUnlocked_" + a.armorID, a.price == 0 ? 1 : 0) == 1;
-                        bool equipped = owned && a.prefabIndex == equippedIndex;
-                        var state = equipped ? ShopItemButton.OwnedState.Equipped
-                                  : owned ? ShopItemButton.OwnedState.Owned
-                                          : ShopItemButton.OwnedState.Locked;
-                        btn.SetState(state, lvl, a.maxUpgradeLevel, a.price, myDiamondsArm);
-                        btn.SetTierColor(GetArmorTierColor(a));
-                        btn.OnHoverEnter += HandleItemHoverEnter;
-                        btn.OnHoverExit += HandleItemHoverExit;
-                    }
+                    btn.boundArmor = a;
+                    int lvl = PlayerPrefs.GetInt("ArmorLevel_" + a.armorID, 0);
+                    bool equipped = owned && a.prefabIndex == equippedIndex;
+                    var state = equipped ? ShopItemButton.OwnedState.Equipped
+                              : owned ? ShopItemButton.OwnedState.Owned
+                                      : ShopItemButton.OwnedState.Locked;
+                    btn.SetState(state, lvl, a.maxUpgradeLevel, a.price, myDiamondsArm);
+                    btn.SetTierColor(GetArmorTierColor(a));
+                    btn.OnHoverEnter += HandleItemHoverEnter;
+                    btn.OnHoverExit += HandleItemHoverExit;
                 }
             }
         }
@@ -601,6 +645,38 @@ public class ShopManager : MonoBehaviour
         selectedArmorData = a;
         if (dummyArmorManager != null) dummyArmorManager.EquipArmorVisuals((ArmorSlot)a.category, a.prefabIndex);
         UpdateUI(true);
+        HighlightSelectedButtonForArmor(a);
+    }
+
+    // Walk the current item list and turn on the SelectedGlow for the button
+    // whose data matches the newly-selected item. Every other button gets
+    // its glow turned off. Cheap linear scan — the list is short.
+    private void HighlightSelectedButtonForWeapon(WeaponData w)
+    {
+        if (itemListContent == null) return;
+        currentSelectedButton = null;
+        for (int i = 0; i < itemListContent.childCount; i++)
+        {
+            var btn = itemListContent.GetChild(i).GetComponent<ShopItemButton>();
+            if (btn == null) continue;
+            bool match = btn.boundWeapon == w;
+            btn.SetSelected(match);
+            if (match) currentSelectedButton = btn;
+        }
+    }
+
+    private void HighlightSelectedButtonForArmor(ArmorData a)
+    {
+        if (itemListContent == null) return;
+        currentSelectedButton = null;
+        for (int i = 0; i < itemListContent.childCount; i++)
+        {
+            var btn = itemListContent.GetChild(i).GetComponent<ShopItemButton>();
+            if (btn == null) continue;
+            bool match = btn.boundArmor == a;
+            btn.SetSelected(match);
+            if (match) currentSelectedButton = btn;
+        }
     }
 
     private ShopItemButton CreateListButton(string name, Sprite icon, UnityEngine.Events.UnityAction action)
@@ -778,6 +854,9 @@ public class ShopManager : MonoBehaviour
 
         isViewingWeapon = false;
         IsInsideCategory = false;
+        currentWeaponCat = null;
+        currentArmorCat = null;
+        currentSelectedButton = null;
 
         // Reset the shop camera back to the default view. When a
         // category button is clicked, ShopCameraController.MoveToCategory

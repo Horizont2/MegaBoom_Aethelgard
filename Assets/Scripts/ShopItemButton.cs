@@ -42,6 +42,18 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [Tooltip("Optional Image to tint by the item's tier (usually the card frame).")]
     public Image tierFrame;
 
+    [Header("Selected Glow (optional)")]
+    [Tooltip("Optional Image that pulses while this card is the currently selected item. A soft glow / halo sprite works best.")]
+    public Image selectedGlow;
+    [Tooltip("How fast the selected glow breathes (Hz).")]
+    public float selectedGlowSpeed = 1.4f;
+    [Range(0f, 1f)] public float selectedGlowMinAlpha = 0.35f;
+    [Range(0f, 1f)] public float selectedGlowMaxAlpha = 0.90f;
+
+    [Header("Hover Sparkle (optional)")]
+    [Tooltip("Optional ParticleSystem played on pointer enter and stopped on pointer exit. Small sparkles around the icon feel great.")]
+    public ParticleSystem hoverSparkleVFX;
+
     [Header("Desaturation for Locked")]
     [Tooltip("If true, dim iconImage + nameText + tierFrame while the item is Locked. Owned/Equipped tiles show their full colour.")]
     public bool desaturateWhenLocked = true;
@@ -156,6 +168,8 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 restScale = Vector3.one;
     private bool hovering;
     private bool restCached;
+    private bool isSelected;
+    private float selectedGlowTime;
 
     private void CacheRestScale()
     {
@@ -173,6 +187,27 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         Vector3 targetScl = hovering ? restScale * hoverScale : restScale;
         float k = Mathf.Clamp01(Time.unscaledDeltaTime * hoverAnimSpeed);
         transform.localScale = Vector3.Lerp(transform.localScale, targetScl, k);
+
+        // Breathing pulse on the selected glow — sine wave between min and
+        // max alpha. Only runs while selected so unselected cards stay dark.
+        if (isSelected && selectedGlow != null)
+        {
+            selectedGlowTime += Time.unscaledDeltaTime;
+            float w = 0.5f + 0.5f * Mathf.Sin(selectedGlowTime * selectedGlowSpeed * Mathf.PI * 2f);
+            Color c = selectedGlow.color;
+            c.a = Mathf.Lerp(selectedGlowMinAlpha, selectedGlowMaxAlpha, w);
+            selectedGlow.color = c;
+        }
+    }
+
+    public void SetSelected(bool selected)
+    {
+        isSelected = selected;
+        if (selectedGlow != null)
+        {
+            selectedGlow.gameObject.SetActive(selected);
+            selectedGlowTime = 0f;
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -182,12 +217,19 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         // doesn't grow-highlight a card that won't respond to a click.
         if (buttonComponent != null && !buttonComponent.interactable) return;
         hovering = true;
+        if (hoverSparkleVFX != null)
+        {
+            hoverSparkleVFX.gameObject.SetActive(true);
+            if (!hoverSparkleVFX.isPlaying) hoverSparkleVFX.Play();
+        }
         OnHoverEnter?.Invoke(this);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         hovering = false;
+        if (hoverSparkleVFX != null && hoverSparkleVFX.isPlaying)
+            hoverSparkleVFX.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         OnHoverExit?.Invoke(this);
     }
 }
