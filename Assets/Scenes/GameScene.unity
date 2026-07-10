@@ -22154,6 +22154,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d51c432557a87cd4b8967a0f4daccf4f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
+  maxEnemiesOnMap: 35
   enemyPool:
   - enemyPrefab: {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
     spawnAtMinute: 0
