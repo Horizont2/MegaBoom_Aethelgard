@@ -89,6 +89,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5267676387686947276}
   - component: {fileID: 3610519967113895153}
+  - component: {fileID: -9018337065073181440}
   m_Layer: 0
   m_Name: Camp_POI
   m_TagString: Untagged
@@ -136,6 +137,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 4.191088, y: 1.1703203, z: 3.9387112}
   m_Center: {x: 0.15092468, y: 0.60613537, z: 0.8723564}
+--- !u!114 &-9018337065073181440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4196578333971713651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::POISettings
+  flattenRadius: 30
+  yOffset: -0.5
+  maxAllowedSlope: 6
 --- !u!1 &9212952561292515356
 GameObject:
   m_ObjectHideFlags: 0
