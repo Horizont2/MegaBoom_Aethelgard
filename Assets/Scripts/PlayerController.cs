@@ -276,7 +276,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         // ФІКС: Прибрано !isCampMode, щоб звук відтворювався всюди
         if (AudioManager.Instance != null && !isDead)
         {
-            AudioManager.Instance.PlaySFX(AudioID.Player_Footstep);
+            // Використовуємо 3D версію і передаємо позицію ніг гравця
+            AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
             lastAnimFootstepTime = Time.unscaledTime;
         }
     }
@@ -309,7 +310,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             footstepDistanceAccum = 0f;
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX(AudioID.Player_Footstep);
+                AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
         }
     }
 
