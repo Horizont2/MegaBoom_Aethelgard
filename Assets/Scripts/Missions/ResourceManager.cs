@@ -220,6 +220,33 @@ public class ResourceManager : MonoBehaviour
         return (stashWood >= costWood && stashStone >= costStone && stashFood >= costFood);
     }
 
+    // Mercenary system's currency helpers. Diamonds are the "gold" pool for
+    // hiring/upgrading mercs and paying campaign rewards — kept in the
+    // existing diamonds field so we don't add a second stashed currency.
+    public bool CanAffordDiamonds(int cost)
+    {
+        return diamonds >= cost;
+    }
+
+    public void SpendDiamonds(int cost)
+    {
+        if (cost <= 0) return;
+        diamonds -= cost;
+        if (diamonds < 0) diamonds = 0;
+        ShowResourceToast(-cost, "Diamonds", new Color(0.7f, 0.85f, 1f));
+        SaveStash();
+        UpdateUI();
+    }
+
+    public void AddDiamonds(int amount)
+    {
+        if (amount <= 0) return;
+        diamonds += amount;
+        ShowResourceToast(amount, "Diamonds", new Color(0.7f, 0.85f, 1f));
+        SaveStash();
+        UpdateUI();
+    }
+
     public void SpendStashResources(int costWood, int costStone, int costFood)
     {
         stashWood -= costWood;

@@ -94,6 +94,12 @@ public class MapPanelUI : MonoBehaviour
     public Image fullScreenCloudOverlay;
     public MapInteractiveViewer mapViewer;
 
+    [Header("Mercenary Auto-Battle")]
+    // Assigned in the inspector — regions without a totem prefab route to
+    // this panel instead of loading a game scene. When null, the old
+    // travel behaviour is used regardless (safe fallback).
+    public PreBattlePanel preBattlePanel;
+
     private CanvasGroup canvasGroup;
     private RegionData currentRegion;
     private Coroutine animationCoroutine;
@@ -408,6 +414,33 @@ public class MapPanelUI : MonoBehaviour
         if (currentRegion.currentState == RegionState.Available || currentRegion.currentState == RegionState.Conquered)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+            // Regions without a totem prefab don't have a hand-built location
+            // for the player to conquer — the mercenary auto-battle system
+            // takes over. Route the click into PreBattlePanel and skip the
+            // scene load entirely. Conquered regions still travel normally
+            // (player can visit even after auto-conquest, e.g. for lore).
+            bool isAutoBattleRegion =
+                currentRegion.regionTotemPrefab == null &&
+                currentRegion.currentState == RegionState.Available;
+
+            if (isAutoBattleRegion && preBattlePanel != null)
+            {
+                // Guard against launching another campaign while one is
+                // already in flight for this region — the manager only
+                // supports one at a time.
+                if (MercenaryCampaignManager.Instance != null &&
+                    MercenaryCampaignManager.Instance.FindByRegion(currentRegion.regionID) != null)
+                {
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
+                    return;
+                }
+
+                var region = currentRegion;
+                ClosePanel();
+                preBattlePanel.Open(region);
+                return;
+            }
 
             // --- ФІКС: Зберігаємо регіон у СТАТИЧНУ змінну, яка переживе зміну сцени! ---
             MissionInitializer.PendingMissionRegion = currentRegion;

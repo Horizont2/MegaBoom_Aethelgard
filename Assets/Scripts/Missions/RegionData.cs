@@ -41,6 +41,12 @@ public class RegionData : ScriptableObject
     public float enemyHpMultiplier = 1f;
     public float enemyDamageMultiplier = 1f;
 
+    [Header("Mercenary Auto-Battle (regions without a totem)")]
+    [Tooltip("Гарнізонна сила регіону — база для розрахунку авто-битви найманців. Використовується тільки коли regionTotemPrefab == null (немає локації для гравця).")]
+    public int enemyStrength = 200;
+    [Tooltip("Скільки діамантів гравець отримає за перемогу авто-битви найманців.")]
+    public int autoBattleDiamondReward = 15;
+
     // --- ����� ����: ������� ��Ѳ� �� ����Ҳ� ---
     [Header("Region Objective (Totem & Bosses)")]
     [Tooltip("������ ������/�������, ���� ������� �� ������ �� �������")]
