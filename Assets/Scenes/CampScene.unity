@@ -193805,8 +193805,8 @@ PrefabInstance:
       objectReference: {fileID: 1146592655}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: description
-      value: Elias's quarters and cartography workshop. Upgrading it provides him
-        with better tools to chart dangerous territories.
+      value: A barracks trains and dispatches mercenary companies to distant
+        regions. Upgrade to unlock stronger unit tiers and battle tactics.
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: buildDustVFX
@@ -193846,35 +193846,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].costFood
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
-      propertyPath: levels.Array.data[1].costWood
-      value: 50
-      objectReference: {fileID: 0}
-    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
-      propertyPath: levels.Array.data[2].costFood
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: levels.Array.data[1].costWood
+      value: 60
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: levels.Array.data[2].costFood
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].costWood
-      value: 150
+      value: 120
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].costFood
-      value: 50
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].costWood
-      value: 300
+      value: 220
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].costFood
-      value: 100
+      value: 160
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].costWood
-      value: 600
+      value: 380
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[0].buildTime
@@ -193886,75 +193886,75 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].buildTime
-      value: 10
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].costStone
-      value: 0
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].buildTime
-      value: 60
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].costStone
-      value: 50
+      value: 70
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].buildTime
-      value: 180
+      value: 240
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].costStone
-      value: 150
+      value: 140
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].buildTime
-      value: 300
+      value: 480
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].costStone
-      value: 300
+      value: 250
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[0].productionValue
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].productionValue
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].productionValue
-      value: 0
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].productionValue
-      value: 0
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].productionValue
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[0].productionDescription
-      value: Basic Quarters
+      value: Basic Levy — Militia only
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].productionDescription
-      value: Unlocks Map Table (8 Regions)
+      value: Unlocks Ranger recruits
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[2].productionDescription
-      value: Unlocks next  8 regions (16 Regions)
+      value: Unlocks Knight recruits
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[3].productionDescription
-      value: Unlocks Winter Map (24 Regions)
+      value: +Army cap, Ambush & Siege tactics
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[4].productionDescription
-      value: Full Aethelgard Map Restored
+      value: Max army cap, +30% march speed
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:

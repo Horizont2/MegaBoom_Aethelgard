@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using UnityEngine;
 
 // The camp's barracks. Sits on the same GameObject as (or beside) a regular
@@ -10,6 +9,12 @@ using UnityEngine;
 //      of the generic build/upgrade sheet.
 //   3. Spawns wandering unit visuals near the barracks when idle mercs live
 //      in the roster.
+// Runs before CampBuilding so we can promote a first-time-play "level 0"
+// to level 1 in PlayerPrefs BEFORE CampBuilding.Start() reads that key.
+// Without the earlier execution the barracks flashes as "unbuilt" for the
+// first frame — its realModel gets deactivated by SetupVisualsForCurrentLevel
+// and the coroutine that used to run next-frame was too late.
+[DefaultExecutionOrder(-100)]
 [RequireComponent(typeof(CampBuilding))]
 public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
 {
@@ -37,16 +42,38 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
     private void Awake()
     {
         host = GetComponent<CampBuilding>();
+
+        // Force the save flag to level 1 BEFORE CampBuilding.Start() runs.
+        // CampBuilding.Start does `currentLevel = PP.GetInt("SaveBld_<id>",0)`
+        // so if we don't seed the pref here the first frame reads 0 and
+        // SetupVisualsForCurrentLevel hides realModel — the barracks
+        // pops out of existence until the next-frame promotion catches up.
+        if (autoBuildFirstLevel && host != null && !string.IsNullOrEmpty(host.buildingID))
+        {
+            string key = "SaveBld_" + host.buildingID;
+            if (PlayerPrefs.GetInt(key, 0) < 1)
+            {
+                PlayerPrefs.SetInt(key, 1);
+                PlayerPrefs.Save();
+            }
+        }
     }
 
     private void Start()
     {
-        if (autoBuildFirstLevel)
+        // Safety net: if for some reason the pref-seed above missed (e.g. no
+        // buildingID set), still promote the runtime field so the barracks
+        // never sits at level 0.
+        if (autoBuildFirstLevel && host != null && host.currentLevel < 1)
         {
-            // If the CampBuilding decided level 0 (unbuilt), instantly promote to 1
-            // so the barracks is available from the first frame.  We do this
-            // in a late frame so CampBuilding.Start finishes its own setup.
-            StartCoroutine(ForceLevel1NextFrame());
+            host.currentLevel = 1;
+            if (!string.IsNullOrEmpty(host.buildingID))
+            {
+                PlayerPrefs.SetInt("SaveBld_" + host.buildingID, 1);
+                PlayerPrefs.Save();
+            }
+            if (host.ghostModel != null) host.ghostModel.SetActive(false);
+            if (host.realModel != null) host.realModel.SetActive(true);
         }
 
         MercenaryRoster.OnRosterChanged += RefreshVisualUnits;
@@ -56,22 +83,6 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
     private void OnDestroy()
     {
         MercenaryRoster.OnRosterChanged -= RefreshVisualUnits;
-    }
-
-    private IEnumerator ForceLevel1NextFrame()
-    {
-        yield return null;
-        if (host != null && host.currentLevel < 1)
-        {
-            host.currentLevel = 1;
-            PlayerPrefs.SetInt("SaveBld_" + host.buildingID, 1);
-            PlayerPrefs.Save();
-
-            // Nudge the visuals — swap ghost → real without playing the full
-            // dust/hammer sequence. We just want it visible at level 1.
-            if (host.ghostModel != null) host.ghostModel.SetActive(false);
-            if (host.realModel != null) host.realModel.SetActive(true);
-        }
     }
 
     private void RefreshVisualUnits()
