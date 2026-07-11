@@ -14,20 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MercenaryUnitData
   unitID: knight
   displayName: Knight
-  flavourText: 'Anointed champions of Aethelgard, sworn to steel and fire. A single
-    Knight in the line can hold a breach the Militia would break against.'
+  flavourText: Anointed champions of Aethelgard, sworn to steel and fire. A single
+    Knight in the line can hold a breach the Militia would break against.
   icon: {fileID: 0}
   portrait: {fileID: 0}
   mapFigurineSprite: {fileID: 0}
-  campPrefab: {fileID: 0}
+  campPrefab: {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
   baseHireCost: 180
   baseAttack: 55
   attackPerLevel: 18
   baseHP: 90
   hpPerLevel: 35
-  upgradePricePerLevel:
-  - 280
-  - 620
-  - 1350
-  - 3000
+  upgradePricePerLevel: 180100006c02000046050000b80b0000
   minBarracksLevel: 3

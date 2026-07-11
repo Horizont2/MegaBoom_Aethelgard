@@ -14,20 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MercenaryUnitData
   unitID: ranger
   displayName: Ranger
-  flavourText: 'Silent scouts from the borderland forests. Devastating against unarmoured
-    conscripts and the pace-setters of any ambush.'
+  flavourText: Silent scouts from the borderland forests. Devastating against unarmoured
+    conscripts and the pace-setters of any ambush.
   icon: {fileID: 0}
   portrait: {fileID: 0}
   mapFigurineSprite: {fileID: 0}
-  campPrefab: {fileID: 0}
+  campPrefab: {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
   baseHireCost: 65
   baseAttack: 30
   attackPerLevel: 10
   baseHP: 45
   hpPerLevel: 18
-  upgradePricePerLevel:
-  - 120
-  - 260
-  - 550
-  - 1200
+  upgradePricePerLevel: 780000000401000026020000b0040000
   minBarracksLevel: 2

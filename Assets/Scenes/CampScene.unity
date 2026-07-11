@@ -193805,8 +193805,8 @@ PrefabInstance:
       objectReference: {fileID: 1146592655}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: description
-      value: A barracks trains and dispatches mercenary companies to distant
-        regions. Upgrade to unlock stronger unit tiers and battle tactics.
+      value: A barracks trains and dispatches mercenary companies to distant regions.
+        Upgrade to unlock stronger unit tiers and battle tactics.
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: buildDustVFX
@@ -193938,7 +193938,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[0].productionDescription
-      value: Basic Levy — Militia only
+      value: "Basic Levy \u2014 Militia only"
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.data[1].productionDescription
@@ -194011,7 +194011,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2090199056}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 57893ae8492a3c54f8bc40d328de0fe7, type: 3}
+  m_Script: {fileID: 11500000, guid: 8bc1da925ed980db90ccc986e11c0336, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BarracksBuilding
   autoBuildFirstLevel: 1

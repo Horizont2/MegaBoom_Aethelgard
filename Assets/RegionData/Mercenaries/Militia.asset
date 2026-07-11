@@ -14,20 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MercenaryUnitData
   unitID: militia
   displayName: Militia
-  flavourText: 'Farmers with pitchforks and stubborn courage. Cheap to hire, quick
-    to fall, but a full line of them turns a hopeless assault into an even one.'
+  flavourText: Farmers with pitchforks and stubborn courage. Cheap to hire, quick
+    to fall, but a full line of them turns a hopeless assault into an even one.
   icon: {fileID: 0}
   portrait: {fileID: 0}
   mapFigurineSprite: {fileID: 0}
-  campPrefab: {fileID: 0}
+  campPrefab: {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
   baseHireCost: 25
   baseAttack: 15
   attackPerLevel: 5
   baseHP: 40
   hpPerLevel: 15
-  upgradePricePerLevel:
-  - 50
-  - 120
-  - 250
-  - 500
+  upgradePricePerLevel: 3200000078000000fa000000f4010000
   minBarracksLevel: 1
