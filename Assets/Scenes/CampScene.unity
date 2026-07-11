@@ -66291,6 +66291,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+--- !u!114 &652040564 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7431955487094031795, guid: 5638217443cea004d836cddf838b78d6, type: 3}
+  m_PrefabInstance: {fileID: 485708414}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7dc547370d9418cfa7b1260478d0c770, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BarracksUpgradePanel
 --- !u!1001 &652998107
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -194078,6 +194089,26 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 21300000, guid: f81e6f22ca0783342b27152f170f922c, type: 3}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: lvlTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: descTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: infoTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: aaaPanel
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: titleTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: realModel
       value: 
       objectReference: {fileID: 1121734793}
@@ -194094,21 +194125,45 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1146592655}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: costFoodTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: costWoodTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: description
       value: A barracks trains and dispatches mercenary companies to distant regions.
         Upgrade to unlock stronger unit tiers and battle tactics.
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: progressTMP
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: buildDustVFX
       value: 
       objectReference: {fileID: 1022145563}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: buildHintTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: buildingName
       value: Barracks
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: costStoneTMP
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: currentLevel
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: holdFillImage
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: isStorageVault
@@ -194118,6 +194173,10 @@ PrefabInstance:
       propertyPath: upgradeGlimmer
       value: 
       objectReference: {fileID: 1365771626}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: buildingIconImage
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.size
       value: 5
@@ -194309,7 +194368,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BarracksBuilding
   autoBuildFirstLevel: 1
-  barracksPanel: {fileID: 0}
+  barracksPanel: {fileID: 652040564}
   wanderPoints:
   - {fileID: 1157054496}
   - {fileID: 1081718303}
