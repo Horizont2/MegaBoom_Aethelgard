@@ -42,6 +42,20 @@ public class BarracksUpgradePanel : MonoBehaviour
     public GameObject tabHireUnderline;
     public GameObject tabUpgradeUnitsUnderline;
     public GameObject tabUpgradeBarracksUnderline;
+    // Optional — the darker background rectangle behind the active tab.
+    // Wire these if your Figma prefab uses a separate rect for the "active"
+    // state instead of a shared underline component.
+    public GameObject tabHireActiveBg;
+    public GameObject tabUpgradeUnitsActiveBg;
+    public GameObject tabUpgradeBarracksActiveBg;
+    // Tab-label TMPs so we can swap them between the cream (active) and
+    // muted grey (inactive) colours on tab change. Leave null if your Figma
+    // prefab uses a single colour for all tabs.
+    public TextMeshProUGUI tabHireLabel;
+    public TextMeshProUGUI tabUpgradeUnitsLabel;
+    public TextMeshProUGUI tabUpgradeBarracksLabel;
+    public Color tabActiveTextColor   = new Color(0.94f, 0.89f, 0.80f, 1f); // warm cream #F0E4CB
+    public Color tabInactiveTextColor = new Color(0.54f, 0.52f, 0.47f, 1f); // muted grey #8A8478
 
     [Header("Hire Tab")]
     public Transform hireRowParent;
@@ -144,6 +158,30 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (tabHireUnderline != null) tabHireUnderline.SetActive(idx == 0);
         if (tabUpgradeUnitsUnderline != null) tabUpgradeUnitsUnderline.SetActive(idx == 1);
         if (tabUpgradeBarracksUnderline != null) tabUpgradeBarracksUnderline.SetActive(idx == 2);
+
+        if (tabHireActiveBg != null) tabHireActiveBg.SetActive(idx == 0);
+        if (tabUpgradeUnitsActiveBg != null) tabUpgradeUnitsActiveBg.SetActive(idx == 1);
+        if (tabUpgradeBarracksActiveBg != null) tabUpgradeBarracksActiveBg.SetActive(idx == 2);
+
+        if (tabHireLabel != null)             tabHireLabel.color             = idx == 0 ? tabActiveTextColor : tabInactiveTextColor;
+        if (tabUpgradeUnitsLabel != null)     tabUpgradeUnitsLabel.color     = idx == 1 ? tabActiveTextColor : tabInactiveTextColor;
+        if (tabUpgradeBarracksLabel != null)  tabUpgradeBarracksLabel.color  = idx == 2 ? tabActiveTextColor : tabInactiveTextColor;
+    }
+
+    // Poll diamond total so the panel refreshes when the player spends
+    // gold via another window (or via hiring in this same panel — Hire()
+    // triggers OnRosterChanged which also calls Refresh, but the cost
+    // colours on OTHER rows need to update too).
+    private int lastKnownDiamonds = -1;
+    private void Update()
+    {
+        if (rootObject != null && !rootObject.activeSelf) return;
+        if (ResourceManager.Instance == null) return;
+        if (ResourceManager.Instance.diamonds != lastKnownDiamonds)
+        {
+            lastKnownDiamonds = ResourceManager.Instance.diamonds;
+            Refresh();
+        }
     }
 
     private void Refresh()
@@ -291,9 +329,9 @@ public class BarracksUpgradePanel : MonoBehaviour
             return perksTextPerLevel[level];
         }
         // Fallback: use the CampBuilding-level's own productionDescription
-        // formatted as a bullet list.
+        // formatted with the Figma design's brass diamond bullet.
         if (next != null && !string.IsNullOrEmpty(next.productionDescription))
-            return "• " + next.productionDescription;
+            return "◆ " + next.productionDescription;
         return string.Empty;
     }
 
