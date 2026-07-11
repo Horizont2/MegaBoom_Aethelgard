@@ -4,19 +4,16 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Screen shown when the player interacts with the barracks (F key).
-// Deliberately modular: every visual widget is a SerializeField reference,
-// so the designer can rebuild the panel prefab from scratch and just re-wire
-// the fields — no code changes needed.
+// Every widget is a SerializeField reference so the Figma-designed prefab
+// can be dropped in and the fields wired by dragging — no code edits.
 //
-// Layout expectation (mine is a placeholder — feel free to replace):
-//   Root panel (CanvasGroup)
-//     - Header: title text + close button
-//     - Diamonds label
-//     - Tab bar: Hire / Upgrade Units / Upgrade Barracks
-//     - One content container per tab, toggled by tab clicks
-//     - Hire container   : row per unit type (row prefab: hireRowPrefab)
-//     - Upgrade container: row per unit type (row prefab: upgradeRowPrefab)
-//     - Barracks container: current level, next-level cost, upgrade button
+// Layout expectation (matches the Figma mockups):
+//   HEADER      — title text + level-pip row (5 helm images) + diamond chip
+//   TAB STRIP   — Hire / Upgrade Units / Upgrade Barracks (3 buttons + underlines)
+//   HIRE CONTENT — hireRowParent hosts one hireRowPrefab per unit type
+//   UPGRADE UNITS CONTENT — upgradeRowParent hosts upgradeRowPrefab per unit
+//   UPGRADE BARRACKS CONTENT — single centred layout with diorama, level
+//     breakdown, next-level card, resource chip trio, upgrade CTA + build time
 public class BarracksUpgradePanel : MonoBehaviour
 {
     [Header("Root")]
@@ -27,6 +24,12 @@ public class BarracksUpgradePanel : MonoBehaviour
     [Header("Header")]
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI diamondsText;
+    // Optional — 5 Image slots for the helm level pips at the top right.
+    // Each pip gets swapped between the filled and empty sprite based on
+    // hostBuilding.currentLevel. Leave empty if the panel doesn't use pips.
+    public Image[] barracksLevelPips;
+    public Sprite pipHelmFilledSprite;
+    public Sprite pipHelmEmptySprite;
 
     [Header("Tabs")]
     public Button tabHireButton;
@@ -35,23 +38,54 @@ public class BarracksUpgradePanel : MonoBehaviour
     public GameObject hireContainer;
     public GameObject upgradeUnitsContainer;
     public GameObject upgradeBarracksContainer;
+    // Optional — thin brass underline images swapped visible/hidden per tab.
+    public GameObject tabHireUnderline;
+    public GameObject tabUpgradeUnitsUnderline;
+    public GameObject tabUpgradeBarracksUnderline;
 
     [Header("Hire Tab")]
     public Transform hireRowParent;
-    public GameObject hireRowPrefab; // prefab must expose fields via BarracksHireRow
+    public GameObject hireRowPrefab; // exposes BarracksHireRow fields
     public MercenaryRoster roster;   // fallback if singleton not ready
 
     [Header("Upgrade Units Tab")]
     public Transform upgradeRowParent;
-    public GameObject upgradeRowPrefab; // prefab must expose fields via BarracksUpgradeUnitRow
+    public GameObject upgradeRowPrefab; // exposes BarracksUpgradeUnitRow fields
+    // Shared pip sprites for the per-unit level rows — the row prefab reads
+    // these from the panel so we don't have to reassign them per row instance.
+    public Sprite unitPipFilledSprite;
+    public Sprite unitPipEmptySprite;
 
     [Header("Upgrade Barracks Tab")]
-    public TextMeshProUGUI barracksLevelText;
-    public TextMeshProUGUI barracksNextCostText;
+    public CampBuilding hostBuilding;  // the CampBuilding driving level state
+    // Left column
+    public Image barracksDioramaImage;
+    public TextMeshProUGUI barracksCurrentLevelText;   // "LEVEL 3 / 5"
+    public TextMeshProUGUI barracksSummaryText;        // "MAX SIZE 5 UNITS · KNIGHT TIER UNLOCKED"
+    // Right column — next level card
+    public TextMeshProUGUI barracksNextLevelText;      // "LEVEL 4"
+    public TextMeshProUGUI barracksPerksText;          // multi-line perks
+    // Right column — cost chip trio
+    public TextMeshProUGUI barracksCostWoodText;
+    public TextMeshProUGUI barracksCostStoneText;
+    public TextMeshProUGUI barracksCostFoodText;
+    // Right column — CTA
     public Button barracksUpgradeButton;
-    public CampBuilding hostBuilding;  // the CampBuilding component driving the level
+    public TextMeshProUGUI barracksUpgradeButtonText;  // "UPGRADE"
+    public TextMeshProUGUI barracksBuildTimeText;      // "4:00"
+    // Colour used for cost numbers when the player can't afford them.
+    public Color costUnaffordableColor = new Color(0.70f, 0.37f, 0.32f, 1f); // muted rust #B25E52
+    public Color costAffordableColor   = new Color(0.94f, 0.89f, 0.80f, 1f); // warm cream
 
-    // Runtime bookkeeping so we don't rebuild the row lists every frame.
+    [Header("Optional Per-Level Overrides (Barracks Upgrade Tab)")]
+    // Designer can override the auto-derived perks text per level here.
+    // Element 0 = perks displayed when currentLevel = 0 (going to Lv 1),
+    // Element 4 = when at Lv 5 (max level → panel hides the CTA).
+    [TextArea(2, 4)] public string[] perksTextPerLevel = new string[5];
+    // Same idea for the max-cap summary line under the current-level text.
+    [TextArea(1, 2)] public string[] summaryTextPerLevel = new string[6];
+
+    // Runtime bookkeeping so we don't rebuild row lists every frame.
     private readonly List<GameObject> spawnedHireRows = new List<GameObject>();
     private readonly List<GameObject> spawnedUpgradeRows = new List<GameObject>();
 
@@ -106,6 +140,10 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (hireContainer != null) hireContainer.SetActive(idx == 0);
         if (upgradeUnitsContainer != null) upgradeUnitsContainer.SetActive(idx == 1);
         if (upgradeBarracksContainer != null) upgradeBarracksContainer.SetActive(idx == 2);
+
+        if (tabHireUnderline != null) tabHireUnderline.SetActive(idx == 0);
+        if (tabUpgradeUnitsUnderline != null) tabUpgradeUnitsUnderline.SetActive(idx == 1);
+        if (tabUpgradeBarracksUnderline != null) tabUpgradeBarracksUnderline.SetActive(idx == 2);
     }
 
     private void Refresh()
@@ -116,9 +154,22 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (diamondsText != null && ResourceManager.Instance != null)
             diamondsText.text = ResourceManager.Instance.diamonds.ToString();
 
+        RefreshHeaderPips();
         RefreshHireTab(r);
         RefreshUpgradeTab(r);
         RefreshBarracksTab();
+    }
+
+    private void RefreshHeaderPips()
+    {
+        if (barracksLevelPips == null || barracksLevelPips.Length == 0) return;
+        int lvl = hostBuilding != null ? hostBuilding.currentLevel : 0;
+        for (int i = 0; i < barracksLevelPips.Length; i++)
+        {
+            var img = barracksLevelPips[i];
+            if (img == null) continue;
+            img.sprite = (i < lvl) ? pipHelmFilledSprite : pipHelmEmptySprite;
+        }
     }
 
     // --------- Hire ---------
@@ -129,7 +180,6 @@ public class BarracksUpgradePanel : MonoBehaviour
 
         int hostLevel = hostBuilding != null ? hostBuilding.currentLevel : 1;
 
-        // Ensure one row per catalogue entry.
         EnsureRowCount(spawnedHireRows, hireRowParent, hireRowPrefab, r.catalogue.Count);
 
         for (int i = 0; i < r.catalogue.Count; i++)
@@ -160,7 +210,7 @@ public class BarracksUpgradePanel : MonoBehaviour
 
             var row = go.GetComponent<BarracksUpgradeUnitRow>();
             if (row == null) row = go.AddComponent<BarracksUpgradeUnitRow>();
-            row.Bind(data, r);
+            row.Bind(data, r, this);
         }
     }
 
@@ -170,23 +220,96 @@ public class BarracksUpgradePanel : MonoBehaviour
     {
         if (hostBuilding == null) return;
         int level = hostBuilding.currentLevel;
-        if (barracksLevelText != null) barracksLevelText.text = $"Level {level}";
+        int maxLevel = hostBuilding.levels != null ? hostBuilding.levels.Length : 0;
 
-        if (hostBuilding.levels != null && level < hostBuilding.levels.Length)
+        if (barracksCurrentLevelText != null) barracksCurrentLevelText.text = $"LEVEL {level} / {maxLevel}";
+        if (barracksSummaryText != null)
         {
-            var next = hostBuilding.levels[level];
-            if (barracksNextCostText != null)
-                barracksNextCostText.text = $"W:{next.costWood}  S:{next.costStone}  F:{next.costFood}";
-            if (barracksUpgradeButton != null)
-                barracksUpgradeButton.interactable =
-                    ResourceManager.Instance != null &&
-                    ResourceManager.Instance.CanAffordStash(next.costWood, next.costStone, next.costFood);
+            barracksSummaryText.text = ResolveSummaryText(level);
         }
-        else
+
+        bool atMax = level >= maxLevel;
+
+        if (atMax)
         {
-            if (barracksNextCostText != null) barracksNextCostText.text = "MAX LEVEL";
+            if (barracksNextLevelText != null) barracksNextLevelText.text = "MAX LEVEL";
+            if (barracksPerksText != null) barracksPerksText.text = "All barracks perks unlocked.";
+            SetCostText(barracksCostWoodText, 0, true);
+            SetCostText(barracksCostStoneText, 0, true);
+            SetCostText(barracksCostFoodText, 0, true);
             if (barracksUpgradeButton != null) barracksUpgradeButton.interactable = false;
+            if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = "MAX";
+            if (barracksBuildTimeText != null) barracksBuildTimeText.text = "—";
+            return;
         }
+
+        var next = hostBuilding.levels[level];
+        if (barracksNextLevelText != null) barracksNextLevelText.text = $"LEVEL {level + 1}";
+        if (barracksPerksText != null)
+        {
+            barracksPerksText.text = ResolvePerksText(level, next);
+        }
+
+        bool canAfford = ResourceManager.Instance != null &&
+                         ResourceManager.Instance.CanAffordStash(next.costWood, next.costStone, next.costFood);
+
+        SetCostText(barracksCostWoodText, next.costWood,
+            ResourceManager.Instance != null && ResourceManager.Instance.stashWood >= next.costWood);
+        SetCostText(barracksCostStoneText, next.costStone,
+            ResourceManager.Instance != null && ResourceManager.Instance.stashStone >= next.costStone);
+        SetCostText(barracksCostFoodText, next.costFood,
+            ResourceManager.Instance != null && ResourceManager.Instance.stashFood >= next.costFood);
+
+        if (barracksUpgradeButton != null) barracksUpgradeButton.interactable = canAfford;
+        if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = "UPGRADE";
+        if (barracksBuildTimeText != null) barracksBuildTimeText.text = FormatBuildTime(next.buildTime);
+    }
+
+    private string ResolveSummaryText(int level)
+    {
+        if (summaryTextPerLevel != null && level >= 0 && level < summaryTextPerLevel.Length &&
+            !string.IsNullOrEmpty(summaryTextPerLevel[level]))
+        {
+            return summaryTextPerLevel[level];
+        }
+        // Fallback: build a summary from the CampBuilding's current-level description.
+        if (hostBuilding != null && hostBuilding.levels != null &&
+            level > 0 && level - 1 < hostBuilding.levels.Length)
+        {
+            var lv = hostBuilding.levels[level - 1];
+            if (lv != null && !string.IsNullOrEmpty(lv.productionDescription))
+                return lv.productionDescription.ToUpper();
+        }
+        return string.Empty;
+    }
+
+    private string ResolvePerksText(int level, BuildingLevel next)
+    {
+        if (perksTextPerLevel != null && level >= 0 && level < perksTextPerLevel.Length &&
+            !string.IsNullOrEmpty(perksTextPerLevel[level]))
+        {
+            return perksTextPerLevel[level];
+        }
+        // Fallback: use the CampBuilding-level's own productionDescription
+        // formatted as a bullet list.
+        if (next != null && !string.IsNullOrEmpty(next.productionDescription))
+            return "• " + next.productionDescription;
+        return string.Empty;
+    }
+
+    private void SetCostText(TextMeshProUGUI target, int value, bool affordable)
+    {
+        if (target == null) return;
+        target.text = value.ToString();
+        target.color = affordable ? costAffordableColor : costUnaffordableColor;
+    }
+
+    private string FormatBuildTime(float sec)
+    {
+        int total = Mathf.RoundToInt(sec);
+        int m = total / 60;
+        int s = total % 60;
+        return m > 0 ? $"{m}:{s:D2}" : $"0:{s:D2}";
     }
 
     private void OnUpgradeBarracks()
@@ -225,14 +348,21 @@ public class BarracksUpgradePanel : MonoBehaviour
             if (last != null) Destroy(last);
         }
     }
+
+    // Row prefabs call these to fetch the shared pip sprites off the panel
+    // instead of duplicating references on every row.
+    public Sprite GetUnitPipFilledSprite() => unitPipFilledSprite;
+    public Sprite GetUnitPipEmptySprite() => unitPipEmptySprite;
 }
 
-// Row component — placeholder for the "Hire" list. Prefab wires the widgets
-// via SerializeField; when Bind() is called, we fill and re-wire the button.
+// Row displayed once per unit archetype in the HIRE tab. Prefab wires the
+// widgets via SerializeField; Bind() fills the values and hooks the button.
 public class BarracksHireRow : MonoBehaviour
 {
     public Image iconImage;
     public TextMeshProUGUI nameText;
+    // NEW: one-line flavour under the name, filled from MercenaryUnitData.flavourText.
+    public TextMeshProUGUI descriptionText;
     public TextMeshProUGUI ownedText;
     public TextMeshProUGUI costText;
     public Button hireButton;
@@ -247,10 +377,11 @@ public class BarracksHireRow : MonoBehaviour
 
         if (iconImage != null && data.icon != null) iconImage.sprite = data.icon;
         if (nameText != null) nameText.text = data.displayName;
-        if (ownedText != null) ownedText.text = $"Owned: {roster.CountAlive(data.unitID)}";
+        if (descriptionText != null) descriptionText.text = data.flavourText;
+        if (ownedText != null) ownedText.text = $"OWNED: {roster.CountAlive(data.unitID)}";
 
         int cost = data.baseHireCost;
-        if (costText != null) costText.text = $"◆ {cost}";
+        if (costText != null) costText.text = cost.ToString();
 
         bool unlocked = barracksLevel >= data.minBarracksLevel;
         bool canAfford = ResourceManager.Instance != null && ResourceManager.Instance.CanAffordDiamonds(cost);
@@ -276,34 +407,66 @@ public class BarracksHireRow : MonoBehaviour
     }
 }
 
-// Row component — placeholder for the "Upgrade Units" list.
+// Row displayed once per unit archetype in the UPGRADE UNITS tab.
 public class BarracksUpgradeUnitRow : MonoBehaviour
 {
     public Image iconImage;
     public TextMeshProUGUI nameText;
-    public TextMeshProUGUI levelText;
+    // NEW: flavour text like the hire row.
+    public TextMeshProUGUI descriptionText;
+    // NEW: 5 pip Images (diamond glyphs) get sprite-swapped based on the
+    // unit's current level. Element 0 = leftmost pip.
+    public Image[] levelPips;
+    // NEW: 4 stat preview slots — "ATK 25 → 33" is split into
+    // (atkCurrentText, atkNextText). Same for HP.
+    public TextMeshProUGUI atkCurrentText;
+    public TextMeshProUGUI atkNextText;
+    public TextMeshProUGUI hpCurrentText;
+    public TextMeshProUGUI hpNextText;
     public TextMeshProUGUI costText;
     public Button upgradeButton;
+    public TextMeshProUGUI upgradeButtonText;
 
     private MercenaryUnitData boundData;
     private MercenaryRoster boundRoster;
+    private BarracksUpgradePanel boundPanel;
 
-    public void Bind(MercenaryUnitData data, MercenaryRoster roster)
+    public void Bind(MercenaryUnitData data, MercenaryRoster roster, BarracksUpgradePanel panel)
     {
         boundData = data;
         boundRoster = roster;
+        boundPanel = panel;
 
         int lvl = roster.GetUpgradeLevel(data.unitID);
+        int maxLvl = data.MaxLevel;
+
         if (iconImage != null && data.icon != null) iconImage.sprite = data.icon;
         if (nameText != null) nameText.text = data.displayName;
-        if (levelText != null) levelText.text = $"Lv {lvl}/{data.MaxLevel}";
+        if (descriptionText != null) descriptionText.text = data.flavourText;
 
-        bool isMax = lvl >= data.MaxLevel;
+        // Pip sprites come from the panel so all rows stay in sync.
+        RefreshPips(lvl, maxLvl);
+
+        int nextLvl = Mathf.Min(lvl + 1, maxLvl);
+        int atkNow = data.AttackAtLevel(lvl);
+        int atkNxt = data.AttackAtLevel(nextLvl);
+        int hpNow = data.HPAtLevel(lvl);
+        int hpNxt = data.HPAtLevel(nextLvl);
+
+        if (atkCurrentText != null) atkCurrentText.text = atkNow.ToString();
+        if (atkNextText != null) atkNextText.text = atkNxt.ToString();
+        if (hpCurrentText != null) hpCurrentText.text = hpNow.ToString();
+        if (hpNextText != null) hpNextText.text = hpNxt.ToString();
+
+        bool isMax = lvl >= maxLvl;
         int cost = 0;
-        if (!isMax && data.upgradePricePerLevel != null && lvl - 1 < data.upgradePricePerLevel.Length)
+        if (!isMax && data.upgradePricePerLevel != null && lvl - 1 < data.upgradePricePerLevel.Length && lvl - 1 >= 0)
             cost = data.upgradePricePerLevel[lvl - 1];
+        else if (!isMax && lvl == 0 && data.upgradePricePerLevel != null && data.upgradePricePerLevel.Length > 0)
+            cost = data.upgradePricePerLevel[0];
 
-        if (costText != null) costText.text = isMax ? "MAX" : $"◆ {cost}";
+        if (costText != null) costText.text = isMax ? "MAX" : cost.ToString();
+        if (upgradeButtonText != null) upgradeButtonText.text = isMax ? "MAX" : "UPGRADE";
 
         bool canAfford = !isMax && ResourceManager.Instance != null && ResourceManager.Instance.CanAffordDiamonds(cost);
         if (upgradeButton != null)
@@ -311,6 +474,21 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
             upgradeButton.interactable = canAfford;
             upgradeButton.onClick.RemoveAllListeners();
             upgradeButton.onClick.AddListener(() => OnUpgradeClick(cost));
+        }
+    }
+
+    private void RefreshPips(int currentLevel, int maxLevel)
+    {
+        if (levelPips == null || levelPips.Length == 0 || boundPanel == null) return;
+        var filled = boundPanel.GetUnitPipFilledSprite();
+        var empty = boundPanel.GetUnitPipEmptySprite();
+        for (int i = 0; i < levelPips.Length; i++)
+        {
+            var img = levelPips[i];
+            if (img == null) continue;
+            // Show only as many slots as the archetype supports — hide extras.
+            img.enabled = i < maxLevel;
+            img.sprite = (i < currentLevel) ? filled : empty;
         }
     }
 
