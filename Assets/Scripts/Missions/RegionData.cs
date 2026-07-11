@@ -4,6 +4,13 @@ using System.Collections.Generic;
 public enum RegionState { Locked, Available, Conquered }
 public enum RegionBiome { Forest, Desert, Winter }
 
+// How the player captures this region. Auto = decide by regionTotemPrefab
+// (if present → player, if empty → mercenary auto-battle). Set to a specific
+// value when you want to override that heuristic — e.g. a region with a
+// totem model that you still want handled by the army system, or a totem-
+// less region you want the player to raid personally.
+public enum RegionCombatMode { Auto, PlayerCombat, MercenaryAutoBattle }
+
 [System.Serializable]
 public class RegionLevelData
 {
@@ -42,10 +49,26 @@ public class RegionData : ScriptableObject
     public float enemyDamageMultiplier = 1f;
 
     [Header("Mercenary Auto-Battle (regions without a totem)")]
-    [Tooltip("Гарнізонна сила регіону — база для розрахунку авто-битви найманців. Використовується тільки коли regionTotemPrefab == null (немає локації для гравця).")]
+    [Tooltip("Як цей регіон захоплюється. Auto = вирішується автоматично: є тотем → гравець атакує, немає → армія найманців. Обидва інші значення явно перевизначають цю логіку.")]
+    public RegionCombatMode combatMode = RegionCombatMode.Auto;
+    [Tooltip("Гарнізонна сила регіону — база для розрахунку авто-битви найманців. Використовується тільки коли гравець посилає армію (MercenaryAutoBattle або Auto без тотема).")]
     public int enemyStrength = 200;
     [Tooltip("Скільки діамантів гравець отримає за перемогу авто-битви найманців.")]
     public int autoBattleDiamondReward = 15;
+
+    // Handy resolver used by MapPanelUI so the branch decision lives in one place.
+    public bool UsesMercenaryAutoBattle
+    {
+        get
+        {
+            switch (combatMode)
+            {
+                case RegionCombatMode.PlayerCombat: return false;
+                case RegionCombatMode.MercenaryAutoBattle: return true;
+                default: return regionTotemPrefab == null;
+            }
+        }
+    }
 
     // --- ����� ����: ������� ��Ѳ� �� ����Ҳ� ---
     [Header("Region Objective (Totem & Bosses)")]

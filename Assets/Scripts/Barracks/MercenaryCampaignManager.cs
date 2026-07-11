@@ -100,10 +100,13 @@ public class MercenaryCampaignManager : MonoBehaviour
                 maxID = Mathf.Max(maxID, regionCatalogue[i].regionID);
             }
             if (maxID > minID) t = Mathf.InverseLerp(minID, maxID, region.regionID);
+            else t = 0f;
         }
         else
         {
-            t = Mathf.InverseLerp(1, 24, region.regionID);
+            // Regions are 0-indexed in this project (Region_1 → regionID 0,
+            // Region_24 → regionID 23). InverseLerp(1, 24, x) was mis-scaled.
+            t = Mathf.InverseLerp(0, 23, region.regionID);
         }
 
         float base_ = Mathf.Lerp(minTravelSeconds, maxTravelSeconds, t);
@@ -219,6 +222,95 @@ public class MercenaryCampaignManager : MonoBehaviour
         var all = roster.GetAllUnits();
         for (int i = 0; i < all.Count; i++) if (all[i].uid == uid) return all[i];
         return null;
+    }
+
+    // --------- Debug (Context Menu) ---------
+
+    // Right-click this component in the inspector at Play time → these
+    // options appear. Lets you validate the whole hire → march → resolve
+    // → return loop end-to-end WITHOUT the UI prefabs being wired.
+
+    [ContextMenu("Debug/Hire 3 Militia (free)")]
+    private void Debug_HireFreeMilitia()
+    {
+        if (MercenaryRoster.Instance == null) { Debug.LogWarning("MercenaryRoster not present"); return; }
+        for (int i = 0; i < 3; i++) MercenaryRoster.Instance.Hire("militia");
+        Debug.Log($"[Merc DEBUG] Hired 3 militia. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+    }
+
+    [ContextMenu("Debug/Hire 2 Ranger (free)")]
+    private void Debug_HireFreeRanger()
+    {
+        if (MercenaryRoster.Instance == null) return;
+        for (int i = 0; i < 2; i++) MercenaryRoster.Instance.Hire("ranger");
+        Debug.Log($"[Merc DEBUG] Hired 2 ranger. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+    }
+
+    [ContextMenu("Debug/Hire 1 Knight (free)")]
+    private void Debug_HireFreeKnight()
+    {
+        if (MercenaryRoster.Instance == null) return;
+        MercenaryRoster.Instance.Hire("knight");
+        Debug.Log($"[Merc DEBUG] Hired 1 knight. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+    }
+
+    [ContextMenu("Debug/Send All Idle Units → First Auto-Battle Region")]
+    private void Debug_SendAllToFirstAutoBattle()
+    {
+        if (MercenaryRoster.Instance == null) { Debug.LogWarning("No roster"); return; }
+
+        // Find the first Available region that uses mercenary auto-battle.
+        RegionData target = null;
+        for (int i = 0; i < regionCatalogue.Count; i++)
+        {
+            var r = regionCatalogue[i];
+            if (r == null) continue;
+            if (r.currentState != RegionState.Available) continue;
+            if (!r.UsesMercenaryAutoBattle) continue;
+            target = r; break;
+        }
+        if (target == null) { Debug.LogWarning("[Merc DEBUG] No Available auto-battle region found"); return; }
+
+        // Collect every idle unit as our army.
+        var uids = new List<int>();
+        foreach (var u in MercenaryRoster.Instance.GetAllUnits())
+        {
+            if (u.alive && u.activeCampaignID < 0) uids.Add(u.uid);
+        }
+        if (uids.Count == 0) { Debug.LogWarning("[Merc DEBUG] No idle units — hire some first"); return; }
+
+        var c = StartCampaign(target, uids, CampaignTactic.Assault);
+        Debug.Log($"[Merc DEBUG] Sent {uids.Count} units to '{target.regionName}'. Outbound {c.outboundDuration:F1}s, return {c.returnDuration:F1}s. Watch for OnCampaignResolved / OnCampaignReturned in the log.");
+    }
+
+    [ContextMenu("Debug/Fast-Forward Active Campaigns By 30s")]
+    private void Debug_FastForward30s()
+    {
+        // Shifts every active campaign's startTimeBinary 30 s into the past
+        // so we don't have to wait real-time in the editor to see the resolve.
+        var offset = TimeSpan.FromSeconds(30);
+        for (int i = 0; i < active.Count; i++)
+        {
+            var c = active[i];
+            var current = DateTime.FromBinary(c.startTimeBinary);
+            c.startTimeBinary = current.Subtract(offset).ToBinary();
+        }
+        SaveCampaigns();
+        Debug.Log($"[Merc DEBUG] Fast-forwarded {active.Count} campaigns by 30 s.");
+    }
+
+    [ContextMenu("Debug/Wipe Mercenary Save")]
+    private void Debug_WipeSave()
+    {
+        PlayerPrefs.DeleteKey(PP_CAMPAIGNS);
+        PlayerPrefs.DeleteKey(PP_NEXT_ID);
+        PlayerPrefs.DeleteKey("MercRoster_v1");
+        PlayerPrefs.DeleteKey("MercUpgrades_v1");
+        PlayerPrefs.DeleteKey("MercNextUID_v1");
+        PlayerPrefs.Save();
+        active.Clear();
+        nextCampaignID = 1;
+        Debug.Log("[Merc DEBUG] Wiped mercenary save. Restart Play mode to see roster reset.");
     }
 
     // --------- Persistence ---------

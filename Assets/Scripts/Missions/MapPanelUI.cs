@@ -415,13 +415,14 @@ public class MapPanelUI : MonoBehaviour
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-            // Regions without a totem prefab don't have a hand-built location
-            // for the player to conquer — the mercenary auto-battle system
-            // takes over. Route the click into PreBattlePanel and skip the
-            // scene load entirely. Conquered regions still travel normally
-            // (player can visit even after auto-conquest, e.g. for lore).
+            // Auto-battle regions delegate the fight to a mercenary army —
+            // route the click into PreBattlePanel and skip the scene load
+            // entirely. UsesMercenaryAutoBattle folds the explicit combatMode
+            // override and the "no totem prefab" heuristic into one call.
+            // Conquered regions still travel normally (player can visit even
+            // after auto-conquest, e.g. for lore).
             bool isAutoBattleRegion =
-                currentRegion.regionTotemPrefab == null &&
+                currentRegion.UsesMercenaryAutoBattle &&
                 currentRegion.currentState == RegionState.Available;
 
             if (isAutoBattleRegion && preBattlePanel != null)
