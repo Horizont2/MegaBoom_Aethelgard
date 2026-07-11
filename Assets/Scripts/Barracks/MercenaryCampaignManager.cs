@@ -257,21 +257,60 @@ public class MercenaryCampaignManager : MonoBehaviour
     [ContextMenu("Debug/Send All Idle Units → First Auto-Battle Region")]
     private void Debug_SendAllToFirstAutoBattle()
     {
+        SendAllToAutoBattle(forceUnlock: false);
+    }
+
+    // Same as above, but if every auto-battle region is still Locked
+    // (nothing conquered yet) we forcibly unlock the lowest-ID one so the
+    // debug loop works from a fresh save. Real gameplay unlocks regions
+    // through MapProgressionManager as neighbours are conquered.
+    [ContextMenu("Debug/Force-Unlock & Send All Idle Units → First Auto-Battle Region")]
+    private void Debug_ForceUnlockAndSend()
+    {
+        SendAllToAutoBattle(forceUnlock: true);
+    }
+
+    private void SendAllToAutoBattle(bool forceUnlock)
+    {
         if (MercenaryRoster.Instance == null) { Debug.LogWarning("No roster"); return; }
 
-        // Find the first Available region that uses mercenary auto-battle.
         RegionData target = null;
         for (int i = 0; i < regionCatalogue.Count; i++)
         {
             var r = regionCatalogue[i];
             if (r == null) continue;
-            if (r.currentState != RegionState.Available) continue;
             if (!r.UsesMercenaryAutoBattle) continue;
-            target = r; break;
+            if (r.currentState == RegionState.Available) { target = r; break; }
         }
-        if (target == null) { Debug.LogWarning("[Merc DEBUG] No Available auto-battle region found"); return; }
 
-        // Collect every idle unit as our army.
+        if (target == null && forceUnlock)
+        {
+            // Grab the lowest-ID auto-battle region and force it Available.
+            RegionData lowest = null;
+            for (int i = 0; i < regionCatalogue.Count; i++)
+            {
+                var r = regionCatalogue[i];
+                if (r == null) continue;
+                if (!r.UsesMercenaryAutoBattle) continue;
+                if (lowest == null || r.regionID < lowest.regionID) lowest = r;
+            }
+            if (lowest != null)
+            {
+                lowest.currentState = RegionState.Available;
+                lowest.isNewlyUnlocked = true;
+                if (MapProgressionManager.Instance != null)
+                    MapProgressionManager.Instance.RefreshMapState();
+                target = lowest;
+                Debug.Log($"[Merc DEBUG] Force-unlocked '{target.regionName}' for testing.");
+            }
+        }
+
+        if (target == null)
+        {
+            Debug.LogWarning("[Merc DEBUG] No Available auto-battle region found (use the Force-Unlock variant to unblock a Locked one for testing).");
+            return;
+        }
+
         var uids = new List<int>();
         foreach (var u in MercenaryRoster.Instance.GetAllUnits())
         {
