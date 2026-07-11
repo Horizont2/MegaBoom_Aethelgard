@@ -126,7 +126,22 @@ public class BarracksUpgradePanel : MonoBehaviour
 
     public void Open()
     {
-        if (rootObject != null) rootObject.SetActive(true);
+        if (rootObject == null)
+        {
+            Debug.LogWarning("[BarracksUpgradePanel] `rootObject` field is not wired — nothing to show. Drag the panel root GameObject here.");
+            return;
+        }
+        // Walk up the parent chain and force each ancestor active. A common
+        // gotcha: the panel prefab was dropped under a Canvas child that was
+        // itself SetActive(false) — Open() would flip only the leaf and nothing
+        // would render because activeInHierarchy stays false.
+        Transform t = rootObject.transform;
+        while (t != null)
+        {
+            if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+            t = t.parent;
+        }
+        rootObject.SetActive(true);
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 1f;

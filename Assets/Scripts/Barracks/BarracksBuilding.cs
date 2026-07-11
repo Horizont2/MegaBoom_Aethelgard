@@ -137,6 +137,19 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
     // building — see ICustomBuildingPanel.
     public void OpenCustomPanel()
     {
-        if (barracksPanel != null) barracksPanel.Open();
+        if (barracksPanel == null)
+        {
+            Debug.LogWarning("[BarracksBuilding] `barracksPanel` field is not wired on '" + name + "'. Drag the scene instance of BarracksUpgradePanel here.");
+            return;
+        }
+        // If the field points at a prefab asset rather than a scene instance,
+        // Open() will silently mutate the asset — nothing shows on screen.
+        // Warn loudly if that happens.
+        if (barracksPanel.gameObject.scene.rootCount == 0)
+        {
+            Debug.LogWarning("[BarracksBuilding] `barracksPanel` on '" + name + "' points at a PREFAB ASSET, not a scene instance. Instantiate the prefab under your Canvas and drag THAT into the field.");
+            return;
+        }
+        barracksPanel.Open();
     }
 }
