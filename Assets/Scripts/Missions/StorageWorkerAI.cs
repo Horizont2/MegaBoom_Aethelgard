@@ -19,6 +19,10 @@ public class StorageWorkerAI : MonoBehaviour
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (carryVisual != null) carryVisual.SetActive(false);
 
+        // Root motion off (see BarracksUnitAI for the roller-skate fix).
+        if (anim != null && anim.applyRootMotion) anim.applyRootMotion = false;
+        if (anim != null) anim.SetBoolSafe("IsGrounded", true);
+
         StartCoroutine(InitAndStartRoutine());
     }
 
@@ -26,7 +30,15 @@ public class StorageWorkerAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
+            Vector3 vel = agent.velocity;
+            anim.SetFloatSafe("Speed", vel.magnitude);
+            anim.SetBoolSafe("IsGrounded", true);
+            if (agent.speed > 0.01f)
+            {
+                Vector3 local = transform.InverseTransformDirection(vel);
+                anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
+                anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
+            }
         }
     }
 
