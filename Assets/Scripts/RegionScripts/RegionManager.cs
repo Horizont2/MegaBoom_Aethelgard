@@ -34,8 +34,13 @@ public class RegionManager : MonoBehaviour
 
         if (isConquered)
         {
-            // ЗАПОБІЖНИК: Блокуємо спавн ворогів у вже захопленому регіоні
-            EnemySpawner.IsSpawningBlocked = true;
+            // Захоплений регіон = гравець просто "заходить у гості". Мобі
+            // мають спавнитися як у звичайному world-gen (радіально навколо
+            // гравця), тільки без totem-місії та без патрулів по мапі —
+            // атмосфера "територія відвойована, але не безпечна".
+            // Раніше тут стояло EnemySpawner.IsSpawningBlocked = true, що
+            // повністю вимикало радіальний спавн і робило регіон порожнім.
+            EnemySpawner.IsSpawningBlocked = false;
 
             DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
             if (dnc != null)

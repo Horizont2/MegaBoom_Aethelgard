@@ -57,9 +57,9 @@ public class WorldEncounterDirector : MonoBehaviour
     public bool blockRandomSpawnerOnStart = true;
 
     [Header("Conquered Regions")]
-    [Tooltip("Чи спавнити патрулі у вже захопленому регіоні (для атмосфери/farming)")]
-    public bool spawnInConqueredRegion = true;
-    [Tooltip("Множник кількості енкаунтерів у захопленому регіоні (0.3 = 30% від звичайного)")]
+    [Tooltip("Чи спавнити патрулі у вже захопленому регіоні (для атмосфери/farming). За замовчуванням вимкнено — у захопленому регіоні мають спавнитися лише звичайні мобі радіальним EnemySpawner'ом.")]
+    public bool spawnInConqueredRegion = false;
+    [Tooltip("Множник кількості енкаунтерів у захопленому регіоні (0.3 = 30% від звичайного). Використовується тільки якщо spawnInConqueredRegion=true.")]
     [Range(0f, 1f)] public float conqueredCountMultiplier = 0.4f;
     [Tooltip("У захоплених регіонах вимикаємо табори (атмосфера 'зачистили' — лиш дрібні патрулі)")]
     public bool conqueredPatrolsOnly = true;
@@ -93,11 +93,19 @@ public class WorldEncounterDirector : MonoBehaviour
         bool conquered = IsConqueredRegion();
         if (conquered && !spawnInConqueredRegion)
         {
+            // Хочемо звичайні радіальні спавни у захопленому регіоні —
+            // повністю виходимо, і НЕ блокуємо EnemySpawner. Раніше цей
+            // директор першим ділом вирубав радіальний спавнер (для
+            // атмосфери "тільки патрулі"), і якщо ми пропускали патрулі
+            // без розблокування — регіон лишався порожнім.
+            EnemySpawner.IsSpawningBlocked = false;
             enabled = false;
             yield break;
         }
 
-        if (blockRandomSpawnerOnStart) EnemySpawner.IsSpawningBlocked = true;
+        // У non-conquered місіях блокуємо радіальний спавнер щоб не було
+        // хаосу між патрулями та випадковими мобами (стара поведінка).
+        if (!conquered && blockRandomSpawnerOnStart) EnemySpawner.IsSpawningBlocked = true;
         yield return StartCoroutine(RunDirectorRoutine(conquered));
     }
 
