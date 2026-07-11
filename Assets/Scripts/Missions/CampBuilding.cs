@@ -397,6 +397,20 @@ public class CampBuilding : MonoBehaviour
 
     private void OpenPanel()
     {
+        // A sibling script on this GO can hijack the F-panel — used by the
+        // barracks to open its custom Hire/Upgrade UI instead of the generic
+        // building sheet. Interface check keeps CampBuilding independent
+        // of the mercenary module.
+        var custom = GetComponent<ICustomBuildingPanel>();
+        if (custom != null)
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+            isPanelOpen = true;
+            custom.OpenCustomPanel();
+            return;
+        }
+
         isPanelOpen = true;
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 

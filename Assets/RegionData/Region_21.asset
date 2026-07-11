@@ -26,6 +26,8 @@ MonoBehaviour:
   recommendedPower: 910
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
+  enemyStrength: 1320
+  autoBattleDiamondReward: 350
   woodReward: 350
   stoneReward: 350
   foodReward: 350

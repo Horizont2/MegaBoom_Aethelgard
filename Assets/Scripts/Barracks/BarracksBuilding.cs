@@ -11,7 +11,7 @@ using UnityEngine;
 //   3. Spawns wandering unit visuals near the barracks when idle mercs live
 //      in the roster.
 [RequireComponent(typeof(CampBuilding))]
-public class BarracksBuilding : MonoBehaviour
+public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
 {
     [Header("Auto-Build")]
     [Tooltip("Якщо true, при першому старті сцени казарма буде примусово побудована до 1 лвла. Ставить у true.")]
@@ -122,12 +122,9 @@ public class BarracksBuilding : MonoBehaviour
         }
     }
 
-    // Called by CampBuilding when the player triggers the F panel — if we
-    // have a barracks-specific panel wired, open it and swallow the generic
-    // panel (host's aaaPanel stays disabled). CampBuilding doesn't call this
-    // yet — the intent is that OpenBarracksPanel is invoked from the same
-    // input hook. See notes in the integration comment below.
-    public void OpenBarracksPanel()
+    // Invoked by CampBuilding.OpenPanel when the player hits [F] on this
+    // building — see ICustomBuildingPanel.
+    public void OpenCustomPanel()
     {
         if (barracksPanel != null) barracksPanel.Open();
     }
