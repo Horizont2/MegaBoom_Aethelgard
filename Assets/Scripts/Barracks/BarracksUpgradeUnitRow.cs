@@ -26,7 +26,7 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
     private MercenaryRoster boundRoster;
     private BarracksUpgradePanel boundPanel;
 
-    public void Bind(MercenaryUnitData data, MercenaryRoster roster, BarracksUpgradePanel panel)
+    public void Bind(MercenaryUnitData data, MercenaryRoster roster, BarracksUpgradePanel panel, Sprite customPortrait)
     {
         boundData = data;
         boundRoster = roster;
@@ -35,11 +35,15 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
         int lvl = roster.GetUpgradeLevel(data.unitID);
         int maxLvl = data.MaxLevel;
 
-        if (iconImage != null && data.icon != null) iconImage.sprite = data.icon;
+        if (iconImage != null)
+        {
+            if (customPortrait != null) iconImage.sprite = customPortrait;
+            else if (data.icon != null) iconImage.sprite = data.icon;
+        }
+
         if (nameText != null) nameText.text = data.displayName;
         if (descriptionText != null) descriptionText.text = data.flavourText;
 
-        // Pip sprites come from the panel so all rows stay in sync.
         RefreshPips(lvl, maxLvl);
 
         int nextLvl = Mathf.Min(lvl + 1, maxLvl);

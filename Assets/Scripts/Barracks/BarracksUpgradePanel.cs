@@ -31,6 +31,11 @@ public class BarracksUpgradePanel : MonoBehaviour
     public Sprite pipHelmFilledSprite;
     public Sprite pipHelmEmptySprite;
 
+    [Header("Custom Unit Portraits")]
+    public Sprite portraitMilitia;
+    public Sprite portraitRanger;
+    public Sprite portraitKnight;
+
     [Header("Tabs")]
     public Button tabHireButton;
     public Button tabUpgradeUnitsButton;
@@ -227,21 +232,40 @@ public class BarracksUpgradePanel : MonoBehaviour
     private void ApplyTabPressedLook(Button btn, bool active)
     {
         if (btn == null) return;
-        Color tint = active ? tabActiveButtonTint : tabInactiveButtonTint;
-        // Rewrite the whole ColorBlock so the active tab keeps its dark
-        // background even after the pointer hovers away (Unity's Button
-        // resets targetGraphic.color to normalColor on OnPointerExit).
-        var cb = btn.colors;
-        cb.normalColor = tint;
-        cb.highlightedColor = active
-            ? Color.Lerp(tint, new Color(1f, 1f, 1f, tint.a), 0.15f)
-            : new Color(1f, 1f, 1f, 0.06f);
-        cb.pressedColor = tint;
-        cb.selectedColor = tint;
-        btn.colors = cb;
-        if (btn.targetGraphic is Image img)
+
+        // Перевіряємо, чи кнопка використовує Sprite Swap
+        if (btn.transition == Selectable.Transition.SpriteSwap)
         {
-            img.color = tint;
+            if (btn.targetGraphic is Image img)
+            {
+                // Скидаємо колір на білий, щоб неактивні кнопки не ставали прозорими
+                img.color = Color.white;
+            }
+
+            // Щоб зберегти стан "натиснутої" вкладки у режимі Sprite Swap,
+            // ми робимо активну вкладку неінтерактивною.
+            // ВАЖЛИВО: В Інспекторі признач свій спрайт "Pressed" у слот "Disabled Sprite"!
+            btn.interactable = !active;
+        }
+        // Оригінальна логіка для режиму Color Tint
+        else if (btn.transition == Selectable.Transition.ColorTint)
+        {
+            btn.interactable = true; // Повертаємо інтерактивність
+            Color tint = active ? tabActiveButtonTint : tabInactiveButtonTint;
+
+            var cb = btn.colors;
+            cb.normalColor = tint;
+            cb.highlightedColor = active
+                ? Color.Lerp(tint, new Color(1f, 1f, 1f, tint.a), 0.15f)
+                : new Color(1f, 1f, 1f, 0.06f);
+            cb.pressedColor = tint;
+            cb.selectedColor = tint;
+            btn.colors = cb;
+
+            if (btn.targetGraphic is Image img)
+            {
+                img.color = tint;
+            }
         }
     }
 
@@ -302,7 +326,6 @@ public class BarracksUpgradePanel : MonoBehaviour
     private void RefreshHireTab(MercenaryRoster r)
     {
         if (hireRowParent == null || hireRowPrefab == null) return;
-
         int hostLevel = hostBuilding != null ? hostBuilding.currentLevel : 1;
 
         EnsureRowCount(spawnedHireRows, hireRowParent, hireRowPrefab, r.catalogue.Count);
@@ -315,7 +338,11 @@ public class BarracksUpgradePanel : MonoBehaviour
 
             var row = go.GetComponent<BarracksHireRow>();
             if (row == null) row = go.AddComponent<BarracksHireRow>();
-            row.Bind(data, r, hostLevel);
+
+            // Визначаємо портрет за індексом юніта (0=Militia, 1=Ranger, 2=Knight)
+            Sprite customPortrait = i == 0 ? portraitMilitia : (i == 1 ? portraitRanger : portraitKnight);
+
+            row.Bind(data, r, hostLevel, customPortrait);
         }
     }
 
@@ -335,7 +362,10 @@ public class BarracksUpgradePanel : MonoBehaviour
 
             var row = go.GetComponent<BarracksUpgradeUnitRow>();
             if (row == null) row = go.AddComponent<BarracksUpgradeUnitRow>();
-            row.Bind(data, r, this);
+
+            Sprite customPortrait = i == 0 ? portraitMilitia : (i == 1 ? portraitRanger : portraitKnight);
+
+            row.Bind(data, r, this, customPortrait);
         }
     }
 

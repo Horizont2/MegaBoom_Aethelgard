@@ -22,12 +22,18 @@ public class BarracksHireRow : MonoBehaviour
     private MercenaryUnitData boundData;
     private MercenaryRoster boundRoster;
 
-    public void Bind(MercenaryUnitData data, MercenaryRoster roster, int barracksLevel)
+    public void Bind(MercenaryUnitData data, MercenaryRoster roster, int barracksLevel, Sprite customPortrait)
     {
         boundData = data;
         boundRoster = roster;
 
-        if (iconImage != null && data.icon != null) iconImage.sprite = data.icon;
+        // Використовуємо кастомний портрет, якщо він є. Якщо ні - беремо стандартну іконку.
+        if (iconImage != null)
+        {
+            if (customPortrait != null) iconImage.sprite = customPortrait;
+            else if (data.icon != null) iconImage.sprite = data.icon;
+        }
+
         if (nameText != null) nameText.text = data.displayName;
         if (descriptionText != null) descriptionText.text = data.flavourText;
         if (ownedText != null) ownedText.text = $"OWNED: {roster.CountAlive(data.unitID)}";

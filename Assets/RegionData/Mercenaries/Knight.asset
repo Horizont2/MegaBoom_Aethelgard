@@ -16,8 +16,8 @@ MonoBehaviour:
   displayName: Knight
   flavourText: Anointed champions of Aethelgard, sworn to steel and fire. A single
     Knight in the line can hold a breach the Militia would break against.
-  icon: {fileID: 0}
-  portrait: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9d82fffe8de168445bd8f62838828b8a, type: 3}
+  portrait: {fileID: 21300000, guid: 9d82fffe8de168445bd8f62838828b8a, type: 3}
   mapFigurineSprite: {fileID: 0}
   campPrefab: {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
   baseHireCost: 180
