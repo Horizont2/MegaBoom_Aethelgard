@@ -6,4 +6,7 @@
 public interface ICustomBuildingPanel
 {
     void OpenCustomPanel();
+    // Called by CampBuilding's F-toggle when the panel is already open, so
+    // pressing F a second time closes it instead of leaving it stuck open.
+    void CloseCustomPanel();
 }

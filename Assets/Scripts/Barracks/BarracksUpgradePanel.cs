@@ -56,6 +56,11 @@ public class BarracksUpgradePanel : MonoBehaviour
     public TextMeshProUGUI tabUpgradeBarracksLabel;
     public Color tabActiveTextColor   = new Color(0.94f, 0.89f, 0.80f, 1f); // warm cream #F0E4CB
     public Color tabInactiveTextColor = new Color(0.54f, 0.52f, 0.47f, 1f); // muted grey #8A8478
+    // Tint applied to each tab Button's targetGraphic while active — makes
+    // the active tab look "pressed in" even after the pointer leaves.
+    // Transparent white = no tint, so inactive tabs blend into the panel.
+    public Color tabActiveButtonTint   = new Color(0f, 0f, 0f, 0.38f);
+    public Color tabInactiveButtonTint = new Color(1f, 1f, 1f, 0f);
 
     [Header("Hire Tab")]
     public Transform hireRowParent;
@@ -184,14 +189,12 @@ public class BarracksUpgradePanel : MonoBehaviour
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
         }
-        // Restore whatever cursor state existed before Open() — locked in
-        // gameplay, unlocked in camp, etc.
-        if (cursorStateSaved)
-        {
-            Cursor.lockState = savedCursorLock;
-            Cursor.visible = savedCursorVisible;
-            cursorStateSaved = false;
-        }
+        // Lock the cursor back to gameplay mode. The user explicitly wants
+        // the pointer to vanish after every close, regardless of what it
+        // was before — matches the notice-board convention.
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        cursorStateSaved = false;
         IsOpen = false;
     }
 
@@ -212,6 +215,34 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (tabHireLabel != null)             tabHireLabel.color             = idx == 0 ? tabActiveTextColor : tabInactiveTextColor;
         if (tabUpgradeUnitsLabel != null)     tabUpgradeUnitsLabel.color     = idx == 1 ? tabActiveTextColor : tabInactiveTextColor;
         if (tabUpgradeBarracksLabel != null)  tabUpgradeBarracksLabel.color  = idx == 2 ? tabActiveTextColor : tabInactiveTextColor;
+
+        // Persistent "pressed" look for the active tab — bake the pressed
+        // colour into the Button's ColorBlock so hover/normal transitions
+        // don't wash it out.
+        ApplyTabPressedLook(tabHireButton,            idx == 0);
+        ApplyTabPressedLook(tabUpgradeUnitsButton,    idx == 1);
+        ApplyTabPressedLook(tabUpgradeBarracksButton, idx == 2);
+    }
+
+    private void ApplyTabPressedLook(Button btn, bool active)
+    {
+        if (btn == null) return;
+        Color tint = active ? tabActiveButtonTint : tabInactiveButtonTint;
+        // Rewrite the whole ColorBlock so the active tab keeps its dark
+        // background even after the pointer hovers away (Unity's Button
+        // resets targetGraphic.color to normalColor on OnPointerExit).
+        var cb = btn.colors;
+        cb.normalColor = tint;
+        cb.highlightedColor = active
+            ? Color.Lerp(tint, new Color(1f, 1f, 1f, tint.a), 0.15f)
+            : new Color(1f, 1f, 1f, 0.06f);
+        cb.pressedColor = tint;
+        cb.selectedColor = tint;
+        btn.colors = cb;
+        if (btn.targetGraphic is Image img)
+        {
+            img.color = tint;
+        }
     }
 
     // Poll diamond total so the panel refreshes when the player spends

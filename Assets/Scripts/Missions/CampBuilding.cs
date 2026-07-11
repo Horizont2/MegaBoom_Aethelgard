@@ -460,6 +460,12 @@ public class CampBuilding : MonoBehaviour
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
         if (progressTMP != null) progressTMP.text = "0%";
         if (aaaPanel != null) aaaPanel.SetActive(false);
+
+        // If a sibling script hijacked OpenPanel via ICustomBuildingPanel,
+        // also route the close through so pressing F a second time actually
+        // hides the custom UI (e.g. BarracksUpgradePanel).
+        var custom = GetComponent<ICustomBuildingPanel>();
+        if (custom != null) custom.CloseCustomPanel();
     }
 
     private IEnumerator PopUpUI(Transform targetTransform)

@@ -130,16 +130,9 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        if (cursorStateSaved)
-        {
-            Cursor.lockState = savedCursorLock;
-            Cursor.visible = savedCursorVisible;
-            cursorStateSaved = false;
-        }
-        else
-        {
-            StartCoroutine(LockCursorRoutine());
-        }
+        // Always lock cursor back to gameplay mode on close.
+        cursorStateSaved = false;
+        StartCoroutine(LockCursorRoutine());
     }
 
     private System.Collections.IEnumerator LockCursorRoutine()
