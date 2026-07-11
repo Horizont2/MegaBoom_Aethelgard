@@ -84075,7 +84075,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 874921753}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a572d90f7b4ed7347b8361a915fb3b82, type: 3}
+  m_Script: {fileID: 11500000, guid: d94105f0daa4630038b7bb0531011fe2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldMapArmyMarker
   armyOriginPoint: {fileID: 0}
@@ -179111,8 +179111,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1954144185}
-  - component: {fileID: 1954144184}
-  - component: {fileID: 1954144183}
+  - component: {fileID: 1954144187}
+  - component: {fileID: 1954144186}
   m_Layer: 0
   m_Name: _MercenaryBootstrap
   m_TagString: Untagged
@@ -179120,7 +179120,22 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1954144183
+--- !u!4 &1954144185
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1954144182}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1954144186
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -179129,7 +179144,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1954144182}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f7642651ce3b2734aa1391c83e7e169c, type: 3}
+  m_Script: {fileID: 11500000, guid: f991e8401638df564ba99d2d749fec2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MercenaryCampaignManager
   regionCatalogue:
@@ -179160,7 +179175,7 @@ MonoBehaviour:
   minTravelSeconds: 45
   maxTravelSeconds: 180
   active: []
---- !u!114 &1954144184
+--- !u!114 &1954144187
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -179169,30 +179184,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1954144182}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 831e8c78ff93573428245a2f79fa4b9a, type: 3}
+  m_Script: {fileID: 11500000, guid: b4dcae337c16f5fe0ad76b0cf179a882, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MercenaryRoster
   catalogue:
-  - {fileID: 11400000, guid: c3e2f2644e8b19e41a299797383456c6, type: 2}
-  - {fileID: 11400000, guid: c53c4b57bde600941bea60656d0dc866, type: 2}
-  - {fileID: 11400000, guid: 2eb694a9be4a80644aec76cb9455d4c5, type: 2}
+  - {fileID: 11400000, guid: 9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b, type: 2}
+  - {fileID: 11400000, guid: 7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f, type: 2}
+  - {fileID: 11400000, guid: 8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a, type: 2}
   roster: []
   upgradeLevels: []
---- !u!4 &1954144185
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1954144182}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1955965133
 GameObject:
   m_ObjectHideFlags: 0
