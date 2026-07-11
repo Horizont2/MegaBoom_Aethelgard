@@ -157,6 +157,11 @@ public class GlobalHUD : MonoBehaviour
             if (LevelUpManager.IsMenuOpen) return;
             if (MapTableInteract.IsMapActive) return;
 
+            // Camp modal panels handle their own ESC and mark themselves open —
+            // swallow the key here so pause menu doesn't cascade in on top.
+            if (BarracksUpgradePanel.IsOpen) return;
+            if (NoticeBoardManager.IsAnyBoardOpen) return;
+
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
             if (mapPanel != null && mapPanel.IsPanelOpen())
             {

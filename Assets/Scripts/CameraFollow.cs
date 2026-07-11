@@ -80,7 +80,12 @@ public class CameraFollow : MonoBehaviour
     private void LateUpdate()
     {
         // ДОДАНО: PauseSceneController.IsPauseActive, щоб скрипт відключався під час кінематографічної паузи
+        // Also freeze camera whenever a modal UI panel is up — otherwise the
+        // mouse the player is using to click buttons keeps rotating the camera
+        // and the scroll wheel changes distance while they're scrolling the panel.
         if (isCinematicMode || Time.timeScale == 0f || target == null || TutorialPanelUI.IsTutorialActive || PauseSceneController.IsPauseActive) return;
+        if (BarracksUpgradePanel.IsOpen) return;
+        if (NoticeBoardManager.IsAnyBoardOpen) return;
 
         float dt = Time.deltaTime;
         if (dt < 0.0001f) return;

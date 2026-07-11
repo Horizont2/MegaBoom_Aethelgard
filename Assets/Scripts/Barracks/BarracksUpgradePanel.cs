@@ -103,6 +103,19 @@ public class BarracksUpgradePanel : MonoBehaviour
     private readonly List<GameObject> spawnedHireRows = new List<GameObject>();
     private readonly List<GameObject> spawnedUpgradeRows = new List<GameObject>();
 
+    // Static flag other systems check to know a modal panel is up:
+    //  · CameraFollow skips mouse-look while open (mouse is used to click UI)
+    //  · GlobalHUD's ESC handler closes the panel before opening pause
+    // Set by Open()/Close() so it always tracks the visible state.
+    public static bool IsOpen { get; private set; }
+
+    // Cursor state we save on Open() and restore on Close() so we don't
+    // permanently un-hide the cursor in scenes where it was already locked
+    // (e.g. gameplay).
+    private CursorLockMode savedCursorLock;
+    private bool savedCursorVisible;
+    private bool cursorStateSaved;
+
     private void Awake()
     {
         if (closeButton != null) closeButton.onClick.AddListener(Close);
@@ -131,10 +144,6 @@ public class BarracksUpgradePanel : MonoBehaviour
             Debug.LogWarning("[BarracksUpgradePanel] `rootObject` field is not wired — nothing to show. Drag the panel root GameObject here.");
             return;
         }
-        // Walk up the parent chain and force each ancestor active. A common
-        // gotcha: the panel prefab was dropped under a Canvas child that was
-        // itself SetActive(false) — Open() would flip only the leaf and nothing
-        // would render because activeInHierarchy stays false.
         Transform t = rootObject.transform;
         while (t != null)
         {
@@ -151,6 +160,19 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (titleText != null) titleText.text = "BARRACKS";
         ShowTab(0);
         Refresh();
+
+        // Snapshot cursor state and force the pointer visible so the player
+        // can actually click the buttons.
+        if (!cursorStateSaved)
+        {
+            savedCursorLock = Cursor.lockState;
+            savedCursorVisible = Cursor.visible;
+            cursorStateSaved = true;
+        }
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        IsOpen = true;
     }
 
     public void Close()
@@ -162,6 +184,15 @@ public class BarracksUpgradePanel : MonoBehaviour
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
         }
+        // Restore whatever cursor state existed before Open() — locked in
+        // gameplay, unlocked in camp, etc.
+        if (cursorStateSaved)
+        {
+            Cursor.lockState = savedCursorLock;
+            Cursor.visible = savedCursorVisible;
+            cursorStateSaved = false;
+        }
+        IsOpen = false;
     }
 
     private void ShowTab(int idx)
@@ -186,11 +217,21 @@ public class BarracksUpgradePanel : MonoBehaviour
     // Poll diamond total so the panel refreshes when the player spends
     // gold via another window (or via hiring in this same panel — Hire()
     // triggers OnRosterChanged which also calls Refresh, but the cost
-    // colours on OTHER rows need to update too).
+    // colours on OTHER rows need to update too). Also handle ESC to close.
     private int lastKnownDiamonds = -1;
     private void Update()
     {
         if (rootObject != null && !rootObject.activeSelf) return;
+
+        // ESC closes the panel — must run BEFORE GlobalHUD's own ESC handler
+        // fires TogglePause. GlobalHUD checks BarracksUpgradePanel.IsOpen
+        // and swallows the ESC when true, so this branch stays authoritative.
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Close();
+            return;
+        }
+
         if (ResourceManager.Instance == null) return;
         if (ResourceManager.Instance.diamonds != lastKnownDiamonds)
         {

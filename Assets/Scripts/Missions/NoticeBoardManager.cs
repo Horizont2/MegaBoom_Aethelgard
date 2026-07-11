@@ -29,6 +29,17 @@ public class NoticeBoardManager : MonoBehaviour
     private bool isPlayerNear = false;
     public bool isBoardOpen = false;
 
+    // Static flag that CameraFollow and GlobalHUD's ESC handler check so
+    // camera mouse-look freezes while the board is open, and ESC closes the
+    // board instead of triggering the pause menu.
+    public static bool IsAnyBoardOpen { get; private set; }
+
+    // Saved cursor state so we can restore whatever mode was active before
+    // OpenBoard() forced Cursor.visible = true.
+    private CursorLockMode savedCursorLock;
+    private bool savedCursorVisible;
+    private bool cursorStateSaved;
+
     private void Start()
     {
         if (embarkButton != null) embarkButton.onClick.AddListener(EmbarkOnJourney);
@@ -48,6 +59,13 @@ public class NoticeBoardManager : MonoBehaviour
         {
             if (!isBoardOpen) OpenBoard();
             else CloseBoard();
+        }
+        // ESC closes the board — must run before GlobalHUD's own Escape
+        // handler fires the pause menu. GlobalHUD swallows ESC when
+        // IsAnyBoardOpen is true.
+        if (isBoardOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            CloseBoard();
         }
     }
 
@@ -73,9 +91,9 @@ public class NoticeBoardManager : MonoBehaviour
     public void OpenBoard()
     {
         isBoardOpen = true;
+        IsAnyBoardOpen = true;
         boardCanvas.SetActive(true);
 
-        // ³������, �� ������� ������ ����������� � ������
         if (PlayerPrefs.GetInt("HasInteractedWithBoard", 0) == 0)
         {
             PlayerPrefs.SetInt("HasInteractedWithBoard", 1);
@@ -90,6 +108,14 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
+        // Snapshot cursor state before forcing it visible so Close can restore
+        // whatever mode gameplay was using.
+        if (!cursorStateSaved)
+        {
+            savedCursorLock = Cursor.lockState;
+            savedCursorVisible = Cursor.visible;
+            cursorStateSaved = true;
+        }
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
     }
@@ -97,14 +123,23 @@ public class NoticeBoardManager : MonoBehaviour
     public void CloseBoard()
     {
         isBoardOpen = false;
+        IsAnyBoardOpen = false;
         boardCanvas.SetActive(false);
 
-        // ����������, �� ����� ��������� ���� (���� �� �� ����������)
         UpdateRuneVisibility();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        StartCoroutine(LockCursorRoutine());
+        if (cursorStateSaved)
+        {
+            Cursor.lockState = savedCursorLock;
+            Cursor.visible = savedCursorVisible;
+            cursorStateSaved = false;
+        }
+        else
+        {
+            StartCoroutine(LockCursorRoutine());
+        }
     }
 
     private System.Collections.IEnumerator LockCursorRoutine()
