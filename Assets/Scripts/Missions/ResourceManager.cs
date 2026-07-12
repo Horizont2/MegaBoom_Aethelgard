@@ -107,6 +107,22 @@ public class ResourceManager : MonoBehaviour
 
         if (foodFill != null)
             foodFill.fillAmount = Mathf.Lerp(foodFill.fillAmount, (float)targetFood / GetCurrentMax("Food"), Time.deltaTime * fillLerpSpeed);
+
+        if (diamondTweenTimer < 1f && diamondsText != null)
+        {
+            diamondTweenTimer = Mathf.Min(1f, diamondTweenTimer + Time.unscaledDeltaTime / DIAMOND_TWEEN_DURATION);
+            // Ease-out cubic so the counter races and settles.
+            float k = 1f - Mathf.Pow(1f - diamondTweenTimer, 3f);
+            int shown = Mathf.RoundToInt(Mathf.Lerp(diamondTweenFrom, diamondTweenTo, k));
+            diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", shown);
+            // Small punch on the text when a change fires — modest to avoid
+            // motion sickness on repeated pickups.
+            float pulseK = diamondTweenTimer < 0.25f ? diamondTweenTimer / 0.25f : 1f - (diamondTweenTimer - 0.25f) / 0.75f;
+            float scale = 1f + pulseK * 0.10f;
+            diamondsText.rectTransform.localScale = new Vector3(scale, scale, 1f);
+            if (diamondTweenTimer >= 1f)
+                diamondsText.rectTransform.localScale = Vector3.one;
+        }
     }
 
     private int GetCurrentMax(string type)
@@ -363,25 +379,6 @@ public class ResourceManager : MonoBehaviour
         diamondTweenFrom = currentDisplayed;
         diamondTweenTo = newValue;
         diamondTweenTimer = 0f;
-    }
-
-    private void Update()
-    {
-        if (diamondTweenTimer < 1f && diamondsText != null)
-        {
-            diamondTweenTimer = Mathf.Min(1f, diamondTweenTimer + Time.unscaledDeltaTime / DIAMOND_TWEEN_DURATION);
-            // Ease-out cubic so the counter races and settles.
-            float k = 1f - Mathf.Pow(1f - diamondTweenTimer, 3f);
-            int shown = Mathf.RoundToInt(Mathf.Lerp(diamondTweenFrom, diamondTweenTo, k));
-            diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", shown);
-            // Small punch on the text when a change fires — modest to avoid
-            // motion sickness on repeated pickups.
-            float pulseK = diamondTweenTimer < 0.25f ? diamondTweenTimer / 0.25f : 1f - (diamondTweenTimer - 0.25f) / 0.75f;
-            float scale = 1f + pulseK * 0.10f;
-            diamondsText.rectTransform.localScale = new Vector3(scale, scale, 1f);
-            if (diamondTweenTimer >= 1f)
-                diamondsText.rectTransform.localScale = Vector3.one;
-        }
     }
 
     // Unified pickup toast — replaces the old per-resource popup
