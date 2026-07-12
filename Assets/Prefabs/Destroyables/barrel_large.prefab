@@ -85,6 +85,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 102158806735451927}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -1484115480546254251}
   m_SourcePrefab: {fileID: 100100000, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
 --- !u!23 &7782055782969714086 stripped
 MeshRenderer:
@@ -155,3 +158,18 @@ MonoBehaviour:
   lights: []
   particles: []
   isCurrentlyVisible: 1
+--- !u!114 &-1484115480546254251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8142392612343546995}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::POISettings
+  flattenRadius: 30
+  yOffset: -0.5
+  maxAllowedSlope: 6
