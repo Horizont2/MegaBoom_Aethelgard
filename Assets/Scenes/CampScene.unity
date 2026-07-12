@@ -14216,7 +14216,7 @@ MonoBehaviour:
   globalMaterial: {fileID: 2100000, guid: 58d53420af384224ea4cfee8973d18cb, type: 2}
   isRaining: 0
   enableDayNight: 1
-  nightSpeedMultiplier: 2.5
+  nightSpeedMultiplier: 2.2
   dayDurationMinutes: 15
   timeOfDay: 0.4
   nightAmbientColor: {r: 0.05, g: 0.05, b: 0.15, a: 1}
@@ -60695,7 +60695,7 @@ MonoBehaviour:
   dropPoint: {fileID: 103225597}
   spawnPoint: {fileID: 356630068}
   searchRadius: 100
-  workDistance: 0.6
+  workDistance: 1
   dropDistance: 1
   timeBetweenHits: 1.4
   dropDuration: 2
