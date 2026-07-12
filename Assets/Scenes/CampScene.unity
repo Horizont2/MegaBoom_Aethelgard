@@ -4159,7 +4159,13 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6888806815857526915, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1609706481}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 46091968}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 46091967}
   m_SourcePrefab: {fileID: 100100000, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
 --- !u!4 &46091963 stripped
 Transform:
@@ -4181,6 +4187,53 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
   m_PrefabInstance: {fileID: 46091962}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &46091967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 46091965}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49969a7d48b353a4b86d60469b9956d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CampWorkerAI
+  myBuilding: {fileID: 2111196069}
+  dropPoint: {fileID: 711498548}
+  spawnPoint: {fileID: 1535900881}
+  searchRadius: 30
+  workDistance: 0.8
+  dropDistance: 1
+  timeBetweenHits: 1.2
+  dropDuration: 2
+  nightGatherPoint: {fileID: 1348223595}
+  sittingAnimBool: IsSitting
+  sittingArriveRadius: 1.6
+  anim: {fileID: 46091966}
+  carryItemVisual: {fileID: 1473584414}
+--- !u!195 &46091968
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 46091965}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &46585049 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1069567032315564, guid: bdf8e7438a7816543998181bd3067573, type: 3}
@@ -21664,6 +21717,37 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
   m_PrefabInstance: {fileID: 549418236}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &242667799
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 242667800}
+  m_Layer: 0
+  m_Name: Night Point Storage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &242667800
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 242667799}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.019633804, z: -0, w: -0.99980724}
+  m_LocalPosition: {x: 77.39, y: 21.5, z: 42.67}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 527597902}
+  m_LocalEulerAnglesHint: {x: 0, y: 362.25, z: 0}
 --- !u!1 &244321474
 GameObject:
   m_ObjectHideFlags: 0
@@ -56217,6 +56301,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1374899979308180045, guid: 32d3db38af308cc4a86540a04c1e129f, type: 3}
   m_PrefabInstance: {fileID: 496032837}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &496262769
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 496262770}
+  m_Layer: 0
+  m_Name: Spawn Point
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &496262770
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 496262769}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -16.33, y: 0, z: 15.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1740981224576427149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &496835991 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1069567032315564, guid: bdf8e7438a7816543998181bd3067573, type: 3}
@@ -58671,6 +58786,9 @@ Transform:
   - {fileID: 593025185}
   - {fileID: 230572879}
   - {fileID: 1379895831}
+  - {fileID: 2015527323}
+  - {fileID: 1348223595}
+  - {fileID: 242667800}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &528643536
@@ -60581,7 +60699,7 @@ MonoBehaviour:
   dropDistance: 1
   timeBetweenHits: 1.4
   dropDuration: 2
-  nightGatherPoint: {fileID: 0}
+  nightGatherPoint: {fileID: 2015527323}
   sittingAnimBool: IsSitting
   sittingArriveRadius: 1.6
   anim: {fileID: 545862252}
@@ -61717,6 +61835,8 @@ MonoBehaviour:
   anim: {fileID: 558687148}
   sittingAnimBool: IsSitting
   sittingArriveRadius: 1.4
+  walkingAnimBool: IsWalking
+  walkingSpeedThreshold: 0.05
   HoldPosition: 0
 --- !u!195 &558687154
 NavMeshAgent:
@@ -123747,6 +123867,37 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 2e716c43576f71b4aa87e6cb4ebeaeab, type: 3}
+--- !u!1 &1348223594
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1348223595}
+  m_Layer: 0
+  m_Name: Night Point Hunter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1348223595
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348223594}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.86217153, z: -0, w: -0.5066164}
+  m_LocalPosition: {x: 79.59, y: 21.5, z: 45.79}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 527597902}
+  m_LocalEulerAnglesHint: {x: 0, y: 240.877, z: 0}
 --- !u!4 &1348265198 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6065158191996948923, guid: 052435080ac8f67489ae7ba3dd0d0917, type: 3}
@@ -136057,6 +136208,37 @@ MonoBehaviour:
   m_IgnoreFromBuild: 0
   m_ApplyToChildren: 1
   m_AffectedAgents: ffffffff
+--- !u!1 &1535900880
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1535900881}
+  m_Layer: 0
+  m_Name: Spawn Point
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1535900881
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1535900880}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.6310669, z: -0, w: 0.77572834}
+  m_LocalPosition: {x: -12.79, y: -0.36, z: 7.45}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2111196071}
+  m_LocalEulerAnglesHint: {x: 0, y: 78.258, z: 0}
 --- !u!1001 &1537094912
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -141133,11 +141315,22 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 8699652204047898494, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1582510586}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1582510585}
   m_SourcePrefab: {fileID: 100100000, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
 --- !u!4 &1582510581 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
+  m_PrefabInstance: {fileID: 1582510580}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1582510582 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
   m_PrefabInstance: {fileID: 1582510580}
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &1582510584 stripped
@@ -141145,6 +141338,53 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: de76d67d0ab88dc439b10b32370775ea, type: 3}
   m_PrefabInstance: {fileID: 1582510580}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1582510585
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582510582}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49969a7d48b353a4b86d60469b9956d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CampWorkerAI
+  myBuilding: {fileID: 1740981224576427150}
+  dropPoint: {fileID: 1902754005}
+  spawnPoint: {fileID: 496262770}
+  searchRadius: 30
+  workDistance: 0.8
+  dropDistance: 1
+  timeBetweenHits: 1.2
+  dropDuration: 2
+  nightGatherPoint: {fileID: 242667800}
+  sittingAnimBool: IsSitting
+  sittingArriveRadius: 1.6
+  anim: {fileID: 1582510584}
+  carryItemVisual: {fileID: 0}
+--- !u!195 &1582510586
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582510582}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1001 &1585194870
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -184000,6 +184240,37 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 5194611686949037208, guid: 61bdbc13522514f4e9095e7fec63a76e, type: 3}
   m_PrefabInstance: {fileID: 2138926627}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2015527322
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2015527323}
+  m_Layer: 0
+  m_Name: Night Point Lumberjack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2015527323
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2015527322}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.98060215, z: -0, w: 0.19600874}
+  m_LocalPosition: {x: 76.63, y: 21.5, z: 46.96}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 527597902}
+  m_LocalEulerAnglesHint: {x: 0, y: 157.393, z: 0}
 --- !u!1001 &2015592018
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -196072,6 +196343,9 @@ PrefabInstance:
       addedObject: {fileID: 1902754005}
     - targetCorrespondingSourceObject: {fileID: 7725414138927399444, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 496262770}
+    - targetCorrespondingSourceObject: {fileID: 7725414138927399444, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 767948516}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
@@ -196080,6 +196354,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7725414138927399444, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
   m_PrefabInstance: {fileID: 1740981224576427148}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1740981224576427150 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4535662467316613587, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
+  m_PrefabInstance: {fileID: 1740981224576427148}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d48094d420a19a045bc6f2c3b571fd6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CampBuilding
 --- !u!1001 &2233392824833129233
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -199422,6 +199707,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4915536768142073871, guid: f95226031ce0a98488bdfc125bbcbead, type: 3}
       insertIndex: -1
       addedObject: {fileID: 711498548}
+    - targetCorrespondingSourceObject: {fileID: 4915536768142073871, guid: f95226031ce0a98488bdfc125bbcbead, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1535900881}
     - targetCorrespondingSourceObject: {fileID: 4915536768142073871, guid: f95226031ce0a98488bdfc125bbcbead, type: 3}
       insertIndex: -1
       addedObject: {fileID: 896069078}
