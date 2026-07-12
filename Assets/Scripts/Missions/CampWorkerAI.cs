@@ -26,6 +26,15 @@ public class CampWorkerAI : MonoBehaviour
     // walks here and idles instead of wandering — sells the "everyone
     // rests around the fire" vibe. Leave null → normal wander at night.
     public Transform nightGatherPoint;
+    // Animator bool that flips true when the worker has arrived at
+    // nightGatherPoint during deep night. Wire a "Sitting" state in your
+    // Animator that this bool transitions into (default name "IsSitting").
+    // Fed via SetBoolSafe — safe to leave the animator without this
+    // parameter, the setter just no-ops.
+    public string sittingAnimBool = "IsSitting";
+    // Distance from nightGatherPoint below which the worker counts as
+    // "arrived" and the bool flips on.
+    public float sittingArriveRadius = 1.6f;
 
     [Header("Visuals & Animation")]
     public Animator anim;

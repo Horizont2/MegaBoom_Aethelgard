@@ -34,6 +34,12 @@ public class NPCPatroller : MonoBehaviour
 
     [Header("Animator (optional)")]
     public Animator anim;
+    // Bool set true when the NPC has reached nightPoint (or homePoint if
+    // nightPoint is null) during deep night and is stationary. Wire a
+    // Sitting/Resting Animator state that this bool transitions into.
+    // Default name matches the CampWorkerAI convention.
+    public string sittingAnimBool = "IsSitting";
+    public float sittingArriveRadius = 1.4f;
 
     // Public flag so dialogue or cinematic scripts can pause the patrol.
     [HideInInspector] public bool HoldPosition = false;
@@ -74,6 +80,18 @@ public class NPCPatroller : MonoBehaviour
             anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
             anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
         }
+
+        // Sitting bool — true at night when the NPC is parked at their
+        // rest point and not moving. Any wake condition (dusk starts,
+        // dialogue triggered, player nudges them) drops it.
+        Transform restTarget = nightPoint != null ? nightPoint : homePoint;
+        bool shouldSit = restTarget != null
+                      && CampSchedule.IsDeepNight()
+                      && !HoldPosition
+                      && vel.magnitude < 0.05f
+                      && Vector3.Distance(transform.position, restTarget.position) <= sittingArriveRadius;
+        if (!string.IsNullOrEmpty(sittingAnimBool))
+            anim.SetBoolSafe(sittingAnimBool, shouldSit);
     }
 
     private IEnumerator ScheduleLoop()
