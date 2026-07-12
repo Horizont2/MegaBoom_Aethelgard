@@ -89,16 +89,26 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
     {
         if (MercenaryRoster.Instance == null) return;
 
-        // Despawn extras.
+        // Cleanup dead references left by Destroy'd units.
         for (int i = spawned.Count - 1; i >= 0; i--)
         {
             if (spawned[i] == null) { spawned.RemoveAt(i); continue; }
         }
 
-        int aliveTotal = MercenaryRoster.Instance.CountAliveTotal();
-        int shouldHave = Mathf.Min(aliveTotal, maxVisualUnits);
+        // Count only IDLE units — mercs currently marching with a campaign
+        // aren't physically in the camp, so they mustn't appear in the yard.
+        // MercenaryRoster fires OnRosterChanged when a campaign starts and
+        // when survivors return, so this refresh runs at both edges.
+        int idleCount = 0;
+        var all = MercenaryRoster.Instance.GetAllUnits();
+        for (int i = 0; i < all.Count; i++)
+        {
+            var u = all[i];
+            if (u.alive && u.activeCampaignID < 0) idleCount++;
+        }
+        int shouldHave = Mathf.Min(idleCount, maxVisualUnits);
 
-        // Drop extras first (roster shrunk).
+        // Drop extras first (roster shrunk OR units marched out).
         while (spawned.Count > shouldHave)
         {
             var last = spawned[spawned.Count - 1];
@@ -106,13 +116,12 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
             if (last != null) Destroy(last.gameObject);
         }
 
-        // Now walk the roster and spawn missing visuals matching each alive unit.
-        var all = MercenaryRoster.Instance.GetAllUnits();
+        // Spawn missing visuals for idle units.
         int visualIdx = 0;
         for (int i = 0; i < all.Count && visualIdx < shouldHave; i++)
         {
             var u = all[i];
-            if (!u.alive) continue;
+            if (!u.alive || u.activeCampaignID >= 0) continue;
             if (visualIdx < spawned.Count)
             {
                 visualIdx++;

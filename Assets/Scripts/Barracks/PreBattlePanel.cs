@@ -159,6 +159,13 @@ public class PreBattlePanel : MonoBehaviour
         ApplyTacticPressedLook(tacticAssaultButton, t == CampaignTactic.Assault);
         ApplyTacticPressedLook(tacticSiegeButton,   t == CampaignTactic.Siege);
 
+        // Deselect the just-clicked button so Unity's "Selected" state
+        // doesn't stack on top of our own pressed look — otherwise the
+        // previously clicked tactic keeps looking pressed via the Button's
+        // selectedSprite / selectedColor even after we swap the active tint.
+        if (UnityEngine.EventSystems.EventSystem.current != null)
+            UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+
         Refresh();
     }
 
@@ -322,10 +329,8 @@ public class PreBattlePanel : MonoBehaviour
         float winPct = 0f;
         if (preview.totalArmyScore > 0)
         {
-            float baseWin = 1f - (float)currentRegion.enemyStrength / (preview.totalArmyScore * 1.5f);
-            // Include tactic bonus so the gauge matches the actual Resolve
-            // math — otherwise Siege/Ambush wouldn't show any advantage until
-            // the battle actually happened.
+            // Mirror BattleResolver.Resolve exactly — 1.2× ceiling.
+            float baseWin = 1f - (float)currentRegion.enemyStrength / (preview.totalArmyScore * 1.2f);
             baseWin += BattleResolver.TacticWinChanceBonus(currentTactic);
             winPct = Mathf.Clamp(baseWin, 0.05f, 0.95f);
         }

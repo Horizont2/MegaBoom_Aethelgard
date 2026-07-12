@@ -1215,6 +1215,11 @@ public static class LocalizationManager
         Add("MERC_UNIT_RANGER",  "Ranger",  "Слідопит");
         Add("MERC_UNIT_KNIGHT",  "Knight",  "Лицар");
 
+        // === Merc campaign toasts (Show() on start / return) ===
+        Add("MERC_TOAST_DEPLOYED", "{0} units marching on {1}", "{0} воїнів вирушили на {1}");
+        Add("MERC_TOAST_VICTORY",  "Victory at {0}! +◆{1}",     "Перемога в {0}! +◆{1}");
+        Add("MERC_TOAST_DEFEAT",   "Defeated at {0}. {1} fell.", "Поразка в {0}. Загинуло: {1}.");
+
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
         Add("PROMPT_OPEN_MAP", "[E] Open Map", "[E] Відкрити мапу");

@@ -23,8 +23,10 @@ public class MercenaryCampaignManager : MonoBehaviour
     // Nearest region gets minTravelSeconds; farthest gets maxTravelSeconds.
     // I use regionID rank as a stand-in for actual distance so we don't have
     // to place XY markers in Awake — designer can plug real markers later.
-    public float minTravelSeconds = 45f;
-    public float maxTravelSeconds = 180f;
+    // Bumped from 45/180 → 120/360 so a campaign is a real time commitment,
+    // not a two-swing decision.
+    public float minTravelSeconds = 120f;
+    public float maxTravelSeconds = 360f;
 
     private const string PP_CAMPAIGNS = "MercCampaigns_v1";
     private const string PP_NEXT_ID = "MercCampNextID_v1";
@@ -143,6 +145,14 @@ public class MercenaryCampaignManager : MonoBehaviour
             MercenaryRoster.Instance.AssignToCampaign(armyUIDs, c.campaignID);
 
         SaveCampaigns();
+
+        // Player-facing feedback so the deploy feels like something happened
+        // instead of a silent scene-load.
+        ToastManager.Show(
+            LocalizationManager.Tr("MERC_TOAST_DEPLOYED", armyUIDs.Count, region.regionName),
+            ToastManager.ToastKind.Info);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+
         OnCampaignStarted?.Invoke(c);
         return c;
     }
@@ -190,12 +200,15 @@ public class MercenaryCampaignManager : MonoBehaviour
         if (MercenaryRoster.Instance != null)
             MercenaryRoster.Instance.ReleaseFromCampaign(c.campaignID);
 
+        var region = FindRegionByID(c.regionID);
+        string regionName = region != null ? region.regionName : "?";
+        int losses = c.lostUnitUIDs != null ? c.lostUnitUIDs.Count : 0;
+
         if (c.won)
         {
             if (ResourceManager.Instance != null && c.diamondsAwarded > 0)
                 ResourceManager.Instance.AddDiamonds(c.diamondsAwarded);
 
-            var region = FindRegionByID(c.regionID);
             if (region != null)
             {
                 region.currentState = RegionState.Conquered;
@@ -203,6 +216,21 @@ public class MercenaryCampaignManager : MonoBehaviour
                 if (MapProgressionManager.Instance != null)
                     MapProgressionManager.Instance.RefreshMapState();
             }
+
+            // Player-facing feedback — a toast that lands regardless of what
+            // scene the player is in when the campaign resolves. The
+            // BattleResultPanel still appears on next MapCanvas open.
+            ToastManager.Show(
+                LocalizationManager.Tr("MERC_TOAST_VICTORY", regionName, c.diamondsAwarded),
+                ToastManager.ToastKind.Achievement);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+        }
+        else
+        {
+            ToastManager.Show(
+                LocalizationManager.Tr("MERC_TOAST_DEFEAT", regionName, losses),
+                ToastManager.ToastKind.Warning);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
         }
 
         OnCampaignReturned?.Invoke(c);

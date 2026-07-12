@@ -26,8 +26,8 @@ MonoBehaviour:
   recommendedPower: 300
   enemyHpMultiplier: 1
   enemyDamageMultiplier: 1
-  enemyStrength: 110
-  autoBattleDiamondReward: 25
+  enemyStrength: 165
+  autoBattleDiamondReward: 30
   regionTotemPrefab: {fileID: 8127212624578260654, guid: 1dcd439e2367b6846b80a8434ad2c209, type: 3}
   locationYOffset: 0
   regionBossPrefabs: []

@@ -65,12 +65,14 @@ public static class BattleResolver
     // Extra win-chance the tactic grants ON TOP of the raw army-vs-enemy
     // score ratio. Ambush gets a surprise bonus; Siege gets a mechanical
     // bonus from prep + engines; Assault is the neutral baseline.
+    // Trimmed a bit (5%→3%, 10%→7%) so tactic isn't the primary deciding
+    // factor — army composition still matters more.
     public static float TacticWinChanceBonus(CampaignTactic t)
     {
         switch (t)
         {
-            case CampaignTactic.Ambush: return 0.05f;
-            case CampaignTactic.Siege:  return 0.10f;
+            case CampaignTactic.Ambush: return 0.03f;
+            case CampaignTactic.Siege:  return 0.07f;
             default: return 0f;
         }
     }
@@ -150,10 +152,12 @@ public static class BattleResolver
         }
 
         // Win check: score ratio + tactic bonus + small RNG bias to keep
-        // close battles unpredictable. At armyScore == enemyScore*1.5 → 100%
-        // win (Assault); at armyScore == enemyScore → ~33% (Assault).
-        // Ambush bumps by +5%, Siege by +10%.
-        float baseWinChance = Mathf.Clamp01(1f - (float)enemyStrength / (armyScore * 1.5f));
+        // close battles unpredictable. Ceiling tightened to 1.2× so cheap
+        // Militia spam doesn't trivialise mid/late regions — you need a
+        // stronger composition to guarantee wins.
+        // At armyScore == enemyScore*1.2 → 100% win (Assault); at ratio
+        // 1:1 → ~17% win. Ambush +3%, Siege +7% on top.
+        float baseWinChance = Mathf.Clamp01(1f - (float)enemyStrength / (armyScore * 1.2f));
         baseWinChance = Mathf.Clamp01(baseWinChance + TacticWinChanceBonus(tactic));
         float roll = (float)rng.NextDouble();
         float bias = ((float)rng.NextDouble() - 0.5f) * 0.2f;
