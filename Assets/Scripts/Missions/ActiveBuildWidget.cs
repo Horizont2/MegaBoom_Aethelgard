@@ -40,20 +40,20 @@ public class ActiveBuildWidget : MonoBehaviour
         {
             isActive = false;
 
-            // 1. Повідомляємо глобальній системі та будівлі, що час вийшов
+            // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 0);
             PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 1);
             PlayerPrefs.Save();
 
-            // 2. Прибираємо себе з пам'яті HUD і показуємо текст
+            // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ'пїЅпїЅ HUD пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             if (GlobalHUD.Instance != null)
             {
                 GlobalHUD.Instance.RemoveUpgradeFromList(buildingID);
                 if (titleText != null)
-                    GlobalHUD.Instance.ShowPrompt(titleText.text + " UPGRADED!");
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("TOAST_BUILDING_UPGRADED", titleText.text));
             }
 
-            // 3. Відтворюємо твою анімацію виходу
+            // 3. ВіпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             StartCoroutine(ExitAnimationRoutine());
             return;
         }

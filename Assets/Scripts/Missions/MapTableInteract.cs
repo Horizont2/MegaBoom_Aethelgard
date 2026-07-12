@@ -68,7 +68,7 @@ public class MapTableInteract : MonoBehaviour
             {
                 if (GlobalHUD.Instance != null)
                 {
-                    GlobalHUD.Instance.ShowPrompt("<color=#FF4444>Upgrade Elias's Lodge first!</color>");
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_UPGRADE_ELIAS_FIRST"));
                 }
                 return;
             }
@@ -86,7 +86,7 @@ public class MapTableInteract : MonoBehaviour
         if (other.CompareTag("Player") && !isMapOpen)
         {
             playerInRange = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Open Map");
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_OPEN_MAP"));
         }
     }
 
@@ -193,7 +193,7 @@ public class MapTableInteract : MonoBehaviour
         }
         if (playerController != null) playerController.enabled = true;
 
-        if (playerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Open Map");
+        if (playerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_OPEN_MAP"));
         isTransitioning = false;
     }
 

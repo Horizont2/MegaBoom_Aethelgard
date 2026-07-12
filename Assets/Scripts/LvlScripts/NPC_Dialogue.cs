@@ -23,7 +23,7 @@ public class NPC_Dialogue : MonoBehaviour
         if (other.CompareTag("Player") && !hasTalked)
         {
             isPlayerInRange = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Talk to Stranger");
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_TALK_STRANGER"));
         }
     }
 

@@ -27,7 +27,7 @@ public class StoryExtractionPoint : MonoBehaviour
     private bool isPlayerInRange = false;
     private bool isEvacuating = false;
 
-    // UI Елементи для кінематографії
+    // UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private CanvasGroup fadeGroup;
     private RectTransform topBar;
     private RectTransform bottomBar;
@@ -61,7 +61,7 @@ public class StoryExtractionPoint : MonoBehaviour
         if (other.CompareTag("Player") && !isEvacuating)
         {
             isPlayerInRange = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Mount Horse & Escape");
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_MOUNT_HORSE"));
         }
     }
 
@@ -112,13 +112,13 @@ public class StoryExtractionPoint : MonoBehaviour
         {
             riderDummy.SetActive(true);
 
-            // Якщо об'єкт раптом не є дочірнім, робимо його таким, але ЗБЕРІГАЮЧИ його поточну позицію
+            // пїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅРІпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (riderDummy.transform.parent != horseTransform)
             {
                 riderDummy.transform.SetParent(horseTransform, true);
             }
 
-            // Вимикаємо Root Motion, щоб анімація не відривала вершника
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Root Motion, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             Animator riderAnim = riderDummy.GetComponent<Animator>();
             if (riderAnim != null)
             {

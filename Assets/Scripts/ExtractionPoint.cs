@@ -12,7 +12,7 @@ public class ExtractionPoint : MonoBehaviour
             {
                 GlobalHUD.Instance.HidePrompt();
 
-                // ЗВУК: Успішна евакуація (Фанфари)
+                // пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                 if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
                 PlayerController pc = FindFirstObjectByType<PlayerController>();
@@ -33,7 +33,7 @@ public class ExtractionPoint : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             isPlayerNear = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("Press E to Evacuate");
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_EVACUATE"));
         }
     }
 

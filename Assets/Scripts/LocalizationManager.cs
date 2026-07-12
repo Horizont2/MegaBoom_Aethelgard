@@ -1214,6 +1214,30 @@ public static class LocalizationManager
         Add("MERC_UNIT_MILITIA", "Militia", "Ополчення");
         Add("MERC_UNIT_RANGER",  "Ranger",  "Слідопит");
         Add("MERC_UNIT_KNIGHT",  "Knight",  "Лицар");
+
+        // === World interaction prompts (F/E keys near objects) ===
+        Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
+        Add("PROMPT_OPEN_MAP", "[E] Open Map", "[E] Відкрити мапу");
+        Add("PROMPT_OPEN_BOARD", "Press E to Open Board", "Натисни E щоб відкрити дошку");
+        Add("PROMPT_TALK_STRANGER", "[E] Talk to Stranger", "[E] Поговорити з незнайомцем");
+        Add("PROMPT_PET_CAT", "[E] Pet Cat", "[E] Погладити кота");
+        Add("PROMPT_EVACUATE", "Press E to Evacuate", "Натисни E щоб евакуюватися");
+        Add("PROMPT_MOUNT_HORSE", "[E] Mount Horse & Escape", "[E] Осідлати коня і втекти");
+        Add("PROMPT_UPGRADE_ELIAS_FIRST",
+            "<color=#FF4444>Upgrade Elias's Lodge first!</color>",
+            "<color=#FF4444>Спершу покращ Хатину Еліаса!</color>");
+
+        // === Building upgrade toast ===
+        Add("TOAST_BUILDING_UPGRADED", "{0} UPGRADED!", "{0} ПОЛІПШЕНО!");
+
+        // === Camp building CampBuilding.cs hardcoded texts ===
+        Add("CB_UNBUILT_LABEL", "(Unbuilt)", "(Ще не збудовано)");
+        Add("CB_LEVEL_LABEL", "(Level {0})", "(Рівень {0})");
+        Add("CB_MAX_LEVEL", "Max Level Reached", "Досягнуто максимального рівня");
+        Add("CB_PRODUCTION_LABEL", "Production", "Виробництво");
+        Add("CB_FEATURE_LABEL", "Feature", "Особливість");
+        Add("CB_BUILD_TIME", "Build Time: {0}s", "Час: {0} с");
+        Add("CB_UPGRADE_TIME", "Upgrade Time: {0}s", "Час поліпшення: {0} с");
     }
 
     // Runtime-set labels that AutoLocalize can't reach (their text is

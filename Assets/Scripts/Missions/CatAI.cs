@@ -103,7 +103,7 @@ public class CatAI : AnimalAI
 
     protected override void UpdateFlee()
     {
-        // Jeœli kot zaczyna uciekaæ, odtwarzamy dŸwiêk przestrzenny z jego pozycji
+        // Jeï¿½li kot zaczyna uciekaï¿½, odtwarzamy dï¿½wiï¿½k przestrzenny z jego pozycji
         if (currentState != AnimalState.Flee && AudioManager.Instance != null)
         {
             AudioManager.Instance.PlaySFX3D(AudioID.Animal_CatMeow, transform.position);
@@ -149,7 +149,7 @@ public class CatAI : AnimalAI
             if (!playerInRange)
             {
                 playerInRange = true;
-                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Pet Cat");
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_PET_CAT"));
             }
         }
         else if (dist > 2.5f && playerInRange)
@@ -172,7 +172,7 @@ public class CatAI : AnimalAI
 
         if (heartParticles != null) heartParticles.Play();
 
-        // ZMIANA: Zast¹piono PlaySFX now¹ metod¹ PlaySFX3D przekazuj¹c¹ pozycjê kota
+        // ZMIANA: Zastï¿½piono PlaySFX nowï¿½ metodï¿½ PlaySFX3D przekazujï¿½cï¿½ pozycjï¿½ kota
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlaySFX3D(AudioID.Animal_CatMeow, transform.position);
