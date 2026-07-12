@@ -7210,6 +7210,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &87313842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13782,6 +13784,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &123374783
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17090,6 +17094,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &167625678
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18426,6 +18432,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &189703230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19118,6 +19126,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &200955261
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58765,6 +58775,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &528643542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63117,6 +63129,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &589641541
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67048,6 +67062,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &657663014
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68492,6 +68508,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &687342566
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -92545,6 +92563,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1021423561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114696,6 +114716,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1203911069
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118464,6 +118486,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1269595256
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122473,6 +122497,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1331193978
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127967,6 +127993,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1429453527
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -130488,6 +130516,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1461432744
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -132850,6 +132880,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1493042248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -137798,6 +137830,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1558929478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147846,6 +147880,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1616393072
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -164950,6 +164986,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1804135859
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -166412,6 +166450,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1827033539
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -171600,6 +171640,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1908180326
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181515,6 +181557,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &1978038595
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -187024,6 +187068,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &2063324172
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -190957,6 +191003,26 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3624175433048172518, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3624175433048172518, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3624175433048172518, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3624175433048172518, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3624175433048172518, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3723353492135753595, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -5.699997
@@ -191027,7 +191093,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6455675626586228133, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4283591641
+      value: 4292470250
       objectReference: {fileID: 0}
     - target: {fileID: 6787558159049126975, guid: 37a1ae2077550c247af1d82f42a9f6d4, type: 3}
       propertyPath: m_Pivot.x
@@ -192653,6 +192719,8 @@ MonoBehaviour:
   hoverConqueredColor: {r: 1, g: 0.8, b: 0.2, a: 0.6}
   darkFogColor: {r: 0.08, g: 0.1, b: 0.15, a: 0.95}
   lightFogColor: {r: 0.15, g: 0.18, b: 0.25, a: 0.95}
+  campaignOverlayObject: {fileID: 0}
+  campaignTimerText: {fileID: 0}
 --- !u!114 &2122922412
 MonoBehaviour:
   m_ObjectHideFlags: 0
