@@ -232,8 +232,10 @@ public class TutorialPanelUI : MonoBehaviour
 
     private void ApplyContent(TutorialHintData data)
     {
-        if (titleText != null) titleText.text = string.IsNullOrEmpty(data.title) ? "TIP" : data.title;
-        if (bodyText != null) bodyText.text = data.body;
+        if (titleText != null) titleText.text = string.IsNullOrEmpty(data.title)
+            ? LocalizationManager.Tr("TUTORIAL_TIP_DEFAULT")
+            : LocalizationManager.Tr(data.title);
+        if (bodyText != null) bodyText.text = LocalizationManager.Tr(data.body);
 
         if (iconImage != null && iconHolder != null)
         {

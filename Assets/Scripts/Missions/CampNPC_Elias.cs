@@ -99,7 +99,7 @@ public class CampNPC_Elias : MonoBehaviour
         if (other.CompareTag("Player") && !isTalking)
         {
             isPlayerInRange = true;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Talk to Elias");
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_TALK_ELIAS"));
         }
     }
 
@@ -118,7 +118,7 @@ public class CampNPC_Elias : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         if (exclamationMark != null) exclamationMark.SetActive(false);
 
-        // ФІКС ОПТИМІЗАЦІЇ: Використовуємо вже збережений playerTransform
+        // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ playerTransform
         if (playerTransform != null)
         {
             Vector3 lookPos = playerTransform.position - transform.position;
@@ -194,7 +194,7 @@ public class CampNPC_Elias : MonoBehaviour
         MissionBoardMarker board = FindFirstObjectByType<MissionBoardMarker>();
         if (board != null) board.UpdateMarkerState();
 
-        if (isPlayerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt("[E] Talk to Elias");
+        if (isPlayerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_TALK_ELIAS"));
     }
 
     private IEnumerator ShowSubtitle(string text, float stayDuration)

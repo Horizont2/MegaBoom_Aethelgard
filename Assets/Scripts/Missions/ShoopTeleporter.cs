@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class ShopTeleporter : MonoBehaviour
 {
-    public string shopSceneName = "ShopScene"; // Назва сцени магазину
+    public string shopSceneName = "ShopScene"; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private bool isPlayerNear = false;
 
     private void OnTriggerEnter(Collider other)
@@ -11,7 +11,7 @@ public class ShopTeleporter : MonoBehaviour
         {
             isPlayerNear = true;
             if (GlobalHUD.Instance != null)
-                GlobalHUD.Instance.ShowPrompt("Press E to Enter Shop");
+                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_ENTER_SHOP"));
         }
     }
 
@@ -29,11 +29,11 @@ public class ShopTeleporter : MonoBehaviour
     {
         if (isPlayerNear && Input.GetKeyDown(KeyCode.E))
         {
-            isPlayerNear = false; // Блокуємо повторні натискання
+            isPlayerNear = false; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (GlobalHUD.Instance != null)
             {
-                GlobalHUD.Instance.HidePrompt(); // Ховаємо текст
-                GlobalHUD.Instance.FadeAndLoadScene(shopSceneName); // Затемнюємо екран і переходимо
+                GlobalHUD.Instance.HidePrompt(); // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+                GlobalHUD.Instance.FadeAndLoadScene(shopSceneName); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             }
         }
     }
