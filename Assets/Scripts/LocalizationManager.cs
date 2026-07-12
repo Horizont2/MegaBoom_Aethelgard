@@ -1220,6 +1220,17 @@ public static class LocalizationManager
         Add("MERC_TOAST_VICTORY",  "Victory at {0}! +◆{1}",     "Перемога в {0}! +◆{1}");
         Add("MERC_TOAST_DEFEAT",   "Defeated at {0}. {1} fell.", "Поразка в {0}. Загинуло: {1}.");
 
+        // Tactic tooltip lines (shown in PreBattlePanel.tacticDescriptionText)
+        Add("MERC_TACTIC_DESC_AMBUSH",
+            "Ambush — ×0.6 travel, +8% win chance. LOSS is catastrophic (×1.6 casualties).",
+            "Засідка — ×0.6 часу, +8% шанс. Поразка — катастрофа (×1.6 втрат).");
+        Add("MERC_TACTIC_DESC_ASSAULT",
+            "Assault — standard march. Small casualty bonus either way (×0.9 win / ×0.8 loss).",
+            "Штурм — стандартний марш. Невеликий бонус до втрат (×0.9 перемога / ×0.8 поразка).");
+        Add("MERC_TACTIC_DESC_SIEGE",
+            "Siege — ×2 travel, +12% win chance. Engines cut casualties in half (×0.5 / ×0.6).",
+            "Облога — ×2 часу, +12% шанс. Машини вдвічі скорочують втрати (×0.5 / ×0.6).");
+
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
         Add("PROMPT_OPEN_MAP", "[E] Open Map", "[E] Відкрити мапу");

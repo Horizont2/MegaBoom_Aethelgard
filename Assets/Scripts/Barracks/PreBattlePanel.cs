@@ -66,6 +66,12 @@ public class PreBattlePanel : MonoBehaviour
     // Optional secondary CANCEL button (mockup has one under DEPLOY ARMY).
     public Button cancelButton;
 
+    [Header("Tactic Description (optional)")]
+    // TMP that displays a short pros/cons line for the currently selected
+    // tactic. Refreshed in SetTactic. Leave null if the panel doesn't have
+    // a tooltip slot.
+    public TextMeshProUGUI tacticDescriptionText;
+
     private RegionData currentRegion;
     private CampaignTactic currentTactic = CampaignTactic.Assault;
     private readonly Dictionary<string, int> desiredCounts = new Dictionary<string, int>();
@@ -165,6 +171,15 @@ public class PreBattlePanel : MonoBehaviour
         // selectedSprite / selectedColor even after we swap the active tint.
         if (UnityEngine.EventSystems.EventSystem.current != null)
             UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+
+        // Update tooltip line with the concrete pros/cons of this tactic.
+        if (tacticDescriptionText != null)
+        {
+            string key = t == CampaignTactic.Ambush   ? "MERC_TACTIC_DESC_AMBUSH"
+                       : t == CampaignTactic.Siege    ? "MERC_TACTIC_DESC_SIEGE"
+                                                       : "MERC_TACTIC_DESC_ASSAULT";
+            tacticDescriptionText.text = LocalizationManager.Tr(key);
+        }
 
         Refresh();
     }

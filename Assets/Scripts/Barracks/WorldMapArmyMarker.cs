@@ -147,6 +147,18 @@ public class WorldMapArmyMarker : MonoBehaviour
             float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90f;
             marker.localRotation = Quaternion.Euler(0f, 0f, ang);
         }
+
+        // Optional per-figurine countdown — if the marker prefab has a
+        // TMP labelled "TimerText" as a child, we update it with
+        // total time remaining until the campaign resolves and clears.
+        var timer = marker.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (timer != null)
+        {
+            float remain = Mathf.Max(0f, c.TotalPhaseDuration - c.SecondsSinceStart());
+            int m = Mathf.FloorToInt(remain / 60f);
+            int s = Mathf.FloorToInt(remain % 60f);
+            timer.text = m > 0 ? $"{m}:{s:D2}" : $"0:{s:D2}";
+        }
     }
 
     private RectTransform FindRegionNodeRect(int regionID)

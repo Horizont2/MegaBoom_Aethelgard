@@ -47,6 +47,14 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     public Color darkFogColor = new Color(0.08f, 0.1f, 0.15f, 0.95f);
     public Color lightFogColor = new Color(0.15f, 0.18f, 0.25f, 0.95f);
 
+    [Header("Mercenary Campaign Overlay (optional)")]
+    // Toggled true whenever this region has an active mercenary campaign
+    // marching against it. Drag a small icon/text GameObject that reads
+    // "IN SIEGE" or similar. Left null → no visible indicator.
+    public GameObject campaignOverlayObject;
+    // Optional TMP that shows "MM:SS remaining". Updated per frame.
+    public TextMeshProUGUI campaignTimerText;
+
     private float breathSpeed;
     private float breathOffset;
     private Color targetImageColor;
@@ -81,6 +89,9 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         regionImage.color = Color.Lerp(regionImage.color, targetImageColor, Time.deltaTime * 10f);
 
+        // Mercenary campaign overlay + countdown.
+        RefreshCampaignOverlay();
+
         if (myRegionData != null && myRegionData.currentState == RegionState.Locked && stormLayer != null)
         {
             float stormPulse = (Mathf.Sin(Time.time * breathSpeed + breathOffset) + 1f) / 2f;
@@ -114,6 +125,38 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         UpdateMapLabel();
     }
 
+    // Toggles the campaign overlay + writes remaining-time to the timer TMP.
+    // Cheap enough to run every frame — MercenaryCampaignManager.FindByRegion
+    // is a linear scan of ≤ few active campaigns.
+    private void RefreshCampaignOverlay()
+    {
+        if (myRegionData == null) return;
+
+        MercenaryCampaign c = null;
+        if (MercenaryCampaignManager.Instance != null)
+            c = MercenaryCampaignManager.Instance.FindByRegion(myRegionData.regionID);
+
+        bool active = c != null && !c.resolved;
+
+        if (campaignOverlayObject != null && campaignOverlayObject.activeSelf != active)
+            campaignOverlayObject.SetActive(active);
+
+        if (campaignTimerText != null)
+        {
+            if (active)
+            {
+                float remain = Mathf.Max(0f, c.TotalPhaseDuration - c.SecondsSinceStart());
+                int m = Mathf.FloorToInt(remain / 60f);
+                int s = Mathf.FloorToInt(remain % 60f);
+                campaignTimerText.text = m > 0 ? $"{m}:{s:D2}" : $"0:{s:D2}";
+            }
+            else if (campaignTimerText.text.Length > 0)
+            {
+                campaignTimerText.text = string.Empty;
+            }
+        }
+    }
+
     private void UpdateMapLabel()
     {
         if (mapLabelText == null || myRegionData == null) return;
@@ -125,7 +168,7 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         }
         else
         {
-            mapLabelText.text = myRegionData.regionName.ToUpper();
+            mapLabelText.text = LocalizationManager.Tr(myRegionData.regionName).ToUpper();
             mapLabelText.alpha = 0.8f;
         }
     }

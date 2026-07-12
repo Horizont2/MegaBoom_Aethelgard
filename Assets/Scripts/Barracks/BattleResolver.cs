@@ -42,37 +42,48 @@ public struct BattleResult
 // resolves identically the second time.
 public static class BattleResolver
 {
-    public static float TacticCasualtyMultiplier(CampaignTactic t)
+    // Casualty multiplier split into win / loss cases so each tactic can
+    // have a distinct risk profile — not just "less losses is better".
+    //
+    //  Ambush  — hit-and-run: normal wins, catastrophic losses (surrounded)
+    //  Assault — professional line: modest bonus both ways
+    //  Siege   — walls + engines: minor losses regardless of outcome
+    public static float TacticCasualtyMultiplier(CampaignTactic t, bool won)
     {
         switch (t)
         {
-            case CampaignTactic.Ambush: return 0.8f;
-            case CampaignTactic.Siege:  return 0.7f;
-            default: return 1.0f;
+            case CampaignTactic.Ambush:
+                return won ? 1.0f : 1.6f;    // fine if you win, brutal if you lose
+            case CampaignTactic.Siege:
+                return won ? 0.5f : 0.6f;    // methodical — few losses either way
+            default: // Assault
+                return won ? 0.9f : 0.8f;    // balanced, disciplined retreat
         }
     }
+
+    // Legacy single-arg overload — kept so old callers still compile.
+    // Assumes "won" for a preview-style query.
+    public static float TacticCasualtyMultiplier(CampaignTactic t) =>
+        TacticCasualtyMultiplier(t, true);
 
     public static float TacticTravelMultiplier(CampaignTactic t)
     {
         switch (t)
         {
-            case CampaignTactic.Ambush: return 0.85f; // scouts choose faster paths
-            case CampaignTactic.Siege:  return 1.5f;  // siege trains are slow
+            case CampaignTactic.Ambush: return 0.6f;  // scouts choose fastest paths, no baggage
+            case CampaignTactic.Siege:  return 2.0f;  // siege trains crawl — engines and supplies
             default: return 1.0f;
         }
     }
 
     // Extra win-chance the tactic grants ON TOP of the raw army-vs-enemy
-    // score ratio. Ambush gets a surprise bonus; Siege gets a mechanical
-    // bonus from prep + engines; Assault is the neutral baseline.
-    // Trimmed a bit (5%→3%, 10%→7%) so tactic isn't the primary deciding
-    // factor — army composition still matters more.
+    // score ratio. Wider spread than before so tactic choice has real bite.
     public static float TacticWinChanceBonus(CampaignTactic t)
     {
         switch (t)
         {
-            case CampaignTactic.Ambush: return 0.03f;
-            case CampaignTactic.Siege:  return 0.07f;
+            case CampaignTactic.Ambush: return 0.08f;
+            case CampaignTactic.Siege:  return 0.12f;
             default: return 0f;
         }
     }
@@ -106,17 +117,25 @@ public static class BattleResolver
             diamondReward = rewardOnWin,
         };
 
-        // Casualty forecast is a band around the win/loss expectation.
-        // The wider the mismatch, the wider the band tightens toward one side.
+        // Casualty forecast — blend of win-case and loss-case share weighted
+        // by the estimated win probability. Ambush shows huge on-loss
+        // penalty, Siege stays low both ways — the range makes the trade-off
+        // legible without a text tooltip.
         float ratio = armyScore > 0 ? (float)enemyStrength / armyScore : 999f;
-        float tacticMult = TacticCasualtyMultiplier(tactic);
-        // Base casualty share is proportional to enemy ratio, capped at whole army.
-        float baseShare = Mathf.Clamp01(ratio * 0.6f) * tacticMult;
+        float baseShare = Mathf.Clamp01(ratio * 0.6f);
+        // Approximate win chance same way Resolve does, for band centring.
+        float winChance = armyScore > 0
+            ? Mathf.Clamp01((1f - (float)enemyStrength / (armyScore * 1.2f)) + TacticWinChanceBonus(tactic))
+            : 0f;
+        float winShare  = Mathf.Clamp01(baseShare * TacticCasualtyMultiplier(tactic, true));
+        float lossShare = Mathf.Clamp01((baseShare + 0.35f) * TacticCasualtyMultiplier(tactic, false));
         int total = army.Count;
-        r.expectedCasualtyLow = Mathf.Clamp(Mathf.FloorToInt(baseShare * total - 0.5f), 0, total);
-        r.expectedCasualtyHigh = Mathf.Clamp(Mathf.CeilToInt(baseShare * total + 0.5f), r.expectedCasualtyLow, total);
+        int lowEnd  = Mathf.Clamp(Mathf.FloorToInt(winShare * total - 0.5f), 0, total);
+        int highEnd = Mathf.Clamp(Mathf.CeilToInt(lossShare * total + 0.5f), lowEnd, total);
+        r.expectedCasualtyLow = lowEnd;
+        r.expectedCasualtyHigh = highEnd;
 
-        r.won = ratio < 1.0f; // preview shows the expected outcome
+        r.won = winChance > 0.5f;
         return r;
     }
 
@@ -163,11 +182,12 @@ public static class BattleResolver
         float bias = ((float)rng.NextDouble() - 0.5f) * 0.2f;
         r.won = roll < (baseWinChance + bias);
 
-        // Casualty math.
+        // Casualty math — win/loss-aware tactic multiplier so Ambush truly
+        // punishes a lost gamble and Siege stays cheap either way.
         float ratio = (float)enemyStrength / armyScore;
         float baseShare = Mathf.Clamp01(ratio * 0.6f);
         if (!r.won) baseShare = Mathf.Clamp(baseShare + 0.35f, 0f, 1f); // losing hurts more
-        float tacticMult = TacticCasualtyMultiplier(tactic);
+        float tacticMult = TacticCasualtyMultiplier(tactic, r.won);
         float finalShare = Mathf.Clamp01(baseShare * tacticMult);
 
         int total = army.Count;
