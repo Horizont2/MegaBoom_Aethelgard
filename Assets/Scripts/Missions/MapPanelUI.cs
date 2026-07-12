@@ -339,7 +339,7 @@ public class MapPanelUI : MonoBehaviour
 
                     if (upgradeButtonText != null)
                     {
-                        upgradeButtonText.text = "<color=#FFD700>CONFIRM</color>";
+                        upgradeButtonText.text = LocalizationManager.Tr("MAP_CONFIRM_UPGRADE");
                         upgradeButtonText.color = btnTextAffordableColor;
                     }
                     if (actionButton != null) actionButton.interactable = false;

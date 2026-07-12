@@ -113,24 +113,16 @@ public class PreBattlePanel : MonoBehaviour
     private void RefreshBarracksPips()
     {
         if (barracksLevelPips == null || barracksLevelPips.Length == 0) return;
-        int lvl = 0;
-        var mgr = MercenaryCampaignManager.Instance;
-        if (mgr != null)
-        {
-            // Find any BarracksBuilding in the scene to read its host level.
-            // FindObjectByType is fine here — only runs on panel Open.
-            var host = FindFirstObjectByType<BarracksBuilding>();
-            if (host != null)
-            {
-                var cb = host.GetComponent<CampBuilding>();
-                if (cb != null) lvl = cb.currentLevel;
-            }
-        }
+        // Pips reflect current alive army size, not barracks upgrade level —
+        // showing the barracks lvl on this deployment screen was pointless
+        // since the player already saw it in the barracks panel. Filled per
+        // alive unit, empty per free slot.
+        int alive = MercenaryRoster.Instance != null ? MercenaryRoster.Instance.CountAliveTotal() : 0;
         for (int i = 0; i < barracksLevelPips.Length; i++)
         {
             var img = barracksLevelPips[i];
             if (img == null) continue;
-            img.sprite = (i < lvl) ? pipHelmFilledSprite : pipHelmEmptySprite;
+            img.sprite = (i < alive) ? pipHelmFilledSprite : pipHelmEmptySprite;
         }
     }
 

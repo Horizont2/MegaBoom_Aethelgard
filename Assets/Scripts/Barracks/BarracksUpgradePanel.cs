@@ -312,12 +312,15 @@ public class BarracksUpgradePanel : MonoBehaviour
     private void RefreshHeaderPips()
     {
         if (barracksLevelPips == null || barracksLevelPips.Length == 0) return;
-        int lvl = hostBuilding != null ? hostBuilding.currentLevel : 0;
+        // Pips now represent army slots — filled per alive mercenary, empty
+        // per free slot. Slot cap == pip array length (drag more Image slots
+        // into the array to raise the visual cap).
+        int alive = MercenaryRoster.Instance != null ? MercenaryRoster.Instance.CountAliveTotal() : 0;
         for (int i = 0; i < barracksLevelPips.Length; i++)
         {
             var img = barracksLevelPips[i];
             if (img == null) continue;
-            img.sprite = (i < lvl) ? pipHelmFilledSprite : pipHelmEmptySprite;
+            img.sprite = (i < alive) ? pipHelmFilledSprite : pipHelmEmptySprite;
         }
     }
 

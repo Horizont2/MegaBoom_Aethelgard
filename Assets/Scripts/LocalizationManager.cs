@@ -1238,6 +1238,12 @@ public static class LocalizationManager
         Add("CB_FEATURE_LABEL", "Feature", "Особливість");
         Add("CB_BUILD_TIME", "Build Time: {0}s", "Час: {0} с");
         Add("CB_UPGRADE_TIME", "Upgrade Time: {0}s", "Час поліпшення: {0} с");
+
+        // === MapPanelUI ===
+        Add("MAP_CONFIRM_UPGRADE", "<color=#FFD700>CONFIRM</color>", "<color=#FFD700>ПІДТВЕРДИТИ</color>");
+
+        // === LoreCodex ===
+        Add("LORE_EMPTY_TITLE", "—", "—");
     }
 
     // Runtime-set labels that AutoLocalize can't reach (their text is
