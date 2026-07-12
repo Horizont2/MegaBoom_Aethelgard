@@ -62,6 +62,19 @@ public static class BattleResolver
         }
     }
 
+    // Extra win-chance the tactic grants ON TOP of the raw army-vs-enemy
+    // score ratio. Ambush gets a surprise bonus; Siege gets a mechanical
+    // bonus from prep + engines; Assault is the neutral baseline.
+    public static float TacticWinChanceBonus(CampaignTactic t)
+    {
+        switch (t)
+        {
+            case CampaignTactic.Ambush: return 0.05f;
+            case CampaignTactic.Siege:  return 0.10f;
+            default: return 0f;
+        }
+    }
+
     public static RiskBand ClassifyRisk(int armyScore, int enemyScore)
     {
         if (armyScore <= 0) return RiskBand.Suicidal;
@@ -136,10 +149,12 @@ public static class BattleResolver
             return r;
         }
 
-        // Win check: score ratio + small RNG bias to keep close battles unpredictable.
+        // Win check: score ratio + tactic bonus + small RNG bias to keep
+        // close battles unpredictable. At armyScore == enemyScore*1.5 → 100%
+        // win (Assault); at armyScore == enemyScore → ~33% (Assault).
+        // Ambush bumps by +5%, Siege by +10%.
         float baseWinChance = Mathf.Clamp01(1f - (float)enemyStrength / (armyScore * 1.5f));
-        // At armyScore == enemyScore * 1.5 → 100% win. At armyScore == enemyScore → ~33%.
-        // RNG kicker: ±10% to prevent perfect determinism at each ratio bucket.
+        baseWinChance = Mathf.Clamp01(baseWinChance + TacticWinChanceBonus(tactic));
         float roll = (float)rng.NextDouble();
         float bias = ((float)rng.NextDouble() - 0.5f) * 0.2f;
         r.won = roll < (baseWinChance + bias);

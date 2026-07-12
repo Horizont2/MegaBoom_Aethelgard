@@ -137,13 +137,67 @@ public class PreBattlePanel : MonoBehaviour
         }
     }
 
+    // Colour applied to the active tactic button's Image (ColorTint transition).
+    // Same pattern as the barracks tab tint.
+    public Color tacticActiveButtonTint   = new Color(0f, 0f, 0f, 0.38f);
+    public Color tacticInactiveButtonTint = new Color(1f, 1f, 1f, 0f);
+
+    // SpriteSwap cache — first time we touch each tactic button we snapshot
+    // its resting sprite so we can restore it when the tactic becomes inactive.
+    private readonly System.Collections.Generic.Dictionary<Button, Sprite> defaultTacticSprites =
+        new System.Collections.Generic.Dictionary<Button, Sprite>();
+
     private void SetTactic(CampaignTactic t)
     {
         currentTactic = t;
         if (tacticAmbushHighlight != null) tacticAmbushHighlight.enabled = t == CampaignTactic.Ambush;
         if (tacticAssaultHighlight != null) tacticAssaultHighlight.enabled = t == CampaignTactic.Assault;
         if (tacticSiegeHighlight != null) tacticSiegeHighlight.enabled = t == CampaignTactic.Siege;
+
+        // Persistent "pressed" look for the active tactic button.
+        ApplyTacticPressedLook(tacticAmbushButton,  t == CampaignTactic.Ambush);
+        ApplyTacticPressedLook(tacticAssaultButton, t == CampaignTactic.Assault);
+        ApplyTacticPressedLook(tacticSiegeButton,   t == CampaignTactic.Siege);
+
         Refresh();
+    }
+
+    private void ApplyTacticPressedLook(Button btn, bool active)
+    {
+        if (btn == null) return;
+
+        // SpriteSwap: swap Image.sprite to the pressed sprite when active,
+        // restore the cached resting sprite when inactive. Don't touch color
+        // (tint would multiply the sprite and wash it out).
+        if (btn.transition == Selectable.Transition.SpriteSwap)
+        {
+            if (btn.targetGraphic is Image imgSw)
+            {
+                if (!defaultTacticSprites.ContainsKey(btn)) defaultTacticSprites[btn] = imgSw.sprite;
+                var state = btn.spriteState;
+                Sprite pressedSprite = state.pressedSprite != null ? state.pressedSprite : state.selectedSprite;
+                imgSw.sprite = active && pressedSprite != null ? pressedSprite : defaultTacticSprites[btn];
+                imgSw.color = Color.white;
+            }
+            return;
+        }
+
+        // ColorTint (or None): rewrite the entire ColorBlock so hovering
+        // another tactic and moving off doesn't reset the active one back
+        // to normal.
+        Color tint = active ? tacticActiveButtonTint : tacticInactiveButtonTint;
+        var cb = btn.colors;
+        cb.normalColor = tint;
+        cb.highlightedColor = active
+            ? Color.Lerp(tint, new Color(1f, 1f, 1f, tint.a), 0.15f)
+            : new Color(1f, 1f, 1f, 0.06f);
+        cb.pressedColor = tint;
+        cb.selectedColor = tint;
+        btn.colors = cb;
+        if (btn.targetGraphic is Image imgCt)
+        {
+            imgCt.color = tint;
+        }
     }
 
     private void RebuildUnitRows()
@@ -257,6 +311,10 @@ public class PreBattlePanel : MonoBehaviour
         if (preview.totalArmyScore > 0)
         {
             float baseWin = 1f - (float)currentRegion.enemyStrength / (preview.totalArmyScore * 1.5f);
+            // Include tactic bonus so the gauge matches the actual Resolve
+            // math — otherwise Siege/Ambush wouldn't show any advantage until
+            // the battle actually happened.
+            baseWin += BattleResolver.TacticWinChanceBonus(currentTactic);
             winPct = Mathf.Clamp(baseWin, 0.05f, 0.95f);
         }
         if (chosen.Count == 0) winPct = 0f;
