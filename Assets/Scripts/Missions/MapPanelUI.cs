@@ -425,6 +425,14 @@ public class MapPanelUI : MonoBehaviour
                 currentRegion.UsesMercenaryAutoBattle &&
                 currentRegion.currentState == RegionState.Available;
 
+            // Loud warning if this SHOULD have gone to PreBattlePanel but the
+            // panel field is not wired — otherwise the click silently falls
+            // through to travel and the player wonders why.
+            if (isAutoBattleRegion && preBattlePanel == null)
+            {
+                Debug.LogWarning("[MapPanelUI] Region '" + currentRegion.regionName + "' is auto-battle but `preBattlePanel` field is not wired — falling through to normal Travel. Drag the PreBattlePanel scene instance into the MapPanelUI inspector.");
+            }
+
             if (isAutoBattleRegion && preBattlePanel != null)
             {
                 // Guard against launching another campaign while one is
