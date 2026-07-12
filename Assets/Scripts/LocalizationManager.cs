@@ -1244,6 +1244,100 @@ public static class LocalizationManager
 
         // === LoreCodex ===
         Add("LORE_EMPTY_TITLE", "—", "—");
+
+        // === Mission Paper ===
+        Add("MISSION_TARGET_LABEL", "Target: {0}", "Ціль: {0}");
+        Add("MISSION_REWARDS_LABEL", "Rewards:", "Нагороди:");
+        Add("MISSION_RES_WOOD", "{0} Wood", "{0} Дерева");
+        Add("MISSION_RES_STONE", "{0} Stone", "{0} Каменю");
+        Add("MISSION_RES_FOOD", "{0} Food", "{0} Їжі");
+        Add("MISSION_RES_GEMS", "{0} Gems", "{0} Самоцвітів");
+
+        // === Mission names + descriptions ===
+        // Each mission's English text is used as the key so calling
+        // LocalizationManager.Tr(missionData.missionName) transparently
+        // returns EN if untranslated, UK when a matching Add() below exists.
+        // Extend these Add() lines to Add7() to cover the other 5 languages.
+        Add("Skeleton Cull", "Skeleton Cull", "Проріджування скелетів");
+        Add("Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
+            "Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
+            "Розсіч патрулі, що кружляють на лісовому узліссі. Їхні кістки гноять землю, яка мала б живити.");
+        Add("Scrap Run", "Scrap Run", "Пошук аетершардів");
+        Add("Drag back enough aether shards to feed the camp's furnace through dawn.",
+            "Drag back enough aether shards to feed the camp's furnace through dawn.",
+            "Принеси досить аетершардів, щоб кузня табору протрималась до світанку.");
+        Add("Long Watch", "Long Watch", "Довга варта");
+        Add("Hold position while the runners get clear. Don't die. Don't move.",
+            "Hold position while the runners get clear. Don't die. Don't move.",
+            "Тримай позицію, поки гінці прориваються. Не помирай. Не рухайся.");
+        Add("Bone Tide", "Bone Tide", "Кістяний приплив");
+        Add("The hollowed dead drift in waves now. Break the next one before it reaches the palisade.",
+            "The hollowed dead drift in waves now. Break the next one before it reaches the palisade.",
+            "Порожні мерці котяться хвилями. Розбий наступну до того, як вона досягне палісаду.");
+        Add("Crystal Vein", "Crystal Vein", "Кришталева жила");
+        Add("A cluster surfaced near the old shrine. Strip it before the mist returns.",
+            "A cluster surfaced near the old shrine. Strip it before the mist returns.",
+            "Скупчення виступило біля старого капища. Здери його, поки не повернувся туман.");
+        Add("Forest Patrol", "Forest Patrol", "Лісовий патруль");
+        Add("Sweep the south road. The traders will not pay tribute if they cannot reach us.",
+            "Sweep the south road. The traders will not pay tribute if they cannot reach us.",
+            "Пройди південний шлях. Купці не платять данини, якщо не можуть до нас дістатись.");
+        Add("Hold the Line", "Hold the Line", "Тримай лінію");
+        Add("Three runners are crossing the bog. Hold here until the signal-fire lights.",
+            "Three runners are crossing the bog. Hold here until the signal-fire lights.",
+            "Троє гінців перетинають болото. Тримайся тут, поки не запалять сигнальний вогонь.");
+        Add("Camp Expansion", "Camp Expansion", "Розширення табору");
+        Add("Lay the first stones for a new outpost. The wood comes from your hand.",
+            "Lay the first stones for a new outpost. The wood comes from your hand.",
+            "Заклади перше каміння нового аванпосту. Дерево — з твоєї руки.");
+        Add("Elite Hunt", "Elite Hunt", "Полювання на еліту");
+        Add("An iron-marked captain leads the next patrol. End him and his honor guard.",
+            "An iron-marked captain leads the next patrol. End him and his honor guard.",
+            "Капітан з залізним тавром веде наступний патруль. Прикінчи його та його почесну варту.");
+        Add("Mountain Vigil", "Mountain Vigil", "Гірська сторожа");
+        Add("Keep the high pass watched. If you fall, the eastern villages fall with you.",
+            "Keep the high pass watched. If you fall, the eastern villages fall with you.",
+            "Тримай високий перевал під наглядом. Якщо ти впадеш — східні села впадуть із тобою.");
+        Add("Crystal Rush", "Crystal Rush", "Кришталева гарячка");
+        Add("The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
+            "The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
+            "Аетерні джерела кровоточать. Збери те, що з них ллється, до того, як скверна їх запечатає.");
+        Add("Highland Purge", "Highland Purge", "Очищення нагір'я");
+        Add("Burn the hillside clean. Every skeleton, every wraith, every chained thing.",
+            "Burn the hillside clean. Every skeleton, every wraith, every chained thing.",
+            "Випали схил дочиста. Кожен скелет, кожен привид, кожна закута істота.");
+        Add("Engineering Mastery", "Engineering Mastery", "Майстерність будівництва");
+        Add("Two more structures, and the camp will hold a winter.",
+            "Two more structures, and the camp will hold a winter.",
+            "Ще дві споруди — і табір переживе зиму.");
+        Add("Frontline Trench", "Frontline Trench", "Передова траншея");
+        Add("Four minutes alone against everything in the wood. The wall comes after.",
+            "Four minutes alone against everything in the wood. The wall comes after.",
+            "Чотири хвилини сам-один проти всього у лісі. Мур — після.");
+        Add("Bone Tide Eternal", "Bone Tide Eternal", "Вічний кістяний приплив");
+        Add("Wave after wave, until the dawn breaks them. None pass the line.",
+            "Wave after wave, until the dawn breaks them. None pass the line.",
+            "Хвиля за хвилею — доки світанок їх не переломить. Ніхто не пройде.");
+        Add("Aether Motherlode", "Aether Motherlode", "Аетерна жила");
+        Add("A motherlode under the chapel. Strip it bare before the wardens wake.",
+            "A motherlode under the chapel. Strip it bare before the wardens wake.",
+            "Величезне родовище під каплицею. Здери його дочиста, поки не прокинулась варта.");
+        Add("The Long Night", "The Long Night", "Довга ніч");
+        Add("Six minutes between you and Aethelgard's mercy. Stand.",
+            "Six minutes between you and Aethelgard's mercy. Stand.",
+            "Шість хвилин між тобою і милосердям Етельгарду. Стій.");
+        Add("Captain Hunt", "Captain Hunt", "Полювання на капітанів");
+        Add("Five captains in the field tonight. Bring back proof of all five.",
+            "Five captains in the field tonight. Bring back proof of all five.",
+            "П'ять капітанів у полі цієї ночі. Принеси докази усіх п'яти.");
+        Add("Master Architect", "Master Architect", "Великий будівничий");
+        Add("Three pillars. Stone, wood, and patience. The camp must endure.",
+            "Three pillars. Stone, wood, and patience. The camp must endure.",
+            "Три стовпи. Камінь, дерево і терпіння. Табір мусить встояти.");
+        Add("Final Stand", "Final Stand", "Останній бій");
+        Add("The last contract on the board. Hold the wall until the bells of dawn. Then live, if you can.",
+            "The last contract on the board. Hold the wall until the bells of dawn. Then live, if you can.",
+            "Останній контракт на дошці. Тримай мур до дзвонів світанку. Тоді — живи, якщо зможеш.");
     }
 
     // Runtime-set labels that AutoLocalize can't reach (their text is

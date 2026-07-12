@@ -36,14 +36,16 @@ public class MissionPaperUI : MonoBehaviour
         int finalFood = Mathf.RoundToInt(baseData.foodReward * multiplier);
         int finalDiamond = Mathf.RoundToInt(baseData.diamondReward * multiplier);
 
-        titleText.text = baseData.missionName;
-        descText.text = $"{baseData.missionDescription}\n\n<color=#8B0000><b>Target: {finalTarget}</b></color>";
+        titleText.text = LocalizationManager.Tr(baseData.missionName);
+        string desc = LocalizationManager.Tr(baseData.missionDescription);
+        string targetLine = LocalizationManager.Tr("MISSION_TARGET_LABEL", finalTarget);
+        descText.text = $"{desc}\n\n<color=#8B0000><b>{targetLine}</b></color>";
 
-        string rewText = "<b>Rewards:</b> ";
-        if (finalWood > 0) rewText += $"<color=#5C4033>{finalWood} Wood</color>  ";
-        if (finalStone > 0) rewText += $"<color=#4A4A4A>{finalStone} Stone</color>  ";
-        if (finalFood > 0) rewText += $"<color=#B85E00>{finalFood} Food</color>  ";
-        if (finalDiamond > 0) rewText += $"<color=#005500>{finalDiamond} Gems</color>";
+        string rewText = $"<b>{LocalizationManager.Tr("MISSION_REWARDS_LABEL")}</b> ";
+        if (finalWood > 0)    rewText += $"<color=#5C4033>{LocalizationManager.Tr("MISSION_RES_WOOD", finalWood)}</color>  ";
+        if (finalStone > 0)   rewText += $"<color=#4A4A4A>{LocalizationManager.Tr("MISSION_RES_STONE", finalStone)}</color>  ";
+        if (finalFood > 0)    rewText += $"<color=#B85E00>{LocalizationManager.Tr("MISSION_RES_FOOD", finalFood)}</color>  ";
+        if (finalDiamond > 0) rewText += $"<color=#005500>{LocalizationManager.Tr("MISSION_RES_GEMS", finalDiamond)}</color>";
 
         rewardText.text = rewText;
     }
