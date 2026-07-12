@@ -240,7 +240,7 @@ public class LoreCodexUIController : MonoBehaviour
         }
         if (!any)
         {
-            if (titleText != null) titleText.text = "—";
+            if (titleText != null) titleText.text = LocalizationManager.Tr("LORE_EMPTY_TITLE");
             if (bodyText != null) bodyText.text = emptyBodyText;
         }
     }

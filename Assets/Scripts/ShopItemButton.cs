@@ -129,7 +129,7 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             }
             else if (atMax)
             {
-                priceBadgeText.text = "MAX";
+                priceBadgeText.text = LocalizationManager.Tr("MERC_BTN_MAX");
                 priceBadgeText.color = maxColor;
                 if (priceBadgeRoot != null) priceBadgeRoot.SetActive(true);
             }
