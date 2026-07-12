@@ -24,6 +24,13 @@ public class CampHunterAI : MonoBehaviour
     [Header("Effects")]
     public GameObject leavesVFX;
 
+    [Header("Night Schedule (optional)")]
+    // Where the hunter walks at deep night to gather at the fire.
+    // Leave null → normal hunting cycle overnight.
+    public Transform nightGatherPoint;
+    public string sittingAnimBool = "IsSitting";
+    public float sittingArriveRadius = 1.6f;
+
     private NavMeshAgent agent;
 
     private void Start()
@@ -43,8 +50,6 @@ public class CampHunterAI : MonoBehaviour
     {
         if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
         {
-            // Full blend-tree parameters (Speed + IsGrounded + MoveX/MoveZ) —
-            // Speed alone left the model in Idle while NavMeshAgent walked it.
             Vector3 vel = agent.velocity;
             anim.SetFloatSafe("Speed", vel.magnitude);
             anim.SetBoolSafe("IsGrounded", true);
@@ -54,6 +59,13 @@ public class CampHunterAI : MonoBehaviour
                 anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
                 anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
             }
+
+            bool shouldSit = nightGatherPoint != null
+                          && CampSchedule.IsDeepNight()
+                          && vel.magnitude < 0.05f
+                          && Vector3.Distance(transform.position, nightGatherPoint.position) <= sittingArriveRadius;
+            if (!string.IsNullOrEmpty(sittingAnimBool))
+                anim.SetBoolSafe(sittingAnimBool, shouldSit);
         }
     }
 
@@ -109,12 +121,44 @@ public class CampHunterAI : MonoBehaviour
         }
     }
 
+    // Walks to the campfire and sits there until deep-night ends. Cancels
+    // any in-flight destination and hides the carry visual. Rejoins the
+    // normal hunt loop the moment dawn kicks in.
+    private IEnumerator NightGatherRoutine()
+    {
+        if (carryItemVisual != null) carryItemVisual.SetActive(false);
+        if (visualsParent != null && !visualsParent.activeSelf) visualsParent.SetActive(true);
+
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(nightGatherPoint.position, out hit, 4f, NavMesh.AllAreas))
+                agent.SetDestination(hit.position);
+
+            yield return StartCoroutine(WaitForDestination());
+            agent.isStopped = true;
+        }
+
+        // Poll — leave when it's no longer deep night.
+        while (CampSchedule.IsDeepNight())
+            yield return new WaitForSeconds(1f);
+    }
+
     private IEnumerator HunterRoutine()
     {
         yield return new WaitForSeconds(Random.Range(0f, 2f));
 
         while (true)
         {
+            // Night shift beats work — during deep night, drop everything
+            // and sit by the fire.
+            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+            {
+                yield return StartCoroutine(NightGatherRoutine());
+                continue;
+            }
+
             if (!CheckIfWorkAvailable())
             {
                 if (carryItemVisual != null) carryItemVisual.SetActive(false);

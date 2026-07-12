@@ -11,6 +11,14 @@ public class StorageWorkerAI : MonoBehaviour
     public GameObject carryVisual;
     public Transform storageDropPoint;
 
+    [Header("Night Schedule (optional)")]
+    // At deep night the storage worker drops the shift and walks to this
+    // point (usually near the campfire). Leave null → keep hauling
+    // overnight.
+    public Transform nightGatherPoint;
+    public string sittingAnimBool = "IsSitting";
+    public float sittingArriveRadius = 1.6f;
+
     private List<CampBuilding> productionBuildings = new List<CampBuilding>();
 
     private void Start()
@@ -39,6 +47,13 @@ public class StorageWorkerAI : MonoBehaviour
                 anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
                 anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
             }
+
+            bool shouldSit = nightGatherPoint != null
+                          && CampSchedule.IsDeepNight()
+                          && vel.magnitude < 0.05f
+                          && Vector3.Distance(transform.position, nightGatherPoint.position) <= sittingArriveRadius;
+            if (!string.IsNullOrEmpty(sittingAnimBool))
+                anim.SetBoolSafe(sittingAnimBool, shouldSit);
         }
     }
 
@@ -91,12 +106,38 @@ public class StorageWorkerAI : MonoBehaviour
         yield return new WaitForSeconds(Random.Range(4f, 8f));
     }
 
+    // Walks to the campfire and sits there until deep-night ends. Drops
+    // the carry visual so the worker doesn't cradle a log all night.
+    private IEnumerator NightGatherRoutine()
+    {
+        if (carryVisual != null) carryVisual.SetActive(false);
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(nightGatherPoint.position, out hit, 4f, NavMesh.AllAreas))
+                agent.SetDestination(hit.position);
+            yield return StartCoroutine(WaitArrival());
+            agent.isStopped = true;
+        }
+        while (CampSchedule.IsDeepNight())
+            yield return new WaitForSeconds(1f);
+    }
+
     private IEnumerator LogisticsRoutine()
     {
         yield return new WaitForSeconds(3f);
 
         while (true)
         {
+            // Night shift beats hauling — during deep night, drop everything
+            // and sit at the fire.
+            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+            {
+                yield return StartCoroutine(NightGatherRoutine());
+                continue;
+            }
+
             bool collectedAnything = false;
 
             foreach (var building in productionBuildings)
