@@ -1245,6 +1245,71 @@ public static class LocalizationManager
         // === LoreCodex ===
         Add("LORE_EMPTY_TITLE", "—", "—");
 
+        // === Tutorial hints ===
+        Add("TUTORIAL_TIP_DEFAULT", "TIP", "ПОРАДА");
+        // NPC talk prompts
+        Add("PROMPT_TALK_ELIAS", "[E] Talk to Elias", "[E] Поговорити з Еліасом");
+        Add("PROMPT_ENTER_SHOP", "Press E to Enter Shop", "Натисни E щоб зайти в крамницю");
+
+        // Hint titles + bodies (extend with Add7 for RU/ES/DE/FR/PL)
+        Add("ARMOR SLOTS", "ARMOR SLOTS", "СЛОТИ БРОНІ");
+        Add("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
+            "Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
+            "Шість слотів: голова, груди, руки, пояс, ноги, ступні. Змішуй тіри вільно — рейтинг сили сумує кожен вдягнений предмет.");
+        Add("MELEE", "MELEE", "БЛИЖНІЙ БІЙ");
+        Add("Hold <b>LMB</b> to chain swings.", "Hold <b>LMB</b> to chain swings.", "Утримуй <b>ЛКМ</b> щоб зчіплювати удари.");
+        Add("BUILD", "BUILD", "БУДІВНИЦТВО");
+        Add("CAMP HUB", "CAMP HUB", "ТАБІР");
+        Add("Your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+            "Your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+            "Твій безпечний хаб. Підійди до слоту будівлі та натисни <b>F</b> щоб оглянути чи будувати. Місії — на Дошці.");
+        Add("INCOMING ATTACK", "INCOMING ATTACK", "АТАКА");
+        Add("CLEARED REGION", "CLEARED REGION", "ЗАЧИЩЕНИЙ РЕГІОН");
+        Add("This region is already purified — totems are silent. Small patrols remain for farming, but no boss waves.",
+            "This region is already purified — totems are silent. Small patrols remain for farming, but no boss waves.",
+            "Цей регіон вже очищений — тотеми мовчать. Лишились невеликі патрулі для фарму, босів немає.");
+        Add("DIAMONDS", "DIAMONDS", "ДІАМАНТИ");
+        Add("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
+            "Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
+            "Діаманти — стала валюта. <b>Винеси їх живим</b> — витрачаються у Крамниці на зброю, броню і мета.");
+        Add("ENCOUNTER CLEARED", "ENCOUNTER CLEARED", "ЗІТКНЕННЯ ЗАЧИЩЕНО");
+        Add("Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
+            "Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
+            "Повне знищення патруля чи табору дає бонусний скарб. Полюй на зіткнення між тотемами щоб накопичувати XP і діаманти.");
+        Add("BLACKSMITH'S FORGE", "BLACKSMITH'S FORGE", "КУЗНЯ КОВАЛЯ");
+        Add("Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
+            "Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
+            "Кожен рівень Кузні підвищує <b>урон зброї</b> у місіях: +2% / +5% / +8% / +11% / +15%. Стакається зі статами зброї.");
+        Add("GRENADE", "GRENADE", "ГРАНАТА");
+        Add("HUNTER'S CABIN", "HUNTER'S CABIN", "ХАТА МИСЛИВЦЯ");
+        Add("Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
+            "Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
+            "Виробляє <b>ЇЖУ</b> щохвилини. Їжа — найрідкісніший з базових ресурсів; поліпш Хату перед високотірними будівлями.");
+        Add("LEVEL UP", "LEVEL UP", "НОВИЙ РІВЕНЬ");
+        Add("LUMBERJACK'S HUT", "LUMBERJACK'S HUT", "ХАТА ЛІСОРУБА");
+        Add("Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
+            "Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
+            "Виробляє <b>КОЛОДИ</b> щохвилини, зберігаються у Сховищі. Дерево — найдешевший ресурс, але для всього трохи треба.");
+        Add("WORLD MAP", "WORLD MAP", "СВІТОВА МАПА");
+        Add("MOVEMENT", "MOVEMENT", "РУХ");
+        Add("PASSIVE INCOME", "PASSIVE INCOME", "ПАСИВНИЙ ДОХІД");
+        Add("Buildings produce resources while you're playing missions or away from the camp. Check the panel for current rate.",
+            "Buildings produce resources while you're playing missions or away from the camp. Check the panel for current rate.",
+            "Будівлі виробляють ресурси поки ти в місіях або поза табором. Перевір панель для поточної швидкості.");
+        Add("PERFECT DODGE", "PERFECT DODGE", "ІДЕАЛЬНИЙ УХИЛ");
+        Add("POWER SCORE", "POWER SCORE", "РЕЙТИНГ СИЛИ");
+        Add("Power = your weapon + armor + meta. Regions show a Recommended Power. Below it: enemies hit harder. Above it: easier, lower XP.",
+            "Power = your weapon + armor + meta. Regions show a Recommended Power. Below it: enemies hit harder. Above it: easier, lower XP.",
+            "Сила = зброя + броня + мета. Регіони показують Рекомендовану Силу. Нижче — вороги б'ють сильніше. Вище — легше, менше XP.");
+        Add("DEFEND THE TOTEM", "DEFEND THE TOTEM", "ЗАХИСТИ ТОТЕМ");
+        Add("Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it. The wave can't be skipped.",
+            "Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it. The wave can't be skipped.",
+            "Активація тотема викликає хвилю. Переможи <b>кожного</b> ворога щоб очистити тотем. Хвилю не можна пропустити.");
+        Add("OBJECTIVE BEACON", "OBJECTIVE BEACON", "МАЯК ЦІЛІ");
+        Add("The tall red pillar marks the next corrupted totem — visible across the whole region. Run toward it.",
+            "The tall red pillar marks the next corrupted totem — visible across the whole region. Run toward it.",
+            "Високий червоний стовп позначає наступний зіпсований тотем — видно з усього регіону. Біжи до нього.");
+
         // === Mission Paper ===
         Add("MISSION_TARGET_LABEL", "Target: {0}", "Ціль: {0}");
         Add("MISSION_REWARDS_LABEL", "Rewards:", "Нагороди:");
