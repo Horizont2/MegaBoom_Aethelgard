@@ -177,8 +177,8 @@ public class MapPanelUI : MonoBehaviour
 
     private void PopulateData()
     {
-        if (regionNameText != null) regionNameText.text = currentRegion.regionName.ToUpper();
-        if (descriptionText != null) descriptionText.text = currentRegion.loreDescription;
+        if (regionNameText != null) regionNameText.text = LocalizationManager.Tr(currentRegion.regionName).ToUpper();
+        if (descriptionText != null) descriptionText.text = LocalizationManager.Tr(currentRegion.loreDescription);
         if (upgradeButtonText != null) upgradeButtonText.text = LocalizationManager.Tr("UPGRADE");
 
         if (illustrationImage != null)

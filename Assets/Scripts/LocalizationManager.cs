@@ -1310,6 +1310,104 @@ public static class LocalizationManager
             "The tall red pillar marks the next corrupted totem — visible across the whole region. Run toward it.",
             "Високий червоний стовп позначає наступний зіпсований тотем — видно з усього регіону. Біжи до нього.");
 
+        // === Region names + lore (24 regions) ===
+        Add("Old Lumberyard", "Old Lumberyard", "Стара лісопилка");
+        Add("An abandoned camp where woodcutters once thrived. Now, only restless bones remain among the logs.",
+            "An abandoned camp where woodcutters once thrived. Now, only restless bones remain among the logs.",
+            "Покинутий табір лісорубів. Тепер серед колод лишились самі неспокійні кістки.");
+        Add("Whispering Thicket", "Whispering Thicket", "Шепітний ліс");
+        Add("The trees here absorb the moonlight, making it dangerously dark. Beware of ambushes.",
+            "The trees here absorb the moonlight, making it dangerously dark. Beware of ambushes.",
+            "Дерева тут поглинають місячне світло — небезпечно темно. Стережись засідок.");
+        Add("Bandit's Crossing", "Bandit's Crossing", "Розбійницьке перепуття");
+        Add("A broken bridge heavily guarded by corrupted scavengers. A great source of basic materials.",
+            "A broken bridge heavily guarded by corrupted scavengers. A great source of basic materials.",
+            "Зламаний міст під охороною зіпсутих падл. Гарне джерело базових матеріалів.");
+        Add("Forgotten Shrine", "Forgotten Shrine", "Забутий храм");
+        Add("An overgrown statue of a nameless god. The enemies here are slightly more aggressive.",
+            "An overgrown statue of a nameless god. The enemies here are slightly more aggressive.",
+            "Зарослий статуя безіменного бога. Вороги тут трохи агресивніші.");
+        Add("Mossy Foothills", "Mossy Foothills", "Мохові передгір'я");
+        Add("The forest begins to thin out, revealing rocky terrain. Stone is easier to find here.",
+            "The forest begins to thin out, revealing rocky terrain. Stone is easier to find here.",
+            "Ліс рідшає, відкриваючи скелястий рельєф. Тут легше знайти камінь.");
+        Add("Ruined Tollkeep", "Ruined Tollkeep", "Зруйнована митниця");
+        Add("The border between the forest and the old kingdom. Heavily defended by skeleton guards.",
+            "The border between the forest and the old kingdom. Heavily defended by skeleton guards.",
+            "Кордон між лісом і старим королівством. Пильно охороняється скелетами.");
+        Add("Stonefall Quarry", "Stonefall Quarry", "Каменепадне кар'єр");
+        Add("Deep pits where slaves once mined stone. The undead miners still blindly swing their pickaxes.",
+            "Deep pits where slaves once mined stone. The undead miners still blindly swing their pickaxes.",
+            "Глибокі ями де раби добували камінь. Мертві шахтарі досі сліпо махають кирками.");
+        Add("Sunken Outpost", "Sunken Outpost", "Затоплений форпост");
+        Add("A flooded military camp. Movement is slightly impaired, and enemies hit harder.",
+            "A flooded military camp. Movement is slightly impaired, and enemies hit harder.",
+            "Затоплений військовий табір. Рухи трохи скуті, вороги б'ють сильніше.");
+        Add("Howling Valley", "Howling Valley", "Виюча долина");
+        Add("The wind through this canyon sounds like screaming. The cursed souls here are relentless.",
+            "The wind through this canyon sounds like screaming. The cursed souls here are relentless.",
+            "Вітер у каньйоні звучить як крик. Прокляті душі тут невтомні.");
+        Add("The Ashen Woods", "The Ashen Woods", "Попелясті ліси");
+        Add("A forest burned down by dragon fire centuries ago. Resources are scarce but valuable.",
+            "A forest burned down by dragon fire centuries ago. Resources are scarce but valuable.",
+            "Ліс, спалений драконовим вогнем сторіччя тому. Ресурсів мало — але цінних.");
+        Add("Ironpeak Pass", "Ironpeak Pass", "Залізовершинний перевал");
+        Add("A dangerous mountain road. You'll need decent armor and a sharp blade to survive the swarm.",
+            "A dangerous mountain road. You'll need decent armor and a sharp blade to survive the swarm.",
+            "Небезпечний гірський шлях. Потрібна пристойна броня і гострий клинок щоб пережити рій.");
+        Add("Deadman's Gorge", "Deadman's Gorge", "Ущелина мертвяка");
+        Add("A massive graveyard of fallen knights. Their rusted armor makes them tougher to kill.",
+            "A massive graveyard of fallen knights. Their rusted armor makes them tougher to kill.",
+            "Величезний цвинтар полеглих лицарів. Іржава броня робить їх складнішими для вбивства.");
+        Add("Smuggler's Cove", "Smuggler's Cove", "Бухта контрабандистів");
+        Add("Hidden caches of stolen goods remain here, guarded by the ghosts of greedy mercenaries.",
+            "Hidden caches of stolen goods remain here, guarded by the ghosts of greedy mercenaries.",
+            "Тут лишились сховки крадених товарів під охороною привидів жадібних найманців.");
+        Add("Cursed Swampland", "Cursed Swampland", "Прокляті болота");
+        Add("Toxic fog blankets the ground. You must move fast, strike hard, and leave quickly.",
+            "Toxic fog blankets the ground. You must move fast, strike hard, and leave quickly.",
+            "Отруйний туман вкриває землю. Рухайся швидко, бий сильно, виходь швидко.");
+        Add("Bloodstone Mines", "Bloodstone Mines", "Копальні кривавого каменю");
+        Add("The crystals here glow with dark energy. The enemies are highly mutated and resilient.",
+            "The crystals here glow with dark energy. The enemies are highly mutated and resilient.",
+            "Кристали тут світяться темною енергією. Вороги дуже мутовані й живучі.");
+        Add("Desolate Tundra", "Desolate Tundra", "Пустельна тундра");
+        Add("A frozen wasteland where stamina drains fast. Perfect for gathering rare frozen supplies.",
+            "A frozen wasteland where stamina drains fast. Perfect for gathering rare frozen supplies.",
+            "Замерзла пустка, де витривалість тане швидко. Ідеальна для збору рідкісних заморожених припасів.");
+        Add("Warlord's Camp", "Warlord's Camp", "Табір воєводи");
+        Add("The staging ground for the undead army. Huge swarms of enemies will test your crowd control.",
+            "The staging ground for the undead army. Huge swarms of enemies will test your crowd control.",
+            "Плацдарм армії мертвих. Величезні рої ворогів випробують твоє контроль натовпу.");
+        Add("Shattered Bridge", "Shattered Bridge", "Розтрощений міст");
+        Add("The only way to the Dark Citadel. The defense here is brutal. Don't go without upgrading your forge.",
+            "The only way to the Dark Citadel. The defense here is brutal. Don't go without upgrading your forge.",
+            "Єдиний шлях до Темної Цитаделі. Оборона тут жорстока. Не йди без поліпшення кузні.");
+        Add("Obsidian Crags", "Obsidian Crags", "Обсидіанові скелі");
+        Add("Sharp volcanic rocks tear at your boots. The undead here are infused with molten magic.",
+            "Sharp volcanic rocks tear at your boots. The undead here are infused with molten magic.",
+            "Гострі вулканічні скелі рвуть чоботи. Мертві тут насичені розплавленою магією.");
+        Add("The Poisoned Vein", "The Poisoned Vein", "Отруєна жила");
+        Add("The water supply for the citadel. It is completely corrupted. A grim and difficult battleground.",
+            "The water supply for the citadel. It is completely corrupted. A grim and difficult battleground.",
+            "Водопостачання цитаделі. Повністю зіпсуте. Похмуре й важке поле бою.");
+        Add("Abyssal Descent", "Abyssal Descent", "Прірва");
+        Add("A dark staircase leading into the depths of the earth. Claustrophobic combat awaits.",
+            "A dark staircase leading into the depths of the earth. Claustrophobic combat awaits.",
+            "Темні сходи вглиб землі. Чекає клаустрофобний бій.");
+        Add("Citadel Outskirts", "Citadel Outskirts", "Околиці цитаделі");
+        Add("The inner walls of the fortress. Elite guards patrol these ruins relentlessly.",
+            "The inner walls of the fortress. Elite guards patrol these ruins relentlessly.",
+            "Внутрішні стіни фортеці. Елітна варта невпинно патрулює руїни.");
+        Add("Gates of Ruin", "Gates of Ruin", "Ворота Руїни");
+        Add("The final barrier. Only the strongest heroes with the sharpest blades stand a chance here.",
+            "The final barrier. Only the strongest heroes with the sharpest blades stand a chance here.",
+            "Останній бар'єр. Тільки найсильніші герої з найгострішими клинками мають шанс тут.");
+        Add("The Throne Room", "The Throne Room", "Тронна зала");
+        Add("The heart of the curse. Survival is a miracle. The rewards, however, are legendary.",
+            "The heart of the curse. Survival is a miracle. The rewards, however, are legendary.",
+            "Серце прокляття. Вижити — це диво. Але нагороди — легендарні.");
+
         // === Mission Paper ===
         Add("MISSION_TARGET_LABEL", "Target: {0}", "Ціль: {0}");
         Add("MISSION_REWARDS_LABEL", "Rewards:", "Нагороди:");
