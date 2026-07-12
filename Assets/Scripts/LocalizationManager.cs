@@ -1167,6 +1167,53 @@ public static class LocalizationManager
              "<color=#FF4444>Rüste zuerst Elias' Hütte auf!</color>",
              "<color=#FF4444>Améliore d'abord la Cabane d'Elias !</color>",
              "<color=#FF4444>Najpierw ulepsz Chatę Eliasa!</color>");
+
+        // === Barracks / Mercenary System ===
+        Add("MERC_BARRACKS_TITLE", "BARRACKS", "КАЗАРМА");
+        Add("MERC_TAB_HIRE", "HIRE", "НАЙМ");
+        Add("MERC_TAB_UPGRADE_UNITS", "UPGRADE UNITS", "ПОЛІПШИТИ ВОЯКІВ");
+        Add("MERC_TAB_UPGRADE_BARRACKS", "UPGRADE BARRACKS", "ПОЛІПШИТИ КАЗАРМУ");
+        Add("MERC_BTN_HIRE", "HIRE", "НАЙНЯТИ");
+        Add("MERC_BTN_UPGRADE", "UPGRADE", "ПОЛІПШИТИ");
+        Add("MERC_BTN_MAX", "MAX", "МАКС");
+        Add("MERC_OWNED", "OWNED: {0}", "ЄСТЬ: {0}");
+        Add("MERC_AVAILABLE", "Available: {0}", "Доступно: {0}");
+        Add("MERC_LEVEL_XY", "LEVEL {0} / {1}", "РІВЕНЬ {0} / {1}");
+        Add("MERC_MAX_LEVEL", "MAX LEVEL", "МАКС РІВЕНЬ");
+        Add("MERC_PERKS_MAXED", "All barracks perks unlocked.", "Усі можливості казарми відкриті.");
+        Add("MERC_LEVEL_HEADER", "LEVEL {0}", "РІВЕНЬ {0}");
+
+        // === PreBattle / Army Deployment ===
+        Add("MERC_ARMY_DEPLOYMENT", "ARMY DEPLOYMENT", "РОЗГОРТАННЯ АРМІЇ");
+        Add("MERC_ENEMY_STRENGTH", "Enemy Strength: {0}", "Сила ворога: {0}");
+        Add("MERC_ENEMY_POWER", "Enemy Power: {0}", "Сила ворога: {0}");
+        Add("MERC_TRAVEL_TIME", "Travel Time: {0}", "Час у дорозі: {0}");
+        Add("MERC_ARMY_SCORE", "Army Score: {0}", "Сила армії: {0}");
+        Add("MERC_RISK_LABEL", "Risk: {0}", "Ризик: {0}");
+        Add("MERC_EXPECTED_LOSSES", "Expected Losses: {0}-{1}", "Очікувані втрати: {0}-{1}");
+        Add("MERC_EXPECTED_LOSSES_NONE", "Expected Losses: —", "Очікувані втрати: —");
+        Add("MERC_WIN_PROBABILITY", "Win Probability", "Ймовірність перемоги");
+        Add("MERC_BTN_DEPLOY", "DEPLOY ARMY", "ВІДПРАВИТИ АРМІЮ");
+        Add("MERC_BTN_MARCH", "MARCH", "У ПОХІД");
+
+        // Risk band strings
+        Add("MERC_RISK_OVERWHELMING", "Overwhelming", "Переважна");
+        Add("MERC_RISK_FAVOURABLE",   "Favourable",   "Вигідна");
+        Add("MERC_RISK_EVEN",         "Even",         "Рівна");
+        Add("MERC_RISK_RISKY",        "Risky",        "Ризикована");
+        Add("MERC_RISK_SUICIDAL",     "Suicidal",     "Самогубна");
+
+        // === Battle Result ===
+        Add("MERC_VICTORY", "VICTORY", "ПЕРЕМОГА");
+        Add("MERC_DEFEAT", "DEFEAT", "ПОРАЗКА");
+        Add("MERC_VICTORY_TEXT", "Your army routed the defenders.", "Ваша армія розгромила захисників.");
+        Add("MERC_DEFEAT_TEXT",  "Your army was broken. The region remains hostile.", "Ваша армія розбита. Регіон лишається ворожим.");
+        Add("MERC_LOSSES_LINE",  "Losses: {0} / {1}", "Втрати: {0} / {1}");
+
+        // === Unit flavour (short) ===
+        Add("MERC_UNIT_MILITIA", "Militia", "Ополчення");
+        Add("MERC_UNIT_RANGER",  "Ranger",  "Слідопит");
+        Add("MERC_UNIT_KNIGHT",  "Knight",  "Лицар");
     }
 
     // Runtime-set labels that AutoLocalize can't reach (their text is

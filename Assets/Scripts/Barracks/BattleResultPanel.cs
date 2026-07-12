@@ -61,19 +61,21 @@ public class BattleResultPanel : MonoBehaviour
             }
         }
 
-        if (titleText != null) titleText.text = c.won ? "VICTORY" : "DEFEAT";
+        if (titleText != null) titleText.text = c.won
+            ? LocalizationManager.Tr("MERC_VICTORY")
+            : LocalizationManager.Tr("MERC_DEFEAT");
         if (regionNameText != null && region != null) regionNameText.text = region.regionName.ToUpper();
 
         if (outcomeText != null)
         {
             outcomeText.text = c.won
-                ? "Your army routed the defenders."
-                : "Your army was broken. The region remains hostile.";
+                ? LocalizationManager.Tr("MERC_VICTORY_TEXT")
+                : LocalizationManager.Tr("MERC_DEFEAT_TEXT");
         }
 
         int casualties = c.lostUnitUIDs != null ? c.lostUnitUIDs.Count : 0;
         int total = c.armyUIDs != null ? c.armyUIDs.Count : 0;
-        if (casualtiesText != null) casualtiesText.text = $"Losses: {casualties} / {total}";
+        if (casualtiesText != null) casualtiesText.text = LocalizationManager.Tr("MERC_LOSSES_LINE", casualties, total);
 
         if (rewardText != null)
             rewardText.text = c.won && c.diamondsAwarded > 0 ? $"◆ +{c.diamondsAwarded}" : "—";

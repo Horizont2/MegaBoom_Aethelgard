@@ -13,16 +13,30 @@ public class PreBattlePanel : MonoBehaviour
     public CanvasGroup canvasGroup;
     public Button closeButton;
 
-    [Header("Region Header")]
+    [Header("Header")]
+    // Static "ARMY DEPLOYMENT" title — script writes it on Open.
+    public TextMeshProUGUI titleText;
+    // 5 helm level pips like the barracks panel — decorative, filled up to
+    // the barracks' current level to show upgrade rank at a glance.
+    public Image[] barracksLevelPips;
+    public Sprite pipHelmFilledSprite;
+    public Sprite pipHelmEmptySprite;
+
+    [Header("Region Info")]
     public TextMeshProUGUI regionNameText;
-    public TextMeshProUGUI enemyStrengthText;
+    public TextMeshProUGUI enemyStrengthText;   // legacy — kept for old prefabs
+    public TextMeshProUGUI enemyPowerText;      // NEW mockup uses this label
     public TextMeshProUGUI travelTimeText;
 
     [Header("Unit Selection List")]
     public Transform unitRowParent;
     public GameObject unitRowPrefab; // needs PreBattleUnitRow component
+    // Optional per-unit portrait overrides (same convention as barracks panel).
+    public Sprite portraitMilitia;
+    public Sprite portraitRanger;
+    public Sprite portraitKnight;
 
-    [Header("Tactic Selection")]
+    [Header("Tactic Selection (optional — omit for mockup layout)")]
     public Button tacticAmbushButton;
     public Button tacticAssaultButton;
     public Button tacticSiegeButton;
@@ -30,14 +44,27 @@ public class PreBattlePanel : MonoBehaviour
     public Image tacticAssaultHighlight;
     public Image tacticSiegeHighlight;
 
-    [Header("Forecast")]
+    [Header("Forecast (legacy — kept for older prefabs)")]
     public TextMeshProUGUI riskBandText;
     public TextMeshProUGUI expectedCasualtiesText;
     public TextMeshProUGUI armyScoreText;
 
+    [Header("Forecast (new: Win Probability)")]
+    // Text label inside the circular gauge — "85%" etc.
+    public TextMeshProUGUI winProbabilityText;
+    // Radial-filled Image whose fillAmount is set to winChance 0-1 so the
+    // ring visualises the chance.
+    public Image winProbabilityFillImage;
+    // Colours applied to both the text and the ring based on the risk band.
+    public Color winColorHigh   = new Color(0.55f, 0.85f, 0.55f, 1f); // green
+    public Color winColorMid    = new Color(0.90f, 0.75f, 0.35f, 1f); // amber
+    public Color winColorLow    = new Color(0.85f, 0.42f, 0.32f, 1f); // rust
+
     [Header("Confirm")]
     public Button confirmButton;
     public TextMeshProUGUI confirmButtonText;
+    // Optional secondary CANCEL button (mockup has one under DEPLOY ARMY).
+    public Button cancelButton;
 
     private RegionData currentRegion;
     private CampaignTactic currentTactic = CampaignTactic.Assault;
@@ -47,6 +74,7 @@ public class PreBattlePanel : MonoBehaviour
     private void Awake()
     {
         if (closeButton != null) closeButton.onClick.AddListener(Close);
+        if (cancelButton != null) cancelButton.onClick.AddListener(Close);
         if (confirmButton != null) confirmButton.onClick.AddListener(OnConfirm);
 
         if (tacticAmbushButton != null) tacticAmbushButton.onClick.AddListener(() => SetTactic(CampaignTactic.Ambush));
@@ -70,12 +98,40 @@ public class PreBattlePanel : MonoBehaviour
             canvasGroup.blocksRaycasts = true;
         }
 
+        if (titleText != null) titleText.text = LocalizationManager.Tr("MERC_ARMY_DEPLOYMENT");
         if (regionNameText != null) regionNameText.text = region.regionName.ToUpper();
-        if (enemyStrengthText != null) enemyStrengthText.text = $"Enemy Strength: {region.enemyStrength}";
+        if (enemyStrengthText != null) enemyStrengthText.text = LocalizationManager.Tr("MERC_ENEMY_STRENGTH", region.enemyStrength);
+        if (enemyPowerText != null) enemyPowerText.text = LocalizationManager.Tr("MERC_ENEMY_POWER", region.enemyStrength);
+
+        RefreshBarracksPips();
 
         SetTactic(CampaignTactic.Assault);
         RebuildUnitRows();
         Refresh();
+    }
+
+    private void RefreshBarracksPips()
+    {
+        if (barracksLevelPips == null || barracksLevelPips.Length == 0) return;
+        int lvl = 0;
+        var mgr = MercenaryCampaignManager.Instance;
+        if (mgr != null)
+        {
+            // Find any BarracksBuilding in the scene to read its host level.
+            // FindObjectByType is fine here — only runs on panel Open.
+            var host = FindFirstObjectByType<BarracksBuilding>();
+            if (host != null)
+            {
+                var cb = host.GetComponent<CampBuilding>();
+                if (cb != null) lvl = cb.currentLevel;
+            }
+        }
+        for (int i = 0; i < barracksLevelPips.Length; i++)
+        {
+            var img = barracksLevelPips[i];
+            if (img == null) continue;
+            img.sprite = (i < lvl) ? pipHelmFilledSprite : pipHelmEmptySprite;
+        }
     }
 
     public void Close()
@@ -117,8 +173,32 @@ public class PreBattlePanel : MonoBehaviour
             var go = Instantiate(unitRowPrefab, unitRowParent);
             var row = go.GetComponent<PreBattleUnitRow>();
             if (row == null) row = go.AddComponent<PreBattleUnitRow>();
-            row.Bind(data, roster, this);
+            row.Bind(data, roster, this, ResolvePortrait(data.unitID));
             spawnedUnitRows.Add(go);
+        }
+    }
+
+    private Sprite ResolvePortrait(string unitID)
+    {
+        switch (unitID)
+        {
+            case "militia": return portraitMilitia;
+            case "ranger":  return portraitRanger;
+            case "knight":  return portraitKnight;
+            default:        return null;
+        }
+    }
+
+    private static string LocalizeRiskBand(RiskBand band)
+    {
+        switch (band)
+        {
+            case RiskBand.Overwhelming: return LocalizationManager.Tr("MERC_RISK_OVERWHELMING");
+            case RiskBand.Favourable:   return LocalizationManager.Tr("MERC_RISK_FAVOURABLE");
+            case RiskBand.Even:         return LocalizationManager.Tr("MERC_RISK_EVEN");
+            case RiskBand.Risky:        return LocalizationManager.Tr("MERC_RISK_RISKY");
+            case RiskBand.Suicidal:     return LocalizationManager.Tr("MERC_RISK_SUICIDAL");
+            default: return band.ToString();
         }
     }
 
@@ -158,7 +238,7 @@ public class PreBattlePanel : MonoBehaviour
         if (travelTimeText != null && MercenaryCampaignManager.Instance != null)
         {
             float sec = MercenaryCampaignManager.Instance.ComputeTravelSeconds(currentRegion, currentTactic);
-            travelTimeText.text = $"Travel: {FormatSeconds(sec)}";
+            travelTimeText.text = LocalizationManager.Tr("MERC_TRAVEL_TIME", FormatSeconds(sec));
         }
 
         // Battle forecast.
@@ -170,14 +250,35 @@ public class PreBattlePanel : MonoBehaviour
             currentRegion.autoBattleDiamondReward
         );
 
-        if (armyScoreText != null) armyScoreText.text = $"Army Score: {preview.totalArmyScore}";
-        if (riskBandText != null) riskBandText.text = $"Risk: {preview.risk}";
+        if (armyScoreText != null) armyScoreText.text = LocalizationManager.Tr("MERC_ARMY_SCORE", preview.totalArmyScore);
+        if (riskBandText != null) riskBandText.text = LocalizationManager.Tr("MERC_RISK_LABEL", LocalizeRiskBand(preview.risk));
         if (expectedCasualtiesText != null)
             expectedCasualtiesText.text = chosen.Count > 0
-                ? $"Expected Losses: {preview.expectedCasualtyLow}-{preview.expectedCasualtyHigh}"
-                : "Expected Losses: —";
+                ? LocalizationManager.Tr("MERC_EXPECTED_LOSSES", preview.expectedCasualtyLow, preview.expectedCasualtyHigh)
+                : LocalizationManager.Tr("MERC_EXPECTED_LOSSES_NONE");
 
-        if (confirmButtonText != null) confirmButtonText.text = "MARCH";
+        // Win Probability — new layout uses a circular gauge + % text.
+        // Formula matches BattleResolver.Resolve baseline (armyScore vs
+        // enemyScore * 1.5 as the "100% win" ceiling) but clamps to 5-95
+        // so the gauge never shows a fake certainty.
+        float winPct = 0f;
+        if (preview.totalArmyScore > 0)
+        {
+            float baseWin = 1f - (float)currentRegion.enemyStrength / (preview.totalArmyScore * 1.5f);
+            winPct = Mathf.Clamp(baseWin, 0.05f, 0.95f);
+        }
+        if (chosen.Count == 0) winPct = 0f;
+        if (winProbabilityText != null)
+            winProbabilityText.text = chosen.Count > 0 ? $"{Mathf.RoundToInt(winPct * 100f)}%" : "—";
+        if (winProbabilityFillImage != null)
+            winProbabilityFillImage.fillAmount = winPct;
+
+        // Colour both text and ring based on the win band.
+        Color winColor = winPct >= 0.65f ? winColorHigh : (winPct >= 0.4f ? winColorMid : winColorLow);
+        if (winProbabilityText != null) winProbabilityText.color = winColor;
+        if (winProbabilityFillImage != null) winProbabilityFillImage.color = winColor;
+
+        if (confirmButtonText != null) confirmButtonText.text = LocalizationManager.Tr("MERC_BTN_DEPLOY");
         if (confirmButton != null) confirmButton.interactable = chosen.Count > 0;
 
         // Update each row's live "idle available" number and its own affordability check.
@@ -232,13 +333,17 @@ public class PreBattleUnitRow : MonoBehaviour
     private MercenaryRoster boundRoster;
     private PreBattlePanel boundPanel;
 
-    public void Bind(MercenaryUnitData data, MercenaryRoster roster, PreBattlePanel panel)
+    public void Bind(MercenaryUnitData data, MercenaryRoster roster, PreBattlePanel panel, Sprite customPortrait = null)
     {
         boundData = data;
         boundRoster = roster;
         boundPanel = panel;
 
-        if (iconImage != null && data.icon != null) iconImage.sprite = data.icon;
+        if (iconImage != null)
+        {
+            if (customPortrait != null) iconImage.sprite = customPortrait;
+            else if (data.icon != null) iconImage.sprite = data.icon;
+        }
         if (nameText != null) nameText.text = data.displayName;
 
         if (plusButton != null)
@@ -260,7 +365,7 @@ public class PreBattleUnitRow : MonoBehaviour
         if (boundData == null || boundRoster == null || boundPanel == null) return;
         int idle = boundRoster.CountIdle(boundData.unitID);
         int count = boundPanel.GetDesiredCount(boundData.unitID);
-        if (availableText != null) availableText.text = $"Available: {idle}";
+        if (availableText != null) availableText.text = LocalizationManager.Tr("MERC_AVAILABLE", idle);
         if (countText != null) countText.text = count.ToString();
 
         if (plusButton != null) plusButton.interactable = count < idle;

@@ -167,7 +167,7 @@ public class BarracksUpgradePanel : MonoBehaviour
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
         }
-        if (titleText != null) titleText.text = "BARRACKS";
+        if (titleText != null) titleText.text = LocalizationManager.Tr("MERC_BARRACKS_TITLE");
         ShowTab(0);
         Refresh();
 
@@ -377,7 +377,7 @@ public class BarracksUpgradePanel : MonoBehaviour
         int level = hostBuilding.currentLevel;
         int maxLevel = hostBuilding.levels != null ? hostBuilding.levels.Length : 0;
 
-        if (barracksCurrentLevelText != null) barracksCurrentLevelText.text = $"LEVEL {level} / {maxLevel}";
+        if (barracksCurrentLevelText != null) barracksCurrentLevelText.text = LocalizationManager.Tr("MERC_LEVEL_XY", level, maxLevel);
         if (barracksSummaryText != null)
         {
             barracksSummaryText.text = ResolveSummaryText(level);
@@ -387,19 +387,19 @@ public class BarracksUpgradePanel : MonoBehaviour
 
         if (atMax)
         {
-            if (barracksNextLevelText != null) barracksNextLevelText.text = "MAX LEVEL";
-            if (barracksPerksText != null) barracksPerksText.text = "All barracks perks unlocked.";
+            if (barracksNextLevelText != null) barracksNextLevelText.text = LocalizationManager.Tr("MERC_MAX_LEVEL");
+            if (barracksPerksText != null) barracksPerksText.text = LocalizationManager.Tr("MERC_PERKS_MAXED");
             SetCostText(barracksCostWoodText, 0, true);
             SetCostText(barracksCostStoneText, 0, true);
             SetCostText(barracksCostFoodText, 0, true);
             if (barracksUpgradeButton != null) barracksUpgradeButton.interactable = false;
-            if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = "MAX";
+            if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = LocalizationManager.Tr("MERC_BTN_MAX");
             if (barracksBuildTimeText != null) barracksBuildTimeText.text = "—";
             return;
         }
 
         var next = hostBuilding.levels[level];
-        if (barracksNextLevelText != null) barracksNextLevelText.text = $"LEVEL {level + 1}";
+        if (barracksNextLevelText != null) barracksNextLevelText.text = LocalizationManager.Tr("MERC_LEVEL_HEADER", level + 1);
         if (barracksPerksText != null)
         {
             barracksPerksText.text = ResolvePerksText(level, next);
@@ -416,7 +416,7 @@ public class BarracksUpgradePanel : MonoBehaviour
             ResourceManager.Instance != null && ResourceManager.Instance.stashFood >= next.costFood);
 
         if (barracksUpgradeButton != null) barracksUpgradeButton.interactable = canAfford;
-        if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = "UPGRADE";
+        if (barracksUpgradeButtonText != null) barracksUpgradeButtonText.text = LocalizationManager.Tr("MERC_BTN_UPGRADE");
         if (barracksBuildTimeText != null) barracksBuildTimeText.text = FormatBuildTime(next.buildTime);
     }
 

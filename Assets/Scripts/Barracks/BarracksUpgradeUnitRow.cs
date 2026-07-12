@@ -64,8 +64,8 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
         else if (!isMax && lvl == 0 && data.upgradePricePerLevel != null && data.upgradePricePerLevel.Length > 0)
             cost = data.upgradePricePerLevel[0];
 
-        if (costText != null) costText.text = isMax ? "MAX" : cost.ToString();
-        if (upgradeButtonText != null) upgradeButtonText.text = isMax ? "MAX" : "UPGRADE";
+        if (costText != null) costText.text = isMax ? LocalizationManager.Tr("MERC_BTN_MAX") : cost.ToString();
+        if (upgradeButtonText != null) upgradeButtonText.text = isMax ? LocalizationManager.Tr("MERC_BTN_MAX") : LocalizationManager.Tr("MERC_BTN_UPGRADE");
 
         bool canAfford = !isMax && ResourceManager.Instance != null && ResourceManager.Instance.CanAffordDiamonds(cost);
         if (upgradeButton != null)
