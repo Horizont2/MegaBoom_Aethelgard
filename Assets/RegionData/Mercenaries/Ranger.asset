@@ -18,7 +18,7 @@ MonoBehaviour:
     conscripts and the pace-setters of any ambush.
   icon: {fileID: 21300000, guid: 351b6fa30bed0d049a77c45f6eb4efaf, type: 3}
   portrait: {fileID: 21300000, guid: 351b6fa30bed0d049a77c45f6eb4efaf, type: 3}
-  mapFigurineSprite: {fileID: 0}
+  mapFigurineSprite: {fileID: 21300000, guid: 717568f6e802fb3468d15b26307b23aa, type: 3}
   campPrefab: {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
   baseHireCost: 65
   baseAttack: 30
