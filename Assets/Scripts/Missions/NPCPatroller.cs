@@ -40,6 +40,11 @@ public class NPCPatroller : MonoBehaviour
     // Default name matches the CampWorkerAI convention.
     public string sittingAnimBool = "IsSitting";
     public float sittingArriveRadius = 1.4f;
+    // Bool set true whenever the NPC is actually moving. For simple
+    // animators without a blend tree (just Idle ↔ Walk), wire this bool
+    // as the transition condition. Default name: "IsWalking".
+    public string walkingAnimBool = "IsWalking";
+    public float walkingSpeedThreshold = 0.05f;
 
     // Public flag so dialogue or cinematic scripts can pause the patrol.
     [HideInInspector] public bool HoldPosition = false;
@@ -80,6 +85,12 @@ public class NPCPatroller : MonoBehaviour
             anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
             anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
         }
+
+        // Simple two-state animators can just listen to this bool
+        // (Idle ↔ Walk). Blend-tree animators can ignore it — SetBoolSafe
+        // no-ops when the parameter isn't in the controller.
+        if (!string.IsNullOrEmpty(walkingAnimBool))
+            anim.SetBoolSafe(walkingAnimBool, vel.magnitude > walkingSpeedThreshold);
 
         // Sitting bool — true at night when the NPC is parked at their
         // rest point and not moving. Any wake condition (dusk starts,
