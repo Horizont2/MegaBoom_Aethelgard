@@ -1154,6 +1154,12 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Add(rt);
         RestackPickupPopups();
 
+        // Hard failsafe: schedule an unconditional Destroy after lifetime + 1s
+        // so if the coroutine gets cancelled (GlobalHUD toggled off, scene
+        // change mid-lifetime) the orphan popup still disappears — that's
+        // the bug that leaves stuck "-30 Wheat"-style toasts on screen.
+        Destroy(go, 3.0f);
+
         const float lifetime = 1.8f;
         float t = 0f;
         Vector2 startScale = Vector2.one * 0.7f;
@@ -1175,8 +1181,16 @@ public class GlobalHUD : MonoBehaviour
         }
 
         activePickupPopups.Remove(rt);
-        Destroy(go);
+        if (go != null) Destroy(go);
         RestackPickupPopups();
+    }
+
+    // Prune stale null entries — the failsafe Destroy above may leave holes
+    // in activePickupPopups if a coroutine was cancelled mid-lifetime.
+    private void LateUpdate()
+    {
+        for (int i = activePickupPopups.Count - 1; i >= 0; i--)
+            if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
     }
 
     private void RestackPickupPopups()

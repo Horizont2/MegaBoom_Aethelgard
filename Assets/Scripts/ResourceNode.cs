@@ -28,6 +28,20 @@ public class ResourceNode : MonoBehaviour, IDamageable
     // it before the FMOD event's tail finishes — otherwise the rustle
     // outlived the bush that made it and stacked over the next chop.
     private int hitSfxHandle = -1;
+    // Timer that fades the hit-SFX out shortly after the last hit. Restarted
+    // on every TakeDamage; if it completes we know the player stopped hitting.
+    private Coroutine autoStopSfxRoutine;
+
+    private IEnumerator AutoStopHitSfxRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (hitSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(hitSfxHandle, 0.35f);
+            hitSfxHandle = -1;
+        }
+        autoStopSfxRoutine = null;
+    }
 
     private void Start()
     {
@@ -82,6 +96,12 @@ public class ResourceNode : MonoBehaviour, IDamageable
         }
 
         StopAllCoroutines();
+
+        // Restart auto-fade timer AFTER StopAllCoroutines so it doesn't
+        // get killed by its own siblings. If the player stops attacking,
+        // this fades the hit loop out ~0.4 s later instead of leaving the
+        // FMOD instance ringing until the node dies.
+        autoStopSfxRoutine = StartCoroutine(AutoStopHitSfxRoutine(0.4f));
 
         if (currentHealth <= 0)
         {

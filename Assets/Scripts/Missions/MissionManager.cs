@@ -40,7 +40,7 @@ public class MissionManager : MonoBehaviour
         SceneManager.sceneLoaded += OnSceneLoaded;
         LoadMissions();
 
-        // --- ФІКС: Якщо ми запустили гру прямо зі сцени табору в едіторі ---
+        // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ ---
         if (SceneManager.GetActiveScene().name == "CampScene")
         {
             ClearCompletedMissionsUI();
@@ -165,7 +165,7 @@ public class MissionManager : MonoBehaviour
 
         GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
-        mission.uiElement.Setup(mission.data.missionName, mission.data.missionDescription, mission.currentProgress, mission.targetAmount);
+        mission.uiElement.Setup(LocalizationManager.Tr(mission.data.missionName), LocalizationManager.Tr(mission.data.missionDescription), mission.currentProgress, mission.targetAmount);
 
         if (mission.isCompleted)
         {
