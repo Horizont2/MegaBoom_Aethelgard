@@ -21,6 +21,12 @@ public class CampWorkerAI : MonoBehaviour
     public float timeBetweenHits = 1.2f;
     public float dropDuration = 2f;
 
+    [Header("Night Schedule (optional)")]
+    // Assign a point near the campfire. When it's deep night the worker
+    // walks here and idles instead of wandering — sells the "everyone
+    // rests around the fire" vibe. Leave null → normal wander at night.
+    public Transform nightGatherPoint;
+
     [Header("Visuals & Animation")]
     public Animator anim;
     public GameObject carryItemVisual;
@@ -114,15 +120,33 @@ public class CampWorkerAI : MonoBehaviour
 
             if (agent != null && agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
             {
-                Vector3 randomDirection = Random.insideUnitSphere * 8f;
-                randomDirection += transform.position;
+                Vector3 dest;
+                // At deep night, if a fire-gathering point is wired, walk
+                // to it with a tiny jitter so multiple workers don't stack
+                // on the exact same spot.
+                if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+                {
+                    Vector2 jitter = Random.insideUnitCircle * 1.2f;
+                    dest = nightGatherPoint.position + new Vector3(jitter.x, 0f, jitter.y);
+                }
+                else
+                {
+                    Vector3 randomDirection = Random.insideUnitSphere * 8f;
+                    randomDirection += transform.position;
+                    dest = randomDirection;
+                }
                 NavMeshHit hit;
-                if (NavMesh.SamplePosition(randomDirection, out hit, 8f, NavMesh.AllAreas))
+                if (NavMesh.SamplePosition(dest, out hit, 8f, NavMesh.AllAreas))
                 {
                     agent.SetDestination(hit.position);
                 }
             }
-            yield return new WaitForSeconds(Random.Range(4f, 8f));
+            // At night workers linger longer at the fire; during day they
+            // move around more actively.
+            float wait = CampSchedule.IsDeepNight() && nightGatherPoint != null
+                ? Random.Range(8f, 14f)
+                : Random.Range(4f, 8f);
+            yield return new WaitForSeconds(wait);
         }
     }
 

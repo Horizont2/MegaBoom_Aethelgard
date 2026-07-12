@@ -67,6 +67,9 @@ public static class AudioID
     public const string Music_Battle = "Music/Music_Journey";
 
     public const string Ambient_Wind = "AMB/AMB_Wind";
+    // Fire crackle for the camp bonfire — needs an FMOD event at this
+    // path; CampfireAudio will silently no-op if the event isn't wired.
+    public const string Ambient_CampFire = "AMB/AMB_CampFire";
     public const string Ambient_Howl = "AMB/AMB_Howl";
     public const string Ambient_Crow = "AMB/AMB_Crow";
     public const string Ambient_DistantThunder = "AMB/AMB_Distant_Thunder";

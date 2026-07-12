@@ -329,7 +329,59 @@ public class ResourceManager : MonoBehaviour
             if (foodText) foodText.text = $"( {fColor}{runFood}{fEnd} / {maxRunFood} )";
         }
 
-        if (diamondsText) diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", diamonds);
+        // Diamond text is handled by the tween in Update — start a new
+        // tween from the currently-displayed number to the new total so
+        // gains and spends are legible rather than jumping.
+        StartDiamondTween(diamonds);
+    }
+
+    // -------- Diamond count animation --------
+    private float diamondTweenTimer = 1f;   // 1 == idle
+    private float diamondTweenFrom = 0f;
+    private float diamondTweenTo = 0f;
+    private const float DIAMOND_TWEEN_DURATION = 0.55f;
+    private bool diamondDisplayInitialised = false;
+
+    private void StartDiamondTween(int newValue)
+    {
+        if (diamondsText == null) return;
+
+        if (!diamondDisplayInitialised)
+        {
+            // First frame — no animation, just show the loaded value.
+            diamondTweenFrom = diamondTweenTo = newValue;
+            diamondTweenTimer = 1f;
+            diamondDisplayInitialised = true;
+            diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", newValue);
+            return;
+        }
+
+        // Pick up from wherever the display currently is so mid-tween
+        // updates don't snap.
+        int currentDisplayed = Mathf.RoundToInt(Mathf.Lerp(diamondTweenFrom, diamondTweenTo, diamondTweenTimer));
+        if (currentDisplayed == newValue) return;
+        diamondTweenFrom = currentDisplayed;
+        diamondTweenTo = newValue;
+        diamondTweenTimer = 0f;
+    }
+
+    private void Update()
+    {
+        if (diamondTweenTimer < 1f && diamondsText != null)
+        {
+            diamondTweenTimer = Mathf.Min(1f, diamondTweenTimer + Time.unscaledDeltaTime / DIAMOND_TWEEN_DURATION);
+            // Ease-out cubic so the counter races and settles.
+            float k = 1f - Mathf.Pow(1f - diamondTweenTimer, 3f);
+            int shown = Mathf.RoundToInt(Mathf.Lerp(diamondTweenFrom, diamondTweenTo, k));
+            diamondsText.text = LocalizationManager.Tr("Diamonds: {0}", shown);
+            // Small punch on the text when a change fires — modest to avoid
+            // motion sickness on repeated pickups.
+            float pulseK = diamondTweenTimer < 0.25f ? diamondTweenTimer / 0.25f : 1f - (diamondTweenTimer - 0.25f) / 0.75f;
+            float scale = 1f + pulseK * 0.10f;
+            diamondsText.rectTransform.localScale = new Vector3(scale, scale, 1f);
+            if (diamondTweenTimer >= 1f)
+                diamondsText.rectTransform.localScale = Vector3.one;
+        }
     }
 
     // Unified pickup toast — replaces the old per-resource popup

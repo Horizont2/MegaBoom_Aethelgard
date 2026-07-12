@@ -29,6 +29,15 @@ public class WorldMapArmyMarker : MonoBehaviour
     // One marker per active campaign — keyed by campaignID.
     private readonly Dictionary<int, RectTransform> markers = new Dictionary<int, RectTransform>();
 
+    [Header("Motion Feel")]
+    // Marching bob — small sin-wave vertical wobble so the figurine reads
+    // as walking, not sliding.
+    public float bobHeight = 6f;
+    public float bobSpeed = 6f;
+    // Random shake amplitude during the Fighting phase — sells the "battle
+    // is happening here" beat.
+    public float fightShake = 4f;
+
     private void Start()
     {
         if (regionNodes.Count == 0)
@@ -117,23 +126,41 @@ public class WorldMapArmyMarker : MonoBehaviour
 
         Vector2 start = origin.anchoredPosition;
         Vector2 end = target.anchoredPosition;
+        Vector2 basePos;
 
         var phase = c.CurrentPhase();
         switch (phase)
         {
             case CampaignPhase.MarchingOut:
-                marker.anchoredPosition = Vector2.Lerp(start, end, c.OutboundProgress01());
+                basePos = Vector2.Lerp(start, end, c.OutboundProgress01());
                 break;
             case CampaignPhase.Fighting:
-                marker.anchoredPosition = end;
+                basePos = end;
                 break;
             case CampaignPhase.Returning:
-                marker.anchoredPosition = Vector2.Lerp(end, start, c.ReturnProgress01());
+                basePos = Vector2.Lerp(end, start, c.ReturnProgress01());
                 break;
-            case CampaignPhase.Done:
-                marker.anchoredPosition = start;
+            default:
+                basePos = start;
                 break;
         }
+
+        // Layer per-phase motion on top of the base position for feel.
+        Vector2 motion = Vector2.zero;
+        if (phase == CampaignPhase.MarchingOut || phase == CampaignPhase.Returning)
+        {
+            // Sin-wave vertical bob — evoke walking without needing an anim clip.
+            float t = Time.time * bobSpeed + c.campaignID * 0.7f; // phase offset per campaign
+            motion.y = Mathf.Sin(t) * bobHeight;
+        }
+        else if (phase == CampaignPhase.Fighting)
+        {
+            // Frenetic tiny shake — signals clash. Random per-frame is fine
+            // at this scale; the eye reads it as motion, not noise.
+            motion.x = (Random.value - 0.5f) * fightShake * 2f;
+            motion.y = (Random.value - 0.5f) * fightShake * 2f;
+        }
+        marker.anchoredPosition = basePos + motion;
 
         // Face the direction of travel — for a UI icon we spin its Z axis
         // so a top-mounted flag pole leans forward.

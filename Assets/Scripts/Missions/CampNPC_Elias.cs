@@ -20,6 +20,8 @@ public class CampNPC_Elias : MonoBehaviour
     private bool isPlayerInRange = false;
     private bool isTalking = false;
     private float stateCheckTimer = 0f;
+    // Optional companion — if present, we pause its patrol during dialogue.
+    private NPCPatroller patroller;
 
     private string[] idlePhrases = new string[]
     {
@@ -36,6 +38,8 @@ public class CampNPC_Elias : MonoBehaviour
 
         GameObject pObj = GameObject.FindGameObjectWithTag("Player");
         if (pObj != null) playerTransform = pObj.transform;
+
+        patroller = GetComponent<NPCPatroller>();
     }
 
     private void Update()
@@ -59,8 +63,12 @@ public class CampNPC_Elias : MonoBehaviour
 
         if (isPlayerInRange && !isTalking && Input.GetKeyDown(KeyCode.E))
         {
+            if (patroller != null) patroller.HoldPosition = true;
             StartCoroutine(EliasDialogueRoutine());
         }
+        // Keep patroller frozen while dialogue is active so Elias doesn't
+        // walk off mid-sentence.
+        if (patroller != null) patroller.HoldPosition = isTalking;
     }
 
     private void UpdateNPCState()
