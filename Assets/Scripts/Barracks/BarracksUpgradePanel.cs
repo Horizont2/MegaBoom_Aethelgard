@@ -494,6 +494,20 @@ public class BarracksUpgradePanel : MonoBehaviour
 
     private void EnsureRowCount(List<GameObject> list, Transform parent, GameObject prefab, int wanted)
     {
+        if (parent == null || prefab == null) return;
+
+        // Guard against a mis-wired inspector reference: if the parent
+        // Transform lives inside a Project prefab asset (not the scene) then
+        // Instantiate throws "Cannot instantiate objects with a parent which
+        // is persistent". Usually means the panel was dragged into scene
+        // but the row-parent field was wired to the source prefab's inner
+        // Transform instead of the scene instance's own child.
+        if (!parent.gameObject.scene.IsValid())
+        {
+            Debug.LogError("[BarracksUpgradePanel] A row-parent Transform on '" + name + "' points at a PREFAB ASSET, not a scene child. Open the panel scene instance in Hierarchy, find the row-parent GameObject inside it, and drag THAT into the field.");
+            return;
+        }
+
         while (list.Count < wanted)
         {
             var go = Instantiate(prefab, parent);

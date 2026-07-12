@@ -205,6 +205,18 @@ public class PreBattlePanel : MonoBehaviour
         var roster = MercenaryRoster.Instance;
         if (roster == null || unitRowParent == null || unitRowPrefab == null) return;
 
+        // Guard against a mis-wired inspector reference: if the parent
+        // Transform is a persistent asset (lives in a Project prefab, not in
+        // the scene) Instantiate throws "Cannot instantiate objects with a
+        // parent which is persistent". This usually means the panel was
+        // dragged into scene but `unitRowParent` was wired to the source
+        // prefab's Transform instead of the scene instance's own child.
+        if (!unitRowParent.gameObject.scene.IsValid())
+        {
+            Debug.LogError("[PreBattlePanel] `unitRowParent` on '" + name + "' points at a PREFAB ASSET Transform, not a scene child. Open the PreBattlePanel scene instance in Hierarchy, find the row-parent GameObject inside it, and drag THAT into the field.");
+            return;
+        }
+
         // Clear old.
         for (int i = spawnedUnitRows.Count - 1; i >= 0; i--)
         {
