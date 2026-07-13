@@ -19,6 +19,11 @@ public class RegionTotem : MonoBehaviour
     public GameObject[] elitePrefabs;
     public int eliteCount = 2;
 
+    [Header("Standalone / Side Objective")]
+    [Tooltip("Увімкни це, якщо тотем стоїть у тупику як побічна місія (не головний тотем регіону)")]
+    public bool isStandalone = false;
+    public GameObject[] standaloneBossPrefabs;
+
     [Header("Visuals & Cinematic")]
     public ParticleSystem idleCorruptionVFX;
     public ParticleSystem activationShieldVFX;
@@ -161,18 +166,31 @@ public class RegionTotem : MonoBehaviour
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
 
-        if (encounterType == EncounterType.Boss && manager.currentRegion != null)
+        if (encounterType == EncounterType.Boss)
         {
-            if (manager.currentRegion.regionBossPrefabs == null || manager.currentRegion.regionBossPrefabs.Length == 0)
+            // ФІКС: Якщо це Вівтар у тупику, беремо його власних босів
+            if (isStandalone && standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
             {
-                Debug.LogError("🚨 ПОМИЛКА: Ти забув додати префаб Боса в 'Region Boss Prefabs' в RegionData цього регіону!");
-                yield break;
+                for (int i = 0; i < standaloneBossPrefabs.Length; i++)
+                {
+                    SpawnEntity(standaloneBossPrefabs[i], finalHpMult, finalDmgMult);
+                    yield return new WaitForSeconds(0.8f);
+                }
             }
-
-            for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
+            // Оригінальна логіка для Головного Тотему регіону
+            else if (manager != null && manager.currentRegion != null)
             {
-                SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult);
-                yield return new WaitForSeconds(0.8f);
+                if (manager.currentRegion.regionBossPrefabs == null || manager.currentRegion.regionBossPrefabs.Length == 0)
+                {
+                    Debug.LogError("🚨 ПОМИЛКА: Ти забув додати префаб Боса в 'Region Boss Prefabs' в RegionData цього регіону!");
+                    yield break;
+                }
+
+                for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
+                {
+                    SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult);
+                    yield return new WaitForSeconds(0.8f);
+                }
             }
         }
         else

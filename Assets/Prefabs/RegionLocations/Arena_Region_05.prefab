@@ -12234,6 +12234,8 @@ MonoBehaviour:
   mediumCount: 5
   elitePrefabs: []
   eliteCount: 2
+  isStandalone: 0
+  standaloneBossPrefabs: []
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 4163123452099726292}
   skyBeamVFX: {fileID: 0}
@@ -25847,6 +25849,8 @@ MonoBehaviour:
   mediumCount: 5
   elitePrefabs: []
   eliteCount: 2
+  isStandalone: 0
+  standaloneBossPrefabs: []
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3951772551200764606}
   skyBeamVFX: {fileID: 0}

@@ -1,9 +1,9 @@
-﻿using UnityEngine;
+﻿using Polyart; // Інструмент Dreamscape
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.Splines;
 using Unity.Mathematics;
-using Polyart; // Інструмент Dreamscape
+using UnityEngine;
+using UnityEngine.Splines;
 
 [RequireComponent(typeof(Terrain))]
 public class WorldGenerator : MonoBehaviour
@@ -30,6 +30,24 @@ public class WorldGenerator : MonoBehaviour
     [Header("Dark Fantasy: Water (BITGEM)")]
     public float waterLevel = 0.12f;
     public Material waterMaterial;
+
+    [Header("Side Objectives (Dead End Altars)")]
+    public GameObject[] altarPrefabs;
+    public int altarsAmount = 2; // Скільки вівтарів гарантовано з'явиться на мапі
+
+    [Header("Smart Road System")]
+    public TerrainLayer roadLayer; // Текстура доріг (має бути 5-м шаром в масиві)
+    public float roadWidth = 5f;
+    public GameObject[] roadEdgeDecorations;
+    public GameObject[] deadEndAssets;
+    [Range(0f, 1f)] public float roadDecorSpawnChance = 0.3f;
+    public int extraDeadEndRoads = 2;
+
+    // Системні змінні для доріг
+    private List<Vector3> roadTargets = new List<Vector3>();
+    private List<Vector3> deadEndTargets = new List<Vector3>();
+    private List<SplineContainer> roadSplines = new List<SplineContainer>();
+    private float[,] roadBlendMap;
 
     // ==========================================
     // СИСТЕМА СПЛАЙНОВИХ РІЧОК (AAA РІВЕНЬ)
@@ -258,7 +276,18 @@ public class WorldGenerator : MonoBehaviour
         CurrentProgress = 0f;
         forbiddenZones.Clear();
         generatedRivers.Clear();
+
+        // Очищаємо списки доріг
+        roadTargets.Clear();
+        deadEndTargets.Clear();
+        roadSplines.Clear();
+
+        // 1. СПОЧАТКУ знаходимо Terrain
         terrain = GetComponent<Terrain>();
+
+        // 2. ТІЛЬКИ ТЕПЕР створюємо маску (бо terrain більше не null!)
+        roadBlendMap = new float[terrain.terrainData.alphamapWidth, terrain.terrainData.alphamapHeight];
+
         propBlock = new MaterialPropertyBlock();
 
         if (skyboxMaterial != null) RenderSettings.skybox = skyboxMaterial;
@@ -311,38 +340,41 @@ public class WorldGenerator : MonoBehaviour
     private IEnumerator GenerateWorldRoutine()
     {
         yield return StartCoroutine(GenerateHeightsRoutine(terrain.terrainData));
-        CurrentProgress = 0.15f;
+        CurrentProgress = 0.10f;
 
         yield return StartCoroutine(CalculateAndCarveRiversRoutine(terrain.terrainData));
-        CurrentProgress = 0.25f;
+        CurrentProgress = 0.20f;
+
+        // СПАВН БАЗ ТА POI
+        yield return StartCoroutine(SpawnRegionTotemRoutine());
+        yield return StartCoroutine(SpawnPOIsRoutine());
+        yield return StartCoroutine(SpawnExtractionCartsRoutine());
+        Physics.SyncTransforms();
+        CurrentProgress = 0.30f;
+
+        // --- НОВЕ: ПРОКЛАДАННЯ ДОРІГ ---
+        yield return StartCoroutine(GenerateRoadsRoutine());
+        CurrentProgress = 0.40f;
 
         yield return StartCoroutine(PaintTerrainRoutine(terrain.terrainData));
-        CurrentProgress = 0.35f;
-
-        yield return StartCoroutine(GenerateDetailsRoutine());
-        CurrentProgress = 0.45f;
-
-        SpawnWaterPlane();
-
-        yield return StartCoroutine(PopulateSplineRiversRoutine());
         CurrentProgress = 0.50f;
 
-        yield return StartCoroutine(SpawnRegionTotemRoutine());
-        Physics.SyncTransforms();
-        CurrentProgress = 0.55f;
+        yield return StartCoroutine(GenerateDetailsRoutine());
+        CurrentProgress = 0.60f;
 
-        yield return StartCoroutine(SpawnPOIsRoutine());
-        Physics.SyncTransforms();
-        CurrentProgress = 0.70f;
+        SpawnWaterPlane();
+        yield return StartCoroutine(PopulateSplineRiversRoutine());
+        CurrentProgress = 0.65f;
 
         yield return StartCoroutine(PopulateBiomesRoutine());
-        CurrentProgress = 0.90f;
+        CurrentProgress = 0.85f;
 
-        yield return StartCoroutine(SpawnExtractionCartsRoutine());
+        // --- НОВЕ: ДЕКОРАЦІЇ ДОРІГ ---
+        yield return StartCoroutine(SpawnRoadDecorationsRoutine());
+
         yield return StartCoroutine(SpawnBorderMountainsRoutine());
-
-        CurrentProgress = 0.95f;
         Physics.SyncTransforms();
+        CurrentProgress = 0.95f;
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
@@ -1232,6 +1264,60 @@ public class WorldGenerator : MonoBehaviour
         terrainData.SetHeights(0, 0, heights); terrainData.size = new Vector3(terrainData.size.x, depth, terrainData.size.z);
     }
 
+    private IEnumerator PaintTerrainRoutine(TerrainData terrainData)
+    {
+        if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null || roadLayer == null) yield break;
+
+        terrainData.terrainLayers = new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer, roadLayer };
+        int aWidth = terrainData.alphamapWidth; int aHeight = terrainData.alphamapHeight;
+
+        // ФІКС: Правильний порядок масиву для Unity Terrain (Висота, Ширина, Шари)
+        float[,,] splatmapData = new float[aHeight, aWidth, 5];
+
+        float startTime = Time.realtimeSinceStartup;
+
+        for (int y = 0; y < aHeight; y++)
+        {
+            for (int x = 0; x < aWidth; x++)
+            {
+                float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
+                float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
+                float normalizedHeight = terrainData.GetHeight(y, x) / depth;
+                float[] weights = new float[5];
+
+                if (normalizedHeight > 0.65f) weights[2] = 1f;
+                else if (normalizedHeight <= waterLevel + 0.02f) weights[1] = 1f;
+                else { if (temp >= 0.65f) weights[1] = 1f; else if (temp <= 0.35f) weights[2] = 1f; else weights[0] = 1f; }
+
+                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(30f, 45f, steepness));
+                float remainAfterRock = 1f - weights[3];
+                weights[0] *= remainAfterRock; weights[1] *= remainAfterRock; weights[2] *= remainAfterRock;
+
+                float roadBlend = roadBlendMap != null ? roadBlendMap[y, x] : 0f;
+                if (roadBlend > 0.01f)
+                {
+                    weights[4] = roadBlend;
+                    float remainAfterRoad = 1f - roadBlend;
+                    if (remainAfterRoad < 0) remainAfterRoad = 0;
+                    weights[0] *= remainAfterRoad; weights[1] *= remainAfterRoad; weights[2] *= remainAfterRoad; weights[3] *= remainAfterRoad;
+                }
+
+                splatmapData[y, x, 0] = weights[0]; splatmapData[y, x, 1] = weights[1]; splatmapData[y, x, 2] = weights[2]; splatmapData[y, x, 3] = weights[3]; splatmapData[y, x, 4] = weights[4];
+            }
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
+        }
+
+        foreach (var river in generatedRivers)
+        {
+            float riverSandRadius = riverBankWidth * riverSandWidthMul;
+            foreach (var pt in river.path) PaintSandCircle(splatmapData, terrainData, aWidth, aHeight, pt, riverSandRadius);
+            if (river.lakePos != Vector3.zero) PaintSandCircle(splatmapData, terrainData, aWidth, aHeight, river.lakePos, lakeRadius * lakeSandRadiusMul);
+            foreach (var wf in river.waterfalls) PaintSandCircle(splatmapData, terrainData, aWidth, aHeight, wf.bottomPos, riverBankWidth * lakeSandRadiusMul);
+        }
+
+        terrainData.SetAlphamaps(0, 0, splatmapData);
+    }
+
     private IEnumerator GenerateDetailsRoutine()
     {
         TerrainData td = terrain.terrainData;
@@ -1262,6 +1348,12 @@ public class WorldGenerator : MonoBehaviour
 
                 if (steepness > 45f || normHeight <= waterLevel + 0.02f) continue;
 
+                // --- ФІКС: Забороняємо траві рости на дорогах! ---
+                int ax = Mathf.Clamp(Mathf.RoundToInt(normX * td.alphamapWidth), 0, td.alphamapWidth - 1);
+                int ay = Mathf.Clamp(Mathf.RoundToInt(normZ * td.alphamapHeight), 0, td.alphamapHeight - 1);
+                if (roadBlendMap != null && roadBlendMap[ay, ax] > 0.1f) continue;
+                // -------------------------------------------------
+
                 float temp = GetTemperature(normX, normZ);
                 bool isSnowBiome = false;
                 bool isDesertBiome = false;
@@ -1285,32 +1377,16 @@ public class WorldGenerator : MonoBehaviour
 
                     if (layer > 2)
                     {
-                        // Each flower layer needs its own independent perlin
-                        // sample, otherwise every flower type chases the same
-                        // meadow patches (since the old `+ layer*0.15` only
-                        // shifted the same noise field by a constant) and the
-                        // first flower in the list always wins. The two big
-                        // primes shove each layer into a distinct frequency
-                        // and offset of the noise basis.
                         float layerSeedX = offsetX + (layer * 137.55f);
                         float layerSeedZ = offsetZ + (layer * 211.31f);
-                        float perLayerMeadow = Mathf.PerlinNoise(
-                            normX * meadowScale + layerSeedX,
-                            normZ * meadowScale + layerSeedZ);
-                        float perLayerDensity = Mathf.PerlinNoise(
-                            normX * clusterScale * 5f + layerSeedX,
-                            normZ * clusterScale * 5f + layerSeedZ);
+                        float perLayerMeadow = Mathf.PerlinNoise(normX * meadowScale + layerSeedX, normZ * meadowScale + layerSeedZ);
+                        float perLayerDensity = Mathf.PerlinNoise(normX * clusterScale * 5f + layerSeedX, normZ * clusterScale * 5f + layerSeedZ);
 
-                        // Slightly lower threshold so the rarer-noise tail of
-                        // each layer still produces visible patches.
                         if (perLayerMeadow > 0.55f)
                             density = Mathf.RoundToInt(Mathf.Lerp(40f, 180f, perLayerDensity));
                     }
                     else
                     {
-                        // Grass layers stay on the shared cluster noise so the
-                        // visual texture of the meadow reads as one biome
-                        // (only the flowers needed full independence).
                         float layerMeadowNoise = (baseMeadowNoise + (layer * 0.15f)) % 1f;
                         density = Mathf.RoundToInt(Mathf.Lerp(150f, 255f, densityNoise));
                         if (layerMeadowNoise > 0.3f) density = 255;
@@ -1342,40 +1418,45 @@ public class WorldGenerator : MonoBehaviour
             locationYOffset = activeRegionData.locationYOffset;
         }
 
-        if (totemPrefab == null) yield break;
-
         float w = terrain.terrainData.size.x;
         float l = terrain.terrainData.size.z;
         float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
 
-        // ==========================================
-        // 1. ЧИТАЄМО ДАНІ З BOX COLLIDER
-        // ==========================================
+        // ФІКС 1: Якщо Тотему немає, шукаємо БЕЗПЕЧНУ точку для центру доріг
+        if (totemPrefab == null)
+        {
+            spawnedTotemPos = new Vector3(transform.position.x + w / 2, 0, transform.position.z + l / 2);
+            for (int i = 0; i < 500; i++)
+            {
+                float px = GetRandomRange(w * 0.2f, w * 0.8f);
+                float pz = GetRandomRange(l * 0.2f, l * 0.8f);
+                float py = terrain.SampleHeight(new Vector3(transform.position.x + px, 0, transform.position.z + pz)) + transform.position.y;
+                if (py > absoluteWaterHeight + 3f && terrain.terrainData.GetSteepness(px / w, pz / l) < 15f && !IsNearRiver(new Vector3(transform.position.x + px, py, transform.position.z + pz), 15f))
+                {
+                    spawnedTotemPos = new Vector3(transform.position.x + px, py, transform.position.z + pz);
+                    break;
+                }
+            }
+            roadTargets.Add(spawnedTotemPos);
+            yield break;
+        }
+
         BoxCollider rootBox = totemPrefab.GetComponent<BoxCollider>();
         float flatRadius = 40f;
         float bottomOfCollider = 0f;
 
         if (rootBox != null)
         {
-            // Радіус вирівнювання - це половина діагоналі Box Collider + 5м запасу
             float sx = rootBox.size.x * totemPrefab.transform.localScale.x;
             float sz = rootBox.size.z * totemPrefab.transform.localScale.z;
             flatRadius = Mathf.Max(20f, Mathf.Sqrt(sx * sx + sz * sz) * 0.5f + 5f);
-
-            // Знаходимо точне дно колайдера по осі Y відносно нульової точки префабу
             float sy = rootBox.size.y * totemPrefab.transform.localScale.y;
             float cy = rootBox.center.y * totemPrefab.transform.localScale.y;
             bottomOfCollider = cy - (sy / 2f);
         }
-        else
-        {
-            Debug.LogWarning($"[Спавн] На префабі {totemPrefab.name} НЕМАЄ BoxCollider на руті!");
-        }
 
         Vector2 bestSpot = Vector2.zero;
         bool foundSpot = false;
-
-        // 2. СКАНОР ТЕРИТОРІЇ
         List<Vector2> validSpots = new List<Vector2>();
         float scanStep = 30f;
         float edgeMargin = flatRadius + 30f;
@@ -1386,22 +1467,17 @@ public class WorldGenerator : MonoBehaviour
             {
                 float pX = transform.position.x + x;
                 float pZ = transform.position.z + z;
-
                 float h = terrain.SampleHeight(new Vector3(pX, 0, pZ)) + transform.position.y;
                 if (h <= absoluteWaterHeight + 4f) continue;
-
                 float normX = x / w; float normZ = z / l;
                 if (terrain.terrainData.GetSteepness(normX, normZ) > 15f) continue;
 
                 float minH = float.MaxValue;
                 float maxH = float.MinValue;
                 bool touchesWater = false;
-
                 Vector3[] scanPts = new Vector3[] {
-                    new Vector3(pX, 0, pZ),
-                    new Vector3(pX + flatRadius, 0, pZ),
-                    new Vector3(pX - flatRadius, 0, pZ),
-                    new Vector3(pX, 0, pZ + flatRadius),
+                    new Vector3(pX, 0, pZ), new Vector3(pX + flatRadius, 0, pZ),
+                    new Vector3(pX - flatRadius, 0, pZ), new Vector3(pX, 0, pZ + flatRadius),
                     new Vector3(pX, 0, pZ - flatRadius)
                 };
 
@@ -1416,9 +1492,7 @@ public class WorldGenerator : MonoBehaviour
                 if (!touchesWater && (maxH - minH) <= 12f)
                 {
                     if (IsSummerZone(normX, normZ, minH) && !IsNearRiver(new Vector3(pX, minH, pZ), flatRadius + 15f))
-                    {
                         validSpots.Add(new Vector2(pX, pZ));
-                    }
                 }
             }
         }
@@ -1428,18 +1502,13 @@ public class WorldGenerator : MonoBehaviour
             bestSpot = validSpots[UnityEngine.Random.Range(0, validSpots.Count)];
             foundSpot = true;
         }
-        else
-        {
-            bestSpot = new Vector2(transform.position.x + w / 2, transform.position.z + l / 2);
-        }
+        else bestSpot = new Vector2(transform.position.x + w / 2, transform.position.z + l / 2);
 
         Vector3 centerPos = new Vector3(bestSpot.x, 0, bestSpot.y);
         float exactGroundY = terrain.SampleHeight(centerPos) + transform.position.y;
         centerPos.y = exactGroundY;
 
-        // 3. ЖОРСТКЕ ТЕРАФОРМУВАННЯ
         FlattenTerrainRobust(centerPos, flatRadius, 18f, exactGroundY);
-
         terrain.Flush();
         TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
         if (tc != null) { tc.enabled = false; tc.enabled = true; }
@@ -1447,17 +1516,8 @@ public class WorldGenerator : MonoBehaviour
         yield return new WaitForFixedUpdate();
         yield return new WaitForFixedUpdate();
 
-        // ==========================================
-        // 4. ФІНАЛЬНИЙ СПАВН НА ОСНОВІ BOX COLLIDER
-        // ==========================================
-
-        // Математика: Беремо ідеальну землю, ВІДНІМАЄМО дно колайдера (щоб воно стало на землю), 
-        // і додаємо locationYOffset для ручного занурення (наприклад, -1 для фундаменту).
         float finalY = exactGroundY - bottomOfCollider + locationYOffset;
-
         Vector3 finalSpawnPos = new Vector3(centerPos.x, finalY, centerPos.z);
-
-        // Множимо поворот, щоб будівля ніколи не падала на бік
         Quaternion randomRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
         Quaternion finalRot = randomRot * totemPrefab.transform.rotation;
 
@@ -1466,9 +1526,7 @@ public class WorldGenerator : MonoBehaviour
 
         spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
-
-        Debug.Log($"[Totem BoxCollider Spawn] Ground: {exactGroundY} | Дно Колайдера: {bottomOfCollider} | Фінальна Y: {finalY}");
-        yield return null;
+        roadTargets.Add(spawnedTotemPos);
     }
 
     // Returns how far the prefab's pivot sits above the lowest point of its
@@ -1594,55 +1652,112 @@ public class WorldGenerator : MonoBehaviour
         Destroy(waterObj.GetComponent<Collider>());
     }
 
-    private IEnumerator PaintTerrainRoutine(TerrainData terrainData)
+    private IEnumerator GenerateRoadsRoutine()
     {
-        if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null) yield break;
-        terrainData.terrainLayers = new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer };
-        int aWidth = terrainData.alphamapWidth; int aHeight = terrainData.alphamapHeight; float[,,] splatmapData = new float[aWidth, aHeight, 4];
-        float startTime = Time.realtimeSinceStartup;
-
-        for (int y = 0; y < aHeight; y++)
+        if (roadLayer == null)
         {
-            for (int x = 0; x < aWidth; x++)
+            Debug.LogError("[Smart Roads] ПОМИЛКА: Road Layer не призначено в Інспекторі! Дороги скасовано.");
+            yield break;
+        }
+        if (spawnedTotemPos == Vector3.zero)
+        {
+            Debug.LogWarning("[Smart Roads] Центр магістралі не знайдено, скасовуємо дороги.");
+            yield break;
+        }
+
+        Transform roadContainer = new GameObject("RoadsContainer").transform;
+        roadContainer.SetParent(this.transform);
+
+        float mapW = terrain.terrainData.size.x; float mapL = terrain.terrainData.size.z;
+        float absWaterH = transform.position.y + (depth * waterLevel);
+
+        for (int i = 0; i < extraDeadEndRoads; i++)
+        {
+            for (int attempt = 0; attempt < 150; attempt++) // Збільшили кількість спроб
             {
-                float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
-                float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
-                float normalizedHeight = terrainData.GetHeight(y, x) / depth;
-                float[] weights = new float[4];
+                float px = GetRandomRange(50f, mapW - 50f); float pz = GetRandomRange(50f, mapL - 50f);
+                float wX = transform.position.x + px; float wZ = transform.position.z + pz;
+                float wY = terrain.SampleHeight(new Vector3(wX, 0, wZ)) + transform.position.y;
 
-                if (normalizedHeight > 0.65f) weights[2] = 1f;
-                else if (normalizedHeight <= waterLevel + 0.02f) weights[1] = 1f;
-                else { if (temp >= 0.65f) weights[1] = 1f; else if (temp <= 0.35f) weights[2] = 1f; else weights[0] = 1f; }
+                // ФІКС: Тупик має бути далеко від бази (> 70м), щоб дорога була довгою
+                if (wY > absWaterH + 5f && terrain.terrainData.GetSteepness(px / mapW, pz / mapL) < 10f && Vector3.Distance(new Vector3(wX, wY, wZ), spawnedTotemPos) > 70f)
+                {
+                    deadEndTargets.Add(new Vector3(wX, wY, wZ)); break;
+                }
+            }
+        }
 
-                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(30f, 45f, steepness));
-                float remain = 1f - weights[3];
-                weights[0] *= remain; weights[1] *= remain; weights[2] *= remain;
+        List<Vector3> allTargets = new List<Vector3>(roadTargets);
+        allTargets.AddRange(deadEndTargets);
+        Debug.Log($"[Smart Roads] Починаємо генерацію. Цільових точок: {allTargets.Count}");
 
-                splatmapData[y, x, 0] = weights[0]; splatmapData[y, x, 1] = weights[1]; splatmapData[y, x, 2] = weights[2]; splatmapData[y, x, 3] = weights[3];
+        float cellSize = 8f;
+        int gridW = Mathf.CeilToInt(mapW / cellSize);
+        int gridL = Mathf.CeilToInt(mapL / cellSize);
+
+        bool[,] roadNetwork = new bool[gridW, gridL];
+        Vector2Int totemGrid = new Vector2Int(
+            Mathf.Clamp(Mathf.RoundToInt((spawnedTotemPos.x - transform.position.x) / cellSize), 0, gridW - 1),
+            Mathf.Clamp(Mathf.RoundToInt((spawnedTotemPos.z - transform.position.z) / cellSize), 0, gridL - 1)
+        );
+
+        for (int x = -2; x <= 2; x++)
+        {
+            for (int z = -2; z <= 2; z++)
+            {
+                if (totemGrid.x + x >= 0 && totemGrid.x + x < gridW && totemGrid.y + z >= 0 && totemGrid.y + z < gridL)
+                    roadNetwork[totemGrid.x + x, totemGrid.y + z] = true;
+            }
+        }
+
+        float startTime = Time.realtimeSinceStartup;
+        int roadsBuilt = 0;
+
+        foreach (Vector3 targetPos in allTargets)
+        {
+            Vector2Int startGrid = new Vector2Int(
+                Mathf.Clamp(Mathf.RoundToInt((targetPos.x - transform.position.x) / cellSize), 0, gridW - 1),
+                Mathf.Clamp(Mathf.RoundToInt((targetPos.z - transform.position.z) / cellSize), 0, gridL - 1)
+            );
+
+            List<Vector3> path = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL, cellSize, absWaterH);
+
+            if (path != null && path.Count > 4)
+            {
+                SmoothPathXZ(path, 4);
+                GameObject roadObj = new GameObject($"RoadSpline_{roadsBuilt}");
+                roadObj.transform.SetParent(roadContainer);
+                roadObj.transform.position = path[0];
+                SplineContainer sc = roadObj.AddComponent<SplineContainer>();
+                Spline spline = sc.Spline;
+                spline.Clear();
+
+                for (int i = 0; i < path.Count; i += 2)
+                {
+                    Vector3 pt = path[i];
+                    pt.y = terrain.SampleHeight(pt) + transform.position.y + 0.1f;
+                    Vector3 fwd = i < path.Count - 2 ? path[i + 2] - pt : pt - path[i - 2];
+                    fwd.y = 0; if (fwd.sqrMagnitude < 0.001f) fwd = Vector3.forward;
+                    Quaternion rot = Quaternion.LookRotation(fwd.normalized, Vector3.up);
+                    Vector3 local = roadObj.transform.InverseTransformPoint(pt);
+                    spline.Add(new BezierKnot(new float3(local.x, local.y, local.z), default, default, new quaternion(rot.x, rot.y, rot.z, rot.w)));
+                    spline.SetTangentMode(spline.Count - 1, TangentMode.AutoSmooth);
+
+                    int pX = Mathf.Clamp(Mathf.RoundToInt((pt.x - transform.position.x) / cellSize), 0, gridW - 1);
+                    int pZ = Mathf.Clamp(Mathf.RoundToInt((pt.z - transform.position.z) / cellSize), 0, gridL - 1);
+                    roadNetwork[pX, pZ] = true;
+                }
+                roadSplines.Add(sc);
+                CarveAndRasterizeRoad(sc);
+                roadsBuilt++;
+            }
+            else
+            {
+                Debug.LogWarning($"[Smart Roads] Шлях заблоковано ландшафтом для цілі: {targetPos}");
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
-
-        float sandStartTime = Time.realtimeSinceStartup;
-        foreach (var river in generatedRivers)
-        {
-            float riverSandRadius = riverBankWidth * riverSandWidthMul;
-            foreach (var pt in river.path)
-                PaintSandCircle(splatmapData, terrainData, aWidth, aHeight, pt, riverSandRadius);
-
-            if (river.lakePos != Vector3.zero)
-                PaintSandCircle(splatmapData, terrainData, aWidth, aHeight,
-                    river.lakePos, lakeRadius * lakeSandRadiusMul);
-
-            foreach (var wf in river.waterfalls)
-                PaintSandCircle(splatmapData, terrainData, aWidth, aHeight,
-                    wf.bottomPos, riverBankWidth * lakeSandRadiusMul);
-
-            if (Time.realtimeSinceStartup - sandStartTime > MAX_FRAME_TIME)
-            { yield return null; sandStartTime = Time.realtimeSinceStartup; }
-        }
-
-        terrainData.SetAlphamaps(0, 0, splatmapData);
+        Debug.Log($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг.");
     }
 
     private void PaintSandCircle(float[,,] splat, TerrainData td,
@@ -1669,9 +1784,14 @@ public class WorldGenerator : MonoBehaviour
 
                 if (blend <= 0.001f) continue;
 
+                // --- ФІКС: Забороняємо піску малюватись поверх дороги ---
+                if (splat[sy, sx, 4] > 0.5f) continue;
+
                 splat[sy, sx, 1] = Mathf.Max(splat[sy, sx, 1], blend);
 
-                float remain = 1f - splat[sy, sx, 1];
+                float remain = 1f - splat[sy, sx, 1] - splat[sy, sx, 4];
+                if (remain < 0) remain = 0;
+
                 float sumOthers = splat[sy, sx, 0] + splat[sy, sx, 2] + splat[sy, sx, 3];
 
                 if (sumOthers > 0.001f)
@@ -2204,6 +2324,7 @@ public class WorldGenerator : MonoBehaviour
         // ==========================================
         foreach (var poi in plannedPOIs)
         {
+            roadTargets.Add(new Vector3(poi.worldPosition.x, poi.worldPosition.y, poi.worldPosition.z));
             FlattenTerrainRobust(poi.worldPosition, poi.settings.flattenRadius, 15f, poi.worldPosition.y);
             forbiddenZones.Add(poi.worldPosition);
         }
@@ -2288,6 +2409,7 @@ public class WorldGenerator : MonoBehaviour
                     Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
                     if (IsPositionClear(spawnPos, cartClearanceRadius))
                     {
+                        roadTargets.Add(spawnPos);
                         Instantiate(extractionCartPrefab, spawnPos, Quaternion.Euler(0, GetRandomRange(0f, 360f), 0));
                         forbiddenZones.Add(spawnPos);
                         spawnedCarts++;
@@ -2390,5 +2512,221 @@ public class WorldGenerator : MonoBehaviour
         public Vector3 worldPosition;
         public GameObject prefab;
         public POISettings settings;
+    }
+
+    // ==========================================
+    // СИСТЕМА ДОРІГ (НОВІ МЕТОДИ)
+    // ==========================================
+    private class PathNode
+    {
+        public int x, z;
+        public float g, h;
+        public PathNode parent;
+        public float f => g + h;
+        public PathNode(int _x, int _z) { x = _x; z = _z; }
+    }
+
+    private List<Vector3> FindAStarPathToNetwork(Vector2Int start, Vector2Int totemNode, bool[,] roadNetwork, int gridW, int gridL, float cellSize, float absWaterH)
+    {
+        if (roadNetwork[start.x, start.y]) return null;
+
+        List<PathNode> openSet = new List<PathNode>();
+        HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
+        Dictionary<Vector2Int, PathNode> nodeMap = new Dictionary<Vector2Int, PathNode>();
+
+        PathNode startNode = new PathNode(start.x, start.y) { g = 0, h = Vector2Int.Distance(start, totemNode) };
+        openSet.Add(startNode); nodeMap[start] = startNode;
+
+        int[] dx = { -1, 1, 0, 0, -1, 1, -1, 1 }; int[] dz = { 0, 0, -1, 1, -1, -1, 1, 1 };
+        int iterations = 0;
+
+        while (openSet.Count > 0 && iterations < 150000) // Збільшено ліміт
+        {
+            iterations++;
+            int minIndex = 0;
+            for (int i = 1; i < openSet.Count; i++) if (openSet[i].f < openSet[minIndex].f) minIndex = i;
+
+            PathNode current = openSet[minIndex]; openSet.RemoveAt(minIndex); closedSet.Add(new Vector2Int(current.x, current.z));
+
+            if (roadNetwork[current.x, current.z])
+            {
+                List<Vector3> path = new List<Vector3>();
+                while (current != null)
+                {
+                    float wX = transform.position.x + (current.x * cellSize); float wZ = transform.position.z + (current.z * cellSize);
+                    path.Add(new Vector3(wX, 0, wZ)); current = current.parent;
+                }
+                path.Reverse(); return path;
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                int nx = current.x + dx[i]; int nz = current.z + dz[i]; Vector2Int nPos = new Vector2Int(nx, nz);
+                if (nx < 0 || nx >= gridW || nz < 0 || nz >= gridL || closedSet.Contains(nPos)) continue;
+
+                float wX = transform.position.x + (nx * cellSize); float wZ = transform.position.z + (nz * cellSize);
+                float h = terrain.SampleHeight(new Vector3(wX, 0, wZ)) + transform.position.y;
+
+                // ГОЛОВНИЙ ФІКС: Блокуємо тільки воду. Нахили ігноруємо, просто додаємо штраф
+                if (h < absWaterH + 0.5f) continue;
+
+                float steepness = terrain.terrainData.GetSteepness((float)nx / gridW, (float)nz / gridL);
+                float moveCost = (i < 4) ? 1f : 1.414f;
+                float steepPenalty = steepness * 2f; // Чим крутіше, тим дорожче, але не заборонено!
+                float newG = current.g + moveCost + steepPenalty;
+
+                if (!nodeMap.ContainsKey(nPos) || newG < nodeMap[nPos].g)
+                {
+                    PathNode neighbor = new PathNode(nx, nz) { g = newG, h = Vector2Int.Distance(nPos, totemNode), parent = current };
+                    openSet.Add(neighbor); nodeMap[nPos] = neighbor;
+                }
+            }
+        }
+        return null; // Якщо шлях не знайдено, дорога просто не з'явиться
+    }
+
+    private void CarveAndRasterizeRoad(SplineContainer sc)
+    {
+        TerrainData td = terrain.terrainData; int res = td.heightmapResolution; int aWidth = td.alphamapWidth; int aHeight = td.alphamapHeight;
+        float[,] heights = td.GetHeights(0, 0, res, res); float splLen = sc.CalculateLength(); float step = 2f;
+
+        for (float d = 0; d < splLen; d += step)
+        {
+            sc.Evaluate(d / splLen, out float3 p, out float3 tan, out float3 up);
+            Vector3 worldPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
+            forbiddenZones.Add(worldPos);
+
+            int ax = Mathf.Clamp(Mathf.RoundToInt(((worldPos.x - transform.position.x) / td.size.x) * aWidth), 0, aWidth - 1);
+            int ay = Mathf.Clamp(Mathf.RoundToInt(((worldPos.z - transform.position.z) / td.size.z) * aHeight), 0, aHeight - 1);
+            int radA = Mathf.Max(1, Mathf.RoundToInt((roadWidth / td.size.x) * aWidth));
+
+            for (int y = -radA; y <= radA; y++) for (int x = -radA; x <= radA; x++)
+                {
+                    int sx = ax + x, sy = ay + y; if (sx < 0 || sx >= aWidth || sy < 0 || sy >= aHeight) continue;
+                    float dist = Mathf.Sqrt(x * x + y * y); if (dist > radA) continue;
+                    float strength = 1f - Mathf.SmoothStep(0.2f, 1f, dist / radA);
+                    if (strength > roadBlendMap[sy, sx]) roadBlendMap[sy, sx] = strength;
+                }
+
+            int cx = Mathf.Clamp(Mathf.RoundToInt(((worldPos.x - transform.position.x) / td.size.x) * (res - 1)), 0, res - 1);
+            int cy = Mathf.Clamp(Mathf.RoundToInt(((worldPos.z - transform.position.z) / td.size.z) * (res - 1)), 0, res - 1);
+            int radH = Mathf.Max(1, Mathf.RoundToInt((roadWidth * 0.8f / td.size.x) * res));
+
+            float centerH = heights[cy, cx];
+            for (int y = -radH; y <= radH; y++) for (int x = -radH; x <= radH; x++)
+                {
+                    int sx = cx + x, sy = cy + y; if (sx < 0 || sx >= res || sy < 0 || sy >= res) continue;
+                    float dist = Mathf.Sqrt(x * x + y * y); if (dist > radH) continue;
+                    float t = Mathf.SmoothStep(0f, 1f, dist / radH);
+                    heights[sy, sx] = Mathf.Lerp(centerH, heights[sy, sx], t);
+                }
+        }
+        td.SetHeights(0, 0, heights);
+    }
+
+    private IEnumerator SpawnRoadDecorationsRoutine()
+    {
+        if (roadEdgeDecorations == null || roadEdgeDecorations.Length == 0) yield break;
+        Transform decorContainer = new GameObject("RoadDecorations").transform; decorContainer.SetParent(this.transform);
+
+        float mapW = terrain.terrainData.size.x; float mapL = terrain.terrainData.size.z;
+        float absWaterH = transform.position.y + (depth * waterLevel);
+        float startTime = Time.realtimeSinceStartup;
+
+        int spawnedAltars = 0;
+
+        // ДІАГНОСТИКА: Перевіряємо чи не порожній масив в Інспекторі
+        if (altarPrefabs == null || altarPrefabs.Length == 0)
+        {
+            Debug.LogWarning("⚠️ [Smart Roads] Масив 'Altar Prefabs' ПОРОЖНІЙ! Вівтарі не з'являться. Закинь префаб в Інспекторі!");
+        }
+
+        foreach (SplineContainer sc in roadSplines)
+        {
+            float len = sc.CalculateLength();
+            float startOffset = Mathf.Min(10f, len * 0.15f);
+            float endOffset = Mathf.Min(10f, len * 0.15f);
+
+            for (float d = startOffset; d < len - endOffset; d += 35f)
+            {
+                if (GetRandomFloat() > roadDecorSpawnChance) continue;
+                sc.Evaluate(d / len, out float3 p, out float3 tan, out float3 up);
+                Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
+                Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
+                Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
+                float side = GetRandomFloat() > 0.5f ? 1f : -1f;
+
+                Vector3 spawnPos = wPos + right * side * (roadWidth * 0.85f);
+
+                if (spawnPos.x < transform.position.x + 25f || spawnPos.x > transform.position.x + mapW - 25f ||
+                    spawnPos.z < transform.position.z + 25f || spawnPos.z > transform.position.z + mapL - 25f)
+                    continue;
+
+                spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
+                float spawnSteep = terrain.terrainData.GetSteepness((spawnPos.x - transform.position.x) / mapW, (spawnPos.z - transform.position.z) / mapL);
+
+                if (spawnPos.y > absWaterH + 2f && spawnSteep < 15f && IsPositionClear(spawnPos, 1.5f))
+                {
+                    Instantiate(GetRandomPrefab(roadEdgeDecorations), spawnPos, Quaternion.LookRotation(right * -side), decorContainer);
+                    forbiddenZones.Add(spawnPos);
+                }
+            }
+
+            bool isDeadEnd = false;
+            Vector3 tipPos = Vector3.zero;
+            Vector3 tipTan = Vector3.forward;
+
+            BezierKnot firstKnot = sc.Spline[0];
+            Vector3 firstP = sc.transform.TransformPoint(new Vector3(firstKnot.Position.x, firstKnot.Position.y, firstKnot.Position.z));
+
+            BezierKnot lastKnot = sc.Spline[sc.Spline.Count - 1];
+            Vector3 lastP = sc.transform.TransformPoint(new Vector3(lastKnot.Position.x, lastKnot.Position.y, lastKnot.Position.z));
+
+            foreach (var de in deadEndTargets)
+            {
+                if (Vector3.Distance(firstP, de) < 15f)
+                {
+                    isDeadEnd = true;
+                    sc.Evaluate(0f, out float3 p0, out float3 t0, out float3 u0);
+                    tipPos = sc.transform.TransformPoint(new Vector3(p0.x, p0.y, p0.z));
+                    tipTan = -sc.transform.TransformDirection(new Vector3(t0.x, t0.y, t0.z)).normalized;
+                    break;
+                }
+                else if (Vector3.Distance(lastP, de) < 15f)
+                {
+                    isDeadEnd = true;
+                    sc.Evaluate(1f, out float3 p1, out float3 t1, out float3 u1);
+                    tipPos = sc.transform.TransformPoint(new Vector3(p1.x, p1.y, p1.z));
+                    tipTan = sc.transform.TransformDirection(new Vector3(t1.x, t1.y, t1.z)).normalized;
+                    break;
+                }
+            }
+
+            if (isDeadEnd)
+            {
+                Vector3 endSpawn = tipPos + tipTan * 6f; // Відступаємо трохи далі від кінця дороги
+
+                if (endSpawn.x > transform.position.x + 20f && endSpawn.x < transform.position.x + mapW - 20f &&
+                    endSpawn.z > transform.position.z + 20f && endSpawn.z < transform.position.z + mapL - 20f)
+                {
+                    endSpawn.y = terrain.SampleHeight(endSpawn) + transform.position.y;
+
+                    // ФІКС: Ніяких перевірок IsPositionClear. Ставимо Алтар СИЛОЮ!
+                    if (spawnedAltars < altarsAmount && altarPrefabs != null && altarPrefabs.Length > 0)
+                    {
+                        Instantiate(GetRandomPrefab(altarPrefabs), endSpawn, Quaternion.LookRotation(-tipTan), decorContainer);
+                        spawnedAltars++;
+                        forbiddenZones.Add(endSpawn);
+                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {endSpawn}");
+                    }
+                    else if (deadEndAssets != null && deadEndAssets.Length > 0)
+                    {
+                        Instantiate(GetRandomPrefab(deadEndAssets), endSpawn, Quaternion.LookRotation(-tipTan), decorContainer);
+                        forbiddenZones.Add(endSpawn);
+                    }
+                }
+            }
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
+        }
     }
 }

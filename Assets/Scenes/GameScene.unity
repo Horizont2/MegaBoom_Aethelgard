@@ -1876,6 +1876,24 @@ MonoBehaviour:
   skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   waterLevel: 0.12
   waterMaterial: {fileID: 2100000, guid: 77a7c1b497cc0524ab6136a1c2508e63, type: 2}
+  altarPrefabs:
+  - {fileID: 689540240055712982, guid: 27a0bf9c6967bd746b42a267caf187b9, type: 3}
+  altarsAmount: 2
+  roadLayer: {fileID: 8574412962073106934, guid: 6e541dfea746e4b348a941c11dbf1e61, type: 2}
+  roadWidth: 5
+  roadEdgeDecorations:
+  - {fileID: 100000, guid: 8a8a72448ff977d4e81d735efa7d3df6, type: 3}
+  - {fileID: 100000, guid: b1e72cbca989d4f4ba7d512a92e6903c, type: 3}
+  - {fileID: 100000, guid: cda844cefe42f0f4db13995d26ff8541, type: 3}
+  - {fileID: 100000, guid: 203b2b8f3a2ab7a4589ca5e13eecd9f9, type: 3}
+  - {fileID: 100000, guid: 76a4663a496d6584ab5fb3442baf5ef5, type: 3}
+  - {fileID: 100000, guid: e7eb8f75f6fc044428e573c50addae3c, type: 3}
+  - {fileID: 919132149155446097, guid: 2f9828e9ada5f054ab7a929edb5d7555, type: 3}
+  deadEndAssets:
+  - {fileID: 100000, guid: f76b41ce1e7c04448838dd8b9a2e6aa9, type: 3}
+  - {fileID: 100000, guid: f69f28799b5cc6c4682e7ed9461457e1, type: 3}
+  roadDecorSpawnChance: 0.4
+  extraDeadEndRoads: 4
   riverCount: 2
   riverWidth: 8
   waterMeshWidthMultiplier: 1.3
@@ -1952,11 +1970,11 @@ MonoBehaviour:
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
-  maxTrees: 1400
+  maxTrees: 2000
   maxBushesAndMushroom: 800
   maxRocks: 500
   clusterScale: 12
-  forestThreshold: 0.48
+  forestThreshold: 0.43
   globalBiomeScale: 2.5
   giantTrees:
   - {fileID: 2118840309929815125, guid: bb5ef018996d1c842a3fda7ef67595e9, type: 3}
