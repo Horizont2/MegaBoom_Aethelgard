@@ -2626,7 +2626,16 @@ public class WorldGenerator : MonoBehaviour
 
     private IEnumerator SpawnRoadDecorationsRoutine()
     {
-        if (roadEdgeDecorations == null || roadEdgeDecorations.Length == 0) yield break;
+        // The altar-at-dead-end spawn is intentionally NOT gated on
+        // roadEdgeDecorations — an unassigned decoration array used to
+        // early-out here, silently killing the altar totem spawn too.
+        bool hasDecor = roadEdgeDecorations != null && roadEdgeDecorations.Length > 0;
+        bool hasAltars = altarPrefabs != null && altarPrefabs.Length > 0;
+        bool hasDeadEndFallback = deadEndAssets != null && deadEndAssets.Length > 0;
+
+        if (!hasDecor && !hasAltars && !hasDeadEndFallback) yield break;
+        if (roadSplines == null || roadSplines.Count == 0) yield break;
+
         Transform decorContainer = new GameObject("RoadDecorations").transform; decorContainer.SetParent(this.transform);
 
         float mapW = terrain.terrainData.size.x; float mapL = terrain.terrainData.size.z;
@@ -2636,39 +2645,43 @@ public class WorldGenerator : MonoBehaviour
         int spawnedAltars = 0;
 
         // ДІАГНОСТИКА: Перевіряємо чи не порожній масив в Інспекторі
-        if (altarPrefabs == null || altarPrefabs.Length == 0)
+        if (!hasAltars)
         {
             Debug.LogWarning("⚠️ [Smart Roads] Масив 'Altar Prefabs' ПОРОЖНІЙ! Вівтарі не з'являться. Закинь префаб в Інспекторі!");
         }
+        Debug.Log($"[Smart Roads] Decor start — hasDecor={hasDecor} hasAltars={hasAltars} hasDeadEndFallback={hasDeadEndFallback} roadSplines={roadSplines.Count} deadEndTargets={deadEndTargets.Count}");
 
         foreach (SplineContainer sc in roadSplines)
         {
-            float len = sc.CalculateLength();
-            float startOffset = Mathf.Min(10f, len * 0.15f);
-            float endOffset = Mathf.Min(10f, len * 0.15f);
-
-            for (float d = startOffset; d < len - endOffset; d += 35f)
+            if (hasDecor)
             {
-                if (GetRandomFloat() > roadDecorSpawnChance) continue;
-                sc.Evaluate(d / len, out float3 p, out float3 tan, out float3 up);
-                Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
-                Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
-                Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
-                float side = GetRandomFloat() > 0.5f ? 1f : -1f;
+                float len = sc.CalculateLength();
+                float startOffset = Mathf.Min(10f, len * 0.15f);
+                float endOffset = Mathf.Min(10f, len * 0.15f);
 
-                Vector3 spawnPos = wPos + right * side * (roadWidth * 0.85f);
-
-                if (spawnPos.x < transform.position.x + 25f || spawnPos.x > transform.position.x + mapW - 25f ||
-                    spawnPos.z < transform.position.z + 25f || spawnPos.z > transform.position.z + mapL - 25f)
-                    continue;
-
-                spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
-                float spawnSteep = terrain.terrainData.GetSteepness((spawnPos.x - transform.position.x) / mapW, (spawnPos.z - transform.position.z) / mapL);
-
-                if (spawnPos.y > absWaterH + 2f && spawnSteep < 15f && IsPositionClear(spawnPos, 1.5f))
+                for (float d = startOffset; d < len - endOffset; d += 35f)
                 {
-                    Instantiate(GetRandomPrefab(roadEdgeDecorations), spawnPos, Quaternion.LookRotation(right * -side), decorContainer);
-                    forbiddenZones.Add(spawnPos);
+                    if (GetRandomFloat() > roadDecorSpawnChance) continue;
+                    sc.Evaluate(d / len, out float3 p, out float3 tan, out float3 up);
+                    Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
+                    Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
+                    Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
+                    float side = GetRandomFloat() > 0.5f ? 1f : -1f;
+
+                    Vector3 spawnPos = wPos + right * side * (roadWidth * 0.85f);
+
+                    if (spawnPos.x < transform.position.x + 25f || spawnPos.x > transform.position.x + mapW - 25f ||
+                        spawnPos.z < transform.position.z + 25f || spawnPos.z > transform.position.z + mapL - 25f)
+                        continue;
+
+                    spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
+                    float spawnSteep = terrain.terrainData.GetSteepness((spawnPos.x - transform.position.x) / mapW, (spawnPos.z - transform.position.z) / mapL);
+
+                    if (spawnPos.y > absWaterH + 2f && spawnSteep < 15f && IsPositionClear(spawnPos, 1.5f))
+                    {
+                        Instantiate(GetRandomPrefab(roadEdgeDecorations), spawnPos, Quaternion.LookRotation(right * -side), decorContainer);
+                        forbiddenZones.Add(spawnPos);
+                    }
                 }
             }
 
