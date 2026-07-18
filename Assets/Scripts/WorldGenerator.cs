@@ -41,7 +41,21 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] roadEdgeDecorations;
     public GameObject[] deadEndAssets;
     [Range(0f, 1f)] public float roadDecorSpawnChance = 0.3f;
-    public int extraDeadEndRoads = 2;
+    public int extraDeadEndRoads = 3;
+    // Minimum XZ distance between two dead-end targets — stops A* from
+    // building two parallel almost-touching stub roads.
+    public float deadEndMinSeparation = 60f;
+    // Maximum steepness (degrees) a dead-end candidate spot may sit on.
+    // Was 10° — too strict, mountainous regions often produced zero
+    // dead-ends and hence zero altars. 18° is walkable but still avoids
+    // cliffs.
+    public float deadEndMaxSteepness = 18f;
+    // Extends the road spline `deadEndTipExtensionMeters` past the
+    // dead-end target so the altar totem doesn't sit on the exact final
+    // knot (which reads as "road just stops at the totem"). Positive
+    // values pull the road tip further in the direction the road was
+    // heading, giving a small "path leading off into wilderness" feel.
+    public float deadEndTipExtensionMeters = 4f;
 
     // Системні змінні для доріг
     private List<Vector3> roadTargets = new List<Vector3>();
@@ -1671,20 +1685,36 @@ public class WorldGenerator : MonoBehaviour
         float mapW = terrain.terrainData.size.x; float mapL = terrain.terrainData.size.z;
         float absWaterH = transform.position.y + (depth * waterLevel);
 
+        float deadEndMinSepSq = deadEndMinSeparation * deadEndMinSeparation;
         for (int i = 0; i < extraDeadEndRoads; i++)
         {
-            for (int attempt = 0; attempt < 150; attempt++) // Збільшили кількість спроб
+            bool placed = false;
+            for (int attempt = 0; attempt < 300; attempt++)
             {
                 float px = GetRandomRange(50f, mapW - 50f); float pz = GetRandomRange(50f, mapL - 50f);
                 float wX = transform.position.x + px; float wZ = transform.position.z + pz;
                 float wY = terrain.SampleHeight(new Vector3(wX, 0, wZ)) + transform.position.y;
+                Vector3 candidate = new Vector3(wX, wY, wZ);
 
-                // ФІКС: Тупик має бути далеко від бази (> 70м), щоб дорога була довгою
-                if (wY > absWaterH + 5f && terrain.terrainData.GetSteepness(px / mapW, pz / mapL) < 10f && Vector3.Distance(new Vector3(wX, wY, wZ), spawnedTotemPos) > 70f)
+                // Тупик має бути далеко від бази (> 70м), не крутий, над водою,
+                // і достатньо далеко від інших тупиків, щоб не спавнилися пари.
+                if (wY <= absWaterH + 5f) continue;
+                if (terrain.terrainData.GetSteepness(px / mapW, pz / mapL) >= deadEndMaxSteepness) continue;
+                if (Vector3.Distance(candidate, spawnedTotemPos) <= 70f) continue;
+
+                bool tooClose = false;
+                for (int k = 0; k < deadEndTargets.Count; k++)
                 {
-                    deadEndTargets.Add(new Vector3(wX, wY, wZ)); break;
+                    Vector3 diff = candidate - deadEndTargets[k]; diff.y = 0f;
+                    if (diff.sqrMagnitude < deadEndMinSepSq) { tooClose = true; break; }
                 }
+                if (tooClose) continue;
+
+                deadEndTargets.Add(candidate);
+                placed = true;
+                break;
             }
+            if (!placed) Debug.LogWarning($"[Smart Roads] Не знайшов місце для тупика #{i + 1} за 300 спроб (steep<{deadEndMaxSteepness}°, водоймá, {deadEndMinSeparation}м від сусідів). Мапа задуже пересічена?");
         }
 
         List<Vector3> allTargets = new List<Vector3>(roadTargets);
@@ -1724,6 +1754,26 @@ public class WorldGenerator : MonoBehaviour
 
             if (path != null && path.Count > 4)
             {
+                // Extend the road tip a bit past the dead-end target so the
+                // altar has a visible run of path leading to it — otherwise
+                // the road just stops at the flat spot and the altar looks
+                // like it's floating in a clearing. Only extend for dead-end
+                // targets (POI targets already have the POI itself as the
+                // visual terminus).
+                if (deadEndTipExtensionMeters > 0.1f && deadEndTargets.Contains(targetPos) && path.Count >= 2)
+                {
+                    Vector3 tipDir = path[0] - path[1];
+                    tipDir.y = 0f;
+                    if (tipDir.sqrMagnitude > 0.001f)
+                    {
+                        Vector3 extendedTip = path[0] + tipDir.normalized * deadEndTipExtensionMeters;
+                        // Snap to terrain height so the extension doesn't
+                        // hang above/below the ground surface.
+                        extendedTip.y = terrain.SampleHeight(extendedTip) + transform.position.y;
+                        path.Insert(0, extendedTip);
+                    }
+                }
+
                 SmoothPathXZ(path, 4);
                 GameObject roadObj = new GameObject($"RoadSpline_{roadsBuilt}");
                 roadObj.transform.SetParent(roadContainer);
