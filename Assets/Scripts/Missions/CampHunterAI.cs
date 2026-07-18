@@ -43,6 +43,14 @@ public class CampHunterAI : MonoBehaviour
         if (anim != null && anim.applyRootMotion) anim.applyRootMotion = false;
         if (anim != null) anim.SetBoolSafe("IsGrounded", true);
 
+        // Same trick as CampWorkerAI: park the hunter under the map until
+        // the hut is actually built. Otherwise a hunter GO placed at ground
+        // level in the prefab would be visible next to a ghost/unbuilt
+        // hut. Disable the agent up-front so the sub-map position doesn't
+        // fight the NavMesh.
+        if (agent != null) agent.enabled = false;
+        transform.position = new Vector3(0, -1000f, 0);
+
         StartCoroutine(InitAndStartRoutine());
     }
 
@@ -71,22 +79,40 @@ public class CampHunterAI : MonoBehaviour
 
     private IEnumerator InitAndStartRoutine()
     {
+        // Wait until the hut is actually built before showing up. If no
+        // building is wired (misconfigured prefab), skip the wait so the
+        // hunter still spawns for debugging.
+        if (myBuilding != null)
+        {
+            while (myBuilding.currentLevel == 0) yield return null;
+        }
+
         yield return new WaitForSeconds(0.5f);
 
-        if (transform.position.y < -2f)
-        {
-            if (agent != null) agent.enabled = false;
-            yield return new WaitForSeconds(2.5f);
+        // Spawn point — prefer the lodge, fall back to forest edge, then
+        // world origin. Same pattern the worker uses so the hunter always
+        // enters the scene next to their hut, not at (0,0,0).
+        Vector3 startPos = lodgePoint != null
+            ? lodgePoint.position
+            : (forestEdgePoint != null ? forestEdgePoint.position : Vector3.zero);
 
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-                transform.position = hit.position;
+        if (Terrain.activeTerrain != null)
+        {
+            float terrainHeight = Terrain.activeTerrain.SampleHeight(startPos)
+                                + Terrain.activeTerrain.transform.position.y;
+            startPos.y = terrainHeight;
         }
+
+        transform.position = startPos;
 
         if (agent != null)
         {
             agent.enabled = true;
-            agent.Warp(transform.position);
+            yield return null;
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(startPos, out hit, 6f, NavMesh.AllAreas))
+                agent.Warp(hit.position);
             agent.stoppingDistance = 0.5f;
         }
 
