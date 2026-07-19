@@ -211,10 +211,22 @@ public class MercenaryCampaignManager : MonoBehaviour
 
             if (region != null)
             {
-                region.currentState = RegionState.Conquered;
-                region.isNewlyUnlocked = true;
+                // Route through MapProgressionManager so PlayerPrefs is
+                // persisted, neighbours flip to Available, and the map
+                // event fires. Setting currentState here directly used to
+                // update the ScriptableObject in memory but never saved
+                // or unlocked adjacent regions — the mercenary win looked
+                // resolved on the toast but the world map didn't open the
+                // next region until you conquered something manually.
                 if (MapProgressionManager.Instance != null)
-                    MapProgressionManager.Instance.RefreshMapState();
+                {
+                    MapProgressionManager.Instance.ConquerRegionAndUnlockNeighbors(region);
+                }
+                else
+                {
+                    region.currentState = RegionState.Conquered;
+                    region.isNewlyUnlocked = true;
+                }
             }
 
             // Player-facing feedback — a toast that lands regardless of what

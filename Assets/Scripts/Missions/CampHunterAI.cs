@@ -155,11 +155,20 @@ public class CampHunterAI : MonoBehaviour
         if (carryItemVisual != null) carryItemVisual.SetActive(false);
         if (visualsParent != null && !visualsParent.activeSelf) visualsParent.SetActive(true);
 
+        // Fallback chain — nightGatherPoint (fire) → lodgePoint (their
+        // own hut) → forestEdgePoint → current spot. Ensures the hunter
+        // still stops working at night even if the designer forgot to
+        // wire the campfire transform.
+        Transform target = nightGatherPoint != null
+            ? nightGatherPoint
+            : (lodgePoint != null ? lodgePoint : forestEdgePoint);
+        Vector3 destPos = target != null ? target.position : transform.position;
+
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
             NavMeshHit hit;
-            if (NavMesh.SamplePosition(nightGatherPoint.position, out hit, 4f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(destPos, out hit, 4f, NavMesh.AllAreas))
                 agent.SetDestination(hit.position);
 
             yield return StartCoroutine(WaitForDestination());
@@ -177,9 +186,11 @@ public class CampHunterAI : MonoBehaviour
 
         while (true)
         {
-            // Night shift beats work — during deep night, drop everything
-            // and sit by the fire.
-            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+            // Night beats work — drop the bow and walk to the fire. Runs
+            // whether or not nightGatherPoint is wired (falls back to
+            // the lodge/forest edge inside NightGatherRoutine), so a
+            // half-configured NPC still respects the day/night cycle.
+            if (CampSchedule.IsDeepNight())
             {
                 yield return StartCoroutine(NightGatherRoutine());
                 continue;

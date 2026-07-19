@@ -111,11 +111,17 @@ public class StorageWorkerAI : MonoBehaviour
     private IEnumerator NightGatherRoutine()
     {
         if (carryVisual != null) carryVisual.SetActive(false);
+        // Fallback chain — nightGatherPoint (fire) → storageDropPoint
+        // (the vault) → current spot. Works even when the campfire
+        // transform isn't wired in the Inspector.
+        Vector3 destPos = nightGatherPoint != null
+            ? nightGatherPoint.position
+            : (storageDropPoint != null ? storageDropPoint.position : transform.position);
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
             NavMeshHit hit;
-            if (NavMesh.SamplePosition(nightGatherPoint.position, out hit, 4f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(destPos, out hit, 4f, NavMesh.AllAreas))
                 agent.SetDestination(hit.position);
             yield return StartCoroutine(WaitArrival());
             agent.isStopped = true;
@@ -130,9 +136,10 @@ public class StorageWorkerAI : MonoBehaviour
 
         while (true)
         {
-            // Night shift beats hauling — during deep night, drop everything
-            // and sit at the fire.
-            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+            // Night beats hauling. Runs whether or not nightGatherPoint is
+            // wired (NightGatherRoutine has a fallback), so a half-config
+            // NPC still respects the day/night cycle.
+            if (CampSchedule.IsDeepNight())
             {
                 yield return StartCoroutine(NightGatherRoutine());
                 continue;

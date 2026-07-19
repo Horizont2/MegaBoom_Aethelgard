@@ -1220,6 +1220,11 @@ public static class LocalizationManager
         Add("MERC_TOAST_VICTORY",  "Victory at {0}! +◆{1}",     "Перемога в {0}! +◆{1}");
         Add("MERC_TOAST_DEFEAT",   "Defeated at {0}. {1} fell.", "Поразка в {0}. Загинуло: {1}.");
 
+        // === Campaign phase labels (CampaignStatusHUD strip) ===
+        Add("MERC_PHASE_MARCHING",  "MARCHING",  "МАРШ");
+        Add("MERC_PHASE_FIGHTING",  "FIGHTING",  "БИТВА");
+        Add("MERC_PHASE_RETURNING", "RETURNING", "ПОВЕРНЕННЯ");
+
         // Tactic tooltip lines (shown in PreBattlePanel.tacticDescriptionText)
         Add("MERC_TACTIC_DESC_AMBUSH",
             "Ambush — ×0.6 travel, +8% win chance. LOSS is catastrophic (×1.6 casualties).",

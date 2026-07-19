@@ -159,6 +159,32 @@ public class CampWorkerAI : MonoBehaviour
         }
     }
 
+    private IEnumerator NightGatherRoutine()
+    {
+        if (carryItemVisual != null) carryItemVisual.SetActive(false);
+        Vector3 target = nightGatherPoint != null
+            ? nightGatherPoint.position
+            : (dropPoint != null ? dropPoint.position : transform.position);
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+            agent.stoppingDistance = 1.0f;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(target, out hit, 4f, NavMesh.AllAreas))
+                agent.SetDestination(hit.position);
+            float timeout = 0f;
+            while (timeout < 15f)
+            {
+                timeout += Time.deltaTime;
+                if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f) break;
+                yield return null;
+            }
+            if (agent.isOnNavMesh) agent.isStopped = true;
+        }
+        while (CampSchedule.IsDeepNight())
+            yield return new WaitForSeconds(1f);
+    }
+
     private IEnumerator WorkerRoutine()
     {
         yield return new WaitForSeconds(Random.Range(0f, 1f));
@@ -168,6 +194,16 @@ public class CampWorkerAI : MonoBehaviour
             if (agent == null || !agent.isOnNavMesh)
             {
                 yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            // Night beats work — drop the axe and walk to the fire even if
+            // trees are ready. Previously this check only fired via
+            // WanderAround when there was NOTHING to chop, so a well-
+            // stocked forest kept the worker chopping 24/7.
+            if (CampSchedule.IsDeepNight())
+            {
+                yield return StartCoroutine(NightGatherRoutine());
                 continue;
             }
 

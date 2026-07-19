@@ -72,6 +72,18 @@ public class PreBattlePanel : MonoBehaviour
     // a tooltip slot.
     public TextMeshProUGUI tacticDescriptionText;
 
+    [Header("Tactic Preview (optional)")]
+    // Big illustration slot that always shows the current tactic. Used
+    // when the panel has one central image (instead of three per-button
+    // highlights). Wire this + three sprites in the Inspector.
+    public Image tacticPreviewImage;
+    public Sprite tacticAmbushSprite;
+    public Sprite tacticAssaultSprite;
+    public Sprite tacticSiegeSprite;
+    // Placeholder shown while no tactic is chosen — usually the default
+    // Assault sprite. Falls back to tacticAssaultSprite if left null.
+    public Sprite tacticDefaultSprite;
+
     private RegionData currentRegion;
     private CampaignTactic currentTactic = CampaignTactic.Assault;
     private readonly Dictionary<string, int> desiredCounts = new Dictionary<string, int>();
@@ -110,6 +122,16 @@ public class PreBattlePanel : MonoBehaviour
         if (enemyPowerText != null) enemyPowerText.text = LocalizationManager.Tr("MERC_ENEMY_POWER", region.enemyStrength);
 
         RefreshBarracksPips();
+
+        // Guarantee the preview slot shows SOMETHING the moment the panel
+        // opens, even before SetTactic runs — otherwise there's a one-frame
+        // "empty rectangle" flash before the default tactic swap kicks in.
+        if (tacticPreviewImage != null)
+        {
+            Sprite fallback = tacticDefaultSprite != null ? tacticDefaultSprite : tacticAssaultSprite;
+            if (fallback != null) tacticPreviewImage.sprite = fallback;
+            tacticPreviewImage.enabled = tacticPreviewImage.sprite != null;
+        }
 
         SetTactic(CampaignTactic.Assault);
         RebuildUnitRows();
@@ -179,6 +201,22 @@ public class PreBattlePanel : MonoBehaviour
                        : t == CampaignTactic.Siege    ? "MERC_TACTIC_DESC_SIEGE"
                                                        : "MERC_TACTIC_DESC_ASSAULT";
             tacticDescriptionText.text = LocalizationManager.Tr(key);
+        }
+
+        // Central tactic illustration always reflects the active choice —
+        // fall back to the default sprite if this tactic's specific art
+        // wasn't wired in the Inspector, so the slot never blanks out.
+        if (tacticPreviewImage != null)
+        {
+            Sprite next = t == CampaignTactic.Ambush   ? tacticAmbushSprite
+                       : t == CampaignTactic.Siege     ? tacticSiegeSprite
+                                                        : tacticAssaultSprite;
+            if (next == null) next = tacticDefaultSprite;
+            if (next != null)
+            {
+                tacticPreviewImage.sprite = next;
+                tacticPreviewImage.enabled = true;
+            }
         }
 
         Refresh();

@@ -2745,9 +2745,17 @@ public class WorldGenerator : MonoBehaviour
             BezierKnot lastKnot = sc.Spline[sc.Spline.Count - 1];
             Vector3 lastP = sc.transform.TransformPoint(new Vector3(lastKnot.Position.x, lastKnot.Position.y, lastKnot.Position.z));
 
+            // Tolerance was 15m but a road spline's start knot lands on
+            // the A*-grid-snapped cell (up to cellSize=8m off the true
+            // target) PLUS the optional deadEndTipExtensionMeters push.
+            // 25m covers that comfortably without allowing a non-dead-end
+            // road to be tagged incorrectly (POI roads terminate at the
+            // POI itself, which is > 25m from any dead-end target thanks
+            // to deadEndMinSeparation).
+            const float DEAD_END_MATCH_TOLERANCE = 25f;
             foreach (var de in deadEndTargets)
             {
-                if (Vector3.Distance(firstP, de) < 15f)
+                if (Vector3.Distance(firstP, de) < DEAD_END_MATCH_TOLERANCE)
                 {
                     isDeadEnd = true;
                     sc.Evaluate(0f, out float3 p0, out float3 t0, out float3 u0);
@@ -2755,7 +2763,7 @@ public class WorldGenerator : MonoBehaviour
                     tipTan = -sc.transform.TransformDirection(new Vector3(t0.x, t0.y, t0.z)).normalized;
                     break;
                 }
-                else if (Vector3.Distance(lastP, de) < 15f)
+                else if (Vector3.Distance(lastP, de) < DEAD_END_MATCH_TOLERANCE)
                 {
                     isDeadEnd = true;
                     sc.Evaluate(1f, out float3 p1, out float3 t1, out float3 u1);
@@ -2769,8 +2777,10 @@ public class WorldGenerator : MonoBehaviour
             {
                 Vector3 endSpawn = tipPos + tipTan * 6f; // Відступаємо трохи далі від кінця дороги
 
-                if (endSpawn.x > transform.position.x + 20f && endSpawn.x < transform.position.x + mapW - 20f &&
-                    endSpawn.z > transform.position.z + 20f && endSpawn.z < transform.position.z + mapL - 20f)
+                bool insideMap = endSpawn.x > transform.position.x + 20f && endSpawn.x < transform.position.x + mapW - 20f &&
+                                 endSpawn.z > transform.position.z + 20f && endSpawn.z < transform.position.z + mapL - 20f;
+
+                if (insideMap)
                 {
                     endSpawn.y = terrain.SampleHeight(endSpawn) + transform.position.y;
 
@@ -2780,7 +2790,7 @@ public class WorldGenerator : MonoBehaviour
                         Instantiate(GetRandomPrefab(altarPrefabs), endSpawn, Quaternion.LookRotation(-tipTan), decorContainer);
                         spawnedAltars++;
                         forbiddenZones.Add(endSpawn);
-                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {endSpawn}");
+                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {endSpawn} ({spawnedAltars}/{altarsAmount})");
                     }
                     else if (deadEndAssets != null && deadEndAssets.Length > 0)
                     {
@@ -2788,8 +2798,13 @@ public class WorldGenerator : MonoBehaviour
                         forbiddenZones.Add(endSpawn);
                     }
                 }
+                else
+                {
+                    Debug.LogWarning($"[Smart Roads] Тупик знайдений, але місце спавну ({endSpawn}) впало за межі мапи. Пропускаю.");
+                }
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
+        Debug.Log($"[Smart Roads] Decor done — altars {spawnedAltars}/{altarsAmount} spawned. deadEndTargets={deadEndTargets.Count} roadSplines={roadSplines.Count}. Якщо алтарів 0 і hasAltars=True — жоден spline не потрапив в межу {25}м від deadEndTarget: ймовірно A* пропустив ціль або цілі не згенерувалися (мапа задуже гориста).");
     }
 }
