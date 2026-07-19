@@ -209,7 +209,10 @@ public class CampNPC_Elias : MonoBehaviour
     {
         if (subtitleText == null) yield break;
 
-        subtitleText.text = text;
+        // Wrap through Tr so the English literals passed as call-site keys
+        // can be translated by the LocalizationManager. Untranslated keys
+        // fall back to the passed English verbatim.
+        subtitleText.text = LocalizationManager.Tr(text);
         subtitleText.ForceMeshUpdate();
         int totalChars = subtitleText.textInfo.characterCount;
         subtitleText.maxVisibleCharacters = 0;

@@ -92,8 +92,10 @@ public class RegionManager : MonoBehaviour
         while (!WorldGenerator.IsGenerationDone) yield return null;
         yield return new WaitForSeconds(1f);
 
-        string regionName = currentRegion != null ? currentRegion.regionName : "UNKNOWN REGION";
-        string objective = "PURIFY THE CORRUPTED TOTEMS";
+        string regionName = currentRegion != null
+            ? LocalizationManager.Tr(currentRegion.regionName)
+            : LocalizationManager.Tr("UNKNOWN REGION");
+        string objective = LocalizationManager.Tr("PURIFY THE CORRUPTED TOTEMS");
 
         if (CinematicTitleUI.Instance != null)
         {
@@ -234,7 +236,7 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.HideLevelObjective();
             GlobalHUD.Instance.ShowCinematicBars();
             GlobalHUD.Instance.SetGameplayPanelsActive(false);
-            GlobalHUD.Instance.ShowSkipPrompt("Press <b>SPACE</b> to Skip");
+            GlobalHUD.Instance.ShowSkipPrompt(LocalizationManager.Tr("Press <b>SPACE</b> to Skip"));
         }
 
         if (playerController != null) playerController.isControlBlocked = true;
@@ -341,11 +343,14 @@ public class RegionManager : MonoBehaviour
         // === PHASE 4: title card + reward summary (3 s) =============================
         if (CinematicTitleUI.Instance != null)
         {
-            CinematicTitleUI.Instance.ShowTitle("REGION CONQUERED", "THE CURSE HAS BEEN LIFTED", true);
+            CinematicTitleUI.Instance.ShowTitle(
+                LocalizationManager.Tr("REGION CONQUERED"),
+                LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
+                true);
         }
         else if (GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.ShowPrompt("REGION CONQUERED!");
+            GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("REGION CONQUERED") + "!");
         }
 
         if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
@@ -529,11 +534,11 @@ public class RegionManager : MonoBehaviour
 
     private string BuildRewardSummary(RegionData region)
     {
-        return $"<b>REGION REWARDS</b>\n" +
-               $"<color=#A0E0FF>+{region.diamondReward}</color> Diamonds   " +
-               $"<color=#D4B07A>+{region.woodReward}</color> Wood\n" +
-               $"<color=#B0B0B0>+{region.stoneReward}</color> Stone   " +
-               $"<color=#E0C260>+{region.foodReward}</color> Food";
+        return $"<b>{LocalizationManager.Tr("REGION REWARDS")}</b>\n" +
+               $"<color=#A0E0FF>+{region.diamondReward}</color> {LocalizationManager.Tr("Diamonds")}   " +
+               $"<color=#D4B07A>+{region.woodReward}</color> {LocalizationManager.Tr("Wood")}\n" +
+               $"<color=#B0B0B0>+{region.stoneReward}</color> {LocalizationManager.Tr("Stone")}   " +
+               $"<color=#E0C260>+{region.foodReward}</color> {LocalizationManager.Tr("Food")}";
     }
 
     // Fire the same left-side pickup popups that ResourceDrop uses when
@@ -543,12 +548,12 @@ public class RegionManager : MonoBehaviour
     {
         if (GlobalHUD.Instance == null || region == null) return;
         if (region.woodReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.woodReward} Wood", new Color(0.85f, 0.6f, 0.35f));
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.woodReward} {LocalizationManager.Tr("Wood")}", new Color(0.85f, 0.6f, 0.35f));
         if (region.stoneReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.stoneReward} Stone", new Color(0.8f, 0.8f, 0.85f));
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.stoneReward} {LocalizationManager.Tr("Stone")}", new Color(0.8f, 0.8f, 0.85f));
         if (region.foodReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.foodReward} Food", new Color(0.7f, 0.95f, 0.5f));
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.foodReward} {LocalizationManager.Tr("Food")}", new Color(0.7f, 0.95f, 0.5f));
         if (region.diamondReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.diamondReward} Diamonds", new Color(0.63f, 0.88f, 1f));
+            GlobalHUD.Instance.ShowPickupPopup($"+{region.diamondReward} {LocalizationManager.Tr("Diamonds")}", new Color(0.63f, 0.88f, 1f));
     }
 }

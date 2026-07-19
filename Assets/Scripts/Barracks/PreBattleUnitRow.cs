@@ -29,7 +29,7 @@ public class PreBattleUnitRow : MonoBehaviour
             if (customPortrait != null) iconImage.sprite = customPortrait;
             else if (data.icon != null) iconImage.sprite = data.icon;
         }
-        if (nameText != null) nameText.text = data.displayName;
+        if (nameText != null) nameText.text = LocalizationManager.Tr(data.displayName);
 
         if (plusButton != null)
         {

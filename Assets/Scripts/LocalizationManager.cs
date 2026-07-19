@@ -501,6 +501,15 @@ public static class LocalizationManager
         s_uk[key] = uk;
     }
 
+    // Shorthand for entries where the English string IS the lookup key.
+    // Handy for wrapping call-site literals with Tr() without inventing
+    // a separate MERC_* / PROMPT_* identifier.
+    private static void AddSelf(string en, string uk)
+    {
+        s_en[en] = en;
+        s_uk[en] = uk;
+    }
+
     // Bulk pass that touches every visible string we ship in the AAA
     // settings panel — row labels, description copy, dropdown options,
     // section headers, and the right-rail PREVIEW / DESCRIPTION text.
@@ -1235,6 +1244,82 @@ public static class LocalizationManager
         Add("MERC_TACTIC_DESC_SIEGE",
             "Siege — ×2 travel, +12% win chance. Engines cut casualties in half (×0.5 / ×0.6).",
             "Облога — ×2 часу, +12% шанс. Машини вдвічі скорочують втрати (×0.5 / ×0.6).");
+
+        // === Elias dialogue lines (CampNPC_Elias.EliasDialogueRoutine) ===
+        AddSelf("Elias: The Blight never sleeps. Neither should we.",
+            "Еліас: Порча ніколи не спить. І ми не повинні.");
+        AddSelf("Elias: Keep your blade sharp. The outlands are unforgiving.",
+            "Еліас: Тримай клинок гострим. Пустки не прощають слабкості.");
+        AddSelf("Elias: I smell ash on the wind today...",
+            "Еліас: Сьогодні на вітрі чую попіл...");
+        AddSelf("Elias: If you find any ancient scrolls out there, bring them to me.",
+            "Еліас: Якщо знайдеш стародавні сувої — принеси їх мені.");
+        AddSelf("Elias: Aethelgard will rise again. I feel it.",
+            "Еліас: Ітельгард повстане знову. Я це відчуваю.");
+        AddSelf("Elias: Listen closely. This camp won't survive on scraps forever.",
+            "Еліас: Слухай уважно. Цей табір не виживе на недоїдках вічно.");
+        AddSelf("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.",
+            "Еліас: Скелети, з якими ти бився? Це прокляті рештки королівської варти Ітельгарду.");
+        AddSelf("Elias: Centuries ago, the Ashen Blight ruined this kingdom. We must reclaim the 24 lost provinces.",
+            "Еліас: Століття тому Попеляста Порча знищила це королівство. Треба повернути 24 втрачені провінції.");
+        AddSelf("Elias: Build me a drafting table here later, and I will chart a safe path to the forests.",
+            "Еліас: Побудуй мені креслярський стіл — і я прокладу безпечний шлях до лісів.");
+        AddSelf("Elias: The new table is perfect. I've charted the first 8 regions on the map behind me.",
+            "Еліас: Новий стіл — досконалий. Я вже наніс перші 8 регіонів на мапу позаду мене.");
+        AddSelf("Elias: Interact with the table to plan your assaults. We need those territories back.",
+            "Еліас: Взаємодій зі столом, щоб планувати штурми. Ці території треба повернути.");
+        AddSelf("Elias: You survived your first conquest. I knew you had the spark.",
+            "Еліас: Ти пережив своє перше завоювання. Я знав, що в тобі є іскра.");
+        AddSelf("Elias: Did you notice the black ash falling in the woods? That is the physical form of the Blight.",
+            "Еліас: Помітив чорний попіл, що падає у лісах? Це фізична форма Порчі.");
+        AddSelf("Elias: It corrupts the land and the minds of those who fall in battle. Stay vigilant.",
+            "Еліас: Вона розкладає землю й розум тих, хто гине в бою. Будь пильним.");
+        AddSelf("Elias: You fight like a demon. It reminds me of the old days...",
+            "Еліас: Ти б'єшся як демон. Це нагадує мені старі часи...");
+        AddSelf("Elias: I wasn't always a ragged scout. I was the Chief Cartographer of Aethelgard.",
+            "Еліас: Я не завжди був обірваним розвідником. Я був Головним Картографом Ітельгарду.");
+        AddSelf("Elias: I drew the very borders you now bleed to reclaim. It breaks my heart to see them ruined.",
+            "Еліас: Я малював ті самі кордони, за які ти зараз проливаєш кров. Серце розривається дивитися на них зруйнованими.");
+        AddSelf("Elias: The alchemical lab is complete. The reagents cleared the faded ink on the parchments.",
+            "Еліас: Алхімічну лабораторію завершено. Реагенти проявили вицвіле чорнило на пергаментах.");
+        AddSelf("Elias: The Southern Wastes are now open to you. But beware, the heat is the least of your worries there.",
+            "Еліас: Південні Пустки тепер відкриті. Але стережися — спека — найменша з проблем там.");
+        AddSelf("Elias: We are pushing them back. The Blight recedes where you walk.",
+            "Еліас: Ми відтісняємо їх назад. Порча відступає там, де ти йдеш.");
+        AddSelf("Elias: But the deeper you go into the Wastes, the older the magic gets. Do not underestimate them.",
+            "Еліас: Але чим глибше в Пустках — тим давніша магія. Не недооцінюй їх.");
+        AddSelf("Elias: The astrolabe is calibrated. I can finally chart a path through the magical blizzards.",
+            "Еліас: Астролябію відкалібровано. Нарешті можу прокласти шлях крізь магічні хуртовини.");
+        AddSelf("Elias: The Northern Peaks are unlocked. The entire map of Aethelgard is restored.",
+            "Еліас: Північні Вершини відкриті. Уся мапа Ітельгарду відновлена.");
+        AddSelf("Elias: You are so close. Only the harshest lands remain.",
+            "Еліас: Ти так близько. Залишились лише найсуворіші землі.");
+        AddSelf("Elias: The King's personal guard fell in those mountains. They are ruthless. Prepare yourself.",
+            "Еліас: Королівська особиста варта загинула в тих горах. Вони безжальні. Готуйся.");
+
+        // === Region cinematic (RegionManager) ===
+        Add("UNKNOWN REGION", "UNKNOWN REGION", "НЕВІДОМИЙ РЕГІОН");
+        Add("PURIFY THE CORRUPTED TOTEMS", "PURIFY THE CORRUPTED TOTEMS", "ОЧИСТИ ЗАРАЖЕНІ ТОТЕМИ");
+        Add("Press <b>SPACE</b> to Skip", "Press <b>SPACE</b> to Skip", "Натисни <b>ПРОБІЛ</b> щоб пропустити");
+        Add("REGION CONQUERED", "REGION CONQUERED", "РЕГІОН ЗАВОЙОВАНО");
+        Add("THE CURSE HAS BEEN LIFTED", "THE CURSE HAS BEEN LIFTED", "ПРОКЛЯТТЯ ЗНЯТО");
+        Add("SLAY THE OVERLORD!", "SLAY THE OVERLORD!", "ЗНИЩ ВОЛОДАРЯ!");
+        Add("SURVIVE THE SWARM!", "SURVIVE THE SWARM!", "ВИЖИВИ У РОЙОВИЩІ!");
+        Add("SKELETON OVERLORD", "SKELETON OVERLORD", "СКЕЛЕТ-ВОЛОДАР");
+        Add("[F] PURIFY TOTEM", "[F] PURIFY TOTEM", "[F] ОЧИСТИТИ ТОТЕМ");
+
+        // === Extraction / codex ===
+        Add("Press E to Return to Camp", "Press E to Return to Camp", "Натисни E щоб повернутися в табір");
+        Add("[E] Read scroll", "[E] Read scroll", "[E] Прочитати сувій");
+        Add("No scrolls recovered yet...", "No scrolls recovered yet...", "Сувоїв ще не знайдено...");
+        Add("This scroll has not been recovered.", "This scroll has not been recovered.", "Цей сувій ще не знайдено.");
+
+        // === Region rewards popup ===
+        AddSelf("REGION REWARDS", "НАГОРОДИ ЗА РЕГІОН");
+        AddSelf("Wood", "Дерево");
+        AddSelf("Stone", "Камінь");
+        AddSelf("Food", "Їжа");
+        AddSelf("Diamonds", "Діаманти");
 
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");

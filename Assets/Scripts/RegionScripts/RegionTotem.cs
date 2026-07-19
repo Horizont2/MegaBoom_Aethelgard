@@ -115,7 +115,7 @@ public class RegionTotem : MonoBehaviour
                 }
                 else
                 {
-                    GlobalHUD.Instance.ShowPrompt("[F] PURIFY TOTEM");
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("[F] PURIFY TOTEM"));
                 }
                 isPromptShowing = true;
             }
@@ -154,7 +154,7 @@ public class RegionTotem : MonoBehaviour
         if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.3f, 0.1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetLevelObjective(encounterType == EncounterType.Boss ? "SLAY THE OVERLORD!" : "SURVIVE THE SWARM!");
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr(encounterType == EncounterType.Boss ? "SLAY THE OVERLORD!" : "SURVIVE THE SWARM!"));
         yield return new WaitForSeconds(2f);
 
         int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;

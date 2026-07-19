@@ -64,7 +64,7 @@ public class BattleResultPanel : MonoBehaviour
         if (titleText != null) titleText.text = c.won
             ? LocalizationManager.Tr("MERC_VICTORY")
             : LocalizationManager.Tr("MERC_DEFEAT");
-        if (regionNameText != null && region != null) regionNameText.text = region.regionName.ToUpper();
+        if (regionNameText != null && region != null) regionNameText.text = LocalizationManager.Tr(region.regionName).ToUpper();
 
         if (outcomeText != null)
         {

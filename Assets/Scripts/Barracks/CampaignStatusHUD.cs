@@ -113,7 +113,7 @@ public class CampaignStatusHUD : MonoBehaviour
                 ? LocalizationManager.Tr("MERC_PHASE_FIGHTING")
                 : LocalizationManager.Tr("MERC_PHASE_RETURNING");
 
-        if (row.regionNameText != null) row.regionNameText.text = regionName.ToUpper();
+        if (row.regionNameText != null) row.regionNameText.text = LocalizationManager.Tr(regionName).ToUpper();
         if (row.timeText != null) row.timeText.text = $"{phaseLabel} · {timeStr}";
         if (row.phaseIcon != null)
         {

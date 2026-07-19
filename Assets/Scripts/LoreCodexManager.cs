@@ -85,7 +85,7 @@ public class ScrollPickup : MonoBehaviour
         if (!other.CompareTag("Player")) return;
         playerInRange = true;
         if (autoUnlockOnTouch) Claim();
-        else if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(promptText);
+        else if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(promptText));
     }
 
     private void OnTriggerExit(Collider other)
@@ -146,7 +146,7 @@ public class LoreCodexUIController : MonoBehaviour
     [Tooltip("Locked entries display this in place of their title.")]
     public string lockedTitlePlaceholder = "???";
     [Tooltip("Body text when no entry has been recovered yet.")]
-    public string emptyBodyText = "No scrolls recovered yet. Search the regions.";
+    public string emptyBodyText = "No scrolls recovered yet...";
     [Tooltip("Body text when a locked entry is selected.")]
     public string lockedBodyText = "This scroll has not been recovered.";
     [Tooltip("Color tint for locked entries (label/list row).")]
@@ -241,7 +241,7 @@ public class LoreCodexUIController : MonoBehaviour
         if (!any)
         {
             if (titleText != null) titleText.text = LocalizationManager.Tr("LORE_EMPTY_TITLE");
-            if (bodyText != null) bodyText.text = emptyBodyText;
+            if (bodyText != null) bodyText.text = LocalizationManager.Tr(emptyBodyText);
         }
     }
 
@@ -250,6 +250,6 @@ public class LoreCodexUIController : MonoBehaviour
         activeID = id;
         bool unlocked = LoreCodexManager.IsUnlocked(id);
         if (titleText != null) titleText.text = unlocked ? LocalizationManager.Tr(id + "_TITLE") : lockedTitlePlaceholder;
-        if (bodyText != null) bodyText.text = unlocked ? LocalizationManager.Tr(id + "_BODY") : lockedBodyText;
+        if (bodyText != null) bodyText.text = unlocked ? LocalizationManager.Tr(id + "_BODY") : LocalizationManager.Tr(lockedBodyText);
     }
 }

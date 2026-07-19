@@ -8,7 +8,7 @@ public class ExtractionPortal : MonoBehaviour
     public string promptMessage = "Press E to Return to Camp";
 
     [Header("Visuals (Optional)")]
-    public ParticleSystem portalVFX; // Якщо хочеш, щоб портал світився
+    public ParticleSystem portalVFX; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     public AudioSource extractAudio;
 
     private bool isPlayerNear = false;
@@ -34,7 +34,7 @@ public class ExtractionPortal : MonoBehaviour
 
             if (GlobalHUD.Instance != null)
             {
-                GlobalHUD.Instance.ShowPrompt(promptMessage);
+                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(promptMessage));
             }
         }
     }
@@ -65,37 +65,37 @@ public class ExtractionPortal : MonoBehaviour
 
     private void StartExtraction()
     {
-        isExtracting = true; // Блокуємо повторні натискання
+        isExtracting = true; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         isPlayerNear = false;
 
         if (extractAudio != null) extractAudio.Play();
 
-        // 1. ХОВАЄМО ПІДКАЗКУ
+        // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ПІпїЅпїЅпїЅпїЅпїЅпїЅ
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.HidePrompt();
         }
 
-        // 2. ЗБЕРІГАЄМО ЛУТ ТА ПРОГРЕС
+        // 2. пїЅпїЅпїЅРІпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (playerRef != null)
         {
-            // Зберігаємо кристали, які гравець зібрав за цей забіг
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             SaveManager.AddCrystals(playerRef.crystalsCollected);
 
-            // Якщо є інші параметри для збереження (наприклад досвід) - їх можна додати сюди
+            // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ) - пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             PlayerPrefs.SetFloat("SavedXP", playerRef.currentXP);
             PlayerPrefs.SetInt("SavedLevel", playerRef.currentLevel);
             PlayerPrefs.Save();
         }
 
-        // 3. ПЛАВНИЙ ПЕРЕХІД
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅХІпїЅ
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
         }
         else
         {
-            // Резервний варіант, якщо HUD відсутній
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ HUD пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             SceneManager.LoadScene(campSceneName);
         }
     }

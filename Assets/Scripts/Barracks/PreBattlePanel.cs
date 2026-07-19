@@ -117,7 +117,7 @@ public class PreBattlePanel : MonoBehaviour
         }
 
         if (titleText != null) titleText.text = LocalizationManager.Tr("MERC_ARMY_DEPLOYMENT");
-        if (regionNameText != null) regionNameText.text = region.regionName.ToUpper();
+        if (regionNameText != null) regionNameText.text = LocalizationManager.Tr(region.regionName).ToUpper();
         if (enemyStrengthText != null) enemyStrengthText.text = LocalizationManager.Tr("MERC_ENEMY_STRENGTH", region.enemyStrength);
         if (enemyPowerText != null) enemyPowerText.text = LocalizationManager.Tr("MERC_ENEMY_POWER", region.enemyStrength);
 

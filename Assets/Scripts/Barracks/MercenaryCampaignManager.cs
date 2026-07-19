@@ -149,7 +149,7 @@ public class MercenaryCampaignManager : MonoBehaviour
         // Player-facing feedback so the deploy feels like something happened
         // instead of a silent scene-load.
         ToastManager.Show(
-            LocalizationManager.Tr("MERC_TOAST_DEPLOYED", armyUIDs.Count, region.regionName),
+            LocalizationManager.Tr("MERC_TOAST_DEPLOYED", armyUIDs.Count, LocalizationManager.Tr(region.regionName)),
             ToastManager.ToastKind.Info);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
 
@@ -201,7 +201,7 @@ public class MercenaryCampaignManager : MonoBehaviour
             MercenaryRoster.Instance.ReleaseFromCampaign(c.campaignID);
 
         var region = FindRegionByID(c.regionID);
-        string regionName = region != null ? region.regionName : "?";
+        string regionName = region != null ? LocalizationManager.Tr(region.regionName) : "?";
         int losses = c.lostUnitUIDs != null ? c.lostUnitUIDs.Count : 0;
 
         if (c.won)

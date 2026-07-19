@@ -41,8 +41,8 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
             else if (data.icon != null) iconImage.sprite = data.icon;
         }
 
-        if (nameText != null) nameText.text = data.displayName;
-        if (descriptionText != null) descriptionText.text = data.flavourText;
+        if (nameText != null) nameText.text = LocalizationManager.Tr(data.displayName);
+        if (descriptionText != null) descriptionText.text = LocalizationManager.Tr(data.flavourText);
 
         RefreshPips(lvl, maxLvl);
 

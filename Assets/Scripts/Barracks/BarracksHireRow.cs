@@ -34,8 +34,8 @@ public class BarracksHireRow : MonoBehaviour
             else if (data.icon != null) iconImage.sprite = data.icon;
         }
 
-        if (nameText != null) nameText.text = data.displayName;
-        if (descriptionText != null) descriptionText.text = data.flavourText;
+        if (nameText != null) nameText.text = LocalizationManager.Tr(data.displayName);
+        if (descriptionText != null) descriptionText.text = LocalizationManager.Tr(data.flavourText);
         if (ownedText != null) ownedText.text = LocalizationManager.Tr("MERC_OWNED", roster.CountAlive(data.unitID));
 
         int cost = data.baseHireCost;
