@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+// TutorialBossAI head — bossName default remains English; call-sites wrap
+// through LocalizationManager.Tr where the name is displayed.
 using System.Collections;
 using System.Collections.Generic;
 
@@ -88,7 +90,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         // навіть якщо функція викликається з різних місць
         if (!hasShownBossUI && GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.ShowBossUI(bossName, currentHealth, maxHealth);
+            GlobalHUD.Instance.ShowBossUI(LocalizationManager.Tr(bossName), currentHealth, maxHealth);
             hasShownBossUI = true;
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);

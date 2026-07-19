@@ -1757,7 +1757,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
 
         if (GlobalHUD.Instance != null)
-            GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} Diamond", new Color(0.85f, 0.55f, 1f));
+            GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} {LocalizationManager.Tr("Diamond")}", new Color(0.85f, 0.55f, 1f));
 
         UpdateHUD();
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
@@ -1794,7 +1794,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             maxHealth += 10f;
             currentHealth = maxHealth;
             if (GlobalHUD.Instance != null)
-                GlobalHUD.Instance.ShowPickupPopup($"MILESTONE LV{currentLevel}: +10 Max HP", new Color(1f, 0.85f, 0.3f));
+                GlobalHUD.Instance.ShowPickupPopup(LocalizationManager.Tr("MILESTONE_LEVEL_HP", currentLevel), new Color(1f, 0.85f, 0.3f));
         }
         GainDiamond(diamondReward);
 

@@ -1320,6 +1320,11 @@ public static class LocalizationManager
         AddSelf("Stone", "Камінь");
         AddSelf("Food", "Їжа");
         AddSelf("Diamonds", "Діаманти");
+        AddSelf("Diamond", "Діамант");
+
+        // === Level up / shop level tag / boss ===
+        Add("MILESTONE_LEVEL_HP", "MILESTONE LV{0}: +10 Max HP", "РУБІЖ РІВ.{0}: +10 макс. HP");
+        Add("SHOP_ITEM_LEVEL_TAG", "(Lv. {0}/{1})", "(Рів. {0}/{1})");
 
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
