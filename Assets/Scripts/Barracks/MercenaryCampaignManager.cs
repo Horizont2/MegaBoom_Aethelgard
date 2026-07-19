@@ -211,13 +211,12 @@ public class MercenaryCampaignManager : MonoBehaviour
 
             if (region != null)
             {
-                // Route through MapProgressionManager so PlayerPrefs is
-                // persisted, neighbours flip to Available, and the map
-                // event fires. Setting currentState here directly used to
-                // update the ScriptableObject in memory but never saved
-                // or unlocked adjacent regions — the mercenary win looked
-                // resolved on the toast but the world map didn't open the
-                // next region until you conquered something manually.
+                // Route through MapProgressionManager when it's live —
+                // that handles PlayerPrefs, neighbour unlock, and event.
+                // But MapProgressionManager only exists on the map scene;
+                // when a campaign completes while the player is in camp
+                // the singleton is null and we have to persist the state
+                // ourselves so the next map open reflects the win.
                 if (MapProgressionManager.Instance != null)
                 {
                     MapProgressionManager.Instance.ConquerRegionAndUnlockNeighbors(region);
@@ -226,6 +225,29 @@ public class MercenaryCampaignManager : MonoBehaviour
                 {
                     region.currentState = RegionState.Conquered;
                     region.isNewlyUnlocked = true;
+                    // Same PlayerPrefs key format MapProgressionManager uses.
+                    PlayerPrefs.SetInt("RegionState_" + region.regionID, (int)RegionState.Conquered);
+                    // Bump the total-conquered counter that dialogue triggers
+                    // (Elias lore beats) key off.
+                    int currentConquered = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
+                    PlayerPrefs.SetInt("TotalConqueredRegions", currentConquered + 1);
+                    // Pre-unlock neighbours so they're Available when the
+                    // player opens the map next — MapProgressionManager will
+                    // re-run SyncMapStatesWithSaves and pick these up.
+                    if (region.neighboringRegions != null)
+                    {
+                        foreach (var neighbour in region.neighboringRegions)
+                        {
+                            if (neighbour == null) continue;
+                            if (neighbour.currentState == RegionState.Locked)
+                            {
+                                neighbour.currentState = RegionState.Available;
+                                neighbour.isNewlyUnlocked = true;
+                                PlayerPrefs.SetInt("RegionState_" + neighbour.regionID, (int)RegionState.Available);
+                            }
+                        }
+                    }
+                    PlayerPrefs.Save();
                 }
             }
 
