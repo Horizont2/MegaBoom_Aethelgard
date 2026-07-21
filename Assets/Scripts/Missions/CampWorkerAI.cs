@@ -181,6 +181,16 @@ public class CampWorkerAI : MonoBehaviour
             }
             if (agent.isOnNavMesh) agent.isStopped = true;
         }
+        // Face the fire so the sit anim plays with the NPC oriented
+        // toward the light source, not staring off into the woods.
+        if (nightGatherPoint != null)
+        {
+            Vector3 lookAt = nightGatherPoint.position;
+            lookAt.y = transform.position.y;
+            Vector3 dir = lookAt - transform.position;
+            if (dir.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        }
         while (CampSchedule.IsDeepNight())
             yield return new WaitForSeconds(1f);
     }
@@ -220,7 +230,17 @@ public class CampWorkerAI : MonoBehaviour
 
             agent.isStopped = false;
             agent.stoppingDistance = workDistance;
-            agent.SetDestination(targetTree.transform.position);
+            // Pathfind to a point OUTSIDE the tree trunk instead of at
+            // its centre. Previously agent.SetDestination(tree.position)
+            // + workDistance=0.8 let the worker walk almost to the trunk
+            // origin, ending up visually INSIDE the mesh. Now we aim for
+            // a spot ~1.4m from the tree along the approach vector.
+            Vector3 approachOffset = transform.position - targetTree.transform.position;
+            approachOffset.y = 0f;
+            if (approachOffset.sqrMagnitude < 0.01f) approachOffset = Vector3.forward;
+            approachOffset = approachOffset.normalized * 1.4f;
+            Vector3 approachPos = targetTree.transform.position + approachOffset;
+            agent.SetDestination(approachPos);
 
             float timeout = 0f;
             while (timeout < 15f)
@@ -231,6 +251,15 @@ public class CampWorkerAI : MonoBehaviour
             }
 
             if (agent.isOnNavMesh) agent.isStopped = true;
+
+            // Face the tree so the swing animation lands the right way.
+            {
+                Vector3 lookAt = targetTree.transform.position;
+                lookAt.y = transform.position.y;
+                Vector3 faceDir = lookAt - transform.position;
+                if (faceDir.sqrMagnitude > 0.01f)
+                    transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
+            }
 
             if (targetTree != null && !targetTree.isChopped)
             {

@@ -276,6 +276,18 @@ public class BarracksUpgradePanel : MonoBehaviour
     private int lastKnownDiamonds = -1;
     private void Update()
     {
+        // Invariant sanity: rootObject.active <=> IsOpen. GlobalHUD's
+        // pause-exit re-activates every panel in `gameplayPanels`, which
+        // was silently re-showing the barracks after a pause even if the
+        // player had it closed. If the root is visible but our IsOpen is
+        // false, force-hide.
+        if (rootObject != null && rootObject.activeSelf && !IsOpen)
+        {
+            rootObject.SetActive(false);
+            if (canvasGroup != null) { canvasGroup.alpha = 0f; canvasGroup.interactable = false; canvasGroup.blocksRaycasts = false; }
+            return;
+        }
+
         if (rootObject != null && !rootObject.activeSelf) return;
 
         // ESC closes the panel — must run BEFORE GlobalHUD's own ESC handler

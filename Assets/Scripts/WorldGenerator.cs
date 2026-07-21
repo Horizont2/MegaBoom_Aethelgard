@@ -2674,6 +2674,51 @@ public class WorldGenerator : MonoBehaviour
         td.SetHeights(0, 0, heights);
     }
 
+    // Adjust the intended spawn position so the visual BOTTOM of the
+    // prefab sits on the terrain surface, rather than the pivot. Same
+    // trick SpawnRegionTotemRoutine uses for the main totem — the road-
+    // side altar prefab has its pivot at the visual centre, which was
+    // making the altar float ~1.5 m above ground.
+    // Falls back to the raw spawn position if the prefab has no
+    // collider/renderer we can measure.
+    private Vector3 GroundPrefabToTerrain(GameObject prefab, Vector3 desiredWorldPos)
+    {
+        if (prefab == null) return desiredWorldPos;
+
+        float bottomOffset = 0f;
+        // Prefer a Collider — that's the physics reality players hit.
+        BoxCollider box = prefab.GetComponent<BoxCollider>();
+        if (box != null)
+        {
+            float sy = box.size.y * prefab.transform.localScale.y;
+            float cy = box.center.y * prefab.transform.localScale.y;
+            bottomOffset = cy - (sy * 0.5f); // signed: negative when the collider dips below pivot
+        }
+        else
+        {
+            // Fall back to renderer bounds. Not perfect (relies on the mesh
+            // in its neutral pose) but better than "float wherever the pivot
+            // lands".
+            Renderer r = prefab.GetComponentInChildren<Renderer>();
+            if (r != null)
+            {
+                // r.bounds is world-space at authoring time, not necessarily
+                // representative for a prefab asset. Use localBounds via
+                // sharedMesh instead when available.
+                MeshFilter mf = r.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    Bounds b = mf.sharedMesh.bounds;
+                    bottomOffset = b.min.y * prefab.transform.localScale.y;
+                }
+            }
+        }
+
+        Vector3 result = desiredWorldPos;
+        result.y -= bottomOffset; // pushing pivot up by -bottomOffset places the bottom at ground
+        return result;
+    }
+
     private IEnumerator SpawnRoadDecorationsRoutine()
     {
         // The altar-at-dead-end spawn is intentionally NOT gated on
@@ -2787,15 +2832,19 @@ public class WorldGenerator : MonoBehaviour
                     // ФІКС: Ніяких перевірок IsPositionClear. Ставимо Алтар СИЛОЮ!
                     if (spawnedAltars < altarsAmount && altarPrefabs != null && altarPrefabs.Length > 0)
                     {
-                        Instantiate(GetRandomPrefab(altarPrefabs), endSpawn, Quaternion.LookRotation(-tipTan), decorContainer);
+                        GameObject prefab = GetRandomPrefab(altarPrefabs);
+                        Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
+                        Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
                         spawnedAltars++;
-                        forbiddenZones.Add(endSpawn);
-                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {endSpawn} ({spawnedAltars}/{altarsAmount})");
+                        forbiddenZones.Add(grounded);
+                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {grounded} ({spawnedAltars}/{altarsAmount})");
                     }
                     else if (deadEndAssets != null && deadEndAssets.Length > 0)
                     {
-                        Instantiate(GetRandomPrefab(deadEndAssets), endSpawn, Quaternion.LookRotation(-tipTan), decorContainer);
-                        forbiddenZones.Add(endSpawn);
+                        GameObject prefab = GetRandomPrefab(deadEndAssets);
+                        Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
+                        Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
+                        forbiddenZones.Add(grounded);
                     }
                 }
                 else

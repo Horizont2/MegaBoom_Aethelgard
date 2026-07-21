@@ -150,6 +150,10 @@ public class RegionManager : MonoBehaviour
     {
         currentTotemIndex++;
 
+        // Wave over — release the scene-wide "any activating" latch so the
+        // next totem's F prompt starts responding again.
+        RegionTotem.AnyActivatingRightNow = false;
+
         if (currentTotemIndex < totems.Count)
         {
             RegionTotem nextTotem = totems.Find(t => !t.isPurified && t != purifiedTotem);

@@ -59,6 +59,10 @@ public class NPCPatroller : MonoBehaviour
             agent.speed = agentSpeed;
             agent.angularSpeed = agentAngularSpeed;
             agent.updateRotation = true;
+            // Zero the baseOffset so the agent sits exactly on the NavMesh
+            // instead of hovering above it. Grass-detail colliders on the
+            // Terrain used to drift Elias up per-frame; this pins him.
+            agent.baseOffset = 0f;
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 4f, NavMesh.AllAreas))
                 agent.Warp(hit.position);
@@ -71,6 +75,25 @@ public class NPCPatroller : MonoBehaviour
             anim.SetBoolSafe("IsGrounded", true);
         }
         StartCoroutine(ScheduleLoop());
+    }
+
+    private void LateUpdate()
+    {
+        // Belt-and-braces: after the agent updates position each frame,
+        // sample the terrain height at the NPC's XZ and snap Y to it.
+        // Fixes Elias visibly bumping up over grass details / bushes.
+        // Only kicks in when the drift is > 0.2m so cliff edges and
+        // small NavMesh height variations aren't clobbered.
+        if (Terrain.activeTerrain == null || agent == null || !agent.isOnNavMesh) return;
+        Terrain t = Terrain.activeTerrain;
+        float groundY = t.SampleHeight(transform.position) + t.transform.position.y;
+        float drift = transform.position.y - groundY;
+        if (Mathf.Abs(drift) > 0.2f)
+        {
+            Vector3 p = transform.position;
+            p.y = groundY;
+            transform.position = p;
+        }
     }
 
     private void Update()
@@ -92,15 +115,14 @@ public class NPCPatroller : MonoBehaviour
         if (!string.IsNullOrEmpty(walkingAnimBool))
             anim.SetBoolSafe(walkingAnimBool, vel.magnitude > walkingSpeedThreshold);
 
-        // Sitting bool — true at night when the NPC is parked at their
-        // rest point and not moving. Any wake condition (dusk starts,
-        // dialogue triggered, player nudges them) drops it.
-        Transform restTarget = nightPoint != null ? nightPoint : homePoint;
-        bool shouldSit = restTarget != null
-                      && CampSchedule.IsDeepNight()
+        // Sitting bool — true at night when the NPC is parked and idle.
+        // Doesn't require a specific rest point transform; anywhere the
+        // agent stopped during deep night counts, so a half-configured
+        // patroller still plays the sitting anim.
+        bool shouldSit = CampSchedule.IsDeepNight()
                       && !HoldPosition
                       && vel.magnitude < 0.05f
-                      && Vector3.Distance(transform.position, restTarget.position) <= sittingArriveRadius;
+                      && agent.remainingDistance < sittingArriveRadius;
         if (!string.IsNullOrEmpty(sittingAnimBool))
             anim.SetBoolSafe(sittingAnimBool, shouldSit);
     }

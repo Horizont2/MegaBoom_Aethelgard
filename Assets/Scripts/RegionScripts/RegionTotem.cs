@@ -44,6 +44,14 @@ public class RegionTotem : MonoBehaviour
     [HideInInspector] public bool isActivated = false;
     private bool isPromptShowing = false;
 
+    // Scene-wide guard: as soon as ANY totem starts activating this frame,
+    // block every other totem's F handler for the rest of the frame. Fixes
+    // the two-boss-stack: without this, both totems' Update could observe
+    // Input.GetKeyDown(F) in the same tick before OnTotemActivated had a
+    // chance to LockTotem the siblings, so both spawned bosses concurrently.
+    // Cleared in RegionManager.OnTotemPurified when the wave ends.
+    public static bool AnyActivatingRightNow = false;
+
     private List<GameObject> activeEnemies = new List<GameObject>();
     private Transform player;
 
@@ -100,6 +108,9 @@ public class RegionTotem : MonoBehaviour
     private void Update()
     {
         if (isPurified || isActivated || isLocked) return;
+        // Second-totem safety: if another totem in the scene started
+        // activating this frame, do nothing until it releases the flag.
+        if (AnyActivatingRightNow) return;
         if (player == null) { FindPlayer(); if (player == null) return; }
 
         float dist = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(player.position.x, player.position.z));
@@ -122,6 +133,11 @@ public class RegionTotem : MonoBehaviour
 
             if (Input.GetKeyDown(KeyCode.F))
             {
+                // Latch the guard IMMEDIATELY so any sibling totem's
+                // Update in the same frame early-returns. RegionManager
+                // clears it on OnTotemPurified.
+                AnyActivatingRightNow = true;
+
                 if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
                 isPromptShowing = false;
 

@@ -51,6 +51,16 @@ public class CampHunterAI : MonoBehaviour
         if (agent != null) agent.enabled = false;
         transform.position = new Vector3(0, -1000f, 0);
 
+        // Diagnostic — the #1 reason "hunter still doesn't go to fire" is
+        // that nightGatherPoint isn't wired. The NightGatherRoutine has a
+        // lodge fallback, but the visual is indistinguishable from work
+        // (hunter walks to their own hut and stands). One-shot warning
+        // shows designers what to fix.
+        if (nightGatherPoint == null)
+        {
+            Debug.LogWarning($"[CampHunterAI] '{name}' has NO nightGatherPoint wired. Falls back to lodgePoint at night, which reads as normal work. Drag the Campfire transform into the field in the Inspector.");
+        }
+
         StartCoroutine(InitAndStartRoutine());
     }
 
@@ -68,10 +78,15 @@ public class CampHunterAI : MonoBehaviour
                 anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
             }
 
-            bool shouldSit = nightGatherPoint != null
-                          && CampSchedule.IsDeepNight()
+            // Sitting trigger: it's deep night AND we're stationary. Any
+            // NightGatherRoutine target counts — nightGatherPoint,
+            // lodgePoint fallback, or wherever the agent parked. This
+            // used to require nightGatherPoint to be wired + player within
+            // sittingArriveRadius; both filters made the sit anim never
+            // play on half-configured NPCs.
+            bool shouldSit = CampSchedule.IsDeepNight()
                           && vel.magnitude < 0.05f
-                          && Vector3.Distance(transform.position, nightGatherPoint.position) <= sittingArriveRadius;
+                          && agent.remainingDistance < sittingArriveRadius;
             if (!string.IsNullOrEmpty(sittingAnimBool))
                 anim.SetBoolSafe(sittingAnimBool, shouldSit);
         }
@@ -131,6 +146,10 @@ public class CampHunterAI : MonoBehaviour
 
         while (true)
         {
+            // Bail out to the main routine the moment deep night starts —
+            // otherwise wander could loop for hours without ever checking
+            // the day/night cycle.
+            if (CampSchedule.IsDeepNight()) break;
             if (CheckIfWorkAvailable()) break;
 
             if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
@@ -175,6 +194,18 @@ public class CampHunterAI : MonoBehaviour
             agent.isStopped = true;
         }
 
+        // Face the fire on arrival so the sitting anim doesn't have the
+        // NPC turned the wrong way. Only turn on Y (level look), keep
+        // upright.
+        if (nightGatherPoint != null)
+        {
+            Vector3 lookAt = nightGatherPoint.position;
+            lookAt.y = transform.position.y;
+            Vector3 dir = lookAt - transform.position;
+            if (dir.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        }
+
         // Poll — leave when it's no longer deep night.
         while (CampSchedule.IsDeepNight())
             yield return new WaitForSeconds(1f);
@@ -204,7 +235,13 @@ public class CampHunterAI : MonoBehaviour
             }
 
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
-            if (!agent.isOnNavMesh) yield break;
+            if (!agent.isOnNavMesh)
+            {
+                // Don't yield break — that would freeze the hunter forever
+                // if the agent lost navmesh for even a frame. Retry loop.
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
 
             // --- ����� �� ������ ---
             agent.isStopped = false;
@@ -215,7 +252,13 @@ public class CampHunterAI : MonoBehaviour
             if (lodgePoint != null) transform.rotation = lodgePoint.rotation;
 
             if (anim != null) anim.SetTrigger("Work");
-            yield return new WaitForSeconds(prepDuration);
+            // Interruptible wait — chunked so we can bail into
+            // NightGatherRoutine if dusk turns into deep night mid-prep.
+            for (float t = 0f; t < prepDuration; t += 0.5f)
+            {
+                if (CampSchedule.IsDeepNight()) break;
+                yield return new WaitForSeconds(0.5f);
+            }
 
             // --- ����� �� ˲�� ---
             agent.isStopped = false;
@@ -245,7 +288,11 @@ public class CampHunterAI : MonoBehaviour
 
             agent.isStopped = true;
             yield return StartCoroutine(VFXTransitionRoutine(false));
-            yield return new WaitForSeconds(huntDuration);
+            for (float t = 0f; t < huntDuration; t += 0.5f)
+            {
+                if (CampSchedule.IsDeepNight()) break;
+                yield return new WaitForSeconds(0.5f);
+            }
 
             if (carryItemVisual != null) carryItemVisual.SetActive(true);
             yield return StartCoroutine(VFXTransitionRoutine(true));

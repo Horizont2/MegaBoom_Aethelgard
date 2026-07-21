@@ -48,10 +48,9 @@ public class StorageWorkerAI : MonoBehaviour
                 anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
             }
 
-            bool shouldSit = nightGatherPoint != null
-                          && CampSchedule.IsDeepNight()
+            bool shouldSit = CampSchedule.IsDeepNight()
                           && vel.magnitude < 0.05f
-                          && Vector3.Distance(transform.position, nightGatherPoint.position) <= sittingArriveRadius;
+                          && agent.remainingDistance < sittingArriveRadius;
             if (!string.IsNullOrEmpty(sittingAnimBool))
                 anim.SetBoolSafe(sittingAnimBool, shouldSit);
         }
@@ -111,9 +110,6 @@ public class StorageWorkerAI : MonoBehaviour
     private IEnumerator NightGatherRoutine()
     {
         if (carryVisual != null) carryVisual.SetActive(false);
-        // Fallback chain — nightGatherPoint (fire) → storageDropPoint
-        // (the vault) → current spot. Works even when the campfire
-        // transform isn't wired in the Inspector.
         Vector3 destPos = nightGatherPoint != null
             ? nightGatherPoint.position
             : (storageDropPoint != null ? storageDropPoint.position : transform.position);
@@ -125,6 +121,15 @@ public class StorageWorkerAI : MonoBehaviour
                 agent.SetDestination(hit.position);
             yield return StartCoroutine(WaitArrival());
             agent.isStopped = true;
+        }
+        // Face the fire on arrival so the sit anim reads the right way.
+        if (nightGatherPoint != null)
+        {
+            Vector3 lookAt = nightGatherPoint.position;
+            lookAt.y = transform.position.y;
+            Vector3 dir = lookAt - transform.position;
+            if (dir.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
         }
         while (CampSchedule.IsDeepNight())
             yield return new WaitForSeconds(1f);
