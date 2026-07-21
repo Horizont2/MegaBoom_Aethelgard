@@ -1800,6 +1800,14 @@ public class WorldGenerator : MonoBehaviour
                 roadSplines.Add(sc);
                 CarveAndRasterizeRoad(sc);
                 roadsBuilt++;
+
+                // After carving the heightmap, the TerrainCollider caches
+                // the pre-carve surface until we cycle it. Without this,
+                // players hit invisible walls where the old hilltops
+                // used to be along the new road.
+                terrain.Flush();
+                TerrainCollider tcRoad = terrain.GetComponent<TerrainCollider>();
+                if (tcRoad != null) { tcRoad.enabled = false; tcRoad.enabled = true; }
             }
             else
             {
@@ -2508,7 +2516,15 @@ public class WorldGenerator : MonoBehaviour
             float worldX = transform.position.x + localPos.x; float worldZ = transform.position.z + localPos.z;
             float y = terrain.SampleHeight(new Vector3(transform.position.x + clampedX, 0, transform.position.z + clampedZ)) + transform.position.y;
             GameObject mnt = Instantiate(prefab, new Vector3(worldX, y - 5f, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), container);
-            mnt.transform.localScale *= GetRandomRange(borderMinScale, borderMaxScale);
+            float scaleMul = GetRandomRange(borderMinScale, borderMaxScale);
+            mnt.transform.localScale *= scaleMul;
+
+            // Strip colliders on border-mountain instances — the mountains
+            // are pure background decoration and the map edge is already
+            // walled off by the terrain. A 3–6× scaled mesh with its
+            // collider stretched to match was invisibly encroaching
+            // several metres into the playable area.
+            foreach (var col in mnt.GetComponentsInChildren<Collider>()) Destroy(col);
 
             bool isSnow = false;
             bool isDesert = false;

@@ -209,8 +209,11 @@ public class ResourceNode : MonoBehaviour, IDamageable
                 hitEffect.Play();
             }
 
-            if (GetComponentInChildren<MeshRenderer>() != null) GetComponentInChildren<MeshRenderer>().enabled = false;
-            if (GetComponent<Collider>() != null) GetComponent<Collider>().enabled = false;
+            // Hide every renderer AND every collider in the hierarchy —
+            // compound rocks/nodes use child colliders that used to keep
+            // ghosting invisible walls when only the root got disabled.
+            foreach (var r in GetComponentsInChildren<MeshRenderer>()) r.enabled = false;
+            foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
 
             yield return new WaitForSeconds(1.5f);
             Destroy(gameObject);
