@@ -1127,11 +1127,30 @@ public class GlobalHUD : MonoBehaviour
         pickupPopupContainer = rt;
     }
 
+    // Hard cap on concurrent pickup popups. Prevents the "wall of text"
+    // stack when the player rapidly picks up dozens of resources.
+    private const int MAX_PICKUP_POPUPS = 8;
+
     public void ShowPickupPopup(string text, Color color)
     {
         if (!gameObject.activeInHierarchy) return;
         CreatePickupPopupContainerIfNeeded();
         if (pickupPopupContainer == null) return;
+
+        // Kill oldest until we're under the cap. Prevents unbounded growth
+        // if pickups fire faster than the fade lifetime (e.g. clearing a
+        // pile of gems).
+        for (int i = activePickupPopups.Count - 1; i >= 0; i--)
+        {
+            if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
+        }
+        while (activePickupPopups.Count >= MAX_PICKUP_POPUPS)
+        {
+            var oldest = activePickupPopups[0];
+            activePickupPopups.RemoveAt(0);
+            if (oldest != null) Destroy(oldest.gameObject);
+        }
+
         StartCoroutine(PickupPopupRoutine(text, color));
     }
 
@@ -1159,11 +1178,11 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Add(rt);
         RestackPickupPopups();
 
-        // Hard failsafe: schedule an unconditional Destroy after lifetime + 1s
-        // so if the coroutine gets cancelled (GlobalHUD toggled off, scene
-        // change mid-lifetime) the orphan popup still disappears — that's
-        // the bug that leaves stuck "-30 Wheat"-style toasts on screen.
-        Destroy(go, 3.0f);
+        // Hard failsafe: schedule an unconditional Destroy just past the
+        // fade lifetime so if the coroutine gets cancelled (scene change,
+        // GlobalHUD toggled off) the orphan popup still disappears
+        // promptly instead of sitting on screen for seconds.
+        Destroy(go, 2.2f);
 
         const float lifetime = 1.8f;
         float t = 0f;

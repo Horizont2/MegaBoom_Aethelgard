@@ -30,6 +30,31 @@ public class GrenadeLogic : MonoBehaviour
         countdown = fallbackDelay;
         if (Camera.main != null) mainCameraScript = Camera.main.GetComponent<CameraFollow>();
         meshRenderer = GetComponent<MeshRenderer>();
+
+        // Clear any TrailRenderer segments left over from the previous
+        // pooled use — the pool re-uses grenade instances and the trail
+        // keeps positions from the last throw. Without this the player
+        // sees a long streak from wherever the last grenade landed to
+        // the new spawn point (especially obvious when aiming at a boss).
+        var trails = GetComponentsInChildren<TrailRenderer>(true);
+        for (int i = 0; i < trails.Length; i++)
+        {
+            if (trails[i] == null) continue;
+            trails[i].Clear();
+            trails[i].emitting = true;
+        }
+    }
+
+    private void OnEnable()
+    {
+        // Second-clear on pool reactivation — Start() only fires once, but
+        // OnEnable fires every time the pool re-uses this instance.
+        var trails = GetComponentsInChildren<TrailRenderer>(true);
+        for (int i = 0; i < trails.Length; i++)
+        {
+            if (trails[i] == null) continue;
+            trails[i].Clear();
+        }
     }
 
     private void Update()

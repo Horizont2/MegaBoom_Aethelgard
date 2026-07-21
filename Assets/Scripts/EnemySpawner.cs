@@ -14,7 +14,7 @@ public class EnemySpawner : MonoBehaviour
     public static bool IsSpawningBlocked = false;
 
     [Header("Spawner Settings")]
-    public int maxEnemiesOnMap = 35; // Íîâèé ë³ì³ò
+    public int maxEnemiesOnMap = 35; // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
     public SpawnableEnemy[] enemyPool;
     public Transform player;
     public float baseSpawnInterval = 1.5f;
@@ -33,19 +33,36 @@ public class EnemySpawner : MonoBehaviour
         worldGen = FindFirstObjectByType<WorldGenerator>();
     }
 
+    // Recheck every 2 s whether the "blocked" state is still legitimate.
+    // Self-healing: if IsSpawningBlocked is true but no totem is
+    // currently mid-activation (all totems purified or none activating),
+    // we assume the block is stale (a coroutine forgot to reset it) and
+    // release it so the radial spawner works again.
+    private float unblockCheckTimer = 0f;
+
     private void Update()
     {
         if (IsSpawningBlocked)
         {
             timer = 0f;
-            return;
+            unblockCheckTimer += Time.deltaTime;
+            if (unblockCheckTimer >= 2f)
+            {
+                unblockCheckTimer = 0f;
+                if (!IsAnyTotemActivating())
+                {
+                    IsSpawningBlocked = false;
+                }
+            }
+            if (IsSpawningBlocked) return;
         }
+        else unblockCheckTimer = 0f;
 
         if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
 
         if (EnemyAI.ActiveEnemiesCount >= maxEnemiesOnMap) return;
 
-        // ÇÍÀÕÎÄÈÌÎ ÃÐÀÂÖß ÏÐÈÌÓÑÎÂÎ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         if (player == null)
         {
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
@@ -65,6 +82,20 @@ public class EnemySpawner : MonoBehaviour
             SpawnEnemy(minutes);
             timer = 0f;
         }
+    }
+
+    // Any totem in the scene that is activated but not yet purified?
+    // If yes, the block is legitimate. If no, the block is stale.
+    private static bool IsAnyTotemActivating()
+    {
+        RegionTotem[] all = Object.FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null) continue;
+            if (t.isActivated && !t.isPurified) return true;
+        }
+        return false;
     }
 
     private void SpawnEnemy(float minutesSurvived)

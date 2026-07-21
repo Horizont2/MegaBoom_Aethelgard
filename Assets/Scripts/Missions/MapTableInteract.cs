@@ -121,6 +121,23 @@ public class MapTableInteract : MonoBehaviour
         if (playerController != null) playerController.enabled = false;
         if (cameraFollow != null) cameraFollow.isCinematicMode = true;
 
+        // Freeze the player's animator too — disabling PlayerController stops
+        // input but the animator keeps whatever loop it was in (usually Run).
+        // Zero the movement params so the blend tree returns to Idle, and
+        // hard-stop root-motion drift for good measure.
+        if (playerController != null)
+        {
+            var pAnim = playerController.GetComponentInChildren<Animator>();
+            if (pAnim != null)
+            {
+                pAnim.SetBoolSafe("IsGrounded", true);
+                pAnim.SetFloatSafe("Speed", 0f);
+                pAnim.SetFloatSafe("MoveX", 0f);
+                pAnim.SetFloatSafe("MoveZ", 0f);
+                pAnim.applyRootMotion = false;
+            }
+        }
+
         Transform mainCam = Camera.main.transform;
 
         if (savedCamPos == Vector3.zero)

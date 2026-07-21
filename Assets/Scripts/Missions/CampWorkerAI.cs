@@ -231,14 +231,12 @@ public class CampWorkerAI : MonoBehaviour
             agent.isStopped = false;
             agent.stoppingDistance = workDistance;
             // Pathfind to a point OUTSIDE the tree trunk instead of at
-            // its centre. Previously agent.SetDestination(tree.position)
-            // + workDistance=0.8 let the worker walk almost to the trunk
-            // origin, ending up visually INSIDE the mesh. Now we aim for
-            // a spot ~1.4m from the tree along the approach vector.
+            // its centre. Anywhere from 0.8-1.4m reads as "next to the
+            // tree" — user picked 1.0 as the tightest that doesn't clip.
             Vector3 approachOffset = transform.position - targetTree.transform.position;
             approachOffset.y = 0f;
             if (approachOffset.sqrMagnitude < 0.01f) approachOffset = Vector3.forward;
-            approachOffset = approachOffset.normalized * 1.4f;
+            approachOffset = approachOffset.normalized * 1.0f;
             Vector3 approachPos = targetTree.transform.position + approachOffset;
             agent.SetDestination(approachPos);
 

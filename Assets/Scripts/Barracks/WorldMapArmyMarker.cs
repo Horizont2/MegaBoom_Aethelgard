@@ -79,6 +79,28 @@ public class WorldMapArmyMarker : MonoBehaviour
             regionNodes.AddRange(found);
         }
 
+        // Auto-fallback: if the designer didn't wire a routeDashPrefab,
+        // build a simple one on the fly so the route line actually shows.
+        // The prefab is a tiny UI Image (8×3px, oval-ish white). Users who
+        // want a custom look can wire their own — this just guarantees the
+        // feature is visible with no extra setup.
+        if (routeDashPrefab == null)
+        {
+            var dashGO = new GameObject("AutoRouteDash");
+            dashGO.SetActive(false); // template, never activated as-is
+            var img = dashGO.AddComponent<Image>();
+            img.raycastTarget = false;
+            img.color = Color.white;
+            var drt = dashGO.GetComponent<RectTransform>();
+            drt.anchorMin = new Vector2(0.5f, 0.5f);
+            drt.anchorMax = new Vector2(0.5f, 0.5f);
+            drt.pivot = new Vector2(0.5f, 0.5f);
+            drt.sizeDelta = new Vector2(10f, 3f);
+            // Park under this component so Destroy on scene teardown wipes it.
+            dashGO.transform.SetParent(transform, false);
+            routeDashPrefab = dashGO;
+        }
+
         // Marker for campaigns that were already running when the scene loaded.
         if (MercenaryCampaignManager.Instance != null)
         {
