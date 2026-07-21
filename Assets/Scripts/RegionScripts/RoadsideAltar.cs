@@ -169,12 +169,9 @@ public class RoadsideAltar : MonoBehaviour
         var pc = player != null ? player.GetComponent<PlayerController>() : null;
         if (pc != null && xpReward > 0) pc.GainXP((float)xpReward);
 
-        if (ToastManager.Instance != null)
-        {
-            ToastManager.Show(
-                LocalizationManager.Tr("TOAST_ALTAR_PURIFIED", diamondReward),
-                ToastManager.ToastKind.Achievement);
-        }
+        ToastManager.Show(
+            LocalizationManager.Tr("TOAST_ALTAR_PURIFIED", diamondReward),
+            ToastManager.ToastKind.Achievement);
     }
 
     private float GetGroundY(Vector3 pos)

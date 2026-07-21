@@ -424,7 +424,7 @@ public class WorldMapArmyMarker : MonoBehaviour
                 if (d == null) continue;
                 float dashPos = dashes.Count > 1 ? (float)i / (dashes.Count - 1) : 0f;
                 float a = baseCol.a;
-                if (dashesFadeBehindMarker && phase != CampaignPhase.Idle)
+                if (dashesFadeBehindMarker && phase != CampaignPhase.Done)
                 {
                     // Ahead of marker → dim (0.35× alpha), behind → full.
                     a *= dashPos <= progress01 ? 1f : 0.35f;
