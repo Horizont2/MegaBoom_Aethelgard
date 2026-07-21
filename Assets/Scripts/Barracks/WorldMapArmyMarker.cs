@@ -213,16 +213,23 @@ public class WorldMapArmyMarker : MonoBehaviour
                 float t = (k + 0.5f) / count;
                 Vector2 pos = Vector2.Lerp(a, b, t);
                 var go = Instantiate(routeDashPrefab, markerParent);
+                // FORCE active — the auto-fallback prefab lives inactive
+                // (as a template) so its clones inherit inactive state
+                // unless we re-enable them here. This was the reason the
+                // route line stayed invisible even after wiring.
+                go.SetActive(true);
                 // Route line sits BEHIND the marker figurines.
                 go.transform.SetSiblingIndex(0);
                 var drt = go.GetComponent<RectTransform>();
                 if (drt == null) drt = go.AddComponent<RectTransform>();
                 drt.anchoredPosition = pos;
                 drt.localRotation = Quaternion.Euler(0f, 0f, ang);
+                drt.localScale = Vector3.one;
                 var img = go.GetComponent<Image>();
                 if (img != null)
                 {
                     img.color = routeOutboundColor;
+                    img.enabled = true;
                     dashes.Add(img);
                 }
             }
