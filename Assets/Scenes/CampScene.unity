@@ -6150,7 +6150,7 @@ MonoBehaviour:
   anim: {fileID: 46091966}
   carryItemVisual: {fileID: 1473584414}
   leavesVFX: {fileID: 0}
-  nightGatherPoint: {fileID: 0}
+  nightGatherPoint: {fileID: 1348223595}
   sittingAnimBool: IsSitting
   sittingArriveRadius: 1.6
 --- !u!195 &71595364
@@ -84901,6 +84901,13 @@ MonoBehaviour:
   bobHeight: 6
   bobSpeed: 6
   fightShake: 4
+  positionSmoothTime: 0.1
+  rotationSlerpSpeed: 10
+  routeDashPrefab: {fileID: 0}
+  dashSpacing: 18
+  routeOutboundColor: {r: 1, g: 0.85, b: 0.55, a: 0.85}
+  routeReturnColor: {r: 0.65, g: 0.85, b: 1, a: 0.6}
+  dashesFadeBehindMarker: 1
 --- !u!1 &876628619 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
