@@ -120,7 +120,7 @@ public class MissionUIElement : MonoBehaviour
         isCompleted = true;
 
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
-        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>(DONE)</color>";
+        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
 
         StartCoroutine(CompleteAnimationRoutine());
     }
@@ -129,7 +129,7 @@ public class MissionUIElement : MonoBehaviour
     {
         isCompleted = true;
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
-        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>(DONE)</color>";
+        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
 
         if (canvasGroup != null) canvasGroup.alpha = 1f;
     }

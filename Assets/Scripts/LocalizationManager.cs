@@ -1330,6 +1330,28 @@ public static class LocalizationManager
         Add("PROMPT_ACTIVATE_ALTAR", "[F] Activate Ancient Altar", "[F] Активувати Стародавній Вівтар");
         Add("TOAST_ALTAR_PURIFIED", "Altar purified! +◆{0}", "Вівтар очищено! +◆{0}");
 
+        // === Mission element status tag ===
+        Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");
+
+        // === Region UI misc ===
+        Add("REGION_UNKNOWN_LABEL", "???", "???");
+
+        // === Mercenary unit names (ScriptableObject displayName defaults) ===
+        AddSelf("Militia", "Ополчення");
+        AddSelf("Ranger",  "Слідопит");
+        AddSelf("Knight",  "Лицар");
+        // Common merc SO flavour lines. If your unit data uses different
+        // English text, extend the table with the same AddSelf pattern.
+        AddSelf("Cheap conscripts armed with pitchforks.",
+                "Дешеві ополченці, озброєні вилами.");
+        AddSelf("Skirmishers who peel back enemy lines.",
+                "Стрільці, що розривають ворожі лави.");
+        AddSelf("Armored elites — few in number, huge in impact.",
+                "Броньована еліта — небагато числом, але грізні у бою.");
+
+        // === Combat prompts ===
+        AddSelf("[F] EXECUTE", "[F] ДОБИВАННЯ");
+
         // === Camp onboarding guide (CampGuideDirector.promptKey) ===
         Add("GUIDE_TALK_ELIAS",         "Talk to Elias",                        "Поговори з Еліасом");
         Add("GUIDE_BUILD_LODGE",        "Upgrade the Scout's Lodge",            "Прокачай Хатину Розвідника");

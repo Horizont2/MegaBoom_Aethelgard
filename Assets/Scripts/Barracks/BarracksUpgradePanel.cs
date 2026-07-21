@@ -448,7 +448,7 @@ public class BarracksUpgradePanel : MonoBehaviour
         {
             var lv = hostBuilding.levels[level - 1];
             if (lv != null && !string.IsNullOrEmpty(lv.productionDescription))
-                return lv.productionDescription.ToUpper();
+                return LocalizationManager.Tr(lv.productionDescription).ToUpper();
         }
         return string.Empty;
     }
@@ -458,12 +458,12 @@ public class BarracksUpgradePanel : MonoBehaviour
         if (perksTextPerLevel != null && level >= 0 && level < perksTextPerLevel.Length &&
             !string.IsNullOrEmpty(perksTextPerLevel[level]))
         {
-            return perksTextPerLevel[level];
+            return LocalizationManager.Tr(perksTextPerLevel[level]);
         }
         // Fallback: use the CampBuilding-level's own productionDescription
         // formatted with the Figma design's brass diamond bullet.
         if (next != null && !string.IsNullOrEmpty(next.productionDescription))
-            return "◆ " + next.productionDescription;
+            return "◆ " + LocalizationManager.Tr(next.productionDescription);
         return string.Empty;
     }
 

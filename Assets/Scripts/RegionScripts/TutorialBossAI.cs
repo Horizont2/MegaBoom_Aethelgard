@@ -131,7 +131,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             {
                 if (!isPromptShowing && GlobalHUD.Instance != null)
                 {
-                    GlobalHUD.Instance.ShowPrompt("[F] EXECUTE");
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("[F] EXECUTE"));
                     isPromptShowing = true;
                 }
 

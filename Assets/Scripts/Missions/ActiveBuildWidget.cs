@@ -21,7 +21,7 @@ public class ActiveBuildWidget : MonoBehaviour
     public void Setup(string bId, string bName, Sprite bIcon, DateTime targetTime, float duration)
     {
         buildingID = bId;
-        if (titleText != null) titleText.text = bName;
+        if (titleText != null) titleText.text = LocalizationManager.Tr(bName);
         if (buildingIcon != null && bIcon != null) buildingIcon.sprite = bIcon;
 
         endTime = targetTime;

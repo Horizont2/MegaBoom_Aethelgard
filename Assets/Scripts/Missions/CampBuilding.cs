@@ -295,7 +295,7 @@ public class CampBuilding : MonoBehaviour
             {
                 if (GlobalHUD.Instance != null)
                 {
-                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_INSPECT_BUILDING", buildingName));
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_INSPECT_BUILDING", LocalizationManager.Tr(buildingName)));
                 }
             }
 
@@ -380,7 +380,7 @@ public class CampBuilding : MonoBehaviour
             playerInRange = true;
             if (GlobalHUD.Instance != null && !isPanelOpen)
             {
-                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_INSPECT_BUILDING", buildingName));
+                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_INSPECT_BUILDING", LocalizationManager.Tr(buildingName)));
             }
         }
     }
@@ -495,10 +495,12 @@ public class CampBuilding : MonoBehaviour
 
     private void UpdateUIData()
     {
-        // 1. Оновлюємо базові тексти ЗАВЖДИ (навіть якщо максимальний рівень)
-        if (titleTMP != null) titleTMP.text = buildingName.ToUpper();
+        // 1. Оновлюємо базові тексти ЗАВЖДИ (навіть якщо максимальний рівень).
+        // Building name + description live on the SO/prefab in English;
+        // wrap through Tr so the localisation table can override.
+        if (titleTMP != null) titleTMP.text = LocalizationManager.Tr(buildingName).ToUpper();
         if (lvlTMP != null) lvlTMP.text = currentLevel == 0 ? LocalizationManager.Tr("CB_UNBUILT_LABEL") : LocalizationManager.Tr("CB_LEVEL_LABEL", currentLevel);
-        if (descTMP != null) descTMP.text = description;
+        if (descTMP != null) descTMP.text = LocalizationManager.Tr(description);
 
         if (buildingIconImage != null && buildingIconSprite != null)
             buildingIconImage.sprite = buildingIconSprite;
@@ -514,7 +516,7 @@ public class CampBuilding : MonoBehaviour
             BuildingLevel maxLevelData = levels[levels.Length - 1];
 
             if (infoTMP != null)
-                infoTMP.text = $"{prodLabel}: <b><color=#A8E6CF>{maxLevelData.productionDescription}</color></b>\n<color=#F1C40F>{LocalizationManager.Tr("CB_MAX_LEVEL")}</color>";
+                infoTMP.text = $"{prodLabel}: <b><color=#A8E6CF>{LocalizationManager.Tr(maxLevelData.productionDescription)}</color></b>\n<color=#F1C40F>{LocalizationManager.Tr("CB_MAX_LEVEL")}</color>";
 
             if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("MAX LEVEL");
 
@@ -532,16 +534,16 @@ public class CampBuilding : MonoBehaviour
 
         if (currentLevel == 0)
         {
-            infoText += $"{prodLabel}: <b><color=#FFFFFF>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $"{prodLabel}: <b><color=#FFFFFF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
             infoText += LocalizationManager.Tr("CB_BUILD_TIME", $"<b><color=#FFFFFF>{nextLevelData.buildTime}</color></b>");
             if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO BUILD");
         }
         else
         {
             if (currentLevel > 0 && currentLevel - 1 < levels.Length)
-                infoText += $"{prodLabel}: <b><color=#FFFFFF>{levels[currentLevel - 1].productionDescription}</color></b>";
+                infoText += $"{prodLabel}: <b><color=#FFFFFF>{LocalizationManager.Tr(levels[currentLevel - 1].productionDescription)}</color></b>";
 
-            infoText += $" ➔ <b><color=#A8E6CF>{nextLevelData.productionDescription}</color></b>\n";
+            infoText += $" ➔ <b><color=#A8E6CF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
             infoText += LocalizationManager.Tr("CB_UPGRADE_TIME", $"<b><color=#FFFFFF>{nextLevelData.buildTime}</color></b>");
 
             if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO UPGRADE");

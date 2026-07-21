@@ -686,7 +686,7 @@ public class ShopManager : MonoBehaviour
         ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
         if (itemSlot != null)
         {
-            if (itemSlot.nameText != null) itemSlot.nameText.text = name;
+            if (itemSlot.nameText != null) itemSlot.nameText.text = LocalizationManager.Tr(name);
             if (itemSlot.iconImage != null && icon != null) itemSlot.iconImage.sprite = icon;
             if (itemSlot.buttonComponent != null)
             {
@@ -1172,8 +1172,8 @@ public class ShopManager : MonoBehaviour
 
     private void UpdateItemDetails(string name, string desc, Sprite icn, int lvl, int maxLvl, int price, bool isBought, bool isEquipped, int myDiamonds, int upgCost)
     {
-        if (itemNameText) itemNameText.text = name + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
-        if (itemDescriptionText) itemDescriptionText.text = desc;
+        if (itemNameText) itemNameText.text = LocalizationManager.Tr(name) + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
+        if (itemDescriptionText) itemDescriptionText.text = LocalizationManager.Tr(desc);
         if (descriptionItemIcon) { descriptionItemIcon.gameObject.SetActive(true); descriptionItemIcon.sprite = icn; }
 
         if (!isBought)

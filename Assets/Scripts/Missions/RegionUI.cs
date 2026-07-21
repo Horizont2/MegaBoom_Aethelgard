@@ -163,7 +163,7 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 
         if (myRegionData.currentState == RegionState.Locked)
         {
-            mapLabelText.text = "???";
+            mapLabelText.text = LocalizationManager.Tr("REGION_UNKNOWN_LABEL");
             mapLabelText.alpha = 0.3f;
         }
         else
