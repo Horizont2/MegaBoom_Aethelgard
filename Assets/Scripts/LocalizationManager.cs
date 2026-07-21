@@ -1330,6 +1330,16 @@ public static class LocalizationManager
         Add("PROMPT_ACTIVATE_ALTAR", "[F] Activate Ancient Altar", "[F] Активувати Стародавній Вівтар");
         Add("TOAST_ALTAR_PURIFIED", "Altar purified! +◆{0}", "Вівтар очищено! +◆{0}");
 
+        // === Camp onboarding guide (CampGuideDirector.promptKey) ===
+        Add("GUIDE_TALK_ELIAS",         "Talk to Elias",                        "Поговори з Еліасом");
+        Add("GUIDE_BUILD_LODGE",        "Upgrade the Scout's Lodge",            "Прокачай Хатину Розвідника");
+        Add("GUIDE_USE_MAP_TABLE",      "Open the Map Table (press E)",          "Відкрий Мапу (натисни E)");
+        Add("GUIDE_CONQUER_FIRST",      "Conquer your first region",            "Захопи свій перший регіон");
+        Add("GUIDE_BUILD_BARRACKS",     "Build the Barracks",                   "Побудуй Казарми");
+        Add("GUIDE_HIRE_MERCS",         "Hire a mercenary at the Barracks",     "Найми найманця в Казармах");
+        Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
+        Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
+
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
         Add("PROMPT_OPEN_MAP", "[E] Open Map", "[E] Відкрити мапу");

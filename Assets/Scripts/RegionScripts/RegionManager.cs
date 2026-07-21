@@ -345,6 +345,31 @@ public class RegionManager : MonoBehaviour
         if (corruptionBeam != null) Destroy(corruptionBeam);
 
         // === PHASE 4: title card + reward summary (3 s) =============================
+        // Punch camera FOV in for 0.2s (dramatic zoom on totem) then out
+        // slightly past the base for the title reveal. Sells the "beat drop".
+        if (mainCam != null)
+        {
+            float baseFov = mainCam.fieldOfView;
+            StartCoroutine(FovPunchRoutine(mainCam, baseFov, baseFov * 0.75f, baseFov * 1.08f, 0.55f));
+        }
+
+        // Bright white screen flash + short slow-mo — universal "moment of
+        // triumph" combo. Slow-mo capped at 0.4 * duration real seconds
+        // (uses unscaledDeltaTime everywhere in cinematic already).
+        StartCoroutine(FlashScreenRoutine(0.32f, new Color(1f, 0.94f, 0.75f, 0.85f)));
+        StartCoroutine(SlowMoRoutine(0.35f, 0.55f));
+
+        // Camera shake as the flash lands.
+        if (camFollow != null) camFollow.TriggerShake(0.55f, 0.25f);
+
+        // Bigger sting on the moment the title lands, layered over the
+        // existing victory stinger from phase 2.
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
+            AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+        }
+
         if (CinematicTitleUI.Instance != null)
         {
             CinematicTitleUI.Instance.ShowTitle(
@@ -471,6 +496,110 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
         yield break;
+    }
+
+    // Punch the FOV inward briefly, then out to `outFov` past base, then
+    // settle back to `baseFov`. Reads as a "beat drop" zoom.
+    private IEnumerator FovPunchRoutine(Camera cam, float baseFov, float inFov, float outFov, float duration)
+    {
+        if (cam == null) yield break;
+        float half = duration * 0.5f;
+        float t = 0f;
+        while (t < half)
+        {
+            if (cam == null) yield break;
+            t += Time.unscaledDeltaTime;
+            cam.fieldOfView = Mathf.Lerp(baseFov, inFov, Mathf.SmoothStep(0f, 1f, t / half));
+            yield return null;
+        }
+        t = 0f;
+        while (t < half)
+        {
+            if (cam == null) yield break;
+            t += Time.unscaledDeltaTime;
+            cam.fieldOfView = Mathf.Lerp(inFov, outFov, Mathf.SmoothStep(0f, 1f, t / half));
+            yield return null;
+        }
+        // Settle back to base FOV over 0.3s.
+        t = 0f;
+        while (t < 0.3f)
+        {
+            if (cam == null) yield break;
+            t += Time.unscaledDeltaTime;
+            cam.fieldOfView = Mathf.Lerp(outFov, baseFov, Mathf.SmoothStep(0f, 1f, t / 0.3f));
+            yield return null;
+        }
+        cam.fieldOfView = baseFov;
+    }
+
+    // Full-screen colour flash — quick fade-in then long fade-out via
+    // GlobalHUD's cinematic-bar canvas group as a stand-in overlay. If
+    // the HUD doesn't expose a flash, this method spawns its own throw-away
+    // canvas so it always works.
+    private IEnumerator FlashScreenRoutine(float duration, Color color)
+    {
+        var go = new GameObject("CinematicFlash");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 32767; // above everything
+        var img = new GameObject("Fill").AddComponent<UnityEngine.UI.Image>();
+        img.transform.SetParent(go.transform, false);
+        var rt = img.rectTransform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        img.raycastTarget = false;
+        img.color = new Color(color.r, color.g, color.b, 0f);
+
+        // Fade in (fast)
+        float half = duration * 0.25f;
+        float t = 0f;
+        while (t < half)
+        {
+            t += Time.unscaledDeltaTime;
+            img.color = new Color(color.r, color.g, color.b, Mathf.Lerp(0f, color.a, t / half));
+            yield return null;
+        }
+        // Fade out (long tail)
+        float tail = duration * 0.75f;
+        t = 0f;
+        while (t < tail)
+        {
+            t += Time.unscaledDeltaTime;
+            img.color = new Color(color.r, color.g, color.b, Mathf.Lerp(color.a, 0f, t / tail));
+            yield return null;
+        }
+        Destroy(go);
+    }
+
+    // Ramp Time.timeScale down, hold, then ramp back to 1. All cinematic
+    // coroutines already use unscaledDeltaTime, so their timing isn't
+    // affected — only the world / VFX / physics feel the slow-mo.
+    private IEnumerator SlowMoRoutine(float minScale, float duration)
+    {
+        float baseScale = Time.timeScale;
+        float rampIn = 0.08f;
+        float hold = Mathf.Max(0f, duration - rampIn - 0.25f);
+        float rampOut = 0.25f;
+
+        float t = 0f;
+        while (t < rampIn)
+        {
+            t += Time.unscaledDeltaTime;
+            Time.timeScale = Mathf.Lerp(baseScale, minScale, t / rampIn);
+            yield return null;
+        }
+        Time.timeScale = minScale;
+        yield return new WaitForSecondsRealtime(hold);
+        t = 0f;
+        while (t < rampOut)
+        {
+            t += Time.unscaledDeltaTime;
+            Time.timeScale = Mathf.Lerp(minScale, baseScale, t / rampOut);
+            yield return null;
+        }
+        Time.timeScale = baseScale;
     }
 
     private GameObject CreateCorruptionBeam(Vector3 totemPos)

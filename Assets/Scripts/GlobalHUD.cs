@@ -148,6 +148,11 @@ public class GlobalHUD : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            // No pause / no anything while a loading screen is up. Otherwise
+            // ESC on the loading fade would open the pause menu behind it and
+            // trap the player when the new scene finishes loading.
+            if (LoadingManager.Instance != null && LoadingManager.Instance.isLoading) return;
+
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
