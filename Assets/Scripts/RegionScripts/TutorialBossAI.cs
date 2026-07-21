@@ -37,6 +37,18 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     public bool isInvincible = false;
 
+    [Header("Glory-Kill Cinematic Timing (AAA sync)")]
+    // Seconds AFTER the player's Attack trigger fires until the moment
+    // the impact should land (freeze frame + hit VFX + boss death anim).
+    // Tune this to the mid-swing frame of your player's attack clip.
+    // Default 0.55 works for most 1.0-1.2s sword swings.
+    [Range(0.1f, 1.5f)] public float gloryKillImpactOffset = 0.55f;
+    // How long the freeze frame lasts before Phase 4 pull-back starts.
+    [Range(0.05f, 0.4f)] public float gloryKillFreezeDuration = 0.12f;
+    // Player Attack trigger fires at start of Phase 2. Give the anim
+    // this long total to breathe before returning to normal timescale.
+    [Range(0.4f, 2f)] public float gloryKillAftermathDuration = 0.9f;
+
     private float currentHealth;
     private bool isDead = false;
     private bool isStaggered = false;
@@ -540,32 +552,54 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (camFollow != null) camFollow.TriggerShake(0.08f, 0.25f); // settle nudge
 
             // ============================================================
-            //  PHASE 2 · WIND-UP (0.35s realtime, tighter slow-mo)
+            //  PHASE 2 · WIND-UP + SWING (gloryKillImpactOffset realtime)
             // ============================================================
+            // Fire the player Attack trigger at the START of the swing
+            // so the animation has room to play. The freeze frame lands
+            // exactly `gloryKillImpactOffset` seconds later — tune that
+            // to the mid-swing frame of the player's attack clip.
+            //
+            // Slower slow-mo (0.05×) than phase 1 keeps the anticipation
+            // tight. Camera pushes slightly closer over the wind-up so
+            // the swing "reads" against the boss.
             Time.timeScale = 0.05f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
             playerAnim?.SetTrigger("Attack");
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
+
+            // Two-part audio: sword-raise whoosh right when the anim
+            // starts, then Boss_Execute layered right before the impact.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
 
             Vector3 phase2CamStart = mainCam.transform.position;
             Vector3 phase2CamEnd = cinematicCamPos + (bossHead - cinematicCamPos).normalized * 0.6f;
             float phase2Fov = 31f;
             elapsed = 0f;
-            const float phase2Duration = 0.35f;
-            while (elapsed < phase2Duration)
+            bool executeSfxFired = false;
+            float sfxLeadTime = Mathf.Min(0.12f, gloryKillImpactOffset * 0.3f);
+            while (elapsed < gloryKillImpactOffset)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase2Duration);
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / gloryKillImpactOffset);
                 mainCam.transform.position = Vector3.Lerp(phase2CamStart, phase2CamEnd, t);
                 mainCam.fieldOfView = Mathf.Lerp(35f, phase2Fov, t);
                 Quaternion targetRotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
                                           * Quaternion.Euler(0, 0, 8f);
                 mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, targetRotation, t);
+
+                // Fire Boss_Execute sfx a hair before the freeze so the
+                // audio impact reads *at* the visual impact, not after.
+                if (!executeSfxFired && elapsed >= gloryKillImpactOffset - sfxLeadTime)
+                {
+                    executeSfxFired = true;
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
+                }
                 yield return null;
             }
 
             // ============================================================
-            //  PHASE 3 · IMPACT FREEZE (0.10s realtime, time = 0)
+            //  PHASE 3 · IMPACT FREEZE (gloryKillFreezeDuration, time = 0)
+            //  Precisely aligned with the player's mid-swing frame.
             // ============================================================
             Time.timeScale = 0f;
             Time.fixedDeltaTime = 0.02f;
@@ -574,14 +608,13 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             {
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
             }
-            if (camFollow != null) camFollow.TriggerShake(0.6f, 0.45f);
+            if (camFollow != null) camFollow.TriggerShake(0.55f, 0.4f);
             SetColor(Color.white);
             if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
 
-            // Screen flash overlay — self-contained canvas so we don't need
-            // GlobalHUD wiring. 0.35s fade with warm-white tint reads as
-            // 'impact' rather than 'scene reset'.
-            StartCoroutine(GloryKillFlashRoutine(0.35f, new Color(1f, 0.92f, 0.75f, 0.55f)));
+            // Subtle rim-white flash — much tamer than the previous full-
+            // screen burst so it reads as 'weapon impact', not 'seizure'.
+            StartCoroutine(GloryKillFlashRoutine(0.28f, new Color(1f, 0.94f, 0.82f, 0.32f)));
 
             // Snap camera to a punched-in variant for the freeze frame.
             Vector3 phase3CamPos = phase2CamEnd + (bossHead - phase2CamEnd).normalized * 0.35f;
@@ -590,14 +623,16 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             mainCam.transform.rotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
                                        * Quaternion.Euler(0, 0, 12f);
 
-            yield return new WaitForSecondsRealtime(0.10f);
+            yield return new WaitForSecondsRealtime(gloryKillFreezeDuration);
             ResetColor();
             foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
 
             // ============================================================
-            //  PHASE 4 · AFTERMATH (0.55s realtime, ramp back to normal)
+            //  PHASE 4 · AFTERMATH (gloryKillAftermathDuration, ramp to 1×)
+            //  Slow-mo (0.2×) then ramps back over the last third so the
+            //  boss anim + camera pull-back play out visibly.
             // ============================================================
-            Time.timeScale = 0.15f;
+            Time.timeScale = 0.2f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
             // Drops spawn now — they'll gently rise into view as the camera pulls back.
@@ -629,12 +664,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
             Vector3 phase4CamStart = mainCam.transform.position;
             float phase4FovStart = mainCam.fieldOfView;
-            const float phase4Duration = 0.55f;
             elapsed = 0f;
-            while (elapsed < phase4Duration)
+            while (elapsed < gloryKillAftermathDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase4Duration);
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / gloryKillAftermathDuration);
 
                 mainCam.transform.position = Vector3.Lerp(phase4CamStart, aftermathCamPos, t);
                 mainCam.fieldOfView = Mathf.Lerp(phase4FovStart, 55f, t);
@@ -646,7 +680,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                 if (t > 0.65f)
                 {
                     float ramp = (t - 0.65f) / 0.35f;
-                    Time.timeScale = Mathf.Lerp(0.15f, 1f, ramp);
+                    Time.timeScale = Mathf.Lerp(0.2f, 1f, ramp);
                     Time.fixedDeltaTime = 0.02f * Time.timeScale;
                 }
                 yield return null;

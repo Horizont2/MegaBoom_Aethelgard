@@ -345,29 +345,29 @@ public class RegionManager : MonoBehaviour
         if (corruptionBeam != null) Destroy(corruptionBeam);
 
         // === PHASE 4: title card + reward summary (3 s) =============================
-        // Punch camera FOV in for 0.2s (dramatic zoom on totem) then out
-        // slightly past the base for the title reveal. Sells the "beat drop".
+        // AAA rewrite — single subtle "hold" moment instead of the
+        // previous FOV-punch + full-screen flash + slow-mo + double
+        // stinger stack, which read as strobe-disco rather than triumph.
+        //
+        // The beat sheet now:
+        //  1. Small FOV drift (60→57°) over 0.9s — reads as a slow zoom-in
+        //     rather than a punch. Nothing snaps.
+        //  2. Very brief 0.15s slow-mo dip ramping back to 1× over 0.6s,
+        //     so the world feels reverent for a beat but doesn't stutter.
+        //  3. NO screen flash — the sky already brightened during
+        //     phase 3, the title reveal shouldn't nuke the eye.
+        //  4. Only the victory stinger fires (single audio hit).
+        //  5. Title card fades in through CinematicTitleUI's own tween.
         if (mainCam != null)
         {
             float baseFov = mainCam.fieldOfView;
-            StartCoroutine(FovPunchRoutine(mainCam, baseFov, baseFov * 0.75f, baseFov * 1.08f, 0.55f));
+            StartCoroutine(SmoothFovRoutine(mainCam, baseFov, baseFov * 0.95f, 0.9f));
         }
+        StartCoroutine(SlowMoRoutine(0.6f, 0.75f));
 
-        // Bright white screen flash + short slow-mo — universal "moment of
-        // triumph" combo. Slow-mo capped at 0.4 * duration real seconds
-        // (uses unscaledDeltaTime everywhere in cinematic already).
-        StartCoroutine(FlashScreenRoutine(0.32f, new Color(1f, 0.94f, 0.75f, 0.85f)));
-        StartCoroutine(SlowMoRoutine(0.35f, 0.55f));
-
-        // Camera shake as the flash lands.
-        if (camFollow != null) camFollow.TriggerShake(0.55f, 0.25f);
-
-        // Bigger sting on the moment the title lands, layered over the
-        // existing victory stinger from phase 2.
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
-            AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
         }
 
         if (CinematicTitleUI.Instance != null)
@@ -496,6 +496,22 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
         yield break;
+    }
+
+    // Slow, one-way FOV drift — no snap-back. Used for the title-reveal
+    // hold so the camera feels reverent, not punchy.
+    private IEnumerator SmoothFovRoutine(Camera cam, float fromFov, float toFov, float duration)
+    {
+        if (cam == null) yield break;
+        float t = 0f;
+        while (t < duration)
+        {
+            if (cam == null) yield break;
+            t += Time.unscaledDeltaTime;
+            cam.fieldOfView = Mathf.Lerp(fromFov, toFov, Mathf.SmoothStep(0f, 1f, t / duration));
+            yield return null;
+        }
+        cam.fieldOfView = toFov;
     }
 
     // Punch the FOV inward briefly, then out to `outFov` past base, then
