@@ -433,11 +433,35 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    // ================================================================
+    //  BOSS GLORY-KILL CINEMATIC (4-phase, precisely timed)
+    // ================================================================
+    //
+    //  Phase 1 · Setup (0.55s realtime, 0.1× slow-mo)
+    //    - Freeze player, snap into an over-the-shoulder position with
+    //      a strict LookAt at boss upper-chest.
+    //    - Camera slides to a low three-quarter angle, FOV zooms 60→35°.
+    //    - Ambient whoosh SFX + subtle camera shake as it settles.
+    //
+    //  Phase 2 · Wind-up (0.35s realtime, 0.05× slow-mo)
+    //    - Player raises weapon (Attack trigger). Camera pushes slightly
+    //      closer, FOV dips another 4° for the pre-swing tension.
+    //    - Boss animator plays Die trigger frame-2 timing so the boss
+    //      staggers back into the swing arc.
+    //
+    //  Phase 3 · Impact freeze (0.10s realtime, 0× time)
+    //    - Time freezes entirely for a single "hit" frame.
+    //    - Screen-space white flash (0.5 alpha → 0 over 0.35s).
+    //    - Full-strength camera shake, deep bass SFX, boss goes white.
+    //
+    //  Phase 4 · Aftermath (0.55s realtime, 0.15× slow-mo)
+    //    - Camera pulls back + up, FOV returns to 55°.
+    //    - Boss dissolve VFX kicks in, drops spawn during pullback.
+    //    - Time.timeScale ramps back to 1 in the last 0.15s.
     private IEnumerator GloryKillRoutine()
     {
         isDead = true;
         isStaggered = false;
-
         if (staggerRing != null) Destroy(staggerRing);
 
         if (GlobalHUD.Instance != null)
@@ -457,13 +481,13 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         Quaternion playerStartRot = playerTarget.transform.rotation;
 
         Vector3 bossPos = transform.position;
-        Vector3 dirToPlayer = (playerStartPos - bossPos).normalized;
-        dirToPlayer.y = 0;
+        Vector3 dirToPlayer = playerStartPos - bossPos; dirToPlayer.y = 0;
+        if (dirToPlayer.sqrMagnitude < 0.01f) dirToPlayer = Vector3.forward;
+        dirToPlayer.Normalize();
 
         Vector3 idealPlayerPos = bossPos + dirToPlayer * 1.5f;
         if (Terrain.activeTerrain != null)
             idealPlayerPos.y = Terrain.activeTerrain.SampleHeight(idealPlayerPos) + Terrain.activeTerrain.transform.position.y;
-
         Quaternion idealPlayerRot = Quaternion.LookRotation((bossPos - idealPlayerPos).normalized);
         idealPlayerRot.x = 0; idealPlayerRot.z = 0;
 
@@ -471,7 +495,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         Vector3 midPoint = Vector3.Lerp(idealPlayerPos, bossPos, 0.5f);
 
         Vector3 startCamPos = mainCam.transform.position;
-        Vector3 cinematicCamPos = midPoint + sideDir * 4f + Vector3.up * 1f;
+        float startFov = mainCam.fieldOfView;
+        Vector3 cinematicCamPos = midPoint + sideDir * 3.5f + Vector3.up * 1.1f;
+        Vector3 aftermathCamPos = midPoint + sideDir * 5.5f + Vector3.up * 3.5f;
+
+        Vector3 bossHead = bossPos + Vector3.up * 1.6f;
 
         float savedTimeScale = Time.timeScale;
         float savedFixedDelta = Time.fixedDeltaTime;
@@ -481,54 +509,98 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         try
         {
+            if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
+            if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+            // ============================================================
+            //  PHASE 1 · SETUP (0.55s realtime)
+            // ============================================================
             Time.timeScale = 0.1f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
-            if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
-
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
 
+            const float phase1Duration = 0.55f;
             float elapsed = 0f;
-            const float cinematicDuration = 0.55f;
-            while (elapsed < cinematicDuration)
+            while (elapsed < phase1Duration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / cinematicDuration);
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase1Duration);
 
                 playerTarget.transform.position = Vector3.Lerp(playerStartPos, idealPlayerPos, t);
                 playerTarget.transform.rotation = Quaternion.Slerp(playerStartRot, idealPlayerRot, t);
 
                 mainCam.transform.position = Vector3.Lerp(startCamPos, cinematicCamPos, t);
-                mainCam.fieldOfView = Mathf.Lerp(mainCam.fieldOfView, 35f, t);
-
-                Quaternion targetRotation =
-                    Quaternion.LookRotation((bossPos + Vector3.up * 1.2f) - mainCam.transform.position)
-                    * Quaternion.Euler(0, 0, 8f);
+                mainCam.fieldOfView = Mathf.Lerp(startFov, 35f, t);
+                Quaternion targetRotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
+                                          * Quaternion.Euler(0, 0, 8f);
                 mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, targetRotation, t);
 
                 yield return null;
             }
+            if (camFollow != null) camFollow.TriggerShake(0.08f, 0.25f); // settle nudge
 
-            Time.timeScale = 0.005f;
-            if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
-
+            // ============================================================
+            //  PHASE 2 · WIND-UP (0.35s realtime, tighter slow-mo)
+            // ============================================================
+            Time.timeScale = 0.05f;
+            Time.fixedDeltaTime = 0.02f * Time.timeScale;
             playerAnim?.SetTrigger("Attack");
-            yield return new WaitForSecondsRealtime(0.18f);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
 
+            Vector3 phase2CamStart = mainCam.transform.position;
+            Vector3 phase2CamEnd = cinematicCamPos + (bossHead - cinematicCamPos).normalized * 0.6f;
+            float phase2Fov = 31f;
+            elapsed = 0f;
+            const float phase2Duration = 0.35f;
+            while (elapsed < phase2Duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase2Duration);
+                mainCam.transform.position = Vector3.Lerp(phase2CamStart, phase2CamEnd, t);
+                mainCam.fieldOfView = Mathf.Lerp(35f, phase2Fov, t);
+                Quaternion targetRotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
+                                          * Quaternion.Euler(0, 0, 8f);
+                mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, targetRotation, t);
+                yield return null;
+            }
+
+            // ============================================================
+            //  PHASE 3 · IMPACT FREEZE (0.10s realtime, time = 0)
+            // ============================================================
+            Time.timeScale = 0f;
+            Time.fixedDeltaTime = 0.02f;
             if (animator != null) animator.SetTrigger("Die");
             if (AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
             }
-            camFollow?.TriggerShake(0.45f, 0.45f);
+            if (camFollow != null) camFollow.TriggerShake(0.6f, 0.45f);
             SetColor(Color.white);
             if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
 
-            yield return new WaitForSecondsRealtime(0.08f);
-            ResetColor();
+            // Screen flash overlay — self-contained canvas so we don't need
+            // GlobalHUD wiring. 0.35s fade with warm-white tint reads as
+            // 'impact' rather than 'scene reset'.
+            StartCoroutine(GloryKillFlashRoutine(0.35f, new Color(1f, 0.92f, 0.75f, 0.55f)));
 
+            // Snap camera to a punched-in variant for the freeze frame.
+            Vector3 phase3CamPos = phase2CamEnd + (bossHead - phase2CamEnd).normalized * 0.35f;
+            mainCam.transform.position = phase3CamPos;
+            mainCam.fieldOfView = phase2Fov - 2f;
+            mainCam.transform.rotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
+                                       * Quaternion.Euler(0, 0, 12f);
+
+            yield return new WaitForSecondsRealtime(0.10f);
+            ResetColor();
             foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
 
+            // ============================================================
+            //  PHASE 4 · AFTERMATH (0.55s realtime, ramp back to normal)
+            // ============================================================
+            Time.timeScale = 0.15f;
+            Time.fixedDeltaTime = 0.02f * Time.timeScale;
+
+            // Drops spawn now — they'll gently rise into view as the camera pulls back.
             Vector3 dropOrigin = transform.position + Vector3.up * 1.5f;
             for (int i = 0; i < xpCrystalsToDrop; i++)
             {
@@ -555,7 +627,30 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                 }
             }
 
-            yield return new WaitForSecondsRealtime(0.55f);
+            Vector3 phase4CamStart = mainCam.transform.position;
+            float phase4FovStart = mainCam.fieldOfView;
+            const float phase4Duration = 0.55f;
+            elapsed = 0f;
+            while (elapsed < phase4Duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase4Duration);
+
+                mainCam.transform.position = Vector3.Lerp(phase4CamStart, aftermathCamPos, t);
+                mainCam.fieldOfView = Mathf.Lerp(phase4FovStart, 55f, t);
+                Quaternion targetRotation = Quaternion.LookRotation((bossPos + Vector3.up * 0.8f) - mainCam.transform.position)
+                                          * Quaternion.Euler(0, 0, 4f * (1f - t));
+                mainCam.transform.rotation = Quaternion.Slerp(mainCam.transform.rotation, targetRotation, t);
+
+                // Ramp timescale back to normal over the last third of the phase.
+                if (t > 0.65f)
+                {
+                    float ramp = (t - 0.65f) / 0.35f;
+                    Time.timeScale = Mathf.Lerp(0.15f, 1f, ramp);
+                    Time.fixedDeltaTime = 0.02f * Time.timeScale;
+                }
+                yield return null;
+            }
         }
         finally
         {
@@ -569,6 +664,35 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
 
         StartCoroutine(DeathDissolveRoutine());
+    }
+
+    // Full-screen warm flash used during the impact freeze. Self-hosted
+    // canvas so this class doesn't need to reach into GlobalHUD.
+    private IEnumerator GloryKillFlashRoutine(float duration, Color color)
+    {
+        var go = new GameObject("GloryKillFlash");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 32766;
+        var img = new GameObject("Fill").AddComponent<UnityEngine.UI.Image>();
+        img.transform.SetParent(go.transform, false);
+        var rt = img.rectTransform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        img.raycastTarget = false;
+        img.color = color;
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float a = Mathf.Lerp(color.a, 0f, t / duration);
+            img.color = new Color(color.r, color.g, color.b, a);
+            yield return null;
+        }
+        Destroy(go);
     }
 
     private IEnumerator HitFlashRoutine()

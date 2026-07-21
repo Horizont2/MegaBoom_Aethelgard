@@ -33,6 +33,15 @@ public class WorldMapArmyMarker : MonoBehaviour
     private readonly Dictionary<int, RectTransform> markers = new Dictionary<int, RectTransform>();
     private readonly Dictionary<int, List<Vector2>> paths = new Dictionary<int, List<Vector2>>();
     private readonly Dictionary<int, float[]> pathCumLen = new Dictionary<int, float[]>();
+    // Route-line dashes per campaign — destroyed alongside the marker.
+    private readonly Dictionary<int, List<Image>> routeDashes = new Dictionary<int, List<Image>>();
+    // Smoothing state for the marker's position + heading between frames.
+    private readonly Dictionary<int, Vector2> smoothedPos = new Dictionary<int, Vector2>();
+    private readonly Dictionary<int, Vector2> smoothVel = new Dictionary<int, Vector2>();
+    private readonly Dictionary<int, Quaternion> smoothedRot = new Dictionary<int, Quaternion>();
+    // Track the last phase we drew per marker so we can trigger a one-shot
+    // "just arrived" scale pulse when the phase transitions to Fighting.
+    private readonly Dictionary<int, CampaignPhase> lastPhaseSeen = new Dictionary<int, CampaignPhase>();
 
     [Header("Motion Feel")]
     // Marching bob — small sin-wave vertical wobble so the figurine reads
@@ -42,6 +51,25 @@ public class WorldMapArmyMarker : MonoBehaviour
     // Random shake amplitude during the Fighting phase — sells the "battle
     // is happening here" beat.
     public float fightShake = 4f;
+    // Frame-to-frame smoothing for both position + rotation so the marker
+    // eases between polyline segments instead of snapping.
+    [Range(0f, 1f)] public float positionSmoothTime = 0.10f;
+    [Range(0f, 20f)] public float rotationSlerpSpeed = 10f;
+
+    [Header("Visible Route Line")]
+    // Optional — assign a small UI dash prefab (RectTransform + Image, ~4×2px)
+    // to draw a dotted route from origin along the polyline to the target.
+    // Left null → no route line, only the marker moves.
+    public GameObject routeDashPrefab;
+    public float dashSpacing = 18f;
+    // Colour applied to every dash on the outbound leg. Return leg uses
+    // the same sprite tinted `routeReturnColor` so the player can tell
+    // 'I'm coming back' at a glance.
+    public Color routeOutboundColor = new Color(1f, 0.85f, 0.55f, 0.85f);
+    public Color routeReturnColor   = new Color(0.65f, 0.85f, 1f, 0.6f);
+    // Traveling dashes: after Fighting, dashes ahead of the marker fade to
+    // 0 alpha; behind the marker they stay lit. Sells 'this bit is done'.
+    public bool dashesFadeBehindMarker = true;
 
     private void Start()
     {
@@ -122,8 +150,62 @@ public class WorldMapArmyMarker : MonoBehaviour
             if (rt != null) Destroy(rt.gameObject);
             markers.Remove(c.campaignID);
         }
+        if (routeDashes.TryGetValue(c.campaignID, out var dashes))
+        {
+            foreach (var d in dashes) if (d != null) Destroy(d.gameObject);
+            routeDashes.Remove(c.campaignID);
+        }
         paths.Remove(c.campaignID);
         pathCumLen.Remove(c.campaignID);
+        smoothedPos.Remove(c.campaignID);
+        smoothVel.Remove(c.campaignID);
+        smoothedRot.Remove(c.campaignID);
+    }
+
+    // Spawn one Image per dash along the polyline, oriented to match its
+    // segment. Called after BuildPath.
+    private void SpawnRouteDashes(MercenaryCampaign c)
+    {
+        if (routeDashPrefab == null || markerParent == null) return;
+        if (!paths.TryGetValue(c.campaignID, out var pts) || pts == null || pts.Count < 2) return;
+
+        // Clean up any prior dashes for this campaign (path rebuilt).
+        if (routeDashes.TryGetValue(c.campaignID, out var prev))
+        {
+            foreach (var d in prev) if (d != null) Destroy(d.gameObject);
+        }
+        var dashes = new List<Image>();
+
+        for (int i = 0; i < pts.Count - 1; i++)
+        {
+            Vector2 a = pts[i], b = pts[i + 1];
+            Vector2 delta = b - a;
+            float segLen = delta.magnitude;
+            if (segLen < 0.5f) continue;
+            Vector2 dir = delta / segLen;
+            float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+
+            int count = Mathf.Max(1, Mathf.FloorToInt(segLen / dashSpacing));
+            for (int k = 0; k < count; k++)
+            {
+                float t = (k + 0.5f) / count;
+                Vector2 pos = Vector2.Lerp(a, b, t);
+                var go = Instantiate(routeDashPrefab, markerParent);
+                // Route line sits BEHIND the marker figurines.
+                go.transform.SetSiblingIndex(0);
+                var drt = go.GetComponent<RectTransform>();
+                if (drt == null) drt = go.AddComponent<RectTransform>();
+                drt.anchoredPosition = pos;
+                drt.localRotation = Quaternion.Euler(0f, 0f, ang);
+                var img = go.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = routeOutboundColor;
+                    dashes.Add(img);
+                }
+            }
+        }
+        routeDashes[c.campaignID] = dashes;
     }
 
     // BFS through neighbouringRegions to find a corridor of Conquered
@@ -169,6 +251,8 @@ public class WorldMapArmyMarker : MonoBehaviour
         cum[0] = 0f;
         for (int i = 1; i < pts.Count; i++) cum[i] = cum[i - 1] + Vector2.Distance(pts[i - 1], pts[i]);
         pathCumLen[c.campaignID] = cum;
+
+        SpawnRouteDashes(c);
     }
 
     private List<RegionData> FindConqueredChain(RegionData target)
@@ -258,6 +342,15 @@ public class WorldMapArmyMarker : MonoBehaviour
         Vector2 dirTangent = Vector2.zero;
 
         var phase = c.CurrentPhase();
+        // Trigger a one-shot arrival pulse the frame we transition into
+        // Fighting — visual feedback for 'the army just made it there'.
+        if (lastPhaseSeen.TryGetValue(c.campaignID, out var prevPhase))
+        {
+            if (prevPhase != CampaignPhase.Fighting && phase == CampaignPhase.Fighting)
+                StartCoroutine(ArrivalPulseRoutine(marker));
+        }
+        lastPhaseSeen[c.campaignID] = phase;
+
         switch (phase)
         {
             case CampaignPhase.MarchingOut:
@@ -292,14 +385,52 @@ public class WorldMapArmyMarker : MonoBehaviour
             motion.x = (Random.value - 0.5f) * fightShake * 2f;
             motion.y = (Random.value - 0.5f) * fightShake * 2f;
         }
-        marker.anchoredPosition = basePos + motion;
 
-        // Face the direction of travel using the path segment tangent so
-        // corners of the polyline snap the marker to the new heading.
+        // Smooth position between frames so the marker doesn't jitter when
+        // it crosses a polyline corner. SmoothDamp is stable at variable
+        // framerate and doesn't overshoot.
+        Vector2 desired = basePos + motion;
+        Vector2 current = smoothedPos.TryGetValue(c.campaignID, out var prev) ? prev : desired;
+        Vector2 vel = smoothVel.TryGetValue(c.campaignID, out var v) ? v : Vector2.zero;
+        Vector2 next = Vector2.SmoothDamp(current, desired, ref vel, positionSmoothTime);
+        smoothedPos[c.campaignID] = next;
+        smoothVel[c.campaignID] = vel;
+        marker.anchoredPosition = next;
+
+        // Smooth rotation so 90° polyline corners aren't a snap.
         if (dirTangent.sqrMagnitude > 0.0001f)
         {
             float ang = Mathf.Atan2(dirTangent.y, dirTangent.x) * Mathf.Rad2Deg - 90f;
-            marker.localRotation = Quaternion.Euler(0f, 0f, ang);
+            Quaternion targetRot = Quaternion.Euler(0f, 0f, ang);
+            Quaternion currentRot = smoothedRot.TryGetValue(c.campaignID, out var q) ? q : targetRot;
+            Quaternion slerped = Quaternion.Slerp(currentRot, targetRot, 1f - Mathf.Exp(-rotationSlerpSpeed * Time.deltaTime));
+            smoothedRot[c.campaignID] = slerped;
+            marker.localRotation = slerped;
+        }
+
+        // Route-dash pass — recolour to match phase + fade behind marker.
+        if (routeDashes.TryGetValue(c.campaignID, out var dashes) && dashes != null && dashes.Count > 0)
+        {
+            bool returning = phase == CampaignPhase.Returning;
+            Color baseCol = returning ? routeReturnColor : routeOutboundColor;
+            float progress01 = phase == CampaignPhase.MarchingOut
+                             ? c.OutboundProgress01()
+                             : (phase == CampaignPhase.Fighting ? 1f
+                                 : (returning ? 1f - c.ReturnProgress01() : 0f));
+
+            for (int i = 0; i < dashes.Count; i++)
+            {
+                var d = dashes[i];
+                if (d == null) continue;
+                float dashPos = dashes.Count > 1 ? (float)i / (dashes.Count - 1) : 0f;
+                float a = baseCol.a;
+                if (dashesFadeBehindMarker && phase != CampaignPhase.Idle)
+                {
+                    // Ahead of marker → dim (0.35× alpha), behind → full.
+                    a *= dashPos <= progress01 ? 1f : 0.35f;
+                }
+                d.color = new Color(baseCol.r, baseCol.g, baseCol.b, a);
+            }
         }
 
         // Optional per-figurine countdown — if the marker prefab has a
@@ -324,5 +455,32 @@ public class WorldMapArmyMarker : MonoBehaviour
                 return n.GetComponent<RectTransform>();
         }
         return null;
+    }
+
+    // One-shot bounce on arrival at the target region. 1× → 1.35× → 1×
+    // over 0.45s. Purely visual — 'the army is here'.
+    private System.Collections.IEnumerator ArrivalPulseRoutine(RectTransform marker)
+    {
+        if (marker == null) yield break;
+        Vector3 baseScale = marker.localScale;
+        Vector3 peakScale = baseScale * 1.35f;
+        float t = 0f;
+        float up = 0.15f;
+        while (t < up)
+        {
+            if (marker == null) yield break;
+            t += Time.deltaTime;
+            marker.localScale = Vector3.Lerp(baseScale, peakScale, Mathf.SmoothStep(0f, 1f, t / up));
+            yield return null;
+        }
+        float down = 0.30f; t = 0f;
+        while (t < down)
+        {
+            if (marker == null) yield break;
+            t += Time.deltaTime;
+            marker.localScale = Vector3.Lerp(peakScale, baseScale, Mathf.SmoothStep(0f, 1f, t / down));
+            yield return null;
+        }
+        if (marker != null) marker.localScale = baseScale;
     }
 }

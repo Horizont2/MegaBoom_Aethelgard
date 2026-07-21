@@ -170,6 +170,15 @@ public class PreBattlePanel : MonoBehaviour
     public Color tacticActiveButtonTint   = new Color(0f, 0f, 0f, 0.38f);
     public Color tacticInactiveButtonTint = new Color(1f, 1f, 1f, 0f);
 
+    // How much to dim inactive tactic-highlight images. 1 = fully lit
+    // (same as selected), 0.35 = ghosted. Was previously disabled entirely
+    // (enabled=false) which meant when the highlight IS the tactic icon,
+    // only the selected one showed up. Now all three icons stay visible
+    // and the selected one is called out via alpha + scale bump.
+    [Range(0f, 1f)] public float tacticHighlightInactiveAlpha = 0.35f;
+    [Range(0.6f, 1.4f)] public float tacticHighlightSelectedScale = 1.08f;
+    [Range(0.6f, 1.4f)] public float tacticHighlightInactiveScale = 0.9f;
+
     // SpriteSwap cache — first time we touch each tactic button we snapshot
     // its resting sprite so we can restore it when the tactic becomes inactive.
     private readonly System.Collections.Generic.Dictionary<Button, Sprite> defaultTacticSprites =
@@ -178,9 +187,15 @@ public class PreBattlePanel : MonoBehaviour
     private void SetTactic(CampaignTactic t)
     {
         currentTactic = t;
-        if (tacticAmbushHighlight != null) tacticAmbushHighlight.enabled = t == CampaignTactic.Ambush;
-        if (tacticAssaultHighlight != null) tacticAssaultHighlight.enabled = t == CampaignTactic.Assault;
-        if (tacticSiegeHighlight != null) tacticSiegeHighlight.enabled = t == CampaignTactic.Siege;
+        // Keep all three highlight images ENABLED (they double as the
+        // tactic art on each button). Modulate alpha + a small scale
+        // bump so the selection is legible but the other two icons
+        // don't vanish. Previously we hid inactives via enabled=false,
+        // which erased two of the three tactic illustrations from the
+        // panel completely.
+        ApplyTacticHighlight(tacticAmbushHighlight,  t == CampaignTactic.Ambush);
+        ApplyTacticHighlight(tacticAssaultHighlight, t == CampaignTactic.Assault);
+        ApplyTacticHighlight(tacticSiegeHighlight,   t == CampaignTactic.Siege);
 
         // Persistent "pressed" look for the active tactic button.
         ApplyTacticPressedLook(tacticAmbushButton,  t == CampaignTactic.Ambush);
@@ -220,6 +235,23 @@ public class PreBattlePanel : MonoBehaviour
         }
 
         Refresh();
+    }
+
+    // Keep the highlight Image visible; modulate alpha + scale so
+    // selection reads without hiding the two other tactic icons.
+    private void ApplyTacticHighlight(Image highlight, bool selected)
+    {
+        if (highlight == null) return;
+        if (!highlight.enabled) highlight.enabled = true;
+        Color c = highlight.color;
+        c.a = selected ? 1f : tacticHighlightInactiveAlpha;
+        highlight.color = c;
+        var rt = highlight.rectTransform;
+        if (rt != null)
+        {
+            float s = selected ? tacticHighlightSelectedScale : tacticHighlightInactiveScale;
+            rt.localScale = new Vector3(s, s, 1f);
+        }
     }
 
     private void ApplyTacticPressedLook(Button btn, bool active)
