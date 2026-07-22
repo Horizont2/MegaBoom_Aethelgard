@@ -36,6 +36,13 @@ public class CampGuideDirector : MonoBehaviour
     [Header("HUD Widgets (all optional)")]
     // TMP field on your camp HUD that shows the current step's prompt.
     public TextMeshProUGUI promptText;
+    // The tutorial-style mission plate (same MissionUIElement the Lvl_1
+    // quest chain uses). Drop the tutorial plate prefab onto the camp
+    // canvas and wire it here — or leave null and the director grabs the
+    // first MissionUIElement it finds in the scene. Each guide step shows
+    // as a mission: strike-through + flash on completion, then the next
+    // step slides in.
+    public MissionUIElement missionPlate;
     // Floating world-space marker prefab dropped over the current target
     // (usually a beam-of-light or arrow). Instantiated once, moved between
     // targets as steps advance.
@@ -82,13 +89,86 @@ public class CampGuideDirector : MonoBehaviour
         // progression beats.
         if (steps == null || steps.Count == 0) BuildDefaultSteps();
 
+        // Auto-grab a mission plate if none is wired — lets the designer
+        // just drop the tutorial plate prefab anywhere on the camp canvas.
+        if (missionPlate == null)
+            missionPlate = FindFirstObjectByType<MissionUIElement>(FindObjectsInactive.Include);
+
         if (waypointMarkerPrefab != null)
         {
             waypointMarker = Instantiate(waypointMarkerPrefab);
             waypointMarker.SetActive(false);
         }
+
+        // Auto-create the trail LineRenderer when none is wired — a soft
+        // gold ribbon along the NavMesh path. Wire your own for a custom
+        // look; this fallback just guarantees the feature works.
+        if (trailLine == null)
+        {
+            var go = new GameObject("GuideTrailLine");
+            go.transform.SetParent(transform, false);
+            trailLine = go.AddComponent<LineRenderer>();
+            trailLine.widthMultiplier = 0.25f;
+            trailLine.numCornerVertices = 4;
+            trailLine.numCapVertices = 4;
+            trailLine.textureMode = LineTextureMode.Tile;
+            trailLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trailLine.receiveShadows = false;
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+            var mat = new Material(shader);
+            Color gold = new Color(1f, 0.82f, 0.4f, 0.55f);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", gold);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", gold);
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 1f); // transparent
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            trailLine.material = mat;
+            trailLine.enabled = false;
+        }
+
         RecomputeCurrentStep();
         RefreshUI();
+        RefreshPlate(initial: true);
+    }
+
+    // Drives the tutorial-style mission plate from the current guide step.
+    private void RefreshPlate(bool initial = false)
+    {
+        if (missionPlate == null) return;
+
+        if (currentStepIndex >= 0 && currentStepIndex < steps.Count)
+        {
+            if (!missionPlate.gameObject.activeSelf) missionPlate.gameObject.SetActive(true);
+            if (initial) missionPlate.animateAppearance = true; // slide-in on first show
+            missionPlate.Setup(
+                LocalizationManager.Tr("GUIDE_PLATE_TITLE"),
+                LocalizationManager.Tr(steps[currentStepIndex].promptKey),
+                0, 1);
+        }
+        else
+        {
+            // All steps done — plate hides for good.
+            missionPlate.gameObject.SetActive(false);
+        }
+    }
+
+    // Strike-through + flash the finished step, hold a beat so the player
+    // reads the completion, then slide the next objective in.
+    private System.Collections.IEnumerator PlateAdvanceRoutine()
+    {
+        if (missionPlate != null && missionPlate.gameObject.activeSelf)
+        {
+            missionPlate.CompleteMission();
+            yield return new WaitForSeconds(1.4f);
+        }
+        RefreshPlate();
     }
 
     // The canonical post-tutorial camp flow, driven off the same
@@ -137,6 +217,11 @@ public class CampGuideDirector : MonoBehaviour
                 {
                     ToastManager.Show(LocalizationManager.Tr("GUIDE_STEP_DONE"), ToastManager.ToastKind.Achievement);
                     if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+                    StartCoroutine(PlateAdvanceRoutine());
+                }
+                else
+                {
+                    RefreshPlate();
                 }
             }
         }

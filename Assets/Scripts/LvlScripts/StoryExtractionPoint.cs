@@ -96,6 +96,26 @@ public class StoryExtractionPoint : MonoBehaviour
             GlobalHUD.Instance.HideLevelObjective();
         }
 
+        // The tutorial mission plate + minimap live on their own canvases,
+        // outside GlobalHUD.gameplayPanels — hide them explicitly or they
+        // sit on screen through the whole horse-escape cutscene.
+        var quest = FindFirstObjectByType<Level1_QuestManager>();
+        if (quest != null && quest.objectiveUI != null)
+            quest.objectiveUI.gameObject.SetActive(false);
+        var minimapCam = FindFirstObjectByType<MinimapCamera>();
+        if (minimapCam != null)
+        {
+            // Disable the minimap camera AND any canvas that displays its
+            // RenderTexture — the RawImage usually sits on a canvas named
+            // Minimap*, so walk all root canvases and hide matching ones.
+            minimapCam.gameObject.SetActive(false);
+            foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (canvas != null && canvas.name.ToLowerInvariant().Contains("minimap"))
+                    canvas.gameObject.SetActive(false);
+            }
+        }
+
         yield return StartCoroutine(FadeRoutine(1f, 0.4f));
 
         if (npcToHide != null) npcToHide.SetActive(false);

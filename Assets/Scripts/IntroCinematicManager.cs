@@ -28,6 +28,12 @@ public class IntroCinematicManager : MonoBehaviour
     private static bool hasPlayedThisSession = false;
     public static bool HasPlayedThisSession => hasPlayedThisSession;
 
+    // True while the intro cinematic is actively showing. GlobalHUD's ESC
+    // handler checks this to keep the pause menu out, and we block player
+    // movement for the duration — running around mid-narration broke the
+    // storytelling completely.
+    public static bool IsPlaying { get; private set; }
+
     private void Awake()
     {
         if (cinematicCanvasGroup == null)
@@ -62,6 +68,7 @@ public class IntroCinematicManager : MonoBehaviour
         }
 
         hasPlayedThisSession = true;
+        IsPlaying = true;
 
         if (mainGameUI != null) mainGameUI.SetActive(false);
         if (cinematicCanvasGroup != null)
@@ -70,11 +77,33 @@ public class IntroCinematicManager : MonoBehaviour
             cinematicCanvasGroup.blocksRaycasts = true;
         }
 
+        // Freeze the player for the whole narration — poll briefly in case
+        // the PlayerController spawns a frame or two after us.
+        StartCoroutine(BlockPlayerWhilePlaying());
+
         if (director != null)
         {
             director.stopped += OnCinematicFinished;
             director.Play();
         }
+    }
+
+    private IEnumerator BlockPlayerWhilePlaying()
+    {
+        PlayerController pc = null;
+        // Grab the player as soon as they exist, then hold the block for
+        // the duration of the cinematic.
+        while (IsPlaying)
+        {
+            if (pc == null)
+            {
+                pc = PlayerController.LocalInstance;
+                if (pc == null) pc = FindFirstObjectByType<PlayerController>();
+            }
+            if (pc != null && !pc.isControlBlocked) pc.isControlBlocked = true;
+            yield return null;
+        }
+        if (pc != null) pc.isControlBlocked = false;
     }
 
     // ����� ��� ������� � TIMELINE
@@ -206,6 +235,9 @@ public class IntroCinematicManager : MonoBehaviour
             cinematicCanvasGroup.blocksRaycasts = false;
             cinematicCanvasGroup.gameObject.SetActive(false);
         }
+
+        // Release the movement/pause locks once the fade completes.
+        IsPlaying = false;
     }
 
     private IEnumerator FadeSubtitleOut()
@@ -222,5 +254,7 @@ public class IntroCinematicManager : MonoBehaviour
     private void OnDestroy()
     {
         if (director != null) director.stopped -= OnCinematicFinished;
+        // Never leave the global locks latched across a scene unload.
+        IsPlaying = false;
     }
 }

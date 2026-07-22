@@ -153,6 +153,10 @@ public class GlobalHUD : MonoBehaviour
             // trap the player when the new scene finishes loading.
             if (LoadingManager.Instance != null && LoadingManager.Instance.isLoading) return;
 
+            // Same guard for the camp intro cinematic — its own Update
+            // consumes ESC as "skip", so the pause menu must not also fire.
+            if (IntroCinematicManager.IsPlaying) return;
+
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();

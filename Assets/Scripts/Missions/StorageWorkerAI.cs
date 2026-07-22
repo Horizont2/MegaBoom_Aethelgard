@@ -27,6 +27,19 @@ public class StorageWorkerAI : MonoBehaviour
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (carryVisual != null) carryVisual.SetActive(false);
 
+        // Role guard: the storage worker prefab must never also run the
+        // lumberjack brain. If a CampWorkerAI ended up on this object (or
+        // a child) — easy to do when duplicating NPC prefabs — both AIs
+        // fight over the same NavMeshAgent and the storage NPC walks off
+        // to chop trees. Storage wins; the stowaway gets disabled.
+        foreach (var lumber in GetComponentsInChildren<CampWorkerAI>(true))
+        {
+            Debug.LogWarning($"[StorageWorkerAI] '{name}' also carries a CampWorkerAI — destroying it so the storage NPC doesn't wander off to chop trees. Remove the extra component from the prefab.");
+            // Destroy, not disable — CampWorkerAI's coroutines keep running
+            // on a merely-disabled component.
+            Destroy(lumber);
+        }
+
         // Root motion off (see BarracksUnitAI for the roller-skate fix).
         if (anim != null && anim.applyRootMotion) anim.applyRootMotion = false;
         if (anim != null) anim.SetBoolSafe("IsGrounded", true);

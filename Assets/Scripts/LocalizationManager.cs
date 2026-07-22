@@ -1397,6 +1397,7 @@ public static class LocalizationManager
         Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
         Add("GUIDE_STEP_DONE",          "Objective complete!",                   "Ціль виконано!");
+        Add("GUIDE_PLATE_TITLE",        "Camp Task",                             "Завдання табору");
 
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
