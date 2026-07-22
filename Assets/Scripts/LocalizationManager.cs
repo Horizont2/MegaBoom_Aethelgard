@@ -1327,6 +1327,10 @@ public static class LocalizationManager
         // === Level up / shop level tag / boss ===
         Add("MILESTONE_LEVEL_HP", "MILESTONE LV{0}: +10 Max HP", "РУБІЖ РІВ.{0}: +10 макс. HP");
         Add("SHOP_ITEM_LEVEL_TAG", "(Lv. {0}/{1})", "(Рів. {0}/{1})");
+        Add("SHOP_NEED_MORE_DIAMONDS", "Need +{0} diamonds", "Потрібно +{0} діамантів");
+        Add("PROMPT_OPEN_CHEST", "[E] Open Chest", "[E] Відкрити скриню");
+        AddSelf("The Barracks is open! Walk over and press F to hire mercenaries — they'll conquer regions for you.",
+            "Казарми відкриті! Підійди й натисни F, щоб найняти найманців — вони захоплять регіони замість тебе.");
 
         // === Roadside altar (dead-end mini-boss) ===
         Add("PROMPT_ACTIVATE_ALTAR", "[F] Activate Ancient Altar", "[F] Активувати Стародавній Вівтар");

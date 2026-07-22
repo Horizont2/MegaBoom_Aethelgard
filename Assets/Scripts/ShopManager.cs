@@ -1184,7 +1184,7 @@ public class ShopManager : MonoBehaviour
             if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
 
             SetAffordabilityHint(myDiamonds >= price ? "" :
-                LocalizationManager.Tr("Need +{0} diamonds", (price - myDiamonds).ToString("N0")));
+                LocalizationManager.Tr("SHOP_NEED_MORE_DIAMONDS", (price - myDiamonds).ToString("N0")));
         }
         else if (!isEquipped)
         {

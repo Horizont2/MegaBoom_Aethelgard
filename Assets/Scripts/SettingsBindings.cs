@@ -82,7 +82,9 @@ public class SettingsBindings : MonoBehaviour
             });
 
         if (languageDropdown != null)
-            languageDropdown.onValueChanged.AddListener(v => LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 5));
+            // 7 languages (EN/UK/RU/ES/DE/FR/PL) — was clamped to 5 so
+            // Polish (index 6) was silently unreachable via this binding.
+            languageDropdown.onValueChanged.AddListener(v => LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 6));
 
         if (qualityDropdown != null)
             qualityDropdown.onValueChanged.AddListener(v => QualitySettings.SetQualityLevel(Mathf.Clamp(v, 0, QualitySettings.names.Length - 1), true));

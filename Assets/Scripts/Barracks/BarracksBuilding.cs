@@ -51,10 +51,20 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
         if (autoBuildFirstLevel && host != null && !string.IsNullOrEmpty(host.buildingID))
         {
             string key = "SaveBld_" + host.buildingID;
-            if (PlayerPrefs.GetInt(key, 0) < 1)
+            bool freshUnlock = PlayerPrefs.GetInt(key, 0) < 1;
+            if (freshUnlock)
             {
                 PlayerPrefs.SetInt(key, 1);
                 PlayerPrefs.Save();
+                // Discoverability: on the very first camp entry the
+                // barracks auto-promotes to L1 in complete silence, so
+                // players never realise the mercenary system exists.
+                // Fire a one-shot hint the moment we do that.
+                if (TutorialHints.Instance != null)
+                {
+                    TutorialHints.Instance.ShowIfNew("BarracksUnlocked",
+                        "The Barracks is open! Walk over and press F to hire mercenaries — they'll conquer regions for you.", 7f);
+                }
             }
         }
     }

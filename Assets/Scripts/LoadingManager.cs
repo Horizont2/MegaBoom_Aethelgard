@@ -175,7 +175,10 @@ public class LoadingManager : MonoBehaviour
         while (true)
         {
             if (hintText != null)
-                hintText.text = gameHints[Random.Range(0, gameHints.Length)];
+                // Wrap through Tr — hint strings are authored in English
+                // in the Inspector; the localisation table can override
+                // each one via self-keyed entries.
+                hintText.text = LocalizationManager.Tr(gameHints[Random.Range(0, gameHints.Length)]);
             yield return new WaitForSecondsRealtime(hintChangeInterval);
         }
     }

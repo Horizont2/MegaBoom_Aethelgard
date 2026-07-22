@@ -151,9 +151,11 @@ public class LevelUpManager : MonoBehaviour
             UpgradeData chosenUpgrade = availablePool[randomIndex];
             currentOptions[i] = chosenUpgrade;
 
-            uiButtons[i].titleText.text = chosenUpgrade.upgradeName;
+            // Route SO-authored strings through Tr — the upgradeName /
+            // description literals double as translation keys.
+            uiButtons[i].titleText.text = LocalizationManager.Tr(chosenUpgrade.upgradeName);
 
-            string finalDescription = chosenUpgrade.description;
+            string finalDescription = LocalizationManager.Tr(chosenUpgrade.description);
             if (!string.IsNullOrEmpty(chosenUpgrade.statDisplay))
             {
                 finalDescription += "\n<color=#FFD700><b>" + chosenUpgrade.statDisplay + "</b></color>";

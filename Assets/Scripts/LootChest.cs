@@ -25,6 +25,7 @@ public class LootChest : MonoBehaviour
     public float destroyDelay = 10f;
 
     private bool isInteracted = false;
+    private bool isPromptShowing = false;
     private Transform player;
     private Vector3 originalPos;
 
@@ -42,12 +43,30 @@ public class LootChest : MonoBehaviour
     {
         if (isInteracted || player == null) return;
 
-        if (Vector3.Distance(transform.position, player.position) <= interactRange)
+        // sqrMagnitude — sqrt was firing every frame per chest.
+        float rangeSqr = interactRange * interactRange;
+        bool inRange = (transform.position - player.position).sqrMagnitude <= rangeSqr;
+
+        if (inRange)
         {
+            // Discoverability: chests had no floating prompt, so players
+            // walked past them. Show the standard [E] prompt while in range.
+            if (!isPromptShowing && GlobalHUD.Instance != null)
+            {
+                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_OPEN_CHEST"));
+                isPromptShowing = true;
+            }
             if (Input.GetKeyDown(interactKey))
             {
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+                isPromptShowing = false;
                 StartCoroutine(OpenSequence());
             }
+        }
+        else if (isPromptShowing)
+        {
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+            isPromptShowing = false;
         }
     }
 

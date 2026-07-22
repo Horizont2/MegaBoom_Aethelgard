@@ -114,7 +114,10 @@ public class IntroCinematicManager : MonoBehaviour
 
         if (typingCoroutine != null) StopCoroutine(typingCoroutine);
 
-        List<string> autoChunks = AutoSplitText(fullText);
+        // Route Timeline-authored English through Tr so the cinematic
+        // subtitles localise. Register each line as a self-keyed entry
+        // in LocalizationManager for the languages you ship.
+        List<string> autoChunks = AutoSplitText(LocalizationManager.Tr(fullText));
         typingCoroutine = StartCoroutine(TypeTextChunks(autoChunks));
     }
 
