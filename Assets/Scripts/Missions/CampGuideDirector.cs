@@ -204,7 +204,11 @@ public class CampGuideDirector : MonoBehaviour
 
         steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",           requiredValue = 1 });
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = lodgeT,    playerPrefsKey = "SaveBld_ScoutsLodge",   requiredValue = 2 });
-        steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "Elias_TableBuilt",      requiredValue = 1 });
+        // "Open the map" completes when the player actually opens it —
+        // MapOpenedOnce is set by MapTableInteract. Elias_TableBuilt (the
+        // old key) is only set by a SECOND Elias chat, so opening the map
+        // never advanced this step.
+        steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "MapOpenedOnce",         requiredValue = 1 });
         steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",      requiredValue = 1 });
     }

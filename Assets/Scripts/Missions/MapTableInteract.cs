@@ -105,6 +105,17 @@ public class MapTableInteract : MonoBehaviour
         isTransitioning = true;
         isMapOpen = true;
 
+        // Record that the player has opened the world map at least once —
+        // the camp guide's "Open the Map Table" step keys off this flag.
+        // Previously that step was gated on Elias_TableBuilt (set by a
+        // second Elias conversation), so opening the map never advanced
+        // the guide.
+        if (PlayerPrefs.GetInt("MapOpenedOnce", 0) == 0)
+        {
+            PlayerPrefs.SetInt("MapOpenedOnce", 1);
+            PlayerPrefs.Save();
+        }
+
         if (TutorialHints.Instance != null)
             TutorialHints.Instance.ShowIfNew("Map",
                 "Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.", 6f);
