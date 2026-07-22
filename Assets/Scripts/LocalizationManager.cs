@@ -1229,6 +1229,8 @@ public static class LocalizationManager
         Add("MERC_TOAST_VICTORY",  "Victory at {0}! +◆{1}",     "Перемога в {0}! +◆{1}");
         Add("MERC_TOAST_DEFEAT",   "Defeated at {0}. {1} fell.", "Поразка в {0}. Загинуло: {1}.");
 
+        Add("MERC_TOAST_ARMY_FULL", "Company is full ({0} units max)", "Загін повний (макс. {0} воїнів)");
+
         // === Campaign phase labels (CampaignStatusHUD strip) ===
         Add("MERC_PHASE_MARCHING",  "MARCHING",  "МАРШ");
         Add("MERC_PHASE_FIGHTING",  "FIGHTING",  "БИТВА");
@@ -1330,6 +1332,39 @@ public static class LocalizationManager
         Add("PROMPT_ACTIVATE_ALTAR", "[F] Activate Ancient Altar", "[F] Активувати Стародавній Вівтар");
         Add("TOAST_ALTAR_PURIFIED", "Altar purified! +◆{0}", "Вівтар очищено! +◆{0}");
 
+        // === Tutorial hint fallback bodies (TutorialHints wraps through Tr) ===
+        AddSelf("TIP", "ПОРАДА");
+        AddSelf("Each level lets you pick one of three upgrades. Hover a card to read its effect, click to commit.",
+            "Кожен рівень дає вибір одного з трьох покращень. Наведи на картку, щоб прочитати ефект, клацни щоб обрати.");
+        AddSelf("Diamonds are persistent currency. Carry them out alive — they're spent in the Shop on weapons, armor, and meta-upgrades.",
+            "Діаманти — постійна валюта. Винеси їх живим — вони витрачаються в Магазині на зброю, броню та мета-покращення.");
+        AddSelf("Stand on the corrupted totem and press <b>F</b> to purify it. A wave of enemies will spawn — survive to claim the region.",
+            "Стань на заражений тотем і натисни <b>F</b> для очищення. З'явиться хвиля ворогів — виживи, щоб захопити регіон.");
+        AddSelf("Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it — the next totem unlocks afterward.",
+            "Активація тотема викликає хвилю. Знищ <b>усіх</b> ворогів для очищення — після цього відкриється наступний тотем.");
+        AddSelf("TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.",
+            "ПОРАДА: червоний спалах на ворогові = атака. РИВОК (Space) крізь неї — ухилення.");
+        AddSelf("Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+            "Вітаємо в таборі — твоєму безпечному хабі. Підійди до будівлі й натисни <b>F</b> для огляду чи будівництва. Місії — на Дошці оголошень.");
+        AddSelf("WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.",
+            "WASD — рух, миша — огляд. Тримай <b>SHIFT</b> для ривка й прослизай повз атаки.");
+        AddSelf("Hold <b>G</b> to aim a grenade — releases when you let go. Slows time while aiming.",
+            "Тримай <b>G</b> для прицілювання гранати — кидок при відпусканні. Час сповільнюється під час прицілювання.");
+        AddSelf("STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.",
+            "STACK = вороги поруч. Від 15+ шкода множиться. Від 30+ ти тайфун — але втрачаєш прискорення.");
+        AddSelf("ELITE windup detected. Dash (<b>SHIFT</b>) right as their flash peaks to trigger Perfect Dodge — guaranteed crit + slow-mo.",
+            "ЕЛІТНИЙ замах! Ривок (<b>SHIFT</b>) у пік спалаху = Ідеальне ухилення — гарантований крит + слоу-мо.");
+        AddSelf("Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.",
+            "Тримай <b>ЛКМ</b> для серії ударів. Вбивства ростять STACK — кожні 15 стаків додають множник шкоди.");
+        AddSelf("Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.",
+            "Витрачай діаманти на зброю та броню. Вищі тири підіймають Power Score, який відкриває складніші регіони.");
+        AddSelf("Enemies drop XP shards. Fill the XP bar to level up and pick a new upgrade.",
+            "Вороги лишають осколки досвіду. Заповни шкалу XP, щоб підняти рівень і обрати покращення.");
+        AddSelf("Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.",
+            "Тягни для переміщення, скрол — масштаб. Клацни доступний регіон, щоб побачити нагороди й вирушити.");
+        AddSelf("Cleared encounter — bonus loot dropped at the camp center. Wipe more groups to stack rewards.",
+            "Групу зачищено — бонусний лут у центрі табору. Знищуй більше груп, щоб нагороди стакались.");
+
         // === Mission element status tag ===
         Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");
 
@@ -1361,6 +1396,7 @@ public static class LocalizationManager
         Add("GUIDE_HIRE_MERCS",         "Hire a mercenary at the Barracks",     "Найми найманця в Казармах");
         Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
+        Add("GUIDE_STEP_DONE",          "Objective complete!",                   "Ціль виконано!");
 
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");

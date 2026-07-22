@@ -43,10 +43,11 @@ public class BarracksHireRow : MonoBehaviour
 
         bool unlocked = barracksLevel >= data.minBarracksLevel;
         bool canAfford = ResourceManager.Instance != null && ResourceManager.Instance.CanAffordDiamonds(cost);
+        bool hasRoom = !roster.IsAtCapacity;
 
         if (hireButton != null)
         {
-            hireButton.interactable = unlocked && canAfford;
+            hireButton.interactable = unlocked && canAfford && hasRoom;
             hireButton.onClick.RemoveAllListeners();
             hireButton.onClick.AddListener(OnHireClick);
         }
@@ -56,11 +57,19 @@ public class BarracksHireRow : MonoBehaviour
     {
         if (boundData == null || boundRoster == null) return;
         if (ResourceManager.Instance == null) return;
+        // Capacity check BEFORE spending — Hire() also refuses at cap,
+        // but by then the diamonds would already be gone.
+        if (boundRoster.IsAtCapacity)
+        {
+            ToastManager.Show(LocalizationManager.Tr("MERC_TOAST_ARMY_FULL", boundRoster.maxArmySize), ToastManager.ToastKind.Warning);
+            return;
+        }
         int cost = boundData.baseHireCost;
         if (!ResourceManager.Instance.CanAffordDiamonds(cost)) return;
 
+        var hired = boundRoster.Hire(boundData.unitID);
+        if (hired == null) return; // refused (race) — nothing charged
         ResourceManager.Instance.SpendDiamonds(cost);
-        boundRoster.Hire(boundData.unitID);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
     }
 }

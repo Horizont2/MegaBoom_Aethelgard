@@ -66,6 +66,13 @@ public class CampGuideDirector : MonoBehaviour
         var pObj = GameObject.FindGameObjectWithTag("Player");
         if (pObj != null) player = pObj.transform;
 
+        // Zero-config mode: if the designer didn't author any steps,
+        // build the canonical onboarding chain by discovering targets in
+        // the scene. Steps whose target can't be found are still added
+        // (prompt-only, no marker) so the chain doesn't silently skip
+        // progression beats.
+        if (steps == null || steps.Count == 0) BuildDefaultSteps();
+
         if (waypointMarkerPrefab != null)
         {
             waypointMarker = Instantiate(waypointMarkerPrefab);
@@ -73,6 +80,32 @@ public class CampGuideDirector : MonoBehaviour
         }
         RecomputeCurrentStep();
         RefreshUI();
+    }
+
+    // The canonical post-tutorial camp flow, driven off the same
+    // PlayerPrefs flags Elias / buildings / map already write. Discovery
+    // by component type — no Inspector wiring needed.
+    private void BuildDefaultSteps()
+    {
+        steps = new List<GuideStep>();
+
+        Transform eliasT = null;
+        var elias = FindFirstObjectByType<CampNPC_Elias>();
+        if (elias != null) eliasT = elias.transform;
+
+        Transform mapT = null;
+        var mapTable = FindFirstObjectByType<MapTableInteract>();
+        if (mapTable != null) mapT = mapTable.transform;
+
+        Transform barracksT = null;
+        var barracks = FindFirstObjectByType<BarracksBuilding>();
+        if (barracks != null) barracksT = barracks.transform;
+
+        steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",            requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = eliasT,    playerPrefsKey = "SaveBld_ScoutsLodge",    requiredValue = 2 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "Elias_TableBuilt",       requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions",  requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",       requiredValue = 1 });
     }
 
     private void Update()
@@ -84,24 +117,55 @@ public class CampGuideDirector : MonoBehaviour
             int newIdx = ComputeCurrentStepIndex();
             if (newIdx != currentStepIndex)
             {
+                // Step-complete celebration — only when we ADVANCED past a
+                // real step (not on first-compute or when steps regress).
+                bool advanced = currentStepIndex >= 0
+                             && currentStepIndex < steps.Count
+                             && (newIdx > currentStepIndex || newIdx < 0);
                 currentStepIndex = newIdx;
                 RefreshUI();
+                if (advanced)
+                {
+                    ToastManager.Show(LocalizationManager.Tr("GUIDE_STEP_DONE"), ToastManager.ToastKind.Achievement);
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+                }
             }
         }
 
-        // Follow the current target with the waypoint marker.
+        // Follow the current target with the waypoint marker — with a slow
+        // bob + spin so the beacon reads as a live objective, not debris.
         if (waypointMarker != null && currentStepIndex >= 0 && currentStepIndex < steps.Count)
         {
             var t = steps[currentStepIndex].target;
             if (t != null)
             {
-                waypointMarker.transform.position = t.position + Vector3.up * markerYOffset;
+                float bob = Mathf.Sin(Time.time * 2f) * 0.35f;
+                waypointMarker.transform.position = t.position + Vector3.up * (markerYOffset + bob);
+                waypointMarker.transform.Rotate(0f, 40f * Time.deltaTime, 0f, Space.World);
                 if (!waypointMarker.activeSelf) waypointMarker.SetActive(true);
+            }
+            else if (waypointMarker.activeSelf)
+            {
+                // Prompt-only step (target undiscovered) — hide the beacon.
+                waypointMarker.SetActive(false);
             }
         }
         else if (waypointMarker != null && waypointMarker.activeSelf)
         {
             waypointMarker.SetActive(false);
+        }
+
+        // Live distance readout appended to the prompt (updates at 2 Hz
+        // via the same throttle as the trail).
+        if (promptText != null && player != null
+            && currentStepIndex >= 0 && currentStepIndex < steps.Count)
+        {
+            var step = steps[currentStepIndex];
+            if (step.target != null && Time.frameCount % 30 == 0)
+            {
+                float dist = Vector3.Distance(player.position, step.target.position);
+                promptText.text = $"{LocalizationManager.Tr(step.promptKey)}  <color=#B0A080>· {Mathf.RoundToInt(dist)}m</color>";
+            }
         }
 
         // Trail line — path from player to current target via NavMesh.

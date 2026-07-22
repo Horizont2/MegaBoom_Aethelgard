@@ -34,6 +34,14 @@ public class MercenaryRoster : MonoBehaviour
     // this singleton (see BootstrapMercenaryRoster below).
     public List<MercenaryUnitData> catalogue = new List<MercenaryUnitData>();
 
+    [Header("Company Capacity")]
+    // Hard cap on total ALIVE units in the company — matches the 5 helm
+    // pips shown on the barracks / pre-battle panels. Hire() refuses past
+    // this, and the hire buttons grey out at the cap.
+    public int maxArmySize = 5;
+
+    public bool IsAtCapacity => CountAliveTotal() >= maxArmySize;
+
     // Runtime state — do NOT edit in inspector at runtime, use the API.
     [Header("Runtime State (read-only)")]
     [SerializeField] private List<MercenaryUnitInstance> roster = new List<MercenaryUnitInstance>();
@@ -146,6 +154,15 @@ public class MercenaryRoster : MonoBehaviour
         if (data == null)
         {
             Debug.LogWarning($"[MercenaryRoster] Hire failed: unknown unitID '{unitID}'");
+            return null;
+        }
+        // Company cap — refuse hires past maxArmySize. Callers should
+        // grey out their buttons via IsAtCapacity, but this is the
+        // authoritative gate (protects against double-click races and
+        // debug hires too).
+        if (IsAtCapacity)
+        {
+            ToastManager.Show(LocalizationManager.Tr("MERC_TOAST_ARMY_FULL", maxArmySize), ToastManager.ToastKind.Warning);
             return null;
         }
         var inst = new MercenaryUnitInstance

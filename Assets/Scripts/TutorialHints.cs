@@ -180,8 +180,11 @@ public class TutorialHints : MonoBehaviour
         {
             data = ScriptableObject.CreateInstance<TutorialHintData>();
             data.key = req.key;
-            data.title = "TIP";
-            data.body = req.fallbackBody;
+            data.title = LocalizationManager.Tr("TIP");
+            // Route the call-site English through Tr so registering the
+            // literal as a self-key in LocalizationManager translates
+            // every fallback hint without touching 16 call sites.
+            data.body = LocalizationManager.Tr(req.fallbackBody);
             data.duration = req.fallbackDuration;
             data.waitForInput = false;
         }
@@ -219,7 +222,7 @@ public class TutorialHints : MonoBehaviour
             // Path 3: no library entry — fall back to whatever the call site passed
             if (GlobalHUD.Instance != null && !string.IsNullOrEmpty(req.fallbackBody))
             {
-                string text = fallbackPrefix + req.fallbackBody;
+                string text = fallbackPrefix + LocalizationManager.Tr(req.fallbackBody);
                 GlobalHUD.Instance.ShowPrompt(text);
                 yield return new WaitForSecondsRealtime(req.fallbackDuration);
                 GlobalHUD.Instance.HidePrompt();

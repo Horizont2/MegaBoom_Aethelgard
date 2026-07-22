@@ -35,6 +35,11 @@ public class WorldMapArmyMarker : MonoBehaviour
     private readonly Dictionary<int, float[]> pathCumLen = new Dictionary<int, float[]>();
     // Route-line dashes per campaign — destroyed alongside the marker.
     private readonly Dictionary<int, List<Image>> routeDashes = new Dictionary<int, List<Image>>();
+    // Dedicated layer for the route line. Sits ABOVE the map art but
+    // BELOW the figurines. SetSiblingIndex(0) on individual dashes put
+    // them behind the map background image (also a child of markerParent),
+    // which is why the route never showed.
+    private RectTransform routeLayer;
     // Smoothing state for the marker's position + heading between frames.
     private readonly Dictionary<int, Vector2> smoothedPos = new Dictionary<int, Vector2>();
     private readonly Dictionary<int, Vector2> smoothVel = new Dictionary<int, Vector2>();
@@ -194,6 +199,24 @@ public class WorldMapArmyMarker : MonoBehaviour
 
     // Spawn one Image per dash along the polyline, oriented to match its
     // segment. Called after BuildPath.
+    private RectTransform GetRouteLayer()
+    {
+        if (routeLayer != null) return routeLayer;
+        var go = new GameObject("RouteDashLayer", typeof(RectTransform));
+        routeLayer = go.GetComponent<RectTransform>();
+        routeLayer.SetParent(markerParent, false);
+        // Stretch to fill the parent so children's anchoredPositions stay
+        // in the same coordinate space the figurines use.
+        routeLayer.anchorMin = Vector2.zero;
+        routeLayer.anchorMax = Vector2.one;
+        routeLayer.offsetMin = Vector2.zero;
+        routeLayer.offsetMax = Vector2.zero;
+        // Last sibling = on top of the map art. Figurines are re-raised
+        // above it right after (see EnsureMarker / SpawnRouteDashes).
+        routeLayer.SetAsLastSibling();
+        return routeLayer;
+    }
+
     private void SpawnRouteDashes(MercenaryCampaign c)
     {
         if (routeDashPrefab == null || markerParent == null) return;
@@ -220,14 +243,14 @@ public class WorldMapArmyMarker : MonoBehaviour
             {
                 float t = (k + 0.5f) / count;
                 Vector2 pos = Vector2.Lerp(a, b, t);
-                var go = Instantiate(routeDashPrefab, markerParent);
+                // Spawn into the dedicated route layer (above the map art,
+                // below the figurines) — NOT into markerParent at sibling
+                // index 0, which parked dashes behind the map background.
+                var go = Instantiate(routeDashPrefab, GetRouteLayer());
                 // FORCE active — the auto-fallback prefab lives inactive
                 // (as a template) so its clones inherit inactive state
-                // unless we re-enable them here. This was the reason the
-                // route line stayed invisible even after wiring.
+                // unless we re-enable them here.
                 go.SetActive(true);
-                // Route line sits BEHIND the marker figurines.
-                go.transform.SetSiblingIndex(0);
                 var drt = go.GetComponent<RectTransform>();
                 if (drt == null) drt = go.AddComponent<RectTransform>();
                 drt.anchoredPosition = pos;
@@ -243,6 +266,15 @@ public class WorldMapArmyMarker : MonoBehaviour
             }
         }
         routeDashes[c.campaignID] = dashes;
+
+        // Re-raise every figurine above the route layer so the army icon
+        // always draws on top of its own trail.
+        foreach (var kv in markers)
+        {
+            if (kv.Value != null) kv.Value.SetAsLastSibling();
+        }
+
+        Debug.Log($"[WorldMapArmyMarker] Route line: {dashes.Count} dashes spawned for campaign {c.campaignID} (path pts={pts.Count}).");
     }
 
     // BFS through neighbouringRegions to find a corridor of Conquered
