@@ -524,6 +524,16 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (playerAnim != null) playerAnim.updateMode = AnimatorUpdateMode.UnscaledTime;
             if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
 
+            // AAA layer: duck the music bed hard for the whole execution,
+            // rack cinematic DoF, and put a tight handheld drift on the
+            // camera. The drift runs on unscaled time, so it stays alive
+            // inside the freeze frame — that residual micro-motion during
+            // a timeScale=0 hold is the single strongest 'filmed, not
+            // paused' cue. Torn down in finally.
+            if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(0.25f, 0.15f, 2.2f, 1.4f);
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
+            CinematicHandheld.Begin(mainCam, 0.03f, 0.3f, 0.6f);
+
             // ============================================================
             //  PHASE 1 · SETUP (0.55s realtime)
             // ============================================================
@@ -536,7 +546,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             while (elapsed < phase1Duration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / phase1Duration);
+                float x = Mathf.Clamp01(elapsed / phase1Duration);
+                // Ease-OUT cubic: the camera snaps toward the shoulder
+                // fast and brakes into the composition — a whip-to-frame,
+                // not an elevator ride. (Symmetric SmoothStep read slow
+                // and mushy here.)
+                float t = 1f - Mathf.Pow(1f - x, 3f);
 
                 playerTarget.transform.position = Vector3.Lerp(playerStartPos, idealPlayerPos, t);
                 playerTarget.transform.rotation = Quaternion.Slerp(playerStartRot, idealPlayerRot, t);
@@ -579,7 +594,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             while (elapsed < gloryKillImpactOffset)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / gloryKillImpactOffset);
+                float x = Mathf.Clamp01(elapsed / gloryKillImpactOffset);
+                // Ease-IN cubic: the push-in ACCELERATES into the impact —
+                // building pressure toward the freeze, the inverse of the
+                // arrival curve in phase 1.
+                float t = x * x * x;
                 mainCam.transform.position = Vector3.Lerp(phase2CamStart, phase2CamEnd, t);
                 mainCam.fieldOfView = Mathf.Lerp(35f, phase2Fov, t);
                 Quaternion targetRotation = Quaternion.LookRotation(bossHead - mainCam.transform.position)
@@ -694,7 +713,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (animator != null) animator.updateMode = savedBossAnimMode;
             if (playerCC != null) playerCC.enabled = true;
             if (camFollow != null) camFollow.isCinematicMode = false;
-            if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideCinematicBars();
+            if (GlobalHUD.Instance != null)
+            {
+                GlobalHUD.Instance.HideCinematicBars();
+                GlobalHUD.Instance.SetCinematicDoF(false);
+            }
+            CinematicHandheld.End(mainCam);
         }
 
         StartCoroutine(DeathDissolveRoutine());

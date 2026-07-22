@@ -554,6 +554,17 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
+    // Cinematic depth-of-field toggle — lets cutscene code rack the same
+    // DoF override the pause/shop screens use, without exposing the field.
+    // No-ops safely if the scene's global Volume has no DepthOfField.
+    public void SetCinematicDoF(bool on)
+    {
+        if (dofEffect == null) return;
+        // Never fight the pause menu's own DoF state.
+        if (!on && isPaused) return;
+        dofEffect.active = on;
+    }
+
     public void FadeAndLoadScene(string sceneName)
     {
         if (isPaused) TogglePause();

@@ -42,6 +42,9 @@ public class WorldMapArmyMarker : MonoBehaviour
     // Track the last phase we drew per marker so we can trigger a one-shot
     // "just arrived" scale pulse when the phase transitions to Fighting.
     private readonly Dictionary<int, CampaignPhase> lastPhaseSeen = new Dictionary<int, CampaignPhase>();
+    // Cached per-marker countdown TMP — GetComponentInChildren per frame
+    // per marker was the map screen's biggest self-inflicted cost.
+    private readonly Dictionary<int, TMPro.TextMeshProUGUI> markerTimers = new Dictionary<int, TMPro.TextMeshProUGUI>();
 
     [Header("Motion Feel")]
     // Marching bob — small sin-wave vertical wobble so the figurine reads
@@ -160,6 +163,9 @@ public class WorldMapArmyMarker : MonoBehaviour
             }
         }
 
+        // Cache the countdown TMP once per marker — looked up per frame before.
+        markerTimers[c.campaignID] = go.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+
         BuildPath(c);
         UpdateMarker(rt, c);
     }
@@ -167,6 +173,8 @@ public class WorldMapArmyMarker : MonoBehaviour
     private void RemoveMarker(MercenaryCampaign c)
     {
         if (c == null) return;
+        markerTimers.Remove(c.campaignID);
+        lastTimerSecond.Remove(c.campaignID);
         if (markers.TryGetValue(c.campaignID, out var rt))
         {
             if (rt != null) Destroy(rt.gameObject);
@@ -462,18 +470,25 @@ public class WorldMapArmyMarker : MonoBehaviour
             }
         }
 
-        // Optional per-figurine countdown — if the marker prefab has a
-        // TMP labelled "TimerText" as a child, we update it with
-        // total time remaining until the campaign resolves and clears.
-        var timer = marker.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
-        if (timer != null)
+        // Optional per-figurine countdown — cached TMP (looked up once in
+        // EnsureMarker), refreshed only when the displayed second changes
+        // so we don't re-layout TMP geometry 60×/s.
+        if (markerTimers.TryGetValue(c.campaignID, out var timer) && timer != null)
         {
             float remain = Mathf.Max(0f, c.TotalPhaseDuration - c.SecondsSinceStart());
-            int m = Mathf.FloorToInt(remain / 60f);
-            int s = Mathf.FloorToInt(remain % 60f);
-            timer.text = m > 0 ? $"{m}:{s:D2}" : $"0:{s:D2}";
+            int totalSeconds = Mathf.FloorToInt(remain);
+            if (!lastTimerSecond.TryGetValue(c.campaignID, out int prevSec) || prevSec != totalSeconds)
+            {
+                lastTimerSecond[c.campaignID] = totalSeconds;
+                int m = totalSeconds / 60;
+                int s = totalSeconds % 60;
+                timer.text = $"{m}:{s:D2}";
+            }
         }
     }
+
+    // Last whole-second value written to each marker's timer TMP.
+    private readonly Dictionary<int, int> lastTimerSecond = new Dictionary<int, int>();
 
     private RectTransform FindRegionNodeRect(int regionID)
     {

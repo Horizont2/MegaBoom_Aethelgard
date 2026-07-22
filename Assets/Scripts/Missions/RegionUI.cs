@@ -126,11 +126,19 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     }
 
     // Toggles the campaign overlay + writes remaining-time to the timer TMP.
-    // Cheap enough to run every frame — MercenaryCampaignManager.FindByRegion
-    // is a linear scan of ≤ few active campaigns.
+    // Throttled to 4 Hz — 24 RegionUI instances each doing a campaign scan
+    // + potential TMP re-layout every frame added up on the map screen.
+    // A MM:SS countdown only changes once a second anyway.
+    private float overlayThrottle = 0f;
+    private int lastShownSecond = -1;
+
     private void RefreshCampaignOverlay()
     {
         if (myRegionData == null) return;
+
+        overlayThrottle -= Time.deltaTime;
+        if (overlayThrottle > 0f) return;
+        overlayThrottle = 0.25f;
 
         MercenaryCampaign c = null;
         if (MercenaryCampaignManager.Instance != null)
@@ -146,13 +154,17 @@ public class RegionUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
             if (active)
             {
                 float remain = Mathf.Max(0f, c.TotalPhaseDuration - c.SecondsSinceStart());
-                int m = Mathf.FloorToInt(remain / 60f);
-                int s = Mathf.FloorToInt(remain % 60f);
-                campaignTimerText.text = m > 0 ? $"{m}:{s:D2}" : $"0:{s:D2}";
+                int totalSeconds = Mathf.FloorToInt(remain);
+                if (totalSeconds != lastShownSecond)
+                {
+                    lastShownSecond = totalSeconds;
+                    campaignTimerText.text = $"{totalSeconds / 60}:{totalSeconds % 60:D2}";
+                }
             }
             else if (campaignTimerText.text.Length > 0)
             {
                 campaignTimerText.text = string.Empty;
+                lastShownSecond = -1;
             }
         }
     }

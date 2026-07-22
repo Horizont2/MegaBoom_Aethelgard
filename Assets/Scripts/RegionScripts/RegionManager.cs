@@ -264,6 +264,35 @@ public class RegionManager : MonoBehaviour
 
         Vector3 apexCamPos = finalTotemPos + new Vector3(0f, camHeight, -camHeight * 0.8f);
 
+        // --- AAA layer: duck the music bed for the whole sequence, rack
+        // cinematic DoF on, and give the camera a living handheld drift.
+        // All three are torn down in EarlyExitRoutine / the normal exit.
+        if (AudioManager.Instance != null) AudioManager.Instance.DuckMusic(0.35f, 0.5f, 8.5f, 2.0f);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
+        CinematicHandheld.Begin(mainCam, 0.05f, 0.4f, 0.45f);
+
+        // === PHASE 0: hero beat (0.7 s) =============================================
+        // Hold on the player for a breath before anything erupts — the eye
+        // needs an anchor shot so the shockwave that follows has context.
+        // Slow push-in toward the player: classic anticipation framing.
+        if (playerController != null && mainCam != null)
+        {
+            Vector3 preRollStart = mainCam.transform.position;
+            Vector3 toPlayer = (playerController.transform.position + Vector3.up * 1.2f) - preRollStart;
+            Vector3 preRollEnd = preRollStart + toPlayer.normalized * Mathf.Min(0.8f, toPlayer.magnitude * 0.1f);
+            float preRoll = 0f;
+            const float preRollDur = 0.7f;
+            while (preRoll < preRollDur)
+            {
+                if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
+                preRoll += Time.deltaTime;
+                // Ease-in-out — the push starts and ends gently.
+                float pt = Mathf.SmoothStep(0f, 1f, preRoll / preRollDur);
+                mainCam.transform.position = Vector3.Lerp(preRollStart, preRollEnd, pt);
+                yield return null;
+            }
+        }
+
         // === PHASE 1: shockwave purifies the world (1.2 s) ===========================
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Region_Shockwave);
         if (camFollow != null) camFollow.TriggerShake(0.5f, 0.4f);
@@ -277,7 +306,11 @@ public class RegionManager : MonoBehaviour
         if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
         yield return WaitOrSkip(1.2f);
 
-        // === PHASE 2: camera glides up to apex (1.5 s) ==============================
+        // === PHASE 2: camera rises to apex (2.0 s) ==================================
+        // Slower than before (1.5 → 2.0 s) with an ease-in-out profile:
+        // the old ease-out-only curve launched at full speed from frame
+        // one, which read as a teleport-ish jolt. A crane operator
+        // accelerates gently, cruises, then brakes into the apex.
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
 
         Vector3 startCamPos = mainCam.transform.position;
@@ -285,11 +318,15 @@ public class RegionManager : MonoBehaviour
         float startFov = mainCam.fieldOfView;
 
         float elapsed = 0f;
-        while (elapsed < 1.5f)
+        const float riseDuration = 2.0f;
+        while (elapsed < riseDuration)
         {
             if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
             elapsed += Time.deltaTime;
-            float t = 1f - Mathf.Pow(1f - (elapsed / 1.5f), 3f);
+            float x = Mathf.Clamp01(elapsed / riseDuration);
+            // Smoother-step (6x^5-15x^4+10x^3): zero velocity AND zero
+            // acceleration at both ends — the camera never jerks.
+            float t = x * x * x * (x * (x * 6f - 15f) + 10f);
             mainCam.transform.position = Vector3.Lerp(startCamPos, apexCamPos, t);
             mainCam.fieldOfView = Mathf.Lerp(startFov, 70f, t);
             mainCam.transform.rotation = Quaternion.Slerp(startCamRot,
@@ -382,6 +419,15 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("REGION CONQUERED") + "!");
         }
 
+        // Slow non-blocking dolly toward the totem while the title +
+        // reward cards sit on screen — a static camera under a title
+        // card is the #1 "prototype" tell. ~1.5 m over the full 3 s.
+        if (mainCam != null)
+        {
+            Vector3 pushDir = (finalTotemPos + Vector3.up * 2f - mainCam.transform.position).normalized;
+            StartCoroutine(SlowDollyRoutine(mainCam, pushDir * 1.5f, 3.0f));
+        }
+
         if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
         yield return WaitOrSkip(1.5f);
 
@@ -396,6 +442,10 @@ public class RegionManager : MonoBehaviour
         yield return WaitOrSkip(1.5f);
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideSkipPrompt();
+        // AAA layer teardown — handheld off (restores its base transform),
+        // DoF back to gameplay. Duck restores itself on its own timeline.
+        CinematicHandheld.End(mainCam);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) playerController.isControlBlocked = false;
 
@@ -463,6 +513,10 @@ public class RegionManager : MonoBehaviour
 
         Camera mainCam = Camera.main;
         CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
+        // Tear down the AAA layer on skip too — otherwise the handheld
+        // drift keeps nudging the gameplay camera after the cutscene.
+        CinematicHandheld.End(mainCam);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) playerController.isControlBlocked = false;
 
@@ -496,6 +550,25 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
         }
         yield break;
+    }
+
+    // Constant-velocity dolly along `worldDelta` over `duration` seconds.
+    // Non-blocking companion for static holds (title cards): the shot
+    // keeps creeping forward, which is what separates a filmed moment
+    // from a paused game. Aborts silently if the camera dies mid-push.
+    private IEnumerator SlowDollyRoutine(Camera cam, Vector3 worldDelta, float duration)
+    {
+        if (cam == null) yield break;
+        Vector3 from = cam.transform.position;
+        float t = 0f;
+        while (t < duration)
+        {
+            if (cam == null) yield break;
+            t += Time.unscaledDeltaTime;
+            // Linear on purpose — a creep should not visibly accelerate.
+            cam.transform.position = from + worldDelta * Mathf.Clamp01(t / duration);
+            yield return null;
+        }
     }
 
     // Slow, one-way FOV drift — no snap-back. Used for the title-reveal
