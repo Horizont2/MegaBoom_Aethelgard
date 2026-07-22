@@ -212,6 +212,37 @@ public class CampGuideDirector : MonoBehaviour
         return null;
     }
 
+    // Best point to aim the trail / marker at for a given target. Building
+    // prefab pivots are often off to one side of the model, so aiming at
+    // transform.position sends the trail past the visual building. We use
+    // the combined renderer-bounds centre (XZ) instead, snapped to the
+    // NavMesh so the path actually terminates on walkable ground next to
+    // the building. Cached per-target (bounds don't move in camp).
+    private readonly Dictionary<Transform, Vector3> aimCache = new Dictionary<Transform, Vector3>();
+
+    private Vector3 GetAimPoint(Transform target)
+    {
+        if (target == null) return Vector3.zero;
+        if (aimCache.TryGetValue(target, out var cached)) return cached;
+
+        Vector3 aim = target.position;
+        var renderers = target.GetComponentsInChildren<Renderer>();
+        if (renderers != null && renderers.Length > 0)
+        {
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+            aim = new Vector3(b.center.x, target.position.y, b.center.z);
+        }
+
+        // Snap to the nearest walkable navmesh point so the A* path ends
+        // ON ground next to the building, not inside its footprint.
+        if (NavMesh.SamplePosition(aim, out NavMeshHit hit, 6f, NavMesh.AllAreas))
+            aim = hit.position;
+
+        aimCache[target] = aim;
+        return aim;
+    }
+
     private void Update()
     {
         progressTimer += Time.deltaTime;
@@ -248,8 +279,11 @@ public class CampGuideDirector : MonoBehaviour
             var t = steps[currentStepIndex].target;
             if (t != null)
             {
+                // Aim at the visual centre, not the pivot — many building
+                // prefabs have their pivot off to one side of the model.
+                Vector3 aim = GetAimPoint(t);
                 float bob = Mathf.Sin(Time.time * 2f) * 0.35f;
-                waypointMarker.transform.position = t.position + Vector3.up * (markerYOffset + bob);
+                waypointMarker.transform.position = aim + Vector3.up * (markerYOffset + bob);
                 waypointMarker.transform.Rotate(0f, 40f * Time.deltaTime, 0f, Space.World);
                 if (!waypointMarker.activeSelf) waypointMarker.SetActive(true);
             }
@@ -272,7 +306,7 @@ public class CampGuideDirector : MonoBehaviour
             var step = steps[currentStepIndex];
             if (step.target != null && Time.frameCount % 30 == 0)
             {
-                float dist = Vector3.Distance(player.position, step.target.position);
+                float dist = Vector3.Distance(player.position, GetAimPoint(step.target));
                 promptText.text = $"{LocalizationManager.Tr(step.promptKey)}  <color=#B0A080>· {Mathf.RoundToInt(dist)}m</color>";
             }
         }
@@ -287,7 +321,7 @@ public class CampGuideDirector : MonoBehaviour
         {
             trailTimer = 0f;
             var target = steps[currentStepIndex].target;
-            if (target != null && NavMesh.CalculatePath(player.position, target.position, NavMesh.AllAreas, scratchPath)
+            if (target != null && NavMesh.CalculatePath(player.position, GetAimPoint(target), NavMesh.AllAreas, scratchPath)
                 && scratchPath.corners.Length >= 2)
             {
                 RebuildSmoothTrail(scratchPath.corners);
