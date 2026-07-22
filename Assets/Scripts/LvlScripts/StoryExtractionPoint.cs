@@ -96,23 +96,27 @@ public class StoryExtractionPoint : MonoBehaviour
             GlobalHUD.Instance.HideLevelObjective();
         }
 
-        // The tutorial mission plate + minimap live on their own canvases,
-        // outside GlobalHUD.gameplayPanels — hide them explicitly or they
-        // sit on screen through the whole horse-escape cutscene.
+        // The tutorial mission plate + minimap live outside
+        // GlobalHUD.gameplayPanels — hide them explicitly or they sit on
+        // screen through the whole horse-escape cutscene.
         var quest = FindFirstObjectByType<Level1_QuestManager>();
         if (quest != null && quest.objectiveUI != null)
             quest.objectiveUI.gameObject.SetActive(false);
-        var minimapCam = FindFirstObjectByType<MinimapCamera>();
-        if (minimapCam != null)
+
+        // The minimap RawImage lives in a UI widget (named "Minimap_Widget"
+        // in Lvl_1), NOT on its own Canvas — so a canvas-name scan missed
+        // it. Walk ALL transforms (incl. inactive) and hide anything whose
+        // name mentions minimap/radar. Also kill the render camera so we
+        // don't keep paying its draw cost during the cinematic.
+        foreach (var tr in Resources.FindObjectsOfTypeAll<Transform>())
         {
-            // Disable the minimap camera AND any canvas that displays its
-            // RenderTexture — the RawImage usually sits on a canvas named
-            // Minimap*, so walk all root canvases and hide matching ones.
-            minimapCam.gameObject.SetActive(false);
-            foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            if (tr == null) continue;
+            // Skip prefab assets / non-scene objects.
+            if (!tr.gameObject.scene.IsValid()) continue;
+            string n = tr.name.ToLowerInvariant();
+            if (n.Contains("minimap") || n.Contains("mini_map") || n.Contains("radar"))
             {
-                if (canvas != null && canvas.name.ToLowerInvariant().Contains("minimap"))
-                    canvas.gameObject.SetActive(false);
+                if (tr.gameObject.activeSelf) tr.gameObject.SetActive(false);
             }
         }
 

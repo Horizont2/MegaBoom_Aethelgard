@@ -46,6 +46,24 @@ public class NPCPatroller : MonoBehaviour
     public string walkingAnimBool = "IsWalking";
     public float walkingSpeedThreshold = 0.05f;
 
+    [Header("Animator Fallback (state names)")]
+    // When the animator controller has NO Speed float and NO IsWalking
+    // bool, the patroller can't drive it via parameters — so it CrossFades
+    // directly to these named states instead. Leave blank to disable the
+    // fallback. Elias's Lvl1Npc controller has walk/idle STATES but no
+    // matching parameter, which is why he never animated — this fixes it
+    // without editing the .controller asset.
+    public string walkStateName = "Walk";
+    public string idleStateName = "Idle";
+    public float stateCrossfade = 0.15f;
+
+    // Resolved once in Start — do we have parameters to drive, or must we
+    // fall back to CrossFade on named states?
+    private bool hasSpeedParam;
+    private bool hasWalkingParam;
+    private bool useStateFallback;
+    private bool wasWalking;
+
     // Public flag so dialogue or cinematic scripts can pause the patrol.
     [HideInInspector] public bool HoldPosition = false;
 
@@ -73,6 +91,24 @@ public class NPCPatroller : MonoBehaviour
         {
             if (anim.applyRootMotion) anim.applyRootMotion = false;
             anim.SetBoolSafe("IsGrounded", true);
+
+            // Detect what the controller actually exposes. If it has
+            // neither a Speed float nor an IsWalking bool, drive the
+            // animation by CrossFading named states directly.
+            hasSpeedParam = AnimatorSafeExtensions.HasParameter(anim, "Speed");
+            hasWalkingParam = !string.IsNullOrEmpty(walkingAnimBool)
+                           && AnimatorSafeExtensions.HasParameter(anim, walkingAnimBool);
+            useStateFallback = !hasSpeedParam && !hasWalkingParam
+                            && !string.IsNullOrEmpty(walkStateName);
+
+            if (useStateFallback)
+            {
+                Debug.Log($"[NPCPatroller] '{name}': animator '{anim.runtimeAnimatorController?.name}' has no Speed/IsWalking parameter — driving walk via CrossFade to states '{walkStateName}'/'{idleStateName}'. Add an 'IsWalking' bool + transitions if you prefer parameter control.");
+            }
+            else if (!hasSpeedParam && !hasWalkingParam)
+            {
+                Debug.LogWarning($"[NPCPatroller] '{name}': animator has no Speed float, no '{walkingAnimBool}' bool, and no walkStateName set — the NPC will not animate while walking. Add one of them.");
+            }
         }
         StartCoroutine(ScheduleLoop());
     }
@@ -112,8 +148,18 @@ public class NPCPatroller : MonoBehaviour
         // Simple two-state animators can just listen to this bool
         // (Idle ↔ Walk). Blend-tree animators can ignore it — SetBoolSafe
         // no-ops when the parameter isn't in the controller.
+        bool walking = vel.magnitude > walkingSpeedThreshold;
         if (!string.IsNullOrEmpty(walkingAnimBool))
-            anim.SetBoolSafe(walkingAnimBool, vel.magnitude > walkingSpeedThreshold);
+            anim.SetBoolSafe(walkingAnimBool, walking);
+
+        // Parameter-less controllers (Elias's Lvl1Npc): CrossFade named
+        // states on the walk/idle transition edge.
+        if (useStateFallback && walking != wasWalking)
+        {
+            wasWalking = walking;
+            string target = walking ? walkStateName : idleStateName;
+            if (!string.IsNullOrEmpty(target)) anim.CrossFadeInFixedTime(target, stateCrossfade);
+        }
 
         // Sitting bool — true at night when the NPC is parked and idle.
         // Doesn't require a specific rest point transform; anywhere the

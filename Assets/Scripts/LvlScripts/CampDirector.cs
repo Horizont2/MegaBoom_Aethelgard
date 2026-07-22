@@ -13,6 +13,12 @@ public class CampDirector : MonoBehaviour
     public TextMeshProUGUI subtitleText;
     public float typingSpeed = 0.04f;
 
+    // True while the camp intro narration is playing. GlobalHUD checks
+    // this so ESC can't open the pause menu mid-story, and we re-assert
+    // the player control block every frame (LoadingManager clears it once
+    // on scene-ready, which used to un-freeze the player mid-cutscene).
+    public static bool IsPlaying { get; private set; }
+
     private void Awake()
     {
         if (PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 0) == 0)
@@ -47,8 +53,14 @@ public class CampDirector : MonoBehaviour
             if (pObj != null) player = pObj.GetComponent<PlayerController>();
         }
 
+        IsPlaying = true;
         if (player != null) player.isControlBlocked = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
+
+        // Re-assert the movement block every frame — LoadingManager clears
+        // isControlBlocked once when the scene is ready, which races this
+        // coroutine and used to un-freeze the player mid-narration.
+        StartCoroutine(HoldControlBlock());
 
         SetCinematicMode(true);
 
@@ -59,8 +71,23 @@ public class CampDirector : MonoBehaviour
         StartCoroutine(TutorialDialogueRoutine());
     }
 
+    private IEnumerator HoldControlBlock()
+    {
+        while (IsPlaying)
+        {
+            if (player == null)
+            {
+                GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+                if (pObj != null) player = pObj.GetComponent<PlayerController>();
+            }
+            if (player != null && !player.isControlBlocked) player.isControlBlocked = true;
+            yield return null;
+        }
+    }
+
     private void StopCutsceneImmediately()
     {
+        IsPlaying = false;
         var brain = Camera.main.GetComponent<CinemachineBrain>();
         if (brain != null) brain.enabled = false;
 
@@ -68,6 +95,12 @@ public class CampDirector : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
         SetCinematicMode(false);
+    }
+
+    private void OnDestroy()
+    {
+        // Never leave the pause/movement guard latched across a scene load.
+        IsPlaying = false;
     }
 
     private void SetCinematicMode(bool isCinematic)
@@ -97,6 +130,7 @@ public class CampDirector : MonoBehaviour
 
     private void EndTutorial()
     {
+        IsPlaying = false;
         PlayerPrefs.SetInt("CampTutorialPlayed", 1);
         PlayerPrefs.SetInt("SaveBld_ScoutsLodge", 1);
         PlayerPrefs.Save();

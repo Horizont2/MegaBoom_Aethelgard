@@ -53,8 +53,8 @@ public class CampGuideDirector : MonoBehaviour
     // Attach a LineRenderer here — the guide will animate it from player
     // to the current target across the NavMesh. Leave null → no line.
     public LineRenderer trailLine;
-    [Tooltip("How often (seconds) to re-path the trail. Higher = cheaper.")]
-    public float trailUpdateInterval = 0.5f;
+    [Tooltip("How often (seconds) to re-path the trail. Lower = the ribbon tracks the player more tightly. The per-frame ease keeps it smooth between recomputes.")]
+    public float trailUpdateInterval = 0.12f;
     [Tooltip("Max samples along the NavMesh path — controls trail smoothness.")]
     public int trailMaxCorners = 32;
 
@@ -190,11 +190,26 @@ public class CampGuideDirector : MonoBehaviour
         var barracks = FindFirstObjectByType<BarracksBuilding>();
         if (barracks != null) barracksT = barracks.transform;
 
-        steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",            requiredValue = 1 });
-        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = eliasT,    playerPrefsKey = "SaveBld_ScoutsLodge",    requiredValue = 2 });
-        steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "Elias_TableBuilt",       requiredValue = 1 });
-        steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions",  requiredValue = 1 });
-        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",       requiredValue = 1 });
+        // Distinct targets per step — the earlier version pointed BOTH the
+        // "talk to Elias" and "upgrade lodge" steps at Elias, so after the
+        // first conversation the trail still led back to him instead of the
+        // lodge. Resolve buildings by their buildingID.
+        Transform lodgeT = FindBuildingTransform("ScoutsLodge") ?? eliasT;
+
+        steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",           requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = lodgeT,    playerPrefsKey = "SaveBld_ScoutsLodge",   requiredValue = 2 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "Elias_TableBuilt",      requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",      requiredValue = 1 });
+    }
+
+    private Transform FindBuildingTransform(string buildingID)
+    {
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (b != null && b.buildingID == buildingID) return b.transform;
+        }
+        return null;
     }
 
     private void Update()
@@ -263,32 +278,95 @@ public class CampGuideDirector : MonoBehaviour
         }
 
         // Trail line — path from player to current target via NavMesh.
+        // Recomputed on a throttle; smoothed toward its new shape every
+        // frame so the ribbon glides instead of snapping between the
+        // 4-Hz recomputes.
         trailTimer += Time.deltaTime;
         if (trailTimer >= trailUpdateInterval && trailLine != null && player != null
             && currentStepIndex >= 0 && currentStepIndex < steps.Count)
         {
             trailTimer = 0f;
             var target = steps[currentStepIndex].target;
-            if (target != null)
+            if (target != null && NavMesh.CalculatePath(player.position, target.position, NavMesh.AllAreas, scratchPath)
+                && scratchPath.corners.Length >= 2)
             {
-                if (NavMesh.CalculatePath(player.position, target.position, NavMesh.AllAreas, scratchPath))
-                {
-                    int count = Mathf.Min(scratchPath.corners.Length, trailMaxCorners);
-                    trailLine.positionCount = count;
-                    for (int i = 0; i < count; i++)
-                    {
-                        Vector3 c = scratchPath.corners[i];
-                        c.y += 0.05f; // lift a touch above ground so the line doesn't z-fight
-                        trailLine.SetPosition(i, c);
-                    }
-                    if (!trailLine.enabled) trailLine.enabled = true;
-                }
-                else
-                {
-                    trailLine.enabled = false;
-                }
+                RebuildSmoothTrail(scratchPath.corners);
+            }
+            else
+            {
+                trailLine.enabled = false;
+                smoothedTrail = null;
             }
         }
+
+        // Per-frame glide of the actually-rendered points toward the
+        // freshly-computed smooth target — removes the visible pop each
+        // time the path recomputes.
+        if (trailLine != null && trailLine.enabled && smoothedTrail != null && renderedTrail != null)
+        {
+            float k = 1f - Mathf.Exp(-12f * Time.deltaTime);
+            for (int i = 0; i < renderedTrail.Length; i++)
+            {
+                renderedTrail[i] = Vector3.Lerp(renderedTrail[i], smoothedTrail[i], k);
+                trailLine.SetPosition(i, renderedTrail[i]);
+            }
+        }
+    }
+
+    // Catmull-Rom subdivision of the raw NavMesh corners into a dense,
+    // rounded polyline. NavMesh corners are hard angles at every obstacle;
+    // subdividing turns them into a flowing ribbon.
+    private Vector3[] smoothedTrail;   // target shape (recomputed on throttle)
+    private Vector3[] renderedTrail;   // eased shape actually drawn
+    [Tooltip("Subdivisions between each pair of NavMesh corners. Higher = smoother, denser line.")]
+    public int trailSubdivisions = 8;
+
+    private void RebuildSmoothTrail(Vector3[] corners)
+    {
+        int n = corners.Length;
+        // Padded control points so the spline reaches the true endpoints.
+        Vector3 First() => corners[0] + (corners[0] - corners[1]);
+        Vector3 Last() => corners[n - 1] + (corners[n - 1] - corners[n - 2]);
+
+        int sub = Mathf.Max(1, trailSubdivisions);
+        int outCount = (n - 1) * sub + 1;
+        var pts = new Vector3[outCount];
+        int w = 0;
+        for (int i = 0; i < n - 1; i++)
+        {
+            Vector3 p0 = i == 0 ? First() : corners[i - 1];
+            Vector3 p1 = corners[i];
+            Vector3 p2 = corners[i + 1];
+            Vector3 p3 = (i + 2 < n) ? corners[i + 2] : Last();
+            int segSteps = (i == n - 2) ? sub : sub; // uniform
+            for (int s = 0; s < segSteps; s++)
+            {
+                float t = s / (float)sub;
+                pts[w++] = CatmullRom(p0, p1, p2, p3, t) + Vector3.up * 0.08f;
+            }
+        }
+        pts[w] = corners[n - 1] + Vector3.up * 0.08f;
+
+        smoothedTrail = pts;
+        // Re-seed the rendered buffer if the point count changed so the
+        // per-frame lerp has a matching-length source.
+        if (renderedTrail == null || renderedTrail.Length != pts.Length)
+            renderedTrail = (Vector3[])pts.Clone();
+
+        trailLine.positionCount = pts.Length;
+        for (int i = 0; i < pts.Length; i++) trailLine.SetPosition(i, renderedTrail[i]);
+        if (!trailLine.enabled) trailLine.enabled = true;
+    }
+
+    private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+    {
+        float t2 = t * t;
+        float t3 = t2 * t;
+        return 0.5f * (
+            2f * p1 +
+            (-p0 + p2) * t +
+            (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+            (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
     }
 
     private void RecomputeCurrentStep()
