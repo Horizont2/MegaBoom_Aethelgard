@@ -193,8 +193,14 @@ public class CampGuideDirector : MonoBehaviour
         // Distinct targets per step — the earlier version pointed BOTH the
         // "talk to Elias" and "upgrade lodge" steps at Elias, so after the
         // first conversation the trail still led back to him instead of the
-        // lodge. Resolve buildings by their buildingID.
-        Transform lodgeT = FindBuildingTransform("ScoutsLodge") ?? eliasT;
+        // lodge. Resolve the lodge by buildingID first, then by a name
+        // containing "lodge". Deliberately NO Elias fallback — pointing the
+        // "upgrade the lodge" trail at Elias is exactly the bug we're
+        // fixing. Null target → the trail simply hides for that step.
+        Transform lodgeT = FindBuildingTransform("ScoutsLodge");
+        if (lodgeT == null) lodgeT = FindBuildingByName("lodge");
+        if (lodgeT == null)
+            Debug.LogWarning("[CampGuideDirector] Couldn't find the Scout's Lodge building (no CampBuilding with buildingID 'ScoutsLodge' or a name containing 'lodge'). The 'upgrade lodge' step will have no trail. Set the building's buildingID to 'ScoutsLodge'.");
 
         steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",           requiredValue = 1 });
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = lodgeT,    playerPrefsKey = "SaveBld_ScoutsLodge",   requiredValue = 2 });
@@ -208,6 +214,18 @@ public class CampGuideDirector : MonoBehaviour
         foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (b != null && b.buildingID == buildingID) return b.transform;
+        }
+        return null;
+    }
+
+    private Transform FindBuildingByName(string nameFragment)
+    {
+        string frag = nameFragment.ToLowerInvariant();
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (b == null) continue;
+            if (b.name.ToLowerInvariant().Contains(frag)) return b.transform;
+            if (!string.IsNullOrEmpty(b.buildingName) && b.buildingName.ToLowerInvariant().Contains(frag)) return b.transform;
         }
         return null;
     }
@@ -226,7 +244,18 @@ public class CampGuideDirector : MonoBehaviour
         if (aimCache.TryGetValue(target, out var cached)) return cached;
 
         Vector3 aim = target.position;
-        var renderers = target.GetComponentsInChildren<Renderer>();
+
+        // For a CampBuilding, aim ONLY at its realModel (the built
+        // structure). Encapsulating ALL child renderers pulled the centre
+        // toward the resource-pile visuals that sit off to one side, which
+        // is why the trail veered right of the lodge.
+        var building = target.GetComponent<CampBuilding>();
+        Renderer[] renderers = null;
+        if (building != null && building.realModel != null)
+            renderers = building.realModel.GetComponentsInChildren<Renderer>();
+        if (renderers == null || renderers.Length == 0)
+            renderers = target.GetComponentsInChildren<Renderer>();
+
         if (renderers != null && renderers.Length > 0)
         {
             Bounds b = renderers[0].bounds;
@@ -236,7 +265,7 @@ public class CampGuideDirector : MonoBehaviour
 
         // Snap to the nearest walkable navmesh point so the A* path ends
         // ON ground next to the building, not inside its footprint.
-        if (NavMesh.SamplePosition(aim, out NavMeshHit hit, 6f, NavMesh.AllAreas))
+        if (NavMesh.SamplePosition(aim, out NavMeshHit hit, 8f, NavMesh.AllAreas))
             aim = hit.position;
 
         aimCache[target] = aim;
