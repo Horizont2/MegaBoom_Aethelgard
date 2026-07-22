@@ -50,6 +50,10 @@ public class SmoothCompass : MonoBehaviour
     private readonly List<GameObject> spawnedIcons = new List<GameObject>();
     private readonly List<RectTransform> spawnedIconRects = new List<RectTransform>();
     private readonly List<TextMeshProUGUI> spawnedIconDistance = new List<TextMeshProUGUI>();
+    // Last whole-metre value written to each icon's distance label —
+    // TMP.text = ... re-lays out geometry on every assignment, so we
+    // only assign when the displayed integer actually changes.
+    private readonly List<int> lastShownDistance = new List<int>();
     private readonly List<CanvasGroup> spawnedIconCanvas = new List<CanvasGroup>();
 
     // Parallel pools for inactive icons — avoid Destroy/Instantiate churn
@@ -262,7 +266,15 @@ public class SmoothCompass : MonoBehaviour
                         if (!distLabel.gameObject.activeSelf) distLabel.gameObject.SetActive(true);
                         Vector3 flatDelta = target.position - distRef.position;
                         flatDelta.y = 0f;
-                        distLabel.text = Mathf.RoundToInt(flatDelta.magnitude) + "m";
+                        int m = Mathf.RoundToInt(flatDelta.magnitude);
+                        // Only rewrite when the visible integer changes —
+                        // TMP re-layout was firing 60x/s per icon before.
+                        while (lastShownDistance.Count <= i) lastShownDistance.Add(int.MinValue);
+                        if (lastShownDistance[i] != m)
+                        {
+                            lastShownDistance[i] = m;
+                            distLabel.text = m + "m";
+                        }
                     }
                     else if (distLabel.gameObject.activeSelf) distLabel.gameObject.SetActive(false);
                 }

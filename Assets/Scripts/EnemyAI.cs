@@ -121,31 +121,48 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
     }
 
+    // Reused hit buffer for the ground raycast — Physics.RaycastAll used
+    // to allocate a fresh array on every call, and each enemy calls this
+    // 1-3× per Update tick. With 50 aggro'd enemies that was 150 array
+    // allocs/frame plus a per-hit string-ToLower alloc. NonAlloc + layer-
+    // mask + direct comparison drops all of it.
+    private static readonly RaycastHit[] s_terrainHitBuffer = new RaycastHit[16];
+    private static int s_groundLayerMask = -1;
+
     private static float SampleTerrainHeight(Vector3 worldPos)
     {
-        Vector3 origin = new Vector3(worldPos.x, worldPos.y + 50f, worldPos.z);
-        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 150f, ~0, QueryTriggerInteraction.Ignore);
-
-        float bestY = -9999f;
-        bool found = false;
-
-        foreach (var hit in hits)
+        // Resolve the ground layer mask once. Falls back to "everything"
+        // if none of the expected layers exist in the project.
+        if (s_groundLayerMask == -1)
         {
-            Collider col = hit.collider;
-            if (col.isTrigger) continue;
-
-            string n = col.name.ToLower();
-            // ФІКС: Ігноруємо ліс та гори, шукаємо тільки землю
-            if (n.Contains("terrain") || n.Contains("floor") || n.Contains("ground"))
-            {
-                if (hit.point.y > bestY)
-                {
-                    bestY = hit.point.y;
-                    found = true;
-                }
-            }
+            int m = 0;
+            int terrainLayer = LayerMask.NameToLayer("Terrain");
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            int defaultLayer = LayerMask.NameToLayer("Default");
+            if (terrainLayer >= 0) m |= 1 << terrainLayer;
+            if (groundLayer >= 0) m |= 1 << groundLayer;
+            if (defaultLayer >= 0) m |= 1 << defaultLayer;
+            s_groundLayerMask = m == 0 ? ~0 : m;
         }
 
+        Vector3 origin = new Vector3(worldPos.x, worldPos.y + 50f, worldPos.z);
+        int count = Physics.RaycastNonAlloc(origin, Vector3.down, s_terrainHitBuffer, 150f,
+                                            s_groundLayerMask, QueryTriggerInteraction.Ignore);
+        float bestY = -9999f;
+        bool found = false;
+        for (int i = 0; i < count; i++)
+        {
+            var hit = s_terrainHitBuffer[i];
+            if (hit.collider.isTrigger) continue;
+            // If the ray hit an actual Terrain we take it immediately —
+            // the Terrain layer is the authoritative ground surface, no
+            // need to compare names.
+            if (hit.collider is TerrainCollider)
+            {
+                return hit.point.y;
+            }
+            if (hit.point.y > bestY) { bestY = hit.point.y; found = true; }
+        }
         return found ? bestY : worldPos.y;
     }
 

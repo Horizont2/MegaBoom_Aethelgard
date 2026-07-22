@@ -93,8 +93,23 @@ public class CampBuilding : MonoBehaviour
     // FMOD's PlayOneShot finish a too-long clip after construction.
     private int buildSfxHandle = -1;
 
+    // Cached PlayerPrefs keys — the `"Prefix_" + buildingID` concat used
+    // to run every frame in Update on every building (GC + string-table
+    // lookup). Built once in Awake.
+    private string ppKey_Save;
+    private string ppKey_UpgradeFinished;
+    private string ppKey_IsUpgrading;
+    private string ppKey_UpgradeStart;
+
     private void Awake()
     {
+        // Cache PlayerPrefs keys once so the Update path stops allocating
+        // a fresh string every frame per building.
+        ppKey_Save = "SaveBld_" + buildingID;
+        ppKey_UpgradeFinished = "UpgradeFinished_" + buildingID;
+        ppKey_IsUpgrading = "IsUpgrading_" + buildingID;
+        ppKey_UpgradeStart = "UpgradeStart_" + buildingID;
+
         if (realModel != null)
         {
             originalModelPos = realModel.transform.localPosition;

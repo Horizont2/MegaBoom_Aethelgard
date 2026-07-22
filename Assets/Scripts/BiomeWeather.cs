@@ -6,10 +6,10 @@ public class BiomeWeather : MonoBehaviour
     public Terrain terrain;
 
     [Header("Weather Particle Systems")]
-    public ParticleSystem leavesEffect;   // Для шару 0 (Трава)
-    public ParticleSystem sandEffect;     // Для шару 1 (Пісок)
-    public ParticleSystem snowEffect;     // Для шару 2 (Сніг)
-    // Гори (шар 3) зазвичай без ефектів
+    public ParticleSystem leavesEffect;   // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 0 (пїЅпїЅпїЅпїЅпїЅ)
+    public ParticleSystem sandEffect;     // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 1 (ПіпїЅпїЅпїЅ)
+    public ParticleSystem snowEffect;     // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 2 (пїЅпїЅпїЅпїЅ)
+    // пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ 3) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     private int currentDominantTexture = -1;
 
@@ -18,14 +18,21 @@ public class BiomeWeather : MonoBehaviour
         if (terrain == null) terrain = Terrain.activeTerrain;
     }
 
+    // Throttle the biome check вЂ” the dominant texture under the player
+    // only changes when they cross a biome boundary, and each check
+    // allocates a float[,,] via terrainData.GetAlphamaps. 0.5s cadence
+    // is imperceptible and drops the GC pressure to nothing.
+    private float sampleTimer = 0f;
+    private const float SAMPLE_INTERVAL = 0.5f;
+
     private void Update()
     {
         if (terrain == null) return;
+        sampleTimer -= Time.deltaTime;
+        if (sampleTimer > 0f) return;
+        sampleTimer = SAMPLE_INTERVAL;
 
-        // Дізнаємося, який шар зараз під ногами
         int dominantTexture = GetDominantTerrainTexture(transform.position);
-
-        // Якщо біом змінився - оновлюємо погоду
         if (dominantTexture != currentDominantTexture)
         {
             currentDominantTexture = dominantTexture;
@@ -35,32 +42,32 @@ public class BiomeWeather : MonoBehaviour
 
     private void UpdateWeatherEffects(int textureIndex)
     {
-        // Спочатку вимикаємо всі ефекти
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (leavesEffect != null) leavesEffect.Stop();
         if (sandEffect != null) sandEffect.Stop();
         if (snowEffect != null) snowEffect.Stop();
 
-        // Вмикаємо той, який відповідає біому
-        if (textureIndex == 0 && leavesEffect != null) leavesEffect.Play();      // Трава
-        else if (textureIndex == 1 && sandEffect != null) sandEffect.Play(); // Пісок
-        else if (textureIndex == 2 && snowEffect != null) snowEffect.Play(); // Сніг
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+        if (textureIndex == 0 && leavesEffect != null) leavesEffect.Play();      // пїЅпїЅпїЅпїЅпїЅ
+        else if (textureIndex == 1 && sandEffect != null) sandEffect.Play(); // ПіпїЅпїЅпїЅ
+        else if (textureIndex == 2 && snowEffect != null) snowEffect.Play(); // пїЅпїЅпїЅпїЅ
     }
 
-    // --- МАГІЯ ЧИТАННЯ ЗЕМЛІ ---
+    // --- пїЅпїЅГІпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅЛІ ---
     private int GetDominantTerrainTexture(Vector3 worldPos)
     {
         TerrainData terrainData = terrain.terrainData;
         Vector3 terrainPos = terrain.transform.position;
 
-        // Переводимо координати світу в координати карти текстур
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         int mapX = Mathf.RoundToInt(((worldPos.x - terrainPos.x) / terrainData.size.x) * terrainData.alphamapWidth);
         int mapZ = Mathf.RoundToInt(((worldPos.z - terrainPos.z) / terrainData.size.z) * terrainData.alphamapHeight);
 
-        // Захист від виходу за межі
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
         if (mapX < 0 || mapZ < 0 || mapX >= terrainData.alphamapWidth || mapZ >= terrainData.alphamapHeight)
             return 0;
 
-        // Отримуємо "вагу" кожної фарби в цій точці
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         float[,,] splatmapData = terrainData.GetAlphamaps(mapX, mapZ, 1, 1);
         float[] cellMix = new float[splatmapData.GetUpperBound(2) + 1];
 
@@ -69,7 +76,7 @@ public class BiomeWeather : MonoBehaviour
             cellMix[i] = splatmapData[0, 0, i];
         }
 
-        // Знаходимо текстуру, якої тут найбільше
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float maxMix = 0;
         int maxIndex = 0;
         for (int i = 0; i < cellMix.Length; i++)
@@ -81,6 +88,6 @@ public class BiomeWeather : MonoBehaviour
             }
         }
 
-        return maxIndex; // Поверне 0, 1, 2 або 3
+        return maxIndex; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0, 1, 2 пїЅпїЅпїЅ 3
     }
 }

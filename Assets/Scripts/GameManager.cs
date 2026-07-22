@@ -51,8 +51,15 @@ public class GameManager : MonoBehaviour
         // �����Ҳ�: ����������� ���, ���� ����� ���� �������!
         Time.timeScale = 1f;
 
-        survivalTime = 0f;
-        nextSurvivalTick = 1f;
+        // Only wipe the run timer on a FRESH scene load — a "Continue"
+        // resumes the persisted position, so the timer must resume too
+        // (was zeroing 00:00 even mid-run).
+        bool continuing = PlayerPrefs.GetInt("IsContinuing", 0) == 1;
+        if (!continuing)
+        {
+            survivalTime = 0f;
+        }
+        nextSurvivalTick = Mathf.Floor(survivalTime) + 1f;
         isGameOver = false;
         isTimerActive = false;
 

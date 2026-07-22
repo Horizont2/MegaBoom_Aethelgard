@@ -4,9 +4,9 @@ using UnityEngine.UI;
 public class MinimapIconTracker : MonoBehaviour
 {
     [Header("References")]
-    public RectTransform minimapRect; // Твій MinimapBase (220x220)
+    public RectTransform minimapRect; // пїЅпїЅпїЅ MinimapBase (220x220)
     public Image iconImage;
-    public Camera minimapCamera; // Перетягни сюди камеру мінімапи
+    public Camera minimapCamera; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Settings")]
     public float iconMargin = 10f;
@@ -40,10 +40,10 @@ public class MinimapIconTracker : MonoBehaviour
 
         iconImage.enabled = true;
 
-        // 1. Отримуємо відносну позицію коня до гравця
+        // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 relPos = nearestHorse.transform.position - player.position;
 
-        // 2. МАГІЯ ТОЧНОСТІ: Вираховуємо реальний масштаб на основі камери
+        // 2. пїЅпїЅГІпїЅ пїЅпїЅпїЅпїЅпїЅпїЅТІ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         float unitsInView;
         if (minimapCamera.orthographic)
         {
@@ -51,17 +51,17 @@ public class MinimapIconTracker : MonoBehaviour
         }
         else
         {
-            // Для Perspective камери на висоті 40
+            // пїЅпїЅпїЅ Perspective пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 40
             unitsInView = 2f * minimapCamera.transform.position.y * Mathf.Tan(minimapCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
         }
 
-        // Скільки пікселів UI припадає на 1 ігровий метр
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         float pixelsPerMeter = minimapRect.sizeDelta.x / unitsInView;
 
-        // 3. Рахуємо фінальну позицію
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Vector2 uiPos = new Vector2(relPos.x, relPos.z) * pixelsPerMeter;
 
-        // 4. Обмежуємо колом, якщо об'єкт за межами видимості
+        // 4. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (uiPos.magnitude > minimapRadius)
         {
             uiPos = uiPos.normalized * minimapRadius;
@@ -70,17 +70,30 @@ public class MinimapIconTracker : MonoBehaviour
         iconRect.anchoredPosition = uiPos;
     }
 
+    // Cache the extraction-point list вЂ” refreshed every ~1s instead of
+    // every frame. FindGameObjectsWithTag allocates a new array each call
+    // and this ran in LateUpdate on every frame the minimap was up.
+    private GameObject[] cachedPoints;
+    private float pointsRefreshTimer = 0f;
+    private const float POINTS_REFRESH_INTERVAL = 1.0f;
+
     private GameObject FindNearestExtractionPoint()
     {
-        // Переконайся, що у коней є тег "ExtractionPoint"
-        GameObject[] points = GameObject.FindGameObjectsWithTag("ExtractionPoint");
-        GameObject nearest = null;
-        float minDist = Mathf.Infinity;
-
-        foreach (GameObject p in points)
+        pointsRefreshTimer -= Time.deltaTime;
+        if (cachedPoints == null || pointsRefreshTimer <= 0f)
         {
-            float dist = Vector3.Distance(player.position, p.transform.position);
-            if (dist < minDist) { minDist = dist; nearest = p; }
+            cachedPoints = GameObject.FindGameObjectsWithTag("ExtractionPoint");
+            pointsRefreshTimer = POINTS_REFRESH_INTERVAL;
+        }
+
+        GameObject nearest = null;
+        float minSqr = float.PositiveInfinity;
+        for (int i = 0; i < cachedPoints.Length; i++)
+        {
+            var p = cachedPoints[i];
+            if (p == null) continue; // pool destroyed since last refresh
+            float sqr = (player.position - p.transform.position).sqrMagnitude;
+            if (sqr < minSqr) { minSqr = sqr; nearest = p; }
         }
         return nearest;
     }

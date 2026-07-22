@@ -217,15 +217,39 @@ public class CampNPC_Elias : MonoBehaviour
         int totalChars = subtitleText.textInfo.characterCount;
         subtitleText.maxVisibleCharacters = 0;
 
+        // Skippable typewriter — Space/E/Enter jumps to the fully typed
+        // line so a player who's read Elias five times before doesn't sit
+        // through the whole crawl. Second press advances past the stay.
+        bool skippedTypewriter = false;
         for (int i = 0; i <= totalChars; i++)
         {
+            if (!skippedTypewriter && WasSkipPressed())
+            {
+                skippedTypewriter = true;
+                i = totalChars; // jump to fully visible
+            }
             subtitleText.maxVisibleCharacters = i;
             yield return new WaitForSeconds(typingSpeed);
         }
-
-        yield return new WaitForSeconds(stayDuration);
         subtitleText.maxVisibleCharacters = 99999;
+
+        // Skippable read-hold — same trigger cuts the wait short.
+        float t = 0f;
+        while (t < stayDuration)
+        {
+            if (WasSkipPressed()) break;
+            t += Time.deltaTime;
+            yield return null;
+        }
         subtitleText.text = "";
+    }
+
+    private static bool WasSkipPressed()
+    {
+        return Input.GetKeyDown(KeyCode.Space)
+            || Input.GetKeyDown(KeyCode.E)
+            || Input.GetKeyDown(KeyCode.Return)
+            || Input.GetKeyDown(KeyCode.KeypadEnter);
     }
 
     private void InterruptDialogue()

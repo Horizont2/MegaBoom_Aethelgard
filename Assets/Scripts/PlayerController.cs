@@ -581,6 +581,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (isDead) return;
 
+        SaveCampHeartbeat();
+
         if (dashStaminaFill != null)
         {
             float dashTarget = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
@@ -1868,14 +1870,40 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void OnDestroy()
     {
-        if (isCampMode)
-        {
-            PlayerPrefs.SetFloat("CampPosX", transform.position.x);
-            PlayerPrefs.SetFloat("CampPosY", transform.position.y);
-            PlayerPrefs.SetFloat("CampPosZ", transform.position.z);
-            PlayerPrefs.SetInt("HasCampSave", 1);
-            PlayerPrefs.Save();
-        }
+        SaveCampPosition();
+    }
+
+    // Save on app-pause + app-quit too — OnDestroy runs on scene unload
+    // but doesn't fire on a force-kill or power loss. Also autosaves at
+    // a 30s heartbeat via SaveCampHeartbeat.
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused) SaveCampPosition();
+    }
+
+    private void OnApplicationQuit()
+    {
+        SaveCampPosition();
+    }
+
+    private float campSaveTimer = 0f;
+    private void SaveCampHeartbeat()
+    {
+        if (!isCampMode) return;
+        campSaveTimer += Time.unscaledDeltaTime;
+        if (campSaveTimer < 30f) return;
+        campSaveTimer = 0f;
+        SaveCampPosition();
+    }
+
+    private void SaveCampPosition()
+    {
+        if (!isCampMode) return;
+        PlayerPrefs.SetFloat("CampPosX", transform.position.x);
+        PlayerPrefs.SetFloat("CampPosY", transform.position.y);
+        PlayerPrefs.SetFloat("CampPosZ", transform.position.z);
+        PlayerPrefs.SetInt("HasCampSave", 1);
+        PlayerPrefs.Save();
     }
 
     public void TriggerUIPop() { if (xpFill != null) StartCoroutine(PopUIRoutine(xpFill.transform.parent.GetComponent<RectTransform>())); }
