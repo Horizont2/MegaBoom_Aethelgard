@@ -59,7 +59,16 @@ public class CampGuideDirector : MonoBehaviour
     private int currentStepIndex = -1;
     private float progressTimer = 0f;
     private float trailTimer = 0f;
-    private readonly NavMeshPath scratchPath = new NavMeshPath();
+    // Created in Awake — Unity throws if NavMeshPath is constructed in a
+    // field initializer ("InitializeNavMeshPath is not allowed to be
+    // called from a MonoBehaviour constructor"), which killed the whole
+    // component before Start could run.
+    private NavMeshPath scratchPath;
+
+    private void Awake()
+    {
+        scratchPath = new NavMeshPath();
+    }
 
     private void Start()
     {
