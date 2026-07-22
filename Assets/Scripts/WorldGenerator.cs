@@ -1896,9 +1896,14 @@ public class WorldGenerator : MonoBehaviour
 
                 bool inForbiddenZone = false;
                 Vector3 currentPos = new Vector3(worldX, worldY, worldZ);
-                foreach (Vector3 fz in forbiddenZones)
+                // sqrMagnitude comparison — Vector3.Distance does a
+                // Sqrt per call, which at ~60k spawn attempts × growing
+                // forbiddenZones list adds real seconds to load time.
+                const float FORBIDDEN_SQR = 18f * 18f;
+                for (int fzi = 0; fzi < forbiddenZones.Count; fzi++)
                 {
-                    if (Vector3.Distance(currentPos, fz) < 18f) { inForbiddenZone = true; break; }
+                    Vector3 d = currentPos - forbiddenZones[fzi];
+                    if (d.x * d.x + d.y * d.y + d.z * d.z < FORBIDDEN_SQR) { inForbiddenZone = true; break; }
                 }
                 if (inForbiddenZone) continue;
 
@@ -1972,10 +1977,21 @@ public class WorldGenerator : MonoBehaviour
 
                 float randomSpawn = GetRandomFloat();
 
+                // Note: any ambient VFX we spawn here goes through the
+                // no-collider guard below so authored trigger volumes on
+                // VFX prefabs can't leak into runtime as invisible walls.
                 if (ambientVFXPrefabs != null && ambientVFXPrefabs.Length > 0 && randomSpawn > 0.985f)
                 {
                     GameObject vfxPrefab = GetRandomPrefab(ambientVFXPrefabs);
-                    Instantiate(vfxPrefab, new Vector3(worldX, worldY + 1.5f, worldZ), Quaternion.identity, treeContainer);
+                    GameObject vfxInst = Instantiate(vfxPrefab, new Vector3(worldX, worldY + 1.5f, worldZ), Quaternion.identity, treeContainer);
+                    // Strip non-trigger colliders — ambient VFX shouldn't
+                    // block movement even if the prefab was authored with
+                    // an interaction volume.
+                    if (vfxInst != null)
+                    {
+                        foreach (var col in vfxInst.GetComponentsInChildren<Collider>(true))
+                            if (col != null && !col.isTrigger) Destroy(col);
+                    }
                 }
 
                 if (density > forestThreshold && steepness <= 25f)
@@ -2200,6 +2216,13 @@ public class WorldGenerator : MonoBehaviour
 
             GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
             obj.transform.localScale *= GetRandomRange(0.7f, 1.3f);
+
+            // Strip solid colliders from bushes/mushrooms/ground clutter —
+            // these are visual props, not obstacles. Rocks & trees keep
+            // their colliders because they spawn via a different path.
+            // Triggers are preserved (some props have interaction volumes).
+            foreach (var col in obj.GetComponentsInChildren<Collider>(true))
+                if (col != null && !col.isTrigger) Destroy(col);
 
             if (biomeMaterial != null)
             {

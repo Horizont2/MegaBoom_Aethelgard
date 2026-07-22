@@ -164,6 +164,17 @@ public class GiantTreeVFXLOD : MonoBehaviour
                 ps.Clear();
                 if (systems[i].renderer != null) systems[i].renderer.enabled = false;
             }
+
+            // Toggle any sibling Colliders on the VFX system too.
+            // Otherwise past farDistance the renderer is off but any
+            // interaction collider (rare but present on some VFX prefabs)
+            // stays lit and produces an invisible ring around each giant
+            // tree that the player can't walk through.
+            var cols = ps.GetComponentsInChildren<Collider>(true);
+            for (int c = 0; c < cols.Length; c++)
+            {
+                if (cols[c] != null) cols[c].enabled = on;
+            }
         }
         particlesOn = on;
     }

@@ -347,15 +347,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 }
             }
 
-            // 2. Фікс повороту: Канвас ворога завжди дивиться прямо в камеру
+            // 2. Фікс повороту: Канвас ворога завжди дивиться прямо в камеру.
+            // CameraCache re-resolves lazily on scene load, so we don't pay
+            // Camera.main's scene-walk each frame.
+            if (mainCamTransform == null) mainCamTransform = CameraCache.MainTransform;
             if (mainCamTransform != null)
-            {
                 healthCanvas.transform.rotation = mainCamTransform.rotation;
-            }
-            else if (Camera.main != null)
-            {
-                healthCanvas.transform.rotation = Camera.main.transform.rotation;
-            }
         }
 
         if (target == null && !isDead)
