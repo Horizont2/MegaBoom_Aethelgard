@@ -179,13 +179,35 @@ public class IntroCinematicManager : MonoBehaviour
         subtitleText.maxVisibleCharacters = 99999;
     }
 
+    // Hold-to-skip: an accidental Esc used to kill the intro instantly
+    // (Esc is muscle-memory for "open settings"). Now the player must
+    // hold Esc/Space for `holdToSkipSeconds` before the cutscene aborts.
+    [Header("Skip UX")]
+    [Tooltip("How long the player must hold Esc/Space to skip the intro. Accidental single presses no longer abort the cutscene.")]
+    public float holdToSkipSeconds = 0.6f;
+    public TMPro.TextMeshProUGUI holdToSkipPrompt;
+    private float holdSkipTimer = 0f;
+
     void Update()
     {
         if (isSkipping) return;
 
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape))
+        bool held = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.Escape);
+        if (held)
         {
-            SkipCinematic();
+            holdSkipTimer += Time.unscaledDeltaTime;
+            if (holdToSkipPrompt != null && !holdToSkipPrompt.gameObject.activeSelf)
+                holdToSkipPrompt.gameObject.SetActive(true);
+            if (holdSkipTimer >= holdToSkipSeconds)
+            {
+                SkipCinematic();
+            }
+        }
+        else
+        {
+            if (holdSkipTimer > 0f) holdSkipTimer = 0f;
+            if (holdToSkipPrompt != null && holdToSkipPrompt.gameObject.activeSelf)
+                holdToSkipPrompt.gameObject.SetActive(false);
         }
     }
 

@@ -54,13 +54,71 @@ public static class LocalizationManager
     public static string Tr(string key)
     {
         EnsureLoaded();
+        if (string.IsNullOrEmpty(key)) return key;
         Dictionary<string, string> active = ActiveDictionary();
         if (active.TryGetValue(key, out string v)) return v;
         // Always fall through to English if the active locale is missing
         // the entry — keeps unlocalised strings readable instead of
         // surfacing the raw key in the UI.
         if (s_lang != Lang.English && s_en.TryGetValue(key, out v)) return v;
+        // Compositional fallback for armor names like
+        //   "Abyssal Chestplate", "Knight Boots (Elite)",
+        //   "Barbarian's Officer Axe"
+        // — decompose into set / piece / variant and translate each part
+        // separately. Saves registering 108 armor combinations one-by-one.
+        // Only runs when the key genuinely wasn't a direct hit AND the
+        // active locale actually differs from English (no work in English).
+        if (s_lang != Lang.English)
+        {
+            string composed = TryComposeTranslation(key, active);
+            if (composed != null) return composed;
+        }
         return key; // last resort — key acts as the literal string
+    }
+
+    // Split "X Y (Z)" into pieces, translate whichever ones we have, and
+    // rebuild. Returns null if NOTHING could be translated — the caller
+    // then falls through to the English literal.
+    private static string TryComposeTranslation(string raw, Dictionary<string, string> active)
+    {
+        // Peel a trailing " (Variant)" first — the variant tag is a common
+        // suffix on armor names.
+        string variant = null;
+        string body = raw;
+        int parenIdx = body.LastIndexOf(" (");
+        if (parenIdx > 0 && body.EndsWith(")"))
+        {
+            variant = body.Substring(parenIdx + 1); // includes the ()
+            body = body.Substring(0, parenIdx);
+        }
+
+        // Body is "Word Word Word …" — translate every whitespace-
+        // separated token individually. If ANY token has no translation
+        // in the active dictionary and no fallback in English, bail out
+        // for this token (keep original word).
+        string[] words = body.Split(' ');
+        bool anyTranslated = false;
+        for (int i = 0; i < words.Length; i++)
+        {
+            string w = words[i];
+            if (string.IsNullOrEmpty(w)) continue;
+            if (active.TryGetValue(w, out string t))
+            {
+                words[i] = t;
+                anyTranslated = true;
+            }
+        }
+
+        string variantOut = null;
+        if (variant != null)
+        {
+            if (active.TryGetValue(variant, out string vt)) { variantOut = vt; anyTranslated = true; }
+            else variantOut = variant;
+        }
+
+        if (!anyTranslated) return null; // nothing to give — let caller fall back
+        string joined = string.Join(" ", words);
+        return variantOut != null ? joined + " " + variantOut : joined;
     }
 
     private static Dictionary<string, string> ActiveDictionary()
@@ -1331,6 +1389,98 @@ public static class LocalizationManager
         Add("PROMPT_OPEN_CHEST", "[E] Open Chest", "[E] Відкрити скриню");
         AddSelf("The Barracks is open! Walk over and press F to hire mercenaries — they'll conquer regions for you.",
             "Казарми відкриті! Підійди й натисни F, щоб найняти найманців — вони захоплять регіони замість тебе.");
+
+        // === Armor compositional translation ===
+        // Instead of registering 108 armor combinations, register the
+        // WORDS. Tr's compositional fallback decomposes runtime-authored
+        // asset names like "Abyssal Chestplate (Elite)" into these parts.
+        // Sets
+        AddSelf("Novice",     "Новачок");
+        AddSelf("Mercenary",  "Найманець");
+        AddSelf("Knight",     "Лицарський");
+        AddSelf("Barbarian",  "Варварський");
+        AddSelf("Barbarian's","Варварський");
+        AddSelf("Abyssal",    "Прірвний");
+        AddSelf("Paladin",    "Паладинський");
+        AddSelf("Royal",      "Королівський");
+        // Pieces
+        AddSelf("Helm",       "Шолом");
+        AddSelf("Chestplate", "Латний Нагрудник");
+        AddSelf("Gauntlets",  "Наручі");
+        AddSelf("Belt",       "Пояс");
+        AddSelf("Greaves",    "Поножі");
+        AddSelf("Boots",      "Чоботи");
+        // Variants
+        AddSelf("(Sturdy)",   "(Міцний)");
+        AddSelf("(Elite)",    "(Елітний)");
+
+        // === Weapon names (only 5) ===
+        AddSelf("Rusty Peasant Sword",       "Іржавий Селянський Меч");
+        AddSelf("Iron Oathkeeper",           "Залізний Клятводержець");
+        AddSelf("Barbarian Axe",             "Варварська Сокира");
+        AddSelf("Barbarian's Officer Axe",   "Офіцерська Сокира Варвара");
+        AddSelf("Aethelgard's Vengeance",    "Помста Ітельгарду");
+
+        // === Tutorial hint titles + bodies (HintData assets) ===
+        AddSelf("ARMOR SLOTS", "СЛОТИ БРОНІ");
+        AddSelf("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
+            "Шість слотів: Голова, Груди, Руки, Пояс, Ноги, Стопи. Змішуй тири вільно — Power Score сумує кожен вдягнений предмет.");
+        AddSelf("MELEE", "БЛИЖНІЙ БІЙ");
+        AddSelf("Hold <b>LMB</b> to chain swings.", "Тримай <b>ЛКМ</b> для серії ударів.");
+        AddSelf("BUILD", "БУДІВНИЦТВО");
+        AddSelf("CAMP HUB", "ТАБІР");
+        AddSelf("Your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+            "Твоє безпечне місце. Підійди до слоту будівлі і натисни <b>F</b> для огляду чи будівництва. Місії — на Дошці оголошень.");
+        AddSelf("INCOMING ATTACK", "АТАКА!");
+        AddSelf("CLEARED REGION", "РЕГІОН ЗАЧИЩЕНО");
+        AddSelf("This region is already purified — totems are silent. Small patrols remain for farming, but no boss waves.",
+            "Цей регіон вже очищено — тотеми мовчать. Лишились малі патрулі для фарму, але без хвиль босів.");
+        AddSelf("DIAMONDS", "ДІАМАНТИ");
+        AddSelf("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
+            "Діаманти — постійна валюта. <b>Винеси їх живим</b> — вони витрачаються в Магазині на зброю, броню та мета.");
+        AddSelf("ENCOUNTER CLEARED", "ГРУПУ ЗАЧИЩЕНО");
+        AddSelf("Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
+            "Зачищення цілого патруля / табору кидає бонусний лут. Полюй на групи між тотемами — стакай XP і діаманти.");
+        AddSelf("BLACKSMITH'S FORGE", "КУЗНЯ КОВАЛЯ");
+        AddSelf("Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
+            "Кожен рівень Кузні підіймає <b>шкоду зброї</b> в місії: +2% / +5% / +8% / +11% / +15%. Множиться на статистику зброї.");
+        AddSelf("GRENADE", "ГРАНАТА");
+        AddSelf("HUNTER'S CABIN", "ХАТИНА МИСЛИВЦЯ");
+        AddSelf("Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
+            "Виробляє <b>ЇЖУ</b> за хвилину. Їжа — найрідкісніший із базових ресурсів; прокачай Хатину до високих тирів.");
+        AddSelf("LEVEL UP", "ПІДВИЩЕННЯ РІВНЯ");
+        AddSelf("LUMBERJACK'S HUT", "ХАТА ЛІСОРУБА");
+        AddSelf("Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
+            "Виробляє <b>КОЛОДИ</b> за хвилину, зберігаються у Схові. Дерево — найдешевший ресурс, але всюди потрібний.");
+        AddSelf("WORLD MAP", "МАПА СВІТУ");
+        AddSelf("STACK MULTIPLIER", "МНОЖНИК STACK");
+        AddSelf("XP SHARDS", "ОСКОЛКИ ДОСВІДУ");
+        AddSelf("STORAGE VAULT", "СХОВ ТАБОРУ");
+        AddSelf("WEAPON UPGRADE", "ПОКРАЩЕННЯ ЗБРОЇ");
+        AddSelf("ARMOR UPGRADE", "ПОКРАЩЕННЯ БРОНІ");
+        AddSelf("CORRUPTED TOTEM", "ЗАРАЖЕНИЙ ТОТЕМ");
+        AddSelf("BLACKSMITH'S SHOP", "МАГАЗИН КОВАЛЯ");
+        AddSelf("PASSIVE INCOME", "ПАСИВНИЙ ДОХІД");
+        AddSelf("Hold <b>E</b> to begin an upgrade. Resources are spent up-front. The build finishes over time — even when you're on a run.",
+            "Тримай <b>E</b> для покращення. Ресурси витрачаються одразу. Будівництво завершиться з часом — навіть коли ти в поході.");
+        AddSelf("Hold <b>RMB</b> to aim a grenade. Time slows while aiming. Release to throw.",
+            "Тримай <b>ПКМ</b> для прицілювання гранати. Час сповільниться. Відпусти щоб кинути.");
+        AddSelf("Pick one of three upgrade cards each level. Hover for the effect, click to commit.",
+            "Обирай одне з трьох покращень кожного рівня. Наведи для ефекту, клацни щоб обрати.");
+        AddSelf("<b>WASD</b> to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.",
+            "<b>WASD</b> — рух, миша — огляд. Тримай <b>SHIFT</b> для ривка й ухилення.");
+        AddSelf("<b>Drag</b> to pan, scroll to zoom. Click an available region to see rewards and deploy when ready.",
+            "<b>Тягни</b> для переміщення, скрол — масштаб. Клацни доступний регіон для нагород і вирушення.");
+        AddSelf("Each armor piece can be levelled 0→5 in the Shop. Higher tier + level = bigger Power Score.",
+            "Кожен предмет броні можна прокачати 0→5 у Магазині. Вищий тир + рівень = більший Power Score.");
+        AddSelf("Raises your maximum Wood / Stone / Food capacity — otherwise resources overflow and cap at max.",
+            "Підвищує макс. запас Дерева / Каменю / Їжі — інакше ресурси переливаються й обрізаються.");
+        AddSelf("Spend diamonds in the Shop to level up your equipped weapon — bigger damage per swing.",
+            "Витрачай діаманти в Магазині для прокачки зброї — більша шкода за удар.");
+        AddSelf("Spend diamonds to unlock and upgrade gear — the higher-tier sets need Storage Vault upgrades to unlock.",
+            "Витрачай діаманти на нові сети — вищі тири потребують прокачки Схову.");
+        AddSelf("Elite tells are slower and hit harder. Perfect-dodge them with SHIFT to trigger a crit + slow-mo.",
+            "Елітні розмахи повільніші й сильніші. Perfect-dodge (SHIFT) — крит + slow-mo.");
 
         // === Roadside altar (dead-end mini-boss) ===
         Add("PROMPT_ACTIVATE_ALTAR", "[F] Activate Ancient Altar", "[F] Активувати Стародавній Вівтар");

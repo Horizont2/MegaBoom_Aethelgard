@@ -305,6 +305,20 @@ public class CampGuideDirector : MonoBehaviour
             }
         }
 
+        // Off-screen arrow — same target as the beacon. Works fine in
+        // parallel: this is a screen-edge UI arrow, the beacon is a
+        // world-space marker over the objective.
+        if (OffscreenWaypointIndicator.Instance != null)
+        {
+            if (currentStepIndex >= 0 && currentStepIndex < steps.Count)
+            {
+                var t = steps[currentStepIndex].target;
+                if (t != null) OffscreenWaypointIndicator.Instance.SetTarget(t);
+                else OffscreenWaypointIndicator.Instance.ClearTarget();
+            }
+            else OffscreenWaypointIndicator.Instance.ClearTarget();
+        }
+
         // Follow the current target with the waypoint marker — with a slow
         // bob + spin so the beacon reads as a live objective, not debris.
         if (waypointMarker != null && currentStepIndex >= 0 && currentStepIndex < steps.Count)
