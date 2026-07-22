@@ -1399,6 +1399,14 @@ public static class LocalizationManager
         Add("GUIDE_STEP_DONE",          "Objective complete!",                   "Ціль виконано!");
         Add("GUIDE_PLATE_TITLE",        "Camp Task",                             "Завдання табору");
 
+        // === Graphics auto-detect (wire a button to GraphicsAutoConfig.DetectAndApply) ===
+        Add("SETTINGS_AUTODETECT",        "Auto-Detect (Recommended)", "Авто-визначення (рекомендовано)");
+        Add("SETTINGS_TIER_APPLIED",      "Graphics set to: {0}",      "Графіку встановлено на: {0}");
+        Add("SETTINGS_TIER_LOW",          "Low",                       "Низька");
+        Add("SETTINGS_TIER_MEDIUM",       "Medium",                    "Середня");
+        Add("SETTINGS_TIER_HIGH",         "High",                      "Висока");
+        Add("SETTINGS_TIER_ULTRA",        "Ultra",                     "Ультра");
+
         // === World interaction prompts (F/E keys near objects) ===
         Add("PROMPT_INSPECT_BUILDING", "[F] Inspect {0}", "[F] Огляд: {0}");
         Add("PROMPT_OPEN_MAP", "[E] Open Map", "[E] Відкрити мапу");

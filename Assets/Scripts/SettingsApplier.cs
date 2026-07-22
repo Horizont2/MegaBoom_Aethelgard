@@ -19,6 +19,12 @@ public class SettingsApplier : MonoBehaviour
         // ФІКС: Конвертуємо старі зламані збереження (1%) у нормальні (100%)
         SanitizeLegacyVolumes();
 
+        // First-launch hardware detection — picks a graphics tier and
+        // writes the Settings_* prefs BEFORE we apply them, so a fresh
+        // install opens at a sane quality level for the player's PC
+        // instead of whatever the project shipped as the default.
+        GraphicsAutoConfig.EnsureFirstRun();
+
         GameObject go = new GameObject("[SettingsApplier]");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<SettingsApplier>();
@@ -163,7 +169,10 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyTextureQuality()
     {
-        int q = PlayerPrefs.GetInt("Settings_TextureQuality", 2);
+        // Default 3 = full-resolution textures (mipmap limit 0). AAA titles
+        // ship full-res textures on by default; the auto-config tier lowers
+        // this on weaker hardware.
+        int q = PlayerPrefs.GetInt("Settings_TextureQuality", 3);
         QualitySettings.globalTextureMipmapLimit = Mathf.Clamp(3 - q, 0, 3);
     }
 
@@ -187,7 +196,9 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyShadowDistance()
     {
-        QualitySettings.shadowDistance = PlayerPrefs.GetFloat("Settings_ShadowDistance", 50f);
+        // 80m default — 50 clipped shadows visibly close on open terrain.
+        // Auto-config overrides per tier (30 low → 130 ultra).
+        QualitySettings.shadowDistance = PlayerPrefs.GetFloat("Settings_ShadowDistance", 80f);
     }
 
     public static void ApplyRenderScale()
