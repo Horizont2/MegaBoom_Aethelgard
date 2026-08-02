@@ -274,6 +274,17 @@ public class MercenaryCampaignManager : MonoBehaviour
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error);
         }
 
+        // First-time hint the very first time a campaign completes —
+        // teach the player what happens when armies come back.
+        if (TutorialHints.Instance != null)
+        {
+            TutorialHints.Instance.ShowIfNew("MercCampaignReturned",
+                c.won
+                    ? "Your army returned victorious! The region flips to Conquered, its neighbours unlock, and you can send new campaigns."
+                    : "Your army was defeated — fallen units are gone for good (permadeath). Hire replacements at the Barracks and try again.",
+                7f);
+        }
+
         OnCampaignReturned?.Invoke(c);
     }
 

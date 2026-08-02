@@ -145,6 +145,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                 {
                     GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("[F] EXECUTE"));
                     isPromptShowing = true;
+                    if (TutorialHints.Instance != null)
+                    {
+                        TutorialHints.Instance.ShowIfNew("GloryKill",
+                            "A staggered boss can be executed with F. A short cinematic + free kill. Do it whenever the prompt appears.", 6f);
+                    }
                 }
 
                 if (Input.GetKeyDown(KeyCode.F))

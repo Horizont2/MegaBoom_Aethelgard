@@ -412,6 +412,34 @@ public class CampBuilding : MonoBehaviour
 
     private void OpenPanel()
     {
+        // Per-building first-open hints — teach what each building does
+        // the first time the player inspects it. Keyed on buildingID so
+        // each building gets its own one-shot.
+        if (TutorialHints.Instance != null && !string.IsNullOrEmpty(buildingID))
+        {
+            string bid = buildingID.ToLowerInvariant();
+            if (bid.Contains("storage") || bid.Contains("vault"))
+            {
+                TutorialHints.Instance.ShowIfNew("StorageVaultInspect",
+                    "The Storage Vault raises your max Wood / Stone / Food capacity. Upgrade it BEFORE big builds so nothing overflows.", 6f);
+            }
+            else if (bid.Contains("hunter") || bid.Contains("cabin"))
+            {
+                TutorialHints.Instance.ShowIfNew("HunterCabinInspect",
+                    "The Hunter's Cabin produces FOOD per minute — the rarest basic resource. Prioritise it before high-tier builds.", 6f);
+            }
+            else if (bid.Contains("lumberjack") || bid.Contains("lumber"))
+            {
+                TutorialHints.Instance.ShowIfNew("LumberjackInspect",
+                    "The Lumberjack's Hut generates LOGS per minute. Cheapest resource but every build needs some.", 5f);
+            }
+            else if (bid.Contains("forge") || bid.Contains("blacksmith"))
+            {
+                TutorialHints.Instance.ShowIfNew("ForgeInspect",
+                    "The Forge boosts your in-mission weapon damage by up to +15% at max level. Stacks with weapon tier.", 6f);
+            }
+        }
+
         // A sibling script on this GO can hijack the F-panel — used by the
         // barracks to open its custom Hire/Upgrade UI instead of the generic
         // building sheet. Interface check keeps CampBuilding independent

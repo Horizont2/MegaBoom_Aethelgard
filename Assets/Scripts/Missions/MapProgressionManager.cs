@@ -11,7 +11,7 @@ public class MapProgressionManager : MonoBehaviour
 
     public static event Action OnMapStateChanged;
 
-    // ОПТИМІЗАЦІЯ: Кешування ключів для PlayerPrefs, щоб не створювати сміття в пам'яті (Garbage)
+    // пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ PlayerPrefs, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ'пїЅпїЅ (Garbage)
     private Dictionary<int, string> regionStateKeys = new Dictionary<int, string>();
 
     private void Awake()
@@ -19,7 +19,7 @@ public class MapProgressionManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // Генеруємо всі ключі ОДИН раз
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         if (allRegionsInGame != null)
         {
             foreach (var region in allRegionsInGame)
@@ -54,7 +54,7 @@ public class MapProgressionManager : MonoBehaviour
                         neighbor.currentState = RegionState.Available;
                         neighbor.isNewlyUnlocked = true;
 
-                        // Використовуємо закешований ключ замість "RegionState_" + ID
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ "RegionState_" + ID
                         if (regionStateKeys.ContainsKey(neighbor.regionID))
                         {
                             PlayerPrefs.SetInt(regionStateKeys[neighbor.regionID], (int)RegionState.Available);
@@ -81,6 +81,15 @@ public class MapProgressionManager : MonoBehaviour
 
         SyncMapStatesWithSaves();
         OnMapStateChanged?.Invoke();
+
+        // First-time hint the very first region falls вЂ” teach the
+        // neighbour-unlock system so the player realises the map opens
+        // outward as they conquer.
+        if (currentConquered == 0 && TutorialHints.Instance != null)
+        {
+            TutorialHints.Instance.ShowIfNew("FirstRegionConquered",
+                "Region cleared! Its neighbours are now Available. Chain conquests outward вЂ” the map opens as you go.", 6f);
+        }
     }
 
     public void RefreshMapState()

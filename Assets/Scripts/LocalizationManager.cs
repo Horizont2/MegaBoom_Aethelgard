@@ -1519,6 +1519,28 @@ public static class LocalizationManager
         AddSelf("Cleared encounter — bonus loot dropped at the camp center. Wipe more groups to stack rewards.",
             "Групу зачищено — бонусний лут у центрі табору. Знищуй більше груп, щоб нагороди стакались.");
 
+        // === Tutorial hint bodies for newly-added mechanics ===
+        AddSelf("Pick units + a tactic. Ambush is fast + risky, Assault is balanced, Siege is slow + safer. Win chance updates live.",
+            "Обирай воїнів + тактику. Засідка — швидка + ризикова, Штурм — збалансована, Облога — повільна + безпечніша. Шанс перемоги оновлюється вживу.");
+        AddSelf("Roadside altars summon a mini-boss on activation. Defeat it for a diamond + XP bonus. Optional but tempting.",
+            "Придорожні вівтарі викликають міні-боса. Здолай його для бонусних діамантів + XP. Опційно, але спокусливо.");
+        AddSelf("A staggered boss can be executed with F. A short cinematic + free kill. Do it whenever the prompt appears.",
+            "Оглушеного боса можна добити натиском F. Коротка катсцена + безкоштовне вбивство. Роби це щоразу як з'являється підказка.");
+        AddSelf("Your army returned victorious! The region flips to Conquered, its neighbours unlock, and you can send new campaigns.",
+            "Твоя армія повернулася з перемогою! Регіон стає Захопленим, сусіди відкриваються, можеш відправляти нові кампанії.");
+        AddSelf("Your army was defeated — fallen units are gone for good (permadeath). Hire replacements at the Barracks and try again.",
+            "Твою армію переможено — загиблі воїни втрачені назавжди (пермадеус). Найми нових у Казармах і спробуй знову.");
+        AddSelf("Region cleared! Its neighbours are now Available. Chain conquests outward — the map opens as you go.",
+            "Регіон зачищено! Його сусіди тепер Доступні. Захоплюй ланцюгом назовні — мапа розкривається по мірі просування.");
+        AddSelf("The Storage Vault raises your max Wood / Stone / Food capacity. Upgrade it BEFORE big builds so nothing overflows.",
+            "Схов Табору підіймає макс. запас Дерева / Каменю / Їжі. Прокачай його ДО великих будов, щоб ресурси не переливались.");
+        AddSelf("The Hunter's Cabin produces FOOD per minute — the rarest basic resource. Prioritise it before high-tier builds.",
+            "Хатина Мисливця виробляє ЇЖУ за хвилину — найрідкісніший базовий ресурс. Пріоритезуй її перед високими тирами.");
+        AddSelf("The Lumberjack's Hut generates LOGS per minute. Cheapest resource but every build needs some.",
+            "Хата Лісоруба виробляє КОЛОДИ за хвилину. Найдешевший ресурс, але кожна будова щось потребує.");
+        AddSelf("The Forge boosts your in-mission weapon damage by up to +15% at max level. Stacks with weapon tier.",
+            "Кузня підіймає шкоду зброї в місії до +15% на макс. рівні. Множиться на тир зброї.");
+
         // === Mission element status tag ===
         Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");
 

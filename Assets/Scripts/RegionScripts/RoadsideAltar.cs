@@ -83,6 +83,12 @@ public class RoadsideAltar : MonoBehaviour
             {
                 GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(interactPromptKey));
                 isPromptShowing = true;
+                // First-time hint when the player first meets an altar.
+                if (TutorialHints.Instance != null)
+                {
+                    TutorialHints.Instance.ShowIfNew("RoadsideAltar",
+                        "Roadside altars summon a mini-boss on activation. Defeat it for a diamond + XP bonus. Optional but tempting.", 6f);
+                }
             }
 
             if (Input.GetKeyDown(KeyCode.F))

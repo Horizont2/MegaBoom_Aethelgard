@@ -123,6 +123,13 @@ public class PreBattlePanel : MonoBehaviour
 
         RefreshBarracksPips();
 
+        // First-time hint: teach how the panel + tactics work.
+        if (TutorialHints.Instance != null)
+        {
+            TutorialHints.Instance.ShowIfNew("PreBattlePanel",
+                "Pick units + a tactic. Ambush is fast + risky, Assault is balanced, Siege is slow + safer. Win chance updates live.", 7f);
+        }
+
         // Guarantee the preview slot shows SOMETHING the moment the panel
         // opens, even before SetTactic runs — otherwise there's a one-frame
         // "empty rectangle" flash before the default tactic swap kicks in.
