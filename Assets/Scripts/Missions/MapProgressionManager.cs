@@ -90,6 +90,14 @@ public class MapProgressionManager : MonoBehaviour
             TutorialHints.Instance.ShowIfNew("FirstRegionConquered",
                 "Region cleared! Its neighbours are now Available. Chain conquests outward — the map opens as you go.", 6f);
         }
+
+        // Achievement milestones on the conqueror ladder.
+        int newCount = currentConquered + 1;
+        if (newCount == 1)  AchievementSystem.Unlock("FIRST_BLOOD");
+        if (newCount == 12) AchievementSystem.Unlock("HALFWAY");
+        if (conqueredRegion.regionID == 22) AchievementSystem.Unlock("CITY_SIEGE");
+        if (conqueredRegion.regionID == 24) AchievementSystem.Unlock("THRONE_TAKEN");
+        if (newCount >= 24) AchievementSystem.Unlock("FULL_MAP");
     }
 
     public void RefreshMapState()

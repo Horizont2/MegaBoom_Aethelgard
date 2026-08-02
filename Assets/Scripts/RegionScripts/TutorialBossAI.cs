@@ -480,6 +480,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isDead = true;
         isStaggered = false;
         if (staggerRing != null) Destroy(staggerRing);
+        AchievementSystem.Unlock("EXECUTIONER");
 
         if (GlobalHUD.Instance != null)
         {

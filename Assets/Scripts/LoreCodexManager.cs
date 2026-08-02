@@ -55,6 +55,11 @@ public static class LoreCodexManager
         RunStats.Add(RunStats.Stat.ScrollsFound, 1);
         AchievementManager.Notify(AchievementManager.Tracker.ScrollFound, 1);
         ToastManager.Show(LocalizationManager.Tr("TOAST_LORE_FOUND", title), ToastManager.ToastKind.Lore);
+
+        // Steam-style achievement — Lore Master at 5 scrolls.
+        int total = PlayerPrefs.GetInt("LoreScrollsFound", 0) + 1;
+        PlayerPrefs.SetInt("LoreScrollsFound", total);
+        if (total >= 5) AchievementSystem.Unlock("LORE_MASTER");
     }
 }
 

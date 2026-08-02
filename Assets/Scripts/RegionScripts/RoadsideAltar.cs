@@ -168,6 +168,7 @@ public class RoadsideAltar : MonoBehaviour
         if (activatedVFX != null) activatedVFX.SetActive(false);
         if (purifiedVFX != null) purifiedVFX.SetActive(true);
         if (altarLight != null) altarLight.color = purifiedColor;
+        AchievementSystem.Unlock("ALTAR_HUNTER");
 
         if (ResourceManager.Instance != null && diamondReward > 0)
             ResourceManager.Instance.AddDiamonds(diamondReward);

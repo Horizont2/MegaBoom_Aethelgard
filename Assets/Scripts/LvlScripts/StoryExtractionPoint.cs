@@ -268,6 +268,7 @@ public class StoryExtractionPoint : MonoBehaviour
         yield return StartCoroutine(FadeRoutine(1f, 0.5f));
 
         if (ResourceManager.Instance != null) ResourceManager.Instance.EvacuateRunToStash();
+        AchievementSystem.Unlock("FIRST_STEPS");
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
     }
 

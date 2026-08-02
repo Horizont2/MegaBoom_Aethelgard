@@ -180,6 +180,10 @@ public class MercenaryRoster : MonoBehaviour
         }
         SaveRoster();
         OnRosterChanged?.Invoke();
+
+        // Achievements.
+        AchievementSystem.Unlock("FOR_HIRE");
+        if (CountAliveTotal() >= 5) AchievementSystem.Unlock("VETERANS");
         return inst;
     }
 

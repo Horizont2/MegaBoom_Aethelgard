@@ -965,6 +965,10 @@ public class ShopManager : MonoBehaviour
                 PlayerPrefs.SetInt("ShopFirstPurchase", 1);
                 PlayerPrefs.Save();
             }
+            // Running total of diamonds spent — pushed past 500 → ach.
+            int spent = PlayerPrefs.GetInt("TotalDiamondsSpent", 0) + (myDiamonds - ReadDiamonds());
+            PlayerPrefs.SetInt("TotalDiamondsSpent", spent);
+            if (spent >= 500) AchievementSystem.Unlock("SHOPKEEPER_FRIEND");
         }
 
         PlayerPrefs.Save();

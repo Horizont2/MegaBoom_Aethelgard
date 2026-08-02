@@ -152,6 +152,7 @@ public class MercenaryCampaignManager : MonoBehaviour
             PlayerPrefs.SetInt("MercFirstDeployed", 1);
             PlayerPrefs.Save();
         }
+        AchievementSystem.Unlock("MARCH_OF_WAR");
 
         // Player-facing feedback so the deploy feels like something happened
         // instead of a silent scene-load.
@@ -194,6 +195,10 @@ public class MercenaryCampaignManager : MonoBehaviour
         c.won = result.won;
         c.lostUnitUIDs = result.lostUnitUIDs;
         c.diamondsAwarded = result.diamondReward;
+
+        // Strategist achievement: won using the Siege tactic.
+        if (c.won && c.tactic == CampaignTactic.Siege)
+            AchievementSystem.Unlock("STRATEGIST");
 
         foreach (int uid in result.lostUnitUIDs) roster.KillUnit(uid);
         OnCampaignResolved?.Invoke(c);

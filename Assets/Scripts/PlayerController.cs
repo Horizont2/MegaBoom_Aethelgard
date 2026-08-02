@@ -435,6 +435,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     private IEnumerator FireCampHints()
     {
         yield return new WaitForSecondsRealtime(2.5f);
+        AchievementSystem.Unlock("HOMESTEAD");
         if (TutorialHints.Instance == null) yield break;
         TutorialHints.Instance.ShowIfNew("CampOverview",
             "Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.");
@@ -508,9 +509,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         else if (currentStack >= 15) currentMultiplier = 2;
         else currentMultiplier = 1;
 
-        if (currentMultiplier > 1 && TutorialHints.Instance != null)
-            TutorialHints.Instance.ShowIfNew("Stack",
-                "STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.", 6f);
+        if (currentMultiplier > 1)
+        {
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("Stack",
+                    "STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.", 6f);
+            AchievementSystem.Unlock("STACK_15");
+        }
 
         if (stackText != null)
         {
@@ -1368,6 +1373,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         dodgeWindowTimer = 0f;
         isNextAttackGuaranteedCrit = true;
         isBulletTime = true;
+        AchievementSystem.Unlock("PERFECT_DODGE");
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
 

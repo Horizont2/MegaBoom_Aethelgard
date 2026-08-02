@@ -1541,6 +1541,29 @@ public static class LocalizationManager
         AddSelf("The Forge boosts your in-mission weapon damage by up to +15% at max level. Stacks with weapon tier.",
             "Кузня підіймає шкоду зброї в місії до +15% на макс. рівні. Множиться на тир зброї.");
 
+        // === Achievements ===
+        Add("ACHIEVEMENT_UNLOCKED", "Achievement unlocked: {0}", "Досягнення відкрито: {0}");
+        AddSelf("First Steps",              "Перші кроки");
+        AddSelf("Homestead",                "Домівка");
+        AddSelf("Scout's Map",              "Мапа Розвідника");
+        AddSelf("First Blood",              "Перша кров");
+        AddSelf("Supply Lines",             "Постачання");
+        AddSelf("For Hire",                 "На службу");
+        AddSelf("March of War",             "Марш війни");
+        AddSelf("Veterans",                 "Ветерани");
+        AddSelf("Strategist",               "Стратег");
+        AddSelf("Halfway",                  "На півдорозі");
+        AddSelf("Altar Hunter",             "Мисливець на Вівтарі");
+        AddSelf("Executioner",              "Кат");
+        AddSelf("The Shopkeeper's Friend",  "Друг Крамаря");
+        AddSelf("Untouchable",              "Невразливий");
+        AddSelf("Blood in the Air",         "Кров у повітрі");
+        AddSelf("City Siege",               "Облога міста");
+        AddSelf("The Throne Taken",         "Трон здобуто");
+        AddSelf("Kingdom Restored",         "Королівство відроджено");
+        AddSelf("Lore Master",              "Знавець Легенд");
+        AddSelf("Deep Pockets",             "Глибокі кишені");
+
         // === Mission element status tag ===
         Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");
 

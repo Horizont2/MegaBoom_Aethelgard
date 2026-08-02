@@ -258,6 +258,7 @@ public class ResourceManager : MonoBehaviour
     {
         if (amount <= 0) return;
         diamonds += amount;
+        if (diamonds >= 2000) AchievementSystem.Unlock("DEEP_POCKETS");
         ShowResourceToast(amount, "Diamonds", new Color(0.7f, 0.85f, 1f));
         SaveStash();
         UpdateUI();

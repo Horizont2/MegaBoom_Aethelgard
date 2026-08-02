@@ -665,6 +665,16 @@ public class CampBuilding : MonoBehaviour
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
         PlayerPrefs.Save();
 
+        // Achievement hooks per specific building milestone.
+        if (!string.IsNullOrEmpty(buildingID))
+        {
+            string bid = buildingID.ToLowerInvariant();
+            if ((bid.Contains("scoutslodge") || bid.Contains("lodge")) && currentLevel >= 2)
+                AchievementSystem.Unlock("SCOUTS_MAP");
+            if ((bid.Contains("storage") || bid.Contains("vault")) && currentLevel >= 1)
+                AchievementSystem.Unlock("SUPPLY_LINES");
+        }
+
         ApplyBuildingEffects();
         UpdateGlimmerState();
 
