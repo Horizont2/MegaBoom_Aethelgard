@@ -956,7 +956,16 @@ public class ShopManager : MonoBehaviour
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
 
-        if (didPurchase) PlayPurchaseCelebration();
+        if (didPurchase)
+        {
+            PlayPurchaseCelebration();
+            // Guide step 'visit the shop and buy something' keys off this.
+            if (PlayerPrefs.GetInt("ShopFirstPurchase", 0) == 0)
+            {
+                PlayerPrefs.SetInt("ShopFirstPurchase", 1);
+                PlayerPrefs.Save();
+            }
+        }
 
         PlayerPrefs.Save();
         UpdateUI(true);

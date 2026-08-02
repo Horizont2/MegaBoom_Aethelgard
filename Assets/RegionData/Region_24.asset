@@ -22,11 +22,11 @@ MonoBehaviour:
   neighboringRegions:
   - {fileID: 11400000, guid: bae9a5a11c486674db6414bef83be796, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 1350
-  enemyHpMultiplier: 1
-  enemyDamageMultiplier: 1
-  enemyStrength: 3500
-  autoBattleDiamondReward: 1100
+  recommendedPower: 1250
+  enemyHpMultiplier: 8.0
+  enemyDamageMultiplier: 3.5
+  enemyStrength: 4500
+  autoBattleDiamondReward: 2500
   woodReward: 1000
   stoneReward: 1000
   foodReward: 1000

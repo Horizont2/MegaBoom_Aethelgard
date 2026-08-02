@@ -23,11 +23,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5a4f554972f65a74980010099fb176d8, type: 2}
   - {fileID: 11400000, guid: c1268116787df8441b3627f607f9f7f8, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 540
-  enemyHpMultiplier: 1
-  enemyDamageMultiplier: 1
-  enemyStrength: 350
-  autoBattleDiamondReward: 100
+  recommendedPower: 600
+  enemyHpMultiplier: 2.8
+  enemyDamageMultiplier: 1.75
+  enemyStrength: 730
+  autoBattleDiamondReward: 240
   regionTotemPrefab: {fileID: 0}
   regionBossPrefabs: []
   woodReward: 170

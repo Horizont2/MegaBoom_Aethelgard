@@ -146,6 +146,13 @@ public class MercenaryCampaignManager : MonoBehaviour
 
         SaveCampaigns();
 
+        // Guide step 'send an army' keys off this flag.
+        if (PlayerPrefs.GetInt("MercFirstDeployed", 0) == 0)
+        {
+            PlayerPrefs.SetInt("MercFirstDeployed", 1);
+            PlayerPrefs.Save();
+        }
+
         // Player-facing feedback so the deploy feels like something happened
         // instead of a silent scene-load.
         ToastManager.Show(

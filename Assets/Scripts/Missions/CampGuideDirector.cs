@@ -202,15 +202,63 @@ public class CampGuideDirector : MonoBehaviour
         if (lodgeT == null)
             Debug.LogWarning("[CampGuideDirector] Couldn't find the Scout's Lodge building (no CampBuilding with buildingID 'ScoutsLodge' or a name containing 'lodge'). The 'upgrade lodge' step will have no trail. Set the building's buildingID to 'ScoutsLodge'.");
 
+        // Additional targets for the extended step chain.
+        Transform storageT = FindBuildingTransform("StorageVault") ?? FindBuildingByName("storage");
+        Transform noticeT = FindNoticeBoard();
+        Transform shopT = FindShop();
+
+        // Full onboarding chain, ordered by natural progression. Each step
+        // has its own PlayerPrefs key — see the game's existing save
+        // conventions. Steps with a null target quietly fall back to a
+        // prompt-only guide (trail hides, plate still shows the text).
+        // 1. Meet Elias
         steps.Add(new GuideStep { promptKey = "GUIDE_TALK_ELIAS",     target = eliasT,    playerPrefsKey = "Elias_Intro",           requiredValue = 1 });
+        // 2. Upgrade Scout's Lodge to unlock the map
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_LODGE",    target = lodgeT,    playerPrefsKey = "SaveBld_ScoutsLodge",   requiredValue = 2 });
-        // "Open the map" completes when the player actually opens it —
-        // MapOpenedOnce is set by MapTableInteract. Elias_TableBuilt (the
-        // old key) is only set by a SECOND Elias chat, so opening the map
-        // never advanced this step.
+        // 3. Open the world map
         steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "MapOpenedOnce",         requiredValue = 1 });
+        // 4. Conquer the first (hand-built) region — R1 Old Lumberyard
         steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
+        // 5. Build the storage vault so more resource capacity unlocks
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_STORAGE",  target = storageT,  playerPrefsKey = "SaveBld_StorageVault",  requiredValue = 1 });
+        // 6. Check the notice board for daily missions (extra income)
+        steps.Add(new GuideStep { promptKey = "GUIDE_NOTICE_BOARD",   target = noticeT,   playerPrefsKey = "HasInteractedWithBoard", requiredValue = 1 });
+        // 7. Build the barracks — unlocks the mercenary system
         steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",      requiredValue = 1 });
+        // 8. Hire your first mercenary (any type — Roster.CountAliveTotal>=1)
+        steps.Add(new GuideStep { promptKey = "GUIDE_HIRE_MERC",      target = barracksT, playerPrefsKey = "MercFirstHired",        requiredValue = 1 });
+        // 9. Send an army to an auto-battle region
+        steps.Add(new GuideStep { promptKey = "GUIDE_SEND_ARMY",      target = mapT,      playerPrefsKey = "MercFirstDeployed",     requiredValue = 1 });
+        // 10. Visit the Shop and spend a diamond on gear
+        steps.Add(new GuideStep { promptKey = "GUIDE_VISIT_SHOP",     target = shopT,     playerPrefsKey = "ShopFirstPurchase",     requiredValue = 1 });
+        // 11. Reach the mid-game location (R8 Sunken Outpost — 3rd hand-built)
+        steps.Add(new GuideStep { promptKey = "GUIDE_MIDGAME_REGION", target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 8 });
+        // 12. Reach the city (R22 — pre-final hand-built)
+        steps.Add(new GuideStep { promptKey = "GUIDE_REACH_CITY",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 21 });
+        // 13. Final push: the Throne (R24)
+        steps.Add(new GuideStep { promptKey = "GUIDE_FINAL_PUSH",     target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 24 });
+    }
+
+    // Notice-board / shop lookups by component-type-or-name. Keeps the
+    // guide zero-config: the designer just drops the singleton on the
+    // scene, no wiring needed.
+    private Transform FindNoticeBoard()
+    {
+        var nb = FindFirstObjectByType<NoticeBoardManager>();
+        return nb != null ? nb.transform : null;
+    }
+    private Transform FindShop()
+    {
+        // The shop lives in a separate scene — but its portal in camp is
+        // usually named "Shop*" or has an ExtractionPortal targeting
+        // ShopScene. Fall back to any GameObject named "Shop".
+        foreach (var ep in FindObjectsByType<ExtractionPortal>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (ep != null && ep.campSceneName != null && ep.campSceneName.ToLowerInvariant().Contains("shop"))
+                return ep.transform;
+        }
+        var go = GameObject.Find("Shop") ?? GameObject.Find("ShopPortal") ?? GameObject.Find("ShopInteract");
+        return go != null ? go.transform : null;
     }
 
     private Transform FindBuildingTransform(string buildingID)

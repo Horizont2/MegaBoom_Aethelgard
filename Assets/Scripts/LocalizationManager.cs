@@ -1552,6 +1552,14 @@ public static class LocalizationManager
         Add("GUIDE_TALK_ELIAS_AGAIN",   "Return to Elias — he has news",         "Повернися до Еліаса — у нього новини");
         Add("GUIDE_STEP_DONE",          "Objective complete!",                   "Ціль виконано!");
         Add("GUIDE_PLATE_TITLE",        "Camp Task",                             "Завдання табору");
+        Add("GUIDE_BUILD_STORAGE",      "Build the Storage Vault",               "Побудуй Схов Табору");
+        Add("GUIDE_NOTICE_BOARD",       "Check the Notice Board for missions",   "Перевір Дошку Оголошень");
+        Add("GUIDE_HIRE_MERC",          "Hire your first mercenary",             "Найми свого першого найманця");
+        Add("GUIDE_SEND_ARMY",          "Send an army to an auto-battle region", "Пошли армію в регіон авто-битви");
+        Add("GUIDE_VISIT_SHOP",         "Visit the Shop and upgrade your gear",  "Відвідай Магазин і покращ спорядження");
+        Add("GUIDE_MIDGAME_REGION",     "Push deeper — conquer the Sunken Outpost", "Просувайся далі — захопи Затоплений Форпост");
+        Add("GUIDE_REACH_CITY",         "March on the Citadel Outskirts",         "Виступай на Околиці Цитаделі");
+        Add("GUIDE_FINAL_PUSH",         "Storm the Throne Room — end the Blight", "Штурмуй Тронну Залу — покінчи з Порчею");
 
         // === Graphics auto-detect (wire a button to GraphicsAutoConfig.DetectAndApply) ===
         Add("SETTINGS_AUTODETECT",        "Auto-Detect (Recommended)", "Авто-визначення (рекомендовано)");

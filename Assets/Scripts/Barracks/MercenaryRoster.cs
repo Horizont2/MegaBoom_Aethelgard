@@ -173,6 +173,11 @@ public class MercenaryRoster : MonoBehaviour
             activeCampaignID = -1,
         };
         roster.Add(inst);
+        // Guide step 'hire your first mercenary' keys off this flag.
+        if (PlayerPrefs.GetInt("MercFirstHired", 0) == 0)
+        {
+            PlayerPrefs.SetInt("MercFirstHired", 1);
+        }
         SaveRoster();
         OnRosterChanged?.Invoke();
         return inst;

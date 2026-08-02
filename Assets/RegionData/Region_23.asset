@@ -23,11 +23,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 43e85531f99a7664ea73bb66096a801d, type: 2}
   - {fileID: 11400000, guid: b25f7aed7923d9042b2a0aa1cdf27300, type: 2}
   isNewlyUnlocked: 0
-  recommendedPower: 1150
-  enemyHpMultiplier: 1
-  enemyDamageMultiplier: 1
-  enemyStrength: 2500
-  autoBattleDiamondReward: 800
+  recommendedPower: 1100
+  enemyHpMultiplier: 6.0
+  enemyDamageMultiplier: 3.1
+  enemyStrength: 3100
+  autoBattleDiamondReward: 1050
   woodReward: 420
   stoneReward: 420
   foodReward: 420
