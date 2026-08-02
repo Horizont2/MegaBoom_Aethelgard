@@ -1194,11 +1194,12 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Add(rt);
         RestackPickupPopups();
 
-        // Hard failsafe: schedule an unconditional Destroy just past the
-        // fade lifetime so if the coroutine gets cancelled (scene change,
-        // GlobalHUD toggled off) the orphan popup still disappears
-        // promptly instead of sitting on screen for seconds.
-        Destroy(go, 2.2f);
+        // Hard failsafe on UNSCALED realtime — Unity's `Destroy(go, delay)`
+        // uses scaled time, so at Time.timeScale==0 (pause / cinematic
+        // freeze) the delay never elapses and orphan popups sit on screen
+        // forever. Kick off a parallel coroutine that always destroys past
+        // the fade lifetime regardless of timescale.
+        StartCoroutine(PickupPopupFailsafeRoutine(go, rt, 2.2f));
 
         const float lifetime = 1.8f;
         float t = 0f;
@@ -1223,6 +1224,18 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Remove(rt);
         if (go != null) Destroy(go);
         RestackPickupPopups();
+    }
+
+    // Realtime destroy — survives Time.timeScale==0 pauses.
+    private IEnumerator PickupPopupFailsafeRoutine(GameObject go, RectTransform rt, float delayRealtime)
+    {
+        yield return new WaitForSecondsRealtime(delayRealtime);
+        if (go != null)
+        {
+            if (rt != null) activePickupPopups.Remove(rt);
+            Destroy(go);
+            RestackPickupPopups();
+        }
     }
 
     // Prune stale null entries — the failsafe Destroy above may leave holes
