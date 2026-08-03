@@ -146,7 +146,8 @@ public class GlobalHUD : MonoBehaviour
 
         UpdateLowHealthVignette();
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Pause key — Escape on keyboard, Start / Options on gamepad.
+        if (InputCompat.PauseDown())
         {
             // No pause / no anything while a loading screen is up. Otherwise
             // ESC on the loading fade would open the pause menu behind it and

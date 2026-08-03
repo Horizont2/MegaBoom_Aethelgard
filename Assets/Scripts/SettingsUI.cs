@@ -247,8 +247,10 @@ public class SettingsUI : MonoBehaviour
 
         if (languageDropdown) languageDropdown.onValueChanged.AddListener(v =>
         {
-            // Apply immediately via LocalizationManager (also persists via its setter).
-            LocalizationManager.CurrentLanguage = Mathf.Clamp(v, 0, 6);
+            // Apply immediately via LocalizationManager (its setter re-clamps
+            // to MAX_SHIPPED_LANGUAGE — half-translated locales aren't
+            // reachable until their coverage is complete).
+            LocalizationManager.CurrentLanguage = v;
             StartCoroutine(RebuildSettingsLayout());
         });
 

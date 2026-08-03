@@ -36,13 +36,19 @@ public static class LocalizationManager
     private static readonly Dictionary<string, string> s_pl = new Dictionary<string, string>();
 
     // int for dropdown parity. 0=EN, 1=UK, 2=RU, 3=ES, 4=DE, 5=FR, 6=PL.
+    // Highest shipped language INDEX (0 = English, 1 = Ukrainian,
+    // 2 = Russian, …). Bump this once RU/ES/DE/FR/PL coverage is
+    // complete — until then the setter clamps here so half-translated
+    // languages can't be selected via any dropdown / hotkey / save.
+    public const int MAX_SHIPPED_LANGUAGE = 1;
+
     public static int CurrentLanguage
     {
         get { EnsureLoaded(); return (int)s_lang; }
         set
         {
             EnsureLoaded();
-            Lang newLang = (Lang)Mathf.Clamp(value, 0, 6);
+            Lang newLang = (Lang)Mathf.Clamp(value, 0, MAX_SHIPPED_LANGUAGE);
             if (s_lang == newLang) return;
             s_lang = newLang;
             PlayerPrefs.SetInt("Settings_Language", (int)s_lang);
@@ -1563,6 +1569,43 @@ public static class LocalizationManager
         AddSelf("Kingdom Restored",         "Королівство відроджено");
         AddSelf("Lore Master",              "Знавець Легенд");
         AddSelf("Deep Pockets",             "Глибокі кишені");
+
+        // === Main menu extended ===
+        Add("MENU_CONFIRM_NEW_GAME",
+            "Start a new game?\n\nAll camp progress, conquered regions and mercenaries will be lost. Settings + shop unlocks are kept.",
+            "Почати нову гру?\n\nВесь прогрес табору, захоплені регіони й найманці будуть втрачені. Налаштування й розблоковане в магазині залишиться.");
+        Add("MENU_CONFIRM_QUIT",
+            "Quit the game?",
+            "Вийти з гри?");
+
+        // === Credits ===
+        Add("CREDITS_HEADER_STUDIO",       "STUDIO",             "СТУДІЯ");
+        Add("CREDITS_HEADER_DESIGN",       "DESIGN & CODE",      "ДИЗАЙН І КОД");
+        Add("CREDITS_HEADER_ART",          "ART",                "АРТ");
+        Add("CREDITS_HEADER_ENGINE",       "ENGINE",             "РУШІЙ");
+        Add("CREDITS_HEADER_AUDIO",        "AUDIO",              "АУДІО");
+        Add("CREDITS_HEADER_ASSETS",       "ASSETS & PLUGINS",   "АССЕТИ ТА ПЛАГІНИ");
+        Add("CREDITS_HEADER_LOCALISATION", "LOCALISATION",       "ЛОКАЛІЗАЦІЯ");
+        Add("CREDITS_HEADER_THANKS",       "SPECIAL THANKS",     "ОСОБЛИВА ПОДЯКА");
+        Add("CREDITS_HEADER_COPYRIGHT",    "COPYRIGHT",          "АВТОРСЬКІ ПРАВА");
+        Add("CREDITS_THANKS_LINE",         "To everyone who tested, played, and believed.",
+            "Всім, хто тестував, грав і вірив.");
+        Add("CREDITS_END_TAGLINE",         "Aethelgard remembers.",
+            "Ітельгард пам'ятає.");
+
+        // === Ending narration ===
+        Add("ENDING_LINE_1",
+            "The Overlord falls. The last echo of the Blight fades from the throne.",
+            "Володар падає. Останнє відлуння Порчі згасає з трону.");
+        Add("ENDING_LINE_2",
+            "For centuries the mist rose from these halls. Now, only silence.",
+            "Століттями туман здіймався з цих залів. Тепер — лиш тиша.");
+        Add("ENDING_LINE_3",
+            "In the villages you rebuilt, first light breaks through the smoke.",
+            "У селищах, які ти відбудував, перше світло пробивається крізь дим.");
+        Add("ENDING_LINE_FINAL",
+            "You have restored Aethelgard.",
+            "Ти відродив Ітельгард.");
 
         // === Mission element status tag ===
         Add("MISSION_DONE_TAG", "DONE", "ЗРОБЛЕНО");

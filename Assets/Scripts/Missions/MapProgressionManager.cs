@@ -93,6 +93,7 @@ public class MapProgressionManager : MonoBehaviour
 
         // Achievement milestones on the conqueror ladder.
         int newCount = currentConquered + 1;
+        Analytics.Event("region_conquered", "region_id", conqueredRegion.regionID, "total", newCount);
         if (newCount == 1)  AchievementSystem.Unlock("FIRST_BLOOD");
         if (newCount == 12) AchievementSystem.Unlock("HALFWAY");
         if (conqueredRegion.regionID == 22) AchievementSystem.Unlock("CITY_SIEGE");

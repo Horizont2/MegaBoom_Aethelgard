@@ -153,6 +153,7 @@ public class MercenaryCampaignManager : MonoBehaviour
             PlayerPrefs.Save();
         }
         AchievementSystem.Unlock("MARCH_OF_WAR");
+        Analytics.Event("merc_deploy", "region_id", region.regionID, "army_size", armyUIDs.Count);
 
         // Player-facing feedback so the deploy feels like something happened
         // instead of a silent scene-load.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -8,6 +9,24 @@ public class MainMenuManager : MonoBehaviour
     [Header("UI References")]
     public TextMeshProUGUI crystalsText;
     public Button continueButton;
+
+    [Header("Extended Menu (all optional)")]
+    // NEW GAME button — hard-restart the save. Fires a confirmation
+    // dialog first when a save already exists so an accidental click
+    // doesn't erase 40 hours of progress.
+    public Button newGameButton;
+    // CREDITS button — shows the CreditsUI panel.
+    public Button creditsButton;
+    // QUIT button — closes the application.  Wired to a Yes/No confirm
+    // so a stray click on the front page doesn't just kill the game.
+    public Button quitButton;
+    // Optional confirmation dialog (reused by New Game + Quit).
+    public GameObject confirmDialog;
+    public TextMeshProUGUI confirmDialogText;
+    public Button confirmYesButton;
+    public Button confirmNoButton;
+    // Credits panel — CanvasGroup so it can fade cleanly.
+    public CreditsUI creditsUI;
 
     [Header("Scene Settings")]
     public string gameSceneName = "GameScene";
@@ -28,6 +47,123 @@ public class MainMenuManager : MonoBehaviour
         StartCoroutine(AnimateCrystals());
         CheckContinueStatus();
         SpawnSelectedHero();
+        WireExtendedMenu();
+    }
+
+    // Wire the optional New Game / Credits / Quit buttons + confirm
+    // dialog. Everything is null-safe so an old-style menu prefab with
+    // only the Continue button still works unchanged.
+    private void WireExtendedMenu()
+    {
+        if (confirmDialog != null) confirmDialog.SetActive(false);
+
+        if (newGameButton != null)
+        {
+            newGameButton.onClick.RemoveAllListeners();
+            newGameButton.onClick.AddListener(OnNewGameClicked);
+        }
+        if (creditsButton != null)
+        {
+            creditsButton.onClick.RemoveAllListeners();
+            creditsButton.onClick.AddListener(OnCreditsClicked);
+        }
+        if (quitButton != null)
+        {
+            quitButton.onClick.RemoveAllListeners();
+            quitButton.onClick.AddListener(OnQuitClicked);
+        }
+    }
+
+    private void OnNewGameClicked()
+    {
+        // If nothing to lose, straight through — no confirm popup.
+        bool hasProgress = PlayerPrefs.GetInt("TutorialCompleted", 0) == 1
+                        || PlayerPrefs.GetInt("HasCampSave", 0) == 1
+                        || PlayerPrefs.GetInt("TotalConqueredRegions", 0) > 0;
+        if (!hasProgress) { WipeAndStartFresh(); return; }
+
+        ShowConfirmDialog(
+            LocalizationManager.Tr("MENU_CONFIRM_NEW_GAME"),
+            onYes: WipeAndStartFresh);
+    }
+
+    private void OnQuitClicked()
+    {
+        ShowConfirmDialog(
+            LocalizationManager.Tr("MENU_CONFIRM_QUIT"),
+            onYes: QuitGame);
+    }
+
+    private void OnCreditsClicked()
+    {
+        if (creditsUI != null) creditsUI.Open();
+    }
+
+    // Universal confirm popup — text + Yes/No callbacks. No is always
+    // "close dialog"; Yes is caller-supplied.
+    private void ShowConfirmDialog(string message, System.Action onYes)
+    {
+        if (confirmDialog == null) { onYes?.Invoke(); return; }
+        confirmDialog.SetActive(true);
+        if (confirmDialogText != null) confirmDialogText.text = message;
+        if (confirmYesButton != null)
+        {
+            confirmYesButton.onClick.RemoveAllListeners();
+            confirmYesButton.onClick.AddListener(() =>
+            {
+                confirmDialog.SetActive(false);
+                onYes?.Invoke();
+            });
+        }
+        if (confirmNoButton != null)
+        {
+            confirmNoButton.onClick.RemoveAllListeners();
+            confirmNoButton.onClick.AddListener(() => confirmDialog.SetActive(false));
+        }
+    }
+
+    // Wipes both the JSON save + every PlayerPrefs key we know the
+    // game uses, then jumps to the tutorial scene as if it were the
+    // very first launch. Kept in one place so future save-key
+    // additions have a single place to opt into the wipe.
+    private void WipeAndStartFresh()
+    {
+        // JSON save — the authoritative one going forward.
+        SaveSystem.Reset();
+
+        // Legacy PlayerPrefs — nuke the whole set. Settings (Settings_*
+        // prefix + audio volumes) survive: PlayerPrefs has no
+        // enumeration API, so we snapshot the ones we want to keep,
+        // DeleteAll, then rewrite them.
+        var settingsInts = new Dictionary<string, int>();
+        var settingsFloats = new Dictionary<string, float>();
+        string[] intKeys = {
+            "Settings_QualityLevel", "Settings_AntiAliasing", "Settings_TextureQuality",
+            "Settings_ShadowQuality", "Settings_Bloom", "Settings_AO", "Settings_Volumetrics",
+            "Settings_MotionBlur", "Settings_DepthOfField", "Settings_VSync", "Settings_FPSLimit",
+            "Settings_FpsCapIndex", "Settings_WindowMode", "Settings_ResolutionIndex",
+            "Settings_RefreshRateIndex", "Settings_Monitor", "Settings_MuteWhenUnfocused",
+            "Settings_TutorialHints", "Settings_Colorblind", "Settings_AutoConfigured",
+            "Settings_AutoTier", "Settings_Language", "Settings_SubtitlesEnabled",
+            "Settings_SubtitleSize",
+        };
+        string[] floatKeys = {
+            "Settings_MasterVol", "Settings_MusicVol", "Settings_SFXVol", "Settings_VoiceVol",
+            "Settings_UIVol", "Settings_AmbientVol", "Settings_ShadowDistance",
+            "Settings_RenderScale", "Settings_FOV", "Settings_Brightness", "Settings_Gamma",
+            "Settings_UIScale", "Settings_Sensitivity",
+        };
+        foreach (var k in intKeys) if (PlayerPrefs.HasKey(k)) settingsInts[k] = PlayerPrefs.GetInt(k);
+        foreach (var k in floatKeys) if (PlayerPrefs.HasKey(k)) settingsFloats[k] = PlayerPrefs.GetFloat(k);
+
+        PlayerPrefs.DeleteAll();
+
+        foreach (var kv in settingsInts) PlayerPrefs.SetInt(kv.Key, kv.Value);
+        foreach (var kv in settingsFloats) PlayerPrefs.SetFloat(kv.Key, kv.Value);
+        PlayerPrefs.Save();
+
+        // Go to the tutorial scene — the very first-launch entry point.
+        SceneManager.LoadScene("Lvl_1");
     }
 
     private System.Collections.IEnumerator AnimateCrystals()
