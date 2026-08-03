@@ -979,26 +979,25 @@ public class GlobalHUD : MonoBehaviour
         FadeAndLoadScene(currentScene);
     }
 
-    // Wire to a "Quit to Desktop" pause-menu button. Two-tap confirm
-    // reuses the give-up UI so we don't need a second dialog.
+    // Wire to a "Quit to Desktop" pause-menu button. Opens a proper
+    // Yes/No modal — matches the main-menu confirm dialog rather than
+    // the give-up-button two-tap so accidental clicks don't kill the
+    // process.
     public void OnQuitToDesktopClicked()
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
-        if (!isConfirmingGiveUp)
-        {
-            isConfirmingGiveUp = true;
-            if (giveUpText != null) giveUpText.text = LocalizationManager.Tr("Really quit to desktop?");
-            foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
-            return;
-        }
-
-        try { SaveSystem.Save(); } catch (System.Exception) { }
-        try { PlayerPrefs.Save(); } catch (System.Exception) { }
-        Application.Quit();
+        ConfirmDialog.Show(
+            LocalizationManager.Tr("Really quit to desktop?"),
+            onYes: () =>
+            {
+                try { SaveSystem.Save(); } catch (System.Exception) { }
+                try { PlayerPrefs.Save(); } catch (System.Exception) { }
+                Application.Quit();
 #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
+                UnityEditor.EditorApplication.isPlaying = false;
 #endif
+            });
     }
 
     public void SetLevelObjective(string message) { if (objectiveText != null) objectiveText.text = message; if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f; }

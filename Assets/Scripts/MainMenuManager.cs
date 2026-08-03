@@ -100,10 +100,16 @@ public class MainMenuManager : MonoBehaviour
     }
 
     // Universal confirm popup — text + Yes/No callbacks. No is always
-    // "close dialog"; Yes is caller-supplied.
+    // "close dialog"; Yes is caller-supplied. Falls back to the runtime
+    // ConfirmDialog utility when the scene doesn't wire an authored
+    // panel, so a pristine menu prefab still gets the confirm step.
     private void ShowConfirmDialog(string message, System.Action onYes)
     {
-        if (confirmDialog == null) { onYes?.Invoke(); return; }
+        if (confirmDialog == null)
+        {
+            ConfirmDialog.Show(message, onYes);
+            return;
+        }
         confirmDialog.SetActive(true);
         if (confirmDialogText != null) confirmDialogText.text = message;
         if (confirmYesButton != null)
