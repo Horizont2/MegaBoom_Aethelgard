@@ -163,7 +163,7 @@ public class MainMenuManager : MonoBehaviour
         PlayerPrefs.Save();
 
         // Go to the tutorial scene — the very first-launch entry point.
-        SceneManager.LoadScene("Lvl_1");
+        SceneLoader.LoadScene("Lvl_1");
     }
 
     private System.Collections.IEnumerator AnimateCrystals()
@@ -286,12 +286,12 @@ public class MainMenuManager : MonoBehaviour
         if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
         {
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
-            else SceneManager.LoadScene("Lvl_1");
+            else SceneLoader.LoadScene("Lvl_1");
         }
         else
         {
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
-            else SceneManager.LoadScene(campSceneName);
+            else SceneLoader.LoadScene(campSceneName);
         }
     }
 
@@ -303,7 +303,7 @@ public class MainMenuManager : MonoBehaviour
         if (PlayerPrefs.GetInt("TutorialCompleted", 0) == 0)
         {
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
-            else SceneManager.LoadScene("Lvl_1");
+            else SceneLoader.LoadScene("Lvl_1");
             return;
         }
 
@@ -311,7 +311,7 @@ public class MainMenuManager : MonoBehaviour
         PlayerPrefs.Save();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
-        else SceneManager.LoadScene(campSceneName);
+        else SceneLoader.LoadScene(campSceneName);
     }
 
     public void OpenShop()
@@ -320,7 +320,7 @@ public class MainMenuManager : MonoBehaviour
         HideMenuBeforeLoad();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(shopSceneName);
-        else SceneManager.LoadScene(shopSceneName);
+        else SceneLoader.LoadScene(shopSceneName);
     }
 
     public void OpenOptions()

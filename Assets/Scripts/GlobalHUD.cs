@@ -575,14 +575,7 @@ public class GlobalHUD : MonoBehaviour
     {
         if (isPaused) TogglePause();
 
-        if (LoadingManager.Instance != null)
-        {
-            LoadingManager.Instance.LoadScene(sceneName);
-        }
-        else
-        {
-            SceneManager.LoadScene(sceneName);
-        }
+        SceneLoader.LoadScene(sceneName);
     }
 
     public void ShowPrompt(string message)
@@ -970,6 +963,42 @@ public class GlobalHUD : MonoBehaviour
         string currentScene = SceneManager.GetActiveScene().name;
         if (giveUpText != null) giveUpText.text = LocalizationManager.Tr((currentScene == "GameScene") ? "Give Up" : "Back to Menu");
         foreach (var btn in pauseButtonGroups) { if (btn != null) { btn.alpha = 1f; btn.interactable = true; } }
+    }
+
+    // Wire to a "Restart Run" pause-menu button. Only exposed in arena
+    // scenes — in camp / shop / menu we no-op so a stray button can't
+    // wipe someone's day.
+    public void OnRestartRunClicked()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (currentScene == "Menu" || currentScene == "MainMenu"
+            || currentScene == "CampScene" || currentScene == "ShopScene") return;
+
+        if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+        FadeAndLoadScene(currentScene);
+    }
+
+    // Wire to a "Quit to Desktop" pause-menu button. Two-tap confirm
+    // reuses the give-up UI so we don't need a second dialog.
+    public void OnQuitToDesktopClicked()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+
+        if (!isConfirmingGiveUp)
+        {
+            isConfirmingGiveUp = true;
+            if (giveUpText != null) giveUpText.text = LocalizationManager.Tr("Really quit to desktop?");
+            foreach (var btn in pauseButtonGroups) { if (btn != null && btn != giveUpButtonGroup) { btn.alpha = 0.3f; btn.interactable = false; } }
+            return;
+        }
+
+        try { SaveSystem.Save(); } catch (System.Exception) { }
+        try { PlayerPrefs.Save(); } catch (System.Exception) { }
+        Application.Quit();
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 
     public void SetLevelObjective(string message) { if (objectiveText != null) objectiveText.text = message; if (objectivePanelGroup != null) objectivePanelGroup.alpha = 1f; }

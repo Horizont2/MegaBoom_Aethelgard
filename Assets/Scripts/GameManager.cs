@@ -160,7 +160,7 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(waitBeforeRestart);
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
-        else SceneManager.LoadScene("CampScene");
+        else SceneLoader.LoadScene("CampScene");
     }
 
     public void ReturnToMenu()
@@ -178,6 +178,6 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.Save();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Menu");
-        else SceneManager.LoadScene("Menu");
+        else SceneLoader.LoadScene("Menu");
     }
 }

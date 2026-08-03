@@ -314,6 +314,6 @@ public class NoticeBoardManager : MonoBehaviour
         CloseBoard();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(worldSceneName);
-        else SceneManager.LoadScene(worldSceneName);
+        else SceneLoader.LoadScene(worldSceneName);
     }
 }

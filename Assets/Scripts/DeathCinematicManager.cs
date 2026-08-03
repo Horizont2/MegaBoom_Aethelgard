@@ -99,8 +99,7 @@ public class DeathCinematicManager : MonoBehaviour
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);
 
-        if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(SceneManager.GetActiveScene().name);
-        else SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        SceneLoader.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void ReturnToCamp()
@@ -113,7 +112,6 @@ public class DeathCinematicManager : MonoBehaviour
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);
 
-        if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene("CampScene");
-        else SceneManager.LoadScene("CampScene");
+        SceneLoader.LoadScene("CampScene");
     }
 }

@@ -702,7 +702,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (subtitleText != null) subtitleText.text = "";
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("Lvl_1");
-        else UnityEngine.SceneManagement.SceneManager.LoadScene("Lvl_1");
+        else SceneLoader.LoadScene("Lvl_1");
     }
 
     private void UnfreezeEnemiesSecurely(GameObject group)

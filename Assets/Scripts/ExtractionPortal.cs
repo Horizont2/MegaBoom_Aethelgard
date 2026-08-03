@@ -96,7 +96,7 @@ public class ExtractionPortal : MonoBehaviour
         else
         {
             // ��������� ������, ���� HUD ��������
-            SceneManager.LoadScene(campSceneName);
+            SceneLoader.LoadScene(campSceneName);
         }
     }
 }

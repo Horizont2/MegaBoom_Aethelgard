@@ -834,6 +834,9 @@ public static class LocalizationManager
         // Pause menu + main menu chrome
         Add7("Give Up",            "Give Up",            "Здатися",          "Сдаться",         "Rendirse",          "Aufgeben",          "Abandonner",         "Poddaj się");
         Add7("Back to Menu",       "Back to Menu",       "На головну",       "В главное меню",  "Volver al menú",    "Zum Hauptmenü",     "Menu principal",     "Menu główne");
+        Add7("Restart Run",        "Restart Run",        "Почати спробу знову","Начать заново",   "Reiniciar intento", "Lauf neu starten",  "Recommencer",        "Zacznij od nowa");
+        Add7("Quit to Desktop",    "Quit to Desktop",    "Вийти на робочий стіл","Выйти на рабочий стол","Salir al escritorio","Beenden",       "Quitter",            "Wyjdź do systemu");
+        Add7("Really quit to desktop?","Really quit to desktop?","Точно вийти?","Точно выйти?","¿Salir de verdad?","Wirklich beenden?","Vraiment quitter ?","Na pewno wyjść?");
         Add7("Main Menu",          "Main Menu",          "Головне меню",     "Главное меню",    "Menú principal",    "Hauptmenü",         "Menu principal",     "Menu główne");
         Add7("Save Game",          "Save Game",          "Зберегти гру",     "Сохранить игру",  "Guardar partida",   "Spiel speichern",   "Sauvegarder",        "Zapisz grę");
         Add7("Load Game",          "Load Game",          "Завантажити гру",  "Загрузить игру",  "Cargar partida",    "Spiel laden",       "Charger",            "Wczytaj grę");

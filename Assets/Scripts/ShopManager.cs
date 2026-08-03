@@ -1415,7 +1415,6 @@ public class ShopManager : MonoBehaviour
 
         // Բ��: ��������� �������� GlobalHUD.Instance!
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(campSceneName);
-        else if (LoadingManager.Instance != null) LoadingManager.Instance.LoadScene(campSceneName);
-        else SceneManager.LoadScene(campSceneName);
+        else SceneLoader.LoadScene(campSceneName);
     }
 }

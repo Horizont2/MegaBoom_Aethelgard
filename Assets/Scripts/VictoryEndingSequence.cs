@@ -125,7 +125,7 @@ public class VictoryEndingSequence : MonoBehaviour
         while (creditsGO != null && creditsGO.activeSelf) yield return null;
 
         // 5. Return to main menu — game is done.
-        SceneManager.LoadScene("Menu");
+        SceneLoader.LoadScene("Menu");
     }
 
     private IEnumerator Fade(float from, float to, float duration)
