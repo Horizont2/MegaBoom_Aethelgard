@@ -1646,6 +1646,167 @@ public static class LocalizationManager
              "Aethelgard erinnert sich an das Genommene. Aethelgard erinnert sich an das Zurückgegebene.",
              "Aethelgard se souvient de ce qui fut pris. Aethelgard se souvient de ce qui fut rendu.",
              "Aethelgard pamięta, co zostało zabrane. Aethelgard pamięta, co zostało zwrócone.");
+
+        // --- Batch 9: Tutorial hint fallbacks + interaction prompts ---
+        Add5("Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+             "Добро пожаловать в лагерь — твой безопасный хаб. Подойди к слоту и нажми <b>F</b> чтобы осмотреть или построить. Миссии — на Доске Объявлений.",
+             "Bienvenido al campamento, tu refugio. Acércate a un solar y pulsa <b>F</b> para inspeccionar o construir. Elige misiones en el Tablón.",
+             "Willkommen im Lager — deinem sicheren Hub. Geh zu einem Bauplatz und drücke <b>F</b>. Missionen findest du am Anschlagbrett.",
+             "Bienvenue au camp, ton refuge. Approche un emplacement et appuie sur <b>F</b>. Prends des missions au Panneau.",
+             "Witaj w obozie — bezpiecznym schronieniu. Podejdź do miejsca i naciśnij <b>F</b>. Misje znajdziesz na Tablicy.");
+        Add5("WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.",
+             "WASD — движение, мышь — обзор. Удерживай <b>SHIFT</b> для рывка сквозь атаки.",
+             "WASD para moverte, ratón para mirar. Mantén <b>SHIFT</b> para esquivar.",
+             "WASD zum Bewegen, Maus zum Umsehen. Halte <b>SHIFT</b>, um auszuweichen.",
+             "WASD pour bouger, souris pour regarder. Maintiens <b>SHIFT</b> pour esquiver.",
+             "WASD do ruchu, mysz do rozglądania. Trzymaj <b>SHIFT</b> aby zrobić unik.");
+        Add5("Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.",
+             "Удерживай <b>ЛКМ</b> для серии ударов. Убийства растят СТЕК — каждые 15 добавляют множитель урона.",
+             "Mantén <b>LMB</b> para encadenar golpes. Matar aumenta la PILA — cada 15 añade un multiplicador de daño.",
+             "Halte <b>LMB</b> für Nahkampfketten. Kills erhöhen den STAPEL — je 15 gibt Schadensmultiplikator.",
+             "Maintiens <b>LMB</b> pour enchaîner les coups. Tuer augmente la PILE — chaque 15 ajoute un multiplicateur.",
+             "Trzymaj <b>LMB</b> aby łączyć cięcia. Zabójstwa zwiększają STOS — co 15 dodaje mnożnik obrażeń.");
+        Add5("Hold <b>G</b> to aim a grenade — releases when you let go. Slows time while aiming.",
+             "Удерживай <b>G</b> для прицела гранаты — бросок при отпускании. Замедляет время.",
+             "Mantén <b>G</b> para apuntar granada — lanza al soltar. Ralentiza el tiempo.",
+             "Halte <b>G</b> für Granatenzielen — Wurf beim Loslassen. Verlangsamt Zeit.",
+             "Maintiens <b>G</b> pour viser une grenade — lâche pour lancer. Ralentit le temps.",
+             "Trzymaj <b>G</b> aby wycelować granat — rzut przy puszczeniu. Zwalnia czas.");
+        Add5("STACK = enemies near you. At 15+ you start dealing multiplied damage. At 30+ you become a typhoon — but you also lose acceleration.",
+             "СТЕК = враги вокруг. С 15+ получаешь множитель урона. С 30+ — тайфун, но теряешь ускорение.",
+             "PILA = enemigos cerca. Con 15+ multiplicas daño. Con 30+ eres un tifón, pero pierdes aceleración.",
+             "STAPEL = Feinde in Nähe. Ab 15 Schadensmultiplikator. Ab 30 Taifun — aber ohne Beschleunigung.",
+             "PILE = ennemis proches. À 15+ multiplicateur de dégâts. À 30+ tu deviens typhon, sans accélération.",
+             "STOS = wrogowie w pobliżu. Od 15+ mnożnik obrażeń. Od 30+ tajfun, ale bez przyspieszenia.");
+        Add5("ELITE windup detected. Dash (<b>SHIFT</b>) right as their flash peaks to trigger Perfect Dodge — guaranteed crit + slow-mo.",
+             "Замах ЭЛИТЫ! Рывок (<b>SHIFT</b>) на пике вспышки — Идеальный Уклон, гарантированный крит и замедление.",
+             "¡Preparación ÉLITE! Esquiva (<b>SHIFT</b>) en el pico del flash — Esquiva Perfecta, crítico + cámara lenta.",
+             "ELITE holt aus! Ausweichen (<b>SHIFT</b>) im Blitzhoch — Perfekter Ausweich, Krit + Slow-Mo.",
+             "Charge ÉLITE ! Esquive (<b>SHIFT</b>) au pic du flash — Esquive Parfaite, crit + slow-mo.",
+             "Zamach ELITY! Unik (<b>SHIFT</b>) w szczycie błysku — Idealny Unik, kryt i slow-mo.");
+        Add5("A staggered boss can be executed with F. A short cinematic + free kill. Do it whenever the prompt appears.",
+             "Оглушённого босса можно казнить нажатием F. Короткая катсцена + бесплатное убийство. Делай, когда есть подсказка.",
+             "Un jefe aturdido puede ejecutarse con F. Cinemática corta + muerte gratis. Hazlo cuando aparezca el aviso.",
+             "Ein taumelnder Boss kann mit F hingerichtet werden. Kurze Zwischensequenz + freier Kill.",
+             "Un boss étourdi peut être exécuté avec F. Cinématique courte + kill gratuit. Fais-le quand l'invite apparaît.",
+             "Oszołomionego bossa można stracić klawiszem F. Krótka scenka + darmowe zabójstwo. Rób gdy pojawi się podpowiedź.");
+        Add5("Stand on the corrupted totem and press <b>F</b> to purify it. A wave of enemies will spawn — survive to claim the region.",
+             "Встань на осквернённый тотем и нажми <b>F</b> для очищения. Появится волна врагов — переживи её, чтобы захватить регион.",
+             "Ponte en el tótem corrupto y pulsa <b>F</b> para purificar. Aparecerá una oleada de enemigos — sobrevive para reclamar la región.",
+             "Stell dich auf den verderbten Totem und drücke <b>F</b>. Eine Feindwelle erscheint — überlebe, um die Region zu beanspruchen.",
+             "Place-toi sur le totem corrompu et appuie sur <b>F</b>. Une vague apparaît — survis pour revendiquer la région.",
+             "Stań na skalanym totemie i wciśnij <b>F</b>. Pojawi się fala wrogów — przeżyj by przejąć region.");
+        Add5("Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it — the next totem unlocks afterward.",
+             "Активация тотема вызывает волну. Победи <b>всех</b> врагов для очищения — следующий тотем откроется затем.",
+             "Activar un tótem invoca una oleada. Derrota a <b>todos</b> los enemigos — el siguiente tótem se abre después.",
+             "Ein aktivierter Totem ruft eine Welle. Besiege <b>alle</b> Feinde — der nächste Totem wird danach freigeschaltet.",
+             "Activer un totem invoque une vague. Vaincs <b>tous</b> les ennemis — le prochain totem se débloque.",
+             "Aktywacja totemu przywołuje falę. Pokonaj <b>wszystkich</b> wrogów — następny totem się odblokuje.");
+        Add5("Roadside altars summon a mini-boss on activation. Defeat it for a diamond + XP bonus. Optional but tempting.",
+             "Придорожные алтари вызывают мини-босса. Победа даёт диаманты + XP. Опционально, но заманчиво.",
+             "Los altares del camino invocan un mini-jefe. Derrótalo por diamantes + XP. Opcional pero tentador.",
+             "Wegaltäre rufen einen Mini-Boss. Besiegen bringt Diamanten + XP. Optional aber verlockend.",
+             "Les autels de bord de route invoquent un mini-boss. Vaincs-le pour diamants + XP. Optionnel mais tentant.",
+             "Przydrożne ołtarze przywołują miniboosa. Pokonanie daje diamenty + PD. Opcjonalne, ale kuszące.");
+        Add5("TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.",
+             "СОВЕТ: красная вспышка на враге = входящая атака. РЫВОК (Space) сквозь неё для уклонения.",
+             "PISTA: destello rojo en un enemigo = ataque entrante. ESQUIVA (Espacio) para evitarla.",
+             "TIPP: rotes Blinken beim Feind = eingehender Angriff. AUSWEICHEN (Leertaste) hindurch.",
+             "ASTUCE : flash rouge sur un ennemi = attaque entrante. ESQUIVE (Espace) à travers.",
+             "PORADA: czerwony błysk u wroga = nadchodzący cios. UNIK (Spacja) przez niego.");
+        Add5("Each level lets you pick one of three upgrades. Hover a card to read its effect, click to commit.",
+             "Каждый уровень даёт выбор из трёх улучшений. Наведи на карту чтобы прочитать эффект, кликни чтобы взять.",
+             "Cada nivel te deja elegir una de tres mejoras. Pasa el ratón para ver el efecto, clic para elegir.",
+             "Jede Stufe erlaubt eine von drei Aufwertungen. Karte anschauen für Effekt, klicken zum Wählen.",
+             "Chaque niveau te laisse choisir une amélioration parmi trois. Survole une carte pour l'effet, clique pour prendre.",
+             "Każdy poziom daje wybór jednego z trzech ulepszeń. Najedź na kartę by zobaczyć efekt, kliknij by wybrać.");
+        Add5("Diamonds are persistent currency. Carry them out alive — they're spent in the Shop on weapons, armor, and meta-upgrades.",
+             "Диаманты — постоянная валюта. Вынеси их живым — они тратятся в Магазине на оружие, броню и мета-улучшения.",
+             "Los diamantes son moneda persistente. Sácalos con vida — se gastan en la Tienda.",
+             "Diamanten sind persistente Währung. Bring sie lebend heraus — für Shop-Ausrüstung.",
+             "Les diamants sont une monnaie persistante. Sors-les vivant — pour la Boutique.",
+             "Diamenty to trwała waluta. Wynieś je żywy — wydajesz je w Sklepie.");
+        Add5("Enemies drop XP shards. Fill the XP bar to level up and pick a new upgrade.",
+             "Враги роняют осколки опыта. Заполни шкалу опыта чтобы получить уровень и улучшение.",
+             "Los enemigos sueltan fragmentos de XP. Llena la barra de XP para subir de nivel y elegir mejora.",
+             "Feinde lassen EP-Splitter fallen. Fülle die EP-Leiste für Levelaufstieg + Aufwertung.",
+             "Les ennemis lâchent des éclats d'XP. Remplis la barre pour monter de niveau et choisir une amélioration.",
+             "Wrogowie upuszczają odłamki PD. Wypełnij pasek PD by awansować i wybrać ulepszenie.");
+        Add5("Region cleared! Its neighbours are now Available. Chain conquests outward — the map opens as you go.",
+             "Регион очищен! Соседние теперь Доступны. Захватывай цепочкой — карта открывается по мере продвижения.",
+             "¡Región limpia! Sus vecinas están Disponibles. Encadena conquistas — el mapa se abre a medida.",
+             "Region befreit! Nachbarn sind nun Verfügbar. Verkette Eroberungen — die Karte öffnet sich mit jedem Schritt.",
+             "Région nettoyée ! Ses voisines sont maintenant Disponibles. Enchaîne les conquêtes — la carte s'ouvre au fur.",
+             "Region oczyszczony! Sąsiednie są teraz Dostępne. Łańcuchowo zdobywaj — mapa otwiera się z każdym krokiem.");
+        Add5("The Barracks is open! Walk over and press F to hire mercenaries — they'll conquer regions for you.",
+             "Казарма открыта! Подойди и нажми F чтобы нанять наёмников — они будут захватывать регионы за тебя.",
+             "¡El Cuartel está abierto! Acércate y pulsa F para contratar mercenarios — conquistarán regiones por ti.",
+             "Die Kaserne ist offen! Geh hin und drücke F für Söldner — sie erobern Regionen für dich.",
+             "La Caserne est ouverte ! Approche et appuie sur F pour engager des mercenaires — ils conquièrent pour toi.",
+             "Koszary otwarte! Podejdź i wciśnij F by wynająć najemników — zdobędą regiony za ciebie.");
+        Add5("Pick units + a tactic. Ambush is fast + risky, Assault is balanced, Siege is slow + safer. Win chance updates live.",
+             "Выбери юнитов и тактику. Засада — быстро и рискованно, Штурм — сбалансированно, Осада — долго и безопаснее. Шанс победы обновляется вживую.",
+             "Elige unidades y táctica. Emboscada rápida y arriesgada, Asalto equilibrado, Asedio lento y seguro.",
+             "Wähle Einheiten + Taktik. Hinterhalt schnell aber riskant, Sturm ausgewogen, Belagerung langsam aber sicher.",
+             "Choisis unités + tactique. Embuscade rapide + risquée, Assaut équilibré, Siège lent + plus sûr.",
+             "Wybierz jednostki + taktykę. Zasadzka szybka i ryzykowna, Szturm zbalansowany, Oblężenie powolne i bezpieczniejsze.");
+        Add5("Drag to pan, scroll to zoom. Click an available region to see its rewards and deploy when ready.",
+             "Тяни чтобы двигать, колесо — зум. Клик по доступному региону — просмотр наград и отправка.",
+             "Arrastra para desplazar, rueda para zoom. Clic en una región disponible para ver recompensas y desplegar.",
+             "Ziehen zum Verschieben, Rad zum Zoomen. Klick auf verfügbare Region für Belohnungen + Einsatz.",
+             "Fais glisser pour déplacer, molette pour zoomer. Clique une région disponible pour voir les récompenses.",
+             "Przeciągaj by przesunąć, kółko myszy do zoomu. Kliknij dostępny region by zobaczyć nagrody.");
+        Add5("Cleared encounter — bonus loot dropped at the camp center. Wipe more groups to stack rewards.",
+             "Стычка зачищена — бонусный лут у центра лагеря. Зачищай больше групп для стакающихся наград.",
+             "Encuentro limpio — botín extra en el centro del campamento. Limpia más grupos para acumular.",
+             "Begegnung geräumt — Bonusbeute im Lagerzentrum. Räume mehr Gruppen für gestapelte Belohnungen.",
+             "Rencontre nettoyée — butin bonus au centre du camp. Nettoie plus de groupes pour cumuler.",
+             "Zaczyszczono spotkanie — bonusowy łup w centrum obozu. Zaczyść więcej grup by kumulować nagrody.");
+        Add5("Spend diamonds to unlock and upgrade weapons & armor. Higher tiers boost your Power Score, which gates harder regions.",
+             "Трать диаманты в Магазине на оружие и броню. Высокие тиры повышают Силу, что открывает сложнее регионы.",
+             "Gasta diamantes en armas y armadura. Niveles altos aumentan tu Poder, que abre regiones más duras.",
+             "Diamanten für Waffen + Rüstung. Höhere Stufen erhöhen Macht, was schwerere Regionen freischaltet.",
+             "Dépense des diamants pour armes + armure. Tiers élevés augmentent ta Puissance, débloquant les régions dures.",
+             "Wydawaj diamenty na broń i zbroję. Wyższe poziomy zwiększają Moc, otwierając trudniejsze regiony.");
+        Add5("The Lumberjack's Hut generates LOGS per minute. Cheapest resource but every build needs some.",
+             "Хижина Лесоруба даёт БРЁВНА в минуту. Самый дешёвый ресурс, но нужен для любой постройки.",
+             "La Cabaña del Leñador genera TRONCOS por minuto. El recurso más barato, pero necesario en todo.",
+             "Die Holzfällerhütte gibt STÄMME pro Minute. Günstigste Ressource — jeder Bau braucht sie.",
+             "La Cabane du Bûcheron produit des BÛCHES par minute. Ressource la moins chère, indispensable.",
+             "Chata Drwala produkuje KŁODY na minutę. Najtańszy surowiec, ale każda budowa go potrzebuje.");
+        Add5("The Hunter's Cabin produces FOOD per minute — the rarest basic resource. Prioritise it before high-tier builds.",
+             "Хижина Охотника даёт ЕДУ в минуту — самый редкий базовый ресурс. Приоритет перед высокими тирами.",
+             "La Cabaña del Cazador da COMIDA por minuto — el recurso básico más raro. Prioridad antes de altos niveles.",
+             "Die Jägerhütte gibt NAHRUNG pro Minute — die seltenste Basisressource. Priorität vor High-Tier-Bauten.",
+             "La Cabane du Chasseur produit de la NOURRITURE — la ressource de base la plus rare. À prioriser.",
+             "Chata Łowcy produkuje JEDZENIE — najrzadszy surowiec podstawowy. Priorytet przed wysokimi poziomami.");
+        Add5("The Storage Vault raises your max Wood / Stone / Food capacity. Upgrade it BEFORE big builds so nothing overflows.",
+             "Хранилище повышает максимум Дерева / Камня / Еды. Улучши ДО больших построек чтобы не переполнить.",
+             "El Almacén sube la capacidad máxima de Madera / Piedra / Comida. Mejora ANTES de grandes construcciones.",
+             "Das Lagergewölbe hebt die Max-Kapazität für Holz / Stein / Nahrung. VOR großen Bauten aufwerten.",
+             "L'Entrepôt augmente ta capacité max de Bois / Pierre / Nourriture. Améliore AVANT les gros builds.",
+             "Skarbiec zwiększa maks. pojemność Drewna / Kamienia / Jedzenia. Ulepsz PRZED dużymi budowami.");
+        Add5("The Forge boosts your in-mission weapon damage by up to +15% at max level. Stacks with weapon tier.",
+             "Кузня повышает урон оружия в миссии до +15% на макс. уровне. Стакается с тиром оружия.",
+             "La Fragua aumenta el daño del arma en misión hasta +15% al máximo. Se acumula con nivel de arma.",
+             "Die Schmiede erhöht Waffenschaden in Missionen um bis zu +15%. Kumuliert mit Waffenstufe.",
+             "La Forge augmente les dégâts d'arme en mission jusqu'à +15% au max. Cumule avec le niveau d'arme.",
+             "Kuźnia zwiększa obrażenia broni w misji do +15% na maks. Kumuluje się z poziomem broni.");
+
+        // Interaction prompts (PROMPT_* keys used at NPC/object interactions)
+        Add5("PROMPT_OPEN_CHEST",           "[E] Открыть сундук",      "[E] Abrir cofre",           "[E] Truhe öffnen",           "[E] Ouvrir le coffre",         "[E] Otwórz skrzynię");
+        Add5("PROMPT_ACTIVATE_ALTAR",       "[F] Активировать Древний Алтарь","[F] Activar Altar Antiguo","[F] Alten Altar aktivieren","[F] Activer l'Autel Ancien","[F] Aktywuj Starożytny Ołtarz");
+        Add5("PROMPT_INSPECT_BUILDING",     "[F] Осмотр: {0}",         "[F] Inspeccionar: {0}",     "[F] Untersuchen: {0}",       "[F] Inspecter : {0}",          "[F] Zbadaj: {0}");
+        Add5("PROMPT_OPEN_MAP",             "[E] Открыть карту",       "[E] Abrir mapa",            "[E] Karte öffnen",           "[E] Ouvrir la carte",          "[E] Otwórz mapę");
+        Add5("PROMPT_OPEN_BOARD",           "Нажми E чтобы открыть доску","Pulsa E para abrir el tablón","E drücken für die Tafel","Appuie sur E pour le panneau","Naciśnij E by otworzyć tablicę");
+        Add5("PROMPT_TALK_STRANGER",        "[E] Поговорить с незнакомцем","[E] Hablar con desconocido","[E] Mit Fremdem sprechen","[E] Parler à l'inconnu",     "[E] Porozmawiaj z nieznajomym");
+        Add5("PROMPT_PET_CAT",              "[E] Погладить кота",      "[E] Acariciar gato",        "[E] Katze streicheln",       "[E] Caresser le chat",         "[E] Pogłaszcz kota");
+        Add5("PROMPT_EVACUATE",             "Нажми E чтобы эвакуироваться","Pulsa E para evacuar",  "E drücken zur Evakuierung",  "Appuie sur E pour évacuer",    "Naciśnij E by ewakuować");
+        Add5("PROMPT_MOUNT_HORSE",          "[E] Оседлать коня и бежать","[E] Montar caballo y huir","[E] Pferd besteigen und fliehen","[E] Monter le cheval et fuir","[E] Wsiądź na konia i uciekaj");
+        Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
+        Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
+        Add5("TUTORIAL_TIP_DEFAULT",        "СОВЕТ",                   "PISTA",                     "TIPP",                       "ASTUCE",                       "PORADA");
+        Add5("MISSION_DONE_TAG",            "ГОТОВО",                  "HECHO",                     "ERLEDIGT",                   "FAIT",                         "ZROBIONE");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
