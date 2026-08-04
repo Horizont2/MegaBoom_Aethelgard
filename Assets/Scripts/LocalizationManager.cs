@@ -1707,6 +1707,44 @@ public static class LocalizationManager
         AddSelf("Back",                   "Назад");
         AddSelf("Next",                   "Далі");
 
+        // === Loading-screen hints (LoadingCanvas.gameHints array) ===
+        AddSelf("The Kingdom of Aethelgard does not forgive mistakes. Always compare your Power with the Recommended Power of a region before venturing out.",
+                "Королівство Ітельгард не пробачає помилок. Завжди порівнюй свою Силу з Рекомендованою Силою регіону, перш ніж вирушати.");
+        AddSelf("Retreat is not cowardice. If a battle turns against you, it is better to Give Up and return to Camp than to perish in the woods.",
+                "Відступ — не боягузтво. Якщо бій обертається проти тебе, краще Здатись і повернутись до табору, ніж загинути в лісі.");
+        AddSelf("Grenades are your best friend against a crowd. Use them to thin the enemy ranks before drawing your sword.",
+                "Гранати — твій найкращий друг проти натовпу. Використовуй їх, щоб прорідити лави ворогів, перш ніж діставати меч.");
+        AddSelf("Even the thickest helmet won't save you if you stand still. Keep moving during combat.",
+                "Навіть найтовщий шолом не врятує, якщо ти стоїш на місці. Постійно рухайся в бою.");
+        AddSelf("Conquered territories provide passive income. Don't forget to regularly collect resources from your domain.",
+                "Захоплені території дають пасивний прибуток. Не забувай регулярно збирати ресурси зі своїх володінь.");
+        AddSelf("Invest wood, stone, and food to upgrade your controlled regions. Higher levels yield more resources per hour.",
+                "Вкладай дерево, камінь і їжу в покращення підконтрольних регіонів. Вищі рівні дають більше ресурсів на годину.");
+        AddSelf("Gems are incredibly rare. Spend them wisely and save them for the most crucial upgrades.",
+                "Самоцвіти неймовірно рідкісні. Витрачай їх обачно й бережи для найважливіших покращень.");
+        AddSelf("A well-fed warrior fights better. A steady supply of food from your territories is vital for expanding your influence.",
+                "Ситий воїн б'ється краще. Стабільне постачання їжі з твоїх територій — запорука розширення впливу.");
+        AddSelf("Explore the World Map thoroughly. New territories can hide both vast riches and lethal dangers.",
+                "Досліджуй Карту Світу ретельно. Нові території можуть ховати як великі багатства, так і смертельну небезпеку.");
+        AddSelf("They say in Stonefall Quarry, undead miners still mindlessly swing their pickaxes. Stay on your guard.",
+                "Кажуть, у Кам'яному Каменярі мертві шахтарі досі бездумно махають кирками. Тримай варту.");
+        AddSelf("Your Camp is the only truly safe haven in all of Aethelgard. Return there to catch your breath by the fire.",
+                "Твій Табір — єдина по-справжньому безпечна гавань у всьому Ітельгарді. Повертайся туди перевести дух біля вогнища.");
+        AddSelf("The dead do not feel pain, but they can still be hacked to pieces. Keep your blade sharp.",
+                "Мертві не відчувають болю, але їх усе одно можна порубати на шматки. Тримай клинок гострим.");
+        AddSelf("Only the strongest and most ruthless rulers can unite the fractured Kingdom of Aethelgard. Will you be one of them?",
+                "Лише найсильніші й найжорстокіші правителі можуть об'єднати роздертий Ітельгард. Чи станеш ти одним із них?");
+        AddSelf("The dense, dark forests and steep cliffs of Aethelgard show no mercy to those who lose their focus.",
+                "Густі темні ліси й круті скелі Ітельгарду не милують тих, хто втрачає пильність.");
+        AddSelf("New armor doesn't just increase your defense—it changes your appearance. Find gear worthy of a true lord.",
+                "Нова броня не тільки збільшує захист — вона змінює твій вигляд. Знайди спорядження, гідне справжнього лорда.");
+        AddSelf("Always check the Notice Board in your Camp. It frequently offers new, lucrative contracts and missions.",
+                "Завжди перевіряй Дошку Оголошень у Таборі. На ній часто з'являються нові вигідні контракти й місії.");
+        AddSelf("Heavy armor provides excellent protection against direct hits, but it slows you down. Find your perfect balance in battle.",
+                "Важка броня чудово захищає від прямих ударів, але сповільнює. Знайди свій ідеальний баланс у бою.");
+        AddSelf("Getting dizzy from the action? You can always disable Screen Shake or adjust your Mouse Sensitivity in the Settings menu.",
+                "Крутиться голова від дії? Ти завжди можеш вимкнути Тряску Екрану або відрегулювати Чутливість Миші в меню Налаштувань.");
+
         // Barracks upgrade tier prose ("Unlocks X recruits", etc.)
         AddSelf("Unlocks new recruit types",       "Відкриває нові типи рекрутів");
         AddSelf("BASIC LEVY — OFFICER FEUDAL ONLY","БАЗОВИЙ НАБІР — ЛИШЕ ФЕОДАЛЬНИЙ ОФІЦЕР");
