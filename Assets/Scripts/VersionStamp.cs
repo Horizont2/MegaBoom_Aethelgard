@@ -20,6 +20,11 @@ public static class VersionStamp
             if (scene.name != "Menu" && scene.name != "MainMenu") return;
             Build();
         };
+        // Bootstrap fires AFTER the initial scene load — sceneLoaded
+        // won't retroactively fire for the menu the player is already
+        // sitting on. Explicitly build now if we're in the menu.
+        var current = SceneManager.GetActiveScene();
+        if (current.name == "Menu" || current.name == "MainMenu") Build();
     }
 
     private static void Build()

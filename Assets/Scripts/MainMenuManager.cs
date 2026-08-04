@@ -338,6 +338,19 @@ public class MainMenuManager : MonoBehaviour
     public void QuitGame()
     {
         PlayClickSound();
+        // Route through the confirm dialog even when the scene button
+        // was wired directly to this public method (not through the
+        // extended-menu `quitButton` field). Users kept clicking Quit
+        // and hard-exiting without a prompt because the button in the
+        // scene was bound to QuitGame() via UnityEvent, bypassing the
+        // OnQuitClicked → ShowConfirmDialog path.
+        ShowConfirmDialog(
+            LocalizationManager.Tr("MENU_CONFIRM_QUIT"),
+            onYes: QuitGameConfirmed);
+    }
+
+    private void QuitGameConfirmed()
+    {
         Application.Quit();
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
