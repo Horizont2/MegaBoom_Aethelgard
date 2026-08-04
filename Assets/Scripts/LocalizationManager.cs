@@ -40,7 +40,12 @@ public static class LocalizationManager
     // 2 = Russian, …). Bump this once RU/ES/DE/FR/PL coverage is
     // complete — until then the setter clamps here so half-translated
     // languages can't be selected via any dropdown / hotkey / save.
-    public const int MAX_SHIPPED_LANGUAGE = 1;
+    // 0=EN, 1=UK, 2=RU, 3=ES, 4=DE, 5=FR, 6=PL. Raised to 6 for the
+    // full 7-language ship. Keys that still lack a translation in one
+    // of the newer languages fall through to English via the runtime
+    // Tr() fallback — visible but never wrong. The supplement passes
+    // below fill them in batch by batch.
+    public const int MAX_SHIPPED_LANGUAGE = 6;
 
     public static int CurrentLanguage
     {
@@ -973,6 +978,54 @@ public static class LocalizationManager
         SeedPolishBackfill();
         SeedDialogues();
         SeedPrompts();
+        SeedFiveLangSupplements();
+    }
+
+    // === 5-language supplement (RU/ES/DE/FR/PL) for keys originally
+    // registered with Add() or AddSelf() (EN+UK only).
+    //
+    // Batch 1 — Core UI + Menu chrome + Pause + Confirm dialogs.
+    // These are the highest-visibility strings a language-switching
+    // player sees first.
+    private static void SeedFiveLangSupplements()
+    {
+        // --- Core UI ---
+        Add5("UI_SAVE_AND_CLOSE",  "СОХРАНИТЬ И ЗАКРЫТЬ", "GUARDAR Y CERRAR",   "SPEICHERN & SCHLIESSEN", "SAUVEGARDER & FERMER", "ZAPISZ I ZAMKNIJ");
+        Add5("UI_CLOSE",           "ЗАКРЫТЬ",            "CERRAR",             "SCHLIESSEN",             "FERMER",               "ZAMKNIJ");
+        Add5("UI_CONFIRM",         "ПОДТВЕРДИТЬ",        "CONFIRMAR",          "BESTÄTIGEN",             "CONFIRMER",            "POTWIERDŹ");
+        Add5("UI_CANCEL",          "ОТМЕНА",             "CANCELAR",           "ABBRECHEN",              "ANNULER",              "ANULUJ");
+        Add5("UI_RESUME",          "ПРОДОЛЖИТЬ",         "REANUDAR",           "FORTSETZEN",             "REPRENDRE",            "WZNÓW");
+        Add5("UI_QUIT_TO_CAMP",    "ВЫЙТИ В ЛАГЕРЬ",     "SALIR AL CAMPAMENTO","INS LAGER",              "RETOUR AU CAMP",       "DO OBOZU");
+
+        // --- Menu buttons (also caught by AutoLocalizeScene walker) ---
+        Add5("Continue",           "Продолжить",     "Continuar",  "Fortsetzen",  "Continuer", "Kontynuuj");
+        Add5("Achievements",       "Достижения",     "Logros",     "Erfolge",     "Succès",    "Osiągnięcia");
+        Add5("Settings",           "Настройки",      "Ajustes",    "Einstellungen","Paramètres","Ustawienia");
+        Add5("Quit",               "Выход",          "Salir",      "Beenden",     "Quitter",   "Wyjdź");
+        Add5("Retry",              "Заново",         "Reintentar", "Erneut",      "Réessayer", "Spróbuj ponownie");
+        Add5("Return to Camp",     "В лагерь",       "Al campamento","Ins Lager", "Au camp",   "Do obozu");
+        Add5("Return to Menu",     "В меню",         "Al menú",    "Zum Menü",    "Au menu",   "Do menu");
+        Add5("Main Menu",          "Главное меню",   "Menú principal","Hauptmenü","Menu principal","Menu główne");
+        Add5("Play",               "Играть",         "Jugar",      "Spielen",     "Jouer",     "Graj");
+        Add5("Start",              "Начать",         "Empezar",    "Starten",     "Commencer", "Start");
+        Add5("Close",              "Закрыть",        "Cerrar",     "Schließen",   "Fermer",    "Zamknij");
+        Add5("Confirm",            "Подтвердить",    "Confirmar",  "Bestätigen",  "Confirmer", "Potwierdź");
+        Add5("Yes",                "Да",             "Sí",         "Ja",          "Oui",       "Tak");
+        Add5("No",                 "Нет",            "No",         "Nein",        "Non",       "Nie");
+        Add5("Back",               "Назад",          "Atrás",      "Zurück",      "Retour",    "Wstecz");
+        Add5("Next",               "Далее",          "Siguiente",  "Weiter",      "Suivant",   "Dalej");
+        Add5("Accept",             "Принять",        "Aceptar",    "Annehmen",    "Accepter",  "Przyjmij");
+        Add5("Decline",            "Отклонить",      "Rechazar",   "Ablehnen",    "Refuser",   "Odrzuć");
+        Add5("Skip",               "Пропустить",     "Saltar",     "Überspringen","Passer",    "Pomiń");
+
+        // --- Pause + Restart Run + Quit to Desktop confirmation ---
+        Add5("Restart Run",        "Начать заново",  "Reiniciar intento","Lauf neu starten","Recommencer","Zacznij od nowa");
+        Add5("Quit to Desktop",    "Выйти на рабочий стол","Salir al escritorio","Beenden","Quitter","Wyjdź do systemu");
+        Add5("Really quit to desktop?","Точно выйти?","¿Salir de verdad?","Wirklich beenden?","Vraiment quitter ?","Na pewno wyjść?");
+        Add5("Give Up",            "Сдаться",        "Rendirse",   "Aufgeben",    "Abandonner","Poddaj się");
+        Add5("Back to Menu",       "В главное меню", "Volver al menú","Zum Hauptmenü","Menu principal","Menu główne");
+        Add5("Are you sure?",      "Ты уверен?",     "¿Estás seguro?","Bist du sicher?","Es-tu sûr ?","Na pewno?");
+        Add5("MENU_CONFIRM_QUIT",  "Выйти из игры?","¿Salir del juego?","Spiel beenden?","Quitter le jeu ?","Wyjść z gry?");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
@@ -2421,6 +2474,27 @@ public static class LocalizationManager
     {
         s_en[key] = en;
         s_uk[key] = uk;
+        s_ru[key] = ru;
+        s_es[key] = es;
+        s_de[key] = de;
+        s_fr[key] = fr;
+        s_pl[key] = pl;
+    }
+
+    // Single-language supplements — used by the batch translation passes
+    // below to fill in RU/ES/DE/FR for keys originally registered with
+    // just EN+UK (via Add or AddSelf). Assumes the EN key already
+    // exists; silently overwrites if it doesn't. (AddPl already
+    // defined above for the same purpose.)
+    private static void AddRu(string key, string ru) => s_ru[key] = ru;
+    private static void AddEs(string key, string es) => s_es[key] = es;
+    private static void AddDe(string key, string de) => s_de[key] = de;
+    private static void AddFr(string key, string fr) => s_fr[key] = fr;
+
+    // 5-in-one supplement — feeds RU/ES/DE/FR/PL in a single call.
+    // Much less noisy than 5 separate lines per key.
+    private static void Add5(string key, string ru, string es, string de, string fr, string pl)
+    {
         s_ru[key] = ru;
         s_es[key] = es;
         s_de[key] = de;
