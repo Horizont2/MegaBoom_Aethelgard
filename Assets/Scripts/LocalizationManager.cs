@@ -1699,6 +1699,13 @@ public static class LocalizationManager
         AddSelf("Start",                  "Почати");
         AddSelf("Close",                  "Закрити");
         AddSelf("Confirm",                "Підтвердити");
+        AddSelf("Take Mission",           "Взяти місію");
+        AddSelf("TAKE MISSION",           "ВЗЯТИ МІСІЮ");
+        AddSelf("Accept",                 "Прийняти");
+        AddSelf("Decline",                "Відхилити");
+        AddSelf("Skip",                   "Пропустити");
+        AddSelf("Back",                   "Назад");
+        AddSelf("Next",                   "Далі");
 
         // Barracks upgrade tier prose ("Unlocks X recruits", etc.)
         AddSelf("Unlocks new recruit types",       "Відкриває нові типи рекрутів");

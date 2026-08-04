@@ -491,13 +491,25 @@ public class BarracksUpgradePanel : MonoBehaviour
         var next = hostBuilding.levels[level];
         if (!ResourceManager.Instance.CanAffordStash(next.costWood, next.costStone, next.costFood)) return;
 
+        // Route through CampBuilding's timed upgrade path so the ghost
+        // model + dust + tracked-upgrade HUD widget behave like every
+        // other building. Previously this method spent resources and
+        // set currentLevel = level+1 in the same frame — instant
+        // completion, no dust, no ghost, no timer widget.
         ResourceManager.Instance.SpendStashResources(next.costWood, next.costStone, next.costFood);
-        hostBuilding.currentLevel = level + 1;
-        PlayerPrefs.SetInt("SaveBld_" + hostBuilding.buildingID, hostBuilding.currentLevel);
+
+        long startTimeBinary = System.DateTime.UtcNow.ToBinary();
+        PlayerPrefs.SetString("UpgradeStart_" + hostBuilding.buildingID, startTimeBinary.ToString());
+        PlayerPrefs.SetInt("IsUpgrading_" + hostBuilding.buildingID, 1);
         PlayerPrefs.Save();
 
+        hostBuilding.StartDustEffect();
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildDone, hostBuilding.transform.position);
+            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildStart, hostBuilding.transform.position);
+
+        if (GlobalHUD.Instance != null)
+            GlobalHUD.Instance.StartTrackingUpgrade(hostBuilding.buildingID, hostBuilding.buildingName,
+                                                    hostBuilding.buildingIconSprite, next.buildTime, startTimeBinary);
 
         Refresh();
     }

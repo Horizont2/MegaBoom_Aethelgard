@@ -797,7 +797,10 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
-    private void StartDustEffect()
+    // Exposed so companion panels (e.g. BarracksUpgradePanel) can drive
+    // the same VFX beat as the generic hold-E upgrade flow instead of
+    // rolling their own instant no-VFX path.
+    public void StartDustEffect()
     {
         if (buildDustVFX != null)
         {

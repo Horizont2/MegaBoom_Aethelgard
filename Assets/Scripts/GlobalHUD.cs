@@ -1287,11 +1287,20 @@ public class GlobalHUD : MonoBehaviour
 
     private void RestackPickupPopups()
     {
-        for (int i = 0; i < activePickupPopups.Count; i++)
+        // Compact null / destroyed entries first, then position by the
+        // DENSE index. The old version divided by activePickupPopups.Count
+        // which included nulls — as popups died their surviving siblings
+        // stayed pinned at their old dense-count Y, producing the "stacks
+        // in one spot and doesn't move" visual bug the player reported.
+        for (int i = activePickupPopups.Count - 1; i >= 0; i--)
+            if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
+
+        int n = activePickupPopups.Count;
+        for (int i = 0; i < n; i++)
         {
             RectTransform rt = activePickupPopups[i];
             if (rt == null) continue;
-            float targetY = (activePickupPopups.Count - 1 - i) * 36f;
+            float targetY = (n - 1 - i) * 36f;
             rt.anchoredPosition = new Vector2(0f, targetY);
         }
     }

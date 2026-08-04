@@ -192,7 +192,24 @@ public class IntroCinematicManager : MonoBehaviour
     {
         if (isSkipping) return;
 
-        bool held = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.Escape);
+        // Cover keyboard (Space/Escape/Enter) + gamepad (Start / East /
+        // South via InputCompat) — original only listened to Space+Escape
+        // which fell silent if some other Update swallowed those specific
+        // keys or the player was on a controller.
+        bool held = Input.GetKey(KeyCode.Space)
+                 || Input.GetKey(KeyCode.Escape)
+                 || Input.GetKey(KeyCode.Return)
+                 || Input.GetKey(KeyCode.KeypadEnter)
+                 || Input.GetKey(KeyCode.JoystickButton7)   // Start on most pads
+                 || Input.GetKey(KeyCode.JoystickButton1);  // East (B / Circle)
+
+        // Also short-circuit on any GetKeyDown edge of the same set — a
+        // single tap skips immediately IF the player already has the
+        // hold-prompt on screen (they clearly want out).
+        bool tapped = Input.GetKeyDown(KeyCode.Space)
+                   || Input.GetKeyDown(KeyCode.Escape)
+                   || Input.GetKeyDown(KeyCode.Return);
+
         if (held)
         {
             holdSkipTimer += Time.unscaledDeltaTime;
@@ -209,7 +226,18 @@ public class IntroCinematicManager : MonoBehaviour
             if (holdToSkipPrompt != null && holdToSkipPrompt.gameObject.activeSelf)
                 holdToSkipPrompt.gameObject.SetActive(false);
         }
+
+        // Belt-and-braces: if the player has tapped the skip key many
+        // times without a full hold, they clearly want to skip. Count
+        // taps and let them off after 3.
+        if (tapped)
+        {
+            skipTapCount++;
+            if (skipTapCount >= 3) SkipCinematic();
+        }
     }
+
+    private int skipTapCount = 0;
 
     public void SkipCinematic()
     {
@@ -252,7 +280,12 @@ public class IntroCinematicManager : MonoBehaviour
             float elapsed = 0f;
             while (elapsed < fadeDuration)
             {
-                elapsed += Time.deltaTime;
+                // Unscaled — a stray Time.timeScale = 0 (pause menu
+                // opened over the intro, whatever) used to freeze the
+                // fade forever and pin blocksRaycasts=true, so ESC/
+                // Space presses hit the intro overlay instead of the
+                // menu underneath. Realtime clears cleanly regardless.
+                elapsed += Time.unscaledDeltaTime;
                 cinematicCanvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / fadeDuration);
                 yield return null;
             }
