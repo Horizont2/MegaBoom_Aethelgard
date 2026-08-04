@@ -147,6 +147,16 @@ public static class LocalizationManager
         return args == null || args.Length == 0 ? template : string.Format(template, args);
     }
 
+    // Cheap check — is this literal a registered English key? Used by
+    // AutoLocalizeScene to decide "should I try to translate this TMP
+    // label" without allocating on strings that aren't ours.
+    public static bool HasKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return false;
+        EnsureLoaded();
+        return s_en.ContainsKey(key);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
@@ -1660,6 +1670,51 @@ public static class LocalizationManager
         Add("COMPASS_S", "S", "Пд");
         Add("COMPASS_E", "E", "Сх");
         Add("COMPASS_W", "W", "Зх");
+
+        // === Inspector-authored labels caught by AutoLocalizeScene ===
+        // These strings live on TMP components in scenes / prefabs, not
+        // in code. The walker at scene load looks them up as keys and
+        // swaps to the localised value. Every string here MUST match the
+        // authored English exactly (case, punctuation, spacing).
+        AddSelf("Achievements",           "Досягнення");
+        AddSelf("CONQUER REWARDS",        "НАГОРОДИ ЗА ЗАХОПЛЕННЯ");
+        AddSelf("EMBARK ON JOURNEY",      "ВИРУШИТИ В ПОХІД");
+        AddSelf("Hold the Line",          "Тримай лінію");
+        AddSelf("Rewards:",               "Нагороди:");
+        AddSelf("UNITS",                  "ЮНІТИ");
+        AddSelf("BARRACKS",               "КАЗАРМА");
+        AddSelf("Upgrade UNITS",          "Покращити ЮНІТИ");
+        AddSelf("Upgrade BARRACKS",       "Покращити КАЗАРМУ");
+        AddSelf("Purchase",               "Купити");
+        AddSelf("Sell",                   "Продати");
+        AddSelf("Equip",                  "Одягнути");
+        AddSelf("Unequip",                "Зняти");
+        AddSelf("Owned",                  "Володієте");
+        AddSelf("New",                    "Новий");
+        AddSelf("Continue",               "Продовжити");
+        AddSelf("Retry",                  "Спробувати знову");
+        AddSelf("Return to Camp",         "Повернутись до табору");
+        AddSelf("Return to Menu",         "На головну");
+        AddSelf("Play",                   "Грати");
+        AddSelf("Start",                  "Почати");
+        AddSelf("Close",                  "Закрити");
+        AddSelf("Confirm",                "Підтвердити");
+
+        // Barracks upgrade tier prose ("Unlocks X recruits", etc.)
+        AddSelf("Unlocks new recruit types",       "Відкриває нові типи рекрутів");
+        AddSelf("BASIC LEVY — OFFICER FEUDAL ONLY","БАЗОВИЙ НАБІР — ЛИШЕ ФЕОДАЛЬНИЙ ОФІЦЕР");
+
+        // Mercenary flavor descriptions (MercenaryData authored English).
+        AddSelf("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Levy would break against.",
+                "Освячені чемпіони Ітельгарду, віддані сталі й вогню. Один Лицар у строю здатен утримати пролом, від якого Ополчення розсипалось би.");
+        AddSelf("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
+                "Селяни з вилами і впертою відвагою. Дешеві, гинуть швидко — але повний ряд перетворює безнадійний штурм на рівний бій.");
+        AddSelf("Silent scouts from the borderland forests. Devastating against unarmored conscripts and the pace-setters of any ambush.",
+                "Мовчазні розвідники з прикордонних лісів. Спустошливі проти беззбройних новобранців і задають темп будь-якій засідці.");
+
+        // Building descriptions (CampBuilding authored English).
+        AddSelf("A reinforced cellar to keep your camp's resources safe from the harsh weather and scavengers.",
+                "Укріплений льох, що береже ресурси табору від негоди і мародерів.");
 
         // === Main menu extended ===
         Add("MENU_CONFIRM_NEW_GAME",
