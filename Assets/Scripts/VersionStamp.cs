@@ -61,6 +61,11 @@ public static class VersionStamp
 #elif UNITY_EDITOR
         tag = " editor";
 #endif
-        return $"v{Application.version}{tag}";
+        // Append the short buildGUID (empty in the editor, populated in
+        // actual builds) so bug-report screenshots identify the exact
+        // build the tester was on — same version can ship multiple times.
+        string guid = Application.buildGUID;
+        string suffix = string.IsNullOrEmpty(guid) ? "" : "-" + guid.Substring(0, System.Math.Min(6, guid.Length));
+        return $"v{Application.version}{tag}{suffix}";
     }
 }
