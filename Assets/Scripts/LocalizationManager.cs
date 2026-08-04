@@ -1881,6 +1881,158 @@ public static class LocalizationManager
         Add5("MILESTONE_LEVEL_HP",         "РУБЕЖ УР.{0}: +10 макс. HP","HITO NV.{0}: +10 PV máx.","MEILENSTEIN LV{0}: +10 max. LP","JALON NIV.{0} : +10 PV max","KAMIEŃ MILOWY POZ.{0}: +10 maks. PŻ");
         Add5("SHOP_ITEM_LEVEL_TAG",        "(Ур. {0}/{1})",           "(Nv. {0}/{1})",          "(Stufe {0}/{1})",       "(Niv. {0}/{1})",      "(Poz. {0}/{1})");
         Add5("SHOP_NEED_MORE_DIAMONDS",    "Нужно +{0} диамантов",    "Faltan +{0} diamantes",  "Fehlen +{0} Diamanten", "Il manque +{0} diamants","Brakuje +{0} diamentów");
+
+        // --- Batch 11: Elias dialogue (all 24 lines) ---
+        Add5("Elias: The Blight never sleeps. Neither should we.",
+             "Элиас: Порча никогда не спит. И нам нельзя.",
+             "Elias: La Plaga nunca duerme. Nosotros tampoco deberíamos.",
+             "Elias: Der Verfall schläft nie. Wir sollten es auch nicht.",
+             "Elias : Le Fléau ne dort jamais. Nous non plus.",
+             "Elias: Skaza nigdy nie śpi. Ani my nie powinniśmy.");
+        Add5("Elias: Keep your blade sharp. The outlands are unforgiving.",
+             "Элиас: Держи клинок острым. Пустоши не прощают.",
+             "Elias: Mantén tu hoja afilada. Las tierras exteriores no perdonan.",
+             "Elias: Halt deine Klinge scharf. Das Ödland verzeiht nicht.",
+             "Elias : Garde ta lame affûtée. Les terres sauvages ne pardonnent pas.",
+             "Elias: Trzymaj ostrze ostre. Pustkowia nie wybaczają.");
+        Add5("Elias: I smell ash on the wind today...",
+             "Элиас: Сегодня на ветру чую пепел...",
+             "Elias: Hoy huelo ceniza en el viento...",
+             "Elias: Heute rieche ich Asche im Wind...",
+             "Elias : Aujourd'hui je sens la cendre dans le vent...",
+             "Elias: Dziś czuję popiół na wietrze...");
+        Add5("Elias: If you find any ancient scrolls out there, bring them to me.",
+             "Элиас: Найдёшь древние свитки — принеси их мне.",
+             "Elias: Si encuentras pergaminos antiguos, tráemelos.",
+             "Elias: Findest du alte Schriftrollen, bring sie mir.",
+             "Elias : Si tu trouves d'anciens parchemins, apporte-les moi.",
+             "Elias: Znajdziesz starożytne zwoje — przynieś je.");
+        Add5("Elias: Aethelgard will rise again. I feel it.",
+             "Элиас: Ительгард восстанет вновь. Я это чувствую.",
+             "Elias: Aethelgard se alzará de nuevo. Lo siento.",
+             "Elias: Aethelgard wird sich erheben. Ich spüre es.",
+             "Elias : Aethelgard se relèvera. Je le sens.",
+             "Elias: Aethelgard powstanie na nowo. Czuję to.");
+        Add5("Elias: Listen closely. This camp won't survive on scraps forever.",
+             "Элиас: Слушай внимательно. Лагерь не выживет на объедках вечно.",
+             "Elias: Escucha bien. Este campamento no sobrevivirá con sobras para siempre.",
+             "Elias: Hör gut zu. Dieses Lager überlebt nicht ewig von Resten.",
+             "Elias : Écoute bien. Ce camp ne survivra pas éternellement de restes.",
+             "Elias: Słuchaj uważnie. Ten obóz nie przetrwa wiecznie na resztkach.");
+        Add5("Elias: The skeletons you fought? They are the cursed remains of Aethelgard's royal guard.",
+             "Элиас: Скелеты, с которыми ты дрался? Это проклятые останки королевской гвардии Ительгарда.",
+             "Elias: ¿Los esqueletos que combatiste? Son los restos malditos de la guardia real de Aethelgard.",
+             "Elias: Die Skelette, gegen die du gekämpft hast? Verfluchte Reste der königlichen Garde.",
+             "Elias : Les squelettes contre lesquels tu combats ? Les restes maudits de la garde royale.",
+             "Elias: Szkielety, z którymi walczyłeś? To przeklęte szczątki królewskiej gwardii.");
+        Add5("Elias: Centuries ago, the Ashen Blight ruined this kingdom. We must reclaim the 24 lost provinces.",
+             "Элиас: Столетия назад Пепельная Порча уничтожила это королевство. Мы должны вернуть 24 потерянные провинции.",
+             "Elias: Hace siglos, la Plaga Cenicienta arruinó este reino. Debemos recuperar las 24 provincias.",
+             "Elias: Vor Jahrhunderten ruinierte der Aschverfall dieses Reich. Wir müssen die 24 Provinzen zurückholen.",
+             "Elias : Il y a des siècles, le Fléau de Cendre a ruiné ce royaume. Il faut reprendre les 24 provinces.",
+             "Elias: Wieki temu Popielna Skaza zniszczyła to królestwo. Musimy odzyskać 24 utracone prowincje.");
+        Add5("Elias: Build me a drafting table here later, and I will chart a safe path to the forests.",
+             "Элиас: Построй мне чертёжный стол — и я проложу безопасный путь к лесам.",
+             "Elias: Constrúyeme una mesa de dibujo aquí, y trazaré una senda segura a los bosques.",
+             "Elias: Bau mir hier einen Zeichentisch, dann kartiere ich einen sicheren Pfad zu den Wäldern.",
+             "Elias : Construis-moi une table à dessin, et je tracerai une route sûre vers les forêts.",
+             "Elias: Zbuduj mi stół kreślarski, a wytyczę bezpieczną drogę do lasów.");
+        Add5("Elias: The new table is perfect. I've charted the first 8 regions on the map behind me.",
+             "Элиас: Новый стол — идеален. Я нанёс первые 8 регионов на карту позади меня.",
+             "Elias: La mesa nueva es perfecta. He trazado las primeras 8 regiones en el mapa.",
+             "Elias: Der neue Tisch ist perfekt. Ich habe die ersten 8 Regionen kartiert.",
+             "Elias : La nouvelle table est parfaite. J'ai cartographié les 8 premières régions.",
+             "Elias: Nowy stół jest idealny. Naniosłem pierwsze 8 regionów na mapę.");
+        Add5("Elias: Interact with the table to plan your assaults. We need those territories back.",
+             "Элиас: Взаимодействуй со столом, чтобы планировать штурмы. Эти территории нужно вернуть.",
+             "Elias: Interactúa con la mesa para planear tus asaltos. Necesitamos esos territorios.",
+             "Elias: Nutze den Tisch, um Angriffe zu planen. Wir brauchen diese Gebiete zurück.",
+             "Elias : Utilise la table pour planifier tes assauts. Nous devons reprendre ces terres.",
+             "Elias: Użyj stołu do planowania ataków. Musimy odzyskać te terytoria.");
+        Add5("Elias: You survived your first conquest. I knew you had the spark.",
+             "Элиас: Ты пережил своё первое завоевание. Я знал — в тебе есть искра.",
+             "Elias: Sobreviviste a tu primera conquista. Sabía que tenías la chispa.",
+             "Elias: Du hast deine erste Eroberung überlebt. Ich wusste, du hast den Funken.",
+             "Elias : Tu as survécu à ta première conquête. Je savais que tu avais l'étincelle.",
+             "Elias: Przeżyłeś swój pierwszy podbój. Wiedziałem, że masz iskrę.");
+        Add5("Elias: Did you notice the black ash falling in the woods? That is the physical form of the Blight.",
+             "Элиас: Заметил чёрный пепел, что падает в лесах? Это физическая форма Порчи.",
+             "Elias: ¿Notaste la ceniza negra cayendo en los bosques? Es la forma física de la Plaga.",
+             "Elias: Hast du den schwarzen Aschefall in den Wäldern bemerkt? Das ist die physische Form des Verfalls.",
+             "Elias : As-tu remarqué la cendre noire tombant dans les bois ? C'est la forme physique du Fléau.",
+             "Elias: Zauważyłeś czarny popiół spadający w lasach? To fizyczna forma Skazy.");
+        Add5("Elias: It corrupts the land and the minds of those who fall in battle. Stay vigilant.",
+             "Элиас: Она разлагает землю и разум павших. Будь бдителен.",
+             "Elias: Corrompe la tierra y las mentes de los caídos. Mantente alerta.",
+             "Elias: Sie verdirbt Land und Geist der Gefallenen. Bleib wachsam.",
+             "Elias : Il corrompt la terre et l'esprit des tombés. Reste vigilant.",
+             "Elias: Skaża ziemię i umysły poległych. Bądź czujny.");
+        Add5("Elias: You fight like a demon. It reminds me of the old days...",
+             "Элиас: Ты бьёшься как демон. Напоминает старые времена...",
+             "Elias: Peleas como un demonio. Me recuerda los viejos días...",
+             "Elias: Du kämpfst wie ein Dämon. Erinnert mich an die alten Tage...",
+             "Elias : Tu combats comme un démon. Ça me rappelle les vieux jours...",
+             "Elias: Walczysz jak demon. Przypomina mi to dawne czasy...");
+        Add5("Elias: I wasn't always a ragged scout. I was the Chief Cartographer of Aethelgard.",
+             "Элиас: Я не всегда был обтрёпанным разведчиком. Я был Главным Картографом Ительгарда.",
+             "Elias: No siempre fui un explorador andrajoso. Fui el Cartógrafo Jefe de Aethelgard.",
+             "Elias: Ich war nicht immer ein zerlumpter Späher. Ich war Chefkartograph Aethelgards.",
+             "Elias : Je n'ai pas toujours été un éclaireur en haillons. J'étais Cartographe en Chef d'Aethelgard.",
+             "Elias: Nie zawsze byłem obszarpanym zwiadowcą. Byłem Głównym Kartografem Aethelgardu.");
+        Add5("Elias: I drew the very borders you now bleed to reclaim. It breaks my heart to see them ruined.",
+             "Элиас: Я чертил те самые границы, за которые ты сейчас проливаешь кровь. Сердце разрывается.",
+             "Elias: Yo tracé las fronteras que ahora sangras por reclamar. Se me parte el corazón verlas rotas.",
+             "Elias: Ich zeichnete jene Grenzen, für die du nun blutest. Es bricht mir das Herz.",
+             "Elias : J'ai tracé les frontières mêmes pour lesquelles tu saignes. Cela me brise le cœur.",
+             "Elias: To ja rysowałem te granice, o które teraz krwawisz. Serce mi się kraje.");
+        Add5("Elias: The alchemical lab is complete. The reagents cleared the faded ink on the parchments.",
+             "Элиас: Алхимическая лаборатория готова. Реагенты проявили выцветшие чернила на пергаментах.",
+             "Elias: El laboratorio alquímico está listo. Los reactivos revelaron la tinta borrada.",
+             "Elias: Das Alchemielabor ist fertig. Die Reagenzien enthüllten verblasste Tinte.",
+             "Elias : Le laboratoire alchimique est prêt. Les réactifs ont révélé l'encre effacée.",
+             "Elias: Laboratorium alchemiczne gotowe. Odczynniki ujawniły wyblakły atrament.");
+        Add5("Elias: The Southern Wastes are now open to you. But beware, the heat is the least of your worries there.",
+             "Элиас: Южные Пустоши открыты тебе. Но берегись — жара — меньшая из твоих забот.",
+             "Elias: Los Yermos del Sur están abiertos. Pero cuidado, el calor es la menor de tus preocupaciones.",
+             "Elias: Die Südlichen Ödlande sind offen. Doch Hitze ist dort deine kleinste Sorge.",
+             "Elias : Les Landes du Sud sont ouvertes. Mais la chaleur y est le moindre de tes soucis.",
+             "Elias: Południowe Pustkowia są otwarte. Ale strzeż się — upał to najmniejsza z twoich trosk.");
+        Add5("Elias: We are pushing them back. The Blight recedes where you walk.",
+             "Элиас: Мы теснем их. Порча отступает там, где ты идёшь.",
+             "Elias: Los estamos empujando. La Plaga retrocede por donde caminas.",
+             "Elias: Wir drängen sie zurück. Der Verfall weicht, wo du gehst.",
+             "Elias : Nous les repoussons. Le Fléau recule là où tu marches.",
+             "Elias: Spychamy ich. Skaza cofa się tam, gdzie idziesz.");
+        Add5("Elias: But the deeper you go into the Wastes, the older the magic gets. Do not underestimate them.",
+             "Элиас: Но чем глубже в Пустошах — тем древнее магия. Не недооценивай их.",
+             "Elias: Pero cuanto más te adentres en los Yermos, más antigua la magia. No los subestimes.",
+             "Elias: Doch je tiefer in die Öde, desto älter die Magie. Unterschätze sie nicht.",
+             "Elias : Mais plus tu t'enfonces dans les Landes, plus la magie est ancienne. Ne les sous-estime pas.",
+             "Elias: Ale im głębiej w Pustkowia, tym starsza magia. Nie lekceważ ich.");
+        Add5("Elias: The astrolabe is calibrated. I can finally chart a path through the magical blizzards.",
+             "Элиас: Астролябия откалибрована. Наконец могу проложить путь сквозь магические бураны.",
+             "Elias: El astrolabio está calibrado. Por fin puedo trazar una ruta a través de las ventiscas mágicas.",
+             "Elias: Das Astrolabium ist kalibriert. Endlich kann ich einen Pfad durch die magischen Schneestürme kartieren.",
+             "Elias : L'astrolabe est calibré. Je peux enfin tracer une voie à travers les blizzards magiques.",
+             "Elias: Astrolabium jest skalibrowane. Nareszcie mogę wytyczyć drogę przez magiczne zamiecie.");
+        Add5("Elias: The Northern Peaks are unlocked. The entire map of Aethelgard is restored.",
+             "Элиас: Северные Вершины открыты. Вся карта Ительгарда восстановлена.",
+             "Elias: Los Picos del Norte están abiertos. Todo el mapa de Aethelgard está restaurado.",
+             "Elias: Die Nordgipfel sind offen. Die gesamte Karte Aethelgards ist wiederhergestellt.",
+             "Elias : Les Pics du Nord sont ouverts. La carte entière d'Aethelgard est restaurée.",
+             "Elias: Północne Szczyty otwarte. Cała mapa Aethelgardu jest przywrócona.");
+        Add5("Elias: You are so close. Only the harshest lands remain.",
+             "Элиас: Ты так близко. Осталось лишь самое суровое.",
+             "Elias: Estás tan cerca. Solo quedan las tierras más duras.",
+             "Elias: Du bist so nah. Nur die härtesten Lande bleiben.",
+             "Elias : Tu es si proche. Il ne reste que les terres les plus rudes.",
+             "Elias: Jesteś tak blisko. Zostały tylko najsurowsze ziemie.");
+        Add5("Elias: The King's personal guard fell in those mountains. They are ruthless. Prepare yourself.",
+             "Элиас: Личная гвардия Короля пала в тех горах. Они безжалостны. Готовься.",
+             "Elias: La guardia personal del Rey cayó en esas montañas. Son implacables. Prepárate.",
+             "Elias: Die Leibgarde des Königs fiel in jenen Bergen. Sie sind gnadenlos. Rüste dich.",
+             "Elias : La garde personnelle du Roi tomba dans ces montagnes. Ils sont impitoyables. Prépare-toi.",
+             "Elias: Osobista gwardia Króla padła w tych górach. Są bezwzględni. Przygotuj się.");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
