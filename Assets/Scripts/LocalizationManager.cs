@@ -1075,6 +1075,154 @@ public static class LocalizationManager
         Add5("Upgrade UNITS",      "Улучшить ЮНИТОВ","Mejorar UNIDADES","EINHEITEN aufwerten","Améliorer UNITÉS", "Ulepsz JEDNOSTKI");
         Add5("Upgrade BARRACKS",   "Улучшить КАЗАРМУ","Mejorar CUARTEL","KASERNE aufwerten","Améliorer CASERNE",  "Ulepsz KOSZARY");
         Add5("Unlocks new recruit types","Открывает новые типы новобранцев","Desbloquea nuevos reclutas","Schaltet neue Rekrutentypen frei","Débloque de nouveaux types de recrues","Odblokowuje nowe typy rekrutów");
+
+        // --- Batch 3: Level-up upgrade cards ---
+        Add5("Vitality Reserves",     "Резервы Жизни",       "Reservas Vitales",    "Vitalitätsreserven",  "Réserves Vitales",    "Rezerwy Życia");
+        Add5("Forged sinew. Each layer means another swing you outlast.",
+             "Закалённые жилы. Каждый слой — ещё один удар, который ты переживёшь.",
+             "Tendones forjados. Cada capa es otro golpe que sobrevives.",
+             "Gehärtete Sehnen. Jede Schicht ein Hieb mehr, den du überstehst.",
+             "Tendons forgés. Chaque couche est un coup de plus auquel tu survis.",
+             "Zahartowane ścięgna. Każda warstwa to jeszcze jedno cięcie do przetrwania.");
+        Add5("+10 Max HP",            "+10 макс. HP",         "+10 PV máx.",         "+10 max. LP",         "+10 PV max",           "+10 maks. PŻ");
+        Add5("Vanguard March",        "Марш Авангарда",       "Marcha de Vanguardia","Vorhut-Marsch",       "Marche d'Avant-Garde", "Marsz Awangardy");
+        Add5("Lighter step, longer stride. The blade always arrives first.",
+             "Лёгкий шаг, длинный размах. Клинок всегда прибывает первым.",
+             "Paso ligero, zancada larga. La hoja llega siempre primero.",
+             "Leichter Schritt, langer Ausfall. Die Klinge kommt immer zuerst.",
+             "Pas léger, foulée longue. La lame arrive toujours en premier.",
+             "Lżejszy krok, dłuższy zamach. Ostrze zawsze przybywa pierwsze.");
+        Add5("+0.5 Speed",            "+0.5 скорости",        "+0.5 velocidad",      "+0.5 Tempo",          "+0.5 vitesse",         "+0.5 szybkości");
+        Add5("Siege Might",           "Осадная Мощь",         "Poder de Asedio",     "Belagerungskraft",    "Puissance de Siège",   "Potęga Oblężnicza");
+        Add5("The hammer drinks deeper. Bones break at half the effort.",
+             "Молот пьёт глубже. Кости ломаются вдвое легче.",
+             "El martillo bebe más hondo. Los huesos se rompen con la mitad de esfuerzo.",
+             "Der Hammer trinkt tiefer. Knochen brechen mit halber Mühe.",
+             "Le marteau boit plus profond. Les os brisent à moitié effort.",
+             "Młot pije głębiej. Kości łamią się przy połowie wysiłku.");
+        Add5("+5 Damage",             "+5 урона",             "+5 daño",             "+5 Schaden",          "+5 dégâts",            "+5 obrażeń");
+        Add5("Crystal Lure",          "Кристальная Приманка", "Señuelo de Cristal",  "Kristallköder",       "Appât de Cristal",     "Wabik Kryształowy");
+        Add5("Aether shards leap toward you from farther afield.",
+             "Осколки Эфира летят к тебе с большего расстояния.",
+             "Los fragmentos de éter saltan hacia ti desde más lejos.",
+             "Ätherscherben springen dir aus größerer Ferne entgegen.",
+             "Les éclats d'éther bondissent vers toi de plus loin.",
+             "Odłamki Eteru skaczą ku tobie z dalszej odległości.");
+        Add5("+0.5 Pickup Range",     "+0.5 радиуса подбора", "+0.5 alcance recogida","+0.5 Aufsammelreichweite","+0.5 portée ramassage","+0.5 zasięgu zbierania");
+        Add5("Whetstone Rhythm",      "Ритм Точила",          "Ritmo de Piedra Afilar","Wetzstein-Rhythmus","Rythme d'Affûtage",   "Rytm Osełki");
+        Add5("The swing-arc tightens. More strikes per breath.",
+             "Дуга удара сжимается. Больше ударов за вдох.",
+             "El arco del golpe se cierra. Más golpes por aliento.",
+             "Der Schwungbogen wird enger. Mehr Hiebe pro Atemzug.",
+             "L'arc du coup se resserre. Plus de frappes par souffle.",
+             "Łuk cięcia się zwęża. Więcej ciosów na oddech.");
+        Add5("+15 Atk Speed",         "+15 скорости атаки",   "+15 vel. ataque",     "+15 Angriffstempo",   "+15 vit. attaque",     "+15 szybkości ataku");
+        Add5("Aethelgard Plate",      "Броня Ительгарда",     "Placa de Aethelgard", "Aethelgard-Panzer",   "Plaque d'Aethelgard",  "Zbroja Aethelgardu");
+        Add5("Damp the next blow with old steel and older oaths.",
+             "Приглушить следующий удар старой сталью и ещё более старыми клятвами.",
+             "Amortigua el siguiente golpe con acero viejo y juramentos más antiguos.",
+             "Dämpfe den nächsten Schlag mit altem Stahl und älteren Eiden.",
+             "Amortis le prochain coup avec de l'acier ancien et des serments plus anciens.",
+             "Wytłum następny cios starą stalą i jeszcze starszymi przysięgami.");
+        Add5("+5% Damage Resist",     "+5% сопротивления урону","+5% resist. daño",  "+5% Schadensresistenz","+5% résist. dégâts",  "+5% odporności");
+        Add5("Field Medicine",        "Полевая Медицина",     "Medicina de Campo",   "Feldmedizin",         "Médecine de Terrain",  "Medycyna Polowa");
+        Add5("Slow knit, but knit it does. Health returns with every footfall.",
+             "Медленно, но срастается. Здоровье возвращается с каждым шагом.",
+             "Lento, pero se une. La salud vuelve con cada paso.",
+             "Langsam, aber es heilt. Gesundheit kehrt mit jedem Schritt zurück.",
+             "Lent, mais ça guérit. La santé revient à chaque pas.",
+             "Powoli, ale się zrasta. Zdrowie wraca z każdym krokiem.");
+        Add5("+0.3 HP/sec",           "+0.3 HP/сек",           "+0.3 PV/s",           "+0.3 LP/s",           "+0.3 PV/s",            "+0.3 PŻ/s");
+        Add5("Keen Eye",              "Острый Глаз",           "Ojo Agudo",           "Scharfes Auge",       "Œil Aiguisé",          "Bystre Oko");
+        Add5("You read where bone is brittle. Strikes find the weak point oftener.",
+             "Ты видишь, где кость хрупка. Удары чаще находят слабое место.",
+             "Lees dónde el hueso es frágil. Los golpes hallan más a menudo el punto débil.",
+             "Du liest, wo Knochen brüchig ist. Schläge finden öfter die Schwachstelle.",
+             "Tu lis où l'os est fragile. Les coups trouvent plus souvent le point faible.",
+             "Widzisz, gdzie kość jest krucha. Ciosy częściej trafiają w słaby punkt.");
+        Add5("+5% Crit Chance",       "+5% шанса крита",       "+5% prob. crítico",   "+5% Krit.-Chance",    "+5% chance crit",      "+5% szansy kryt.");
+        Add5("Executioner's Edge",    "Лезо Ката",             "Filo del Verdugo",    "Henkersklinge",       "Tranchant du Bourreau","Ostrze Kata");
+        Add5("When the blade bites true, it bites deeper.",
+             "Когда клинок кусает точно, он кусает глубже.",
+             "Cuando la hoja muerde bien, muerde más hondo.",
+             "Wenn die Klinge wahr beißt, beißt sie tiefer.",
+             "Quand la lame mord vrai, elle mord plus profond.",
+             "Gdy ostrze gryzie celnie, gryzie głębiej.");
+        Add5("+25% Crit Damage",      "+25% крит-урона",       "+25% daño crítico",   "+25% Krit.-Schaden",  "+25% dégâts crit",     "+25% obr. kryt.");
+        Add5("Bloodbound Pact",       "Кровавый Пакт",         "Pacto de Sangre",     "Blutbund-Pakt",       "Pacte du Sang",        "Pakt Krwi");
+        Add5("Every wound you deliver feeds you back a sip.",
+             "Каждая рана, что ты наносишь, возвращает тебе глоток.",
+             "Cada herida que infliges te devuelve un sorbo.",
+             "Jede Wunde, die du schlägst, gibt dir einen Schluck zurück.",
+             "Chaque blessure que tu infliges te rend une gorgée.",
+             "Każda rana, którą zadajesz, wraca ci łykiem.");
+        Add5("+5% Lifesteal",         "+5% похищения жизни",   "+5% robo de vida",    "+5% Lebensraub",      "+5% vol de vie",       "+5% kradzieży życia");
+        Add5("Wind-Touched",          "Тронутый Ветром",       "Tocado por el Viento","Windgeküsst",         "Effleuré par le Vent", "Musnięty Wiatrem");
+        Add5("The air parts before you. Some blows pass through nothing.",
+             "Воздух расступается перед тобой. Некоторые удары проходят сквозь пустоту.",
+             "El aire se abre ante ti. Algunos golpes atraviesan la nada.",
+             "Die Luft teilt sich vor dir. Manche Schläge treffen nichts.",
+             "L'air s'écarte devant toi. Certains coups passent dans le vide.",
+             "Powietrze rozstępuje się przed tobą. Niektóre ciosy trafiają w pustkę.");
+        Add5("+5% Dodge",             "+5% уклонения",          "+5% esquiva",         "+5% Ausweichen",      "+5% esquive",          "+5% uniku");
+        Add5("Reaver's Reward",       "Награда Разбойника",     "Recompensa del Saqueador","Räubers Lohn",   "Récompense du Pilleur","Nagroda Rabusia");
+        Add5("Each kill stitches another scar shut.",
+             "Каждое убийство зашивает ещё один шрам.",
+             "Cada muerte cierra otra cicatriz.",
+             "Jeder Kill vernäht eine weitere Narbe.",
+             "Chaque mort recoud une autre cicatrice.",
+             "Każde zabójstwo zaszywa kolejną bliznę.");
+        Add5("+3 HP per Kill",        "+3 HP за убийство",      "+3 PV por muerte",    "+3 LP pro Kill",      "+3 PV par élimination","+3 PŻ za zabójstwo");
+        Add5("Wardbreaker Sigil",     "Печать Разрушителя",     "Sello Rompeguardias", "Wächterbrecher-Siegel","Sceau Brise-Garde",  "Pieczęć Łamacza");
+        Add5("Those who strike you bleed for the privilege.",
+             "Те, кто тебя бьют, кровоточат за эту честь.",
+             "Quienes te golpean sangran por el privilegio.",
+             "Wer dich schlägt, blutet für das Vorrecht.",
+             "Ceux qui te frappent saignent pour ce privilège.",
+             "Ci, którzy cię biją, krwawią za ten przywilej.");
+        Add5("+15% Thorns",           "+15% шипов",             "+15% púas",           "+15% Dornen",         "+15% épines",          "+15% kolców");
+        Add5("Soulreader",            "Читатель Душ",           "Lector de Almas",     "Seelenleser",         "Liseur d'Âmes",        "Czytelnik Dusz");
+        Add5("You hear the song each fallen soul carries. Learn faster.",
+             "Ты слышишь песню каждой падшей души. Учишься быстрее.",
+             "Oyes el canto de cada alma caída. Aprendes más rápido.",
+             "Du hörst das Lied jeder gefallenen Seele. Lerne schneller.",
+             "Tu entends le chant de chaque âme tombée. Apprends plus vite.",
+             "Słyszysz pieśń każdej upadłej duszy. Uczysz się szybciej.");
+        Add5("+15% XP Gain",          "+15% опыта",             "+15% XP",             "+15% EP",             "+15% XP",              "+15% PD");
+        Add5("Hoarder's Gaze",        "Взгляд Скряги",          "Mirada del Avaro",    "Blick des Hamsters",  "Regard de l'Avare",    "Wzrok Skąpca");
+        Add5("Aether shards spill heavier where you walk.",
+             "Осколки Эфира сыплются щедрее там, где ты идёшь.",
+             "Los fragmentos de éter caen con más peso donde caminas.",
+             "Ätherscherben fallen dort dichter, wo du gehst.",
+             "Les éclats d'éther tombent plus dru là où tu marches.",
+             "Odłamki Eteru sypią się gęściej tam, gdzie idziesz.");
+        Add5("+20% Diamond Gain",     "+20% диамантов",         "+20% diamantes",      "+20% Diamanten",      "+20% diamants",        "+20% diamentów");
+
+        // --- Batch 3: Achievement titles (short names) ---
+        Add5("First Steps",              "Первые шаги",       "Primeros pasos",  "Erste Schritte",     "Premiers pas",       "Pierwsze kroki");
+        Add5("Homestead",                "Дом",               "Hogar",           "Heimstatt",           "Foyer",              "Osada");
+        Add5("Scout's Map",              "Карта Разведчика",  "Mapa del Explorador","Karte des Spähers","Carte de l'Éclaireur","Mapa Zwiadowcy");
+        Add5("First Blood",              "Первая кровь",      "Primera sangre",  "Erstes Blut",         "Premier Sang",       "Pierwsza krew");
+        Add5("Supply Lines",             "Снабжение",         "Suministros",     "Nachschub",           "Ravitaillement",     "Zaopatrzenie");
+        Add5("For Hire",                 "На службу",         "En alquiler",     "Anwerbung",           "À louer",            "Do wynajęcia");
+        Add5("March of War",             "Марш войны",        "Marcha de guerra","Marsch des Krieges", "Marche de guerre",   "Marsz wojny");
+        Add5("Veterans",                 "Ветераны",          "Veteranos",       "Veteranen",           "Vétérans",           "Weterani");
+        Add5("Strategist",               "Стратег",           "Estratega",       "Stratege",            "Stratège",           "Strateg");
+        Add5("Halfway",                  "На полпути",        "A mitad",         "Halbzeit",            "À mi-chemin",        "W połowie");
+        Add5("Altar Hunter",             "Охотник за Алтарями","Cazador de Altares","Altarjäger",       "Chasseur d'Autels",  "Łowca Ołtarzy");
+        Add5("Executioner",              "Палач",             "Verdugo",         "Henker",              "Bourreau",           "Kat");
+        Add5("The Shopkeeper's Friend",  "Друг Торговца",     "Amigo del Tendero","Freund des Ladenbesitzers","Ami du Marchand","Przyjaciel Kupca");
+        Add5("Untouchable",              "Неуловимый",        "Intocable",       "Unantastbar",         "Intouchable",        "Nietykalny");
+        Add5("Blood in the Air",         "Кровь в воздухе",   "Sangre en el aire","Blut in der Luft",   "Sang dans l'air",    "Krew w powietrzu");
+        Add5("City Siege",               "Осада города",      "Asedio a la ciudad","Städtebelagerung", "Siège de la ville",  "Oblężenie miasta");
+        Add5("The Throne Taken",         "Трон захвачен",     "Trono tomado",    "Der Thron erobert",   "Trône pris",         "Zdobyty Tron");
+        Add5("Kingdom Restored",         "Королевство восстановлено","Reino restaurado","Königreich wiederhergestellt","Royaume restauré","Królestwo przywrócone");
+        Add5("Lore Master",              "Знаток Легенд",     "Maestro del Saber","Wissensmeister",    "Maître du Savoir",   "Znawca Legend");
+        Add5("Deep Pockets",             "Глубокие карманы",  "Bolsillos hondos","Tiefe Taschen",       "Poches Profondes",   "Głębokie Kieszenie");
+
+        // Achievement toast + heading
+        Add5("ACHIEVEMENT_UNLOCKED", "Достижение открыто: {0}","Logro desbloqueado: {0}","Erfolg freigeschaltet: {0}","Succès débloqué : {0}","Odblokowano osiągnięcie: {0}");
+        Add5("ACHIEVEMENT UNLOCKED", "ДОСТИЖЕНИЕ ОТКРЫТО",   "LOGRO DESBLOQUEADO",    "ERFOLG FREIGESCHALTET",     "SUCCÈS DÉBLOQUÉ",       "ODBLOKOWANO OSIĄGNIĘCIE");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
