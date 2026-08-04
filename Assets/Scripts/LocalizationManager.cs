@@ -1807,6 +1807,80 @@ public static class LocalizationManager
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
         Add5("TUTORIAL_TIP_DEFAULT",        "СОВЕТ",                   "PISTA",                     "TIPP",                       "ASTUCE",                       "PORADA");
         Add5("MISSION_DONE_TAG",            "ГОТОВО",                  "HECHO",                     "ERLEDIGT",                   "FAIT",                         "ZROBIONE");
+
+        // --- Batch 10: Stranger + Forge-mother + region cinematic HUD ---
+        Add5("DLG_STRANGER_1",
+             "Незнакомец: От тебя пахнет вратами Ительгарда. Я знал их когда-то.",
+             "Desconocido: Hueles a las puertas de Aethelgard. Las conocí alguna vez.",
+             "Fremder: Du riechst nach den Toren Aethelgards. Ich kannte sie einst.",
+             "Étranger : Tu sens les portes d'Aethelgard. Je les ai connues, jadis.",
+             "Nieznajomy: Pachniesz bramami Aethelgardu. Znałem je kiedyś.");
+        Add5("DLG_STRANGER_2",
+             "Незнакомец: Осколки эфира — не кристаллы, друг. Это были звёзды. Они упали, когда закончились молитвы.",
+             "Desconocido: Los fragmentos de éter no son cristales, amigo. Eran estrellas. Cayeron cuando se acabaron las plegarias.",
+             "Fremder: Ätherscherben sind keine Kristalle, Freund. Es waren Sterne. Sie fielen, als uns die Gebete ausgingen.",
+             "Étranger : Les éclats d'éther ne sont pas des cristaux, ami. C'étaient des étoiles. Elles tombèrent quand nos prières furent épuisées.",
+             "Nieznajomy: Odłamki eteru to nie kryształy, przyjacielu. To były gwiazdy. Spadły, gdy skończyły się modlitwy.");
+        Add5("DLG_STRANGER_3",
+             "Незнакомец: Я просто чиню телегу. Не смотри на меня так. Телега правда сломана.",
+             "Desconocido: Solo remiendo un carro. No me mires así. El carro está roto de verdad.",
+             "Fremder: Ich flicke bloß einen Karren. Schau mich nicht so an. Der Karren ist wirklich kaputt.",
+             "Étranger : Je répare juste une charrette. Ne me regarde pas comme ça. Elle est vraiment cassée.",
+             "Nieznajomy: Naprawiam tylko wóz. Nie patrz tak. Wóz naprawdę jest zepsuty.");
+        Add5("DLG_STRANGER_4",
+             "Незнакомец: Был когда-то стяг. Чёрное на золотом. Теперь сгорел. Найдёшь клочок — принеси.",
+             "Desconocido: Hubo un estandarte una vez. Negro sobre oro. Quemado ya. Si hallas un jirón, tráelo.",
+             "Fremder: Es gab einst ein Banner. Schwarz auf Gold. Verbrannt jetzt. Findest du ein Stück, bring es her.",
+             "Étranger : Il y avait un étendard, jadis. Noir sur or. Brûlé maintenant. Si tu en trouves un lambeau, apporte-le.",
+             "Nieznajomy: Był kiedyś sztandar. Czarne na złocie. Teraz spalony. Znajdź strzęp — przynieś.");
+        Add5("DLG_STRANGER_5",
+             "Незнакомец: Каждый, кого ты там убиваешь, был одним из нас. Ты не ошибаешься. Просто будь тем, кто помнит.",
+             "Desconocido: Cada uno que matas ahí fuera fue uno de nosotros. No te equivocas al hacerlo. Sé el que recuerda.",
+             "Fremder: Jeder, den du da draußen tötest, war einst einer von uns. Du liegst nicht falsch. Sei nur der, der sich erinnert.",
+             "Étranger : Chaque homme que tu tues là-bas fut l'un des nôtres. Tu n'as pas tort de le faire. Sois seulement celui qui se souvient.",
+             "Nieznajomy: Każdy, którego tam zabijasz, był jednym z nas. Nie mylisz się. Bądź tym, który pamięta.");
+        Add5("DLG_FORGE_MOTHER_1",
+             "[Кузнечиха кивает на наковальню. Молот ждёт тебя.]",
+             "[La herrera asiente hacia el yunque. El martillo te espera.]",
+             "[Die Schmiedin nickt zum Amboss. Der Hammer wartet auf dich.]",
+             "[La forgeronne fait un signe vers l'enclume. Le marteau t'attend.]",
+             "[Kowalka kiwa głową w stronę kowadła. Młot na ciebie czeka.]");
+        Add5("DLG_FORGE_MOTHER_2",
+             "[Она прижимает три пальца к губам, потом к твоему плечу. Её сыновья. Теперь — ты.]",
+             "[Ella presiona tres dedos a sus labios, luego a tu hombro. Sus hijos. Ahora tú.]",
+             "[Sie drückt drei Finger auf den Mund, dann auf deine Schulter. Ihre Söhne. Jetzt du.]",
+             "[Elle presse trois doigts à sa bouche, puis à ton épaule. Ses fils. Maintenant, toi.]",
+             "[Przyciska trzy palce do ust, potem do twojego ramienia. Jej synowie. Teraz — ty.]");
+
+        // Region cinematic HUD strings
+        Add5("UNKNOWN REGION",             "НЕИЗВЕСТНЫЙ РЕГИОН",     "REGIÓN DESCONOCIDA",     "UNBEKANNTE REGION",     "RÉGION INCONNUE",     "NIEZNANY REGION");
+        Add5("PURIFY THE CORRUPTED TOTEMS","ОЧИСТИ ЗАРАЖЁННЫЕ ТОТЕМЫ","PURIFICA LOS TÓTEMS CORRUPTOS","REINIGE DIE VERDERBTEN TOTEMS","PURIFIE LES TOTEMS CORROMPUS","OCZYŚĆ SKALANE TOTEMY");
+        Add5("Press <b>SPACE</b> to Skip", "Нажми <b>ПРОБЕЛ</b> чтобы пропустить","Pulsa <b>ESPACIO</b> para saltar","<b>LEERTASTE</b> zum Überspringen","Appuie sur <b>ESPACE</b> pour passer","Naciśnij <b>SPACJĘ</b> by pominąć");
+        Add5("REGION CONQUERED",           "РЕГИОН ЗАВОЁВАН",        "REGIÓN CONQUISTADA",     "REGION EROBERT",        "RÉGION CONQUISE",     "REGION PODBITY");
+        Add5("THE CURSE HAS BEEN LIFTED",  "ПРОКЛЯТИЕ СНЯТО",        "LA MALDICIÓN HA SIDO LEVANTADA","DER FLUCH IST GEBROCHEN","LA MALÉDICTION EST LEVÉE","KLĄTWA ZOSTAŁA ZDJĘTA");
+        Add5("SLAY THE OVERLORD!",         "УБЕЙ ВЛАДЫКУ!",          "¡MATA AL SEÑOR SUPREMO!","TÖTE DEN OBERHERRN!",   "TUE LE SUZERAIN !",   "ZABIJ WŁADCĘ!");
+        Add5("SURVIVE THE SWARM!",         "ВЫЖИВИ ПРОТИВ РОЯ!",     "¡SOBREVIVE AL ENJAMBRE!","ÜBERLEBE DEN SCHWARM!", "SURVIS À L'ESSAIM !", "PRZEŻYJ ROJ!");
+        Add5("SKELETON OVERLORD",          "СКЕЛЕТ-ВЛАДЫКА",         "SEÑOR ESQUELETO",        "SKELETT-OBERHERR",      "SUZERAIN SQUELETTE",  "WŁADCA SZKIELETÓW");
+        Add5("[F] PURIFY TOTEM",           "[F] ОЧИСТИТЬ ТОТЕМ",     "[F] PURIFICAR TÓTEM",    "[F] TOTEM REINIGEN",    "[F] PURIFIER LE TOTEM","[F] OCZYŚĆ TOTEM");
+
+        // Extraction / codex prompts
+        Add5("Press E to Return to Camp",  "Нажми E чтобы вернуться в лагерь","Pulsa E para volver al campamento","E drücken zur Rückkehr ins Lager","Appuie sur E pour revenir au camp","Naciśnij E by wrócić do obozu");
+        Add5("[E] Read scroll",            "[E] Прочитать свиток",   "[E] Leer pergamino",     "[E] Schriftrolle lesen","[E] Lire le parchemin","[E] Przeczytaj zwój");
+        Add5("No scrolls recovered yet...","Свитков пока не найдено...","Ningún pergamino recuperado aún...","Noch keine Schriftrollen geborgen...","Aucun parchemin récupéré...","Nie odnaleziono jeszcze zwojów...");
+        Add5("This scroll has not been recovered.","Этот свиток ещё не найден.","Este pergamino aún no ha sido recuperado.","Diese Schriftrolle wurde noch nicht geborgen.","Ce parchemin n'a pas été récupéré.","Ten zwój nie został odnaleziony.");
+
+        // Region rewards popup
+        Add5("REGION REWARDS",             "НАГРАДЫ ЗА РЕГИОН",       "RECOMPENSAS DE REGIÓN",  "REGION-BELOHNUNGEN",    "RÉCOMPENSES DE RÉGION","NAGRODY REGIONU");
+        Add5("Wood",                       "Дерево",                  "Madera",                 "Holz",                  "Bois",                "Drewno");
+        Add5("Stone",                      "Камень",                  "Piedra",                 "Stein",                 "Pierre",              "Kamień");
+        Add5("Food",                       "Еда",                     "Comida",                 "Nahrung",               "Nourriture",          "Jedzenie");
+        Add5("Diamonds",                   "Диаманты",                "Diamantes",              "Diamanten",             "Diamants",            "Diamenty");
+        Add5("Diamond",                    "Диамант",                 "Diamante",               "Diamant",               "Diamant",             "Diament");
+
+        // Shop level tag + level-up milestone
+        Add5("MILESTONE_LEVEL_HP",         "РУБЕЖ УР.{0}: +10 макс. HP","HITO NV.{0}: +10 PV máx.","MEILENSTEIN LV{0}: +10 max. LP","JALON NIV.{0} : +10 PV max","KAMIEŃ MILOWY POZ.{0}: +10 maks. PŻ");
+        Add5("SHOP_ITEM_LEVEL_TAG",        "(Ур. {0}/{1})",           "(Nv. {0}/{1})",          "(Stufe {0}/{1})",       "(Niv. {0}/{1})",      "(Poz. {0}/{1})");
+        Add5("SHOP_NEED_MORE_DIAMONDS",    "Нужно +{0} диамантов",    "Faltan +{0} diamantes",  "Fehlen +{0} Diamanten", "Il manque +{0} diamants","Brakuje +{0} diamentów");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
