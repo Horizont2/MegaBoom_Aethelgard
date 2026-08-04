@@ -1716,6 +1716,105 @@ public static class LocalizationManager
         AddSelf("A reinforced cellar to keep your camp's resources safe from the harsh weather and scavengers.",
                 "Укріплений льох, що береже ресурси табору від негоди і мародерів.");
 
+        // === Shop category labels (Inspector-authored on tab buttons) ===
+        AddSelf("Sword",     "Меч");
+        AddSelf("Axe",       "Сокира");
+        AddSelf("Helmet",    "Шолом");
+        AddSelf("Gloves",    "Рукавиці");
+        AddSelf("Legguards", "Поножі");
+        AddSelf("BACK TO CATEGORIES", "ДО КАТЕГОРІЙ");
+
+        // === Shop weapon names + descriptions ===
+        AddSelf("Rusty Peasant Sword",         "Іржавий Селянський Меч");
+        AddSelf("Iron Oathkeeper",             "Залізний Клятводержець");
+        AddSelf("Aethelgard's Vengeance",      "Помста Ітельгарду");
+        AddSelf("Barbarian Axe",               "Варварська Сокира");
+        AddSelf("Barbarian's Officer Axe",     "Офіцерська Варварська Сокира");
+        AddSelf("Pulled from the cellar of a torched farm in the Aethelgard ruins. Edge chipped, balance gone — but it still bites.",
+                "Витягнутий з льоху випаленої ферми в руїнах Ітельгарду. Лезо щерблене, баланс втрачено — але він досі кусає.");
+        AddSelf("Forged in the Royal Smithy. What a knight receives at his vigil — plain steel, perfect balance.",
+                "Викуваний у Королівській Кузні. Те, що лицар отримує на своїй чуванні — проста сталь, ідеальний баланс.");
+        AddSelf("Recovered from the King's tomb beneath Old Aethelgard. The steel is older than the kingdom and remembers every hand that has carried it.",
+                "Здобутий з гробниці короля під Старим Ітельгардом. Сталь старша за королівство й пам'ятає кожну руку, що її несла.");
+        AddSelf("Crude work of the Northclans. Hard wood, harder iron, and a leather thong stained with last winter's blood.",
+                "Груба робота Північних Кланів. Тверде дерево, ще твердіше залізо і шкіряний ремінь, змочений минулозимовою кров'ю.");
+        AddSelf("Officer's piece of the Wild Clans. Rune-etched for the Bear Spirit; its weight rewards a single, killing blow.",
+                "Офіцерська зброя Диких Кланів. Гравірована рунами Ведмежого Духа; її вага винагороджує один-єдиний смертельний удар.");
+
+        // === Shop armor descriptions (all 36 unique strings) ===
+        AddSelf("A knight's chestplate, fluted in the old style of the capital.",
+                "Лицарський нагрудник, з жолобами в старому стилі столиці.");
+        AddSelf("A sellsword's chestplate, repainted twice over a different sigil each campaign.",
+                "Нагрудник найманця, двічі перефарбований — щоразу під інший знак.");
+        AddSelf("Abyssal belt. Its clasp is shaped as something old, and never quite still.",
+                "Прірвний пояс. Його застібка вирізьблена як щось стародавнє й ніколи не зовсім нерухоме.");
+        AddSelf("Abyssal boots. The wearer's footprints, faint at first, deepen over miles. Why is unknown.",
+                "Прірвні чоботи. Сліди носія, ледь помітні спочатку, поглиблюються з милями. Причина невідома.");
+        AddSelf("Abyssal chestplate. It does not rust. It does not warm. It does not breathe with the wearer.",
+                "Прірвний нагрудник. Не іржавіє. Не гріється. Не дихає з носієм.");
+        AddSelf("Abyssal gauntlets. The grip closes a heartbeat after the wearer wills it.",
+                "Прірвні наручі. Хватка стискається на удар серця пізніше волі носія.");
+        AddSelf("Abyssal leggings. Cold metal that takes no scratch and casts the wrong shadow.",
+                "Прірвні поножі. Холодний метал, що не бере подряпин і кидає невірну тінь.");
+        AddSelf("Articulated plate leggings, oiled against the rain of the borderlands.",
+                "Шарнірні пластинчасті поножі, змащені проти дощу прикордоння.");
+        AddSelf("Belt of a Royal Order knight. The buckle is shaped as a falcon mid-strike.",
+                "Пояс лицаря Королівського Ордену. Пряжка вирізьблена як сокіл у польоті удару.");
+        AddSelf("Belt of the Royal Sash. Bears the bear-spirit clasp passed from sworn-brother to sworn-brother.",
+                "Пояс Королівської Стрічки. Носить застібку Ведмежого Духа, передану від побратима до побратима.");
+        AddSelf("Boots of the Hollow Sun. Each step is said to drive a foot deeper into hallowed soil.",
+                "Чоботи Порожнього Сонця. Кажуть, кожен крок вганяє ступню глибше в освячений ґрунт.");
+        AddSelf("Cord-and-plate belt of the Order. Three silver bells warn the wearer of curses.",
+                "Пояс Ордену зі шнурів і пластин. Три срібні дзвіночки попереджають носія про прокляття.");
+        AddSelf("Drill-yard gauntlets. The grip is sturdy; the knuckles, untested.",
+                "Наручі з учбового плацу. Хватка міцна; кулаки — неперевірені.");
+        AddSelf("Gauntlets blessed at the Hollow Sun chapel. Filigree of holy runes.",
+                "Наручі, освячені в каплиці Порожнього Сонця. Філігрань святих рун.");
+        AddSelf("Gauntlets fitted by the Royal Master Smith. The plates whisper when fingers close.",
+                "Наручі, підігнані Королівським Майстром Кузні. Пластини шепочуть, коли пальці стискаються.");
+        AddSelf("Heavy belt with hooks for spoils — purse, hatchet, a saint's finger.",
+                "Важкий пояс з гачками для здобичі — гаманець, топірець, палець святого.");
+        AddSelf("Helm dredged from beneath the Bloodstone Mines. It is not iron. The smiths refuse to name what it is.",
+                "Шолом, витягнутий з-під Кривавокам'яних Шахт. Це не залізо. Ковалі відмовляються називати що це.");
+        AddSelf("Helm of the Crown's Companion. The visor is inlaid with silver bear-spirit runes.",
+                "Шолом Королівського Побратима. Забрало інкрустоване срібними рунами Ведмежого Духа.");
+        AddSelf("Helm of the Hollow Sun. The seer's prayer is etched along the cheekguard.",
+                "Шолом Порожнього Сонця. Молитва провидця вигравірувана вздовж нащічника.");
+        AddSelf("Hobnail boots of the Aethelgard infantry. The soles still bite cobblestone.",
+                "Шиповані чоботи піхоти Ітельгарду. Підошви досі гризуть бруківку.");
+        AddSelf("Issue chestplate of the city watch. The lining still smells of mothproof.",
+                "Стандартний нагрудник міської варти. Підкладка досі пахне засобом від молі.");
+        AddSelf("Knight's boots, weighted for the saddle and slow on broken ground.",
+                "Лицарські чоботи, обважені для сідла й повільні на нерівному ґрунті.");
+        AddSelf("Knight's helm forged in the Royal Smithy. The visor still carries the king's seal.",
+                "Лицарський шолом, викуваний у Королівській Кузні. Забрало досі несе королівську печать.");
+        AddSelf("Mercenary gauntlets, polished only where coin is counted.",
+                "Найманські наручі, натерті лише там, де рахують монети.");
+        AddSelf("Open-faced helm of the Lowland Free Companies. The brow bears a healed crack.",
+                "Відкритий шолом Низинних Вільних Загонів. На чолі — загоєна тріщина.");
+        AddSelf("Paladin's chestplate. It hums faintly when corruption draws near.",
+                "Нагрудник паладина. Тихо гуде, коли скверна наближається.");
+        AddSelf("Patched campaign leggings. Whatever they were paid, it bought one more season.",
+                "Латані похідні поножі. Що б їм не заплатили — вистачило на ще один сезон.");
+        AddSelf("Plain leather belt of the foot militia. Bears a single dull buckle.",
+                "Простий шкіряний пояс піхотного ополчення. Носить одну тьмяну пряжку.");
+        AddSelf("Quilted leggings cut for long marches. Easy to mend in the field.",
+                "Стьобані поножі, скроєні для довгих маршів. Легко полагодити в полі.");
+        AddSelf("Royal chestplate of the King's Inner Guard. Lined with crimson, weighted for ceremony and killing.",
+                "Королівський нагрудник Внутрішньої Гвардії. Підбитий кармазином, обважений для церемонії і вбивства.");
+        AddSelf("Royal greaves, polished only when a king's eye might fall upon them.",
+                "Королівські поножі, натерті лише коли на них може впасти око короля.");
+        AddSelf("Royal leggings, the steel scoured by ash to a near-black sheen.",
+                "Королівські поножі, сталь витерта попелом до майже чорного полиску.");
+        AddSelf("Sanctified leggings. They never tire the knee, neither in prayer nor in charge.",
+                "Освячені поножі. Ніколи не втомлюють коліна — ні в молитві, ні в атаці.");
+        AddSelf("Standard militia helm. Light dents from drills, no real battle scars.",
+                "Стандартний шолом ополчення. Легкі вм'ятини від навчань, жодних справжніх бойових шрамів.");
+        AddSelf("Tournament gauntlets reissued for war. The fingerplates click softly with each step.",
+                "Турнірні наручі, повторно видані для війни. Пальцеві пластини тихо клацають з кожним кроком.");
+        AddSelf("Worn boots that have walked from the Bone Coast to the Hollow Pass.",
+                "Зношені чоботи, що пройшли від Кістяного Узбережжя до Порожнього Перевалу.");
+
         // === Main menu extended ===
         Add("MENU_CONFIRM_NEW_GAME",
             "Start a new game?\n\nAll camp progress, conquered regions and mercenaries will be lost. Settings + shop unlocks are kept.",
