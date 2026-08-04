@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 
 public class MainMenuManager : MonoBehaviour
@@ -89,9 +90,9 @@ public class MainMenuManager : MonoBehaviour
 
     private void OnQuitClicked()
     {
-        ShowConfirmDialog(
-            LocalizationManager.Tr("MENU_CONFIRM_QUIT"),
-            onYes: QuitGame);
+        // Route through the same two-tap Quit flow so the extended-menu
+        // button behaves identically to a scene-wired button.
+        QuitGame();
     }
 
     private void OnCreditsClicked()
@@ -335,18 +336,100 @@ public class MainMenuManager : MonoBehaviour
         SettingsUI.Instance?.OpenSettings();
     }
 
+    // Two-tap Quit confirm — no modal dialog. First tap dims the whole
+    // menu except the Quit button and swaps the button label to a
+    // "really quit?" prompt. Second tap on that same button quits.
+    // Any click outside the button OR a 5s timeout reverts the state.
+    //
+    // The scene's Quit button is wired to this method via UnityEvent,
+    // and this method is the ONLY entry point (see also OnQuitClicked
+    // which routes here too).
+    private bool quitConfirming = false;
+    private string quitOriginalLabel = null;
+    private TextMeshProUGUI quitLabelTMP = null;
+    private GameObject quitDimOverlay = null;
+    private Coroutine quitConfirmTimeout;
+
     public void QuitGame()
     {
         PlayClickSound();
-        // Route through the confirm dialog even when the scene button
-        // was wired directly to this public method (not through the
-        // extended-menu `quitButton` field). Users kept clicking Quit
-        // and hard-exiting without a prompt because the button in the
-        // scene was bound to QuitGame() via UnityEvent, bypassing the
-        // OnQuitClicked → ShowConfirmDialog path.
-        ShowConfirmDialog(
-            LocalizationManager.Tr("MENU_CONFIRM_QUIT"),
-            onYes: QuitGameConfirmed);
+
+        if (quitConfirming)
+        {
+            // Second tap — actually quit.
+            RestoreQuitButton();
+            QuitGameConfirmed();
+            return;
+        }
+
+        // First tap — arm the confirmation.
+        Button btn = quitButton;
+        if (btn == null && EventSystem.current != null)
+        {
+            // Fallback if the scene wired Quit via UnityEvent but the
+            // designer didn't drag the button into the `quitButton`
+            // field — grab the currently-focused button.
+            var sel = EventSystem.current.currentSelectedGameObject;
+            if (sel != null) btn = sel.GetComponent<Button>();
+        }
+        if (btn == null) { QuitGameConfirmed(); return; } // nothing to arm — just quit
+
+        quitLabelTMP = btn.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (quitLabelTMP != null)
+        {
+            quitOriginalLabel = quitLabelTMP.text;
+            quitLabelTMP.text = LocalizationManager.Tr("MENU_CONFIRM_QUIT");
+        }
+
+        BuildQuitDimOverlay(btn);
+        quitConfirming = true;
+
+        if (quitConfirmTimeout != null) StopCoroutine(quitConfirmTimeout);
+        quitConfirmTimeout = StartCoroutine(RestoreQuitButtonAfter(5f));
+    }
+
+    private void BuildQuitDimOverlay(Button hostBtn)
+    {
+        if (quitDimOverlay != null) Destroy(quitDimOverlay);
+        var root = hostBtn.GetComponentInParent<Canvas>();
+        if (root == null) return;
+
+        quitDimOverlay = new GameObject("[QuitDim]", typeof(RectTransform), typeof(Image));
+        quitDimOverlay.transform.SetParent(root.transform, false);
+        var rt = quitDimOverlay.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        var img = quitDimOverlay.GetComponent<Image>();
+        img.color = new Color(0f, 0f, 0f, 0.72f);
+        img.raycastTarget = true;
+        // Sit UNDER the Quit button so clicks on the button still work
+        // but everything else is intercepted. The button gets bumped to
+        // the top of the sibling stack.
+        quitDimOverlay.transform.SetSiblingIndex(hostBtn.transform.GetSiblingIndex());
+        hostBtn.transform.SetAsLastSibling();
+
+        // A click anywhere on the overlay = cancel.
+        var overlayBtn = quitDimOverlay.AddComponent<Button>();
+        overlayBtn.transition = Selectable.Transition.None;
+        overlayBtn.onClick.AddListener(RestoreQuitButton);
+    }
+
+    private System.Collections.IEnumerator RestoreQuitButtonAfter(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        RestoreQuitButton();
+    }
+
+    private void RestoreQuitButton()
+    {
+        quitConfirming = false;
+        if (quitConfirmTimeout != null) { StopCoroutine(quitConfirmTimeout); quitConfirmTimeout = null; }
+        if (quitLabelTMP != null && quitOriginalLabel != null) quitLabelTMP.text = quitOriginalLabel;
+        quitLabelTMP = null;
+        quitOriginalLabel = null;
+        if (quitDimOverlay != null) { Destroy(quitDimOverlay); quitDimOverlay = null; }
     }
 
     private void QuitGameConfirmed()

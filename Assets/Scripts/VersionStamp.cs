@@ -44,17 +44,22 @@ public static class VersionStamp
         var textGO = new GameObject("Label", typeof(TextMeshProUGUI));
         textGO.transform.SetParent(go.transform, false);
         var rt = textGO.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(1f, 0f);
-        rt.anchorMax = new Vector2(1f, 0f);
-        rt.pivot = new Vector2(1f, 0f);
-        rt.anchoredPosition = new Vector2(-20f, 14f);
+        // Bottom-LEFT corner — was bottom-right but per design that
+        // collided with the credits/back-to-game buttons and mattered
+        // less than a clean silhouette. Bottom-left keeps the version
+        // visible for bug-report screenshots without competing for
+        // eye-attention on the menu chrome.
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 0f);
+        rt.pivot = new Vector2(0f, 0f);
+        rt.anchoredPosition = new Vector2(20f, 14f);
         rt.sizeDelta = new Vector2(500f, 40f);
 
         var tmp = textGO.GetComponent<TextMeshProUGUI>();
         tmp.text = BuildStamp();
         tmp.fontSize = 18f;
         tmp.color = new Color(0.75f, 0.72f, 0.62f, 0.55f);
-        tmp.alignment = TextAlignmentOptions.BottomRight;
+        tmp.alignment = TextAlignmentOptions.BottomLeft;
         tmp.enableWordWrapping = false;
     }
 
