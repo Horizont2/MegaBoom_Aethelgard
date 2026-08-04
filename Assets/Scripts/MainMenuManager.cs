@@ -349,6 +349,13 @@ public class MainMenuManager : MonoBehaviour
     private TextMeshProUGUI quitLabelTMP = null;
     private GameObject quitDimOverlay = null;
     private Coroutine quitConfirmTimeout;
+    // Isolate the Quit button on its own render layer while confirming
+    // so a dim overlay parented to the root canvas can't visually
+    // swallow it. We add a Canvas + GraphicRaycaster to the button on
+    // entry and strip them on exit — no permanent prefab change.
+    private Canvas quitButtonCanvas = null;
+    private GraphicRaycaster quitButtonRaycaster = null;
+    private bool quitButtonWasInteractable = true;
 
     public void QuitGame()
     {
@@ -381,11 +388,36 @@ public class MainMenuManager : MonoBehaviour
             quitLabelTMP.text = LocalizationManager.Tr("MENU_CONFIRM_QUIT");
         }
 
+        IsolateQuitButton(btn);
         BuildQuitDimOverlay(btn);
         quitConfirming = true;
 
         if (quitConfirmTimeout != null) StopCoroutine(quitConfirmTimeout);
         quitConfirmTimeout = StartCoroutine(RestoreQuitButtonAfter(5f));
+    }
+
+    // Give the Quit button its own Canvas with a higher sortingOrder
+    // than the dim overlay's parent canvas, plus its own
+    // GraphicRaycaster so clicks route to it. This is what actually
+    // keeps the button bright + clickable — previously the button lived
+    // deep inside a nested panel and SetAsLastSibling only reordered it
+    // within its immediate parent, so the root-canvas overlay drew on
+    // top and dimmed everything.
+    private void IsolateQuitButton(Button btn)
+    {
+        if (btn == null) return;
+        quitButtonWasInteractable = btn.interactable;
+        btn.interactable = true;
+
+        quitButtonCanvas = btn.gameObject.GetComponent<Canvas>();
+        if (quitButtonCanvas == null)
+            quitButtonCanvas = btn.gameObject.AddComponent<Canvas>();
+        quitButtonCanvas.overrideSorting = true;
+        quitButtonCanvas.sortingOrder = 32500; // above overlay (32000)
+
+        quitButtonRaycaster = btn.gameObject.GetComponent<GraphicRaycaster>();
+        if (quitButtonRaycaster == null)
+            quitButtonRaycaster = btn.gameObject.AddComponent<GraphicRaycaster>();
     }
 
     private void BuildQuitDimOverlay(Button hostBtn)
@@ -394,8 +426,16 @@ public class MainMenuManager : MonoBehaviour
         var root = hostBtn.GetComponentInParent<Canvas>();
         if (root == null) return;
 
-        quitDimOverlay = new GameObject("[QuitDim]", typeof(RectTransform), typeof(Image));
+        // Overlay lives on its OWN top-level canvas so its sortingOrder
+        // is well-defined relative to the isolated Quit-button canvas.
+        // Anchored to the root canvas so the RectTransform math is in
+        // the same coordinate space as everything else.
+        quitDimOverlay = new GameObject("[QuitDim]", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(Image));
         quitDimOverlay.transform.SetParent(root.transform, false);
+        var overlayCanvas = quitDimOverlay.GetComponent<Canvas>();
+        overlayCanvas.overrideSorting = true;
+        overlayCanvas.sortingOrder = 32000; // below isolated Quit button (32500)
+
         var rt = quitDimOverlay.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
@@ -404,11 +444,6 @@ public class MainMenuManager : MonoBehaviour
         var img = quitDimOverlay.GetComponent<Image>();
         img.color = new Color(0f, 0f, 0f, 0.72f);
         img.raycastTarget = true;
-        // Sit UNDER the Quit button so clicks on the button still work
-        // but everything else is intercepted. The button gets bumped to
-        // the top of the sibling stack.
-        quitDimOverlay.transform.SetSiblingIndex(hostBtn.transform.GetSiblingIndex());
-        hostBtn.transform.SetAsLastSibling();
 
         // A click anywhere on the overlay = cancel.
         var overlayBtn = quitDimOverlay.AddComponent<Button>();
@@ -430,6 +465,13 @@ public class MainMenuManager : MonoBehaviour
         quitLabelTMP = null;
         quitOriginalLabel = null;
         if (quitDimOverlay != null) { Destroy(quitDimOverlay); quitDimOverlay = null; }
+
+        // Strip the isolation Canvas + Raycaster we added on entry so
+        // the button ends the confirm sequence in exactly the state it
+        // started in — no leaked components on the prefab.
+        if (quitButtonRaycaster != null) { Destroy(quitButtonRaycaster); quitButtonRaycaster = null; }
+        if (quitButtonCanvas != null) { Destroy(quitButtonCanvas); quitButtonCanvas = null; }
+        if (quitButton != null) quitButton.interactable = quitButtonWasInteractable;
     }
 
     private void QuitGameConfirmed()
