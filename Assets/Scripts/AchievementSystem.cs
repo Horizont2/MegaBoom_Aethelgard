@@ -94,14 +94,15 @@ public static class AchievementSystem
         else save.unlockedAchievements += "," + key;
         SaveSystem.Save();
 
-        // Forward to Steam (no-op when Steam not running).
+        // Forward to Steam — this is the ONLY player-facing surface for
+        // achievement unlocks now. Steam's overlay handles the visual
+        // notification. Runtime-built toast intentionally removed; the
+        // final design lives in Figma and will be wired scene-side
+        // later.
         SteamManager.UnlockAchievement(key);
 
-        // Player-facing toast + sound. AchievementToast builds its own
-        // canvas at runtime so no scene wiring is needed; it also fans
-        // out through ToastManager so a scene that authored a
-        // ToastUIController still gets the event.
-        AchievementToast.Show(LocalizationManager.Tr(def.title), LocalizationManager.Tr(def.description));
+        // Still play the celebratory sound so the moment lands
+        // regardless of whether Steam overlay is enabled / offline mode.
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
         Debug.Log($"[AchievementSystem] Unlocked '{key}': {def.title}");

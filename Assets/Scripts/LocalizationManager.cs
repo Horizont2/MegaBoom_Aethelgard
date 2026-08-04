@@ -1355,6 +1355,43 @@ public static class LocalizationManager
              "Wird dir schwindlig? In den Einstellungen kannst du Bildschirmwackeln aus oder Mausempfindlichkeit anpassen.",
              "Vertige de l'action ? Désactive le Tremblement d'Écran ou ajuste la Sensibilité de la Souris.",
              "Kręci ci się w głowie? Możesz wyłączyć Trzęsienie Ekranu lub dostosować Czułość Myszy w Ustawieniach.");
+
+        // --- Batch 5: Weapon names + flavor descriptions ---
+        Add5("Rusty Peasant Sword",         "Ржавый Крестьянский Меч","Espada Campesina Oxidada","Verrostetes Bauernschwert","Épée Paysanne Rouillée","Zardzewiały Miecz Chłopski");
+        Add5("Iron Oathkeeper",             "Железный Клятвохранитель","Guardián de Juramento de Hierro","Eiserner Eidwahrer","Gardien du Serment de Fer","Żelazny Strażnik Przysięgi");
+        Add5("Aethelgard's Vengeance",      "Месть Ительгарда",     "Venganza de Aethelgard","Aethelgards Rache","Vengeance d'Aethelgard","Zemsta Aethelgardu");
+        Add5("Barbarian Axe",               "Варварский Топор",     "Hacha Bárbara",         "Barbarenaxt",         "Hache Barbare",        "Topór Barbarzyński");
+        Add5("Barbarian's Officer Axe",     "Офицерский Топор Варваров","Hacha de Oficial Bárbaro","Barbaren-Offiziersaxt","Hache d'Officier Barbare","Oficerski Topór Barbarzyński");
+        Add5("Pulled from the cellar of a torched farm in the Aethelgard ruins. Edge chipped, balance gone — but it still bites.",
+             "Извлечён из погреба сожжённой фермы в руинах Ительгарда. Лезвие иззубрено, баланс потерян — но он ещё кусает.",
+             "Sacado del sótano de una granja quemada en las ruinas de Aethelgard. Filo mellado, equilibrio perdido — pero muerde.",
+             "Aus dem Keller eines abgebrannten Hofs in den Aethelgard-Ruinen geborgen. Klinge zerschlagen, Balance dahin — beißt aber noch.",
+             "Extraite de la cave d'une ferme incendiée dans les ruines d'Aethelgard. Tranchant ébréché, équilibre perdu — mais elle mord encore.",
+             "Wyciągnięty z piwnicy spalonej farmy w ruinach Aethelgardu. Ostrze wyszczerbione, balans stracony — ale wciąż gryzie.");
+        Add5("Forged in the Royal Smithy. What a knight receives at his vigil — plain steel, perfect balance.",
+             "Выкован в Королевской Кузне. То, что рыцарь получает в час бдения — простая сталь, идеальный баланс.",
+             "Forjada en la Fragua Real. Lo que un caballero recibe en su vigilia — acero puro, equilibrio perfecto.",
+             "In der Königlichen Schmiede geschmiedet. Was ein Ritter zu seiner Vigil erhält — blanker Stahl, perfekte Balance.",
+             "Forgée à la Forge Royale. Ce qu'un chevalier reçoit à sa veillée — acier pur, équilibre parfait.",
+             "Wykuty w Królewskiej Kuźni. To, co rycerz otrzymuje w czuwaniu — czysta stal, doskonały balans.");
+        Add5("Recovered from the King's tomb beneath Old Aethelgard. The steel is older than the kingdom and remembers every hand that has carried it.",
+             "Извлечён из гробницы короля под Старым Ительгардом. Сталь старше королевства и помнит каждую руку, что её несла.",
+             "Recuperada de la tumba real bajo la Vieja Aethelgard. El acero es más antiguo que el reino y recuerda cada mano.",
+             "Aus dem Königsgrab unter Alt-Aethelgard geborgen. Der Stahl ist älter als das Königreich und erinnert sich an jede Hand.",
+             "Récupérée de la tombe du Roi sous la Vieille Aethelgard. L'acier est plus vieux que le royaume et se souvient de chaque main.",
+             "Wydobyty z grobowca króla pod Starym Aethelgardem. Stal jest starsza niż królestwo i pamięta każdą dłoń.");
+        Add5("Crude work of the Northclans. Hard wood, harder iron, and a leather thong stained with last winter's blood.",
+             "Грубая работа Северных Кланов. Твёрдое дерево, ещё твёрже железо и кожаный ремень, залитый прошлозимней кровью.",
+             "Obra tosca de los Clanes del Norte. Madera dura, hierro más duro, correa de cuero manchada con sangre del último invierno.",
+             "Grobe Arbeit der Nordclans. Hartes Holz, härteres Eisen, Lederband getränkt mit dem Blut des letzten Winters.",
+             "Œuvre grossière des Clans du Nord. Bois dur, fer plus dur, lanière de cuir tachée du sang de l'hiver dernier.",
+             "Prymitywna robota Klanów Północy. Twarde drewno, twardsze żelazo, skórzany rzemień zbryzgany krwią zeszłej zimy.");
+        Add5("Officer's piece of the Wild Clans. Rune-etched for the Bear Spirit; its weight rewards a single, killing blow.",
+             "Офицерское оружие Диких Кланов. Гравирован рунами Медвежьего Духа; его вес вознаграждает один смертельный удар.",
+             "Arma de oficial de los Clanes Salvajes. Grabada con runas del Espíritu Oso; su peso premia un único golpe letal.",
+             "Offizierswaffe der Wilden Clans. Runengeätzt für den Bärengeist; ihr Gewicht belohnt einen einzigen tödlichen Schlag.",
+             "Arme d'officier des Clans Sauvages. Gravée de runes de l'Esprit-Ours; son poids récompense un unique coup fatal.",
+             "Broń oficerska Dzikich Klanów. Wygrawerowana runami Ducha Niedźwiedzia; jej ciężar nagradza jedno śmiertelne cięcie.");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
