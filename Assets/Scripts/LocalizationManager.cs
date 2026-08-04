@@ -1223,6 +1223,138 @@ public static class LocalizationManager
         // Achievement toast + heading
         Add5("ACHIEVEMENT_UNLOCKED", "Достижение открыто: {0}","Logro desbloqueado: {0}","Erfolg freigeschaltet: {0}","Succès débloqué : {0}","Odblokowano osiągnięcie: {0}");
         Add5("ACHIEVEMENT UNLOCKED", "ДОСТИЖЕНИЕ ОТКРЫТО",   "LOGRO DESBLOQUEADO",    "ERFOLG FREIGESCHALTET",     "SUCCÈS DÉBLOQUÉ",       "ODBLOKOWANO OSIĄGNIĘCIE");
+
+        // --- Batch 4: Achievement descriptions (long form) ---
+        Add5("Complete the tutorial.",                            "Пройди обучение.","Completa el tutorial.","Absolviere das Tutorial.","Termine le tutoriel.","Ukończ samouczek.");
+        Add5("Return to the camp for the first time.",            "Впервые вернись в лагерь.","Vuelve al campamento por primera vez.","Kehre erstmals ins Lager zurück.","Reviens au camp pour la première fois.","Wróć do obozu po raz pierwszy.");
+        Add5("Upgrade the Scout's Lodge to level 2.",             "Улучши Хижину Разведчика до 2-го уровня.","Mejora la Cabaña del Explorador al nivel 2.","Verbessere die Späherhütte auf Stufe 2.","Améliore la Cabane de l'Éclaireur au niveau 2.","Ulepsz Chatę Zwiadowcy do poziomu 2.");
+        Add5("Conquer your first region.",                        "Захвати свой первый регион.","Conquista tu primera región.","Erobere deine erste Region.","Conquiers ta première région.","Zdobądź swój pierwszy region.");
+        Add5("Build the Storage Vault.",                          "Построй Хранилище.","Construye el Almacén.","Baue das Lagergewölbe.","Construis l'Entrepôt.","Zbuduj Skarbiec.");
+        Add5("Hire your first mercenary.",                        "Найми первого наёмника.","Contrata a tu primer mercenario.","Heure deinen ersten Söldner an.","Engage ton premier mercenaire.","Wynajmij pierwszego najemnika.");
+        Add5("Send your first army on a campaign.",               "Отправь первую армию в поход.","Envía a tu primer ejército en campaña.","Sende dein erstes Heer auf Feldzug.","Envoie ta première armée en campagne.","Wyślij pierwszą armię na wyprawę.");
+        Add5("Fill your entire mercenary roster (5 units).",      "Заполни весь состав наёмников (5 юнитов).","Llena toda tu lista de mercenarios (5 unidades).","Fülle deine gesamte Söldnerliste (5 Einheiten).","Complète toute ta liste de mercenaires (5 unités).","Uzupełnij pełną listę najemników (5 jednostek).");
+        Add5("Win an auto-battle with a Siege tactic.",           "Выиграй авто-бой с тактикой Осада.","Gana un combate automático con tácticas de Asedio.","Gewinne einen Auto-Kampf mit der Belagerungstaktik.","Gagne un combat auto avec la tactique de Siège.","Wygraj auto-bitwę z taktyką Oblężenia.");
+        Add5("Conquer 12 regions.",                               "Захвати 12 регионов.","Conquista 12 regiones.","Erobere 12 Regionen.","Conquiers 12 régions.","Zdobądź 12 regionów.");
+        Add5("Purify a roadside altar.",                          "Очисти придорожный алтарь.","Purifica un altar al borde del camino.","Reinige einen Wegaltar.","Purifie un autel au bord de la route.","Oczyść przydrożny ołtarz.");
+        Add5("Perform a Glory Kill on a boss.",                   "Соверши Славное Убийство над боссом.","Realiza una Muerte Gloriosa a un jefe.","Führe einen Ruhmes-Kill an einem Boss aus.","Exécute une Frappe de Gloire sur un boss.","Wykonaj Chwalebne Zabójstwo na bossie.");
+        Add5("Spend 500 diamonds in the Shop.",                   "Потрать 500 диамантов в Магазине.","Gasta 500 diamantes en la Tienda.","Gib 500 Diamanten im Laden aus.","Dépense 500 diamants dans la Boutique.","Wydaj 500 diamentów w Sklepie.");
+        Add5("Land a Perfect Dodge.",                             "Соверши Идеальный Уклон.","Realiza una Esquiva Perfecta.","Führe einen perfekten Ausweichmanöver aus.","Réalise une Esquive Parfaite.","Wykonaj Idealny Unik.");
+        Add5("Reach a 15-enemy Stack.",                           "Достигни стека из 15 врагов.","Alcanza una pila de 15 enemigos.","Erreiche einen 15-Feind-Stapel.","Atteins une pile de 15 ennemis.","Osiągnij stos 15 wrogów.");
+        Add5("Conquer the Citadel Outskirts.",                    "Захвати Окраины Цитадели.","Conquista las Afueras de la Ciudadela.","Erobere die Zitadellen-Vororte.","Conquiers les Faubourgs de la Citadelle.","Zdobądź Przedmieścia Cytadeli.");
+        Add5("Defeat the Overlord in the Throne Room.",           "Победи Владыку в Тронной зале.","Derrota al Señor Supremo en la Sala del Trono.","Besiege den Oberherrn im Thronsaal.","Vaincs le Suzerain dans la Salle du Trône.","Pokonaj Władcę w Sali Tronowej.");
+        Add5("Conquer every region in Aethelgard.",               "Захвати каждый регион Ительгарда.","Conquista todas las regiones de Aethelgard.","Erobere jede Region Aethelgards.","Conquiers chaque région d'Aethelgard.","Zdobądź każdy region Aethelgardu.");
+        Add5("Recover 5 lore scrolls.",                           "Найди 5 свитков легенд.","Recupera 5 pergaminos de saber.","Berge 5 Legendenschriften.","Récupère 5 parchemins de savoir.","Odnajdź 5 zwojów legend.");
+        Add5("Hoard 2000 diamonds at once.",                      "Накопи 2000 диамантов одновременно.","Acumula 2000 diamantes a la vez.","Horte 2000 Diamanten auf einmal.","Accumule 2000 diamants d'un coup.","Nazbieraj 2000 diamentów naraz.");
+
+        // --- Batch 4: Loading hints ---
+        Add5("The Kingdom of Aethelgard does not forgive mistakes. Always compare your Power with the Recommended Power of a region before venturing out.",
+             "Королевство Ительгард не прощает ошибок. Всегда сверяй свою Силу с Рекомендованной Силой региона перед вылазкой.",
+             "El reino de Aethelgard no perdona errores. Compara siempre tu Poder con el Poder Recomendado antes de salir.",
+             "Das Königreich Aethelgard verzeiht keine Fehler. Vergleiche deine Macht stets mit der empfohlenen Macht einer Region.",
+             "Le royaume d'Aethelgard ne pardonne pas les erreurs. Compare toujours ta Puissance à la Puissance Recommandée.",
+             "Królestwo Aethelgardu nie wybacza błędów. Zawsze porównuj Moc z Rekomendowaną Mocą regionu.");
+        Add5("Retreat is not cowardice. If a battle turns against you, it is better to Give Up and return to Camp than to perish in the woods.",
+             "Отступление — не трусость. Если бой обернулся против тебя, лучше Сдаться и вернуться в лагерь, чем погибнуть в лесу.",
+             "Retirarse no es cobardía. Si la batalla se te tuerce, mejor Rendirte y volver al campamento que perecer en el bosque.",
+             "Rückzug ist keine Feigheit. Wenn eine Schlacht sich wendet, ist Aufgeben besser als im Wald zu sterben.",
+             "Battre en retraite n'est pas de la lâcheté. Mieux vaut Abandonner que périr dans les bois.",
+             "Odwrót to nie tchórzostwo. Lepiej Poddać się i wrócić do obozu niż zginąć w lesie.");
+        Add5("Grenades are your best friend against a crowd. Use them to thin the enemy ranks before drawing your sword.",
+             "Гранаты — твой лучший друг против толпы. Прореди ими вражеские ряды прежде, чем достать меч.",
+             "Las granadas son tu mejor amiga contra una multitud. Usa para diezmar las filas antes de sacar la espada.",
+             "Granaten sind dein bester Freund gegen die Masse. Lichte damit die Reihen, bevor du das Schwert ziehst.",
+             "Les grenades sont ta meilleure amie contre la foule. Amincis les rangs avant de dégainer.",
+             "Granaty to twój najlepszy przyjaciel przeciw tłumowi. Przerzedź szeregi wroga zanim wyciągniesz miecz.");
+        Add5("Even the thickest helmet won't save you if you stand still. Keep moving during combat.",
+             "Даже самый толстый шлем не спасёт, если стоишь на месте. Двигайся постоянно в бою.",
+             "Ni el casco más grueso te salvará si te quedas quieto. Sigue moviéndote en combate.",
+             "Selbst der dickste Helm rettet dich nicht, wenn du still stehst. Bleib in Bewegung.",
+             "Même le casque le plus épais ne te sauvera pas si tu restes immobile. Bouge en combat.",
+             "Nawet najgrubszy hełm cię nie ocali, jeśli stoisz w miejscu. Ruszaj się w walce.");
+        Add5("Conquered territories provide passive income. Don't forget to regularly collect resources from your domain.",
+             "Захваченные территории дают пассивный доход. Не забывай регулярно собирать ресурсы со своих владений.",
+             "Los territorios conquistados ofrecen ingresos pasivos. Recoge recursos con regularidad.",
+             "Eroberte Gebiete geben passives Einkommen. Vergiss nicht, regelmäßig Ressourcen einzusammeln.",
+             "Les territoires conquis donnent un revenu passif. N'oublie pas de collecter tes ressources.",
+             "Zdobyte terytoria dają dochód pasywny. Nie zapomnij regularnie zbierać zasobów.");
+        Add5("Invest wood, stone, and food to upgrade your controlled regions. Higher levels yield more resources per hour.",
+             "Вкладывай дерево, камень и еду в улучшение подконтрольных регионов. Уровни выше — доход больше.",
+             "Invierte madera, piedra y comida para mejorar tus regiones. Los niveles altos rinden más.",
+             "Investiere Holz, Stein und Nahrung, um Regionen aufzuwerten. Höhere Stufen bringen mehr pro Stunde.",
+             "Investis bois, pierre et nourriture pour améliorer tes régions. Les niveaux hauts rapportent plus.",
+             "Inwestuj drewno, kamień i jedzenie w ulepszanie regionów. Wyższy poziom to więcej zasobów.");
+        Add5("Gems are incredibly rare. Spend them wisely and save them for the most crucial upgrades.",
+             "Самоцветы невероятно редки. Трать их мудро и береги для самых важных улучшений.",
+             "Las gemas son muy raras. Gástalas con sabiduría, guárdalas para lo más crucial.",
+             "Edelsteine sind selten. Gib sie weise aus und spare für die wichtigsten Verbesserungen.",
+             "Les gemmes sont très rares. Dépense-les avec sagesse pour les améliorations cruciales.",
+             "Klejnoty są niezwykle rzadkie. Wydawaj mądrze i zachowaj na kluczowe ulepszenia.");
+        Add5("A well-fed warrior fights better. A steady supply of food from your territories is vital for expanding your influence.",
+             "Сытый воин сражается лучше. Стабильный приток еды с территорий — залог расширения влияния.",
+             "Un guerrero bien alimentado lucha mejor. Un flujo estable de comida es vital.",
+             "Ein satter Krieger kämpft besser. Ein steter Nahrungsstrom ist überlebenswichtig.",
+             "Un guerrier bien nourri combat mieux. Un flux constant de nourriture est vital.",
+             "Najedzony wojownik walczy lepiej. Stały napływ jedzenia jest kluczowy.");
+        Add5("Explore the World Map thoroughly. New territories can hide both vast riches and lethal dangers.",
+             "Исследуй Карту Мира внимательно. Новые территории могут скрывать как богатства, так и смертельную опасность.",
+             "Explora bien el Mapa Mundial. Nuevos territorios ocultan riquezas y peligros mortales.",
+             "Erkunde die Weltkarte gründlich. Neue Gebiete verbergen Reichtümer und tödliche Gefahren.",
+             "Explore soigneusement la Carte du Monde. Nouveaux territoires cachent richesses et dangers.",
+             "Badaj Mapę Świata dokładnie. Nowe terytoria skrywają skarby i śmiertelne zagrożenia.");
+        Add5("They say in Stonefall Quarry, undead miners still mindlessly swing their pickaxes. Stay on your guard.",
+             "Говорят, в Каменопадном Карьере мёртвые шахтёры всё ещё бездумно машут кирками. Будь настороже.",
+             "Dicen que en la Cantera de Piedracaída, mineros muertos aún balancean sus picos.",
+             "Es heißt, im Steinfall-Steinbruch schwingen tote Grubenarbeiter noch immer stumpf ihre Spitzhacken.",
+             "On dit qu'à la Carrière des Pierres Tombées, des mineurs morts balancent encore leurs pioches.",
+             "Mówią, że w Kamiennym Kamieniołomie martwi górnicy wciąż bezmyślnie machają kilofami.");
+        Add5("Your Camp is the only truly safe haven in all of Aethelgard. Return there to catch your breath by the fire.",
+             "Твой Лагерь — единственная по-настоящему безопасная гавань во всём Ительгарде. Вернись передохнуть у костра.",
+             "Tu campamento es el único refugio verdaderamente seguro. Vuelve a respirar junto al fuego.",
+             "Dein Lager ist der einzige wirklich sichere Hafen. Kehre am Feuer zurück, um zu verschnaufen.",
+             "Ton Camp est le seul véritable havre. Reviens y reprendre haleine près du feu.",
+             "Twój Obóz to jedyna prawdziwa bezpieczna przystań. Wróć tam odetchnąć przy ogniu.");
+        Add5("The dead do not feel pain, but they can still be hacked to pieces. Keep your blade sharp.",
+             "Мёртвые не чувствуют боли, но их всё равно можно порубить на куски. Держи клинок острым.",
+             "Los muertos no sienten dolor, pero se les puede hacer pedazos. Mantén afilada tu hoja.",
+             "Die Toten fühlen keinen Schmerz, doch man kann sie zerhacken. Halt die Klinge scharf.",
+             "Les morts ne sentent pas la douleur, mais on peut les tailler en pièces. Garde ta lame affûtée.",
+             "Martwi nie czują bólu, ale wciąż można ich porąbać. Ostrze musi być ostre.");
+        Add5("Only the strongest and most ruthless rulers can unite the fractured Kingdom of Aethelgard. Will you be one of them?",
+             "Лишь сильнейшие и самые жестокие правители могут объединить разодранный Ительгард. Станешь ли ты одним из них?",
+             "Solo los soberanos más fuertes y despiadados pueden unir el reino fracturado. ¿Serás uno de ellos?",
+             "Nur die stärksten und rücksichtslosesten Herrscher können Aethelgard einen. Wirst du einer von ihnen sein?",
+             "Seuls les souverains les plus forts et impitoyables uniront le royaume brisé. En feras-tu partie ?",
+             "Tylko najsilniejsi i najbezwzględniejsi władcy zjednoczą rozbite królestwo. Będziesz jednym z nich?");
+        Add5("The dense, dark forests and steep cliffs of Aethelgard show no mercy to those who lose their focus.",
+             "Густые тёмные леса и крутые скалы Ительгарда не щадят потерявших бдительность.",
+             "Los densos bosques oscuros y los acantilados de Aethelgard no perdonan al distraído.",
+             "Die dichten Wälder und steilen Klippen Aethelgards zeigen den Unachtsamen keine Gnade.",
+             "Les forêts denses et les falaises abruptes d'Aethelgard ne pardonnent pas la distraction.",
+             "Gęste, ciemne lasy i strome klify Aethelgardu nie okazują litości nieuważnym.");
+        Add5("New armor doesn't just increase your defense—it changes your appearance. Find gear worthy of a true lord.",
+             "Новая броня не только повышает защиту — она меняет твой облик. Найди снаряжение достойное истинного лорда.",
+             "La armadura nueva no solo aumenta la defensa: cambia tu apariencia. Halla equipo digno.",
+             "Neue Rüstung erhöht nicht nur die Verteidigung — sie ändert dein Aussehen. Finde würdige Ausrüstung.",
+             "Une nouvelle armure ne fait pas qu'augmenter ta défense — elle change ton apparence.",
+             "Nowa zbroja nie tylko zwiększa obronę — zmienia twój wygląd. Znajdź sprzęt godny lorda.");
+        Add5("Always check the Notice Board in your Camp. It frequently offers new, lucrative contracts and missions.",
+             "Всегда проверяй Доску Объявлений в Лагере. На ней часто появляются выгодные контракты и миссии.",
+             "Consulta siempre el Tablón de Anuncios de tu Campamento. Ofrece contratos y misiones lucrativas.",
+             "Prüfe stets die Anschlagtafel im Lager. Sie bietet oft neue, lukrative Aufträge.",
+             "Vérifie toujours le Panneau d'Affichage du Camp. Il propose souvent des contrats lucratifs.",
+             "Zawsze sprawdzaj Tablicę Ogłoszeń w Obozie. Oferuje nowe, dochodowe kontrakty.");
+        Add5("Heavy armor provides excellent protection against direct hits, but it slows you down. Find your perfect balance in battle.",
+             "Тяжёлая броня отлично защищает от прямых ударов, но замедляет. Найди свой баланс в бою.",
+             "La armadura pesada protege bien de golpes directos, pero te frena. Halla tu equilibrio.",
+             "Schwere Rüstung schützt ausgezeichnet vor direkten Treffern, verlangsamt dich aber.",
+             "L'armure lourde protège des coups directs mais te ralentit. Trouve ton équilibre parfait.",
+             "Ciężka zbroja świetnie chroni przed bezpośrednimi ciosami, ale spowalnia. Znajdź balans.");
+        Add5("Getting dizzy from the action? You can always disable Screen Shake or adjust your Mouse Sensitivity in the Settings menu.",
+             "Кружится голова от происходящего? В Настройках можно отключить Тряску Экрана или подстроить Чувствительность Мыши.",
+             "¿Te marea la acción? Puedes desactivar el Temblor de Pantalla o ajustar la Sensibilidad del Ratón en Ajustes.",
+             "Wird dir schwindlig? In den Einstellungen kannst du Bildschirmwackeln aus oder Mausempfindlichkeit anpassen.",
+             "Vertige de l'action ? Désactive le Tremblement d'Écran ou ajuste la Sensibilité de la Souris.",
+             "Kręci ci się w głowie? Możesz wyłączyć Trzęsienie Ekranu lub dostosować Czułość Myszy w Ustawieniach.");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
