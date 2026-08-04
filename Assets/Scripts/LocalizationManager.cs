@@ -1552,6 +1552,7 @@ public static class LocalizationManager
 
         // === Achievements ===
         Add("ACHIEVEMENT_UNLOCKED", "Achievement unlocked: {0}", "Досягнення відкрито: {0}");
+        AddSelf("ACHIEVEMENT UNLOCKED", "ДОСЯГНЕННЯ ВІДКРИТО");
         AddSelf("First Steps",              "Перші кроки");
         AddSelf("Homestead",                "Домівка");
         AddSelf("Scout's Map",              "Мапа Розвідника");

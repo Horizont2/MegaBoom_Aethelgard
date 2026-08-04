@@ -97,13 +97,11 @@ public static class AchievementSystem
         // Forward to Steam (no-op when Steam not running).
         SteamManager.UnlockAchievement(key);
 
-        // Player-facing toast + sound. Achievement class matches the
-        // existing ToastKind so it uses the celebratory palette.
-        if (ToastManager.Instance != null)
-        {
-            string body = LocalizationManager.Tr("ACHIEVEMENT_UNLOCKED", LocalizationManager.Tr(def.title));
-            ToastManager.Show(body, ToastManager.ToastKind.Achievement);
-        }
+        // Player-facing toast + sound. AchievementToast builds its own
+        // canvas at runtime so no scene wiring is needed; it also fans
+        // out through ToastManager so a scene that authored a
+        // ToastUIController still gets the event.
+        AchievementToast.Show(LocalizationManager.Tr(def.title), LocalizationManager.Tr(def.description));
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
         Debug.Log($"[AchievementSystem] Unlocked '{key}': {def.title}");

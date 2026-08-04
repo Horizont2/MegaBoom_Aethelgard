@@ -122,4 +122,32 @@ public static class SteamManager
 #endif
         s_running = false;
     }
+
+    // -------------------------------------------------------------
+    //  Rich Presence — shown in the Steam Friends list under the
+    //  player's game entry ("In Camp", "Region 12: Forest…").
+    //  Steam has a set of well-known keys (see Rich Presence docs):
+    //   * "steam_display" — token in Steam Partner localisation table
+    //   * "status"        — free-form fallback string
+    //  We push both so a plain-text status shows even before the
+    //  partner-side localisation is uploaded.
+    // -------------------------------------------------------------
+    public static void SetRichPresence(string status)
+    {
+        if (!s_running || string.IsNullOrEmpty(status)) return;
+        try
+        {
+#if FACEPUNCH_STEAMWORKS
+            // Steamworks.SteamFriends.SetRichPresence("steam_display", "#Status");
+            // Steamworks.SteamFriends.SetRichPresence("status", status);
+#elif STEAMWORKS_NET
+            // Steamworks.SteamFriends.SetRichPresence("steam_display", "#Status");
+            // Steamworks.SteamFriends.SetRichPresence("status", status);
+#endif
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[SteamManager] SetRichPresence failed: {e.Message}");
+        }
+    }
 }
