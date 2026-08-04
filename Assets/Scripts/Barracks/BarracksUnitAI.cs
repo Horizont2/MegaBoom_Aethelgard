@@ -34,14 +34,6 @@ public class BarracksUnitAI : MonoBehaviour
     public float agentAngularSpeed = 540f;
     public float agentStoppingDistance = 0.4f;
 
-    [Header("Night Schedule (optional)")]
-    // Drop the campfire transform here and the merc walks over at deep
-    // night, faces it, and sits until dawn. Leave null → mercs wander
-    // all night (previous behaviour).
-    public Transform nightGatherPoint;
-    public string sittingAnimBool = "IsSitting";
-    public float sittingArriveRadius = 1.6f;
-
     [Header("Visual")]
     public Animator anim;
 
@@ -72,9 +64,10 @@ public class BarracksUnitAI : MonoBehaviour
 
     private void Update()
     {
+        // Gait sync only — barracks units are decorative, they wander
+        // 24/7 and do NOT gather at the fire (that's for the camp
+        // workers / hunters / storage NPC only).
         NPCGait.Sync(agent, anim, agentSpeed);
-        if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
-            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
     }
 
     private void LateUpdate() => NPCGait.GroundSnap(transform);
@@ -88,13 +81,6 @@ public class BarracksUnitAI : MonoBehaviour
             if (agent == null || !agent.isOnNavMesh)
             {
                 yield return new WaitForSeconds(1f);
-                continue;
-            }
-
-            // Night beats wander — walk to the fire and stay there.
-            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
-            {
-                yield return StartCoroutine(NightGatherRoutine());
                 continue;
             }
 
@@ -124,36 +110,5 @@ public class BarracksUnitAI : MonoBehaviour
 
             yield return new WaitForSeconds(Random.Range(minIdleSeconds, maxIdleSeconds));
         }
-    }
-
-    private IEnumerator NightGatherRoutine()
-    {
-        Vector2 jitter = Random.insideUnitCircle * 1.4f;
-        Vector3 dest = nightGatherPoint.position + new Vector3(jitter.x, 0f, jitter.y);
-        NavMeshHit hit;
-        if (NavMesh.SamplePosition(dest, out hit, 4f, NavMesh.AllAreas))
-        {
-            agent.isStopped = false;
-            agent.SetDestination(hit.position);
-        }
-
-        float timeout = 0f;
-        while (timeout < 15f && agent.isOnNavMesh && (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.4f))
-        {
-            timeout += Time.deltaTime;
-            yield return null;
-        }
-
-        // Face the fire smoothly on arrival.
-        float faceTimer = 0f;
-        while (faceTimer < 1.2f)
-        {
-            NPCGait.FaceTarget(transform, nightGatherPoint.position, 240f);
-            faceTimer += Time.deltaTime;
-            yield return null;
-        }
-
-        while (CampSchedule.IsDeepNight())
-            yield return new WaitForSeconds(1f);
     }
 }
