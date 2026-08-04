@@ -1566,6 +1566,86 @@ public static class LocalizationManager
              "GRUNDLEVIE — NUR FEUDALER OFFIZIER",
              "LEVÉE DE BASE — OFFICIER FÉODAL UNIQUEMENT",
              "PODSTAWOWE POSPOLITE RUSZENIE — TYLKO OFICER FEUDALNY");
+
+        // --- Batch 8: All 24 region names ---
+        // Regions appear on the world map (map label + region panel).
+        // RegionUI already Tr's regionName; these entries make it land.
+        Add5("Abyssal Descent",    "Бездонный Спуск",         "Descenso Abisal",       "Abyssaler Abstieg",     "Descente Abyssale",     "Otchłanne Zejście");
+        Add5("Bandit's Crossing",  "Разбойничий Переход",     "Cruce del Bandido",     "Räubers Furt",          "Passage du Bandit",     "Rozbójnicza Przeprawa");
+        Add5("Bloodstone Mines",   "Кровекаменные Шахты",     "Minas de Sangrepiedra", "Blutstein-Minen",       "Mines de Pierre-Sang",  "Krwawokamienne Kopalnie");
+        Add5("Citadel Outskirts",  "Окраины Цитадели",        "Afueras de la Ciudadela","Zitadellen-Vororte",   "Faubourgs de la Citadelle","Przedmieścia Cytadeli");
+        Add5("Cursed Swampland",   "Проклятые Топи",          "Ciénaga Maldita",       "Verfluchte Sumpflande", "Marais Maudit",         "Przeklęte Bagna");
+        Add5("Deadman's Gorge",    "Ущелье Мертвеца",         "Garganta del Muerto",   "Totmannschlucht",       "Gorge du Mort",         "Wąwóz Umarłego");
+        Add5("Desolate Tundra",    "Опустошённая Тундра",     "Tundra Desolada",       "Verlassene Tundra",     "Toundra Désolée",       "Pustynna Tundra");
+        Add5("Forgotten Shrine",   "Забытая Святыня",         "Santuario Olvidado",    "Vergessener Schrein",   "Sanctuaire Oublié",     "Zapomniana Kapliczka");
+        Add5("Gates of Ruin",      "Врата Разрухи",           "Puertas de la Ruina",   "Tore des Ruins",        "Portes de la Ruine",    "Bramy Ruiny");
+        Add5("Howling Valley",     "Воющая Долина",           "Valle Aullador",        "Heulendes Tal",         "Vallée Hurlante",       "Wyjąca Dolina");
+        Add5("Ironpeak Pass",      "Железнопиковый Перевал",  "Paso del Pico de Hierro","Eisengipfel-Pass",     "Col du Pic de Fer",     "Przełęcz Żelaznego Szczytu");
+        Add5("Mossy Foothills",    "Мшистые Предгорья",       "Colinas Musgosas",      "Moosige Vorberge",      "Contreforts Moussus",   "Mszyste Przedgórza");
+        Add5("Obsidian Crags",     "Обсидиановые Утёсы",      "Riscos de Obsidiana",   "Obsidianfelsen",        "Falaises d'Obsidienne", "Obsydianowe Turnie");
+        Add5("Old Lumberyard",     "Старая Лесопилка",        "Aserradero Viejo",      "Alter Holzplatz",       "Vieille Scierie",       "Stary Tartak");
+        Add5("Ruined Tollkeep",    "Разрушенная Застава",     "Aduana en Ruinas",      "Zerfallene Zollfeste",  "Douane en Ruines",      "Zrujnowana Rogatka");
+        Add5("Shattered Bridge",   "Разбитый Мост",           "Puente Roto",           "Zerschmetterte Brücke", "Pont Brisé",            "Roztrzaskany Most");
+        Add5("Smuggler's Cove",    "Контрабандистская Бухта", "Cala del Contrabandista","Schmugglerbucht",     "Crique du Contrebandier","Zatoka Przemytnika");
+        Add5("Stonefall Quarry",   "Каменопадный Карьер",     "Cantera de Piedracaída","Steinfall-Steinbruch",  "Carrière des Pierres Tombées","Kamieniołom Kamiennego Zwaliska");
+        Add5("Sunken Outpost",     "Затопленный Форпост",     "Puesto Hundido",        "Versunkener Außenposten","Avant-poste Englouti", "Zatopiona Placówka");
+        Add5("The Ashen Woods",    "Пепельные Леса",          "Los Bosques de Ceniza", "Die Aschenwälder",      "Les Bois de Cendre",    "Popielne Lasy");
+        Add5("The Poisoned Vein",  "Отравленная Жила",        "La Vena Envenenada",    "Die Vergiftete Ader",   "La Veine Empoisonnée",  "Zatruta Żyła");
+        Add5("The Throne Room",    "Тронный Зал",             "La Sala del Trono",     "Der Thronsaal",         "La Salle du Trône",     "Sala Tronowa");
+        Add5("Warlord's Camp",     "Лагерь Воеводы",          "Campamento del Señor de Guerra","Kriegsherren-Lager","Camp du Chef de Guerre","Obóz Wodza");
+        Add5("Whispering Thicket", "Шепчущая Чаща",           "Espesura Susurrante",   "Flüsterndes Dickicht",  "Fourré Chuchotant",     "Szepczący Zagajnik");
+
+        // Region intro plaques
+        Add5("REGION_INTRO_FOREST",
+             "Лес Ваэль — когда-то охотничьи угодья королей, теперь — корм мертвецам.",
+             "Bosque de Vael — antaño coto de caza real, ahora sustento de los muertos.",
+             "Wald von Vael — einst Jagdrevier der Könige, jetzt Nahrung der Toten.",
+             "Forêt de Vael — jadis terrain de chasse royal, désormais pâture aux morts.",
+             "Las Vael — niegdyś królewskie łowisko, teraz karma dla zmarłych.");
+        Add5("REGION_INTRO_HIGHLANDS",
+             "Нагорье Ительгарда — где Кровавая Клятва была принесена и нарушена.",
+             "Tierras Altas de Aethelgard — donde el Juramento de Sangre fue jurado y roto.",
+             "Hochland von Aethelgard — wo der Blutschwur geleistet und gebrochen wurde.",
+             "Hautes-terres d'Aethelgard — où le Serment de Sang fut prêté et brisé.",
+             "Wyżyny Aethelgardu — gdzie Krwawa Przysięga została złożona i złamana.");
+        Add5("REGION_INTRO_BONEFIELDS",
+             "Костяные Поля — где пала первая волна Бледного Короля. Они так и не перестали вставать.",
+             "Los Campos de Hueso — donde cayó la primera ola del Rey Pálido. Nunca dejaron de levantarse.",
+             "Die Knochenfelder — wo die erste Welle des Bleichen Königs fiel. Sie hörten nie auf, aufzustehen.",
+             "Les Champs d'Ossements — où tomba la première vague du Roi Pâle. Ils ne cessèrent jamais de se relever.",
+             "Kościane Pola — gdzie padła pierwsza fala Bladego Króla. Nigdy nie przestali wstawać.");
+        Add5("REGION_INTRO_FROSTGATE",
+             "Ледяные Врата — последний привал перед мёртвыми землями. Зажги здесь огонь. Он тебе понадобится.",
+             "Puerta Helada — la última posta antes de las tierras muertas. Enciende aquí un fuego. Lo necesitarás.",
+             "Frosttor — die letzte Raststätte vor den toten Landen. Entzünde hier ein Feuer. Du wirst es brauchen.",
+             "Porte du Givre — dernière halte avant les terres mortes. Allume un feu ici. Tu en auras besoin.",
+             "Mroźna Brama — ostatnia postoja przed martwymi ziemiami. Rozpal tu ogień. Będziesz go potrzebować.");
+        Add5("REGION_INTRO_DEEP",
+             "Глубинный Подступ — дорога к твердыне Бледного Короля. Мёртвые ходят в обе стороны.",
+             "El Acceso Profundo — el camino a la fortaleza del Rey Pálido. Los muertos caminan en ambos sentidos.",
+             "Der Tiefe Zugang — der Weg zur Feste des Bleichen Königs. Die Toten wandern in beide Richtungen.",
+             "L'Approche Profonde — la route vers la forteresse du Roi Pâle. Les morts marchent dans les deux sens.",
+             "Głębokie Podejście — droga do twierdzy Bladego Króla. Umarli wędrują w obie strony.");
+
+        // Region cleared flavor lines
+        Add5("REGION_CLEARED_1",
+             "Сторожевые огни королевства сегодня ночью горят чуть ярче.",
+             "Las hogueras del reino arden un poco más brillantes esta noche.",
+             "Die Wachfeuer des Reichs brennen heute Nacht ein wenig heller.",
+             "Les feux de garde du royaume brûlent un peu plus vif ce soir.",
+             "Ognie strażnicze królestwa płoną tej nocy nieco jaśniej.");
+        Add5("REGION_CLEARED_2",
+             "Ещё одно имя вычеркнуто из реестра Бледного Короля.",
+             "Un nombre más liberado del registro del Rey Pálido.",
+             "Ein weiterer Name aus dem Register des Bleichen Königs gestrichen.",
+             "Un nom de plus effacé du registre du Roi Pâle.",
+             "Kolejne imię wykreślone z rejestru Bladego Króla.");
+        Add5("REGION_CLEARED_3",
+             "Ительгард помнит, что было отнято. Ительгард помнит, что было возвращено.",
+             "Aethelgard recuerda lo que fue tomado. Aethelgard recuerda lo que fue devuelto.",
+             "Aethelgard erinnert sich an das Genommene. Aethelgard erinnert sich an das Zurückgegebene.",
+             "Aethelgard se souvient de ce qui fut pris. Aethelgard se souvient de ce qui fut rendu.",
+             "Aethelgard pamięta, co zostało zabrane. Aethelgard pamięta, co zostało zwrócone.");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
