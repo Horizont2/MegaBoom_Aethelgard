@@ -1026,6 +1026,55 @@ public static class LocalizationManager
         Add5("Back to Menu",       "В главное меню", "Volver al menú","Zum Hauptmenü","Menu principal","Menu główne");
         Add5("Are you sure?",      "Ты уверен?",     "¿Estás seguro?","Bist du sicher?","Es-tu sûr ?","Na pewno?");
         Add5("MENU_CONFIRM_QUIT",  "Выйти из игры?","¿Salir del juego?","Spiel beenden?","Quitter le jeu ?","Wyjść z gry?");
+
+        // --- Batch 2: HUD chrome, camp building UI, mission labels ---
+        Add5("CAMP STASH",         "ЗАПАСЫ ЛАГЕРЯ", "ALMACÉN",         "LAGERVORRAT",       "RÉSERVE DU CAMP", "ZAPASY OBOZU");
+        Add5("BACKPACK",           "РЮКЗАК",       "MOCHILA",          "RUCKSACK",           "SAC À DOS",       "PLECAK");
+        Add5("CONQUER REWARDS",    "НАГРАДЫ ЗА ЗАХВАТ","RECOMPENSAS DE CONQUISTA","EROBERUNGS-BELOHNUNGEN","RÉCOMPENSES DE CONQUÊTE","NAGRODY ZA PODBÓJ");
+        Add5("EMBARK ON JOURNEY",  "ОТПРАВИТЬСЯ",  "PARTIR",            "AUFBRECHEN",         "PARTIR",           "WYRUSZAJ");
+        Add5("Take Mission",       "Взять миссию", "Aceptar misión",    "Mission annehmen",   "Prendre la mission","Podejmij misję");
+        Add5("TAKE MISSION",       "ВЗЯТЬ МИССИЮ", "TOMAR MISIÓN",     "MISSION ANNEHMEN",   "PRENDRE LA MISSION","PODEJMIJ MISJĘ");
+        Add5("Hold the Line",      "Держи строй",  "Mantén la línea",   "Halte die Stellung", "Tiens la ligne",    "Utrzymaj linię");
+        Add5("Rewards:",           "Награды:",     "Recompensas:",      "Belohnungen:",       "Récompenses :",     "Nagrody:");
+
+        // Camp Building panel labels
+        Add5("CB_UNBUILT_LABEL",   "(Не построено)","(Sin construir)",  "(Nicht gebaut)",     "(Non construit)",   "(Nie zbudowano)");
+        Add5("CB_LEVEL_LABEL",     "(Уровень {0})", "(Nivel {0})",       "(Stufe {0})",        "(Niveau {0})",      "(Poziom {0})");
+        Add5("CB_MAX_LEVEL",       "Максимальный уровень","Nivel máximo","Maximalstufe erreicht","Niveau maximum",  "Osiągnięto maks. poziom");
+        Add5("CB_PRODUCTION_LABEL","Производство", "Producción",        "Produktion",         "Production",        "Produkcja");
+        Add5("CB_FEATURE_LABEL",   "Особенность",  "Característica",    "Merkmal",            "Caractéristique",   "Cecha");
+        Add5("CB_BUILD_TIME",      "Время: {0} с", "Tiempo: {0}s",      "Bauzeit: {0} s",     "Temps : {0}s",      "Czas: {0}s");
+        Add5("CB_UPGRADE_TIME",    "Улучшение: {0} с","Mejora: {0}s",   "Aufwertung: {0} s",  "Amélioration : {0}s","Ulepszenie: {0}s");
+
+        // Mission paper labels
+        Add5("MISSION_DONE_TAG",   "ГОТОВО",       "HECHO",             "ERLEDIGT",           "FAIT",              "ZROBIONE");
+        Add5("MISSION_TARGET_LABEL","Цель: {0}",   "Objetivo: {0}",     "Ziel: {0}",          "Objectif : {0}",    "Cel: {0}");
+        Add5("MISSION_REWARDS_LABEL","Награды:",   "Recompensas:",      "Belohnungen:",       "Récompenses :",     "Nagrody:");
+        Add5("MISSION_RES_WOOD",   "{0} дерева",   "{0} de madera",     "{0} Holz",           "{0} bois",          "{0} drewna");
+        Add5("MISSION_RES_STONE",  "{0} камня",    "{0} de piedra",     "{0} Stein",          "{0} pierre",        "{0} kamienia");
+        Add5("MISSION_RES_FOOD",   "{0} еды",      "{0} de comida",     "{0} Nahrung",        "{0} nourriture",    "{0} jedzenia");
+        Add5("MISSION_RES_GEMS",   "{0} самоцветов","{0} de gemas",     "{0} Edelsteine",     "{0} gemmes",        "{0} klejnotów");
+
+        // Shop tabs
+        Add5("Sword",              "Меч",          "Espada",            "Schwert",            "Épée",              "Miecz");
+        Add5("Axe",                "Топор",        "Hacha",             "Axt",                "Hache",             "Topór");
+        Add5("Helmet",             "Шлем",         "Casco",             "Helm",               "Casque",            "Hełm");
+        Add5("Gloves",             "Перчатки",     "Guantes",           "Handschuhe",         "Gantelets",         "Rękawice");
+        Add5("Legguards",          "Поножи",       "Grebas",            "Beinschienen",       "Jambières",         "Nagolenniki");
+        Add5("BACK TO CATEGORIES", "К КАТЕГОРИЯМ", "A CATEGORÍAS",      "ZURÜCK ZU KATEGORIEN","AUX CATÉGORIES",   "DO KATEGORII");
+        Add5("Purchase",           "Купить",       "Comprar",           "Kaufen",             "Acheter",           "Kup");
+        Add5("Sell",               "Продать",      "Vender",            "Verkaufen",          "Vendre",            "Sprzedaj");
+        Add5("Equip",              "Надеть",       "Equipar",           "Ausrüsten",          "Équiper",           "Załóż");
+        Add5("Unequip",            "Снять",        "Quitar",            "Ablegen",            "Retirer",           "Zdejmij");
+        Add5("Owned",              "В наличии",    "Poseído",           "Im Besitz",          "Possédé",           "Posiadane");
+        Add5("New",                "Новое",        "Nuevo",             "Neu",                "Nouveau",           "Nowe");
+
+        // Barracks tab strip + upgrade tier text
+        Add5("UNITS",              "ЮНИТЫ",        "UNIDADES",          "EINHEITEN",          "UNITÉS",            "JEDNOSTKI");
+        Add5("BARRACKS",           "КАЗАРМА",      "CUARTEL",           "KASERNE",            "CASERNE",           "KOSZARY");
+        Add5("Upgrade UNITS",      "Улучшить ЮНИТОВ","Mejorar UNIDADES","EINHEITEN aufwerten","Améliorer UNITÉS", "Ulepsz JEDNOSTKI");
+        Add5("Upgrade BARRACKS",   "Улучшить КАЗАРМУ","Mejorar CUARTEL","KASERNE aufwerten","Améliorer CASERNE",  "Ulepsz KOSZARY");
+        Add5("Unlocks new recruit types","Открывает новые типы новобранцев","Desbloquea nuevos reclutas","Schaltet neue Rekrutentypen frei","Débloque de nouveaux types de recrues","Odblokowuje nowe typy rekrutów");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
