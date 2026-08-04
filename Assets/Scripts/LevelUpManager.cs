@@ -158,7 +158,10 @@ public class LevelUpManager : MonoBehaviour
             string finalDescription = LocalizationManager.Tr(chosenUpgrade.description);
             if (!string.IsNullOrEmpty(chosenUpgrade.statDisplay))
             {
-                finalDescription += "\n<color=#FFD700><b>" + chosenUpgrade.statDisplay + "</b></color>";
+                // statDisplay is authored English (e.g. "+10 Max HP") — route
+                // through Tr so a matching UPGRADE_STAT_* key wins, otherwise
+                // the English string falls through unchanged.
+                finalDescription += "\n<color=#FFD700><b>" + LocalizationManager.Tr(chosenUpgrade.statDisplay) + "</b></color>";
             }
             uiButtons[i].descriptionText.text = finalDescription;
 

@@ -125,7 +125,10 @@ public class CreditsUI : MonoBehaviour
     {
         System.Text.StringBuilder sb = new System.Text.StringBuilder(2048);
         void H(string k) => sb.Append("\n\n<size=48><b>").Append(LocalizationManager.Tr(k)).Append("</b></size>\n");
-        void L(string line) => sb.Append("<size=28>").Append(line).Append("</size>\n");
+        // Wrap body lines in Tr too — brand names / product identifiers
+        // (Unity 6, BITGEM, Cinemachine, etc.) fall through unchanged
+        // since they aren't registered, but prose lines get localised.
+        void L(string line) => sb.Append("<size=28>").Append(LocalizationManager.Tr(line)).Append("</size>\n");
 
         H("CREDITS_HEADER_STUDIO");
         L("Horizont Studio");

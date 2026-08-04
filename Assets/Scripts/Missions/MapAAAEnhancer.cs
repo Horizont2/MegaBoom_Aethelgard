@@ -498,7 +498,11 @@ public class MapAAAEnhancer : MonoBehaviour
         rt.sizeDelta = new Vector2(80f, 80f);
 
         TextMeshProUGUI txt = go.AddComponent<TextMeshProUGUI>();
-        txt.text = "<size=24><color=#D4AF37>N</color></size>\n<size=10>↑</size>\n<size=12><color=#aaa>W ⊕ E</color></size>\n<size=10>↓</size>\n<size=14><color=#aaa>S</color></size>";
+        string n = LocalizationManager.Tr("COMPASS_N");
+        string s = LocalizationManager.Tr("COMPASS_S");
+        string e = LocalizationManager.Tr("COMPASS_E");
+        string w = LocalizationManager.Tr("COMPASS_W");
+        txt.text = $"<size=24><color=#D4AF37>{n}</color></size>\n<size=10>↑</size>\n<size=12><color=#aaa>{w} ⊕ {e}</color></size>\n<size=10>↓</size>\n<size=14><color=#aaa>{s}</color></size>";
         txt.alignment = TextAlignmentOptions.Center;
         txt.fontStyle = FontStyles.Bold;
         txt.color = new Color(1f, 0.95f, 0.75f, 0.7f);

@@ -1227,7 +1227,7 @@ public class ShopManager : MonoBehaviour
                 // buy hint if the item is owned but not equipped and unaffordable
                 // for upgrade). Owned + affordable upgrade = no hint.
                 if (myDiamonds < upgCost)
-                    SetAffordabilityHint(LocalizationManager.Tr("Need +{0} diamonds", (upgCost - myDiamonds).ToString("N0")));
+                    SetAffordabilityHint(LocalizationManager.Tr("SHOP_NEED_MORE_DIAMONDS", (upgCost - myDiamonds).ToString("N0")));
             }
             else
             {

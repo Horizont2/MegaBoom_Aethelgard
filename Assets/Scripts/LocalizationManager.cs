@@ -1574,6 +1574,93 @@ public static class LocalizationManager
         AddSelf("Lore Master",              "Знавець Легенд");
         AddSelf("Deep Pockets",             "Глибокі кишені");
 
+        // Achievement descriptions (English == key). One-line each.
+        AddSelf("Complete the tutorial.",                            "Пройди навчання.");
+        AddSelf("Return to the camp for the first time.",            "Вперше повернись до табору.");
+        AddSelf("Upgrade the Scout's Lodge to level 2.",             "Покращ Хижу Розвідника до 2 рівня.");
+        AddSelf("Conquer your first region.",                        "Захопи свій перший регіон.");
+        AddSelf("Build the Storage Vault.",                          "Збудуй Сховище.");
+        AddSelf("Hire your first mercenary.",                        "Найми першого найманця.");
+        AddSelf("Send your first army on a campaign.",               "Відправ першу армію в похід.");
+        AddSelf("Fill your entire mercenary roster (5 units).",      "Наповни весь склад найманців (5 юнітів).");
+        AddSelf("Win an auto-battle with a Siege tactic.",           "Виграй авто-бій з тактикою Облога.");
+        AddSelf("Conquer 12 regions.",                               "Захопи 12 регіонів.");
+        AddSelf("Purify a roadside altar.",                          "Очисти придорожній вівтар.");
+        AddSelf("Perform a Glory Kill on a boss.",                   "Виконай Славне Вбивство над босом.");
+        AddSelf("Spend 500 diamonds in the Shop.",                   "Витрать 500 діамантів у Крамниці.");
+        AddSelf("Land a Perfect Dodge.",                             "Виконай Ідеальний Ухил.");
+        AddSelf("Reach a 15-enemy Stack.",                           "Досягни стеку з 15 ворогів.");
+        AddSelf("Conquer the Citadel Outskirts.",                    "Захопи Околиці Цитаделі.");
+        AddSelf("Defeat the Overlord in the Throne Room.",           "Перемогти Володаря в Тронній залі.");
+        AddSelf("Conquer every region in Aethelgard.",               "Захопи кожен регіон Ітельгарду.");
+        AddSelf("Recover 5 lore scrolls.",                           "Відшукай 5 свитків легенд.");
+        AddSelf("Hoard 2000 diamonds at once.",                      "Накопич 2000 діамантів одночасно.");
+
+        // === Level-up upgrades (names, flavor descriptions, stat lines) ===
+        // Each upgrade is a 3-string set. The English literal is the loc
+        // key. Registered via AddSelf so a UK player sees translations,
+        // an EN player sees the authored source.
+        AddSelf("Vitality Reserves",                                                  "Резерви Витривалості");
+        AddSelf("Forged sinew. Each layer means another swing you outlast.",          "Загартовані жили. Кожен шар — ще один удар, який ти переживеш.");
+        AddSelf("+10 Max HP",                                                         "+10 макс. HP");
+        AddSelf("Vanguard March",                                                     "Хода Авангарду");
+        AddSelf("Lighter step, longer stride. The blade always arrives first.",       "Легший крок, довший розмах. Клинок завжди прибуває першим.");
+        AddSelf("+0.5 Speed",                                                         "+0.5 швидкості");
+        AddSelf("Siege Might",                                                        "Облогова Сила");
+        AddSelf("The hammer drinks deeper. Bones break at half the effort.",          "Молот п'є глибше. Кістки ламаються з півзусилля.");
+        AddSelf("+5 Damage",                                                          "+5 шкоди");
+        AddSelf("Crystal Lure",                                                       "Приманка Кристалів");
+        AddSelf("Aether shards leap toward you from farther afield.",                 "Осколки Ефіру летять до тебе з більшої відстані.");
+        AddSelf("+0.5 Pickup Range",                                                  "+0.5 радіусу підбирання");
+        AddSelf("Whetstone Rhythm",                                                   "Ритм Точила");
+        AddSelf("The swing-arc tightens. More strikes per breath.",                   "Дуга удару стискається. Більше ударів на подих.");
+        AddSelf("+15 Atk Speed",                                                      "+15 швидкості атаки");
+        AddSelf("Aethelgard Plate",                                                   "Броня Ітельгарду");
+        AddSelf("Damp the next blow with old steel and older oaths.",                 "Приглуш наступний удар старою сталлю і ще старішими клятвами.");
+        AddSelf("+5% Damage Resist",                                                  "+5% опору шкоди");
+        AddSelf("Field Medicine",                                                     "Польова Медицина");
+        AddSelf("Slow knit, but knit it does. Health returns with every footfall.",   "Повільно, але зростається. Здоров'я повертається з кожним кроком.");
+        AddSelf("+0.3 HP/sec",                                                        "+0.3 HP/сек");
+        AddSelf("Keen Eye",                                                           "Гостре Око");
+        AddSelf("You read where bone is brittle. Strikes find the weak point oftener.","Ти бачиш, де кістка тендітна. Удари частіше знаходять слабке місце.");
+        AddSelf("+5% Crit Chance",                                                    "+5% шансу криту");
+        AddSelf("Executioner's Edge",                                                 "Лезо Ката");
+        AddSelf("When the blade bites true, it bites deeper.",                        "Коли клинок кусає точно — кусає глибше.");
+        AddSelf("+25% Crit Damage",                                                   "+25% крит-шкоди");
+        AddSelf("Bloodbound Pact",                                                    "Кривавий Пакт");
+        AddSelf("Every wound you deliver feeds you back a sip.",                      "Кожна завдана рана повертає тобі ковток.");
+        AddSelf("+5% Lifesteal",                                                      "+5% викрадання життя");
+        AddSelf("Wind-Touched",                                                       "Торкнутий Вітром");
+        AddSelf("The air parts before you. Some blows pass through nothing.",         "Повітря розступається перед тобою. Деякі удари проходять крізь порожнечу.");
+        AddSelf("+5% Dodge",                                                          "+5% ухилу");
+        AddSelf("Reaver's Reward",                                                    "Нагорода Розбійника");
+        AddSelf("Each kill stitches another scar shut.",                              "Кожне вбивство зашиває ще один шрам.");
+        AddSelf("+3 HP per Kill",                                                     "+3 HP за вбивство");
+        AddSelf("Wardbreaker Sigil",                                                  "Печатка Руйнівника Вартового");
+        AddSelf("Those who strike you bleed for the privilege.",                      "Ті, хто б'ють тебе — платять за цю честь кров'ю.");
+        AddSelf("+15% Thorns",                                                        "+15% шипів");
+        AddSelf("Soulreader",                                                         "Читач Душ");
+        AddSelf("You hear the song each fallen soul carries. Learn faster.",          "Ти чуєш пісню, яку несе кожна полегла душа. Вчишся швидше.");
+        AddSelf("+15% XP Gain",                                                       "+15% отримання досвіду");
+        AddSelf("Hoarder's Gaze",                                                     "Погляд Скнари");
+        AddSelf("Aether shards spill heavier where you walk.",                        "Осколки Ефіру сиплються рясніше там, де ти йдеш.");
+        AddSelf("+20% Diamond Gain",                                                  "+20% приросту діамантів");
+
+        // === Credits body (prose lines shown between headers) ===
+        AddSelf("Horizont Studio",                                          "Студія Horizont");
+        AddSelf("Hollow Siege / Aethelgard",                                "Hollow Siege / Ітельгард");
+        AddSelf("Game Design, Programming, Level Design",                   "Гейм-дизайн, програмування, дизайн рівнів");
+        AddSelf("3D Models & Environment",                                  "3D-моделі та оточення");
+        AddSelf("FMOD Studio by Firelight Technologies",                    "FMOD Studio від Firelight Technologies");
+        AddSelf("English · Ukrainian",                                      "Англійська · Українська");
+        AddSelf("© 2026 Horizont Studio. All rights reserved.",             "© 2026 Студія Horizont. Всі права захищено.");
+
+        // === Compass cardinals (MapAAAEnhancer rose) ===
+        Add("COMPASS_N", "N", "Пн");
+        Add("COMPASS_S", "S", "Пд");
+        Add("COMPASS_E", "E", "Сх");
+        Add("COMPASS_W", "W", "Зх");
+
         // === Main menu extended ===
         Add("MENU_CONFIRM_NEW_GAME",
             "Start a new game?\n\nAll camp progress, conquered regions and mercenaries will be lost. Settings + shop unlocks are kept.",
