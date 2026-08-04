@@ -167,7 +167,7 @@ public class RegionTotem : MonoBehaviour
                 "Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it — the next totem unlocks afterward.", 6f);
 
         if (activationShieldVFX != null) { activationShieldVFX.gameObject.SetActive(true); activationShieldVFX.Play(); }
-        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.3f, 0.1f);
+        CameraShakeUtil.TryShake(0.3f, 0.1f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr(encounterType == EncounterType.Boss ? "SLAY THE OVERLORD!" : "SURVIVE THE SWARM!"));
@@ -243,7 +243,7 @@ public class RegionTotem : MonoBehaviour
         {
             bossAI.InitializeBoss(hpMult, dmgMult);
             bossAI.ActivateBoss();
-            if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.2f, 0.1f);
+            CameraShakeUtil.TryShake(0.2f, 0.1f);
         }
         else
         {
@@ -282,7 +282,7 @@ public class RegionTotem : MonoBehaviour
 
         if (skyBeamVFX != null) { skyBeamVFX.gameObject.SetActive(true); skyBeamVFX.Play(); }
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }
-        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.4f, 0.1f);
+        CameraShakeUtil.TryShake(0.4f, 0.1f);
 
         if (manager != null) manager.OnTotemPurified(this);
     }

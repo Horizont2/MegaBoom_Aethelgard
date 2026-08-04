@@ -149,7 +149,18 @@ public class MapTableInteract : MonoBehaviour
             }
         }
 
-        Transform mainCam = Camera.main.transform;
+        // Guard against a null main camera — a pause / cutscene camera
+        // can disable Camera.main mid-open. Previously the NRE aborted
+        // the coroutine leaving IsMapActive + isTransitioning stuck true
+        // (permanent map soft-lock).
+        Camera cam = Camera.main;
+        if (cam == null)
+        {
+            IsMapActive = false;
+            isTransitioning = false;
+            yield break;
+        }
+        Transform mainCam = cam.transform;
 
         if (savedCamPos == Vector3.zero)
         {
@@ -200,7 +211,15 @@ public class MapTableInteract : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        Transform mainCam = Camera.main.transform;
+        // Guard as in OpenMapSequence — a null Camera.main mid-close used
+        // to NRE and leave isTransitioning=true forever.
+        Camera cam2 = Camera.main;
+        if (cam2 == null)
+        {
+            isTransitioning = false;
+            yield break;
+        }
+        Transform mainCam = cam2.transform;
 
         float elapsed = 0f;
         while (elapsed < flightDuration)

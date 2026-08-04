@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     [Header("Scene Mode")]
     public bool isCampMode = false;
     [HideInInspector] public bool isControlBlocked = false;
+    private Coroutine activeFlashRoutine;
     private float actionLockEndTime = 0f;
 
     [Header("Weapon Spawning")]
@@ -672,7 +673,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         // and while a tutorial hint is on screen — without this the
         // player could still pivot through the air while reading the
         // pause menu or hovering a hint.
-        bool isCurrentlyLocked = isControlBlocked || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive || Time.timeScale == 0f || TutorialHints.IsAnyHintShowing;
+        // LoadingManager.isLoading is OR'd in so loading transitions
+        // freeze input WITHOUT writing to `isControlBlocked` — otherwise
+        // the loader clobbers the tutorial's intended block state on
+        // scene-in (Level1_QuestManager.Start races the loader's post-
+        // load unblock).
+        bool loaderLocking = LoadingManager.Instance != null && LoadingManager.Instance.isLoading;
+        bool isCurrentlyLocked = isControlBlocked || loaderLocking || Time.unscaledTime < actionLockEndTime || TutorialPanelUI.IsTutorialActive || Time.timeScale == 0f || TutorialHints.IsAnyHintShowing;
         Vector3 inputDir = Vector3.zero;
 
         if (!isCurrentlyLocked)
@@ -1670,7 +1677,16 @@ public class PlayerController : MonoBehaviour, IDamageable
             StartCoroutine(ShakeUIRoutine(hpFill.transform.parent.GetComponent<RectTransform>()));
 
         if (healthVisuals != null) healthVisuals.TriggerHitFlash();
-        if (damageFlashImage != null) { StopAllCoroutines(); StartCoroutine(FlashRoutine()); }
+        if (damageFlashImage != null)
+        {
+            // Only stop the previous flash — the old code called
+            // StopAllCoroutines() here, which killed every player
+            // coroutine (Dash, PerfectDodge, HitStop, ShakeUI) on every
+            // hit. A grazed player would have their dash cancelled mid-
+            // roll.
+            if (activeFlashRoutine != null) StopCoroutine(activeFlashRoutine);
+            activeFlashRoutine = StartCoroutine(FlashRoutine());
+        }
 
         UpdateHUD();
 

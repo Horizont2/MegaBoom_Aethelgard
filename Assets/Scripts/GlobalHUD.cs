@@ -1154,6 +1154,11 @@ public class GlobalHUD : MonoBehaviour
 
     private RectTransform pickupPopupContainer;
     private readonly List<RectTransform> activePickupPopups = new List<RectTransform>();
+    // Track popup coroutines separately so ClearAllPickupPopups can
+    // stop ONLY the popup animations, not the HUD's own boss-fade /
+    // prompt-fade / cinematic-bars / etc coroutines (StopAllCoroutines
+    // used to kill everything).
+    private readonly List<Coroutine> activePickupCoroutines = new List<Coroutine>();
 
     private void CreatePickupPopupContainerIfNeeded()
     {
@@ -1196,7 +1201,7 @@ public class GlobalHUD : MonoBehaviour
             if (oldest != null) Destroy(oldest.gameObject);
         }
 
-        StartCoroutine(PickupPopupRoutine(text, color));
+        activePickupCoroutines.Add(StartCoroutine(PickupPopupRoutine(text, color)));
     }
 
     private IEnumerator PickupPopupRoutine(string text, Color color)
@@ -1228,7 +1233,7 @@ public class GlobalHUD : MonoBehaviour
         // freeze) the delay never elapses and orphan popups sit on screen
         // forever. Kick off a parallel coroutine that always destroys past
         // the fade lifetime regardless of timescale.
-        StartCoroutine(PickupPopupFailsafeRoutine(go, rt, 2.2f));
+        activePickupCoroutines.Add(StartCoroutine(PickupPopupFailsafeRoutine(go, rt, 2.2f)));
 
         const float lifetime = 1.8f;
         float t = 0f;
@@ -1237,6 +1242,11 @@ public class GlobalHUD : MonoBehaviour
 
         while (t < lifetime)
         {
+            // rt / tmp may have been destroyed by ClearAllPickupPopups —
+            // bail cleanly instead of hitting a null-deref on the next
+            // frame's access.
+            if (rt == null || tmp == null) yield break;
+
             t += Time.unscaledDeltaTime;
             float k = t / lifetime;
             if (k < 0.12f) rt.localScale = Vector3.LerpUnclamped(startScale, Vector3.one * 1.05f, k / 0.12f);
@@ -1288,7 +1298,16 @@ public class GlobalHUD : MonoBehaviour
 
     private void ClearAllPickupPopups()
     {
-        StopAllCoroutines();
+        // Only stop the popup coroutines — not every routine on the HUD.
+        // Previously this called StopAllCoroutines() which nuked
+        // bossUIFadeRoutine, promptFadeCoroutine, promptTypingCoroutine,
+        // cinematic bar routines, skip-prompt routines, etc.
+        for (int i = 0; i < activePickupCoroutines.Count; i++)
+        {
+            if (activePickupCoroutines[i] != null) StopCoroutine(activePickupCoroutines[i]);
+        }
+        activePickupCoroutines.Clear();
+
         for (int i = 0; i < activePickupPopups.Count; i++)
         {
             if (activePickupPopups[i] == null) continue;
@@ -1300,6 +1319,5 @@ public class GlobalHUD : MonoBehaviour
             for (int i = pickupPopupContainer.childCount - 1; i >= 0; i--)
                 Destroy(pickupPopupContainer.GetChild(i).gameObject);
         }
-        bossUIFadeRoutine = null;
     }
 }

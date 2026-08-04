@@ -138,6 +138,10 @@ public class NoticeBoardManager : MonoBehaviour
     private System.Collections.IEnumerator LockCursorRoutine()
     {
         yield return new WaitForEndOfFrame();
+        // Don't steal the cursor from a modal that opened during the
+        // end-of-frame wait (settings, confirm dialog, etc.). Modals
+        // legitimately own the cursor state while they're up.
+        if (ConfirmDialog.IsOpen) yield break;
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }

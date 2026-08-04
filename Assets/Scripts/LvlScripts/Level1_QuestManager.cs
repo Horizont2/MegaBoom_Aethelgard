@@ -135,7 +135,8 @@ public class Level1_QuestManager : MonoBehaviour
         if (introDirector != null)
         {
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
-            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = true;
+            PlayerController pc = pObj != null ? pObj.GetComponent<PlayerController>() : null;
+            if (pc != null) pc.isControlBlocked = true;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
 
             yield return null;
@@ -160,7 +161,7 @@ public class Level1_QuestManager : MonoBehaviour
                 while (cf.IsHandoffBlending) yield return null;
             }
 
-            if (pObj != null) pObj.GetComponent<PlayerController>().isControlBlocked = false;
+            if (pc != null) pc.isControlBlocked = false;
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
             // ФІКС UI: Прибрано Canvas.ForceUpdateCanvases() та маніпуляції з альфою, 

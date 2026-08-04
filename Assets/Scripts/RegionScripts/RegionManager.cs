@@ -187,7 +187,7 @@ public class RegionManager : MonoBehaviour
             }
         }
 
-        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.4f, 0.15f);
+        CameraShakeUtil.TryShake(0.4f, 0.15f);
 
         float duration = 2.5f;
         float elapsed = 0f;
@@ -202,7 +202,7 @@ public class RegionManager : MonoBehaviour
             currentPos.y += Mathf.Sin(t * Mathf.PI) * 8f; // Дуга польоту
 
             if (corruptionTransferVFX != null) corruptionTransferVFX.transform.position = currentPos;
-            if (Camera.main != null && Random.value > 0.8f) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.1f, 0.05f);
+            if (Random.value > 0.8f) CameraShakeUtil.TryShake(0.1f, 0.05f);
 
             yield return null;
         }
@@ -210,7 +210,7 @@ public class RegionManager : MonoBehaviour
         // Вимикаємо ефект, коли він долетів
         if (corruptionTransferVFX != null) corruptionTransferVFX.SetActive(false);
 
-        if (Camera.main != null) Camera.main.GetComponent<CameraFollow>().TriggerShake(0.5f, 0.3f);
+        CameraShakeUtil.TryShake(0.5f, 0.3f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Enemy_Telegraph);
 
         DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();

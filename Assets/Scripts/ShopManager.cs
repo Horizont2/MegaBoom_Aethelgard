@@ -344,10 +344,12 @@ public class ShopManager : MonoBehaviour
 
     private void Update()
     {
-        // Defensive: the shop scene requires a free cursor. If any other
-        // system (tutorial hint dismissal, ESC handler, etc.) locked it
-        // away, restore it here. Cheap — sets the same value most frames.
-        if (!Cursor.visible || Cursor.lockState != CursorLockMode.None)
+        // Defensive: the shop scene requires a free cursor. Skip when a
+        // modal owns the cursor state (confirm dialog, settings, etc.),
+        // otherwise the shop fights the modal every frame and the modal
+        // never gets to hide the cursor.
+        bool modalActive = ConfirmDialog.IsOpen;
+        if (!modalActive && (!Cursor.visible || Cursor.lockState != CursorLockMode.None))
         {
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;

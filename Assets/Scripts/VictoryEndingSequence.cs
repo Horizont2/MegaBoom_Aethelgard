@@ -95,34 +95,53 @@ public class VictoryEndingSequence : MonoBehaviour
     {
         AchievementSystem.Unlock("THRONE_TAKEN");
 
-        // Block player input for the full sequence.
+        // Block player input for the full sequence. Cleared in the finally
+        // below so a mid-cutscene scene teardown or Alt-F4-then-relaunch
+        // can't leave the next spawned player permanently blocked.
         var pc = PlayerController.LocalInstance;
         if (pc != null) pc.isControlBlocked = true;
 
-        // 1. Fade to black.
-        yield return Fade(0f, 1f, 2f);
+        try
+        {
+            // 1. Fade to black.
+            yield return Fade(0f, 1f, 2f);
 
-        // 2. Three narration beats.
-        yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_1"), 3.2f);
-        yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_2"), 3.2f);
-        yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_3"), 3.5f);
+            // 2. Three narration beats.
+            yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_1"), 3.2f);
+            yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_2"), 3.2f);
+            yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_3"), 3.5f);
 
-        // 3. Big finish beat.
-        yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_FINAL"), 4f);
+            // 3. Big finish beat.
+            yield return TypeLine(LocalizationManager.Tr("ENDING_LINE_FINAL"), 4f);
 
-        // 4. Open credits over the black background.
-        narrationText.text = "";
-        var creditsGO = new GameObject("EndingCredits", typeof(RectTransform), typeof(CanvasGroup));
-        creditsGO.transform.SetParent(narrationText.transform.parent, false);
-        var creditsRT = (RectTransform)creditsGO.transform;
-        creditsRT.anchorMin = Vector2.zero; creditsRT.anchorMax = Vector2.one;
-        creditsRT.offsetMin = Vector2.zero; creditsRT.offsetMax = Vector2.zero;
-        var credits = creditsGO.AddComponent<CreditsUI>();
-        credits.Open();
+            // 4. Open credits over the black background.
+            narrationText.text = "";
+            var creditsGO = new GameObject("EndingCredits", typeof(RectTransform), typeof(CanvasGroup));
+            creditsGO.transform.SetParent(narrationText.transform.parent, false);
+            var creditsRT = (RectTransform)creditsGO.transform;
+            creditsRT.anchorMin = Vector2.zero; creditsRT.anchorMax = Vector2.one;
+            creditsRT.offsetMin = Vector2.zero; creditsRT.offsetMax = Vector2.zero;
+            var credits = creditsGO.AddComponent<CreditsUI>();
+            credits.Open();
 
-        // Wait until credits either close on their own or the player
-        // presses Esc — CreditsUI deactivates itself when done.
-        while (creditsGO != null && creditsGO.activeSelf) yield return null;
+            // Wait until credits either close on their own or the player
+            // presses Esc — CreditsUI deactivates itself when done.
+            while (creditsGO != null && creditsGO.activeSelf) yield return null;
+        }
+        finally
+        {
+            // The run is finished — clear every "in-progress" flag so
+            // Continue on the main menu doesn't try to resume a finished
+            // run. Reset the static one-shot so a fresh New Game in the
+            // same session can still fire an ending. Restore control
+            // block regardless.
+            PlayerPrefs.SetInt("IsRunActive", 0);
+            PlayerPrefs.SetInt("IsContinuing", 0);
+            PlayerPrefs.SetInt("HasCampSave", 0);
+            PlayerPrefs.Save();
+            if (pc != null) pc.isControlBlocked = false;
+            s_alreadyFired = false;
+        }
 
         // 5. Return to main menu — game is done.
         SceneLoader.LoadScene("Menu");

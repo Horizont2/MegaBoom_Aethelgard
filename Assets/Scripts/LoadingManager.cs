@@ -70,11 +70,10 @@ public class LoadingManager : MonoBehaviour
     {
         isLoading = true;
 
-        // Блокуємо керування гравцем відразу при початку завантаження
-        if (PlayerController.LocalInstance != null)
-        {
-            PlayerController.LocalInstance.isControlBlocked = true;
-        }
+        // Note: we do NOT flip PlayerController.isControlBlocked here.
+        // PlayerController's Update reads LoadingManager.Instance.isLoading
+        // directly, so freezing input during a load doesn't collide with
+        // whatever the next scene's tutorial/cinematic wants to set.
 
         // 1. Fade Out (затемнення екрану)
         if (blackFadeGroup != null)
@@ -131,11 +130,11 @@ public class LoadingManager : MonoBehaviour
             }
         }
 
-        // Розблоковуємо гравця, бо сцена завантажена і світ згенеровано
-        if (PlayerController.LocalInstance != null)
-        {
-            PlayerController.LocalInstance.isControlBlocked = false;
-        }
+        // isControlBlocked intentionally NOT touched — see the note in
+        // the "start of load" block above. When isLoading flips false at
+        // the end of this coroutine, PlayerController's OR-check
+        // naturally re-enables input unless another system (tutorial /
+        // cinematic / pause) is holding its own block.
 
         if (loadingText != null) loadingText.text = LocalizationManager.Tr("READY");
         yield return new WaitForSecondsRealtime(0.5f);

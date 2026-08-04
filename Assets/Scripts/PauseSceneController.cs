@@ -22,6 +22,10 @@ public class PauseSceneController : MonoBehaviour
 
     private Camera prevMainCamera;
     private AudioListener prevListener;
+    // Snapshot of isControlBlocked at EnterPause so ExitPause can
+    // restore it — otherwise unpausing during a tutorial / cinematic
+    // clobbers the block that other systems already set.
+    private bool prevPlayerControlBlocked = false;
     private bool armed;
     private bool foliageRegistered = false;
     private readonly List<Animator> cachedAnimators = new List<Animator>();
@@ -51,7 +55,11 @@ public class PauseSceneController : MonoBehaviour
         IsPauseActive = true;
 
         var player = FindFirstObjectByType<PlayerController>();
-        if (player != null) player.isControlBlocked = true;
+        if (player != null)
+        {
+            prevPlayerControlBlocked = player.isControlBlocked;
+            player.isControlBlocked = true;
+        }
 
         if (foliageRoots != null && foliageRoots.Length > 0)
         {
@@ -93,7 +101,10 @@ public class PauseSceneController : MonoBehaviour
         IsPauseActive = false;
 
         var player = FindFirstObjectByType<PlayerController>();
-        if (player != null) player.isControlBlocked = false;
+        // Restore the pre-pause state instead of hard-clearing. A
+        // tutorial or cinematic that had blocked control before pause
+        // keeps its block after resume.
+        if (player != null) player.isControlBlocked = prevPlayerControlBlocked;
 
         if (pauseCamera != null) pauseCamera.enabled = false;
 
