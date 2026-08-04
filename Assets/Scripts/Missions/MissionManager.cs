@@ -165,7 +165,11 @@ public class MissionManager : MonoBehaviour
 
         GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
-        mission.uiElement.Setup(LocalizationManager.Tr(mission.data.missionName), LocalizationManager.Tr(mission.data.missionDescription), mission.currentProgress, mission.targetAmount);
+        // HUD widget shows the WHAT-TO-DO short label (e.g. "Defeat enemies"),
+        // not the flavor description — the player already knows the
+        // mission name from the title.
+        string shortObjective = MissionData.BuildObjectiveShort(mission.data.missionType);
+        mission.uiElement.Setup(LocalizationManager.Tr(mission.data.missionName), shortObjective, mission.currentProgress, mission.targetAmount);
 
         if (mission.isCompleted)
         {

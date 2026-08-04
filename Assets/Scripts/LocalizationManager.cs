@@ -1862,6 +1862,64 @@ public static class LocalizationManager
         Add("MISSION_RES_FOOD", "{0} Food", "{0} Їжі");
         Add("MISSION_RES_GEMS", "{0} Gems", "{0} Самоцвітів");
 
+        // === Mission objectives (the WHAT-TO-DO line on the paper + HUD) ===
+        // Full form — used on the mission paper the player picks up.
+        Add7("OBJECTIVE_KILL_ENEMIES",
+             "Defeat {0} enemies",
+             "Здолай {0} ворогів",
+             "Победи {0} врагов",
+             "Derrota a {0} enemigos",
+             "Besiege {0} Gegner",
+             "Vaincs {0} ennemis",
+             "Pokonaj {0} wrogów");
+        Add7("OBJECTIVE_COLLECT_CRYSTALS",
+             "Collect {0} crystals",
+             "Збери {0} кристалів",
+             "Собери {0} кристаллов",
+             "Recoge {0} cristales",
+             "Sammle {0} Kristalle",
+             "Récupère {0} cristaux",
+             "Zbierz {0} kryształów");
+        Add7("OBJECTIVE_SURVIVE_MINUTES",
+             "Survive for {0} minutes",
+             "Виживи {0} хвилин",
+             "Продержись {0} минут",
+             "Sobrevive {0} minutos",
+             "Überlebe {0} Minuten",
+             "Survis {0} minutes",
+             "Przeżyj {0} minut");
+        Add7("OBJECTIVE_SURVIVE_MIN_SEC",
+             "Survive for {0}m {1}s",
+             "Виживи {0} хв {1} с",
+             "Продержись {0} мин {1} с",
+             "Sobrevive {0}m {1}s",
+             "Überlebe {0} Min {1} Sek",
+             "Survis {0}m {1}s",
+             "Przeżyj {0}m {1}s");
+        Add7("OBJECTIVE_SURVIVE_SECONDS",
+             "Survive for {0} seconds",
+             "Виживи {0} секунд",
+             "Продержись {0} секунд",
+             "Sobrevive {0} segundos",
+             "Überlebe {0} Sekunden",
+             "Survis {0} secondes",
+             "Przeżyj {0} sekund");
+        Add7("OBJECTIVE_BUILD_STRUCTURES",
+             "Build {0} structures",
+             "Збудуй {0} споруд",
+             "Построй {0} строений",
+             "Construye {0} estructuras",
+             "Errichte {0} Bauwerke",
+             "Construis {0} bâtiments",
+             "Zbuduj {0} budowli");
+
+        // Short form — used in the HUD widget under the mission title,
+        // where the (X/Y) progress counter follows automatically.
+        Add7("OBJECTIVE_SHORT_KILL",     "Defeat enemies",  "Здолай ворогів",  "Побеждай врагов", "Derrota enemigos", "Gegner besiegen", "Vaincs les ennemis", "Pokonaj wrogów");
+        Add7("OBJECTIVE_SHORT_COLLECT",  "Collect crystals","Збирай кристали", "Собирай кристаллы","Recoge cristales", "Kristalle sammeln","Récupère les cristaux","Zbieraj kryształy");
+        Add7("OBJECTIVE_SHORT_SURVIVE",  "Survive",         "Виживи",          "Продержись",      "Sobrevive",        "Überlebe",         "Survis",              "Przetrwaj");
+        Add7("OBJECTIVE_SHORT_BUILD",    "Build structures","Будуй споруди",   "Строй строения",  "Construye",        "Bauen",            "Construis",           "Buduj");
+
         // === Mission names + descriptions ===
         // Each mission's English text is used as the key so calling
         // LocalizationManager.Tr(missionData.missionName) transparently

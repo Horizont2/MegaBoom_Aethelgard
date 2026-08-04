@@ -15,7 +15,48 @@ public class MissionData : ScriptableObject
 
     [Header("Rewards (Hub Resources)")]
     public int woodReward = 20;
-    public int stoneReward = 10; // Замість металу
-    public int foodReward = 5;   // Додано їжу
+    public int stoneReward = 10; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public int foodReward = 5;   // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
     public int diamondReward = 10;
+
+    // Player-facing objective line вЂ” this is WHAT to do, not the
+    // flavor. UI shows this in bold; the flavor `missionDescription`
+    // becomes a secondary line under it.
+    public static string BuildObjective(MissionType type, int targetAmount)
+    {
+        switch (type)
+        {
+            case MissionType.KillEnemies:
+                return LocalizationManager.Tr("OBJECTIVE_KILL_ENEMIES", targetAmount);
+            case MissionType.CollectCrystals:
+                return LocalizationManager.Tr("OBJECTIVE_COLLECT_CRYSTALS", targetAmount);
+            case MissionType.Survive:
+                if (targetAmount >= 60)
+                {
+                    int minutes = targetAmount / 60;
+                    int seconds = targetAmount % 60;
+                    return seconds == 0
+                        ? LocalizationManager.Tr("OBJECTIVE_SURVIVE_MINUTES", minutes)
+                        : LocalizationManager.Tr("OBJECTIVE_SURVIVE_MIN_SEC", minutes, seconds);
+                }
+                return LocalizationManager.Tr("OBJECTIVE_SURVIVE_SECONDS", targetAmount);
+            case MissionType.BuildStructures:
+                return LocalizationManager.Tr("OBJECTIVE_BUILD_STRUCTURES", targetAmount);
+            default:
+                return LocalizationManager.Tr("MISSION_TARGET_LABEL", targetAmount);
+        }
+    }
+
+    // Short version for the HUD widget вЂ” same words but no target.
+    public static string BuildObjectiveShort(MissionType type)
+    {
+        switch (type)
+        {
+            case MissionType.KillEnemies:     return LocalizationManager.Tr("OBJECTIVE_SHORT_KILL");
+            case MissionType.CollectCrystals: return LocalizationManager.Tr("OBJECTIVE_SHORT_COLLECT");
+            case MissionType.Survive:         return LocalizationManager.Tr("OBJECTIVE_SHORT_SURVIVE");
+            case MissionType.BuildStructures: return LocalizationManager.Tr("OBJECTIVE_SHORT_BUILD");
+            default:                          return "";
+        }
+    }
 }

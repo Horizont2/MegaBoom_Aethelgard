@@ -37,9 +37,20 @@ public class MissionPaperUI : MonoBehaviour
         int finalDiamond = Mathf.RoundToInt(baseData.diamondReward * multiplier);
 
         titleText.text = LocalizationManager.Tr(baseData.missionName);
-        string desc = LocalizationManager.Tr(baseData.missionDescription);
-        string targetLine = LocalizationManager.Tr("MISSION_TARGET_LABEL", finalTarget);
-        descText.text = $"{desc}\n\n<color=#8B0000><b>{targetLine}</b></color>";
+
+        // Primary line: WHAT the player must do, in a call-to-action colour.
+        // Secondary line: the flavor description (smaller, muted).
+        string objective = MissionData.BuildObjective(baseData.missionType, finalTarget);
+        string flavor = LocalizationManager.Tr(baseData.missionDescription);
+        bool hasFlavor = !string.IsNullOrEmpty(flavor)
+                         && flavor != "Mission description..."
+                         && flavor != baseData.missionName;
+
+        string primary = $"<size=110%><color=#8B0000><b>{objective}</b></color></size>";
+        if (hasFlavor)
+            descText.text = $"{primary}\n\n<size=90%><color=#5C4033>{flavor}</color></size>";
+        else
+            descText.text = primary;
 
         string rewText = $"<b>{LocalizationManager.Tr("MISSION_REWARDS_LABEL")}</b> ";
         if (finalWood > 0)    rewText += $"<color=#5C4033>{LocalizationManager.Tr("MISSION_RES_WOOD", finalWood)}</color>  ";
