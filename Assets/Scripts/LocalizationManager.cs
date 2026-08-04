@@ -1466,6 +1466,106 @@ public static class LocalizationManager
              "Турнирные наручи, повторно выданные для войны. Пальцевые пластины тихо щёлкают на каждом шагу.","Guanteletes de torneo reeditados para la guerra. Las placas de dedos chasquean suavemente.","Turnierhandschuhe, für den Krieg neu aufgelegt. Die Fingerplatten klicken sanft bei jedem Schritt.","Gantelets de tournoi réédités pour la guerre. Les plaques de doigts cliquettent à chaque pas.","Turniejowe rękawice ponownie wydane na wojnę. Płytki palców cicho klikają z każdym krokiem.");
         Add5("Worn boots that have walked from the Bone Coast to the Hollow Pass.",
              "Изношенные сапоги, что прошли от Костяного Побережья до Пустого Перевала.","Botas gastadas que han caminado de la Costa de Hueso al Paso Hueco.","Abgetragene Stiefel, die vom Knochenküste bis zum Hohlen Pass gewandert sind.","Bottes usées qui ont marché de la Côte des Os au Col Creux.","Zniszczone buty, które przeszły od Kościanego Wybrzeża do Pustego Przełomu.");
+
+        // --- Batch 7: Building + Mercenary + Credits + Compass + Ending ---
+
+        // Building descriptions (CampBuilding SO English keys)
+        Add5("A reinforced cellar to keep your camp's resources safe from the harsh weather and scavengers.",
+             "Укреплённый погреб, что бережёт ресурсы лагеря от непогоды и мародёров.",
+             "Un sótano reforzado para mantener a salvo los recursos del campamento.",
+             "Ein verstärkter Keller, um die Ressourcen deines Lagers zu schützen.",
+             "Une cave renforcée pour garder les ressources du camp à l'abri.",
+             "Wzmocniona piwnica chroniąca zasoby obozu przed pogodą i mародerami.");
+
+        // Mercenary flavor descriptions
+        Add5("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Levy would break against.",
+             "Помазанные чемпионы Ительгарда, преданные стали и огню. Один Рыцарь в строю удержит пролом, о который Ополчение разобьётся.",
+             "Campeones ungidos de Aethelgard, jurados al acero y al fuego. Un solo Caballero cierra una brecha donde la Milicia se rompe.",
+             "Gesalbte Champions Aethelgards, geschworen auf Stahl und Feuer. Ein einzelner Ritter hält eine Bresche, an der die Miliz zerschellt.",
+             "Champions oints d'Aethelgard, jurés à l'acier et au feu. Un seul Chevalier tient la brèche où la Milice se briserait.",
+             "Namaszczeni bohaterowie Aethelgardu, zaprzysiężeni stali i ognia. Jeden Rycerz utrzyma wyłom, o który Pospolite Ruszenie się rozbije.");
+        Add5("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
+             "Крестьяне с вилами и упрямой отвагой. Дешёвые, гибнут быстро — но полный ряд превращает безнадёжный штурм в равный.",
+             "Campesinos con horcas y coraje terco. Baratos, caen rápido — pero una línea completa iguala una carga desesperada.",
+             "Bauern mit Mistgabeln und stumpfer Tapferkeit. Billig, fallen schnell — doch eine ganze Reihe verwandelt hoffnungslose Angriffe in ausgeglichene.",
+             "Paysans à fourches et courage têtu. Bon marché, tombent vite — mais toute une ligne égalise un assaut désespéré.",
+             "Chłopi z widłami i uporczywą odwagą. Tani, giną szybko — ale pełna linia zmienia beznadziejny szturm w wyrównany bój.");
+        Add5("Silent scouts from the borderland forests. Devastating against unarmored conscripts and the pace-setters of any ambush.",
+             "Молчаливые разведчики из пограничных лесов. Опустошительны против безбронных рекрутов и задают темп любой засаде.",
+             "Exploradores silenciosos de los bosques fronterizos. Devastadores contra reclutas sin armadura y marcan el ritmo de toda emboscada.",
+             "Stille Späher aus den Grenzwäldern. Verheerend gegen unbepanzerte Rekruten und Taktgeber jedes Hinterhalts.",
+             "Éclaireurs silencieux des forêts frontalières. Dévastateurs contre les conscrits sans armure et donnent le tempo à toute embuscade.",
+             "Cisi zwiadowcy z pogranicznych lasów. Wyniszczający wobec bezpancernych rekrutów, wyznaczają tempo każdej zasadzki.");
+
+        // Credits body prose lines
+        Add5("Horizont Studio",                                     "Студия Horizont","Estudio Horizont","Horizont Studio","Studio Horizont","Studio Horizont");
+        Add5("Hollow Siege / Aethelgard",                           "Hollow Siege / Ительгард","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard","Hollow Siege / Aethelgard");
+        Add5("Game Design, Programming, Level Design",              "Гейм-дизайн, программирование, дизайн уровней","Diseño de juego, programación, diseño de niveles","Spieldesign, Programmierung, Leveldesign","Design de jeu, programmation, level design","Projektowanie gier, programowanie, projektowanie poziomów");
+        Add5("3D Models & Environment",                             "3D-модели и окружение","Modelos 3D y entorno","3D-Modelle & Umgebung","Modèles 3D et environnement","Modele 3D i otoczenie");
+        Add5("FMOD Studio by Firelight Technologies",               "FMOD Studio от Firelight Technologies","FMOD Studio de Firelight Technologies","FMOD Studio von Firelight Technologies","FMOD Studio par Firelight Technologies","FMOD Studio od Firelight Technologies");
+        Add5("English · Ukrainian",                                 "Английский · Украинский","Inglés · Ucraniano","Englisch · Ukrainisch","Anglais · Ukrainien","Angielski · Ukraiński");
+        Add5("© 2026 Horizont Studio. All rights reserved.",        "© 2026 Студия Horizont. Все права защищены.","© 2026 Estudio Horizont. Todos los derechos reservados.","© 2026 Horizont Studio. Alle Rechte vorbehalten.","© 2026 Studio Horizont. Tous droits réservés.","© 2026 Studio Horizont. Wszelkie prawa zastrzeżone.");
+
+        // Credits headers
+        Add5("CREDITS_HEADER_STUDIO",       "СТУДИЯ",         "ESTUDIO",         "STUDIO",             "STUDIO",              "STUDIO");
+        Add5("CREDITS_HEADER_DESIGN",       "ДИЗАЙН И КОД",   "DISEÑO Y CÓDIGO", "DESIGN & CODE",      "DESIGN & CODE",       "PROJEKT I KOD");
+        Add5("CREDITS_HEADER_ART",          "АРТ",            "ARTE",            "GRAFIK",             "ART",                 "GRAFIKA");
+        Add5("CREDITS_HEADER_ENGINE",       "ДВИЖОК",         "MOTOR",           "ENGINE",             "MOTEUR",              "SILNIK");
+        Add5("CREDITS_HEADER_AUDIO",        "АУДИО",          "AUDIO",           "AUDIO",              "AUDIO",               "DŹWIĘK");
+        Add5("CREDITS_HEADER_ASSETS",       "АССЕТЫ И ПЛАГИНЫ","ASSETS Y PLUGINS","ASSETS & PLUG-INS", "ASSETS & PLUG-INS",   "ASSETY I WTYCZKI");
+        Add5("CREDITS_HEADER_LOCALISATION", "ЛОКАЛИЗАЦИЯ",    "LOCALIZACIÓN",    "LOKALISIERUNG",      "LOCALISATION",        "LOKALIZACJA");
+        Add5("CREDITS_HEADER_THANKS",       "ОСОБАЯ БЛАГОДАРНОСТЬ","AGRADECIMIENTOS ESPECIALES","BESONDERER DANK","REMERCIEMENTS SPÉCIAUX","SPECJALNE PODZIĘKOWANIA");
+        Add5("CREDITS_HEADER_COPYRIGHT",    "АВТОРСКИЕ ПРАВА","DERECHOS DE AUTOR","COPYRIGHT",         "COPYRIGHT",           "PRAWA AUTORSKIE");
+        Add5("CREDITS_THANKS_LINE",         "Всем, кто тестировал, играл и верил.","A todos los que probaron, jugaron y creyeron.","An alle, die getestet, gespielt und geglaubt haben.","À tous ceux qui ont testé, joué et cru.","Wszystkim, którzy testowali, grali i wierzyli.");
+        Add5("CREDITS_END_TAGLINE",         "Ительгард помнит.","Aethelgard recuerda.","Aethelgard erinnert sich.","Aethelgard se souvient.","Aethelgard pamięta.");
+
+        // Compass cardinals
+        Add5("COMPASS_N",  "С", "N", "N", "N", "N");
+        Add5("COMPASS_S",  "Ю", "S", "S", "S", "P");
+        Add5("COMPASS_E",  "В", "E", "O", "E", "W");
+        Add5("COMPASS_W",  "З", "O", "W", "O", "Z");
+
+        // Ending narration (VictoryEndingSequence lines)
+        Add5("ENDING_LINE_1",
+             "И вот пал последний, что держал корону тьмы.",
+             "Y así cayó el último que sostenía la corona de la oscuridad.",
+             "Und so fiel der letzte, der die Krone der Finsternis trug.",
+             "Ainsi tomba le dernier qui tenait la couronne des ténèbres.",
+             "I tak upadł ostatni, który dzierżył koronę ciemności.");
+        Add5("ENDING_LINE_2",
+             "Ительгард дышит впервые за целую жизнь.",
+             "Aethelgard respira por primera vez en toda una vida.",
+             "Aethelgard atmet zum ersten Mal seit einem ganzen Leben.",
+             "Aethelgard respire pour la première fois d'une vie entière.",
+             "Aethelgard oddycha po raz pierwszy od całego pokolenia.");
+        Add5("ENDING_LINE_3",
+             "Крестьяне возвращаются к полям. Кузнец опять поёт у наковальни.",
+             "Los campesinos vuelven a los campos. El herrero canta de nuevo junto al yunque.",
+             "Bauern kehren zu den Feldern zurück. Der Schmied singt wieder am Amboss.",
+             "Les paysans reviennent aux champs. Le forgeron chante de nouveau à l'enclume.",
+             "Chłopi wracają na pola. Kowal znów śpiewa przy kowadle.");
+        Add5("ENDING_LINE_FINAL",
+             "Но кто-то должен помнить цену. И потому — ты.",
+             "Pero alguien debe recordar el precio. Y por eso — tú.",
+             "Doch jemand muss den Preis erinnern. Und darum — du.",
+             "Mais quelqu'un doit se souvenir du prix. Et pour cela — toi.",
+             "Ale ktoś musi pamiętać cenę. I dlatego — ty.");
+
+        // Menu extended dialogs
+        Add5("MENU_CONFIRM_NEW_GAME",
+             "Начать новую игру?\n\nВесь прогресс лагеря, захваченные регионы и наёмники будут утеряны. Настройки и разблокированное в магазине останется.",
+             "¿Empezar una nueva partida?\n\nSe perderá el progreso del campamento, las regiones conquistadas y los mercenarios. Los ajustes y lo desbloqueado en la tienda se mantienen.",
+             "Neues Spiel starten?\n\nDer gesamte Lagerfortschritt, eroberte Regionen und Söldner gehen verloren. Einstellungen und im Shop Freigeschaltetes bleiben erhalten.",
+             "Commencer une nouvelle partie ?\n\nTout le progrès du camp, les régions conquises et les mercenaires seront perdus. Les paramètres et les déblocages du magasin sont conservés.",
+             "Rozpocząć nową grę?\n\nCały postęp obozu, zdobyte regiony i najemnicy zostaną utracone. Ustawienia i sklep pozostają.");
+
+        // Barracks upgrade tab extra
+        Add5("BASIC LEVY — OFFICER FEUDAL ONLY",
+             "БАЗОВОЕ ОПОЛЧЕНИЕ — ТОЛЬКО ФЕОДАЛЬНЫЙ ОФИЦЕР",
+             "LEVA BÁSICA — SOLO OFICIAL FEUDAL",
+             "GRUNDLEVIE — NUR FEUDALER OFFIZIER",
+             "LEVÉE DE BASE — OFFICIER FÉODAL UNIQUEMENT",
+             "PODSTAWOWE POSPOLITE RUSZENIE — TYLKO OFICER FEUDALNY");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
