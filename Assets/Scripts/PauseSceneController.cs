@@ -52,12 +52,17 @@ public class PauseSceneController : MonoBehaviour
 
     public void EnterPause()
     {
+        // Read the transition edge BEFORE flipping the flag so a double
+        // invocation (Esc + a scripted pause request in the same frame)
+        // doesn't re-snapshot the just-set true and get stuck on
+        // ExitPause. Only the first call captures the real prior state.
+        bool wasAlreadyPaused = IsPauseActive;
         IsPauseActive = true;
 
         var player = FindFirstObjectByType<PlayerController>();
         if (player != null)
         {
-            prevPlayerControlBlocked = player.isControlBlocked;
+            if (!wasAlreadyPaused) prevPlayerControlBlocked = player.isControlBlocked;
             player.isControlBlocked = true;
         }
 
