@@ -57,11 +57,18 @@ public class CampWorkerAI : MonoBehaviour
 
     private void Update()
     {
-        if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
-        {
-            anim.SetFloatSafe("Speed", agent.velocity.magnitude);
-        }
+        // Full gait sync — foot-planted animator tempo, MoveX/MoveZ blend
+        // params, IsGrounded, root-motion off — replaces the old
+        // Speed-only write that was letting the worker slide.
+        NPCGait.Sync(agent, anim, agent != null ? agent.speed : NPCGait.DEFAULT_SPEED);
+
+        // Sitting bool at the fire — CampWorkerAI USED TO DECLARE the
+        // field but never write it, so the sit anim never played. Fixed.
+        if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
     }
+
+    private void LateUpdate() => NPCGait.GroundSnap(transform);
 
     private IEnumerator InitAndStartRoutine()
     {
@@ -85,6 +92,7 @@ public class CampWorkerAI : MonoBehaviour
         if (agent != null)
         {
             agent.enabled = true;
+            NPCGait.Configure(agent);
             yield return null;
 
             NavMeshHit hit;
@@ -181,15 +189,14 @@ public class CampWorkerAI : MonoBehaviour
             }
             if (agent.isOnNavMesh) agent.isStopped = true;
         }
-        // Face the fire so the sit anim plays with the NPC oriented
-        // toward the light source, not staring off into the woods.
-        if (nightGatherPoint != null)
+        // Face the fire — smoothly, ~1 second turn-in-place instead of
+        // an instant snap that looked robotic.
+        float faceTimer = 0f;
+        while (nightGatherPoint != null && faceTimer < 1.2f)
         {
-            Vector3 lookAt = nightGatherPoint.position;
-            lookAt.y = transform.position.y;
-            Vector3 dir = lookAt - transform.position;
-            if (dir.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            NPCGait.FaceTarget(transform, nightGatherPoint.position, 240f);
+            faceTimer += Time.deltaTime;
+            yield return null;
         }
         while (CampSchedule.IsDeepNight())
             yield return new WaitForSeconds(1f);

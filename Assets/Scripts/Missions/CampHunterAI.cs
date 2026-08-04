@@ -66,31 +66,12 @@ public class CampHunterAI : MonoBehaviour
 
     private void Update()
     {
-        if (anim != null && agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
-        {
-            Vector3 vel = agent.velocity;
-            anim.SetFloatSafe("Speed", vel.magnitude);
-            anim.SetBoolSafe("IsGrounded", true);
-            if (agent.speed > 0.01f)
-            {
-                Vector3 local = transform.InverseTransformDirection(vel);
-                anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
-                anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
-            }
-
-            // Sitting trigger: it's deep night AND we're stationary. Any
-            // NightGatherRoutine target counts — nightGatherPoint,
-            // lodgePoint fallback, or wherever the agent parked. This
-            // used to require nightGatherPoint to be wired + player within
-            // sittingArriveRadius; both filters made the sit anim never
-            // play on half-configured NPCs.
-            bool shouldSit = CampSchedule.IsDeepNight()
-                          && vel.magnitude < 0.05f
-                          && agent.remainingDistance < sittingArriveRadius;
-            if (!string.IsNullOrEmpty(sittingAnimBool))
-                anim.SetBoolSafe(sittingAnimBool, shouldSit);
-        }
+        NPCGait.Sync(agent, anim, agent != null ? agent.speed : NPCGait.DEFAULT_SPEED);
+        if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
     }
+
+    private void LateUpdate() => NPCGait.GroundSnap(transform);
 
     private IEnumerator InitAndStartRoutine()
     {
@@ -123,12 +104,12 @@ public class CampHunterAI : MonoBehaviour
         if (agent != null)
         {
             agent.enabled = true;
+            NPCGait.Configure(agent, stoppingDistance: 0.5f);
             yield return null;
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(startPos, out hit, 6f, NavMesh.AllAreas))
                 agent.Warp(hit.position);
-            agent.stoppingDistance = 0.5f;
         }
 
         StartCoroutine(HunterRoutine());
@@ -194,16 +175,14 @@ public class CampHunterAI : MonoBehaviour
             agent.isStopped = true;
         }
 
-        // Face the fire on arrival so the sitting anim doesn't have the
-        // NPC turned the wrong way. Only turn on Y (level look), keep
-        // upright.
-        if (nightGatherPoint != null)
+        // Face the fire — smoothly, ~1s turn-in-place. Instant snap
+        // reads as robotic; a slerp doesn't.
+        float faceTimer = 0f;
+        while (nightGatherPoint != null && faceTimer < 1.2f)
         {
-            Vector3 lookAt = nightGatherPoint.position;
-            lookAt.y = transform.position.y;
-            Vector3 dir = lookAt - transform.position;
-            if (dir.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            NPCGait.FaceTarget(transform, nightGatherPoint.position, 240f);
+            faceTimer += Time.deltaTime;
+            yield return null;
         }
 
         // Poll — leave when it's no longer deep night.

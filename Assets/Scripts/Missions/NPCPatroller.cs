@@ -74,13 +74,8 @@ public class NPCPatroller : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         if (agent != null)
         {
-            agent.speed = agentSpeed;
-            agent.angularSpeed = agentAngularSpeed;
+            NPCGait.Configure(agent, speed: agentSpeed, angularSpeed: agentAngularSpeed);
             agent.updateRotation = true;
-            // Zero the baseOffset so the agent sits exactly on the NavMesh
-            // instead of hovering above it. Grass-detail colliders on the
-            // Terrain used to drift Elias up per-frame; this pins him.
-            agent.baseOffset = 0f;
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 4f, NavMesh.AllAreas))
                 agent.Warp(hit.position);
@@ -113,42 +108,18 @@ public class NPCPatroller : MonoBehaviour
         StartCoroutine(ScheduleLoop());
     }
 
-    private void LateUpdate()
-    {
-        // Belt-and-braces: after the agent updates position each frame,
-        // sample the terrain height at the NPC's XZ and snap Y to it.
-        // Fixes Elias visibly bumping up over grass details / bushes.
-        // Only kicks in when the drift is > 0.2m so cliff edges and
-        // small NavMesh height variations aren't clobbered.
-        if (Terrain.activeTerrain == null || agent == null || !agent.isOnNavMesh) return;
-        Terrain t = Terrain.activeTerrain;
-        float groundY = t.SampleHeight(transform.position) + t.transform.position.y;
-        float drift = transform.position.y - groundY;
-        if (Mathf.Abs(drift) > 0.2f)
-        {
-            Vector3 p = transform.position;
-            p.y = groundY;
-            transform.position = p;
-        }
-    }
+    private void LateUpdate() => NPCGait.GroundSnap(transform);
 
     private void Update()
     {
         if (anim == null || agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
-        Vector3 vel = agent.velocity;
-        anim.SetFloatSafe("Speed", vel.magnitude);
-        anim.SetBoolSafe("IsGrounded", true);
-        if (agent.speed > 0.01f)
-        {
-            Vector3 local = transform.InverseTransformDirection(vel);
-            anim.SetFloatSafe("MoveX", Mathf.Clamp(local.x / agent.speed, -1f, 1f));
-            anim.SetFloatSafe("MoveZ", Mathf.Clamp(local.z / agent.speed, -1f, 1f));
-        }
 
-        // Simple two-state animators can just listen to this bool
-        // (Idle ↔ Walk). Blend-tree animators can ignore it — SetBoolSafe
-        // no-ops when the parameter isn't in the controller.
-        bool walking = vel.magnitude > walkingSpeedThreshold;
+        // Foot-planted gait sync (Speed/MoveX/MoveZ/IsGrounded, animator
+        // tempo → agent velocity, root motion off).
+        NPCGait.Sync(agent, anim, agentSpeed);
+
+        // Simple two-state animators can just listen to this bool.
+        bool walking = agent.velocity.magnitude > walkingSpeedThreshold;
         if (!string.IsNullOrEmpty(walkingAnimBool))
             anim.SetBoolSafe(walkingAnimBool, walking);
 
@@ -161,16 +132,16 @@ public class NPCPatroller : MonoBehaviour
             if (!string.IsNullOrEmpty(target)) anim.CrossFadeInFixedTime(target, stateCrossfade);
         }
 
-        // Sitting bool — true at night when the NPC is parked and idle.
-        // Doesn't require a specific rest point transform; anywhere the
-        // agent stopped during deep night counts, so a half-configured
-        // patroller still plays the sitting anim.
-        bool shouldSit = CampSchedule.IsDeepNight()
-                      && !HoldPosition
-                      && vel.magnitude < 0.05f
-                      && agent.remainingDistance < sittingArriveRadius;
+        // Sitting bool — deep night, parked, near a rest spot.
+        bool shouldSit = !HoldPosition && NPCGait.ShouldSit(agent, sittingArriveRadius);
         if (!string.IsNullOrEmpty(sittingAnimBool))
             anim.SetBoolSafe(sittingAnimBool, shouldSit);
+
+        // Face the campfire/rest spot smoothly while parked overnight so
+        // the sitting anim reads facing the light source, not staring
+        // into the woods.
+        if (shouldSit && nightPoint != null)
+            NPCGait.FaceTarget(transform, nightPoint.position, 180f);
     }
 
     private IEnumerator ScheduleLoop()

@@ -34,6 +34,14 @@ public class BarracksUnitAI : MonoBehaviour
     public float agentAngularSpeed = 540f;
     public float agentStoppingDistance = 0.4f;
 
+    [Header("Night Schedule (optional)")]
+    // Drop the campfire transform here and the merc walks over at deep
+    // night, faces it, and sits until dawn. Leave null → mercs wander
+    // all night (previous behaviour).
+    public Transform nightGatherPoint;
+    public string sittingAnimBool = "IsSitting";
+    public float sittingArriveRadius = 1.6f;
+
     [Header("Visual")]
     public Animator anim;
 
@@ -44,32 +52,19 @@ public class BarracksUnitAI : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         if (anim == null) anim = GetComponentInChildren<Animator>();
 
-        // Disable Apply Root Motion — the hero prefabs ship with it enabled
-        // for the player, but a NavMeshAgent is now driving the transform.
-        // Leaving both on = classic "sliding feet" (units glide instead of
-        // stepping in time with the walk cycle).
-        if (anim != null && anim.applyRootMotion) anim.applyRootMotion = false;
-
         if (agent != null)
         {
-            agent.speed = agentSpeed;
-            agent.acceleration = agentAcceleration;
-            agent.angularSpeed = agentAngularSpeed;
-            agent.stoppingDistance = agentStoppingDistance;
-            agent.autoBraking = true;
+            NPCGait.Configure(agent,
+                              speed: agentSpeed,
+                              acceleration: agentAcceleration,
+                              angularSpeed: agentAngularSpeed,
+                              stoppingDistance: agentStoppingDistance);
 
-            // Snap onto the navmesh — camp NPCs sometimes spawn slightly above
-            // the mesh depending on prefab pivot.
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 4f, NavMesh.AllAreas))
-            {
                 agent.Warp(hit.position);
-            }
         }
 
-        // HeroAnimator drives everything off IsGrounded — a stale false keeps
-        // it in the fall/land state and the walk cycle never plays. Set it
-        // true here since these NPCs live on the ground the whole time.
         if (anim != null) anim.SetBoolSafe("IsGrounded", true);
 
         StartCoroutine(WanderRoutine());
@@ -77,26 +72,12 @@ public class BarracksUnitAI : MonoBehaviour
 
     private void Update()
     {
-        if (anim == null || agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
-
-        // Feed the animator the exact same parameters the player controller
-        // feeds — Speed absolute, MoveX/MoveZ normalised in local space.
-        // HeroAnimator is a blend-tree that reads these; without them the
-        // hero stands in Idle even while the transform slides forward.
-        Vector3 vel = agent.velocity;
-        float mag = vel.magnitude;
-        anim.SetFloatSafe("Speed", mag);
-        anim.SetBoolSafe("IsGrounded", true);
-
-        if (agent.speed > 0.01f)
-        {
-            Vector3 local = transform.InverseTransformDirection(vel);
-            float ax = Mathf.Clamp(local.x / agent.speed, -1f, 1f);
-            float az = Mathf.Clamp(local.z / agent.speed, -1f, 1f);
-            anim.SetFloatSafe("MoveX", ax);
-            anim.SetFloatSafe("MoveZ", az);
-        }
+        NPCGait.Sync(agent, anim, agentSpeed);
+        if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
     }
+
+    private void LateUpdate() => NPCGait.GroundSnap(transform);
 
     private IEnumerator WanderRoutine()
     {
@@ -107,6 +88,13 @@ public class BarracksUnitAI : MonoBehaviour
             if (agent == null || !agent.isOnNavMesh)
             {
                 yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            // Night beats wander — walk to the fire and stay there.
+            if (nightGatherPoint != null && CampSchedule.IsDeepNight())
+            {
+                yield return StartCoroutine(NightGatherRoutine());
                 continue;
             }
 
@@ -125,12 +113,8 @@ public class BarracksUnitAI : MonoBehaviour
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(dest, out hit, 4f, NavMesh.AllAreas))
-            {
                 agent.SetDestination(hit.position);
-            }
 
-            // Wait to arrive with a hard timeout so a stuck agent doesn't
-            // freeze the coroutine forever.
             float timeout = 0f;
             while (timeout < 20f && agent.isOnNavMesh && (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.2f))
             {
@@ -140,5 +124,36 @@ public class BarracksUnitAI : MonoBehaviour
 
             yield return new WaitForSeconds(Random.Range(minIdleSeconds, maxIdleSeconds));
         }
+    }
+
+    private IEnumerator NightGatherRoutine()
+    {
+        Vector2 jitter = Random.insideUnitCircle * 1.4f;
+        Vector3 dest = nightGatherPoint.position + new Vector3(jitter.x, 0f, jitter.y);
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(dest, out hit, 4f, NavMesh.AllAreas))
+        {
+            agent.isStopped = false;
+            agent.SetDestination(hit.position);
+        }
+
+        float timeout = 0f;
+        while (timeout < 15f && agent.isOnNavMesh && (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.4f))
+        {
+            timeout += Time.deltaTime;
+            yield return null;
+        }
+
+        // Face the fire smoothly on arrival.
+        float faceTimer = 0f;
+        while (faceTimer < 1.2f)
+        {
+            NPCGait.FaceTarget(transform, nightGatherPoint.position, 240f);
+            faceTimer += Time.deltaTime;
+            yield return null;
+        }
+
+        while (CampSchedule.IsDeepNight())
+            yield return new WaitForSeconds(1f);
     }
 }
