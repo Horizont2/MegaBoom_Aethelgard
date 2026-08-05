@@ -1430,6 +1430,26 @@ public class WorldGenerator : MonoBehaviour
         {
             totemPrefab = activeRegionData.regionTotemPrefab;
             locationYOffset = activeRegionData.locationYOffset;
+
+            // FALLBACK: some newer region assets (R21-R24) ship with no
+            // regionTotemPrefab wired. Silent yield-break was hiding
+            // the misconfiguration — the level generated with no totem,
+            // no conquest goal, and no clear-condition. Borrow the
+            // prefab from any earlier region in the same
+            // MapProgressionManager pool so the run at least completes.
+            if (totemPrefab == null && MapProgressionManager.Instance != null
+                && MapProgressionManager.Instance.allRegionsInGame != null)
+            {
+                foreach (var r in MapProgressionManager.Instance.allRegionsInGame)
+                {
+                    if (r != null && r.regionTotemPrefab != null)
+                    {
+                        Debug.LogWarning($"[WorldGenerator] Region '{activeRegionData.regionName}' (ID {activeRegionData.regionID}) has NO regionTotemPrefab wired — falling back to '{r.regionName}' totem. Wire the field on the RegionData asset to remove this warning.");
+                        totemPrefab = r.regionTotemPrefab;
+                        break;
+                    }
+                }
+            }
         }
 
         float w = terrain.terrainData.size.x;

@@ -77,6 +77,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
+    // Handle for the aggro / roar loop so we can fade it out when the
+    // enemy dies mid-roar. -1 = no active handle.
+    private int agroSfxHandle = -1;
+    // Dedupe cooldown for Enemy_Attack — prevents the swing sound from
+    // firing twice on the same frame when animator events and the
+    // aggro coroutine both trigger it.
+    private float lastAttackSfxTime = -999f;
+    private const float ATTACK_SFX_COOLDOWN = 0.15f;
 
     private Vector3 knockbackVelocity = Vector3.zero;
     private float stunTimer = 0f;
@@ -185,6 +193,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         ActiveEnemiesCount--;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+        // Kill any live roar loop when the enemy is pooled / despawned
+        // outside of Die() — same principle as the corpse fadeout.
+        if (agroSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(agroSfxHandle, 0.15f);
+            agroSfxHandle = -1;
+        }
     }
 
     private static void OnActiveSceneChanged(UnityEngine.SceneManagement.Scene a, UnityEngine.SceneManagement.Scene b)
@@ -627,7 +642,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // "3D Panner" preset in FMOD Studio; the position we pass will
         // then attenuate distance and pan by direction.
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Agro, transform.position);
+        {
+            // Play as tracked instance so Die() can fade it out — the
+            // roar clip is multi-second, and a fire-and-forget PlayOneShot
+            // kept ringing off the corpse. Falls back to one-shot if the
+            // looping variant returns -1 (missing FMOD event).
+            agroSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Enemy_Agro, transform);
+            if (agroSfxHandle == -1)
+                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Agro, transform.position);
+        }
     }
 
     private void CheckNightBuff()
@@ -677,8 +700,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (animator != null) animator.SetTrigger("Attack");
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
-            if (AudioManager.Instance != null)
+            // Dedupe: if the animation clip ALSO has an Animation Event
+            // that plays Enemy_Attack, our code path plus the event path
+            // would fire twice on the same frame. 150ms cooldown keeps
+            // legitimate follow-up attacks working.
+            if (AudioManager.Instance != null && Time.time - lastAttackSfxTime > ATTACK_SFX_COOLDOWN)
+            {
+                lastAttackSfxTime = Time.time;
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+            }
         }
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
@@ -832,7 +862,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
             animator.SetTrigger("Die");
         }
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
+        if (AudioManager.Instance != null)
+        {
+            // Fade out the aggro roar first — otherwise a multi-second
+            // roar clip keeps ringing off the corpse. 0.25s tail sells
+            // "the beast just choked mid-roar" better than an instant
+            // hard stop.
+            if (agroSfxHandle != -1)
+            {
+                AudioManager.Instance.StopLoopingSFX(agroSfxHandle, 0.25f);
+                agroSfxHandle = -1;
+            }
+            AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
+        }
 
         if (deathVFXPrefab != null)
         {
