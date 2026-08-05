@@ -481,6 +481,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isStaggered = false;
         if (staggerRing != null) Destroy(staggerRing);
         AchievementSystem.Unlock("EXECUTIONER");
+        RunSession.AddKill(isElite: true, isBoss: true);
 
         if (GlobalHUD.Instance != null)
         {

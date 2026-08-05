@@ -8,7 +8,11 @@ public struct DamageInfo
     public Vector3 PushDirection;
     public float KnockbackForce;
     public float StunDuration;
-    // В майбутньому сюди легко додати: public DamageType Type; (Вогонь, Лід, Фізична)
+    // Player-facing attacker label вЂ” feeds the death recap's
+    // "Slain by ___" line. Optional: null / empty is fine and the
+    // recap falls back to "Fell in battle".
+    public string SourceName;
+    // пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: public DamageType Type; (пїЅпїЅпїЅпїЅпїЅпїЅ, ЛіпїЅ, ФіпїЅпїЅпїЅпїЅпїЅ)
 }
 
 public interface IDamageable

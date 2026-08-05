@@ -1381,6 +1381,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         isNextAttackGuaranteedCrit = true;
         isBulletTime = true;
         AchievementSystem.Unlock("PERFECT_DODGE");
+        RunSession.AddPerfectDodge();
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
 
@@ -1632,6 +1633,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead || currentHealth <= 0) return;
         if (isCampMode || isDashing || isBulletTime) return;
 
+        // Feed the death recap's "Slain by ___" line. Overwrites on
+        // every hit — whatever landed the LAST blow before Die() wins.
+        RunSession.NoteDamageSource(info.SourceName);
+
         if (dodgeChance > 0f && UnityEngine.Random.value < dodgeChance)
         {
             // Treat dodge identically to a perfect dodge — visuals/SFX already
@@ -1785,6 +1790,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         UpdateHUD();
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
+        RunSession.AddDiamonds(finalAmount);
     }
 
     // Smooth quadratic XP curve. Replaces the prior 1.5x multiplier — at level 15
@@ -1804,6 +1810,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         visualXP = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+
+        RunSession.AddLevelUp(currentLevel);
 
         // Level-up rewards beyond the upgrade choice itself:
         // - heal a chunk of HP so the player isn't punished for leveling mid-fight

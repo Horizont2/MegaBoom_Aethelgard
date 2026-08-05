@@ -53,6 +53,7 @@ public static class LoreCodexManager
         string title = LocalizationManager.Tr(id + "_TITLE");
         OnLoreUnlocked?.Invoke(id);
         RunStats.Add(RunStats.Stat.ScrollsFound, 1);
+        RunSession.AddScroll();
         AchievementManager.Notify(AchievementManager.Tracker.ScrollFound, 1);
         ToastManager.Show(LocalizationManager.Tr("TOAST_LORE_FOUND", title), ToastManager.ToastKind.Lore);
 

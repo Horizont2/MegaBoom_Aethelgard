@@ -76,6 +76,14 @@ public class DeathCinematicManager : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(buttonsDelay);
 
+        // Death recap — animated stat panel between the "You have
+        // fallen" title and the Retry/Return buttons. Reads
+        // RunSession, so the values reflect this specific run.
+        DeathRecapPanel.Show();
+        // Give the recap's own AnimateIn coroutine time to finish
+        // typewriting the stats before the Retry buttons pop in.
+        yield return new WaitForSecondsRealtime(4.5f);
+
         elapsed = 0f;
         float buttonsFadeTime = 1f;
         while (elapsed < buttonsFadeTime)
@@ -94,7 +102,7 @@ public class DeathCinematicManager : MonoBehaviour
         Time.timeScale = 1f;
         if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
-        // --- Բ��: ������ ������ ����� ����� ����� ������������� ---
+        DeathRecapPanel.Close();
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);
@@ -107,7 +115,7 @@ public class DeathCinematicManager : MonoBehaviour
         Time.timeScale = 1f;
         if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
-        // --- Բ��: ������ ������ ����� ����� ����� ������������� ---
+        DeathRecapPanel.Close();
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);

@@ -212,6 +212,7 @@ public class MissionManager : MonoBehaviour
         mission.isCompleted = true;
         if (mission.uiElement != null) mission.uiElement.CompleteMission();
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+        RunSession.AddMission();
         SaveMissions();
     }
 }

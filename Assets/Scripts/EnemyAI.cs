@@ -719,7 +719,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isDead || playerTarget == null || playerTarget.currentHealth <= 0) return;
         if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f)
         {
-            playerTarget.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward });
+            // Name feeds the death recap "Slain by …" line. Uses the
+            // enemy GO name minus any "(Clone)" suffix so the recap
+            // reads clean (e.g. "Slain by Skeleton Sentry").
+            string src = gameObject.name;
+            int cloneIdx = src.IndexOf("(Clone)");
+            if (cloneIdx > 0) src = src.Substring(0, cloneIdx).TrimEnd();
+            playerTarget.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = src });
             // Landed-hit impact SFX. Enemy_Hit is the meaty thud; the
             // player's own Hurt SFX plays inside TakeDamage.
             if (AudioManager.Instance != null)
@@ -907,6 +913,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.KillEnemies, 1);
         if (Level1_QuestManager.Instance != null) Level1_QuestManager.Instance.EnemyDefeated();
+
+        // Feed the per-run scoreboard (drives the death recap panel).
+        // isElite reads directly off the SO; boss-tier kills are handled
+        // separately by boss AIs which increment RunSession.AddKill(...,
+        // isBoss:true).
+        RunSession.AddKill(isElite: isElite, isBoss: false);
 
         StartCoroutine(DeathDissolveRoutine());
     }

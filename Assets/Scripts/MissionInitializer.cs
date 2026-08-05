@@ -4,11 +4,11 @@ public class MissionInitializer : MonoBehaviour
 {
     public static MissionInitializer Instance;
 
-    // --- ФІКС: Ця змінна живе між сценами і приймає дані з Мапи ---
+    // --- ФІпїЅпїЅ: пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ ---
     public static RegionData PendingMissionRegion;
 
     [Header("Debug / Testing")]
-    [Tooltip("Перетягни сюди будь-який RegionData, щоб тестувати сцену без запуску Мапи")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅ RegionData, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ")]
     public RegionData testFallbackRegion;
 
     [Header("Debug Info (Read Only)")]
@@ -22,14 +22,14 @@ public class MissionInitializer : MonoBehaviour
 
     private void Start()
     {
-        // Перевіряємо, чи ми зайшли з мапи, АБО чи є тестовий файл
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         if (PlayerPrefs.GetInt("IsRegionMission", 0) == 1 || testFallbackRegion != null)
         {
             SetupMission();
         }
         else
         {
-            Debug.Log("<color=yellow>[Mission]</color> Звичайний запуск сцени (не з Мапи і без тестового регіону).");
+            Debug.Log("<color=yellow>[Mission]</color> пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ).");
         }
     }
 
@@ -37,23 +37,23 @@ public class MissionInitializer : MonoBehaviour
     {
         RegionData activeRegion = null;
 
-        // 1. ПЕРЕВІРКА СТАТИКИ: Чи передала нам Мапа якийсь регіон?
+        // 1. пїЅпїЅпїЅпїЅВІпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ?
         if (PendingMissionRegion != null)
         {
             activeRegion = PendingMissionRegion;
 
-            // Записуємо його в новий GameManager, щоб EnemyAI міг його прочитати
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ GameManager, пїЅпїЅпїЅ EnemyAI пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (GameManager.Instance != null) GameManager.Instance.currentRegion = activeRegion;
         }
-        // 2. Якщо статика пуста, але GameManager чомусь має дані (резерв)
+        // 2. пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ GameManager пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ)
         else if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
         {
             activeRegion = GameManager.Instance.currentRegion;
         }
-        // 3. Тестовий режим для зручної розробки в Unity
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ Unity
         else if (testFallbackRegion != null)
         {
-            Debug.LogWarning("<color=orange>[Mission]</color> Запуск без Мапи. Використовуємо ТЕСТОВИЙ регіон: " + testFallbackRegion.regionName);
+            Debug.LogWarning("<color=orange>[Mission]</color> пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: " + testFallbackRegion.regionName);
             activeRegion = testFallbackRegion;
 
             if (GameManager.Instance != null) GameManager.Instance.currentRegion = activeRegion;
@@ -62,16 +62,21 @@ public class MissionInitializer : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[Mission] RegionData не знайдено! Перевірте чи працює передача з мапи.");
+            Debug.LogError("[Mission] RegionData пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ.");
             return;
         }
 
         currentRegionName = activeRegion.regionName;
         currentBiomeIndex = PlayerPrefs.GetInt("RegionBiomeType", 0);
 
-        Debug.Log($"<color=#00FF00>[Mission]</color> Генерація місії: {currentRegionName}. Біом ID: {currentBiomeIndex}");
+        Debug.Log($"<color=#00FF00>[Mission]</color> пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ: {currentRegionName}. пїЅпїЅпїЅпїЅ ID: {currentBiomeIndex}");
 
-        // ІНТЕГРАЦІЯ З SmartSeasonManager (Налаштовуємо небо, світло і туман)
+        // Start the per-run scoreboard (drives the death recap panel).
+        // Reset counters + timer here so the recap shows THIS run's
+        // stats, not the accumulated career values.
+        RunSession.Begin();
+
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅЦІпїЅ пїЅ SmartSeasonManager (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ)
         // SmartSeasonManager seasonManager = FindFirstObjectByType<SmartSeasonManager>();
         // if (seasonManager != null) seasonManager.LockSeasonForMission(currentBiomeIndex);
     }

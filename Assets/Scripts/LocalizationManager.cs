@@ -2050,6 +2050,42 @@ public static class LocalizationManager
              "Elias: Die Leibgarde des Königs fiel in jenen Bergen. Sie sind gnadenlos. Rüste dich.",
              "Elias : La garde personnelle du Roi tomba dans ces montagnes. Ils sont impitoyables. Prépare-toi.",
              "Elias: Osobista gwardia Króla padła w tych górach. Są bezwzględni. Przygotuj się.");
+
+        // --- Batch 12: Death recap panel ---
+        Add7("DEATH_RECAP_TITLE",
+             "YOUR TALE ENDS HERE",
+             "ТВОЯ ІСТОРІЯ ЗАКІНЧУЄТЬСЯ ТУТ",
+             "ТВОЯ ИСТОРИЯ ЗАКАНЧИВАЕТСЯ ЗДЕСЬ",
+             "TU HISTORIA ACABA AQUÍ",
+             "DEINE GESCHICHTE ENDET HIER",
+             "TON HISTOIRE S'ACHÈVE ICI",
+             "TWOJA OPOWIEŚĆ KOŃCZY SIĘ TU");
+        Add7("DEATH_RECAP_CAUSE",
+             "Slain by {0}",
+             "Загинув від: {0}",
+             "Убит: {0}",
+             "Muerto por {0}",
+             "Getötet von {0}",
+             "Tué par {0}",
+             "Zabity przez: {0}");
+        Add7("DEATH_RECAP_CAUSE_UNKNOWN",
+             "Fell in battle",
+             "Впав у бою",
+             "Пал в бою",
+             "Caído en combate",
+             "Im Kampf gefallen",
+             "Tombé au combat",
+             "Poległ w bitwie");
+        Add7("DEATH_RECAP_TIME_SURVIVED",  "Time Survived",     "Час у бою",           "Время в бою",       "Tiempo sobrevivido","Überlebte Zeit",    "Temps survécu",     "Czas przetrwania");
+        Add7("DEATH_RECAP_ENEMIES",        "Enemies Felled",    "Ворогів здолано",     "Побеждено врагов",  "Enemigos abatidos", "Feinde erschlagen", "Ennemis abattus",   "Wrogów pokonano");
+        Add7("DEATH_RECAP_ELITES",         "Elites Felled",     "Еліт здолано",        "Побеждено элит",    "Élites abatidas",   "Elite erschlagen",  "Élites abattues",   "Elit pokonano");
+        Add7("DEATH_RECAP_BOSSES",         "Bosses Felled",     "Босів здолано",       "Побеждено боссов",  "Jefes abatidos",    "Bosse erschlagen",  "Boss abattus",      "Bossów pokonano");
+        Add7("DEATH_RECAP_DIAMONDS",       "Diamonds Earned",   "Діамантів здобуто",   "Заработано диамантов","Diamantes ganados","Diamanten verdient","Diamants gagnés",   "Zdobyto diamentów");
+        Add7("DEATH_RECAP_LEVEL_REACHED",  "Level Reached",     "Досягнутий рівень",   "Достигнутый уровень","Nivel alcanzado",  "Stufe erreicht",    "Niveau atteint",    "Osiągnięty poziom");
+        Add7("DEATH_RECAP_LEVELS_GAINED",  "Levels Gained",     "Рівнів набрано",      "Уровней набрано",   "Niveles ganados",   "Stufen erlangt",    "Niveaux gagnés",    "Poziomów zdobyto");
+        Add7("DEATH_RECAP_PERFECT_DODGES", "Perfect Dodges",    "Ідеальних ухилів",    "Идеальных уклонов", "Esquivas perfectas","Perfekte Ausweiche","Esquives parfaites","Idealnych uników");
+        Add7("DEATH_RECAP_MISSIONS",       "Missions Completed","Місій виконано",      "Миссий выполнено",  "Misiones completadas","Missionen erfüllt","Missions accomplies","Misji ukończono");
+        Add7("DEATH_RECAP_SCROLLS",        "Scrolls Recovered", "Сувоїв знайдено",     "Свитков найдено",   "Pergaminos hallados","Rollen geborgen",  "Parchemins trouvés","Zwojów odnaleziono");
     }
 
     // Add6 fills EN/UK/RU/ES/DE/FR but skips Polish, so Polish fell
