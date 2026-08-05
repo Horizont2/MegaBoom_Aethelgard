@@ -313,7 +313,12 @@ public class ResourceManager : MonoBehaviour
     {
         if (inventoryTitleText != null)
         {
-            inventoryTitleText.text = isCamp ? "CAMP STASH" : "BACKPACK";
+            // Route through Tr — the walker only handles labels whose
+            // text stays put at scene load, but this method rewrites
+            // the title every stash update. Without Tr the UK/RU/etc.
+            // player would see the label flash back to English on any
+            // resource change.
+            inventoryTitleText.text = LocalizationManager.Tr(isCamp ? "CAMP STASH" : "BACKPACK");
         }
 
         if (isCamp)

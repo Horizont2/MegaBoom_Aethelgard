@@ -27,6 +27,24 @@ public class LocalizedLabelKey : MonoBehaviour
     public string key;
 }
 
+// Ticker MonoBehaviour that periodically re-triggers the scene walker.
+// Catches the case where a panel opens after the initial walker pass
+// and resets its labels to Inspector-authored English via its own
+// Refresh method — the walker's next tick puts them back on the
+// active language.
+public class AutoLocalizeRepeater : MonoBehaviour
+{
+    private const float INTERVAL = 0.5f;
+    private float nextRun;
+
+    private void Update()
+    {
+        if (Time.unscaledTime < nextRun) return;
+        nextRun = Time.unscaledTime + INTERVAL;
+        AutoLocalizeScene.RefreshAllScenesPublic();
+    }
+}
+
 public static class AutoLocalizeScene
 {
     private static readonly List<TMP_Text> s_tmpBuffer = new List<TMP_Text>(256);
@@ -44,7 +62,23 @@ public static class AutoLocalizeScene
         // AFTER SceneLoad in the initial scene, so its sceneLoaded event
         // has already come and gone).
         RefreshAllScenes();
+
+        // Panels open, refresh themselves, and overwrite the walker's
+        // translation with their Inspector-authored English text —
+        // Settings/Quit/etc. flashed back to English right after the
+        // walker's initial pass. Ticker re-scans every 500ms so any
+        // reset gets caught within one frame of the player noticing.
+        // The scan is cheap: HasKey is O(1), most labels early-out on
+        // the stored-key path, so ~200 TMPs cost well under 1ms.
+        if (s_ticker == null)
+        {
+            var go = new GameObject("[AutoLocalizeScene.Ticker]");
+            Object.DontDestroyOnLoad(go);
+            s_ticker = go.AddComponent<AutoLocalizeRepeater>();
+        }
     }
+
+    private static AutoLocalizeRepeater s_ticker;
 
     private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -59,6 +93,9 @@ public static class AutoLocalizeScene
             if (s.isLoaded) TranslateScene(s);
         }
     }
+
+    // Exposed for the AutoLocalizeRepeater ticker.
+    public static void RefreshAllScenesPublic() => RefreshAllScenes();
 
     private static void TranslateScene(Scene scene)
     {

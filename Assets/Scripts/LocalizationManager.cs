@@ -1002,6 +1002,23 @@ public static class LocalizationManager
         Add5("Achievements",       "Достижения",     "Logros",     "Erfolge",     "Succès",    "Osiągnięcia");
         Add5("Settings",           "Настройки",      "Ajustes",    "Einstellungen","Paramètres","Ustawienia");
         Add5("Quit",               "Выход",          "Salir",      "Beenden",     "Quitter",   "Wyjdź");
+        // Uppercase / lowercase variants — some scenes author button
+        // labels in ALL CAPS; register both so the walker's HasKey
+        // check hits regardless of the exact case in the prefab.
+        AddSelf("SETTINGS",        "НАЛАШТУВАННЯ");
+        Add5("SETTINGS",           "НАСТРОЙКИ",      "AJUSTES",    "EINSTELLUNGEN","PARAMÈTRES","USTAWIENIA");
+        AddSelf("QUIT",            "ВИЙТИ");
+        Add5("QUIT",               "ВЫХОД",          "SALIR",      "BEENDEN",     "QUITTER",   "WYJDŹ");
+        AddSelf("ACHIEVEMENTS",    "ДОСЯГНЕННЯ");
+        Add5("ACHIEVEMENTS",       "ДОСТИЖЕНИЯ",     "LOGROS",     "ERFOLGE",     "SUCCÈS",    "OSIĄGNIĘCIA");
+        AddSelf("CONTINUE",        "ПРОДОВЖИТИ");
+        Add5("CONTINUE",           "ПРОДОЛЖИТЬ",     "CONTINUAR",  "FORTSETZEN",  "CONTINUER", "KONTYNUUJ");
+        AddSelf("PLAY",            "ГРАТИ");
+        Add5("PLAY",               "ИГРАТЬ",         "JUGAR",      "SPIELEN",     "JOUER",     "GRAJ");
+        AddSelf("NEW GAME",        "НОВА ГРА");
+        Add5("NEW GAME",           "НОВАЯ ИГРА",     "NUEVA PARTIDA","NEUES SPIEL","NOUVELLE PARTIE","NOWA GRA");
+        AddSelf("CREDITS",         "АВТОРИ");
+        Add5("CREDITS",            "АВТОРЫ",         "CRÉDITOS",   "MITWIRKENDE", "CRÉDITS",   "TWÓRCY");
         Add5("Retry",              "Заново",         "Reintentar", "Erneut",      "Réessayer", "Spróbuj ponownie");
         Add5("Return to Camp",     "В лагерь",       "Al campamento","Ins Lager", "Au camp",   "Do obozu");
         Add5("Return to Menu",     "В меню",         "Al menú",    "Zum Menü",    "Au menu",   "Do menu");
