@@ -54,7 +54,7 @@ public class DeathRecapPanel : MonoBehaviour
     private TextMeshProUGUI causeTMP;
     private TextMeshProUGUI bodyTMP;
 
-    private struct Line { public string label; public int value; public bool accent; public Line(string l, int v, bool a = false) { label = l; value = v; accent = a; } }
+    private struct Line { public string label; public int value; public bool accent; public Line(string label, int value, bool accent = false) { this.label = label; this.value = value; this.accent = accent; } }
     private System.Collections.Generic.List<Line> lines;
 
     private void Build()

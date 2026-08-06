@@ -2933,17 +2933,20 @@ public class WorldGenerator : MonoBehaviour
             int fallbackMax = (altarsAmount - spawnedAltars) * 30;
             while (spawnedAltars < altarsAmount && fallbackAttempts++ < fallbackMax)
             {
-                SplineContainer sc = roadSplines[Random.Range(0, roadSplines.Count)];
+                // Fully-qualify UnityEngine.Random — the file also
+                // imports Unity.Mathematics, whose Random type
+                // collides with UnityEngine.Random on unqualified use.
+                SplineContainer sc = roadSplines[UnityEngine.Random.Range(0, roadSplines.Count)];
                 float len = sc.CalculateLength();
                 if (len < 20f) continue;
                 // Sample somewhere along the middle of the spline, then
                 // step OFF the road by ~roadWidth.
-                float sample = Random.Range(0.25f, 0.75f);
+                float sample = UnityEngine.Random.Range(0.25f, 0.75f);
                 sc.Evaluate(sample, out float3 p, out float3 tan, out float3 up);
                 Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
                 Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
                 Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
-                float side = Random.value > 0.5f ? 1f : -1f;
+                float side = UnityEngine.Random.value > 0.5f ? 1f : -1f;
                 Vector3 spawnPos = wPos + right * side * (roadWidth * 1.4f);
 
                 // Basic map-edge + water + slope + forbidden-zone guards
