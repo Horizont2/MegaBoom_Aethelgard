@@ -86,6 +86,6 @@ public class LowPolyTerrain : MonoBehaviour
 
         // ¬имикаЇмо старий гладкий Terrain
         terrain.enabled = false;
-        Debug.Log("≈п≥чний Low-Poly остр≥в усп≥шно згенеровано!");
+        GameLog.Info("≈п≥чний Low-Poly остр≥в усп≥шно згенеровано!");
     }
 }

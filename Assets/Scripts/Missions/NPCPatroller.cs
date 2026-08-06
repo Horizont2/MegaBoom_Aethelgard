@@ -98,7 +98,7 @@ public class NPCPatroller : MonoBehaviour
 
             if (useStateFallback)
             {
-                Debug.Log($"[NPCPatroller] '{name}': animator '{anim.runtimeAnimatorController?.name}' has no Speed/IsWalking parameter — driving walk via CrossFade to states '{walkStateName}'/'{idleStateName}'. Add an 'IsWalking' bool + transitions if you prefer parameter control.");
+                GameLog.Info($"[NPCPatroller] '{name}': animator '{anim.runtimeAnimatorController?.name}' has no Speed/IsWalking parameter — driving walk via CrossFade to states '{walkStateName}'/'{idleStateName}'. Add an 'IsWalking' bool + transitions if you prefer parameter control.");
             }
             else if (!hasSpeedParam && !hasWalkingParam)
             {

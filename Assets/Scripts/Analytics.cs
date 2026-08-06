@@ -57,7 +57,7 @@ public static class Analytics
     [UnityEngine.Scripting.Preserve]
     public static void DumpToConsole()
     {
-        Debug.Log($"[Analytics] Buffer ({s_recent.Count} events):\n" + string.Join("\n", s_recent));
+        GameLog.Info($"[Analytics] Buffer ({s_recent.Count} events):\n" + string.Join("\n", s_recent));
     }
 
     // ---- Internals ----

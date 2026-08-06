@@ -307,7 +307,7 @@ public class AudioManager : MonoBehaviour
             else
                 loaded++;
         }
-        Debug.Log($"[AudioManager] Preloaded {loaded} FMOD event(s), {failed} failed to resolve.");
+        GameLog.Info($"[AudioManager] Preloaded {loaded} FMOD event(s), {failed} failed to resolve.");
     }
 
     private void LoadAudioSettings()

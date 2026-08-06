@@ -29,7 +29,7 @@ public class MissionInitializer : MonoBehaviour
         }
         else
         {
-            Debug.Log("<color=yellow>[Mission]</color> ��������� ������ ����� (�� � ���� � ��� ��������� ������).");
+            GameLog.Info("<color=yellow>[Mission]</color> ��������� ������ ����� (�� � ���� � ��� ��������� ������).");
         }
     }
 
@@ -69,7 +69,7 @@ public class MissionInitializer : MonoBehaviour
         currentRegionName = activeRegion.regionName;
         currentBiomeIndex = PlayerPrefs.GetInt("RegionBiomeType", 0);
 
-        Debug.Log($"<color=#00FF00>[Mission]</color> ��������� ��: {currentRegionName}. ���� ID: {currentBiomeIndex}");
+        GameLog.Info($"<color=#00FF00>[Mission]</color> ��������� ��: {currentRegionName}. ���� ID: {currentBiomeIndex}");
 
         // Start the per-run scoreboard (drives the death recap panel).
         // Reset counters + timer here so the recap shows THIS run's

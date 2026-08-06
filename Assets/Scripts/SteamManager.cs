@@ -41,7 +41,7 @@ public static class SteamManager
             s_running = false;
 #else
             s_running = false;
-            Debug.Log("[SteamManager] No Steamworks package present — running standalone. Achievements + Cloud are local-only stubs.");
+            GameLog.Info("[SteamManager] No Steamworks package present — running standalone. Achievements + Cloud are local-only stubs.");
 #endif
         }
         catch (System.Exception e)

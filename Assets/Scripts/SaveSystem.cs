@@ -59,7 +59,7 @@ public static class SaveSystem
         // changes and add explicit up-migrators here.
         if (s_cached.saveVersion < SAVE_VERSION)
         {
-            Debug.Log($"[SaveSystem] Migrating save {s_cached.saveVersion} → {SAVE_VERSION}");
+            GameLog.Info($"[SaveSystem] Migrating save {s_cached.saveVersion} → {SAVE_VERSION}");
             s_cached.saveVersion = SAVE_VERSION;
             Save();
         }
@@ -107,7 +107,7 @@ public static class SaveSystem
             tutorialCompleted = PlayerPrefs.GetInt("TutorialCompleted", 0) == 1,
             campTutorialPlayed = PlayerPrefs.GetInt("CampTutorialPlayed", 0) == 1,
         };
-        Debug.Log("[SaveSystem] Migrated legacy PlayerPrefs → JSON save.");
+        GameLog.Info("[SaveSystem] Migrated legacy PlayerPrefs → JSON save.");
         return save;
     }
 

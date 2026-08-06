@@ -156,7 +156,7 @@ public class SettingsAAATheme : MonoBehaviour
             { Slice(img, buttonPrimaryBg); continue; }
         }
 
-        Debug.Log("[Settings Theme] Applied current sprite slots to the panel.");
+        GameLog.Info("[Settings Theme] Applied current sprite slots to the panel.");
     }
 
     // For two-layer parts: spawn (or update) a sibling "Stroke" Image

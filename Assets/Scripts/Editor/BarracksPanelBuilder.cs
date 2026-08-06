@@ -72,7 +72,7 @@ public static class BarracksPanelBuilder
         if (hireRow != null) Object.DestroyImmediate(hireRow);
         if (upgradeRow != null) Object.DestroyImmediate(upgradeRow);
 
-        Debug.Log("[BarracksPanelBuilder] Built:\n  " + PanelPrefabPath + "\n  " + HireRowPath + "\n  " + UpgradeRowPath);
+        GameLog.Info("[BarracksPanelBuilder] Built:\n  " + PanelPrefabPath + "\n  " + HireRowPath + "\n  " + UpgradeRowPath);
         var asset = AssetDatabase.LoadAssetAtPath<GameObject>(PanelPrefabPath);
         if (asset != null) EditorGUIUtility.PingObject(asset);
     }

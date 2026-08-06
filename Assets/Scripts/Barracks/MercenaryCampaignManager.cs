@@ -321,7 +321,7 @@ public class MercenaryCampaignManager : MonoBehaviour
     {
         if (MercenaryRoster.Instance == null) { Debug.LogWarning("MercenaryRoster not present"); return; }
         for (int i = 0; i < 3; i++) MercenaryRoster.Instance.Hire("militia");
-        Debug.Log($"[Merc DEBUG] Hired 3 militia. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+        GameLog.Info($"[Merc DEBUG] Hired 3 militia. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
     }
 
     [ContextMenu("Debug/Hire 2 Ranger (free)")]
@@ -329,7 +329,7 @@ public class MercenaryCampaignManager : MonoBehaviour
     {
         if (MercenaryRoster.Instance == null) return;
         for (int i = 0; i < 2; i++) MercenaryRoster.Instance.Hire("ranger");
-        Debug.Log($"[Merc DEBUG] Hired 2 ranger. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+        GameLog.Info($"[Merc DEBUG] Hired 2 ranger. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
     }
 
     [ContextMenu("Debug/Hire 1 Knight (free)")]
@@ -337,7 +337,7 @@ public class MercenaryCampaignManager : MonoBehaviour
     {
         if (MercenaryRoster.Instance == null) return;
         MercenaryRoster.Instance.Hire("knight");
-        Debug.Log($"[Merc DEBUG] Hired 1 knight. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
+        GameLog.Info($"[Merc DEBUG] Hired 1 knight. Alive total: {MercenaryRoster.Instance.CountAliveTotal()}");
     }
 
     [ContextMenu("Debug/Send All Idle Units → First Auto-Battle Region")]
@@ -387,7 +387,7 @@ public class MercenaryCampaignManager : MonoBehaviour
                 if (MapProgressionManager.Instance != null)
                     MapProgressionManager.Instance.RefreshMapState();
                 target = lowest;
-                Debug.Log($"[Merc DEBUG] Force-unlocked '{target.regionName}' for testing.");
+                GameLog.Info($"[Merc DEBUG] Force-unlocked '{target.regionName}' for testing.");
             }
         }
 
@@ -405,7 +405,7 @@ public class MercenaryCampaignManager : MonoBehaviour
         if (uids.Count == 0) { Debug.LogWarning("[Merc DEBUG] No idle units — hire some first"); return; }
 
         var c = StartCampaign(target, uids, CampaignTactic.Assault);
-        Debug.Log($"[Merc DEBUG] Sent {uids.Count} units to '{target.regionName}'. Outbound {c.outboundDuration:F1}s, return {c.returnDuration:F1}s. Watch for OnCampaignResolved / OnCampaignReturned in the log.");
+        GameLog.Info($"[Merc DEBUG] Sent {uids.Count} units to '{target.regionName}'. Outbound {c.outboundDuration:F1}s, return {c.returnDuration:F1}s. Watch for OnCampaignResolved / OnCampaignReturned in the log.");
     }
 
     [ContextMenu("Debug/Fast-Forward Active Campaigns By 30s")]
@@ -421,7 +421,7 @@ public class MercenaryCampaignManager : MonoBehaviour
             c.startTimeBinary = current.Subtract(offset).ToBinary();
         }
         SaveCampaigns();
-        Debug.Log($"[Merc DEBUG] Fast-forwarded {active.Count} campaigns by 30 s.");
+        GameLog.Info($"[Merc DEBUG] Fast-forwarded {active.Count} campaigns by 30 s.");
     }
 
     [ContextMenu("Debug/Wipe Mercenary Save")]
@@ -435,7 +435,7 @@ public class MercenaryCampaignManager : MonoBehaviour
         PlayerPrefs.Save();
         active.Clear();
         nextCampaignID = 1;
-        Debug.Log("[Merc DEBUG] Wiped mercenary save. Restart Play mode to see roster reset.");
+        GameLog.Info("[Merc DEBUG] Wiped mercenary save. Restart Play mode to see roster reset.");
     }
 
     // --------- Persistence ---------

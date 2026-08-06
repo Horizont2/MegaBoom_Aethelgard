@@ -274,7 +274,7 @@ public class WorldMapArmyMarker : MonoBehaviour
             if (kv.Value != null) kv.Value.SetAsLastSibling();
         }
 
-        Debug.Log($"[WorldMapArmyMarker] Route line: {dashes.Count} dashes spawned for campaign {c.campaignID} (path pts={pts.Count}).");
+        GameLog.Info($"[WorldMapArmyMarker] Route line: {dashes.Count} dashes spawned for campaign {c.campaignID} (path pts={pts.Count}).");
     }
 
     // BFS through neighbouringRegions to find a corridor of Conquered

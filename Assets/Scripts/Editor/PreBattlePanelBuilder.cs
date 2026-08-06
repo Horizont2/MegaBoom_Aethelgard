@@ -48,7 +48,7 @@ public static class PreBattlePanelBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[PreBattlePanelBuilder] Built:\n  " + PanelPrefabPath + "\n  " + RowPrefabPath);
+        GameLog.Info("[PreBattlePanelBuilder] Built:\n  " + PanelPrefabPath + "\n  " + RowPrefabPath);
         var asset = AssetDatabase.LoadAssetAtPath<GameObject>(PanelPrefabPath);
         if (asset != null) EditorGUIUtility.PingObject(asset);
     }

@@ -105,7 +105,7 @@ public static class AchievementSystem
         // regardless of whether Steam overlay is enabled / offline mode.
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
-        Debug.Log($"[AchievementSystem] Unlocked '{key}': {def.title}");
+        GameLog.Info($"[AchievementSystem] Unlocked '{key}': {def.title}");
     }
 
     public static bool IsUnlocked(string key)

@@ -33,7 +33,7 @@ public class CampDirector : MonoBehaviour
         {
             PlayerPrefs.SetInt("TutorialCompleted", 1);
             PlayerPrefs.Save();
-            Debug.Log("[CampDirector] ������� ������ ������� �� ���������!");
+            GameLog.Info("[CampDirector] ������� ������ ������� �� ���������!");
         }
     }
 

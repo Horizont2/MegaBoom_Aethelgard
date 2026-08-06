@@ -103,6 +103,6 @@ public class ArmorIconGenerator : MonoBehaviour
         // Повертаємо тіло на місце
         if (baseCharacterMesh != null) baseCharacterMesh.SetActive(true);
 
-        Debug.Log($"<color=green>✅ ГОТОВО! Збережено 108 ідеально відцентрованих іконок у папку {folderName}</color>");
+        GameLog.Info($"<color=green>✅ ГОТОВО! Збережено 108 ідеально відцентрованих іконок у папку {folderName}</color>");
     }
 }

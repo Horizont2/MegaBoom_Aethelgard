@@ -37,7 +37,7 @@ public class WeatherController : MonoBehaviour
         {
             isSunny = !isSunny; // Перемикаємо стан
             timer = 0f;
-            Debug.Log("Weather changed! Is Sunny: " + isSunny);
+            GameLog.Info("Weather changed! Is Sunny: " + isSunny);
         }
 
         // Визначаємо цільові значення

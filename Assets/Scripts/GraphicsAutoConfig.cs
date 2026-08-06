@@ -25,7 +25,7 @@ public static class GraphicsAutoConfig
         PlayerPrefs.SetInt(PP_DONE, 1);
         PlayerPrefs.SetInt(PP_TIER, (int)tier);
         PlayerPrefs.Save();
-        Debug.Log($"[GraphicsAutoConfig] First launch — detected tier {tier} " +
+        GameLog.Info($"[GraphicsAutoConfig] First launch — detected tier {tier} " +
                   $"(GPU '{SystemInfo.graphicsDeviceName}', {SystemInfo.graphicsMemorySize}MB VRAM, " +
                   $"{SystemInfo.systemMemorySize}MB RAM, {SystemInfo.processorCount} threads). " +
                   "Applied recommended graphics settings.");

@@ -68,6 +68,6 @@ public static class LocalizationLiveRefresh
                 Debug.LogWarning($"[LocalizationLiveRefresh] {t.Name}.{method.Name}() threw: {e.Message}");
             }
         }
-        Debug.Log($"[LocalizationLiveRefresh] Language changed — refreshed {refreshed} panels.");
+        GameLog.Info($"[LocalizationLiveRefresh] Language changed — refreshed {refreshed} panels.");
     }
 }

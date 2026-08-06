@@ -81,7 +81,7 @@ public class MapResourceNode : MonoBehaviour, IPointerClickHandler
         if (isFull)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Error); // Звук помилки
-            Debug.Log($"<color=red>Склад для {resourceType} повний!</color> Витратьте ресурси.");
+            GameLog.Info($"<color=red>Склад для {resourceType} повний!</color> Витратьте ресурси.");
             // Тут можна додати UI підказку на екран (Pop-up) "STORAGE FULL"
             return;
         }

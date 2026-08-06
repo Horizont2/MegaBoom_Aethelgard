@@ -1771,7 +1771,7 @@ public class WorldGenerator : MonoBehaviour
 
         List<Vector3> allTargets = new List<Vector3>(roadTargets);
         allTargets.AddRange(deadEndTargets);
-        Debug.Log($"[Smart Roads] Починаємо генерацію. Цільових точок: {allTargets.Count}");
+        GameLog.Info($"[Smart Roads] Починаємо генерацію. Цільових точок: {allTargets.Count}");
 
         float cellSize = 8f;
         int gridW = Mathf.CeilToInt(mapW / cellSize);
@@ -1867,7 +1867,7 @@ public class WorldGenerator : MonoBehaviour
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
-        Debug.Log($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг.");
+        GameLog.Info($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг.");
     }
 
     private void PaintSandCircle(float[,,] splat, TerrainData td,
@@ -2500,7 +2500,7 @@ public class WorldGenerator : MonoBehaviour
             instance.transform.position += (Vector3.up * poi.settings.yOffset);
         }
 
-        Debug.Log($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
+        GameLog.Info($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
     }
 
     private float GetPOIClearanceRadius(GameObject prefab)
@@ -2835,7 +2835,7 @@ public class WorldGenerator : MonoBehaviour
         {
             Debug.LogWarning("⚠️ [Smart Roads] Масив 'Altar Prefabs' ПОРОЖНІЙ! Вівтарі не з'являться. Закинь префаб в Інспекторі!");
         }
-        Debug.Log($"[Smart Roads] Decor start — hasDecor={hasDecor} hasAltars={hasAltars} hasDeadEndFallback={hasDeadEndFallback} roadSplines={roadSplines.Count} deadEndTargets={deadEndTargets.Count}");
+        GameLog.Info($"[Smart Roads] Decor start — hasDecor={hasDecor} hasAltars={hasAltars} hasDeadEndFallback={hasDeadEndFallback} roadSplines={roadSplines.Count} deadEndTargets={deadEndTargets.Count}");
 
         foreach (SplineContainer sc in roadSplines)
         {
@@ -2928,7 +2928,7 @@ public class WorldGenerator : MonoBehaviour
                         Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
                         spawnedAltars++;
                         forbiddenZones.Add(grounded);
-                        Debug.Log($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {grounded} ({spawnedAltars}/{altarsAmount})");
+                        GameLog.Info($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {grounded} ({spawnedAltars}/{altarsAmount})");
                     }
                     else if (deadEndAssets != null && deadEndAssets.Length > 0)
                     {
@@ -2945,7 +2945,7 @@ public class WorldGenerator : MonoBehaviour
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
-        Debug.Log($"[Smart Roads] Decor done — altars {spawnedAltars}/{altarsAmount} spawned. deadEndTargets={deadEndTargets.Count} roadSplines={roadSplines.Count}.");
+        GameLog.Info($"[Smart Roads] Decor done — altars {spawnedAltars}/{altarsAmount} spawned. deadEndTargets={deadEndTargets.Count} roadSplines={roadSplines.Count}.");
 
         // Safety net — the dead-end matcher misses on maps where:
         //   * every dead-end target was rejected (steep terrain, water,
@@ -3006,7 +3006,7 @@ public class WorldGenerator : MonoBehaviour
                     Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
                     spawnedAltars++;
                     forbiddenZones.Add(grounded);
-                    Debug.Log($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
+                    GameLog.Info($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
                 }
                 if (spawnedAltars < altarsAmount)
                     Debug.LogWarning($"[Smart Roads] Fallback exhausted — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes).");

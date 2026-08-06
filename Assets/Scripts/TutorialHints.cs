@@ -85,12 +85,12 @@ public class TutorialHints : MonoBehaviour
         // request when the player has tutorials disabled. Default = on.
         if (PlayerPrefs.GetInt("Settings_TutorialHints", 1) != 1)
         {
-            if (verboseLogging) Debug.Log($"[TutorialHints] Skip '{key}' (disabled in settings).");
+            if (verboseLogging) GameLog.Info($"[TutorialHints] Skip '{key}' (disabled in settings).");
             return;
         }
         if (HasSeen(key))
         {
-            if (verboseLogging) Debug.Log($"[TutorialHints] Skip '{key}' (already seen).");
+            if (verboseLogging) GameLog.Info($"[TutorialHints] Skip '{key}' (already seen).");
             return;
         }
 
@@ -144,7 +144,7 @@ public class TutorialHints : MonoBehaviour
             }
         }
         PlayerPrefs.Save();
-        Debug.Log($"[TutorialHints] Reset {count} hint flag(s). All hints will replay on their next trigger.");
+        GameLog.Info($"[TutorialHints] Reset {count} hint flag(s). All hints will replay on their next trigger.");
     }
 
     private void Enqueue(HintRequest req)
@@ -199,7 +199,7 @@ public class TutorialHints : MonoBehaviour
             // Path 1: styled panel
             if (data != null && TutorialPanelUI.Instance != null)
             {
-                if (verboseLogging) Debug.Log($"[TutorialHints] Show '{req.key}' via TutorialPanelUI.");
+                if (verboseLogging) GameLog.Info($"[TutorialHints] Show '{req.key}' via TutorialPanelUI.");
                 TutorialPanelUI.Instance.Show(data);
 
                 float waitFor = data.waitForInput ? 60f : data.duration + 1f;

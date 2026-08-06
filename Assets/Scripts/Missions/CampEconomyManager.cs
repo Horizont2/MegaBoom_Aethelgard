@@ -66,6 +66,6 @@ public class CampEconomyManager : MonoBehaviour
         // ТУТ БУДЕ ВАШ КОД ДОДАВАННЯ РЕСУРСІВ (наприклад, звернення до ResourceManager)
         // ResourceManager.Instance.AddWood(totalWood);
 
-        Debug.Log($"[Economy] Зібрано пасивний дохід: Дерево +{totalWood}, Камінь +{totalStone}, Їжа +{totalFood}, Діаманти +{totalDiamonds}");
+        GameLog.Info($"[Economy] Зібрано пасивний дохід: Дерево +{totalWood}, Камінь +{totalStone}, Їжа +{totalFood}, Діаманти +{totalDiamonds}");
     }
 }

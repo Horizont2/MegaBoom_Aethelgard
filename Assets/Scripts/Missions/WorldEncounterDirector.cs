@@ -188,7 +188,7 @@ public class WorldEncounterDirector : MonoBehaviour
             placed++;
 
             if (logPlacements)
-                Debug.Log($"[WorldEncounter] Placed {(isCamp ? "camp" : "patrol")} at {candidate} ({placed}/{targetCount}) {(conqueredMode ? "[conquered]" : "")}");
+                GameLog.Info($"[WorldEncounter] Placed {(isCamp ? "camp" : "patrol")} at {candidate} ({placed}/{targetCount}) {(conqueredMode ? "[conquered]" : "")}");
 
             if ((placed % 3) == 0) yield return null;
         }

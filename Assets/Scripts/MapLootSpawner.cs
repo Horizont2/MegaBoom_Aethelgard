@@ -58,6 +58,6 @@ public class MapLootSpawner : MonoBehaviour
             if (attempts % 15 == 0) yield return null;
         }
 
-        Debug.Log($"[MapLootSpawner] Успішно розкидано {successfullySpawned} кристалів по мапі.");
+        GameLog.Info($"[MapLootSpawner] Успішно розкидано {successfullySpawned} кристалів по мапі.");
     }
 }
