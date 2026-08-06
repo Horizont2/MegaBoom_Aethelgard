@@ -1566,9 +1566,33 @@ public class WorldGenerator : MonoBehaviour
         GameObject camp = Instantiate(totemPrefab, finalSpawnPos, finalRot);
         camp.transform.SetParent(this.transform);
 
+        // Belt-and-braces: re-snap the INSTANTIATED totem by its real
+        // combined renderer bounds. The bottomOfCollider math only knows
+        // about a root BoxCollider; a totem whose collider/mesh is nested
+        // under a child still floated. Measuring the live instance's
+        // bounds grounds it regardless of hierarchy.
+        SnapInstanceToGround(camp, groundYAfterFlatten + locationYOffset);
+
         spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
         roadTargets.Add(spawnedTotemPos);
+    }
+
+    // Snap an instantiated object so the bottom of its combined renderer
+    // bounds sits at `targetGroundY`. No-op if it has no renderers.
+    private void SnapInstanceToGround(GameObject go, float targetGroundY)
+    {
+        if (go == null) return;
+        Renderer[] rends = go.GetComponentsInChildren<Renderer>(true);
+        if (rends.Length == 0) return;
+        Bounds b = rends[0].bounds;
+        for (int i = 1; i < rends.Length; i++)
+        {
+            if (rends[i] is ParticleSystemRenderer) continue; // skip VFX
+            b.Encapsulate(rends[i].bounds);
+        }
+        float delta = targetGroundY - b.min.y;
+        go.transform.position += new Vector3(0f, delta, 0f);
     }
 
     // Returns how far the prefab's pivot sits above the lowest point of its

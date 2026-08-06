@@ -187,8 +187,18 @@ public class CampGuideDirector : MonoBehaviour
         if (mapTable != null) mapT = mapTable.transform;
 
         Transform barracksT = null;
+        string barracksKey = "SaveBld_Barracks";
         var barracks = FindFirstObjectByType<BarracksBuilding>();
-        if (barracks != null) barracksT = barracks.transform;
+        if (barracks != null)
+        {
+            barracksT = barracks.transform;
+            // Same save-key-derivation fix as storage: the companion
+            // CampBuilding's real buildingID drives the key so the step
+            // credits even if the ID isn't literally "Barracks".
+            var barracksCB = barracks.GetComponent<CampBuilding>();
+            if (barracksCB != null && !string.IsNullOrEmpty(barracksCB.buildingID))
+                barracksKey = "SaveBld_" + barracksCB.buildingID;
+        }
 
         // Distinct targets per step — the earlier version pointed BOTH the
         // "talk to Elias" and "upgrade lodge" steps at Elias, so after the
@@ -203,7 +213,17 @@ public class CampGuideDirector : MonoBehaviour
             Debug.LogWarning("[CampGuideDirector] Couldn't find the Scout's Lodge building (no CampBuilding with buildingID 'ScoutsLodge' or a name containing 'lodge'). The 'upgrade lodge' step will have no trail. Set the building's buildingID to 'ScoutsLodge'.");
 
         // Additional targets for the extended step chain.
-        Transform storageT = FindBuildingTransform("StorageVault") ?? FindBuildingByName("storage");
+        // Resolve the storage building as a CampBuilding so we can derive
+        // its ACTUAL save key ("SaveBld_" + buildingID). Hardcoding
+        // "SaveBld_StorageVault" broke the step whenever the building's
+        // buildingID wasn't literally "StorageVault" (it was found via
+        // the fuzzy name fallback, but the key check never matched its
+        // real save key, so the step never credited).
+        CampBuilding storageB = FindBuilding("StorageVault", "storage", "vault");
+        Transform storageT = storageB != null ? storageB.transform : null;
+        string storageKey = (storageB != null && !string.IsNullOrEmpty(storageB.buildingID))
+            ? "SaveBld_" + storageB.buildingID
+            : "SaveBld_StorageVault";
         Transform noticeT = FindNoticeBoard();
         Transform shopT = FindShop();
 
@@ -219,12 +239,14 @@ public class CampGuideDirector : MonoBehaviour
         steps.Add(new GuideStep { promptKey = "GUIDE_USE_MAP_TABLE",  target = mapT,      playerPrefsKey = "MapOpenedOnce",         requiredValue = 1 });
         // 4. Conquer the first (hand-built) region — R1 Old Lumberyard
         steps.Add(new GuideStep { promptKey = "GUIDE_CONQUER_FIRST",  target = mapT,      playerPrefsKey = "TotalConqueredRegions", requiredValue = 1 });
-        // 5. Build the storage vault so more resource capacity unlocks
-        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_STORAGE",  target = storageT,  playerPrefsKey = "SaveBld_StorageVault",  requiredValue = 1 });
+        // 5. Build the storage vault so more resource capacity unlocks.
+        //    Key derived from the real building above, not hardcoded.
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_STORAGE",  target = storageT,  playerPrefsKey = storageKey,  requiredValue = 1 });
         // 6. Check the notice board for daily missions (extra income)
         steps.Add(new GuideStep { promptKey = "GUIDE_NOTICE_BOARD",   target = noticeT,   playerPrefsKey = "HasInteractedWithBoard", requiredValue = 1 });
-        // 7. Build the barracks — unlocks the mercenary system
-        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = "SaveBld_Barracks",      requiredValue = 1 });
+        // 7. Build the barracks — unlocks the mercenary system.
+        //    Key derived from the real building above, not hardcoded.
+        steps.Add(new GuideStep { promptKey = "GUIDE_BUILD_BARRACKS", target = barracksT, playerPrefsKey = barracksKey,      requiredValue = 1 });
         // 8. Hire your first mercenary (any type — Roster.CountAliveTotal>=1)
         steps.Add(new GuideStep { promptKey = "GUIDE_HIRE_MERC",      target = barracksT, playerPrefsKey = "MercFirstHired",        requiredValue = 1 });
         // 9. Send an army to an auto-battle region
@@ -266,6 +288,29 @@ public class CampGuideDirector : MonoBehaviour
         foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (b != null && b.buildingID == buildingID) return b.transform;
+        }
+        return null;
+    }
+
+    // Returns the CampBuilding (not just its Transform) matching an
+    // exact buildingID first, then any of the fuzzy name/ID fragments.
+    // Lets callers read the real buildingID for save-key derivation.
+    private CampBuilding FindBuilding(string exactId, params string[] nameFragments)
+    {
+        var all = FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var b in all)
+            if (b != null && b.buildingID == exactId) return b;
+        foreach (var b in all)
+        {
+            if (b == null) continue;
+            string nm = b.name.ToLowerInvariant();
+            string id = (b.buildingID ?? "").ToLowerInvariant();
+            string dn = (b.buildingName ?? "").ToLowerInvariant();
+            foreach (var frag in nameFragments)
+            {
+                string f = frag.ToLowerInvariant();
+                if (nm.Contains(f) || id.Contains(f) || dn.Contains(f)) return b;
+            }
         }
         return null;
     }

@@ -59,8 +59,41 @@ public class RoadsideAltar : MonoBehaviour
         if (purifiedVFX != null) purifiedVFX.SetActive(false);
         if (altarLight != null) altarLight.color = idleColor;
 
+        // Self-ground on spawn. WorldGenerator.GroundPrefabToTerrain only
+        // measures the ROOT collider / renderer, so an altar whose mesh or
+        // collider is nested under a child (common) floated at pivot
+        // height. Here we measure the ACTUAL instantiated bounds (all
+        // child renderers) and snap the bottom onto the terrain — robust
+        // regardless of prefab pivot or hierarchy.
+        SnapToTerrain();
+
+        // Loud one-shot config check — the #1 reason an altar "doesn't
+        // summon a boss" is an empty bossPrefabs array on the prefab.
+        if (bossPrefabs == null || bossPrefabs.Length == 0)
+            Debug.LogWarning($"[RoadsideAltar] '{name}' has NO bossPrefabs wired — activating it will purify with no fight. Assign at least one boss prefab on the altar prefab in the Inspector.");
+
         var pObj = GameObject.FindGameObjectWithTag("Player");
         if (pObj != null) player = pObj.transform;
+    }
+
+    private void SnapToTerrain()
+    {
+        Terrain terrain = Terrain.activeTerrain;
+        if (terrain == null) return;
+
+        // Combined world-space bounds of every renderer on the altar.
+        Renderer[] rends = GetComponentsInChildren<Renderer>(true);
+        if (rends.Length == 0) return;
+        Bounds b = rends[0].bounds;
+        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+
+        float groundY = terrain.SampleHeight(transform.position) + terrain.transform.position.y;
+        // How far the altar's lowest visible point sits above its pivot.
+        float pivotToBottom = transform.position.y - b.min.y;
+        // Place the pivot so the bottom lands exactly on the ground.
+        Vector3 p = transform.position;
+        p.y = groundY + pivotToBottom;
+        transform.position = p;
     }
 
     private void Update()

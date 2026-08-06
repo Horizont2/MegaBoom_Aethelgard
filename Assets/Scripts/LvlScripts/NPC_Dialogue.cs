@@ -48,11 +48,16 @@ public class NPC_Dialogue : MonoBehaviour
             // ��������� ���� ������, �� ����� ���������
             if (questMarker != null) questMarker.SetActive(false);
 
-            // ��������� ������ �� ������
-            Transform player = GameObject.FindGameObjectWithTag("Player").transform;
-            Vector3 lookPos = player.position - transform.position;
-            lookPos.y = 0;
-            transform.rotation = Quaternion.LookRotation(lookPos);
+            // ��������� ������ �� ������ — null-guard so a destroyed /
+            // absent player entity doesn't NRE and abort the dialogue.
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+            {
+                Vector3 lookPos = playerObj.transform.position - transform.position;
+                lookPos.y = 0;
+                if (lookPos.sqrMagnitude > 0.001f)
+                    transform.rotation = Quaternion.LookRotation(lookPos);
+            }
 
             // ���������� Ĳ����
             if (Level1_QuestManager.Instance != null)
