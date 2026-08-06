@@ -51,6 +51,8 @@ public class CampBuilding : MonoBehaviour
     public Image holdFillImage;
     public float holdTimeRequired = 1.5f;
     private float currentHoldTime = 0f;
+    // Only-if-changed cache for the [E] hold percentage TMP write.
+    private int lastHoldPercentDisplayed = -1;
     private bool isPanelOpen = false;
 
     [Header("UI Text References")]
@@ -237,23 +239,24 @@ public class CampBuilding : MonoBehaviour
 
             if (isAnimating) return;
 
-            // 3. Перевірка завершення апгрейду
-            if (PlayerPrefs.GetInt("UpgradeFinished_" + buildingID, 0) == 1)
+            // 3. Перевірка завершення апгрейду — cached key path avoids
+            //    "UpgradeFinished_" + buildingID string concat every frame.
+            if (PlayerPrefs.GetInt(ppKey_UpgradeFinished, 0) == 1)
             {
-                PlayerPrefs.SetInt("UpgradeFinished_" + buildingID, 0);
+                PlayerPrefs.SetInt(ppKey_UpgradeFinished, 0);
                 StartCoroutine(CompleteUpgradeSequence(currentLevel + 1));
                 return;
             }
 
             // 4. Активний процес апгрейду (анімація побудови)
-            if (PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 1)
+            if (PlayerPrefs.GetInt(ppKey_IsUpgrading, 0) == 1)
             {
                 if (isPanelOpen) ClosePanel();
 
                 if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
                 if (upgradeGlimmer != null && upgradeGlimmer.activeSelf) upgradeGlimmer.SetActive(false);
 
-                string startTimeStr = PlayerPrefs.GetString("UpgradeStart_" + buildingID, "");
+                string startTimeStr = PlayerPrefs.GetString(ppKey_UpgradeStart, "");
                 if (long.TryParse(startTimeStr, out long startTimeBin))
                 {
                     DateTime startTime = DateTime.FromBinary(startTimeBin);
@@ -306,7 +309,7 @@ public class CampBuilding : MonoBehaviour
             if (!playerInRange) return;
 
             // 7. Показ підказки [F]
-            if (!isPanelOpen && PlayerPrefs.GetInt("IsUpgrading_" + buildingID, 0) == 0)
+            if (!isPanelOpen && PlayerPrefs.GetInt(ppKey_IsUpgrading, 0) == 0)
             {
                 if (GlobalHUD.Instance != null)
                 {
@@ -331,7 +334,18 @@ public class CampBuilding : MonoBehaviour
                     float fillRatio = holdTimeRequired > 0 ? currentHoldTime / holdTimeRequired : 1f;
 
                     if (holdFillImage != null) holdFillImage.fillAmount = fillRatio;
-                    if (progressTMP != null) progressTMP.text = $"{(int)(fillRatio * 100)}%";
+                    if (progressTMP != null)
+                    {
+                        // Only rewrite when the displayed integer percent
+                        // changes — a per-frame string alloc + TMP relayout
+                        // was one of the top HUD GC spikes.
+                        int pct = (int)(fillRatio * 100);
+                        if (pct != lastHoldPercentDisplayed)
+                        {
+                            lastHoldPercentDisplayed = pct;
+                            progressTMP.text = pct + "%";
+                        }
+                    }
 
                     if (currentHoldTime >= holdTimeRequired)
                     {

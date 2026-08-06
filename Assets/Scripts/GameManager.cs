@@ -121,11 +121,22 @@ public class GameManager : MonoBehaviour
 
         if (timerText != null)
         {
-            int minutes = Mathf.FloorToInt(survivalTime / 60f);
-            int seconds = Mathf.FloorToInt(survivalTime % 60f);
-            timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+            // Only rewrite the TMP when the displayed whole-second value
+            // actually changes. Previously wrote every frame — 60 string
+            // allocs + TMP relayouts per second for a display that only
+            // ticks once per second.
+            int totalSec = Mathf.FloorToInt(survivalTime);
+            if (totalSec != lastTimerSecond)
+            {
+                lastTimerSecond = totalSec;
+                int minutes = totalSec / 60;
+                int seconds = totalSec % 60;
+                timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+            }
         }
     }
+
+    private int lastTimerSecond = -1;
 
     public void StartLevelTimer()
     {

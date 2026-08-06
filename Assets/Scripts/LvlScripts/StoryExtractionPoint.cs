@@ -274,29 +274,41 @@ public class StoryExtractionPoint : MonoBehaviour
 
     private IEnumerator HeavyImpactRoutine(Vector3 horseDirection)
     {
+        // Snapshot timescale so we can restore whatever the caller had —
+        // usually 1.0, but a nested cutscene could have set 0. try/finally
+        // ensures the restore runs even if the coroutine is StopCoroutine'd
+        // (scene reload / player death) mid-lerp — used to leave the
+        // game frozen at 0.15× forever.
+        float savedTimeScale = Time.timeScale;
         Time.timeScale = 0.15f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_HitResource);
 
-        float duration = 0.6f;
-        float elapsed = 0f;
-
-        Vector3 impactPush = horseDirection * 0.8f - Vector3.up * 0.3f;
-
-        while (elapsed < duration)
+        try
         {
-            elapsed += Time.unscaledDeltaTime;
-            float t = elapsed / duration;
+            float duration = 0.6f;
+            float elapsed = 0f;
 
-            float springWobble = Mathf.Exp(-t * 6f) * Mathf.Sin(t * Mathf.PI * 12f);
+            Vector3 impactPush = horseDirection * 0.8f - Vector3.up * 0.3f;
 
-            shakePosOffset = impactPush * springWobble;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = elapsed / duration;
 
-            yield return null;
+                float springWobble = Mathf.Exp(-t * 6f) * Mathf.Sin(t * Mathf.PI * 12f);
+
+                shakePosOffset = impactPush * springWobble;
+
+                yield return null;
+            }
+
+            shakePosOffset = Vector3.zero;
         }
-
-        shakePosOffset = Vector3.zero;
-        Time.timeScale = 1f;
+        finally
+        {
+            Time.timeScale = savedTimeScale > 0.01f ? savedTimeScale : 1f;
+        }
     }
 
     private void CreateCinematicUI()

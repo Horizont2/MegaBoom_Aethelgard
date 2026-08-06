@@ -17,7 +17,7 @@ public class TotemMinimapTracker : MonoBehaviour
 
     private Dictionary<RegionTotem, RectTransform> totemIcons = new Dictionary<RegionTotem, RectTransform>();
 
-    // ФІКС ОПТИМІЗАЦІЇ: Кешуємо тотеми
+    // ФІпїЅпїЅ пїЅпїЅпїЅпїЅМІпїЅпїЅЦІпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     private RegionTotem[] cachedTotems;
     private float searchTimer = 0f;
 
@@ -37,21 +37,23 @@ public class TotemMinimapTracker : MonoBehaviour
     {
         if (player == null || minimapCamera == null || minimapRect == null || totemIconPrefab == null) return;
 
-        // ОПТИМІЗАЦІЯ: Шукаємо тотеми раз на секунду, а не 100 разів на секунду
-        if (cachedTotems == null || cachedTotems.Length == 0)
+        // Refresh cache every 1s regardless of whether it's populated вЂ”
+        // totems can spawn LATE (WorldGenerator finishes scene layout in
+        // a coroutine, and RegionManager can add extra totems after
+        // conquering neighbours). The old "only refresh while empty"
+        // guard meant totems spawned after the first successful cache
+        // never appeared on the minimap.
+        searchTimer -= Time.deltaTime;
+        if (searchTimer <= 0f)
         {
-            searchTimer -= Time.deltaTime;
-            if (searchTimer <= 0f)
-            {
-                cachedTotems = FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
-                searchTimer = 1f;
-            }
-            if (cachedTotems == null || cachedTotems.Length == 0) return;
+            cachedTotems = FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
+            searchTimer = 1f;
         }
+        if (cachedTotems == null || cachedTotems.Length == 0) return;
 
-        // ФІКС МАПИ: Використовуємо rect.width замість sizeDelta, щоб ігнорувати якір Маски
+        // ФІпїЅпїЅ пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ rect.width пїЅпїЅпїЅпїЅпїЅпїЅ sizeDelta, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         float mapWidth = minimapRect.rect.width;
-        if (mapWidth == 0) mapWidth = 200f; // Запобіжник
+        if (mapWidth == 0) mapWidth = 200f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         minimapRadius = (mapWidth / 2f) - iconMargin;
 
         float unitsInView;

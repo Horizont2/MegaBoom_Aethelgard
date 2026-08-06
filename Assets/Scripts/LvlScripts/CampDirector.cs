@@ -105,10 +105,16 @@ public class CampDirector : MonoBehaviour
 
     private void SetCinematicMode(bool isCinematic)
     {
-        CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
+        // Guard Camera.main — a pause/cinematic scene can disable it,
+        // and NRE'ing here aborts SetCinematicMode leaving both mode
+        // flags in the wrong state (cinematic locks stay stuck).
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        CameraFollow cf = cam.GetComponent<CameraFollow>();
         if (cf != null) cf.isCinematicMode = isCinematic;
 
-        CameraCollision cc = Camera.main.GetComponent<CameraCollision>();
+        CameraCollision cc = cam.GetComponent<CameraCollision>();
         if (cc != null) cc.isCinematicMode = isCinematic;
     }
 
@@ -137,14 +143,18 @@ public class CampDirector : MonoBehaviour
         if (player != null) player.isControlBlocked = false; if (player != null) player.enabled = true;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        var brain = Camera.main.GetComponent<CinemachineBrain>();
-        if (brain != null) brain.enabled = false;
-
-        CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
-        if (cf != null)
+        Camera cam2 = Camera.main;
+        if (cam2 != null)
         {
-            Vector3 currentRot = Camera.main.transform.eulerAngles;
-            cf.SyncRotation(currentRot.y, currentRot.x);
+            var brain = cam2.GetComponent<CinemachineBrain>();
+            if (brain != null) brain.enabled = false;
+
+            CameraFollow cf = cam2.GetComponent<CameraFollow>();
+            if (cf != null)
+            {
+                Vector3 currentRot = cam2.transform.eulerAngles;
+                cf.SyncRotation(currentRot.y, currentRot.x);
+            }
         }
 
         SetCinematicMode(false);

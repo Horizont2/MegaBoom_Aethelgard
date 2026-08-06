@@ -131,7 +131,12 @@ public class MapPanelUI : MonoBehaviour
         currentRegionPos = regionWorldPosition;
         PopulateData();
 
-        Vector3 viewportPos = Camera.main.WorldToViewportPoint(regionWorldPosition);
+        // Guard — Camera.main can be null when the map opens from a
+        // pause/cinematic scene that disables the main camera. NRE
+        // used to abort MapPanelUI mid-open, leaving the panel half-
+        // configured and the player unable to close it.
+        Camera cam = Camera.main;
+        Vector3 viewportPos = cam != null ? cam.WorldToViewportPoint(regionWorldPosition) : new Vector3(0.5f, 0.5f, 0f);
         bool putPanelOnRight = viewportPos.x < 0.5f;
 
         Vector2 hiddenPos, visiblePos;

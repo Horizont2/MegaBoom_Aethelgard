@@ -1,12 +1,12 @@
 using UnityEngine;
-using UnityEngine.UI; // Обов'язково для роботи з Image!
+using UnityEngine.UI; // пїЅпїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ Image!
 
 public class BuildingIndicator : MonoBehaviour
 {
     [Header("Settings")]
-    public float visibleDistance = 20f; // З якої відстані починає з'являтися
+    public float visibleDistance = 20f; // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    [Tooltip("Наскільки точно треба дивитись на об'єкт (1 = ідеально по центру, 0.5 = можна краєм ока)")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ (1 = пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, 0.5 = пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ)")]
     [Range(0.1f, 1f)]
     public float lookThreshold = 0.7f;
 
@@ -18,7 +18,7 @@ public class BuildingIndicator : MonoBehaviour
         mainCam = Camera.main;
         iconImage = GetComponent<Image>();
 
-        // Робимо іконку невидимою на старті
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (iconImage != null)
         {
             Color c = iconImage.color;
@@ -31,35 +31,49 @@ public class BuildingIndicator : MonoBehaviour
     {
         if (mainCam == null || iconImage == null) return;
 
-        // 1. Перевіряємо дистанцію від камери до іконки
-        float dist = Vector3.Distance(transform.position, mainCam.transform.position);
+        // Cache camera transform reads вЂ” every property access on the
+        // Transform component goes through a native marshal boundary.
+        Transform camT = mainCam.transform;
+        Vector3 camPos = camT.position;
+        Vector3 camFwd = camT.forward;
 
-        // 2. Перевіряємо, чи ДИВИТЬСЯ камера на будівлю (Dot Product)
-        Vector3 dirToIcon = (transform.position - mainCam.transform.position).normalized;
-        float lookDot = Vector3.Dot(mainCam.transform.forward, dirToIcon);
+        // Squared-distance range check first вЂ” avoids the sqrt in
+        // Vector3.Distance until we know we're actually close enough
+        // to potentially render the icon. Applied per-indicator per-
+        // frame, so it stacks with N buildings.
+        Vector3 delta = transform.position - camPos;
+        float sqrDist = delta.sqrMagnitude;
+        float visSqr = visibleDistance * visibleDistance;
 
         float targetAlpha = 0f;
-
-        // Якщо ми достатньо близько І дивимось у бік будівлі
-        if (dist <= visibleDistance && lookDot >= lookThreshold)
+        if (sqrDist <= visSqr)
         {
-            // Прозорість від дистанції (чим ближче, тим чіткіше)
-            float distAlpha = Mathf.Clamp01((visibleDistance - dist) / 5f);
-
-            // Прозорість від погляду (якщо дивимось прямо - 100% видно, якщо відвертаємось - плавно зникає)
-            float lookAlpha = Mathf.Clamp01((lookDot - lookThreshold) / (1f - lookThreshold));
-
-            // Беремо найменше значення, щоб обидва фактори працювали гармонійно
-            targetAlpha = Mathf.Min(distAlpha, lookAlpha);
+            float dist = Mathf.Sqrt(sqrDist);
+            // Dot product with the un-normalised delta / dist вЂ” one
+            // division instead of a full Vector3.Normalize().
+            float lookDot = Vector3.Dot(camFwd, delta / dist);
+            if (lookDot >= lookThreshold)
+            {
+                float distAlpha = Mathf.Clamp01((visibleDistance - dist) / 5f);
+                float lookAlpha = Mathf.Clamp01((lookDot - lookThreshold) / (1f - lookThreshold));
+                targetAlpha = Mathf.Min(distAlpha, lookAlpha);
+            }
         }
 
-        // 3. Застосовуємо плавну зміну прозорості (Lerp робить це дуже м'яко)
+        // Smoothed alpha вЂ” only write to the Image when it actually
+        // changes to skip a redundant Canvas dirty.
         Color c = iconImage.color;
-        c.a = Mathf.Lerp(c.a, targetAlpha, Time.deltaTime * 8f);
-        iconImage.color = c;
+        float newA = Mathf.Lerp(c.a, targetAlpha, Time.deltaTime * 8f);
+        if (Mathf.Abs(newA - c.a) > 0.005f)
+        {
+            c.a = newA;
+            iconImage.color = c;
+        }
 
-        // 4. Ефект Білборду (іконка завжди повертається лицем до екрану гравця)
-        transform.LookAt(transform.position + mainCam.transform.rotation * Vector3.forward,
-                         mainCam.transform.rotation * Vector3.up);
+        // Face-the-camera billboard. LookAt is fine here; the cost is
+        // trivial next to the Canvas rebuild the color write triggers.
+        // Using cached camT to avoid a second Component-property fetch.
+        Quaternion camRot = camT.rotation;
+        transform.LookAt(transform.position + camRot * Vector3.forward, camRot * Vector3.up);
     }
 }
