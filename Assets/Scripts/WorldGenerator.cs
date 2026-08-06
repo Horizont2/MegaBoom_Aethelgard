@@ -1550,7 +1550,15 @@ public class WorldGenerator : MonoBehaviour
         yield return new WaitForFixedUpdate();
         yield return new WaitForFixedUpdate();
 
-        float finalY = exactGroundY - bottomOfCollider + locationYOffset;
+        // Re-sample the terrain height AT the totem's XZ AFTER the flatten
+        // + Flush + collider rebuild. Using the pre-flatten `exactGroundY`
+        // was the intermittent air-spawn cause: FlattenTerrainRobust can
+        // settle the pad a fraction of a metre off its target (heightmap
+        // quantisation + neighbour blending), so the pre-flatten sample no
+        // longer matches the real ground the totem sits on. Post-flatten
+        // sampling grounds it every time.
+        float groundYAfterFlatten = terrain.SampleHeight(centerPos) + transform.position.y;
+        float finalY = groundYAfterFlatten - bottomOfCollider + locationYOffset;
         Vector3 finalSpawnPos = new Vector3(centerPos.x, finalY, centerPos.z);
         Quaternion randomRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
         Quaternion finalRot = randomRot * totemPrefab.transform.rotation;
@@ -2929,47 +2937,60 @@ public class WorldGenerator : MonoBehaviour
         if (hasAltars && spawnedAltars < altarsAmount && roadSplines.Count > 0)
         {
             Debug.LogWarning($"[Smart Roads] Only {spawnedAltars}/{altarsAmount} dead-end altars matched. Falling back to random-spline placement for the remaining {altarsAmount - spawnedAltars}.");
-            int fallbackAttempts = 0;
-            int fallbackMax = (altarsAmount - spawnedAltars) * 30;
-            while (spawnedAltars < altarsAmount && fallbackAttempts++ < fallbackMax)
+            // Wrap the whole fallback in try/catch — an exception here
+            // (null spline, GroundPrefabToTerrain edge case) must NOT
+            // kill the parent GenerateWorld coroutine, or IsGenerationDone
+            // never gets set and the survival timer freezes at 00:00.
+            try
             {
-                // Fully-qualify UnityEngine.Random — the file also
-                // imports Unity.Mathematics, whose Random type
-                // collides with UnityEngine.Random on unqualified use.
-                SplineContainer sc = roadSplines[UnityEngine.Random.Range(0, roadSplines.Count)];
-                float len = sc.CalculateLength();
-                if (len < 20f) continue;
-                // Sample somewhere along the middle of the spline, then
-                // step OFF the road by ~roadWidth.
-                float sample = UnityEngine.Random.Range(0.25f, 0.75f);
-                sc.Evaluate(sample, out float3 p, out float3 tan, out float3 up);
-                Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
-                Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
-                Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
-                float side = UnityEngine.Random.value > 0.5f ? 1f : -1f;
-                Vector3 spawnPos = wPos + right * side * (roadWidth * 1.4f);
-
-                // Basic map-edge + water + slope + forbidden-zone guards
-                if (spawnPos.x < transform.position.x + 30f || spawnPos.x > transform.position.x + mapW - 30f) continue;
-                if (spawnPos.z < transform.position.z + 30f || spawnPos.z > transform.position.z + mapL - 30f) continue;
-                spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
-                if (spawnPos.y <= absWaterH + 2f) continue;
-                bool nearForbidden = false;
-                for (int k = 0; k < forbiddenZones.Count; k++)
+                int fallbackAttempts = 0;
+                int fallbackMax = (altarsAmount - spawnedAltars) * 30;
+                while (spawnedAltars < altarsAmount && fallbackAttempts++ < fallbackMax)
                 {
-                    if (Vector3.Distance(spawnPos, forbiddenZones[k]) < 25f) { nearForbidden = true; break; }
-                }
-                if (nearForbidden) continue;
+                    // Fully-qualify UnityEngine.Random — the file also
+                    // imports Unity.Mathematics, whose Random type
+                    // collides with UnityEngine.Random on unqualified use.
+                    SplineContainer sc = roadSplines[UnityEngine.Random.Range(0, roadSplines.Count)];
+                    if (sc == null || sc.Spline == null) continue;
+                    float len = sc.CalculateLength();
+                    if (len < 20f) continue;
+                    // Sample somewhere along the middle of the spline, then
+                    // step OFF the road by ~roadWidth.
+                    float sample = UnityEngine.Random.Range(0.25f, 0.75f);
+                    sc.Evaluate(sample, out float3 p, out float3 tan, out float3 up);
+                    Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
+                    Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
+                    Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
+                    float side = UnityEngine.Random.value > 0.5f ? 1f : -1f;
+                    Vector3 spawnPos = wPos + right * side * (roadWidth * 1.4f);
 
-                GameObject prefab = GetRandomPrefab(altarPrefabs);
-                Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
-                Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
-                spawnedAltars++;
-                forbiddenZones.Add(grounded);
-                Debug.Log($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
+                    // Basic map-edge + water + slope + forbidden-zone guards
+                    if (spawnPos.x < transform.position.x + 30f || spawnPos.x > transform.position.x + mapW - 30f) continue;
+                    if (spawnPos.z < transform.position.z + 30f || spawnPos.z > transform.position.z + mapL - 30f) continue;
+                    spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
+                    if (spawnPos.y <= absWaterH + 2f) continue;
+                    bool nearForbidden = false;
+                    for (int k = 0; k < forbiddenZones.Count; k++)
+                    {
+                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < 25f) { nearForbidden = true; break; }
+                    }
+                    if (nearForbidden) continue;
+
+                    GameObject prefab = GetRandomPrefab(altarPrefabs);
+                    if (prefab == null) continue;
+                    Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
+                    Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
+                    spawnedAltars++;
+                    forbiddenZones.Add(grounded);
+                    Debug.Log($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
+                }
+                if (spawnedAltars < altarsAmount)
+                    Debug.LogWarning($"[Smart Roads] Fallback exhausted — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes).");
             }
-            if (spawnedAltars < altarsAmount)
-                Debug.LogWarning($"[Smart Roads] Fallback exhausted after {fallbackAttempts} attempts — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes) for the requested count.");
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Smart Roads] Altar fallback threw — swallowed to keep generation alive: {e.Message}");
+            }
         }
     }
 }

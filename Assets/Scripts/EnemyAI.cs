@@ -77,9 +77,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private PlayerController playerTarget;
     private Animator animator;
     private bool isDead = false;
-    // Handle for the aggro / roar loop so we can fade it out when the
-    // enemy dies mid-roar. -1 = no active handle.
-    private int agroSfxHandle = -1;
+    // ONE tracked handle for the enemy's current combat vocal — the
+    // aggro roar OR the attack-telegraph growl. Both are long-ish clips
+    // that used to keep ringing off the corpse when the enemy was
+    // killed mid-sound. Playing a new vocal stops the previous one, so
+    // only a single growl is ever live per enemy; Die() + OnDisable
+    // fade it out. -1 = nothing playing.
+    private int vocalSfxHandle = -1;
     // Dedupe cooldown for Enemy_Attack — prevents the swing sound from
     // firing twice on the same frame when animator events and the
     // aggro coroutine both trigger it.
@@ -193,13 +197,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         ActiveEnemiesCount--;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
-        // Kill any live roar loop when the enemy is pooled / despawned
+        // Kill any live combat vocal when the enemy is pooled / despawned
         // outside of Die() — same principle as the corpse fadeout.
-        if (agroSfxHandle != -1 && AudioManager.Instance != null)
-        {
-            AudioManager.Instance.StopLoopingSFX(agroSfxHandle, 0.15f);
-            agroSfxHandle = -1;
-        }
+        StopVocal(0.1f);
     }
 
     private static void OnActiveSceneChanged(UnityEngine.SceneManagement.Scene a, UnityEngine.SceneManagement.Scene b)
@@ -641,15 +641,30 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // space. If the FMOD event has no spatializer authored, add a
         // "3D Panner" preset in FMOD Studio; the position we pass will
         // then attenuate distance and pan by direction.
-        if (AudioManager.Instance != null)
+        PlayVocal(AudioID.Enemy_Agro);
+    }
+
+    // Plays a tracked 3D vocal on the enemy, stopping whatever vocal was
+    // already playing first — guarantees at most one growl per enemy and
+    // gives Die()/OnDisable a single handle to cut. Falls back to a
+    // fire-and-forget one-shot if the looping variant is unavailable
+    // (missing FMOD event) so the sound still plays; that fallback can't
+    // be stopped, but it's the degraded path, not the norm.
+    private void PlayVocal(string audioId)
+    {
+        if (AudioManager.Instance == null) return;
+        StopVocal(0.05f);
+        vocalSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(audioId, transform);
+        if (vocalSfxHandle == -1)
+            AudioManager.Instance.PlaySFX3D(audioId, transform.position);
+    }
+
+    private void StopVocal(float fadeSeconds)
+    {
+        if (vocalSfxHandle != -1 && AudioManager.Instance != null)
         {
-            // Play as tracked instance so Die() can fade it out — the
-            // roar clip is multi-second, and a fire-and-forget PlayOneShot
-            // kept ringing off the corpse. Falls back to one-shot if the
-            // looping variant returns -1 (missing FMOD event).
-            agroSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Enemy_Agro, transform);
-            if (agroSfxHandle == -1)
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Agro, transform.position);
+            AudioManager.Instance.StopLoopingSFX(vocalSfxHandle, fadeSeconds);
+            vocalSfxHandle = -1;
         }
     }
 
@@ -666,7 +681,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         isPreparingAttack = true;
         if (animator != null) animator.SetBool("isMoving", false);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        // Telegraph growl is the pre-attack roar the player kept hearing
+        // continue off a corpse — route it through the tracked vocal so
+        // Die()/OnDisable can cut it. Stops any lingering aggro roar too,
+        // so the two never overlap into a "double" sound.
+        PlayVocal(AudioID.Enemy_Telegraph);
 
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
 
@@ -870,15 +889,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (AudioManager.Instance != null)
         {
-            // Fade out the aggro roar first — otherwise a multi-second
-            // roar clip keeps ringing off the corpse. 0.25s tail sells
-            // "the beast just choked mid-roar" better than an instant
-            // hard stop.
-            if (agroSfxHandle != -1)
-            {
-                AudioManager.Instance.StopLoopingSFX(agroSfxHandle, 0.25f);
-                agroSfxHandle = -1;
-            }
+            // Cut whatever combat vocal (aggro roar OR attack telegraph
+            // growl) was live so it doesn't keep ringing off the corpse.
+            // 0.25s tail sells "the beast choked mid-roar" over a hard
+            // snap. Covers BOTH sounds now, not just aggro.
+            StopVocal(0.25f);
             AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
         }
 

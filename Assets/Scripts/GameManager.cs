@@ -89,7 +89,21 @@ public class GameManager : MonoBehaviour
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
         if (worldGen != null)
         {
-            while (!WorldGenerator.IsGenerationDone) yield return null;
+            // Failsafe timeout — if world generation throws mid-coroutine
+            // (a spawn routine exception kills the whole GenerateWorld
+            // chain before it sets IsGenerationDone), this used to spin
+            // forever and the survival timer never started (stuck 00:00).
+            // Cap the wait at 30s of real time so the timer always begins
+            // even on a partially-failed generation.
+            float genWaitTimeout = 30f;
+            float genWaitElapsed = 0f;
+            while (!WorldGenerator.IsGenerationDone && genWaitElapsed < genWaitTimeout)
+            {
+                genWaitElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (!WorldGenerator.IsGenerationDone)
+                Debug.LogWarning("[GameManager] World generation didn't report done within 30s — starting the survival timer anyway. Check the Console for a generation exception.");
         }
 
         yield return new WaitForSeconds(0.5f);
