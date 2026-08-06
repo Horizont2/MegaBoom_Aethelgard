@@ -797,6 +797,9 @@ public class GlobalHUD : MonoBehaviour
             }
             if (pickupPopupContainer != null && pickupPopupContainer.gameObject.activeSelf)
             {
+                // Clear live popups before hiding so none is orphaned in
+                // the inactive container (see SetGameplayPanelsActive).
+                ClearAllPickupPopups();
                 objectsHiddenByPause.Add(pickupPopupContainer.gameObject);
                 pickupPopupContainer.gameObject.SetActive(false);
             }
@@ -1039,7 +1042,17 @@ public class GlobalHUD : MonoBehaviour
             }
         }
         if (lowHealthVignette != null) lowHealthVignette.gameObject.SetActive(active);
-        if (pickupPopupContainer != null) pickupPopupContainer.gameObject.SetActive(active);
+        if (pickupPopupContainer != null)
+        {
+            // Clear live popups BEFORE deactivating the container. A popup
+            // parented under a container that then goes inactive can't
+            // finish its fade/destroy cleanly (the child is inactive), so
+            // it used to reappear stuck at full alpha when the container
+            // came back on — the "+40 Wood stays on screen" bug. Clearing
+            // first guarantees no orphan survives the toggle.
+            if (!active) ClearAllPickupPopups();
+            pickupPopupContainer.gameObject.SetActive(active);
+        }
 
         if (widgetContainer != null) widgetContainer.gameObject.SetActive(active);
     }
@@ -1228,12 +1241,17 @@ public class GlobalHUD : MonoBehaviour
         activePickupPopups.Add(rt);
         RestackPickupPopups();
 
-        // Hard failsafe on UNSCALED realtime — Unity's `Destroy(go, delay)`
-        // uses scaled time, so at Time.timeScale==0 (pause / cinematic
-        // freeze) the delay never elapses and orphan popups sit on screen
-        // forever. Kick off a parallel coroutine that always destroys past
-        // the fade lifetime regardless of timescale.
+        // Triple-guard cleanup so a popup can NEVER stick on screen:
+        //   1. The lifecycle loop below (1.8s, unscaled) — normal path.
+        //   2. A realtime failsafe coroutine (2.2s) — survives
+        //      Time.timeScale==0 pauses/cutscenes.
+        //   3. A native scheduled Destroy(go, 5f) — fires even if BOTH
+        //      coroutines are stopped/orphaned (scene edge, container
+        //      toggle). Uses scaled time, so it covers normal gameplay
+        //      (timeScale=1); the realtime failsafe covers the paused
+        //      case. Between the three, every path is destroyed.
         activePickupCoroutines.Add(StartCoroutine(PickupPopupFailsafeRoutine(go, rt, 2.2f)));
+        Destroy(go, 5f);
 
         const float lifetime = 1.8f;
         float t = 0f;
