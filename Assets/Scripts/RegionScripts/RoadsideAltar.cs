@@ -78,19 +78,55 @@ public class RoadsideAltar : MonoBehaviour
 
     private void SnapToTerrain()
     {
-        Terrain terrain = Terrain.activeTerrain;
-        if (terrain == null) return;
+        // --- Visual bottom offset ---
+        // Only ACTIVE MeshRenderer / SkinnedMeshRenderer count. The old
+        // code used GetComponentsInChildren<Renderer>(true), which
+        // included INACTIVE renderers (whose bounds are often stale/at
+        // world origin) and PARTICLE renderers (VFX glows that extend
+        // far below the base). Both corrupted the bounds and buried the
+        // altar underground.
+        float lowestY = float.MaxValue;
+        bool anyMesh = false;
+        foreach (var mr in GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (mr == null || !mr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, mr.bounds.min.y);
+            anyMesh = true;
+        }
+        foreach (var smr in GetComponentsInChildren<SkinnedMeshRenderer>(false))
+        {
+            if (smr == null || !smr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
+            anyMesh = true;
+        }
+        float pivotToBottom = anyMesh ? transform.position.y - lowestY : 0f;
 
-        // Combined world-space bounds of every renderer on the altar.
-        Renderer[] rends = GetComponentsInChildren<Renderer>(true);
-        if (rends.Length == 0) return;
-        Bounds b = rends[0].bounds;
-        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+        // --- Real surface height under the altar ---
+        // Raycast DOWN so the altar grounds on whatever's actually there
+        // — terrain OR a rock/boulder it landed on. terrain.SampleHeight
+        // alone returned the TERRAIN height even when a rock sat above it,
+        // so an altar on a rock either floated (rock above terrain) or was
+        // buried (pivot below rock surface). We ignore the altar's own
+        // colliders during the cast.
+        Collider[] ownCols = GetComponentsInChildren<Collider>(true);
+        foreach (var c in ownCols) if (c != null) c.enabled = false;
 
-        float groundY = terrain.SampleHeight(transform.position) + terrain.transform.position.y;
-        // How far the altar's lowest visible point sits above its pivot.
-        float pivotToBottom = transform.position.y - b.min.y;
-        // Place the pivot so the bottom lands exactly on the ground.
+        float groundY;
+        Vector3 rayStart = transform.position + Vector3.up * 60f;
+        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            groundY = hit.point.y;
+        }
+        else
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            groundY = terrain != null
+                ? terrain.SampleHeight(transform.position) + terrain.transform.position.y
+                : transform.position.y;
+        }
+
+        foreach (var c in ownCols) if (c != null) c.enabled = true;
+
         Vector3 p = transform.position;
         p.y = groundY + pivotToBottom;
         transform.position = p;

@@ -1583,15 +1583,26 @@ public class WorldGenerator : MonoBehaviour
     private void SnapInstanceToGround(GameObject go, float targetGroundY)
     {
         if (go == null) return;
-        Renderer[] rends = go.GetComponentsInChildren<Renderer>(true);
-        if (rends.Length == 0) return;
-        Bounds b = rends[0].bounds;
-        for (int i = 1; i < rends.Length; i++)
+        // Only ACTIVE, enabled MeshRenderer / SkinnedMeshRenderer feed the
+        // base measurement. Including inactive renderers (stale/origin
+        // bounds) or particle renderers (VFX glows below the base) pulled
+        // b.min.y far too low and buried the totem underground.
+        float lowestY = float.MaxValue;
+        bool any = false;
+        foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
         {
-            if (rends[i] is ParticleSystemRenderer) continue; // skip VFX
-            b.Encapsulate(rends[i].bounds);
+            if (mr == null || !mr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, mr.bounds.min.y);
+            any = true;
         }
-        float delta = targetGroundY - b.min.y;
+        foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>(false))
+        {
+            if (smr == null || !smr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
+            any = true;
+        }
+        if (!any) return;
+        float delta = targetGroundY - lowestY;
         go.transform.position += new Vector3(0f, delta, 0f);
     }
 
@@ -2993,10 +3004,18 @@ public class WorldGenerator : MonoBehaviour
                     if (spawnPos.z < transform.position.z + 30f || spawnPos.z > transform.position.z + mapL - 30f) continue;
                     spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
                     if (spawnPos.y <= absWaterH + 2f) continue;
+                    // Reject spots on steep terrain — an altar on a slope
+                    // reads as floating / half-buried even after grounding.
+                    float nx = (spawnPos.x - transform.position.x) / mapW;
+                    float nz = (spawnPos.z - transform.position.z) / mapL;
+                    if (terrain.terrainData.GetSteepness(nx, nz) > deadEndMaxSteepness) continue;
+                    // Keep altars the SAME minimum distance apart as the
+                    // dead-end ones (was 25m — far too clustered). Uses
+                    // deadEndMinSeparation so all altars honour one rule.
                     bool nearForbidden = false;
                     for (int k = 0; k < forbiddenZones.Count; k++)
                     {
-                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < 25f) { nearForbidden = true; break; }
+                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < deadEndMinSeparation) { nearForbidden = true; break; }
                     }
                     if (nearForbidden) continue;
 
