@@ -2913,6 +2913,60 @@ public class WorldGenerator : MonoBehaviour
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
-        Debug.Log($"[Smart Roads] Decor done — altars {spawnedAltars}/{altarsAmount} spawned. deadEndTargets={deadEndTargets.Count} roadSplines={roadSplines.Count}. Якщо алтарів 0 і hasAltars=True — жоден spline не потрапив в межу {25}м від deadEndTarget: ймовірно A* пропустив ціль або цілі не згенерувалися (мапа задуже гориста).");
+        Debug.Log($"[Smart Roads] Decor done — altars {spawnedAltars}/{altarsAmount} spawned. deadEndTargets={deadEndTargets.Count} roadSplines={roadSplines.Count}.");
+
+        // Safety net — the dead-end matcher misses on maps where:
+        //   * every dead-end target was rejected (steep terrain, water,
+        //     too close to base) and deadEndTargets stayed empty, OR
+        //   * A* couldn't path to any dead-end target, OR
+        //   * the road splines' knot positions drifted > 25m from the
+        //     tolerance window.
+        // Without altars the mid-map mini-boss loop is missing — the
+        // player never gets bonus diamonds/xp from roadside encounters.
+        // Fallback: pick random points along random road splines
+        // (comfortably off-road, off-water, off-flat-terrain) so at
+        // least `altarsAmount` show up per map.
+        if (hasAltars && spawnedAltars < altarsAmount && roadSplines.Count > 0)
+        {
+            Debug.LogWarning($"[Smart Roads] Only {spawnedAltars}/{altarsAmount} dead-end altars matched. Falling back to random-spline placement for the remaining {altarsAmount - spawnedAltars}.");
+            int fallbackAttempts = 0;
+            int fallbackMax = (altarsAmount - spawnedAltars) * 30;
+            while (spawnedAltars < altarsAmount && fallbackAttempts++ < fallbackMax)
+            {
+                SplineContainer sc = roadSplines[Random.Range(0, roadSplines.Count)];
+                float len = sc.CalculateLength();
+                if (len < 20f) continue;
+                // Sample somewhere along the middle of the spline, then
+                // step OFF the road by ~roadWidth.
+                float sample = Random.Range(0.25f, 0.75f);
+                sc.Evaluate(sample, out float3 p, out float3 tan, out float3 up);
+                Vector3 wPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
+                Vector3 wTan = sc.transform.TransformDirection(new Vector3(tan.x, tan.y, tan.z)).normalized;
+                Vector3 right = Vector3.Cross(Vector3.up, wTan).normalized;
+                float side = Random.value > 0.5f ? 1f : -1f;
+                Vector3 spawnPos = wPos + right * side * (roadWidth * 1.4f);
+
+                // Basic map-edge + water + slope + forbidden-zone guards
+                if (spawnPos.x < transform.position.x + 30f || spawnPos.x > transform.position.x + mapW - 30f) continue;
+                if (spawnPos.z < transform.position.z + 30f || spawnPos.z > transform.position.z + mapL - 30f) continue;
+                spawnPos.y = terrain.SampleHeight(spawnPos) + transform.position.y;
+                if (spawnPos.y <= absWaterH + 2f) continue;
+                bool nearForbidden = false;
+                for (int k = 0; k < forbiddenZones.Count; k++)
+                {
+                    if (Vector3.Distance(spawnPos, forbiddenZones[k]) < 25f) { nearForbidden = true; break; }
+                }
+                if (nearForbidden) continue;
+
+                GameObject prefab = GetRandomPrefab(altarPrefabs);
+                Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
+                Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
+                spawnedAltars++;
+                forbiddenZones.Add(grounded);
+                Debug.Log($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
+            }
+            if (spawnedAltars < altarsAmount)
+                Debug.LogWarning($"[Smart Roads] Fallback exhausted after {fallbackAttempts} attempts — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes) for the requested count.");
+        }
     }
 }
