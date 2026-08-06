@@ -1494,7 +1494,18 @@ public class WorldGenerator : MonoBehaviour
         bool foundSpot = false;
         List<Vector2> validSpots = new List<Vector2>();
         float scanStep = 30f;
-        float edgeMargin = flatRadius + 30f;
+        // Keep the totem well clear of the map edge. Border mountains
+        // spawn just outside the terrain and are scaled 3–6×, so they
+        // reach tens of metres inward (collider-stripped, pure visual) —
+        // a totem placed at the old ~50m margin got visually swallowed by
+        // one ("totem at map edge inside a rock"). 120m of clearance from
+        // every edge keeps it in open ground.
+        float edgeMargin = flatRadius + 120f;
+        // On a small map, flatRadius+120 can exceed half the map and the
+        // scan loop below never runs → validSpots empty → fallback to the
+        // map centre (which is always safe). Clamp so we still get a scan
+        // band on normal-sized maps.
+        edgeMargin = Mathf.Min(edgeMargin, Mathf.Min(w, l) * 0.4f);
 
         for (float x = edgeMargin; x < w - edgeMargin; x += scanStep)
         {
