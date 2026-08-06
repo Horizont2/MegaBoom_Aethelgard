@@ -47,6 +47,7 @@ public class RoadsideAltar : MonoBehaviour
     public string activateAudioID; // e.g. AudioID.Totem_Activate
 
     private bool activated = false;
+    private bool bossSpawned = false;
     private bool purified = false;
     private bool isPromptShowing = false;
     private Transform player;
@@ -175,7 +176,11 @@ public class RoadsideAltar : MonoBehaviour
         }
 
         // Monitor for the boss's death — reward once, then purify.
-        if (activated && spawnedBoss == null)
+        // GATED on bossSpawned: the boss spawns 1.2s AFTER activation
+        // (intro beat), so without this flag the "spawnedBoss == null"
+        // check fired during that window and purified the altar BEFORE
+        // the boss ever appeared — the encounter was silently skipped.
+        if (activated && bossSpawned && spawnedBoss == null)
         {
             OnBossDefeated();
         }
@@ -193,7 +198,7 @@ public class RoadsideAltar : MonoBehaviour
             if (cf != null) cf.TriggerShake(0.25f, 0.1f);
         }
 
-        yield return new WaitForSeconds(1.2f);
+        yield return new WaitForSecondsRealtime(1.2f);
 
         if (bossPrefabs != null && bossPrefabs.Length > 0)
         {
@@ -222,6 +227,10 @@ public class RoadsideAltar : MonoBehaviour
                         enemyAI.damage *= bossDamageMultiplier;
                     }
                 }
+
+                // Flip AFTER the instance exists so the death-detector in
+                // Update only starts watching a real, spawned boss.
+                bossSpawned = true;
             }
         }
         else

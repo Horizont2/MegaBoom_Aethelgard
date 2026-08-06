@@ -106,7 +106,22 @@ public class GameManager : MonoBehaviour
                 Debug.LogWarning("[GameManager] World generation didn't report done within 30s — starting the survival timer anyway. Check the Console for a generation exception.");
         }
 
-        yield return new WaitForSeconds(0.5f);
+        // Realtime, NOT WaitForSeconds — the latter uses scaled time, so
+        // if a loading overlay / intro left Time.timeScale at 0 when we
+        // reached here, the wait never completed and StartLevelTimer was
+        // never called (timer stuck at 00:00). Realtime always ticks.
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        // Re-resolve the timer text if the initial Find missed it (the
+        // HUD object can be inactive or renamed at OnSceneLoaded time).
+        if (timerText == null)
+        {
+            foreach (var t in FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t != null && t.gameObject.name == "TimerText") { timerText = t; break; }
+            }
+        }
+
         StartLevelTimer();
     }
 
