@@ -456,9 +456,11 @@ MonoBehaviour:
   loadingSpinner: {fileID: 4324903721984962745}
   loadingArt: {fileID: 5557195391690374394}
   loadingSprites:
-  - {fileID: 21300000, guid: c06ffdf3908c4ec4c8712d49a7985b2c, type: 3}
-  - {fileID: 21300000, guid: 5245436c0a64fb44389f33f0a96d6576, type: 3}
   - {fileID: 21300000, guid: 1d1ab76c736922e4ab0c9ee5ffb21248, type: 3}
+  - {fileID: 21300000, guid: 376959284fd416243babbd8c26636887, type: 3}
+  - {fileID: 21300000, guid: 72a4138ad24f4aa458df7899601b3593, type: 3}
+  - {fileID: 21300000, guid: 9c2e20b4befde8e40895794a11735230, type: 3}
+  - {fileID: 21300000, guid: 8ba9b76a305ba46479307bc3f61a8a80, type: 3}
   sceneFadeSpeed: 1.5
   hintChangeInterval: 10
   spinnerRotationSpeed: 150

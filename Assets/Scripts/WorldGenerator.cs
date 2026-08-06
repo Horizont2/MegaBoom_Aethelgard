@@ -1340,8 +1340,9 @@ public class WorldGenerator : MonoBehaviour
 
         if (layers == 0) yield break;
 
-        float startProgress = 0.35f;
-        float endProgress = 0.45f;
+        // ФІКС 1: Встановлюємо правильні значення прогресу (генерація трави йде від 50% до 60%)
+        float startProgress = 0.50f;
+        float endProgress = 0.60f;
 
         List<int[,]> detailMaps = new List<int[,]>();
         for (int i = 0; i < layers; i++) detailMaps.Add(new int[dRes, dRes]);
@@ -2491,23 +2492,55 @@ public class WorldGenerator : MonoBehaviour
         // ==========================================
         foreach (var poi in plannedPOIs)
         {
-            // Беремо ідеальну висоту рівної землі (без жодних офсетів)
-            float exactGroundY = poi.worldPosition.y;
-
-            // 1. Координати поверхні землі
+            // 1. Беремо висоту рівної землі ПІСЛЯ тераформінгу
+            float exactGroundY = terrain.SampleHeight(poi.worldPosition) + transform.position.y;
             Vector3 groundPos = new Vector3(poi.worldPosition.x, exactGroundY, poi.worldPosition.z);
 
-            // 2. ААА-ФІКС ПОВОРОТУ: 
-            // Множимо випадковий поворот на оригінальний нахил префабу (напр. X = -90), 
-            // щоб локація більше НІКОЛИ не падала на бік!
+            // 2. Обертання та Спавн
             Quaternion randomRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0);
             Quaternion finalRot = randomRot * poi.prefab.transform.rotation;
-
-            // 3. Спавнимо об'єкт з правильним поворотом
             GameObject instance = Instantiate(poi.prefab, groundPos, finalRot, poiContainer);
 
-            // 4. Оскільки будівля тепер стоїть рівно на ногах, глобальний Vector3.up 
-            // ідеально і слухняно вдавить її в землю на величину твого yOffset
+            // 3. РОЗУМНЕ ПРИТИСКАННЯ ДО ЗЕМЛІ (Глобальний фікс Pivot'ів)
+            BoxCollider rootBox = instance.GetComponent<BoxCollider>();
+            if (rootBox != null)
+            {
+                // Метод А: Якщо на руті префабу є BoxCollider (як на Тотемах)
+                float sy = rootBox.size.y * instance.transform.localScale.y;
+                float cy = rootBox.center.y * instance.transform.localScale.y;
+                float bottomOffset = cy - (sy / 2f);
+                instance.transform.position -= new Vector3(0, bottomOffset, 0);
+            }
+            else
+            {
+                // Метод Б: Якщо колайдера немає — скануємо 3D-сітки (Meshes)
+                float lowestY = float.MaxValue;
+                bool hasRenderers = false;
+
+                foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
+                {
+                    if (rend == null || !rend.enabled) continue;
+                    lowestY = Mathf.Min(lowestY, rend.bounds.min.y);
+                    hasRenderers = true;
+                }
+                foreach (var rend in instance.GetComponentsInChildren<SkinnedMeshRenderer>(false))
+                {
+                    if (rend == null || !rend.enabled) continue;
+                    lowestY = Mathf.Min(lowestY, rend.bounds.min.y);
+                    hasRenderers = true;
+                }
+
+                if (hasRenderers)
+                {
+                    // lowestY — це найнижча точка моделі (наприклад, дно паркану або намету).
+                    // Рахуємо різницю між нею та землею і притискаємо об'єкт!
+                    float delta = exactGroundY - lowestY;
+                    instance.transform.position += new Vector3(0f, delta, 0f);
+                }
+            }
+
+            // 4. Застосовуємо ручний відступ з твого скрипта POISettings 
+            // (можеш ставити yOffset = -0.5f в Інспекторі, щоб додатково "втопити" локацію в траву)
             instance.transform.position += (Vector3.up * poi.settings.yOffset);
         }
 
@@ -2692,7 +2725,9 @@ public class WorldGenerator : MonoBehaviour
         int[] dx = { -1, 1, 0, 0, -1, 1, -1, 1 }; int[] dz = { 0, 0, -1, 1, -1, -1, 1, 1 };
         int iterations = 0;
 
-        while (openSet.Count > 0 && iterations < 150000) // Збільшено ліміт
+        // ФІКС: Жорсткий безпечний ліміт. 15 000 ітерацій — це максимум ~0.05 сек завантаження.
+        // Якщо за цей час шлях не знайдено (гора-лабіринт), дорога просто скасовується, а Unity НЕ висне.
+        while (openSet.Count > 0 && iterations < 15000)
         {
             iterations++;
             int minIndex = 0;
@@ -2719,12 +2754,15 @@ public class WorldGenerator : MonoBehaviour
                 float wX = transform.position.x + (nx * cellSize); float wZ = transform.position.z + (nz * cellSize);
                 float h = terrain.SampleHeight(new Vector3(wX, 0, wZ)) + transform.position.y;
 
-                // ГОЛОВНИЙ ФІКС: Блокуємо тільки воду. Нахили ігноруємо, просто додаємо штраф
+                // Блокуємо тільки глибоку воду
                 if (h < absWaterH + 0.5f) continue;
 
                 float steepness = terrain.terrainData.GetSteepness((float)nx / gridW, (float)nz / gridL);
+                // Відкидаємо тільки відверті 90-градусні скелі, щоб не витрачати туди ітерації пошуку
+                if (steepness > 40f) continue;
+
                 float moveCost = (i < 4) ? 1f : 1.414f;
-                float steepPenalty = steepness * 2f; // Чим крутіше, тим дорожче, але не заборонено!
+                float steepPenalty = steepness * 2f;
                 float newG = current.g + moveCost + steepPenalty;
 
                 if (!nodeMap.ContainsKey(nPos) || newG < nodeMap[nPos].g)
@@ -2734,7 +2772,7 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
         }
-        return null; // Якщо шлях не знайдено, дорога просто не з'явиться
+        return null; // Шлях занадто складний або заблокований, скасовуємо цю дорогу
     }
 
     private void CarveAndRasterizeRoad(SplineContainer sc)

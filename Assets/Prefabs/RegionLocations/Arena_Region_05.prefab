@@ -604,7 +604,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 30
-  yOffset: -2
+  yOffset: 0
   maxAllowedSlope: 6
 --- !u!1 &569042821557284962
 GameObject:

@@ -122,10 +122,21 @@ public class LoadingManager : MonoBehaviour
         WorldGenerator worldGen = FindFirstObjectByType<WorldGenerator>();
         if (worldGen != null)
         {
+            int highestDisplayPercent = 50; // ФІКС 2: Додаємо змінну-пам'ять для відсотків
+
             while (!WorldGenerator.IsGenerationDone)
             {
-                int displayPercent = Mathf.FloorToInt(50f + (Mathf.Clamp01(WorldGenerator.CurrentProgress) * 50f));
-                if (loadingText != null) loadingText.text = LocalizationManager.Tr("GENERATING WORLD... {0}%", displayPercent);
+                int currentRealPercent = Mathf.FloorToInt(50f + (Mathf.Clamp01(WorldGenerator.CurrentProgress) * 50f));
+
+                // Прогрес на екрані може ТІЛЬКИ зростати
+                if (currentRealPercent > highestDisplayPercent)
+                {
+                    highestDisplayPercent = currentRealPercent;
+                }
+
+                if (loadingText != null)
+                    loadingText.text = LocalizationManager.Tr("GENERATING WORLD... {0}%", highestDisplayPercent);
+
                 yield return null;
             }
         }

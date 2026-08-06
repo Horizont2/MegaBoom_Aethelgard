@@ -280,7 +280,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 30
-  yOffset: -2
+  yOffset: 0
   maxAllowedSlope: 6
 --- !u!1001 &225019492157933392
 PrefabInstance:
@@ -5634,6 +5634,8 @@ MonoBehaviour:
   elitePrefabs:
   - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
   eliteCount: 2
+  isStandalone: 0
+  standaloneBossPrefabs: []
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3983897766243503468}
   skyBeamVFX: {fileID: 0}

@@ -277,7 +277,8 @@ MonoBehaviour:
   elitePrefabs: []
   eliteCount: 2
   isStandalone: 0
-  standaloneBossPrefabs: []
+  standaloneBossPrefabs:
+  - {fileID: 4198843849923204017, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3875980039661069206}
   skyBeamVFX: {fileID: 0}
