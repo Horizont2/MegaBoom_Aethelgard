@@ -12,6 +12,18 @@ public class CampfireInteract : MonoBehaviour
     private PlayerController player;
     private bool isHealing = false;
 
+    private void Awake()
+    {
+        // Auto-attach the looping fire-crackle audio to every campfire so
+        // the sound plays without hand-wiring each prefab. The actual FMOD
+        // event lives under AudioID.Ambient_CampFire вЂ” assign it in the
+        // AudioManager inspector (the SoundGroup for "AMB/AMB_CampFire").
+        // Until it's assigned CampfireAudio no-ops with a warning, so this
+        // is safe to ship even before the event is wired.
+        if (GetComponent<CampfireAudio>() == null)
+            gameObject.AddComponent<CampfireAudio>();
+    }
+
     private void Start()
     {
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
@@ -26,7 +38,7 @@ public class CampfireInteract : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.transform.position);
 
-        // Хілимо тільки якщо ми в радіусі І здоров'я не повне
+        // ХіпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ'пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (distance <= healRadius && player.currentHealth < player.maxHealth)
         {
             player.Heal(healPerSecond * Time.deltaTime);
@@ -36,7 +48,7 @@ public class CampfireInteract : MonoBehaviour
                 isHealing = true;
                 if (healEffect != null)
                 {
-                    // ААА-Фікс: Жорстко прив'язуємо ефект до гравця, щоб він ідеально ходив за ним
+                    // пїЅпїЅпїЅ-ФіпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
                     healEffect.transform.SetParent(player.transform);
                     healEffect.transform.localPosition = Vector3.up * 0.1f;
                     healEffect.transform.localRotation = Quaternion.identity;
@@ -52,7 +64,7 @@ public class CampfireInteract : MonoBehaviour
                 if (healEffect != null)
                 {
                     healEffect.Stop();
-                    // М'яко відв'язуємо ефект, щоб останні іскри залишилися в повітрі, а не телепортувалися
+                    // пїЅ'пїЅпїЅпїЅ пїЅпїЅпїЅ'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                     healEffect.transform.SetParent(null);
                 }
             }

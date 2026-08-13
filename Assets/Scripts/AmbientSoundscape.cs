@@ -25,10 +25,11 @@ public class AmbientSoundscape : MonoBehaviour
     private string lastPlayed;
     private bool isCombatScene;
 
+    // NOTE: Ambient_LeafRustle (bush/leaf rustle) removed from both
+    // lists per design — it was flagged as noise.
     private readonly List<AmbientEntry> calmEntries = new List<AmbientEntry>
     {
         new AmbientEntry { id = AudioID.Ambient_Wind,        minDelay = 14f, maxDelay = 26f, weight = 3f },
-        new AmbientEntry { id = AudioID.Ambient_LeafRustle,  minDelay = 10f, maxDelay = 22f, weight = 2.5f },
         new AmbientEntry { id = AudioID.Ambient_Crow,        minDelay = 18f, maxDelay = 40f, weight = 2f },
     };
 
@@ -38,7 +39,6 @@ public class AmbientSoundscape : MonoBehaviour
         new AmbientEntry { id = AudioID.Ambient_Howl,            minDelay = 22f, maxDelay = 48f, weight = 2.5f },
         new AmbientEntry { id = AudioID.Ambient_Crow,            minDelay = 16f, maxDelay = 32f, weight = 1.5f },
         new AmbientEntry { id = AudioID.Ambient_DistantThunder,  minDelay = 30f, maxDelay = 70f, weight = 1.5f },
-        new AmbientEntry { id = AudioID.Ambient_LeafRustle,      minDelay = 12f, maxDelay = 28f, weight = 1f },
     };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

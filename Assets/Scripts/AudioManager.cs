@@ -692,10 +692,19 @@ public class AudioManager : MonoBehaviour
 
     public void PlayDialogue(int dialogueNumber)
     {
+        // Dialogue voice-over is DISABLED per design — the narrator /
+        // Elias VO was removed. Subtitles still show (call sites keep
+        // passing the text), only the spoken audio is suppressed. To
+        // re-enable, delete this early return and the FMOD slots play
+        // again.
+        return;
+
+#pragma warning disable CS0162 // unreachable — kept for easy re-enable
         string key = "Dialogue/Dialogue" + dialogueNumber;
         if (sfxDictionary.TryGetValue(key, out SoundGroup group) && !group.fmodEvent.IsNull)
         {
             RuntimeManager.PlayOneShot(group.fmodEvent);
         }
+#pragma warning restore CS0162
     }
 }
