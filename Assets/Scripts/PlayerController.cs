@@ -871,40 +871,60 @@ public class PlayerController : MonoBehaviour, IDamageable
                         else if (isAimingGrenade) CancelGrenadeAim();
                     }
 
+                    // Aim-mode: HOLD (default) aims while RMB is held and
+                    // throws on release; TOGGLE starts aiming on the first
+                    // RMB click and throws on the second. Controlled by
+                    // the Settings_HoldToggleSprint key (there is no sprint
+                    // — the key was repurposed; relabel its toggle text to
+                    // "Hold to Aim" in the settings prefab).
+                    bool aimHold = GameplaySettings.GrenadeAimHold;
                     if (Input.GetMouseButtonDown(1) && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                     {
-                        if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
+                        if (!isAimingGrenade)
                         {
-                            isAimingGrenade = true;
-
-                            if (!isBulletTime)
+                            if (Time.unscaledTime >= lastGrenadeTime + grenadeCooldown)
                             {
-                                Time.timeScale = aimSlowMotion;
-                                Time.fixedDeltaTime = 0.02f * Time.timeScale;
-                            }
+                                isAimingGrenade = true;
 
-                            if (trajectoryLine != null)
-                            {
-                                trajectoryLine.positionCount = linePoints;
-                                ResetTrajectoryGradient();
-                                // Keep the Hovl trail material that ships on
-                                // the prefab — it looks like a magic-aim
-                                // streak. Stretch mode lets the texture
-                                // span the whole arc once so the bright
-                                // head sits at the throw origin and the
-                                // dim tail aligns with the landing, which
-                                // reads as "arc fading toward impact."
-                                trajectoryLine.textureMode = LineTextureMode.Stretch;
+                                if (!isBulletTime)
+                                {
+                                    Time.timeScale = aimSlowMotion;
+                                    Time.fixedDeltaTime = 0.02f * Time.timeScale;
+                                }
+
+                                if (trajectoryLine != null)
+                                {
+                                    trajectoryLine.positionCount = linePoints;
+                                    ResetTrajectoryGradient();
+                                    trajectoryLine.textureMode = LineTextureMode.Stretch;
+                                }
+                                if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
+                                if (innerMarkerLine != null) innerMarkerLine.enabled = true;
                             }
-                            if (aoeMarkerLine != null) aoeMarkerLine.enabled = true;
-                            if (innerMarkerLine != null) innerMarkerLine.enabled = true;
+                        }
+                        else if (!aimHold)
+                        {
+                            // Toggle mode: a second RMB click throws.
+                            CancelGrenadeAim();
+                            if (isGroundedNow) LockAction("Throw", 0.4f);
+                            else ExecuteThrow();
                         }
                     }
                 }
             }
 
-            if (!isCampMode && !isCurrentlyLocked && Input.GetMouseButton(1) && isAimingGrenade) UpdateGrenadeAiming();
-            if (!isCampMode && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
+            // Update the aim while aiming — hold mode requires RMB held,
+            // toggle mode aims continuously until the throw click.
+            bool aimHoldMode = GameplaySettings.GrenadeAimHold;
+            if (!isCampMode && !isCurrentlyLocked && isAimingGrenade
+                && (!aimHoldMode || Input.GetMouseButton(1)))
+                UpdateGrenadeAiming();
+
+            // Hold mode: release throws. (Toggle mode throws via the
+            // second click above.) The locked-state fallback still throws
+            // so a hit/action mid-aim doesn't strand a live aim.
+            if (!isCampMode && aimHoldMode
+                && (!isCurrentlyLocked && Input.GetMouseButtonUp(1) || (isCurrentlyLocked && isAimingGrenade)))
             {
                 if (isAimingGrenade)
                 {
@@ -912,6 +932,13 @@ public class PlayerController : MonoBehaviour, IDamageable
                     if (isGroundedNow) LockAction("Throw", 0.4f);
                     else ExecuteThrow();
                 }
+            }
+            else if (!isCampMode && !aimHoldMode && isCurrentlyLocked && isAimingGrenade)
+            {
+                // Toggle mode safety: if the player gets locked (hit /
+                // action) mid-aim, throw rather than stranding the aim.
+                CancelGrenadeAim();
+                ExecuteThrow();
             }
         }
 
@@ -994,10 +1021,16 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (d < minDist) { minDist = d; bestTarget = mHit.transform; }
             }
         }
-        if (bestTarget != null)
+        // Aim-assist magnet strength now comes from the Aim Assist
+        // setting (0 = off, 1 = strong). Was a hardcoded 0.4 that the
+        // slider didn't affect. A small floor (0.15) keeps a touch of
+        // the original feel even at low settings so the throw still lands
+        // near enemies; at 0 the magnet is fully off.
+        float assist = GameplaySettings.AimAssist;
+        if (bestTarget != null && assist > 0.001f)
         {
             Vector3 magneticTarget = new Vector3(bestTarget.position.x, hitPoint.y, bestTarget.position.z);
-            hitPoint = Vector3.Lerp(hitPoint, magneticTarget, 0.4f);
+            hitPoint = Vector3.Lerp(hitPoint, magneticTarget, Mathf.Lerp(0.15f, 0.7f, assist));
         }
 
         // Clamp to throw range in XZ.

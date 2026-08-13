@@ -60,6 +60,17 @@ public class DamagePopup : MonoBehaviour
             textMesh.fontSize = normalSize;
         }
 
+        // High-contrast accessibility: force pure-white text with a thick
+        // black outline so numbers read against any background. Crits
+        // stay yellow (still high-contrast) but also get the heavy
+        // outline.
+        if (GameplaySettings.HighContrast)
+        {
+            if (!isCrit) textMesh.color = Color.white;
+            textMesh.outlineWidth = 0.35f;
+            textMesh.outlineColor = Color.black;
+        }
+
         textColor = textMesh.color;
 
         // ���������� ����-����, ��� ����� �� ��������� � ����� �����, ���� ����� ������
