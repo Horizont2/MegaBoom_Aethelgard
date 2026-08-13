@@ -629,6 +629,13 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             //  PHASE 3 · IMPACT FREEZE (gloryKillFreezeDuration, time = 0)
             //  Precisely aligned with the player's mid-swing frame.
             // ============================================================
+            // Arm the time-scale safety net BEFORE we freeze. If this
+            // boss GameObject is destroyed mid-glory-kill (pooled despawn,
+            // scene reload) the finally that restores timeScale never
+            // runs and time stays frozen forever — the guard force-
+            // restores it once the expected window elapses.
+            CinematicTimeGuard.Arm(gloryKillFreezeDuration + gloryKillAftermathDuration + 1.5f);
+
             Time.timeScale = 0f;
             Time.fixedDeltaTime = 0.02f;
             if (animator != null) animator.SetTrigger("Die");
@@ -716,8 +723,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
         finally
         {
-            Time.timeScale = savedTimeScale > 0f ? savedTimeScale : 1f;
-            Time.fixedDeltaTime = savedFixedDelta > 0f ? savedFixedDelta : 0.02f;
+            // Always return to FULL speed after a glory kill. Restoring
+            // `savedTimeScale` stranded time slow when the kill was
+            // triggered mid-hitstop/slowmo (savedTimeScale captured < 1).
+            // A glory kill is a complete cinematic that hands control
+            // back to normal gameplay — 1.0 is always correct here.
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = 0.02f;
+            _ = savedTimeScale; _ = savedFixedDelta; // kept for reference
             if (playerAnim != null) playerAnim.updateMode = savedPlayerAnimMode;
             if (animator != null) animator.updateMode = savedBossAnimMode;
             if (playerCC != null) playerCC.enabled = true;
