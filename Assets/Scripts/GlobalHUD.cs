@@ -580,7 +580,9 @@ public class GlobalHUD : MonoBehaviour
 
     public void ShowPrompt(string message)
     {
-        string localised = LocalizationManager.Tr(message);
+        // Swap [E]/[F]/SPACE/etc. for gamepad button glyphs when a
+        // controller is connected (Steam Deck). No-op on keyboard.
+        string localised = GamepadGlyphs.Apply(LocalizationManager.Tr(message));
         if (promptCanvasGroup != null && promptCanvasGroup.alpha > 0f && currentPromptMessage == localised) return;
         currentPromptMessage = localised;
 
