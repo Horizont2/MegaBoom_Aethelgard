@@ -76,6 +76,55 @@ public static class InputCompat
         }
     }
 
+    // ---- Rumble ----
+    // Fire a gamepad rumble pulse. Respects the Controller Vibration
+    // accessibility toggle — a no-op when it's off or no pad is present.
+    // A tiny MonoBehaviour bootstrap auto-stops the motors after
+    // `duration` so callers stay one-liners.
+    public static void Rumble(float lowFreq, float highFreq, float duration)
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (!GameplaySettings.ControllerVibration) return;
+        var gp = Gamepad.current;
+        if (gp == null) return;
+        gp.SetMotorSpeeds(Mathf.Clamp01(lowFreq), Mathf.Clamp01(highFreq));
+        RumbleStopper.Schedule(gp, duration);
+#endif
+    }
+
+#if ENABLE_INPUT_SYSTEM
+    // Persistent helper that zeroes the motors after a delay (real-time,
+    // so a pause/hit-stop doesn't leave the pad buzzing).
+    private class RumbleStopper : MonoBehaviour
+    {
+        private static RumbleStopper s_inst;
+        private Gamepad pad;
+        private float stopAt;
+
+        public static void Schedule(Gamepad gp, float duration)
+        {
+            if (s_inst == null)
+            {
+                var go = new GameObject("[RumbleStopper]");
+                DontDestroyOnLoad(go);
+                s_inst = go.AddComponent<RumbleStopper>();
+            }
+            s_inst.pad = gp;
+            s_inst.stopAt = Time.realtimeSinceStartup + duration;
+            s_inst.enabled = true;
+        }
+
+        private void Update()
+        {
+            if (Time.realtimeSinceStartup < stopAt) return;
+            if (pad != null) pad.SetMotorSpeeds(0f, 0f);
+            enabled = false;
+        }
+
+        private void OnDisable() { if (pad != null) pad.SetMotorSpeeds(0f, 0f); }
+    }
+#endif
+
     // ---- Gamepad button abstraction ----
     public enum PadButton { South, East, West, North, Start, Select, LeftShoulder, RightShoulder, LeftTrigger, RightTrigger }
 

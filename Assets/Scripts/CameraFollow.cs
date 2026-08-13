@@ -195,18 +195,23 @@ public class CameraFollow : MonoBehaviour
     public void TriggerShake(float duration, float intensity)
     {
         if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
+        // Reduce Motion accessibility: scale shake amplitude way down
+        // (not fully off — a hint of feedback remains) so the screen
+        // doesn't lurch for motion-sensitive players.
+        float m = GameplaySettings.MotionScale;
         shakeTimer = duration;
-        currentShakeIntensity = intensity;
+        currentShakeIntensity = intensity * m;
         directionalShakeForce = 0f;
     }
 
     public void TriggerDirectionalShake(Vector3 direction, float force, float duration, float randomIntensity)
     {
         if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
+        float m = GameplaySettings.MotionScale;
         shakeTimer = duration;
         shakeDirection = direction.normalized;
-        directionalShakeForce = force;
-        currentShakeIntensity = randomIntensity;
+        directionalShakeForce = force * m;
+        currentShakeIntensity = randomIntensity * m;
     }
 
     public void StartShake() { TriggerShake(0.2f, 0.3f); }

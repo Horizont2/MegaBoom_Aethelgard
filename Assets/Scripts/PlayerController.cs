@@ -1382,6 +1382,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         isBulletTime = true;
         AchievementSystem.Unlock("PERFECT_DODGE");
         RunSession.AddPerfectDodge();
+        // Sharp, short rumble to reward the perfect-dodge timing.
+        InputCompat.Rumble(0.2f, 0.8f, 0.12f);
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_PerfectDodge);
 
@@ -1681,6 +1683,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (finalDamage >= maxHealth * 0.15f && hpFill != null)
             StartCoroutine(ShakeUIRoutine(hpFill.transform.parent.GetComponent<RectTransform>()));
 
+        // Gamepad rumble on taking a hit (gated by the vibration toggle).
+        InputCompat.Rumble(0.35f, 0.5f, 0.18f);
+
         if (healthVisuals != null) healthVisuals.TriggerHitFlash();
         if (damageFlashImage != null)
         {
@@ -1716,7 +1721,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     private IEnumerator FlashRoutine()
     {
         float t = 0.3f;
-        Color c = damageFlashImage.color; c.a = 0.6f; damageFlashImage.color = c;
+        // Photosensitivity: dim the damage flash (still visible so the
+        // player knows they were hit, just not a hard full-screen pulse).
+        float peak = GameplaySettings.Photosensitive ? 0.22f : 0.6f;
+        Color c = damageFlashImage.color; c.a = peak; damageFlashImage.color = c;
         while (c.a > 0) { c.a -= Time.unscaledDeltaTime / t; damageFlashImage.color = c; yield return null; }
     }
 
@@ -1920,6 +1928,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     private void SaveCampHeartbeat()
     {
         if (!isCampMode) return;
+        // AutoSave OFF skips the periodic 30s heartbeat. The on-quit /
+        // on-pause save still runs regardless — that's a safety net, not
+        // "autosave", so turning autosave off doesn't risk a hard loss.
+        if (!GameplaySettings.AutoSave) return;
         campSaveTimer += Time.unscaledDeltaTime;
         if (campSaveTimer < 30f) return;
         campSaveTimer = 0f;

@@ -482,6 +482,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         if (staggerRing != null) Destroy(staggerRing);
         AchievementSystem.Unlock("EXECUTIONER");
         RunSession.AddKill(isElite: true, isBoss: true);
+        // Heavy, satisfying rumble on the glory-kill execution.
+        InputCompat.Rumble(0.9f, 0.7f, 0.35f);
 
         if (GlobalHUD.Instance != null)
         {
@@ -735,6 +737,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     // canvas so this class doesn't need to reach into GlobalHUD.
     private IEnumerator GloryKillFlashRoutine(float duration, Color color)
     {
+        // Photosensitivity: skip the glory-kill screen flash entirely —
+        // it's a bright full-screen pulse and pure juice, safe to drop.
+        if (GameplaySettings.Photosensitive) yield break;
+
         var go = new GameObject("GloryKillFlash");
         var canvas = go.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
