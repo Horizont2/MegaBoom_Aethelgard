@@ -593,7 +593,7 @@ public class CampBuilding : MonoBehaviour
         {
             infoText += $"{prodLabel}: <b><color=#FFFFFF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
             infoText += LocalizationManager.Tr("CB_BUILD_TIME", $"<b><color=#FFFFFF>{nextLevelData.buildTime}</color></b>");
-            if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO BUILD");
+            if (buildHintTMP != null) buildHintTMP.text = GamepadGlyphs.Apply(LocalizationManager.Tr("HOLD [E] TO BUILD"));
         }
         else
         {
@@ -603,7 +603,7 @@ public class CampBuilding : MonoBehaviour
             infoText += $" ➔ <b><color=#A8E6CF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
             infoText += LocalizationManager.Tr("CB_UPGRADE_TIME", $"<b><color=#FFFFFF>{nextLevelData.buildTime}</color></b>");
 
-            if (buildHintTMP != null) buildHintTMP.text = LocalizationManager.Tr("HOLD [E] TO UPGRADE");
+            if (buildHintTMP != null) buildHintTMP.text = GamepadGlyphs.Apply(LocalizationManager.Tr("HOLD [E] TO UPGRADE"));
         }
 
         if (infoTMP != null) infoTMP.text = infoText;
