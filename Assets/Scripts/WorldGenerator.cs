@@ -1590,15 +1590,34 @@ public class WorldGenerator : MonoBehaviour
         roadTargets.Add(spawnedTotemPos);
     }
 
-    // Snap an instantiated object so the bottom of its combined renderer
-    // bounds sits at `targetGroundY`. No-op if it has no renderers.
+    // Snap an instantiated object so its FLOOR sits at `targetGroundY`.
+    //
+    // Grounding priority:
+    //   1. A root BoxCollider — the designer-defined footprint/floor. This
+    //      is the correct reference for a LOCATION prefab: decorative trees
+    //      and props inside it often hang well below the floor, and using
+    //      the absolute-lowest mesh point would ground on THAT and lift the
+    //      whole location into the air (the reported "location spawns
+    //      slightly in the air / crooked alignment" bug). The collider
+    //      ignores stray decoration.
+    //   2. Fall back to the lowest ACTIVE, enabled MeshRenderer /
+    //      SkinnedMeshRenderer only when there's no root BoxCollider.
+    //      (Inactive renderers carry stale/origin bounds; particle
+    //      renderers glow below the base — both are excluded.)
     private void SnapInstanceToGround(GameObject go, float targetGroundY)
     {
         if (go == null) return;
-        // Only ACTIVE, enabled MeshRenderer / SkinnedMeshRenderer feed the
-        // base measurement. Including inactive renderers (stale/origin
-        // bounds) or particle renderers (VFX glows below the base) pulled
-        // b.min.y far too low and buried the totem underground.
+
+        BoxCollider rootBox = go.GetComponent<BoxCollider>();
+        if (rootBox != null)
+        {
+            // World-space bottom of the collider box.
+            float colliderBottom = rootBox.bounds.min.y;
+            float deltaBox = targetGroundY - colliderBottom;
+            go.transform.position += new Vector3(0f, deltaBox, 0f);
+            return;
+        }
+
         float lowestY = float.MaxValue;
         bool any = false;
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))

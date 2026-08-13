@@ -23,6 +23,10 @@ public class RegionTotem : MonoBehaviour
     [Tooltip("Увімкни це, якщо тотем стоїть у тупику як побічна місія (не головний тотем регіону)")]
     public bool isStandalone = false;
     public GameObject[] standaloneBossPrefabs;
+    [Tooltip("Diamonds granted when a STANDALONE totem's boss is defeated (region totems reward via RegionManager instead).")]
+    public int standaloneDiamondReward = 25;
+    [Tooltip("XP granted when a STANDALONE totem's boss is defeated.")]
+    public int standaloneXpReward = 40;
 
     [Header("Visuals & Cinematic")]
     public ParticleSystem idleCorruptionVFX;
@@ -174,9 +178,16 @@ public class RegionTotem : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
-        int recommendedPower = manager.currentRegion != null ? manager.currentRegion.recommendedPower : 100;
-        float hpMultBase = manager.currentRegion != null ? manager.currentRegion.enemyHpMultiplier : 1f;
-        float dmgMultBase = manager.currentRegion != null ? manager.currentRegion.enemyDamageMultiplier : 1f;
+        // CRITICAL: guard `manager` itself, not just `manager.currentRegion`.
+        // Standalone roadside totems have NO RegionManager (manager == null),
+        // so the old `manager.currentRegion != null` checks threw an NRE
+        // right here — killing the coroutine BEFORE the boss spawned. That
+        // was the real "roadside totem summons no boss" bug (RoadsideAltar
+        // was a red herring — the prefab actually uses RegionTotem).
+        RegionData region = manager != null ? manager.currentRegion : null;
+        int recommendedPower = region != null ? region.recommendedPower : 100;
+        float hpMultBase = region != null ? region.enemyHpMultiplier : 1f;
+        float dmgMultBase = region != null ? region.enemyDamageMultiplier : 1f;
 
         float difficultyMult = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, recommendedPower);
         float finalHpMult = hpMultBase * difficultyMult;
@@ -284,7 +295,22 @@ public class RegionTotem : MonoBehaviour
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }
         CameraShakeUtil.TryShake(0.4f, 0.1f);
 
-        if (manager != null) manager.OnTotemPurified(this);
+        if (manager != null)
+        {
+            manager.OnTotemPurified(this);
+        }
+        else
+        {
+            // Standalone roadside totem — no RegionManager to hand out the
+            // region reward, so grant the side-objective payout directly.
+            EnemySpawner.IsSpawningBlocked = false; // manager normally clears this
+            AnyActivatingRightNow = false;
+            AchievementSystem.Unlock("ALTAR_HUNTER");
+            if (ResourceManager.Instance != null && standaloneDiamondReward > 0)
+                ResourceManager.Instance.AddDiamonds(standaloneDiamondReward);
+            var pc = player != null ? player.GetComponent<PlayerController>() : null;
+            if (pc != null && standaloneXpReward > 0) pc.GainXP(standaloneXpReward);
+        }
     }
 
     private float GetGroundHeight(Vector3 pos)
