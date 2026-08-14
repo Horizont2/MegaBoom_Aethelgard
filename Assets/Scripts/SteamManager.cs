@@ -1,23 +1,32 @@
 using UnityEngine;
 
 // Thin wrapper around Steam initialisation + achievement / cloud
-// hooks. Does NOT ship with a Steamworks package embedded — the
-// project has to import Facepunch.Steamworks or Steamworks.NET
-// separately. Until that happens this file compiles as a no-op stub
-// so the rest of the codebase can call SteamManager.UnlockAchievement
-// / SteamManager.IsRunning without conditional compilation everywhere.
+// hooks. The project imports Facepunch.Steamworks (Assets/Plugins/
+// Facepunch.Steamworks.Win64.dll + steam_api64.dll) and defines
+// FACEPUNCH_STEAMWORKS in Player Settings → Scripting Define Symbols.
+// Every entry point is still wrapped so the codebase can call
+// SteamManager.UnlockAchievement / SteamManager.IsRunning with no
+// conditional compilation at the call sites, and the game degrades to
+// a standalone (Steam-less) mode if the client isn't running.
 //
-// When you install Facepunch.Steamworks:
-//   1. Add STEAMWORKS_NET (or FACEPUNCH_STEAMWORKS) to Player Settings
-//      → Scripting Define Symbols.
-//   2. Drop steam_appid.txt (contains your Steam App ID) into
-//      Assets/StreamingAssets/ AND into the built game folder.
-//   3. Replace the ##STEAM_HOOK## blocks below with real calls (see
-//      the inline TODOs).
-//
-// Runtime shape stays the same either way, so callers never change.
+// ─────────────────────────────────────────────────────────────────
+//  App ID
+// ─────────────────────────────────────────────────────────────────
+// STEAM_APP_ID is 480 (Valve's "Spacewar" test app) as a DEVELOPMENT
+// PLACEHOLDER — it lets Steamworks initialise and exercise the whole
+// achievement / rich-presence / cloud pipeline before the game has its
+// own Steamworks App ID. When the app is registered on the Steamworks
+// partner site, replace 480 with the real App ID here (one line) — and
+// update steam_appid.txt to match. steam_appid.txt is only needed while
+// launching OUTSIDE Steam (editor / direct exe); the shipped build gets
+// its App ID injected by the Steam client, so do NOT ship steam_appid.txt
+// in the final depot.
 public static class SteamManager
 {
+    // TODO: replace 480 with the real Steamworks App ID once the game is
+    // registered on the partner site (also update steam_appid.txt).
+    private const uint STEAM_APP_ID = 480;
+
     private static bool s_initialised;
     private static bool s_running;
 
@@ -31,10 +40,16 @@ public static class SteamManager
         try
         {
 #if FACEPUNCH_STEAMWORKS
-            // ##STEAM_HOOK## Facepunch.Steamworks init:
-            // Steamworks.SteamClient.Init(YOUR_APP_ID, asyncCallbacks: true);
-            // s_running = Steamworks.SteamClient.IsValid;
-            s_running = false; // remove once real init lands
+            // asyncCallbacks:false → we pump callbacks ourselves each
+            // frame from SteamLifecycleTicker.RunCallbacks(). Init throws
+            // if the Steam client isn't running / the app isn't owned —
+            // the catch below drops us to standalone mode cleanly.
+            Steamworks.SteamClient.Init(STEAM_APP_ID, asyncCallbacks: false);
+            s_running = Steamworks.SteamClient.IsValid;
+            if (s_running)
+                GameLog.Info($"[SteamManager] Steam initialised (AppID {STEAM_APP_ID}, user '{Steamworks.SteamClient.Name}').");
+            else
+                GameLog.Info("[SteamManager] SteamClient.Init returned invalid — running standalone.");
 #elif STEAMWORKS_NET
             // ##STEAM_HOOK## Steamworks.NET init — use the official
             // SteamManager MonoBehaviour prefab or SteamAPI.Init().
@@ -64,8 +79,8 @@ public static class SteamManager
         try
         {
 #if FACEPUNCH_STEAMWORKS
-            // var ach = new Steamworks.Data.Achievement(steamAchievementID);
-            // if (!ach.State) ach.Trigger();
+            var ach = new Steamworks.Data.Achievement(steamAchievementID);
+            if (!ach.State) ach.Trigger();
 #elif STEAMWORKS_NET
             // Steamworks.SteamUserStats.SetAchievement(steamAchievementID);
             // Steamworks.SteamUserStats.StoreStats();
@@ -106,7 +121,8 @@ public static class SteamManager
     {
         if (!s_running) return;
 #if FACEPUNCH_STEAMWORKS
-        // Steamworks.SteamClient.RunCallbacks();
+        try { Steamworks.SteamClient.RunCallbacks(); }
+        catch (System.Exception e) { Debug.LogWarning($"[SteamManager] RunCallbacks failed: {e.Message}"); }
 #elif STEAMWORKS_NET
         // Steamworks.SteamAPI.RunCallbacks();
 #endif
@@ -116,7 +132,8 @@ public static class SteamManager
     {
         if (!s_running) return;
 #if FACEPUNCH_STEAMWORKS
-        // Steamworks.SteamClient.Shutdown();
+        try { Steamworks.SteamClient.Shutdown(); }
+        catch (System.Exception e) { Debug.LogWarning($"[SteamManager] Shutdown failed: {e.Message}"); }
 #elif STEAMWORKS_NET
         // Steamworks.SteamAPI.Shutdown();
 #endif
@@ -138,8 +155,11 @@ public static class SteamManager
         try
         {
 #if FACEPUNCH_STEAMWORKS
-            // Steamworks.SteamFriends.SetRichPresence("steam_display", "#Status");
-            // Steamworks.SteamFriends.SetRichPresence("status", status);
+            // "status" is the free-form fallback shown before a partner-side
+            // localisation table exists. "steam_display" would point at a
+            // localisation token — omitted until that table is uploaded so
+            // Steam doesn't show a raw "#Status" token to friends.
+            Steamworks.SteamFriends.SetRichPresence("status", status);
 #elif STEAMWORKS_NET
             // Steamworks.SteamFriends.SetRichPresence("steam_display", "#Status");
             // Steamworks.SteamFriends.SetRichPresence("status", status);
