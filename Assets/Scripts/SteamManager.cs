@@ -39,7 +39,7 @@ public static class SteamManager
         s_initialised = true;
         try
         {
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
             // asyncCallbacks:false → we pump callbacks ourselves each
             // frame from SteamLifecycleTicker.RunCallbacks(). Init throws
             // if the Steam client isn't running / the app isn't owned —
@@ -50,7 +50,7 @@ public static class SteamManager
                 GameLog.Info($"[SteamManager] Steam initialised (AppID {STEAM_APP_ID}, user '{Steamworks.SteamClient.Name}').");
             else
                 GameLog.Info("[SteamManager] SteamClient.Init returned invalid — running standalone.");
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
             // ##STEAM_HOOK## Steamworks.NET init — use the official
             // SteamManager MonoBehaviour prefab or SteamAPI.Init().
             s_running = false;
@@ -78,10 +78,10 @@ public static class SteamManager
         if (!s_running) return; // silent no-op standalone
         try
         {
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
             var ach = new Steamworks.Data.Achievement(steamAchievementID);
             if (!ach.State) ach.Trigger();
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
             // Steamworks.SteamUserStats.SetAchievement(steamAchievementID);
             // Steamworks.SteamUserStats.StoreStats();
 #endif
@@ -102,9 +102,9 @@ public static class SteamManager
         if (!s_running) return;
         try
         {
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
             // Steamworks.SteamRemoteStorage.FileWrite("save_v1.json", bytes);
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
             // Steamworks.SteamRemoteStorage.FileWrite("save_v1.json", bytes, bytes.Length);
 #endif
         }
@@ -120,10 +120,10 @@ public static class SteamManager
     public static void RunCallbacks()
     {
         if (!s_running) return;
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
         try { Steamworks.SteamClient.RunCallbacks(); }
         catch (System.Exception e) { Debug.LogWarning($"[SteamManager] RunCallbacks failed: {e.Message}"); }
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
         // Steamworks.SteamAPI.RunCallbacks();
 #endif
     }
@@ -131,10 +131,10 @@ public static class SteamManager
     public static void Shutdown()
     {
         if (!s_running) return;
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
         try { Steamworks.SteamClient.Shutdown(); }
         catch (System.Exception e) { Debug.LogWarning($"[SteamManager] Shutdown failed: {e.Message}"); }
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
         // Steamworks.SteamAPI.Shutdown();
 #endif
         s_running = false;
@@ -154,13 +154,13 @@ public static class SteamManager
         if (!s_running || string.IsNullOrEmpty(status)) return;
         try
         {
-#if FACEPUNCH_STEAMWORKS
+#if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
             // "status" is the free-form fallback shown before a partner-side
             // localisation table exists. "steam_display" would point at a
             // localisation token — omitted until that table is uploaded so
             // Steam doesn't show a raw "#Status" token to friends.
             Steamworks.SteamFriends.SetRichPresence("status", status);
-#elif STEAMWORKS_NET
+#elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)
             // Steamworks.SteamFriends.SetRichPresence("steam_display", "#Status");
             // Steamworks.SteamFriends.SetRichPresence("status", status);
 #endif
