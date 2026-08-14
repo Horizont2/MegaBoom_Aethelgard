@@ -28,6 +28,12 @@ public class OffscreenWaypointIndicator : MonoBehaviour
     [Range(0.1f, 1f)] public float onScreenAlpha = 0.55f;
     [Tooltip("Hide entirely when the target is closer than this (m). 0 = always show.")]
     public float hideWithinMeters = 3f;
+    [Tooltip("Auto-generate placeholder arrow/dot graphics when none are wired. " +
+             "OFF by default — the placeholders are sprite-less UI Images, which " +
+             "render as an ugly solid gold SQUARE floating over the objective. " +
+             "Wire real arrow/onScreenIcon sprites and this stays off; the mission " +
+             "plate + trail already guide the player meanwhile.")]
+    public bool autoBuildPlaceholder = false;
 
     private Transform target;
     private Camera mainCam;
@@ -42,7 +48,12 @@ public class OffscreenWaypointIndicator : MonoBehaviour
     private void Start()
     {
         mainCam = CameraCache.Main;
-        if (arrow == null || onScreenIcon == null) BuildFallbackUI();
+        // Only build the placeholder squares when explicitly asked. Without
+        // a wired sprite they render as a solid gold box over the target
+        // ("the incomprehensible objective square on the map table"), so by
+        // default we leave arrow/onScreenIcon null and LateUpdate simply
+        // draws nothing until a real sprite is assigned.
+        if (autoBuildPlaceholder && (arrow == null || onScreenIcon == null)) BuildFallbackUI();
         SetVisible(false);
     }
 
