@@ -299,6 +299,11 @@ public class ResourceManager : MonoBehaviour
         int bonusDiamonds = (excessWood / 5) + (excessStone / 3) + (excessFood / 2);
         diamonds += bonusDiamonds;
 
+        // A successful extraction ends the run too — bank this run's
+        // tallies into the career totals before clearing it out.
+        RunSession.CommitToCareer();
+        RunSession.End();
+
         ClearRunInventory();
         SaveStash();
     }

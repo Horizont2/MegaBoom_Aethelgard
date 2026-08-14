@@ -1774,6 +1774,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        // Fold this run's tallies into the persistent career stats before
+        // the run ends, then record the death. CommitToCareer no-ops if
+        // the run was never Begin()'d, so this is safe on any scene.
+        RunSession.CommitToCareer();
+        RunStats.Add(RunStats.Stat.DeathsCount);
+        RunSession.End();
+
         WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
         if (weapon != null) weapon.gameObject.SetActive(false);
 
