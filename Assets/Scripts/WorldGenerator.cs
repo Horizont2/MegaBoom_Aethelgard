@@ -2889,6 +2889,48 @@ public class WorldGenerator : MonoBehaviour
         return result;
     }
 
+    // Ground an ALREADY-INSTANTIATED decoration/altar by the lowest point of
+    // its real, combined mesh geometry — measured live on the instance.
+    //
+    // Why not GroundPrefabToTerrain for altars: the roadside altar prefab's
+    // root BoxCollider is a small interaction box near the pivot (size.y≈0.1,
+    // center≈pivot), NOT the visual footprint. Grounding by that collider
+    // bottom leaves the altar's tall base mesh buried — the reported "totem
+    // spawns half (or more) underground" bug. The prefab also has no
+    // renderers in its own file (they live in nested prefabs), so the
+    // renderer fallback never fired. Measuring the instantiated object's
+    // MeshRenderer/SkinnedMeshRenderer bounds sees the actual geometry
+    // regardless of hierarchy and grounds it every time.
+    //
+    // `embed` sinks the base a few cm into the terrain so a wide base doesn't
+    // read as floating on gently uneven ground (altars are already filtered
+    // to sub-18° slopes, so this stays invisible).
+    private void SnapAltarInstanceToGround(GameObject go, float targetGroundY, float embed = 0.2f)
+    {
+        if (go == null) return;
+
+        float lowestY = float.MaxValue;
+        bool any = false;
+        foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (mr == null || !mr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, mr.bounds.min.y);
+            any = true;
+        }
+        foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>(false))
+        {
+            if (smr == null || !smr.enabled) continue;
+            lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
+            any = true;
+        }
+        // No solid renderers found (all nested under inactive roots or the
+        // prefab is collider-only) — leave the caller's grounded Y as-is.
+        if (!any) return;
+
+        float delta = (targetGroundY - embed) - lowestY;
+        go.transform.position += new Vector3(0f, delta, 0f);
+    }
+
     private IEnumerator SpawnRoadDecorationsRoutine()
     {
         // The altar-at-dead-end spawn is intentionally NOT gated on
@@ -3004,17 +3046,21 @@ public class WorldGenerator : MonoBehaviour
                     {
                         GameObject prefab = GetRandomPrefab(altarPrefabs);
                         Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
-                        Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
+                        GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
+                        // Re-ground by the live mesh — the prefab collider is a
+                        // small interaction box, so pivot-math alone buried the altar.
+                        SnapAltarInstanceToGround(inst, endSpawn.y);
                         spawnedAltars++;
-                        forbiddenZones.Add(grounded);
-                        GameLog.Info($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {grounded} ({spawnedAltars}/{altarsAmount})");
+                        forbiddenZones.Add(inst.transform.position);
+                        GameLog.Info($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {inst.transform.position} ({spawnedAltars}/{altarsAmount})");
                     }
                     else if (deadEndAssets != null && deadEndAssets.Length > 0)
                     {
                         GameObject prefab = GetRandomPrefab(deadEndAssets);
                         Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
-                        Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
-                        forbiddenZones.Add(grounded);
+                        GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-tipTan), decorContainer);
+                        SnapAltarInstanceToGround(inst, endSpawn.y);
+                        forbiddenZones.Add(inst.transform.position);
                     }
                 }
                 else
@@ -3090,10 +3136,11 @@ public class WorldGenerator : MonoBehaviour
                     GameObject prefab = GetRandomPrefab(altarPrefabs);
                     if (prefab == null) continue;
                     Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
-                    Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
+                    GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
+                    SnapAltarInstanceToGround(inst, spawnPos.y);
                     spawnedAltars++;
-                    forbiddenZones.Add(grounded);
-                    GameLog.Info($"[Smart Roads] Fallback altar spawned at {grounded} ({spawnedAltars}/{altarsAmount}).");
+                    forbiddenZones.Add(inst.transform.position);
+                    GameLog.Info($"[Smart Roads] Fallback altar spawned at {inst.transform.position} ({spawnedAltars}/{altarsAmount}).");
                 }
                 if (spawnedAltars < altarsAmount)
                     Debug.LogWarning($"[Smart Roads] Fallback exhausted — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes).");
