@@ -39,6 +39,14 @@ public class CampDirector : MonoBehaviour
 
     private void Start()
     {
+        // The camp always begins at normal time. The intro cinematic runs
+        // on unscaled time and never resets Time.timeScale, so if anything
+        // left it at 0 (a paused-world intro, a cinematic guard), it would
+        // carry into the camp and silently freeze the tutorial narration
+        // (first line stuck on screen, never advancing). Reset defensively.
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+
         bool tutorialPlayed = PlayerPrefs.GetInt("CampTutorialPlayed", 0) == 1;
 
         if (!tutorialPlayed) StartCampTutorial();
@@ -120,7 +128,7 @@ public class CampDirector : MonoBehaviour
 
     private IEnumerator TutorialDialogueRoutine()
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSecondsRealtime(1f);
 
         // dialogueId maps 1:1 to AudioManager.dialogue1..10 FMOD slots.
         // Camp tutorial owns slots 1-5, tutorial mission owns 6-10.
@@ -186,13 +194,20 @@ public class CampDirector : MonoBehaviour
         int totalChars = subtitleText.textInfo.characterCount;
         subtitleText.maxVisibleCharacters = 0;
 
+        // Realtime waits — the narration must not be tied to gameplay
+        // timeScale. A stray Time.timeScale = 0 (a pause/cinematic guard
+        // firing as the camp loads) used to stall this coroutine at the
+        // stay-wait below with the first line frozen on screen forever
+        // (the "first paragraph shows and never disappears" bug).
         for (int i = 0; i <= totalChars; i++)
         {
+            if (subtitleText == null) yield break;
             subtitleText.maxVisibleCharacters = i;
-            yield return new WaitForSeconds(typingSpeed);
+            yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
-        yield return new WaitForSeconds(stayDuration);
+        yield return new WaitForSecondsRealtime(stayDuration);
+        if (subtitleText == null) yield break;
         subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
 
@@ -212,11 +227,13 @@ public class CampDirector : MonoBehaviour
 
         for (int i = 0; i <= totalChars; i++)
         {
+            if (subtitleText == null) yield break;
             subtitleText.maxVisibleCharacters = i;
-            yield return new WaitForSeconds(typingSpeed);
+            yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
-        yield return new WaitForSeconds(duration);
+        yield return new WaitForSecondsRealtime(duration);
+        if (subtitleText == null) yield break;
         subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
     }
