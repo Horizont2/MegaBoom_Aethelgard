@@ -166,11 +166,20 @@ public class TitleSceneManager : MonoBehaviour
 
         // 🔥 СЕКРЕТНИЙ ІНГРЕДІЄНТ: Починаємо завантажувати сцену у ФОНІ
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(nextSceneName);
+        // Failsafe: якщо сцени немає в Build Settings, LoadSceneAsync
+        // поверне null. Не залишаємо гравця застряглим на титрах —
+        // вантажимо напряму.
+        if (asyncLoad == null)
+        {
+            Debug.LogError($"[TitleScene] Scene '{nextSceneName}' is not in Build Settings — loading directly.");
+            SceneManager.LoadScene(nextSceneName);
+            yield break;
+        }
         // Забороняємо Unity перемикатися на неї, поки ми не дозволимо
         asyncLoad.allowSceneActivation = false;
 
-        // Даємо назві поїхати вперед
-        yield return new WaitForSeconds(0.4f);
+        // Даємо назві поїхати вперед (Realtime — не залежить від timeScale)
+        yield return new WaitForSecondsRealtime(0.4f);
 
         // Плавно повертаємо чорний екран
         if (globalFadeScreen != null)
@@ -179,19 +188,27 @@ public class TitleSceneManager : MonoBehaviour
             float elapsed = 0f;
             while (elapsed < fadeOutDuration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 globalFadeScreen.alpha = Mathf.Lerp(0f, 1f, elapsed / fadeOutDuration);
                 yield return null;
             }
+            globalFadeScreen.alpha = 1f;
         }
 
-        // Чекаємо, поки епічний Subboom ПОВНІСТЮ дограє свій хвіст
-        if (clickBoomSource != null && clickBoomSource.isPlaying)
+        // Чекаємо, поки епічний Subboom дограє свій хвіст — АЛЕ з жорстким
+        // лімітом. На WebGL AudioSource.isPlaying може «залипнути» на true
+        // назавжди, і тоді старий WaitWhile ніколи не завершувався: сцена
+        // вантажилась на 90% і НІКОЛИ не активувалась — гравець застрягав
+        // на чорному екрані. Обмежуємо очікування.
+        float boomWait = 0f;
+        const float maxBoomWait = 2f;
+        while (clickBoomSource != null && clickBoomSource.isPlaying && boomWait < maxBoomWait)
         {
-            yield return new WaitWhile(() => clickBoomSource.isPlaying);
+            boomWait += Time.unscaledDeltaTime;
+            yield return null;
         }
 
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSecondsRealtime(0.1f);
 
         // 🔥 МИТТЄВИЙ ПЕРЕХІД: Екран вже чорний, звук дограв, сцена завантажена. Дозволяємо активацію!
         asyncLoad.allowSceneActivation = true;
