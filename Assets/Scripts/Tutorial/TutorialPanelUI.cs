@@ -88,12 +88,24 @@ public class TutorialPanelUI : MonoBehaviour
     private void WireVideoTexture()
     {
         if (videoPlayer == null) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL cannot decode VideoClips. Wiring/enabling the player here
+        // (the panel is DontDestroyOnLoad) pinned the video assets + a
+        // decoder + RenderTexture in the WASM heap, which tipped the
+        // Camp-load transition into an out-of-memory abort. Kill video
+        // entirely on Web — the tutorial reads fine without the clip.
+        videoPlayer.clip = null;
+        videoPlayer.enabled = false;
+        if (videoHolder != null) videoHolder.SetActive(false);
+        return;
+#else
         if (videoTexture != null)
         {
             videoPlayer.renderMode = VideoRenderMode.RenderTexture;
             videoPlayer.targetTexture = videoTexture;
             if (videoSurface != null) videoSurface.texture = videoTexture;
         }
+#endif
     }
 
     public bool IsVisible => gameObject.activeInHierarchy && canvasGroup != null && canvasGroup.alpha > 0.01f;
@@ -244,6 +256,10 @@ public class TutorialPanelUI : MonoBehaviour
             iconHolder.SetActive(has);
         }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // No video on WebGL (see WireVideoTexture) — always hide the holder.
+        if (videoHolder != null) videoHolder.SetActive(false);
+#else
         if (videoPlayer != null)
         {
             bool hasClip = data.videoClip != null;
@@ -263,6 +279,7 @@ public class TutorialPanelUI : MonoBehaviour
         {
             videoHolder.SetActive(false);
         }
+#endif
     }
 
     private void PulseFrame()
