@@ -45,7 +45,10 @@ public static class AnimatorSafeExtensions
     public static bool HasParameter(Animator anim, string name)
     {
         if (anim == null || anim.runtimeAnimatorController == null) return false;
-        int controllerID = anim.runtimeAnimatorController.GetInstanceID();
+        // GetInstanceID() is an obsolete-error in Unity 6.5+. RuntimeHelpers.GetHashCode
+        // gives a stable per-instance int (identity hash) and compiles on every Unity
+        // version, so the same source builds on both 6.3 (local) and 6.5 (cloud).
+        int controllerID = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(anim.runtimeAnimatorController);
         if (!s_paramCache.TryGetValue(controllerID, out var set))
         {
             // First touch — snapshot the whole parameter list ONCE. The
