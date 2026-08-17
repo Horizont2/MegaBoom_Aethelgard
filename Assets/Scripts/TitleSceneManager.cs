@@ -84,6 +84,12 @@ public class TitleSceneManager : MonoBehaviour
         // 2. ЧЕКАЄМО НАТИСКАННЯ
         if (!isTransitioning && Input.anyKeyDown)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // On WebGL the first tap is the audio-unlock gesture consumed by
+            // WebGLStartGate. Ignore that exact tap here, otherwise the title
+            // transitions to the menu before it ever fades in.
+            if (WebGLStartGate.BlockingInput) return;
+#endif
             if (!Input.GetMouseButtonDown(0) && !Input.GetMouseButtonDown(1))
             {
                 StartTransition();

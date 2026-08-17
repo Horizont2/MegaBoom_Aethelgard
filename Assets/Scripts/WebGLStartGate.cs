@@ -19,7 +19,14 @@ public class WebGLStartGate : MonoBehaviour
 {
     private static bool s_bootstrapped;
     private bool _started;
+    private int _releaseFrame = -1;
     private GUIStyle _style;
+
+    // True while the gate is up AND for one frame after it's dismissed, so
+    // the SAME tap that unlocks audio isn't also consumed by the title
+    // screen's "press any key" (which would skip the title reveal entirely).
+    // Other input-driven scripts check this on WebGL and ignore that tap.
+    public static bool BlockingInput { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap()
@@ -27,6 +34,7 @@ public class WebGLStartGate : MonoBehaviour
         if (s_bootstrapped) return;
         s_bootstrapped = true;
 
+        BlockingInput = true;
         AudioListener.pause = true;   // hold all Unity audio until first gesture
         Time.timeScale = 0f;          // hold the logo sequence so it doesn't advance
 
@@ -37,9 +45,19 @@ public class WebGLStartGate : MonoBehaviour
 
     private void Update()
     {
-        if (_started) return;
-        if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.touchCount > 0)
-            Begin();
+        if (!_started)
+        {
+            if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.touchCount > 0)
+                Begin();
+            return;
+        }
+
+        // Keep swallowing input for one extra frame, then release + clean up.
+        if (Time.frameCount > _releaseFrame)
+        {
+            BlockingInput = false;
+            Destroy(gameObject);
+        }
     }
 
     private void Begin()
@@ -51,7 +69,9 @@ public class WebGLStartGate : MonoBehaviour
         AudioListener.pause = false;
         try { RuntimeManager.CoreSystem.mixerResume(); } catch { /* FMOD may not be up yet; Unity audio is already resumed */ }
 
-        Destroy(gameObject);
+        // Hold BlockingInput through the next frame so the dismiss tap can't
+        // double-trigger the title transition; Update() releases it then.
+        _releaseFrame = Time.frameCount + 1;
     }
 
     private void OnGUI()
