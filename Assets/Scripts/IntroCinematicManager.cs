@@ -23,6 +23,10 @@ public class IntroCinematicManager : MonoBehaviour
 
     private Coroutine typingCoroutine;
     private bool isSkipping = false;
+    // Guards the single transition into the menu so the director.stopped
+    // callback, the skip path, and the WebGL safety-timeout can never
+    // double-fire FadeOutCinematic.
+    private bool _finished = false;
 
     // Բ��: �������� ����� �����'�����, �� ������� ����� � �������� ������ ���
     private static bool hasPlayedThisSession = false;
@@ -85,6 +89,29 @@ public class IntroCinematicManager : MonoBehaviour
         {
             director.stopped += OnCinematicFinished;
             director.Play();
+        }
+
+        // Safety net: the menu (mainGameUI) is only revealed when the
+        // cinematic finishes. On WebGL the Timeline can hold its last frame
+        // without ever raising `stopped`, which stranded the player on the
+        // final intro image with the menu never appearing. Force the reveal
+        // after the intro's own length elapses if the stop callback hasn't.
+        StartCoroutine(SafetyRevealAfterDuration());
+    }
+
+    private IEnumerator SafetyRevealAfterDuration()
+    {
+        // Wait the cinematic's real length (realtime, so a stray
+        // timeScale = 0 can't stall it) plus a small buffer.
+        float wait = (director != null && director.duration > 0.01)
+            ? (float)director.duration + 1.5f
+            : 15f;
+        yield return new WaitForSecondsRealtime(wait);
+
+        if (IsPlaying && !isSkipping && !_finished)
+        {
+            Debug.LogWarning("[IntroCinematic] director.stopped never fired — forcing menu reveal.");
+            StartCoroutine(FadeOutCinematic());
         }
     }
 
@@ -249,7 +276,7 @@ public class IntroCinematicManager : MonoBehaviour
 
     private void OnCinematicFinished(PlayableDirector dir)
     {
-        if (!isSkipping)
+        if (!isSkipping && !_finished)
         {
             StartCoroutine(FadeOutCinematic());
         }
@@ -257,6 +284,11 @@ public class IntroCinematicManager : MonoBehaviour
 
     private IEnumerator FadeOutCinematic()
     {
+        // One-way latch — director.stopped, the skip path, and the safety
+        // timeout all route here; only the first may run.
+        if (_finished) yield break;
+        _finished = true;
+
         if (director != null && director.state == PlayState.Playing)
         {
             director.Stop();
