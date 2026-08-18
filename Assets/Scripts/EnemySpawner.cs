@@ -156,6 +156,12 @@ public class EnemySpawner : MonoBehaviour
             phaseDuration = Random.Range(surgeDuration.x, surgeDuration.y);
             surgeIndex++;
         }
+
+        // Drive the music's Intensity parameter with the wave rhythm so the
+        // score swells on surges and eases in lulls (no-op if the track has
+        // no such FMOD parameter).
+        if (useRhythm && AudioManager.Instance != null)
+            AudioManager.Instance.SetMusicIntensity(p == SpawnPhase.Surge ? 1f : 0.3f);
     }
 
     // Any totem in the scene that is activated but not yet purified?
