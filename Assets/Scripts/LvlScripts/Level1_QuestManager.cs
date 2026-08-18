@@ -654,10 +654,14 @@ public class Level1_QuestManager : MonoBehaviour
             for (int i = 0; i <= totalChars; i++)
             {
                 subtitleText.maxVisibleCharacters = i;
-                yield return new WaitForSeconds(typingSpeed);
+                // Realtime — a tutorial hint / level-up / pause sets
+                // Time.timeScale = 0, and scaled waits froze this typewriter
+                // on the first line so the dialogue never advanced. Realtime
+                // is immune (matches the camp intro's fix).
+                yield return new WaitForSecondsRealtime(typingSpeed);
             }
 
-            yield return new WaitForSeconds(duration);
+            yield return new WaitForSecondsRealtime(duration);
             subtitleText.text = "";
             if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
         }
@@ -668,7 +672,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (GlobalHUD.Instance != null)
         {
             GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(text));
-            yield return new WaitForSeconds(duration);
+            yield return new WaitForSecondsRealtime(duration);
             GlobalHUD.Instance.HidePrompt();
         }
     }
