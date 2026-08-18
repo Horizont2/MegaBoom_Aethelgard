@@ -647,22 +647,24 @@ public class Level1_QuestManager : MonoBehaviour
                 if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
             }
             subtitleText.text = text;
-            subtitleText.ForceMeshUpdate();
-            int totalChars = subtitleText.textInfo.characterCount;
             subtitleText.maxVisibleCharacters = 0;
+            // Count from the raw string, NOT textInfo.characterCount — the
+            // latter needs a completed mesh update and was unreliable on
+            // repeated calls (returned 0 / threw), which silently dropped the
+            // SECOND line so the Stranger only ever printed his first phrase.
+            // text.Length is plain-text-safe and needs no ForceMeshUpdate.
+            int totalChars = text.Length;
 
             for (int i = 0; i <= totalChars; i++)
             {
                 subtitleText.maxVisibleCharacters = i;
-                // Realtime — a tutorial hint / level-up / pause sets
-                // Time.timeScale = 0, and scaled waits froze this typewriter
-                // on the first line so the dialogue never advanced. Realtime
-                // is immune (matches the camp intro's fix).
+                // Realtime — immune to Time.timeScale = 0 (tutorial hint / pause).
                 yield return new WaitForSecondsRealtime(typingSpeed);
             }
 
             yield return new WaitForSecondsRealtime(duration);
             subtitleText.text = "";
+            subtitleText.maxVisibleCharacters = 99999;
             if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
         }
     }
