@@ -207,8 +207,13 @@ public class Level1_QuestManager : MonoBehaviour
     {
         // dialogueId maps to AudioManager.dialogue6..10 FMOD slots (1-5
         // are owned by the camp tutorial in CampDirector).
+        // TEMP DIAGNOSTICS (LogError so they surface in the dev-build on-screen
+        // overlay) — trace whether the routine reaches the second line.
+        Debug.LogError($"[INTRO] routine START — subtitleText assigned: {subtitleText != null}");
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.", 2.5f, 6));
+        Debug.LogError("[INTRO] line 1 DONE — starting line 2");
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
+        Debug.LogError("[INTRO] line 2 DONE");
 
         AdvanceQuest();
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
