@@ -670,6 +670,7 @@ public class Level1_QuestManager : MonoBehaviour
                 if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
             }
             subtitleText.text = text;
+            Debug.LogError($"[INTRO] SET → readback='{(subtitleText.text.Length > 18 ? subtitleText.text.Substring(0, 18) : subtitleText.text)}' (wanted '{(text.Length > 18 ? text.Substring(0, 18) : text)}')");
             subtitleText.maxVisibleCharacters = 0;
             // Count from the raw string, NOT textInfo.characterCount — the
             // latter needs a completed mesh update and was unreliable on
@@ -687,6 +688,7 @@ public class Level1_QuestManager : MonoBehaviour
 
             yield return new WaitForSecondsRealtime(duration);
             subtitleText.text = "";
+            Debug.LogError($"[INTRO] CLEAR → readback='{subtitleText.text}' (len {subtitleText.text.Length})");
             subtitleText.maxVisibleCharacters = 99999;
             if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
         }
