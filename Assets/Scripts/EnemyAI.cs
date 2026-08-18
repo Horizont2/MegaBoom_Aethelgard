@@ -30,6 +30,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public float attackTelegraphTime = 0.5f;
     public GameObject weaponGlintVFX;
 
+    [Header("Ranged (Archer)")]
+    [Tooltip("Turns this enemy into a kiting archer: it holds distance and fires projectiles instead of meleeing. Uses the same animator params (Attack trigger fires the shot).")]
+    public bool isRanged = false;
+    [Tooltip("Distance the archer tries to hold from the player.")]
+    public float preferredRange = 9f;
+    [Tooltip("Arrow/projectile prefab — needs an EnemyProjectile component.")]
+    public GameObject projectilePrefab;
+    public float projectileSpeed = 18f;
+    [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
+    public Transform projectileSpawnPoint;
+
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
@@ -449,6 +460,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
             return;
         }
 
+        if (isRanged)
+        {
+            UpdateRangedBehavior();
+            return;
+        }
+
         Vector3 currentPos = transform.position;
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
         Vector3 repulsion = Vector3.zero;
@@ -675,6 +692,114 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isNight && !isNightBuffActive) { isNightBuffActive = true; actualMoveSpeed = baseActualMoveSpeed * nightMultiplier; damage = baseDamage * nightMultiplier; }
         else if (!isNight && isNightBuffActive) { isNightBuffActive = false; actualMoveSpeed = baseActualMoveSpeed; damage = baseDamage; }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Ranged / archer behaviour
+    // ─────────────────────────────────────────────────────────────
+    private void UpdateRangedBehavior()
+    {
+        Vector3 pos = transform.position;
+        Vector3 toPlayer = target.position - pos; toPlayer.y = 0f;
+        float dist = toPlayer.magnitude;
+        Vector3 dir = dist > 0.001f ? toPlayer / dist : transform.forward;
+
+        // Archers keep aim on the player.
+        if (dir != Vector3.zero)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
+
+        bool ready = Time.time >= lastAttackTime + attackCooldown;
+        if (ready && dist >= preferredRange * 0.6f && dist <= preferredRange * 1.35f)
+        {
+            if (animator != null) animator.SetBool("isMoving", false);
+            StartCoroutine(RangedAttackRoutine());
+            return;
+        }
+
+        // Light separation from crowding neighbours (layer 9, same as melee).
+        Vector3 repulsion = Vector3.zero;
+        int neighborCount = Physics.OverlapSphereNonAlloc(pos, repulsionRadius, s_overlapBuffer, 1 << 9);
+        for (int i = 0; i < neighborCount; i++)
+        {
+            Collider n = s_overlapBuffer[i];
+            if (n.gameObject != gameObject && !n.isTrigger)
+            {
+                Vector3 push = pos - n.transform.position; push.y = 0f;
+                float d = push.magnitude;
+                if (d < repulsionRadius && d > 0f) repulsion += push.normalized * (repulsionRadius - d);
+            }
+        }
+
+        // Kite: back off when crowded, close in when out of range, else strafe.
+        Vector3 move;
+        if (dist < preferredRange * 0.8f) move = -dir;
+        else if (dist > preferredRange * 1.1f) move = dir;
+        else move = Vector3.Cross(Vector3.up, dir) * strafeDir * 0.5f;
+        move = (move + repulsion).normalized;
+
+        if (move != Vector3.zero)
+        {
+            Vector3 next = pos + move * (actualMoveSpeed * 0.85f) * Time.deltaTime;
+            next.y = SampleTerrainHeight(next) + verticalOffset;
+            SetPositionSafe(next);
+            if (animator != null) animator.SetBool("isMoving", true);
+        }
+        else if (animator != null) animator.SetBool("isMoving", false);
+    }
+
+    private IEnumerator RangedAttackRoutine()
+    {
+        isPreparingAttack = true;
+        if (animator != null) animator.SetBool("isMoving", false);
+        PlayVocal(AudioID.Enemy_Telegraph);
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
+
+        Color baseTele = isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f);
+        float elapsed = 0f;
+        while (elapsed < attackTelegraphTime)
+        {
+            elapsed += Time.deltaTime;
+            // keep aiming through the wind-up so the shot tracks the player
+            if (target != null)
+            {
+                Vector3 aim = target.position - transform.position; aim.y = 0f;
+                if (aim != Vector3.zero)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(aim), 10f * Time.deltaTime);
+            }
+            float pulse = Mathf.PingPong(elapsed * 8f, 1f);
+            SetColor(Color.Lerp(baseTele, Color.white, pulse));
+            yield return null;
+        }
+        ResetColor();
+
+        if (!isDead && target != null)
+        {
+            lastAttackTime = Time.time;
+            if (animator != null) animator.SetTrigger("Attack");
+            FireProjectile();
+            if (AudioManager.Instance != null && Time.time - lastAttackSfxTime > ATTACK_SFX_COOLDOWN)
+            {
+                lastAttackSfxTime = Time.time;
+                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+            }
+        }
+        yield return new WaitForSeconds(0.2f);
+        isPreparingAttack = false;
+    }
+
+    private void FireProjectile()
+    {
+        if (projectilePrefab == null || target == null) return;
+
+        Vector3 spawn = projectileSpawnPoint != null
+            ? projectileSpawnPoint.position
+            : transform.position + Vector3.up * 1.2f + transform.forward * 0.5f;
+        Vector3 aimPoint = target.position + Vector3.up * 0.8f; // aim at the torso
+        Vector3 dir = (aimPoint - spawn).normalized;
+
+        GameObject proj = Instantiate(projectilePrefab, spawn, Quaternion.LookRotation(dir));
+        EnemyProjectile ep = proj.GetComponent<EnemyProjectile>();
+        if (ep != null) ep.Launch(dir, projectileSpeed, damage, gameObject);
     }
 
     private IEnumerator AttackRoutine()

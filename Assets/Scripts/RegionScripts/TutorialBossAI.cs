@@ -20,6 +20,26 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
     [Header("Stagger & Weapon Drop")]
     public GameObject bossWeapon;
+
+    [Header("Slam AOE Attack")]
+    [Tooltip("Boss sometimes telegraphs a ground slam at the player's position — a readable, dodgeable AOE instead of only a melee poke.")]
+    public bool useSlamAttack = true;
+    [Tooltip("Optional flat ground decal/ring prefab marking where the slam lands (scaled to 2×radius). Leave empty for telegraph-only.")]
+    public GameObject slamIndicatorPrefab;
+    public float slamRadius = 4.5f;
+    [Tooltip("Slam damage as a multiple of base damage.")]
+    public float slamDamageMult = 1.4f;
+    [Range(0f, 1f)]
+    [Tooltip("Chance a given attack is the slam AOE instead of the melee swing.")]
+    public float slamChance = 0.4f;
+
+    [Header("Enrage (low HP)")]
+    [Tooltip("Below this HP fraction the boss speeds up, slams more, and (optionally) summons adds once.")]
+    public bool useEnrage = true;
+    [Range(0f, 1f)] public float enrageThreshold = 0.35f;
+    public GameObject[] enrageAddPrefabs;
+    public int enrageAddCount = 3;
+    private bool isEnraged = false;
     [Tooltip("Колір кругу під ногами боса в стейтджері (procedural)")]
     public Color staggerRingColor = new Color(1f, 0.65f, 0.1f, 0.8f);
     [Tooltip("Радіус кругу-маркера під босом у стагері")]
@@ -200,7 +220,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
             if (Time.time >= lastAttackTime + attackCooldown)
             {
-                StartCoroutine(TelegraphAndAttackRoutine());
+                // Mix it up: sometimes a telegraphed ground slam, otherwise the
+                // melee swing — so the boss reads as an opponent, not a poker.
+                if (useSlamAttack && Random.value < slamChance)
+                    StartCoroutine(SlamAttackRoutine());
+                else
+                    StartCoroutine(TelegraphAndAttackRoutine());
             }
         }
     }
@@ -263,6 +288,102 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    // Telegraphed ground slam: marks a circle where the player stands, gives
+    // a wind-up to leave it, then damages anyone still inside. Fully dodgeable
+    // — the whole point is a readable "get out of the red" moment.
+    private IEnumerator SlamAttackRoutine()
+    {
+        isPreparingAttack = true;
+        if (animator != null) animator.SetBool("isMoving", false);
+
+        Vector3 center = target != null ? target.position : transform.position;
+        center.y = (target != null ? target.position.y : transform.position.y);
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        SetColor(new Color(2f, 0.2f, 0f));
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
+
+        GameObject indicator = null;
+        if (slamIndicatorPrefab != null)
+        {
+            indicator = Instantiate(slamIndicatorPrefab, center + Vector3.up * 0.05f, Quaternion.identity);
+            Vector3 s = indicator.transform.localScale;
+            indicator.transform.localScale = new Vector3(slamRadius * 2f, s.y, slamRadius * 2f);
+        }
+
+        float windup = attackTelegraphTime * (isEnraged ? 0.7f : 1f);
+        float t = 0f;
+        while (t < windup && !isDead && !isStaggered) { t += Time.deltaTime; yield return null; }
+
+        ResetColor();
+        if (indicator != null) Destroy(indicator);
+
+        if (!isDead && !isStaggered)
+        {
+            if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
+            CameraShakeUtil.TryShake(0.35f, 0.15f);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, center);
+
+            if (playerTarget != null && playerTarget.currentHealth > 0)
+            {
+                Vector2 pXZ = new Vector2(playerTarget.transform.position.x, playerTarget.transform.position.z);
+                Vector2 cXZ = new Vector2(center.x, center.z);
+                if (Vector2.Distance(pXZ, cXZ) <= slamRadius)
+                {
+                    Vector3 push = (playerTarget.transform.position - center); push.y = 0f;
+                    playerTarget.TakeDamage(new DamageInfo
+                    {
+                        Amount = damage * slamDamageMult,
+                        PushDirection = push.normalized,
+                        KnockbackForce = 20f,
+                        SourceName = bossName
+                    });
+                }
+            }
+        }
+
+        lastAttackTime = Time.time;
+        yield return new WaitForSeconds(0.5f);
+        isPreparingAttack = false;
+    }
+
+    private void EnterEnrage()
+    {
+        isEnraged = true;
+        attackCooldown *= 0.65f;
+        moveSpeed *= 1.25f;
+        slamChance = Mathf.Min(1f, slamChance + 0.2f);
+
+        CameraShakeUtil.TryShake(0.5f, 0.2f);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        StartCoroutine(EnrageFlashRoutine());
+
+        // Summon a one-off pack of adds so the low-HP phase spikes in threat.
+        if (enrageAddPrefabs != null && enrageAddPrefabs.Length > 0)
+        {
+            for (int i = 0; i < enrageAddCount; i++)
+            {
+                GameObject prefab = enrageAddPrefabs[Random.Range(0, enrageAddPrefabs.Length)];
+                if (prefab == null) continue;
+                Vector3 p = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(3f, 6f));
+                p.y = transform.position.y;
+                Instantiate(prefab, p, Quaternion.identity);
+            }
+        }
+    }
+
+    private IEnumerator EnrageFlashRoutine()
+    {
+        // Quick red pulse as the "boss just powered up" cue.
+        for (int i = 0; i < 3; i++)
+        {
+            SetColor(new Color(1.6f, 0f, 0f));
+            yield return new WaitForSeconds(0.1f);
+            if (!isPreparingAttack) ResetColor();
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+
     public void TakeDamage(DamageInfo info)
     {
         if (isDead || isStaggered || isInvincible) return;
@@ -271,6 +392,9 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         if (currentHealth < 0) currentHealth = 0;
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(currentHealth, maxHealth);
+
+        if (useEnrage && !isEnraged && !isDead && currentHealth <= maxHealth * enrageThreshold)
+            EnterEnrage();
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
         if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)

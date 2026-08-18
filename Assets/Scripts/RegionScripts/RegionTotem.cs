@@ -4,6 +4,41 @@ using System.Collections.Generic;
 
 public enum EncounterType { Boss, Swarm }
 
+// ─────────────────────────────────────────────────────────────────────
+//  Composable encounter templates (optional, data-driven)
+// ─────────────────────────────────────────────────────────────────────
+// A GROUP is a batch of units; each unit is a RANDOM pick from the group's
+// prefab set, so a single group can mix types (a warband of, say, swordsmen +
+// archers + a brute). An ENCOUNTER is an ordered sequence of groups (group 0
+// could be a boss, group 1 its adds). A totem can hold several encounters and
+// rolls one (weighted-random) on activation — so the same totem feels
+// different across runs, and you can author bosses, warbands, boss+adds, or
+// multi-wave ambushes entirely from the Inspector.
+[System.Serializable]
+public class TotemSpawnGroup
+{
+    public string label = "group";
+    [Tooltip("Each unit is a random pick from this set → one group can mix enemy types.")]
+    public GameObject[] prefabs;
+    public int count = 5;
+    public float hpMult = 1f;
+    public float dmgMult = 1f;
+    [Tooltip("Seconds between units within this group.")]
+    public float delayBetween = 0.15f;
+    [Tooltip("Seconds to wait after this group finishes before the next group.")]
+    public float delayAfter = 0.5f;
+}
+
+[System.Serializable]
+public class TotemEncounter
+{
+    public string name = "Encounter";
+    [Tooltip("Relative chance this encounter is chosen (weighted against the others).")]
+    public float weight = 1f;
+    [Tooltip("Groups spawn in order. e.g. [Boss] then [Adds], or one mixed [Warband].")]
+    public TotemSpawnGroup[] groups;
+}
+
 public class RegionTotem : MonoBehaviour
 {
     [HideInInspector] public RegionManager manager;
@@ -18,6 +53,13 @@ public class RegionTotem : MonoBehaviour
     public int mediumCount = 5;
     public GameObject[] elitePrefabs;
     public int eliteCount = 2;
+
+    [Header("Encounter Templates (optional — random variety)")]
+    [Tooltip("When ON, activating this totem rolls ONE of the encounters below " +
+             "(weighted-random) instead of the fixed Boss/Swarm above — a boss, a " +
+             "mixed warband, boss+adds, etc., different each run.")]
+    public bool useEncounterTemplates = false;
+    public TotemEncounter[] encounterTemplates;
 
     [Header("Standalone / Side Objective")]
     [Tooltip("Увімкни це, якщо тотем стоїть у тупику як побічна місія (не головний тотем регіону)")]
@@ -193,7 +235,11 @@ public class RegionTotem : MonoBehaviour
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
 
-        if (encounterType == EncounterType.Boss)
+        if (useEncounterTemplates && encounterTemplates != null && encounterTemplates.Length > 0)
+        {
+            yield return StartCoroutine(RunEncounterTemplate(finalHpMult, finalDmgMult));
+        }
+        else if (encounterType == EncounterType.Boss)
         {
             // ФІКС: Якщо це Вівтар у тупику, беремо його власних босів
             if (isStandalone && standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
@@ -228,6 +274,48 @@ public class RegionTotem : MonoBehaviour
         }
 
         StartCoroutine(MonitorCombatRoutine());
+    }
+
+    // Weighted-random pick among this totem's encounter templates.
+    private TotemEncounter PickEncounter()
+    {
+        float total = 0f;
+        for (int i = 0; i < encounterTemplates.Length; i++)
+            total += Mathf.Max(0f, encounterTemplates[i] != null ? encounterTemplates[i].weight : 0f);
+
+        if (total <= 0f) return encounterTemplates[Random.Range(0, encounterTemplates.Length)];
+
+        float roll = Random.value * total;
+        for (int i = 0; i < encounterTemplates.Length; i++)
+        {
+            if (encounterTemplates[i] == null) continue;
+            roll -= Mathf.Max(0f, encounterTemplates[i].weight);
+            if (roll <= 0f) return encounterTemplates[i];
+        }
+        return encounterTemplates[encounterTemplates.Length - 1];
+    }
+
+    private IEnumerator RunEncounterTemplate(float baseHpMult, float baseDmgMult)
+    {
+        TotemEncounter enc = PickEncounter();
+        if (enc == null || enc.groups == null) yield break;
+
+        if (GlobalHUD.Instance != null)
+            GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr("CLEAR THE AMBUSH!"));
+
+        for (int g = 0; g < enc.groups.Length; g++)
+        {
+            TotemSpawnGroup grp = enc.groups[g];
+            if (grp == null || grp.prefabs == null || grp.prefabs.Length == 0 || grp.count <= 0) continue;
+
+            for (int i = 0; i < grp.count; i++)
+            {
+                SpawnEntity(grp.prefabs[Random.Range(0, grp.prefabs.Length)],
+                            baseHpMult * grp.hpMult, baseDmgMult * grp.dmgMult);
+                if (grp.delayBetween > 0f) yield return new WaitForSeconds(grp.delayBetween);
+            }
+            if (grp.delayAfter > 0f) yield return new WaitForSeconds(grp.delayAfter);
+        }
     }
 
     private IEnumerator SpawnSwarmRoutine(GameObject[] prefabs, int count, float hpMult, float dmgMult)

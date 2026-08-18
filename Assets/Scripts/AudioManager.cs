@@ -65,6 +65,7 @@ public static class AudioID
 
     public const string Music_Camp = "Music/Music_Camp";
     public const string Music_Battle = "Music/Music_Journey";
+    public const string Music_Level1 = "Music/Music_Level1";
 
     public const string Ambient_Wind = "AMB/AMB_Wind";
     // Fire crackle for the camp bonfire — needs an FMOD event at this
@@ -155,6 +156,7 @@ public class AudioManager : MonoBehaviour
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp;
     public SoundGroup musicBattle;
+    public SoundGroup musicLevel1;
 
     [Header("=== DIALOGUES ===")]
     public SoundGroup dialogue1;
@@ -266,8 +268,12 @@ public class AudioManager : MonoBehaviour
                     PlayMusic(AudioID.Music_Camp);
                 }
                 break;
-            case "GameScene":
             case "Lvl_1":
+                // Level 1 gets its own theme; falls back to the battle score
+                // until the dedicated FMOD event is authored.
+                PlayMusicOrFallback(AudioID.Music_Level1, AudioID.Music_Battle);
+                break;
+            case "GameScene":
                 PlayMusic(AudioID.Music_Battle);
                 break;
         }
@@ -481,6 +487,7 @@ public class AudioManager : MonoBehaviour
 
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp);
         sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
+        sfxDictionary.Add(AudioID.Music_Level1, musicLevel1);
 
         sfxDictionary.Add("Dialogue/Dialogue1", dialogue1);
         sfxDictionary.Add("Dialogue/Dialogue2", dialogue2);
@@ -621,6 +628,26 @@ public class AudioManager : MonoBehaviour
             inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
             inst.release();
         }
+    }
+
+    // Play `primary` if its FMOD event is wired, otherwise `fallback`. Lets a
+    // scene point at a new (not-yet-authored) track without going silent.
+    public void PlayMusicOrFallback(string primary, string fallback)
+    {
+        if (sfxDictionary.TryGetValue(primary, out SoundGroup g) && g != null && !g.fmodEvent.IsNull)
+            PlayMusic(primary);
+        else
+            PlayMusic(fallback);
+    }
+
+    // Drives an FMOD parameter named "Intensity" (0..1) on the current music
+    // instance — author a matching parameter on a dynamic-music event to layer
+    // in extra stems during surges/boss fights. Safe no-op if the event has no
+    // such parameter, so it never errors on the simple tracks.
+    public void SetMusicIntensity(float value01)
+    {
+        if (currentMusicInstance.isValid())
+            currentMusicInstance.setParameterByName("Intensity", Mathf.Clamp01(value01));
     }
 
     public void PlayMusic(string soundName)
