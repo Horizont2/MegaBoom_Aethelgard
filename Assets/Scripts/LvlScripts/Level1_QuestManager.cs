@@ -219,6 +219,11 @@ public class Level1_QuestManager : MonoBehaviour
         int mgrs = FindObjectsByType<Level1_QuestManager>(FindObjectsSortMode.None).Length;
         int npcs = FindObjectsByType<NPC_Dialogue>(FindObjectsSortMode.None).Length;
         Debug.LogError($"[INTRO] AFTER: managers={mgrs} npc={npcs} | subtitle name='{(subtitleText != null ? subtitleText.name : "NULL")}' id={(subtitleText != null ? subtitleText.GetInstanceID() : 0)} active={(subtitleText != null && subtitleText.gameObject.activeInHierarchy)} textNow='{(subtitleText != null ? subtitleText.text : "")}'");
+        // Dump every component on the subtitle object — one of these is
+        // locking the text back to line 1.
+        if (subtitleText != null)
+            foreach (var c in subtitleText.GetComponents<Component>())
+                Debug.LogError($"[INTRO] comp on subtitle: {(c != null ? c.GetType().FullName : "null")}");
         StartCoroutine(WatchSubtitleAfter());
 
         AdvanceQuest();
