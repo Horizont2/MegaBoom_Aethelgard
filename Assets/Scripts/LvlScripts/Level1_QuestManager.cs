@@ -207,24 +207,8 @@ public class Level1_QuestManager : MonoBehaviour
     {
         // dialogueId maps to AudioManager.dialogue6..10 FMOD slots (1-5
         // are owned by the camp tutorial in CampDirector).
-        // TEMP DIAGNOSTICS (LogError so they surface in the dev-build on-screen
-        // overlay) — trace whether the routine reaches the second line.
-        Debug.LogError($"[INTRO] routine START — subtitleText assigned: {subtitleText != null}");
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: Thank the heavens you're here! My cart is busted and this forest is cursed.", 2.5f, 6));
-        Debug.LogError("[INTRO] line 1 DONE — starting line 2");
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
-        Debug.LogError("[INTRO] line 2 DONE");
-        // TEMP: identify the exact subtitle object + how many managers exist,
-        // and watch whether something re-writes the label after we clear it.
-        int mgrs = FindObjectsByType<Level1_QuestManager>(FindObjectsSortMode.None).Length;
-        int npcs = FindObjectsByType<NPC_Dialogue>(FindObjectsSortMode.None).Length;
-        Debug.LogError($"[INTRO] AFTER: managers={mgrs} npc={npcs} | subtitle name='{(subtitleText != null ? subtitleText.name : "NULL")}' id={(subtitleText != null ? subtitleText.GetInstanceID() : 0)} active={(subtitleText != null && subtitleText.gameObject.activeInHierarchy)} textNow='{(subtitleText != null ? subtitleText.text : "")}'");
-        // Dump every component on the subtitle object — one of these is
-        // locking the text back to line 1.
-        if (subtitleText != null)
-            foreach (var c in subtitleText.GetComponents<Component>())
-                Debug.LogError($"[INTRO] comp on subtitle: {(c != null ? c.GetType().FullName : "null")}");
-        StartCoroutine(WatchSubtitleAfter());
 
         AdvanceQuest();
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
@@ -649,54 +633,45 @@ public class Level1_QuestManager : MonoBehaviour
         if (cc != null) cc.enabled = true;
     }
 
-    // TEMP diagnostic: after the intro ends, sample the label for 4s to catch
-    // any OTHER system that re-writes it back to the first line.
-    private IEnumerator WatchSubtitleAfter()
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            yield return new WaitForSecondsRealtime(1f);
-            if (subtitleText != null)
-                Debug.LogError($"[INTRO] watch t={i + 1}s: text='{subtitleText.text}' visibleChars={subtitleText.maxVisibleCharacters}");
-        }
-    }
-
     private IEnumerator ShowSubtitleTypewriter(string text, float duration, int dialogueId = 0)
     {
-        if (subtitleText != null)
+        if (subtitleText == null) yield break;
+
+        text = LocalizationManager.Tr(text);
+
+        // Duck the score during the line so the reader isn't competing with
+        // battle music. Released once the subtitle clears below.
+        if (AudioManager.Instance != null)
         {
-            text = LocalizationManager.Tr(text);
-            // Duck the score during the line so the reader isn't
-            // competing with battle music. Released once the subtitle
-            // clears below.
-            if (AudioManager.Instance != null)
-            {
-                AudioManager.Instance.DuckMusic(0.35f, 0.25f, -1f, 0f);
-                if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
-            }
-            subtitleText.text = text;
-            Debug.LogError($"[INTRO] SET → readback='{(subtitleText.text.Length > 18 ? subtitleText.text.Substring(0, 18) : subtitleText.text)}' (wanted '{(text.Length > 18 ? text.Substring(0, 18) : text)}')");
-            subtitleText.maxVisibleCharacters = 0;
-            // Count from the raw string, NOT textInfo.characterCount — the
-            // latter needs a completed mesh update and was unreliable on
-            // repeated calls (returned 0 / threw), which silently dropped the
-            // SECOND line so the Stranger only ever printed his first phrase.
-            // text.Length is plain-text-safe and needs no ForceMeshUpdate.
-            int totalChars = text.Length;
-
-            for (int i = 0; i <= totalChars; i++)
-            {
-                subtitleText.maxVisibleCharacters = i;
-                // Realtime — immune to Time.timeScale = 0 (tutorial hint / pause).
-                yield return new WaitForSecondsRealtime(typingSpeed);
-            }
-
-            yield return new WaitForSecondsRealtime(duration);
-            subtitleText.text = "";
-            Debug.LogError($"[INTRO] CLEAR → readback='{subtitleText.text}' (len {subtitleText.text.Length})");
-            subtitleText.maxVisibleCharacters = 99999;
-            if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
+            AudioManager.Instance.DuckMusic(0.35f, 0.25f, -1f, 0f);
+            if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
+
+        // Use SetText + ForceMeshUpdate. A bare `subtitleText.text = ...` marks
+        // the mesh dirty but does NOT immediately resync TMP's internal backing
+        // string / character data, so the SECOND line could read back (and
+        // render) as the previous line — which is exactly why the Stranger only
+        // ever showed his first phrase. SetText + ForceMeshUpdate rebuilds both,
+        // giving a correct characterCount to drive the typewriter.
+        subtitleText.maxVisibleCharacters = 0;
+        subtitleText.SetText(text);
+        subtitleText.ForceMeshUpdate();
+        int totalChars = subtitleText.textInfo.characterCount;
+        if (totalChars <= 0) totalChars = text.Length;
+
+        for (int i = 0; i <= totalChars; i++)
+        {
+            subtitleText.maxVisibleCharacters = i;
+            // Realtime — immune to Time.timeScale = 0 (tutorial hint / pause).
+            yield return new WaitForSecondsRealtime(typingSpeed);
+        }
+
+        yield return new WaitForSecondsRealtime(duration);
+
+        subtitleText.SetText(string.Empty);
+        subtitleText.ForceMeshUpdate();
+        subtitleText.maxVisibleCharacters = 99999;
+        if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
     }
 
     private IEnumerator ShowTutorialHint(string text, float duration)
