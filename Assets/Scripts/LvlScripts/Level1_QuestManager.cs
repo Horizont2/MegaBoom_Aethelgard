@@ -214,6 +214,12 @@ public class Level1_QuestManager : MonoBehaviour
         Debug.LogError("[INTRO] line 1 DONE — starting line 2");
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
         Debug.LogError("[INTRO] line 2 DONE");
+        // TEMP: identify the exact subtitle object + how many managers exist,
+        // and watch whether something re-writes the label after we clear it.
+        int mgrs = FindObjectsByType<Level1_QuestManager>(FindObjectsSortMode.None).Length;
+        int npcs = FindObjectsByType<NPC_Dialogue>(FindObjectsSortMode.None).Length;
+        Debug.LogError($"[INTRO] AFTER: managers={mgrs} npc={npcs} | subtitle name='{(subtitleText != null ? subtitleText.name : "NULL")}' id={(subtitleText != null ? subtitleText.GetInstanceID() : 0)} active={(subtitleText != null && subtitleText.gameObject.activeInHierarchy)} textNow='{(subtitleText != null ? subtitleText.text : "")}'");
+        StartCoroutine(WatchSubtitleAfter());
 
         AdvanceQuest();
         StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
@@ -636,6 +642,18 @@ public class Level1_QuestManager : MonoBehaviour
         enemy.position = finalPos;
 
         if (cc != null) cc.enabled = true;
+    }
+
+    // TEMP diagnostic: after the intro ends, sample the label for 4s to catch
+    // any OTHER system that re-writes it back to the first line.
+    private IEnumerator WatchSubtitleAfter()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            yield return new WaitForSecondsRealtime(1f);
+            if (subtitleText != null)
+                Debug.LogError($"[INTRO] watch t={i + 1}s: text='{subtitleText.text}' visibleChars={subtitleText.maxVisibleCharacters}");
+        }
     }
 
     private IEnumerator ShowSubtitleTypewriter(string text, float duration, int dialogueId = 0)
