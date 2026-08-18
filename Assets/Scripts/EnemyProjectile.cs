@@ -4,7 +4,7 @@ using UnityEngine;
 // Raycasts each frame so fast arrows don't tunnel through the player, deals
 // damage on hit, and self-destructs on impact, on hitting the world, or after
 // its lifetime. Ignores other enemies so archers don't shoot their own crowd.
-[RequireComponent(typeof(Collider))]
+// Hit detection is raycast-based, so no Collider is required on the arrow.
 public class EnemyProjectile : MonoBehaviour
 {
     [Tooltip("Seconds before the arrow despawns if it hits nothing.")]
