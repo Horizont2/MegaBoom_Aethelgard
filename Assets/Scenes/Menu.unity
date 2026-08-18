@@ -2885,6 +2885,14 @@ MonoBehaviour:
         Data3: -1294364284
         Data4: -1267188723
       Path: event:/Music/Music_Journey
+  musicLevel1:
+    fmodEvent:
+      Guid:
+        Data1: -1695889442
+        Data2: 1141103115
+        Data3: 1454776976
+        Data4: -247606392
+      Path: event:/Music/Lvl1_Music
   dialogue1:
     fmodEvent:
       Guid:
