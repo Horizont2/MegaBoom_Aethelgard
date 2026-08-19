@@ -181,29 +181,25 @@ public class IntroCinematicManager : MonoBehaviour
 
     private IEnumerator TypeTextChunks(List<string> chunks)
     {
+        // Robust typewriter: set the visible SUBSTRING as full text each step
+        // + ForceMeshUpdate. The maxVisibleCharacters path left later chunks
+        // un-rendered on this TMP version (intro froze on the first chunk).
+        subtitleText.maxVisibleCharacters = 99999;
         for (int c = 0; c < chunks.Count; c++)
         {
-            subtitleText.text = chunks[c];
-            subtitleText.maxVisibleCharacters = 0;
-            subtitleText.ForceMeshUpdate();
-
-            int totalVisibleCharacters = chunks[c].Length;
-
-            // ������� �������� ������
-            for (int i = 0; i <= totalVisibleCharacters; i++)
+            string chunk = chunks[c];
+            for (int i = 0; i <= chunk.Length; i++)
             {
-                subtitleText.maxVisibleCharacters = i;
+                subtitleText.text = chunk.Substring(0, i);
+                subtitleText.ForceMeshUpdate();
                 yield return new WaitForSecondsRealtime(typingSpeed);
             }
 
-            // ���� �� �� �������� ������ ������, ������ �����
             if (c < chunks.Count - 1)
             {
                 yield return new WaitForSecondsRealtime(delayBetweenChunks);
             }
         }
-
-        subtitleText.maxVisibleCharacters = 99999;
     }
 
     // Hold-to-skip: an accidental Esc used to kill the intro instantly

@@ -189,27 +189,24 @@ public class CampDirector : MonoBehaviour
             if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
 
-        subtitleText.text = text;
-        subtitleText.ForceMeshUpdate();
-        int totalChars = subtitleText.textInfo.characterCount;
-        subtitleText.maxVisibleCharacters = 0;
-
-        // Realtime waits — the narration must not be tied to gameplay
-        // timeScale. A stray Time.timeScale = 0 (a pause/cinematic guard
-        // firing as the camp loads) used to stall this coroutine at the
-        // stay-wait below with the first line frozen on screen forever
-        // (the "first paragraph shows and never disappears" bug).
-        for (int i = 0; i <= totalChars; i++)
+        // Robust typewriter: set the visible SUBSTRING as full text each step
+        // + ForceMeshUpdate so every change renders. The maxVisibleCharacters /
+        // textInfo path left later lines and the clear un-rendered on this TMP
+        // version, so dialogues froze on the first line. Realtime waits keep it
+        // immune to a stray Time.timeScale = 0.
+        subtitleText.maxVisibleCharacters = 99999;
+        for (int i = 0; i <= text.Length; i++)
         {
             if (subtitleText == null) yield break;
-            subtitleText.maxVisibleCharacters = i;
+            subtitleText.text = text.Substring(0, i);
+            subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
         yield return new WaitForSecondsRealtime(stayDuration);
         if (subtitleText == null) yield break;
-        subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
+        subtitleText.ForceMeshUpdate();
 
         // Restore the score once the subtitle clears.
         if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
@@ -220,21 +217,20 @@ public class CampDirector : MonoBehaviour
         if (subtitleText == null) yield break;
 
         text = LocalizationManager.Tr(text);
-        subtitleText.text = $"<color=#88CCFF>{text}</color>";
-        subtitleText.ForceMeshUpdate();
-        int totalChars = subtitleText.textInfo.characterCount;
-        subtitleText.maxVisibleCharacters = 0;
-
-        for (int i = 0; i <= totalChars; i++)
+        subtitleText.maxVisibleCharacters = 99999;
+        for (int i = 0; i <= text.Length; i++)
         {
             if (subtitleText == null) yield break;
-            subtitleText.maxVisibleCharacters = i;
+            // Keep the colour tag around the growing substring so the rich
+            // text stays valid at every step.
+            subtitleText.text = $"<color=#88CCFF>{text.Substring(0, i)}</color>";
+            subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
         yield return new WaitForSecondsRealtime(duration);
         if (subtitleText == null) yield break;
-        subtitleText.maxVisibleCharacters = 99999;
         subtitleText.text = "";
+        subtitleText.ForceMeshUpdate();
     }
 }

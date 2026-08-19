@@ -647,8 +647,6 @@ public class Level1_QuestManager : MonoBehaviour
             if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
 
-        Debug.LogWarning("[DLG v5] typewriter running — Substring mode");
-
         // Robust typewriter: DON'T rely on maxVisibleCharacters/textInfo (those
         // were leaving the SECOND line and the clear un-rendered on this TMP
         // version — every dialogue in the game froze on its first line). Instead
