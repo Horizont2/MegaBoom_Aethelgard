@@ -19,6 +19,10 @@ public class CampNPC_Elias : MonoBehaviour
 
     private bool isPlayerInRange = false;
     private bool isTalking = false;
+    // Ownership token for the WHOLE conversation on the shared subtitle label
+    // (CampDirector's intro drives the same TMP). Claimed once per conversation;
+    // if another conversation claims a newer one, this whole sequence goes quiet.
+    private int _subtitleSeq;
     private float stateCheckTimer = 0f;
     // Optional companion — if present, we pause its patrol during dialogue.
     private NPCPatroller patroller;
@@ -123,6 +127,7 @@ public class CampNPC_Elias : MonoBehaviour
     private IEnumerator EliasDialogueRoutine()
     {
         isTalking = true;
+        _subtitleSeq = SubtitleGuard.Claim(); // own the shared label for this whole talk
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         if (exclamationMark != null) exclamationMark.SetActive(false);
 
@@ -213,10 +218,6 @@ public class CampNPC_Elias : MonoBehaviour
         // can be translated by the LocalizationManager. Untranslated keys
         // fall back to the passed English verbatim.
         string full = LocalizationManager.Tr(text);
-        // Claim the shared subtitle label — the camp intro (CampDirector) uses
-        // the SAME TMP, so without this the two typewriters flicker against
-        // each other. If another writer claims after us, we bail out.
-        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
 
         // Typewriter via an <alpha=#00> tag: the full line is laid out from the
@@ -228,7 +229,7 @@ public class CampNPC_Elias : MonoBehaviour
         bool skippedTypewriter = false;
         for (int i = 0; i <= full.Length; i++)
         {
-            if (!SubtitleGuard.Owns(token)) yield break;
+            if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
             if (!skippedTypewriter && WasSkipPressed())
             {
                 skippedTypewriter = true;
@@ -238,7 +239,7 @@ public class CampNPC_Elias : MonoBehaviour
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSeconds(typingSpeed);
         }
-        if (!SubtitleGuard.Owns(token)) yield break;
+        if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
         subtitleText.text = full;
         subtitleText.ForceMeshUpdate();
 
@@ -247,11 +248,11 @@ public class CampNPC_Elias : MonoBehaviour
         while (t < stayDuration)
         {
             if (WasSkipPressed()) break;
-            if (!SubtitleGuard.Owns(token)) yield break;
+            if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
             t += Time.deltaTime;
             yield return null;
         }
-        if (!SubtitleGuard.Owns(token)) yield break;
+        if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
         subtitleText.text = "";
         subtitleText.ForceMeshUpdate();
     }
