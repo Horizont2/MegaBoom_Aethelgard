@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+public enum SlideTransition { Fade, HardCut }
+
 [System.Serializable]
 public class IntroSlide
 {
@@ -13,6 +15,12 @@ public class IntroSlide
     public AudioClip voiceover;
     [Tooltip("How long this slide stays on screen after it finishes typing (seconds).")]
     public float duration = 6f;
+
+    [Header("Transition INTO this slide")]
+    [Tooltip("Fade = smooth crossfade; HardCut = snaps in instantly (for punchy beats).")]
+    public SlideTransition transition = SlideTransition.Fade;
+    [Tooltip("Seconds of pure BLACK held before this slide appears — the dramatic hard-cut + silence beat (e.g. the bass drop at 0:09-0:11).")]
+    public float blackHoldBefore = 0f;
 }
 
 [System.Serializable]
@@ -111,10 +119,28 @@ public class StoryIntroPlayer : MonoBehaviour
         {
             IntroSlide slide = slides[s];
 
-            if (imageDisplay != null && slide.image != null)
+            if (imageDisplay != null)
             {
-                imageDisplay.sprite = slide.image;
-                yield return FadeGraphicAlpha(imageDisplay, 1f, imageFadeDuration);
+                // Optional dramatic dip to black + silence before the slide
+                // (the hard-cut beat in the timing table).
+                if (slide.blackHoldBefore > 0f)
+                {
+                    yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration * 0.5f);
+                    float bt = 0f;
+                    while (bt < slide.blackHoldBefore && !CheckSkip()) { bt += Time.unscaledDeltaTime; yield return null; }
+                }
+
+                if (slide.image != null) imageDisplay.sprite = slide.image;
+
+                if (slide.transition == SlideTransition.HardCut)
+                {
+                    Color c = imageDisplay.color; c.a = 1f; imageDisplay.color = c; // snap in
+                }
+                else
+                {
+                    Color c = imageDisplay.color; c.a = 0f; imageDisplay.color = c;
+                    yield return FadeGraphicAlpha(imageDisplay, 1f, imageFadeDuration);
+                }
             }
 
             if (voiceSource != null && slide.voiceover != null)
