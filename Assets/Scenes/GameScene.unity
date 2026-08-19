@@ -7973,6 +7973,14 @@ MonoBehaviour:
         Data3: -1294364284
         Data4: -1267188723
       Path: event:/Music/Music_Journey
+  musicLevel1:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue1:
     fmodEvent:
       Guid:
@@ -16608,9 +16616,10 @@ MonoBehaviour:
   - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
   - {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
   - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
+  - {fileID: 7222315261462194013, guid: 16dba44f4007f494eba84c5d550de4e1, type: 3}
   patrolGroupSize: 3
   campGroupSize: 4
-  encounterCount: 20
+  encounterCount: 40
   minSeparation: 28
   minDistanceFromPlayer: 35
   minDistanceFromTotems: 20
@@ -16618,7 +16627,7 @@ MonoBehaviour:
   winterCampRatio: 0.6
   defaultCampRatio: 0.15
   campfirePrefab: {fileID: 1333987346965480676, guid: a0cb97213f1da8142b799feda15700c6, type: 3}
-  patrolWaypointCount: 3
+  patrolWaypointCount: 4
   patrolRouteRadius: 12
   aggroRange: 14
   roamRadius: 3.5
@@ -16642,16 +16651,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b1272c6fc5cedc64c98f8df3844f5d8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RegionObjectiveDirector
-  beaconHeight: 90
-  beaconDiameter: 0.6
+  beaconHeight: 120
+  beaconDiameter: 0.5
   activeBeaconColor: {r: 1, g: 0.25, b: 0.15, a: 0.85}
   beaconMaterialTemplate: {fileID: 0}
-  pulseStrength: 0.35
+  pulseStrength: 0.5
   pulseSpeed: 1.6
-  beaconBaseOffset: 2
+  beaconBaseOffset: 1
   addCompassMarkers: 0
   showDistanceLabel: 1
-  labelFontSize: 5
+  labelFontSize: 3
   labelHeight: 3
   labelPrefix: PURIFY TOTEM
   labelFontAsset: {fileID: 11400000, guid: 57dff7deb879aba4e8d52b196c3dc534, type: 2}
@@ -22480,12 +22489,28 @@ MonoBehaviour:
     spawnAtMinute: 0
   - enemyPrefab: {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
     spawnAtMinute: 3
+  - enemyPrefab: {fileID: 7222315261462194013, guid: 16dba44f4007f494eba84c5d550de4e1, type: 3}
+    spawnAtMinute: 5
   - enemyPrefab: {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
     spawnAtMinute: 7
   player: {fileID: 615663591}
   baseSpawnInterval: 5
   minSpawnRadius: 10
   maxSpawnRadius: 20
+  useDirector: 1
+  gracePeriod: 45
+  relaxDuration: {x: 16, y: 24}
+  buildupDuration: {x: 5, y: 8}
+  peakDuration: {x: 12, y: 18}
+  relaxIntervalMult: 5
+  buildupIntervalMult: 1.4
+  peakIntervalMult: 0.6
+  relaxCapFactor: 0.4
+  startCap: 8
+  capRampMinutes: 8
+  packChance: 0.3
+  packSize: {x: 3, y: 6}
+  hordeEveryNPeaks: 4
 --- !u!4 &1241868304
 Transform:
   m_ObjectHideFlags: 0
