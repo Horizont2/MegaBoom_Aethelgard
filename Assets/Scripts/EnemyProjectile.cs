@@ -19,6 +19,17 @@ public class EnemyProjectile : MonoBehaviour
     private GameObject owner;
     private bool launched;
 
+    private void Awake()
+    {
+        // If the arrow prefab carries a Rigidbody, keep it kinematic + no gravity
+        // so physics never fights our transform move (that made arrows hang /
+        // arc oddly). Movement is driven purely by Launch below.
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
+        // Hard backstop: never let a mis-fired arrow hang in the air forever.
+        Destroy(gameObject, Mathf.Max(lifetime, 0.5f) + 1f);
+    }
+
     // Called by EnemyAI.FireProjectile right after spawn.
     public void Launch(Vector3 dir, float speed, float dmg, GameObject source)
     {

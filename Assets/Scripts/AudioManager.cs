@@ -644,10 +644,33 @@ public class AudioManager : MonoBehaviour
     // instance — author a matching parameter on a dynamic-music event to layer
     // in extra stems during surges/boss fights. Safe no-op if the event has no
     // such parameter, so it never errors on the simple tracks.
+    private float _musicIntensity = 0f;
+    private Coroutine _intensityRoutine;
+
     public void SetMusicIntensity(float value01)
     {
+        value01 = Mathf.Clamp01(value01);
+        // Ramp toward the target instead of snapping, so combat music swells and
+        // eases smoothly rather than switching hard on the phase change.
+        if (_intensityRoutine != null) StopCoroutine(_intensityRoutine);
+        _intensityRoutine = StartCoroutine(RampMusicIntensity(value01, 2.5f));
+    }
+
+    private IEnumerator RampMusicIntensity(float target, float duration)
+    {
+        float start = _musicIntensity;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            _musicIntensity = Mathf.Lerp(start, target, t / duration);
+            if (currentMusicInstance.isValid())
+                currentMusicInstance.setParameterByName("Intensity", _musicIntensity);
+            yield return null;
+        }
+        _musicIntensity = target;
         if (currentMusicInstance.isValid())
-            currentMusicInstance.setParameterByName("Intensity", Mathf.Clamp01(value01));
+            currentMusicInstance.setParameterByName("Intensity", target);
     }
 
     public void PlayMusic(string soundName)

@@ -120,6 +120,10 @@ public class SubtitleBinding : MonoBehaviour
         // scenery. Rich-text <color=..> tags in a line still override this
         // locally (e.g. the blue [TIP] hint). Alpha is preserved so fades work.
         text.color = new Color(1f, 1f, 1f, text.color.a <= 0f ? 1f : text.color.a);
+        // Rich text MUST be on — the typewriters reveal in place with an
+        // <alpha=#00> tag; if a label has richText off, that tag is ignored and
+        // the whole line shows at once (no typing) and never hides.
+        text.richText = true;
         text.gameObject.SetActive(SubtitleSettings.Enabled);
         EnsureBgBox();
     }

@@ -730,16 +730,34 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        // Kite: back off when crowded, close in when out of range, else strafe.
+        // Kite — but stay CATCHABLE. Archers used to flee the instant the
+        // player got anywhere near, so they were impossible to melee. Now they
+        // only back off when the player is genuinely close, and do it SLOWLY,
+        // so a chasing (and especially dashing) player runs them down and kills
+        // them. Otherwise they close in when out of range, or strafe in the band.
+        float retreatDist = Mathf.Min(preferredRange * 0.5f, 4.5f);
+        float moveSpeedMult;
         Vector3 move;
-        if (dist < preferredRange * 0.8f) move = -dir;
-        else if (dist > preferredRange * 1.1f) move = dir;
-        else move = Vector3.Cross(Vector3.up, dir) * strafeDir * 0.5f;
+        if (dist < retreatDist)
+        {
+            move = -dir;            // back off, but slowly enough to be caught
+            moveSpeedMult = 0.5f;
+        }
+        else if (dist > preferredRange * 1.15f)
+        {
+            move = dir;             // close the gap
+            moveSpeedMult = 0.9f;
+        }
+        else
+        {
+            move = Vector3.Cross(Vector3.up, dir) * strafeDir * 0.5f; // reposition
+            moveSpeedMult = 0.6f;
+        }
         move = (move + repulsion).normalized;
 
         if (move != Vector3.zero)
         {
-            Vector3 next = pos + move * (actualMoveSpeed * 0.85f) * Time.deltaTime;
+            Vector3 next = pos + move * (actualMoveSpeed * moveSpeedMult) * Time.deltaTime;
             next.y = SampleTerrainHeight(next) + verticalOffset;
             SetPositionSafe(next);
             if (animator != null) animator.SetBool("isMoving", true);
