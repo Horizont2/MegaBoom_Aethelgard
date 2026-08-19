@@ -14,6 +14,13 @@ public class Level1_QuestManager : MonoBehaviour
     public MissionUIElement objectiveUI;
     public TextMeshProUGUI subtitleText;
 
+    [Header("New-game story cutscene (optional)")]
+    [Tooltip("Illustrated opening cutscene shown once when a new game begins. " +
+             "If assigned, it plays FIRST; the existing Timeline intro (camera " +
+             "descent + handoff) only starts after the cutscene finishes. Leave " +
+             "empty to keep the old behaviour exactly.")]
+    public StoryIntroPlayer storyIntro;
+
     [Header("Quest Settings")]
     public int requiredWood = 15;
 
@@ -117,6 +124,37 @@ public class Level1_QuestManager : MonoBehaviour
         if (evacuationHorse != null) evacuationHorse.SetActive(false);
 
         Invoke("FindPlayer", 0.1f);
+
+        if (storyIntro != null)
+        {
+            // The illustrated new-game cutscene runs first. The existing
+            // Timeline intro (camera descent) + its LocationTitleReveal overlay
+            // and the gameplay handoff only begin once the cutscene finishes.
+            // The player is already control-blocked from Awake, so nothing moves
+            // while the slides play.
+            StartCoroutine(DeferIntroUntilCutscene());
+        }
+        else
+        {
+            if (introDirector != null)
+            {
+                SetCinematicMode(true);
+                if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = true;
+                introDirector.Play();
+            }
+
+            StartCoroutine(LevelStartRoutine());
+        }
+    }
+
+    // Waits out the illustrated opening cutscene, then runs the normal Timeline
+    // intro + camera handoff exactly as before. Inert if no cutscene is playing
+    // (e.g. already seen this save) — it falls straight through.
+    private IEnumerator DeferIntroUntilCutscene()
+    {
+        // Let every component's Start() run so StoryIntroPlayer.IsPlaying settles.
+        yield return null;
+        while (StoryIntroPlayer.IsPlaying) yield return null;
 
         if (introDirector != null)
         {
