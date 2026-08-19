@@ -212,26 +212,29 @@ public class CampNPC_Elias : MonoBehaviour
         // Wrap through Tr so the English literals passed as call-site keys
         // can be translated by the LocalizationManager. Untranslated keys
         // fall back to the passed English verbatim.
-        subtitleText.text = LocalizationManager.Tr(text);
-        subtitleText.ForceMeshUpdate();
-        int totalChars = subtitleText.textInfo.characterCount;
-        subtitleText.maxVisibleCharacters = 0;
+        string full = LocalizationManager.Tr(text);
+        subtitleText.maxVisibleCharacters = 99999;
 
-        // Skippable typewriter — Space/E/Enter jumps to the fully typed
-        // line so a player who's read Elias five times before doesn't sit
-        // through the whole crawl. Second press advances past the stay.
+        // Typewriter via an <alpha=#00> tag: the full line is laid out from the
+        // start (reveal "in place", no layout jumps) with the untyped tail
+        // transparent. Plain `.text =` + ForceMeshUpdate renders reliably here,
+        // unlike maxVisibleCharacters which left later lines un-rendered on this
+        // TMP version (dialogues froze on the first line).
+        // Skippable — Space/E/Enter jumps to the fully typed line.
         bool skippedTypewriter = false;
-        for (int i = 0; i <= totalChars; i++)
+        for (int i = 0; i <= full.Length; i++)
         {
             if (!skippedTypewriter && WasSkipPressed())
             {
                 skippedTypewriter = true;
-                i = totalChars; // jump to fully visible
+                i = full.Length; // jump to fully visible
             }
-            subtitleText.maxVisibleCharacters = i;
+            subtitleText.text = full.Substring(0, i) + "<alpha=#00>" + full.Substring(i);
+            subtitleText.ForceMeshUpdate();
             yield return new WaitForSeconds(typingSpeed);
         }
-        subtitleText.maxVisibleCharacters = 99999;
+        subtitleText.text = full;
+        subtitleText.ForceMeshUpdate();
 
         // Skippable read-hold — same trigger cuts the wait short.
         float t = 0f;
@@ -242,6 +245,7 @@ public class CampNPC_Elias : MonoBehaviour
             yield return null;
         }
         subtitleText.text = "";
+        subtitleText.ForceMeshUpdate();
     }
 
     private static bool WasSkipPressed()

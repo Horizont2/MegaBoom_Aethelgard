@@ -161,16 +161,17 @@ public class VictoryEndingSequence : MonoBehaviour
 
     private IEnumerator TypeLine(string text, float holdSeconds)
     {
-        narrationText.text = text;
-        narrationText.maxVisibleCharacters = 0;
-        narrationText.ForceMeshUpdate();
-        int total = narrationText.textInfo.characterCount;
-        for (int i = 0; i <= total; i++)
+        // Reveal-in-place via <alpha=#00> (full text laid out, untyped tail
+        // transparent) — renders reliably here, unlike maxVisibleCharacters.
+        narrationText.maxVisibleCharacters = 99999;
+        for (int i = 0; i <= text.Length; i++)
         {
-            narrationText.maxVisibleCharacters = i;
+            narrationText.text = text.Substring(0, i) + "<alpha=#00>" + text.Substring(i);
+            narrationText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(0.035f);
         }
-        narrationText.maxVisibleCharacters = 99999;
+        narrationText.text = text;
+        narrationText.ForceMeshUpdate();
         yield return new WaitForSecondsRealtime(holdSeconds);
     }
 }
