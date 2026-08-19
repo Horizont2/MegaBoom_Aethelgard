@@ -647,15 +647,15 @@ public class Level1_QuestManager : MonoBehaviour
             if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
 
-        // Robust typewriter: DON'T rely on maxVisibleCharacters/textInfo (those
-        // were leaving the SECOND line and the clear un-rendered on this TMP
-        // version — every dialogue in the game froze on its first line). Instead
-        // set the actual visible substring as the full text each step, and force
-        // a mesh rebuild so the change is displayed immediately.
+        // Typewriter via an <alpha=#00> tag: the FULL line is always laid out
+        // (so the layout never shifts / jumps as it types — the reveal happens
+        // "in place"), but the not-yet-typed tail is transparent. This uses
+        // plain `.text =` + ForceMeshUpdate, which renders reliably here, unlike
+        // maxVisibleCharacters which left later lines un-rendered on this TMP.
         subtitleText.maxVisibleCharacters = 99999;
         for (int i = 0; i <= text.Length; i++)
         {
-            subtitleText.text = text.Substring(0, i);
+            subtitleText.text = text.Substring(0, i) + "<alpha=#00>" + text.Substring(i);
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }

@@ -181,16 +181,17 @@ public class IntroCinematicManager : MonoBehaviour
 
     private IEnumerator TypeTextChunks(List<string> chunks)
     {
-        // Robust typewriter: set the visible SUBSTRING as full text each step
-        // + ForceMeshUpdate. The maxVisibleCharacters path left later chunks
-        // un-rendered on this TMP version (intro froze on the first chunk).
+        // Typewriter via an <alpha=#00> tag: the full chunk is always laid out
+        // (reveal "in place", no layout jumps), the untyped tail transparent.
+        // Uses plain `.text =` + ForceMeshUpdate — renders reliably here, unlike
+        // maxVisibleCharacters which left later chunks un-rendered on this TMP.
         subtitleText.maxVisibleCharacters = 99999;
         for (int c = 0; c < chunks.Count; c++)
         {
             string chunk = chunks[c];
             for (int i = 0; i <= chunk.Length; i++)
             {
-                subtitleText.text = chunk.Substring(0, i);
+                subtitleText.text = chunk.Substring(0, i) + "<alpha=#00>" + chunk.Substring(i);
                 subtitleText.ForceMeshUpdate();
                 yield return new WaitForSecondsRealtime(typingSpeed);
             }

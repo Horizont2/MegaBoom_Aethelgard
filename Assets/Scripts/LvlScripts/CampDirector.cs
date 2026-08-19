@@ -189,16 +189,16 @@ public class CampDirector : MonoBehaviour
             if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
 
-        // Robust typewriter: set the visible SUBSTRING as full text each step
-        // + ForceMeshUpdate so every change renders. The maxVisibleCharacters /
-        // textInfo path left later lines and the clear un-rendered on this TMP
-        // version, so dialogues froze on the first line. Realtime waits keep it
-        // immune to a stray Time.timeScale = 0.
+        // Typewriter via an <alpha=#00> tag: the full line is always laid out
+        // (reveal "in place", no layout jumps), the untyped tail transparent.
+        // Uses plain `.text =` + ForceMeshUpdate — renders reliably here, unlike
+        // maxVisibleCharacters which left later lines un-rendered on this TMP.
+        // Realtime waits keep it immune to a stray Time.timeScale = 0.
         subtitleText.maxVisibleCharacters = 99999;
         for (int i = 0; i <= text.Length; i++)
         {
             if (subtitleText == null) yield break;
-            subtitleText.text = text.Substring(0, i);
+            subtitleText.text = text.Substring(0, i) + "<alpha=#00>" + text.Substring(i);
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
@@ -221,9 +221,8 @@ public class CampDirector : MonoBehaviour
         for (int i = 0; i <= text.Length; i++)
         {
             if (subtitleText == null) yield break;
-            // Keep the colour tag around the growing substring so the rich
-            // text stays valid at every step.
-            subtitleText.text = $"<color=#88CCFF>{text.Substring(0, i)}</color>";
+            // Tint the whole line; reveal in place via the <alpha> tag.
+            subtitleText.text = $"<color=#88CCFF>{text.Substring(0, i)}<alpha=#00>{text.Substring(i)}</color>";
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
