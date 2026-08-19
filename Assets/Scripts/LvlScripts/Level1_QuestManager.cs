@@ -647,30 +647,25 @@ public class Level1_QuestManager : MonoBehaviour
             if (dialogueId > 0) AudioManager.Instance.PlayDialogue(dialogueId);
         }
 
-        // Use SetText + ForceMeshUpdate. A bare `subtitleText.text = ...` marks
-        // the mesh dirty but does NOT immediately resync TMP's internal backing
-        // string / character data, so the SECOND line could read back (and
-        // render) as the previous line — which is exactly why the Stranger only
-        // ever showed his first phrase. SetText + ForceMeshUpdate rebuilds both,
-        // giving a correct characterCount to drive the typewriter.
-        subtitleText.maxVisibleCharacters = 0;
-        subtitleText.SetText(text);
-        subtitleText.ForceMeshUpdate();
-        int totalChars = subtitleText.textInfo.characterCount;
-        if (totalChars <= 0) totalChars = text.Length;
+        Debug.LogWarning("[DLG v5] typewriter running — Substring mode");
 
-        for (int i = 0; i <= totalChars; i++)
+        // Robust typewriter: DON'T rely on maxVisibleCharacters/textInfo (those
+        // were leaving the SECOND line and the clear un-rendered on this TMP
+        // version — every dialogue in the game froze on its first line). Instead
+        // set the actual visible substring as the full text each step, and force
+        // a mesh rebuild so the change is displayed immediately.
+        subtitleText.maxVisibleCharacters = 99999;
+        for (int i = 0; i <= text.Length; i++)
         {
-            subtitleText.maxVisibleCharacters = i;
-            // Realtime — immune to Time.timeScale = 0 (tutorial hint / pause).
+            subtitleText.text = text.Substring(0, i);
+            subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
         yield return new WaitForSecondsRealtime(duration);
 
-        subtitleText.SetText(string.Empty);
+        subtitleText.text = string.Empty;
         subtitleText.ForceMeshUpdate();
-        subtitleText.maxVisibleCharacters = 99999;
         if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.5f);
     }
 
