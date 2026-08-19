@@ -71,6 +71,31 @@ public class StoryIntroPlayer : MonoBehaviour
 
     private bool _skipped;
 
+    private void Awake()
+    {
+        // Auto-wire the tedious bits so they don't have to be set by hand:
+        // a CanvasGroup on this object (for the whole-overlay fade) and the two
+        // AudioSources for narration + SFX. Assign them explicitly only if you
+        // want them on other objects.
+        if (rootGroup == null)
+        {
+            rootGroup = GetComponent<CanvasGroup>();
+            if (rootGroup == null) rootGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+        if (voiceSource == null)
+        {
+            voiceSource = gameObject.AddComponent<AudioSource>();
+            voiceSource.playOnAwake = false;
+            voiceSource.spatialBlend = 0f; // 2D narration
+        }
+        if (sfxSource == null)
+        {
+            sfxSource = gameObject.AddComponent<AudioSource>();
+            sfxSource.playOnAwake = false;
+            sfxSource.spatialBlend = 0f;
+        }
+    }
+
     private void Start()
     {
         if (onlyOncePerSave && PlayerPrefs.GetInt(playedFlag, 0) == 1)
