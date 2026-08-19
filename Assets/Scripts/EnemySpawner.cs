@@ -14,6 +14,7 @@ public class EnemySpawner : MonoBehaviour
     public static bool IsSpawningBlocked = false;
 
     [Header("Spawner Settings")]
+    [Tooltip("LATE-GAME cap. Early game uses a smaller cap that grows to this (see startCap / capRampMinutes).")]
     public int maxEnemiesOnMap = 35;
     public SpawnableEnemy[] enemyPool;
     public Transform player;
@@ -24,38 +25,54 @@ public class EnemySpawner : MonoBehaviour
     public float maxSpawnRadius = 20f;
 
     // ─────────────────────────────────────────────────────────────
-    //  Rhythm / pacing
+    //  Pacing director (AAA-style intensity curve)
     // ─────────────────────────────────────────────────────────────
-    // The old spawner was a flat trickle — one enemy every N seconds,
-    // N shrinking slowly with time — so the map just sat pinned at the cap
-    // and every minute felt the same. This layers WAVES of intensity on top:
-    // calm "lull" breathers where the count drops and the player can push
-    // out, then "surge" phases that spawn faster and sometimes send a whole
-    // PACK rushing in from one direction. Every Nth surge escalates into a
-    // heavier horde. All knobs are exposed so the feel can be tuned without
-    // touching code; set useRhythm = false to restore the old flat behaviour.
-    [Header("Rhythm / Pacing")]
-    public bool useRhythm = true;
-    [Tooltip("Calm breather length (seconds), random in [x, y]. Count drops here.")]
-    public Vector2 lullDuration = new Vector2(7f, 11f);
-    [Tooltip("Surge length (seconds), random in [x, y]. Denser + pack rushes.")]
-    public Vector2 surgeDuration = new Vector2(11f, 18f);
-    [Tooltip("Spawn-interval multiplier per phase. >1 = slower/calmer, <1 = faster/denser.")]
-    public float lullIntervalMult = 2.0f;
-    public float surgeIntervalMult = 0.55f;
-    [Range(0f, 1f)]
-    [Tooltip("Chance a surge tick arrives as a directional pack instead of a lone enemy.")]
-    public float packChance = 0.3f;
-    [Tooltip("Pack size, random in [x, y].")]
-    public Vector2Int packSize = new Vector2Int(3, 6);
-    [Tooltip("Every Nth surge is a heavier horde (bigger, guaranteed pack). 0 = never.")]
-    public int hordeEveryNSurges = 3;
+    // Instead of a constant swarm, the spawner runs an explicit intensity
+    // cycle so the run breathes and the player gets real windows to farm:
+    //   RELAX   — a calm farming/exploration window; spawns nearly stop and
+    //             the on-map count DRAINS so the map clears out.
+    //   BUILDUP — pressure ramps back up (music swells as a tell).
+    //   PEAK    — the fight: dense spawns + directional pack rushes.
+    // A grace period keeps the opening calm, and the on-map cap GROWS with
+    // time (few enemies early → busy late) instead of sitting at max from
+    // second one. Set useDirector = false for a flat spawn.
+    [Header("Pacing Director")]
+    public bool useDirector = true;
+    [Tooltip("Calm opening (seconds) before the intensity cycle begins — time to learn / farm.")]
+    public float gracePeriod = 45f;
 
-    private enum SpawnPhase { Lull, Surge }
-    private SpawnPhase phase = SpawnPhase.Lull;
+    [Header("Phase length (seconds, random x..y)")]
+    public Vector2 relaxDuration = new Vector2(16f, 24f);   // farming window
+    public Vector2 buildupDuration = new Vector2(5f, 8f);
+    public Vector2 peakDuration = new Vector2(12f, 18f);
+
+    [Header("Phase density (spawn-interval multiplier; >1 = calmer)")]
+    public float relaxIntervalMult = 5f;
+    public float buildupIntervalMult = 1.4f;
+    public float peakIntervalMult = 0.6f;
+    [Range(0f, 1f)]
+    [Tooltip("Fraction of the on-map cap allowed during RELAX so the field drains for farming.")]
+    public float relaxCapFactor = 0.4f;
+
+    [Header("On-map cap over time")]
+    [Tooltip("Enemies allowed on the map at the very start of the run.")]
+    public int startCap = 8;
+    [Tooltip("Minutes for the cap to grow from startCap up to maxEnemiesOnMap.")]
+    public float capRampMinutes = 8f;
+
+    [Header("Peak flavour")]
+    [Range(0f, 1f)]
+    [Tooltip("Chance a PEAK tick arrives as a directional pack instead of a lone enemy.")]
+    public float packChance = 0.3f;
+    public Vector2Int packSize = new Vector2Int(3, 6);
+    [Tooltip("Every Nth peak is a heavier horde. 0 = never.")]
+    public int hordeEveryNPeaks = 4;
+
+    private enum Phase { Relax, Buildup, Peak }
+    private Phase phase = Phase.Relax;
     private float phaseTimer = 0f;
     private float phaseDuration = 8f;
-    private int surgeIndex = 0;
+    private int peakIndex = 0;
 
     private float timer;
     private WorldGenerator worldGen;
@@ -65,14 +82,13 @@ public class EnemySpawner : MonoBehaviour
     {
         IsSpawningBlocked = false;
         worldGen = FindFirstObjectByType<WorldGenerator>();
-        BeginPhase(SpawnPhase.Lull);
+        BeginPhase(Phase.Relax);
     }
 
     // Recheck every 2 s whether the "blocked" state is still legitimate.
-    // Self-healing: if IsSpawningBlocked is true but no totem is
-    // currently mid-activation (all totems purified or none activating),
-    // we assume the block is stale (a coroutine forgot to reset it) and
-    // release it so the radial spawner works again.
+    // Self-healing: if IsSpawningBlocked is true but no totem is currently
+    // mid-activation (all totems purified or none activating), the block is
+    // assumed stale (a coroutine forgot to reset it) and released.
     private float unblockCheckTimer = 0f;
 
     private void Update()
@@ -84,18 +100,13 @@ public class EnemySpawner : MonoBehaviour
             if (unblockCheckTimer >= 2f)
             {
                 unblockCheckTimer = 0f;
-                if (!IsAnyTotemActivating())
-                {
-                    IsSpawningBlocked = false;
-                }
+                if (!IsAnyTotemActivating()) IsSpawningBlocked = false;
             }
             if (IsSpawningBlocked) return;
         }
         else unblockCheckTimer = 0f;
 
         if (worldGen != null && !WorldGenerator.IsGenerationDone) return;
-
-        if (EnemyAI.ActiveEnemiesCount >= maxEnemiesOnMap) return;
 
         if (player == null)
         {
@@ -108,21 +119,27 @@ public class EnemySpawner : MonoBehaviour
 
         float minutes = GameManager.survivalTime / 60f;
 
-        // Long-term ramp (unchanged): the steady interval still tightens as
-        // the run goes on.
-        float baseInterval = Mathf.Max(0.3f, baseSpawnInterval / (1f + minutes * 0.2f));
-
-        float intervalMult = 1f;
-        if (useRhythm)
+        // Advance the intensity cycle. The opening grace period is held as one
+        // long RELAX so the player can settle in and farm before real pressure.
+        if (useDirector)
         {
-            // Advance the calm/surge cycle so intensity ebbs and flows.
             phaseTimer += Time.deltaTime;
-            if (phaseTimer >= phaseDuration)
-                BeginPhase(phase == SpawnPhase.Lull ? SpawnPhase.Surge : SpawnPhase.Lull);
-
-            intervalMult = (phase == SpawnPhase.Lull) ? lullIntervalMult : surgeIntervalMult;
+            if (GameManager.survivalTime < gracePeriod)
+            {
+                if (phase != Phase.Relax) BeginPhase(Phase.Relax);
+            }
+            else if (phaseTimer >= phaseDuration)
+            {
+                AdvancePhase();
+            }
         }
 
+        int cap = CurrentCap();
+        if (EnemyAI.ActiveEnemiesCount >= cap) return;
+
+        // Steady interval still tightens slowly over the run (gentler ramp).
+        float baseInterval = Mathf.Max(0.4f, baseSpawnInterval / (1f + minutes * 0.12f));
+        float intervalMult = useDirector ? PhaseIntervalMult() : 1f;
         float currentSpawnInterval = baseInterval * intervalMult;
 
         timer += Time.deltaTime;
@@ -130,42 +147,68 @@ public class EnemySpawner : MonoBehaviour
         {
             timer = 0f;
 
-            bool horde = useRhythm && phase == SpawnPhase.Surge
-                         && hordeEveryNSurges > 0 && (surgeIndex % hordeEveryNSurges == 0);
+            bool peak = useDirector && phase == Phase.Peak;
+            bool horde = peak && hordeEveryNPeaks > 0 && (peakIndex % hordeEveryNPeaks == 0);
 
-            // During surges, some ticks arrive as a directional pack — a wave
-            // that visibly rushes in from one side — instead of a lone enemy
-            // drifting in from a random angle.
-            if (useRhythm && phase == SpawnPhase.Surge && (horde || Random.value < packChance))
-                SpawnCluster(minutes, horde);
+            // Peaks send the occasional directional PACK rushing in from one
+            // arc instead of scattered singles.
+            if (peak && (horde || Random.value < packChance))
+                SpawnCluster(minutes, horde, cap);
             else
                 SpawnEnemy(minutes);
         }
     }
 
-    private void BeginPhase(SpawnPhase p)
+    private void BeginPhase(Phase p)
     {
         phase = p;
         phaseTimer = 0f;
-        if (p == SpawnPhase.Lull)
+        switch (p)
         {
-            phaseDuration = Random.Range(lullDuration.x, lullDuration.y);
-        }
-        else
-        {
-            phaseDuration = Random.Range(surgeDuration.x, surgeDuration.y);
-            surgeIndex++;
+            case Phase.Relax:   phaseDuration = Random.Range(relaxDuration.x, relaxDuration.y); break;
+            case Phase.Buildup: phaseDuration = Random.Range(buildupDuration.x, buildupDuration.y); break;
+            case Phase.Peak:    phaseDuration = Random.Range(peakDuration.x, peakDuration.y); peakIndex++; break;
         }
 
-        // Drive the music's Intensity parameter with the wave rhythm so the
-        // score swells on surges and eases in lulls (no-op if the track has
-        // no such FMOD parameter).
-        if (useRhythm && AudioManager.Instance != null)
-            AudioManager.Instance.SetMusicIntensity(p == SpawnPhase.Surge ? 1f : 0.3f);
+        // Drive the music's Intensity parameter with the phase so the score
+        // swells into the peak and eases in the farming window (no-op if the
+        // track has no such FMOD parameter).
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.SetMusicIntensity(p == Phase.Peak ? 1f : (p == Phase.Buildup ? 0.55f : 0.2f));
+    }
+
+    private void AdvancePhase()
+    {
+        switch (phase)
+        {
+            case Phase.Relax:   BeginPhase(Phase.Buildup); break;
+            case Phase.Buildup: BeginPhase(Phase.Peak);    break;
+            default:            BeginPhase(Phase.Relax);   break;
+        }
+    }
+
+    private float PhaseIntervalMult()
+    {
+        switch (phase)
+        {
+            case Phase.Buildup: return buildupIntervalMult;
+            case Phase.Peak:    return peakIntervalMult;
+            default:            return relaxIntervalMult;
+        }
+    }
+
+    // On-map cap grows from startCap to maxEnemiesOnMap over capRampMinutes,
+    // and is trimmed during RELAX so the field drains for a clean farm window.
+    private int CurrentCap()
+    {
+        float minutes = GameManager.survivalTime / 60f;
+        float t = capRampMinutes > 0f ? Mathf.Clamp01(minutes / capRampMinutes) : 1f;
+        int cap = Mathf.RoundToInt(Mathf.Lerp(startCap, maxEnemiesOnMap, t));
+        if (useDirector && phase == Phase.Relax) cap = Mathf.RoundToInt(cap * relaxCapFactor);
+        return Mathf.Max(1, cap);
     }
 
     // Any totem in the scene that is activated but not yet purified?
-    // If yes, the block is legitimate. If no, the block is stale.
     private static bool IsAnyTotemActivating()
     {
         RegionTotem[] all = Object.FindObjectsByType<RegionTotem>(FindObjectsSortMode.None);
@@ -178,17 +221,17 @@ public class EnemySpawner : MonoBehaviour
         return false;
     }
 
-    // A pack that rushes in from ONE direction — reads as a deliberate wave
-    // instead of scattered singles. Respects the on-map cap.
-    private void SpawnCluster(float minutesSurvived, bool horde)
+    // A pack that rushes in from ONE direction — a deliberate wave, not
+    // scattered singles. Respects the current cap.
+    private void SpawnCluster(float minutesSurvived, bool horde, int cap)
     {
         int count = Random.Range(packSize.x, packSize.y + 1);
         if (horde) count = Mathf.RoundToInt(count * 1.6f);
 
-        float baseAngle = Random.Range(0f, Mathf.PI * 2f); // one arc for the whole pack
+        float baseAngle = Random.Range(0f, Mathf.PI * 2f);
         for (int i = 0; i < count; i++)
         {
-            if (EnemyAI.ActiveEnemiesCount >= maxEnemiesOnMap) break;
+            if (EnemyAI.ActiveEnemiesCount >= cap) break;
             float angle = baseAngle + Random.Range(-0.5f, 0.5f); // ~±29° spread
             float dist = Random.Range(minSpawnRadius, maxSpawnRadius);
             SpawnOneAt(PositionFromPlayer(angle, dist), minutesSurvived);
@@ -260,7 +303,6 @@ public class EnemySpawner : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
             t = t * t * (3f - 2f * t);
-
             enemy.transform.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
             yield return null;
         }
