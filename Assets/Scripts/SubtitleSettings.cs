@@ -116,6 +116,10 @@ public class SubtitleBinding : MonoBehaviour
     {
         if (text == null) return;
         text.fontSize = baseFontSize * SubtitleSettings.ScaleMultiplier;
+        // Force bright white so subtitles stay readable over the game's dark
+        // scenery. Rich-text <color=..> tags in a line still override this
+        // locally (e.g. the blue [TIP] hint). Alpha is preserved so fades work.
+        text.color = new Color(1f, 1f, 1f, text.color.a <= 0f ? 1f : text.color.a);
         text.gameObject.SetActive(SubtitleSettings.Enabled);
         EnsureBgBox();
     }
