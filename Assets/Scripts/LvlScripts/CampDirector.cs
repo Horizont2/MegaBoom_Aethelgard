@@ -194,17 +194,20 @@ public class CampDirector : MonoBehaviour
         // Uses plain `.text =` + ForceMeshUpdate — renders reliably here, unlike
         // maxVisibleCharacters which left later lines un-rendered on this TMP.
         // Realtime waits keep it immune to a stray Time.timeScale = 0.
+        // Claim the shared subtitle label — Elias uses the SAME TMP, so this
+        // stops the two typewriters flickering against each other.
+        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
         for (int i = 0; i <= text.Length; i++)
         {
-            if (subtitleText == null) yield break;
+            if (subtitleText == null || !SubtitleGuard.Owns(token)) yield break;
             subtitleText.text = text.Substring(0, i) + "<alpha=#00>" + text.Substring(i);
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
         yield return new WaitForSecondsRealtime(stayDuration);
-        if (subtitleText == null) yield break;
+        if (subtitleText == null || !SubtitleGuard.Owns(token)) yield break;
         subtitleText.text = "";
         subtitleText.ForceMeshUpdate();
 
@@ -217,10 +220,11 @@ public class CampDirector : MonoBehaviour
         if (subtitleText == null) yield break;
 
         text = LocalizationManager.Tr(text);
+        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
         for (int i = 0; i <= text.Length; i++)
         {
-            if (subtitleText == null) yield break;
+            if (subtitleText == null || !SubtitleGuard.Owns(token)) yield break;
             // Tint the whole line; reveal in place via the <alpha> tag.
             subtitleText.text = $"<color=#88CCFF>{text.Substring(0, i)}<alpha=#00>{text.Substring(i)}</color>";
             subtitleText.ForceMeshUpdate();
@@ -228,7 +232,7 @@ public class CampDirector : MonoBehaviour
         }
 
         yield return new WaitForSecondsRealtime(duration);
-        if (subtitleText == null) yield break;
+        if (subtitleText == null || !SubtitleGuard.Owns(token)) yield break;
         subtitleText.text = "";
         subtitleText.ForceMeshUpdate();
     }

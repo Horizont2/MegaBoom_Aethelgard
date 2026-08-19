@@ -185,12 +185,14 @@ public class IntroCinematicManager : MonoBehaviour
         // (reveal "in place", no layout jumps), the untyped tail transparent.
         // Uses plain `.text =` + ForceMeshUpdate — renders reliably here, unlike
         // maxVisibleCharacters which left later chunks un-rendered on this TMP.
+        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
         for (int c = 0; c < chunks.Count; c++)
         {
             string chunk = chunks[c];
             for (int i = 0; i <= chunk.Length; i++)
             {
+                if (!SubtitleGuard.Owns(token)) yield break;
                 subtitleText.text = chunk.Substring(0, i) + "<alpha=#00>" + chunk.Substring(i);
                 subtitleText.ForceMeshUpdate();
                 yield return new WaitForSecondsRealtime(typingSpeed);

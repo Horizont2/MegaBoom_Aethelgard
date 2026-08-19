@@ -213,6 +213,10 @@ public class CampNPC_Elias : MonoBehaviour
         // can be translated by the LocalizationManager. Untranslated keys
         // fall back to the passed English verbatim.
         string full = LocalizationManager.Tr(text);
+        // Claim the shared subtitle label — the camp intro (CampDirector) uses
+        // the SAME TMP, so without this the two typewriters flicker against
+        // each other. If another writer claims after us, we bail out.
+        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
 
         // Typewriter via an <alpha=#00> tag: the full line is laid out from the
@@ -224,6 +228,7 @@ public class CampNPC_Elias : MonoBehaviour
         bool skippedTypewriter = false;
         for (int i = 0; i <= full.Length; i++)
         {
+            if (!SubtitleGuard.Owns(token)) yield break;
             if (!skippedTypewriter && WasSkipPressed())
             {
                 skippedTypewriter = true;
@@ -233,6 +238,7 @@ public class CampNPC_Elias : MonoBehaviour
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSeconds(typingSpeed);
         }
+        if (!SubtitleGuard.Owns(token)) yield break;
         subtitleText.text = full;
         subtitleText.ForceMeshUpdate();
 
@@ -241,9 +247,11 @@ public class CampNPC_Elias : MonoBehaviour
         while (t < stayDuration)
         {
             if (WasSkipPressed()) break;
+            if (!SubtitleGuard.Owns(token)) yield break;
             t += Time.deltaTime;
             yield return null;
         }
+        if (!SubtitleGuard.Owns(token)) yield break;
         subtitleText.text = "";
         subtitleText.ForceMeshUpdate();
     }

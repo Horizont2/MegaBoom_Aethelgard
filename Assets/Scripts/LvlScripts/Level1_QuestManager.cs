@@ -652,15 +652,18 @@ public class Level1_QuestManager : MonoBehaviour
         // "in place"), but the not-yet-typed tail is transparent. This uses
         // plain `.text =` + ForceMeshUpdate, which renders reliably here, unlike
         // maxVisibleCharacters which left later lines un-rendered on this TMP.
+        int token = SubtitleGuard.Claim();
         subtitleText.maxVisibleCharacters = 99999;
         for (int i = 0; i <= text.Length; i++)
         {
+            if (!SubtitleGuard.Owns(token)) yield break;
             subtitleText.text = text.Substring(0, i) + "<alpha=#00>" + text.Substring(i);
             subtitleText.ForceMeshUpdate();
             yield return new WaitForSecondsRealtime(typingSpeed);
         }
 
         yield return new WaitForSecondsRealtime(duration);
+        if (!SubtitleGuard.Owns(token)) yield break;
 
         subtitleText.text = string.Empty;
         subtitleText.ForceMeshUpdate();
