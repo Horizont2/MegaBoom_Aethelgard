@@ -168,13 +168,17 @@ public class StoryIntroPlayer : MonoBehaviour
     public Color emberColor = new Color(1f, 0.6f, 0.25f, 1f);
     [Tooltip("Drifting soft fog banks across the frame (UI overlay).")]
     public bool autoFog = true;
-    [Range(0f, 1f)] public float fogOpacity = 0.22f;
-    [Tooltip("Subtle animated film grain over everything (UI overlay).")]
-    public bool autoGrain = true;
-    [Range(0f, 1f)] public float grainOpacity = 0.07f;
+    [Range(0f, 1f)] public float fogOpacity = 0.3f;
+    [Tooltip("Full-screen cinematic colour grade tint (moody teal). Clearly visible, unifies the look.")]
+    public bool autoColorGrade = true;
+    [Range(0f, 1f)] public float colorGradeOpacity = 0.2f;
+    public Color colorGradeTint = new Color(0.09f, 0.16f, 0.22f, 1f);
+    [Tooltip("Subtle animated film grain over everything (UI overlay). Off by default — it can look noisy.")]
+    public bool autoGrain = false;
+    [Range(0f, 1f)] public float grainOpacity = 0.04f;
     [Tooltip("Soft light shaft glowing from the top of the frame (UI overlay).")]
     public bool autoLightRays = true;
-    [Range(0f, 1f)] public float lightRayOpacity = 0.16f;
+    [Range(0f, 1f)] public float lightRayOpacity = 0.22f;
     public Color lightRayColor = new Color(1f, 0.85f, 0.55f, 1f);
 
     [Header("Skip")]
@@ -577,7 +581,20 @@ public class StoryIntroPlayer : MonoBehaviour
     private void SpawnAmbientOverlays()
     {
         if (rootGroup == null) return;
-        Transform parent = rootGroup.transform;
+        // Parent to the IMAGE's own parent so overlays always draw ABOVE the
+        // full-screen art. If the art is nested under a panel, parenting to the
+        // canvas root would leave the overlays hidden behind that panel — which
+        // is why they weren't showing.
+        Transform parent = (imageDisplay != null && imageDisplay.transform.parent != null)
+                         ? imageDisplay.transform.parent
+                         : rootGroup.transform;
+
+        // Cinematic colour grade — a full-screen tint just above the art.
+        if (autoColorGrade)
+        {
+            var img = NewOverlayImage("ColorGrade", parent, null);
+            Color c = colorGradeTint; c.a = colorGradeOpacity; img.color = c;
+        }
 
         // Soft top light shaft (behind everything else atmospheric).
         if (autoLightRays)
@@ -703,7 +720,7 @@ public class StoryIntroPlayer : MonoBehaviour
     // reads as drifting embers / dust without any particle system.
     private IEnumerator EmberField(RectTransform field)
     {
-        const int N = 12;
+        const int N = 26;
         var dots = new RectTransform[N];
         var speed = new float[N];
         var sway = new float[N];
@@ -717,17 +734,17 @@ public class StoryIntroPlayer : MonoBehaviour
             go.transform.SetParent(field, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            scale[i] = UnityEngine.Random.Range(3f, 8f);
+            scale[i] = UnityEngine.Random.Range(5f, 14f);
             rt.sizeDelta = new Vector2(scale[i], scale[i]);
             rt.anchoredPosition = new Vector2(UnityEngine.Random.Range(-w * 0.5f, w * 0.5f),
                                               UnityEngine.Random.Range(-h * 0.5f, h * 0.5f));
             var img = go.GetComponent<Image>();
             img.sprite = _dotSprite;
             img.raycastTarget = false;
-            Color c = emberColor; c.a = emberOpacity * UnityEngine.Random.Range(0.4f, 1f); img.color = c;
+            Color c = emberColor; c.a = emberOpacity * UnityEngine.Random.Range(0.5f, 1f); img.color = c;
             dots[i] = rt;
-            speed[i] = UnityEngine.Random.Range(12f, 34f);
-            sway[i] = UnityEngine.Random.Range(8f, 22f);
+            speed[i] = UnityEngine.Random.Range(14f, 40f);
+            sway[i] = UnityEngine.Random.Range(10f, 26f);
             phase[i] = UnityEngine.Random.Range(0f, 10f);
         }
 

@@ -399,8 +399,19 @@ public class AudioManager : MonoBehaviour
     // Duck the CURRENT music EventInstance directly. Unlike DuckMusic (which
     // lowers the music BUS), this works even when a track isn't routed through
     // that bus — e.g. the intro cutscene music, which only responded to Master.
-    // Held until UnduckMusicInstance is called.
+    // Implemented as a PERSISTENT multiplier so the music crossfade (which sets
+    // the instance volume every frame) can't override it. Held until unducked.
     private Coroutine musicInstanceDuckRoutine;
+    private float _musicBaseVol = 1f;      // owned by the crossfade (fade-in level)
+    private float _musicInstanceDuck = 1f; // owned by the duck
+
+    // Whenever either factor changes, re-apply the combined volume.
+    private void ApplyMusicInstanceVolume()
+    {
+        if (currentMusicInstance.isValid())
+            currentMusicInstance.setVolume(Mathf.Clamp01(_musicBaseVol) * Mathf.Clamp01(_musicInstanceDuck));
+    }
+
     public void DuckMusicInstance(float level, float fade = 0.5f)
     {
         if (musicInstanceDuckRoutine != null) StopCoroutine(musicInstanceDuckRoutine);
@@ -415,17 +426,17 @@ public class AudioManager : MonoBehaviour
 
     private IEnumerator RampMusicInstance(float target, float duration)
     {
-        float start = 1f;
-        if (currentMusicInstance.isValid()) currentMusicInstance.getVolume(out start);
+        float start = _musicInstanceDuck;
         float t = 0f;
         while (t < duration)
         {
             t += Time.unscaledDeltaTime;
-            if (currentMusicInstance.isValid())
-                currentMusicInstance.setVolume(Mathf.Lerp(start, target, t / duration));
+            _musicInstanceDuck = Mathf.Lerp(start, target, t / duration);
+            ApplyMusicInstanceVolume();
             yield return null;
         }
-        if (currentMusicInstance.isValid()) currentMusicInstance.setVolume(target);
+        _musicInstanceDuck = target;
+        ApplyMusicInstanceVolume();
         musicInstanceDuckRoutine = null;
     }
 
@@ -728,7 +739,8 @@ public class AudioManager : MonoBehaviour
     {
         if (incoming.isValid())
         {
-            incoming.setVolume(0f);
+            _musicBaseVol = 0f;
+            ApplyMusicInstanceVolume();   // respects any active duck multiplier
             incoming.start();
         }
         if (outgoing.isValid())
@@ -740,11 +752,12 @@ public class AudioManager : MonoBehaviour
         while (t < duration)
         {
             t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / duration);
-            if (incoming.isValid()) incoming.setVolume(k);
+            _musicBaseVol = Mathf.Clamp01(t / duration);
+            ApplyMusicInstanceVolume();
             yield return null;
         }
-        if (incoming.isValid()) incoming.setVolume(1f);
+        _musicBaseVol = 1f;
+        ApplyMusicInstanceVolume();
         if (outgoing.isValid()) outgoing.release();
 
         musicFadeRoutine = null;
