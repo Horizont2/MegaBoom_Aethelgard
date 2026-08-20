@@ -82,8 +82,21 @@ public class Level1_QuestManager : MonoBehaviour
         if (cachedGameplayBrain == null && cachedGameplayCam != null)
             cachedGameplayBrain = cachedGameplayCam.GetComponent<CinemachineBrain>();
 
+        // Auto-find the opening cutscene if it wasn't wired in the Inspector, so
+        // the Timeline is always deferred until the cutscene finishes.
+        if (storyIntro == null) storyIntro = FindFirstObjectByType<StoryIntroPlayer>(FindObjectsInactive.Include);
+
         if (introDirector != null)
         {
+            // The Timeline's PlayableDirector is set to "Play On Awake" in the
+            // scene, so it would fire the instant the level loads — on top of the
+            // cutscene. Force it off here and stop/rewind it; we Play() it
+            // ourselves at the right moment (after the cutscene, or immediately
+            // when there is no cutscene).
+            introDirector.playOnAwake = false;
+            introDirector.Stop();
+            introDirector.time = 0;
+
             GameObject pObj = GameObject.FindGameObjectWithTag("Player");
             if (pObj != null)
             {

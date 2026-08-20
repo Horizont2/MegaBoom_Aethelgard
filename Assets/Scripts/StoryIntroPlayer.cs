@@ -155,6 +155,18 @@ public class StoryIntroPlayer : MonoBehaviour
     [Tooltip("Height of each bar as a fraction of screen height.")]
     public float letterboxFraction = 0.1f;
 
+    [Header("Auto-cinematic (no setup needed)")]
+    [Tooltip("Give every slide a DISTINCT camera move (pan + zoom, varied per slide) instead of a plain zoom. " +
+             "Slides that have their own Pan values set keep them.")]
+    public bool autoCameraMoves = true;
+    [Tooltip("Generate a soft dark vignette over the whole cutscene (mood + subtitle legibility). No art needed.")]
+    public bool autoVignette = true;
+    [Range(0f, 1f)] public float vignetteStrength = 0.55f;
+    [Tooltip("Generate a gentle field of drifting embers/dust over the cutscene. No art needed.")]
+    public bool autoEmbers = true;
+    [Range(0f, 1f)] public float emberOpacity = 0.5f;
+    public Color emberColor = new Color(1f, 0.6f, 0.25f, 1f);
+
     [Header("Skip")]
     public bool allowSkip = true;
     public GameObject skipHint;        // optional "Press SPACE to skip"
@@ -192,6 +204,13 @@ public class StoryIntroPlayer : MonoBehaviour
     // Tracked FMOD narration instance so a skip can cut it off.
     private FMOD.Studio.EventInstance _voiceInstance;
     private bool _voiceInstanceValid;
+
+    // Generated (code-only) cinematic overlays for the whole cutscene.
+    private GameObject _vignetteGO;
+    private GameObject _emberFieldGO;
+    private Coroutine _emberRoutine;
+    private Sprite _vignetteSprite;
+    private Sprite _dotSprite;
 
     private void Awake()
     {
@@ -296,6 +315,7 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_barTop != null) _barTop.sizeDelta = new Vector2(0f, 0f);
         if (_barBottom != null) _barBottom.sizeDelta = new Vector2(0f, 0f);
         DespawnEffects(0f);
+        DespawnAmbientOverlays();
         if (rootGroup != null)
         {
             rootGroup.alpha = 0f;
@@ -448,6 +468,157 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_flashOverlay != null && _flashOverlay.transform.parent == p) _flashOverlay.transform.SetAsLastSibling();
     }
 
+    // ---- Auto camera moves --------------------------------------------------
+
+    // A distinct pan+zoom per slide so the cutscene never reads as a flat zoom.
+    // Six moves cycle by slide index; pans stay inside the zoom overscan so no
+    // edges show. Directions alternate (L→R, push-in, R→L, pull-back, diagonal,
+    // sink) to keep consecutive slides feeling different.
+    private void AutoMove(int index, out float zF, out float zT, out Vector2 pF, out Vector2 pT)
+    {
+        switch (((index % 6) + 6) % 6)
+        {
+            case 0: zF = 1.12f; zT = 1.15f; pF = new Vector2(-60f, 0f);  pT = new Vector2(60f, 0f);   break; // pan right
+            case 1: zF = 1.08f; zT = 1.18f; pF = new Vector2(0f, -22f);  pT = new Vector2(0f, 22f);   break; // push-in + rise
+            case 2: zF = 1.14f; zT = 1.14f; pF = new Vector2(55f, 12f);  pT = new Vector2(-55f, -12f);break; // pan left
+            case 3: zF = 1.20f; zT = 1.08f; pF = new Vector2(24f, 16f);  pT = new Vector2(-14f, -8f); break; // pull back / reveal
+            case 4: zF = 1.10f; zT = 1.16f; pF = new Vector2(45f, -20f); pT = new Vector2(-35f, 20f); break; // diagonal drift
+            default:zF = 1.12f; zT = 1.16f; pF = new Vector2(0f, 34f);   pT = new Vector2(0f, -28f);  break; // slow sink
+        }
+    }
+
+    // ---- Generated cinematic overlays (no art assets required) --------------
+
+    private void SpawnAmbientOverlays()
+    {
+        if (rootGroup == null) return;
+        Transform parent = rootGroup.transform;
+
+        if (autoVignette)
+        {
+            if (_vignetteSprite == null) _vignetteSprite = MakeVignetteSprite();
+            _vignetteGO = new GameObject("Vignette", typeof(RectTransform), typeof(Image));
+            _vignetteGO.transform.SetParent(parent, false);
+            var rt = (RectTransform)_vignetteGO.transform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            var img = _vignetteGO.GetComponent<Image>();
+            img.sprite = _vignetteSprite;
+            img.raycastTarget = false;
+            img.color = new Color(0f, 0f, 0f, Mathf.Clamp01(vignetteStrength));
+        }
+
+        if (autoEmbers)
+        {
+            if (_dotSprite == null) _dotSprite = MakeDotSprite();
+            _emberFieldGO = new GameObject("Embers", typeof(RectTransform));
+            _emberFieldGO.transform.SetParent(parent, false);
+            var frt = (RectTransform)_emberFieldGO.transform;
+            frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
+            frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
+            _emberRoutine = StartCoroutine(EmberField(frt));
+        }
+
+        BringOverlaysToFront();
+    }
+
+    // ~12 soft motes that rise slowly and wrap, with gentle horizontal sway —
+    // reads as drifting embers / dust without any particle system.
+    private IEnumerator EmberField(RectTransform field)
+    {
+        const int N = 12;
+        var dots = new RectTransform[N];
+        var speed = new float[N];
+        var sway = new float[N];
+        var phase = new float[N];
+        var scale = new float[N];
+        float w = Screen.width, h = Screen.height;
+
+        for (int i = 0; i < N; i++)
+        {
+            var go = new GameObject("ember", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(field, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            scale[i] = UnityEngine.Random.Range(3f, 8f);
+            rt.sizeDelta = new Vector2(scale[i], scale[i]);
+            rt.anchoredPosition = new Vector2(UnityEngine.Random.Range(-w * 0.5f, w * 0.5f),
+                                              UnityEngine.Random.Range(-h * 0.5f, h * 0.5f));
+            var img = go.GetComponent<Image>();
+            img.sprite = _dotSprite;
+            img.raycastTarget = false;
+            Color c = emberColor; c.a = emberOpacity * UnityEngine.Random.Range(0.4f, 1f); img.color = c;
+            dots[i] = rt;
+            speed[i] = UnityEngine.Random.Range(12f, 34f);
+            sway[i] = UnityEngine.Random.Range(8f, 22f);
+            phase[i] = UnityEngine.Random.Range(0f, 10f);
+        }
+
+        while (true)
+        {
+            float dt = Time.unscaledDeltaTime;
+            for (int i = 0; i < N; i++)
+            {
+                if (dots[i] == null) continue;
+                Vector2 p = dots[i].anchoredPosition;
+                p.y += speed[i] * dt;
+                phase[i] += dt;
+                p.x += Mathf.Sin(phase[i] * 0.8f) * sway[i] * dt;
+                if (p.y > h * 0.55f) { p.y = -h * 0.55f; p.x = UnityEngine.Random.Range(-w * 0.5f, w * 0.5f); }
+                dots[i].anchoredPosition = p;
+            }
+            yield return null;
+        }
+    }
+
+    private Sprite MakeVignetteSprite()
+    {
+        const int S = 128;
+        var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Vector2 c = new Vector2(S * 0.5f, S * 0.5f);
+        float maxD = c.magnitude;
+        var px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            float d = Vector2.Distance(new Vector2(x, y), c) / maxD;    // 0 center → 1 corner
+            float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.55f, 1f, d)); // clear middle, dark edges
+            px[y * S + x] = new Color32(0, 0, 0, (byte)(a * 255f));
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    private Sprite MakeDotSprite()
+    {
+        const int S = 32;
+        var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Vector2 c = new Vector2(S * 0.5f, S * 0.5f);
+        float r = S * 0.5f;
+        var px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            float d = Vector2.Distance(new Vector2(x, y), c) / r;       // 0 center → 1 edge
+            float a = Mathf.Clamp01(1f - d);
+            a *= a;                                                      // soft falloff
+            px[y * S + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    private void DespawnAmbientOverlays()
+    {
+        if (_emberRoutine != null) { StopCoroutine(_emberRoutine); _emberRoutine = null; }
+        if (_emberFieldGO != null) { Destroy(_emberFieldGO); _emberFieldGO = null; }
+        if (_vignetteGO != null) { Destroy(_vignetteGO); _vignetteGO = null; }
+    }
+
     // ---- Narration (FMOD event OR Unity clip) ------------------------------
 
     // Duration of a slide's narration in seconds, whichever source is used.
@@ -515,6 +686,15 @@ public class StoryIntroPlayer : MonoBehaviour
 
         StartCoroutine(AnimateLetterbox(true));
 
+        // Duck the music for the ENTIRE cutscene (hold until we unduck at the
+        // end). Doing it once — instead of per narration line — means it works
+        // even when an FMOD voice event's length can't be read, and it can't be
+        // out-timed by a line that starts before the previous duck released.
+        if (duckMusicUnderNarration && AudioManager.Instance != null)
+            AudioManager.Instance.DuckMusic(musicDuckLevel, 0.5f, 0f, 0.6f);
+
+        SpawnAmbientOverlays();   // vignette + embers for the whole cutscene
+
         int token = SubtitleGuard.Claim();
         float startTime = Time.unscaledTime;
         Coroutine cueRunner = StartCoroutine(CueRunner(startTime));
@@ -537,21 +717,29 @@ public class StoryIntroPlayer : MonoBehaviour
 
                 if (slide.image != null) imageDisplay.sprite = slide.image;
 
+                // Resolve the camera move: use the slide's own pan if it set one,
+                // otherwise auto-assign a DISTINCT move per slide so it never
+                // looks like a plain zoom.
+                float zF = slide.zoomFrom, zT = slide.zoomTo;
+                Vector2 pF = slide.panFrom, pT = slide.panTo;
+                if (autoCameraMoves && pF == pT)
+                    AutoMove(s, out zF, out zT, out pF, out pT);
+
                 // Reset framing + (re)start the Ken-Burns move for this slide so
                 // the image is drifting the whole time it's on screen.
                 if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
                 if (_imgRT != null)
                 {
-                    float z0 = slide.useKenBurns ? slide.zoomFrom : 1f;
+                    float z0 = slide.useKenBurns ? zF : 1f;
                     _imgRT.localScale = new Vector3(z0, z0, 1f);
-                    _imgRT.anchoredPosition = _imgHomePos + slide.panFrom;
+                    _imgRT.anchoredPosition = _imgHomePos + pF;
                 }
                 if (slide.useKenBurns && _imgRT != null)
                 {
                     float motionDur = imageFadeDuration
                                     + (subtitleText != null ? LocalizationManager.Tr(slide.subtitle).Length * typingSpeed : 0f)
                                     + Mathf.Max(slide.duration, SlideVoiceLength(slide));
-                    _kenBurns = StartCoroutine(KenBurns(slide.zoomFrom, slide.zoomTo, slide.panFrom, slide.panTo, motionDur));
+                    _kenBurns = StartCoroutine(KenBurns(zF, zT, pF, pT, motionDur));
                 }
 
                 if (slide.transition == SlideTransition.HardCut)
@@ -577,9 +765,7 @@ public class StoryIntroPlayer : MonoBehaviour
 
             float slideStartTime = Time.unscaledTime;
             float voLen = SlideVoiceLength(slide);
-            PlaySlideVoice(slide);
-            if (voLen > 0f && duckMusicUnderNarration && AudioManager.Instance != null)
-                AudioManager.Instance.DuckMusic(musicDuckLevel, 0.25f, voLen + 0.3f, 0.7f);
+            PlaySlideVoice(slide);   // music is already ducked for the whole cutscene
 
             string full = LocalizationManager.Tr(slide.subtitle);
             if (subtitleText != null)
