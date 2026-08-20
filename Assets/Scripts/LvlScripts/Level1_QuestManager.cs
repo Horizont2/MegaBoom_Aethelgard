@@ -38,6 +38,11 @@ public class Level1_QuestManager : MonoBehaviour
     [Header("Cinematic Settings")]
     public float spawnDistanceBehind = 15f;
     public float typingSpeed = 0.04f;
+    [Tooltip("Seconds for the smooth code-driven intro camera descent (LvlIntro_A -> LvlIntro_B). Replaces the jittery Cinemachine blend.")]
+    public float introDescendDuration = 4f;
+    [Tooltip("Optional explicit start/end camera poses for the descent. If empty, LvlIntro_A / LvlIntro_B are found by name.")]
+    public Transform introCamStart;
+    public Transform introCamEnd;
 
     private int currentQuestStep = 0;
     private int startingWood = 0;
@@ -149,34 +154,105 @@ public class Level1_QuestManager : MonoBehaviour
         }
         else
         {
+            StartCoroutine(SmoothIntroDescent());
+        }
+    }
+
+    // Waits out the illustrated opening cutscene, then runs the smooth intro
+    // camera descent + handoff. Inert if no cutscene is playing (e.g. already
+    // seen this save) — it falls straight through.
+    private IEnumerator DeferIntroUntilCutscene()
+    {
+        // Let every component's Start() run so StoryIntroPlayer.IsPlaying settles.
+        yield return null;
+        while (StoryIntroPlayer.IsPlaying) yield return null;
+        yield return StartCoroutine(SmoothIntroDescent());
+    }
+
+    // Descends the camera from the intro's high vantage (LvlIntro_A) down to the
+    // player (LvlIntro_B) with a pure code lerp — NO Cinemachine blend, which was
+    // the source of the shaking / jumping. Falls back to the old Timeline path if
+    // the two camera poses can't be found, so behaviour is safe either way.
+    private IEnumerator SmoothIntroDescent()
+    {
+        Transform camStart = introCamStart != null ? introCamStart : FindSceneTransform("LvlIntro_A");
+        Transform camEnd = introCamEnd != null ? introCamEnd : FindSceneTransform("LvlIntro_B");
+        Camera cam = cachedGameplayCam != null ? cachedGameplayCam : Camera.main;
+
+        // Fallback: no poses found — use the original Timeline handoff.
+        if (camStart == null || camEnd == null || cam == null)
+        {
             if (introDirector != null)
             {
                 SetCinematicMode(true);
                 if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = true;
                 introDirector.Play();
             }
-
-            StartCoroutine(LevelStartRoutine());
+            yield return StartCoroutine(LevelStartRoutine());
+            yield break;
         }
+
+        // Keep Cinemachine OUT of it — we drive the transform directly.
+        if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = false;
+        if (introDirector != null) introDirector.Stop();
+        SetCinematicMode(true);
+
+        GameObject pObj = GameObject.FindGameObjectWithTag("Player");
+        PlayerController pc = pObj != null ? pObj.GetComponent<PlayerController>() : null;
+        if (pc != null) pc.isControlBlocked = true;
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(false);
+
+        Vector3 sPos = camStart.position, ePos = camEnd.position;
+        Quaternion sRot = camStart.rotation, eRot = camEnd.rotation;
+        cam.transform.position = sPos;
+        cam.transform.rotation = sRot;
+
+        float dur = Mathf.Max(0.1f, introDescendDuration);
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / dur));
+            cam.transform.position = Vector3.Lerp(sPos, ePos, k);
+            cam.transform.rotation = Quaternion.Slerp(sRot, eRot, k);
+            yield return null;
+        }
+        cam.transform.position = ePos;
+        cam.transform.rotation = eRot;
+
+        // Hand control back to the gameplay follow camera with a short blend.
+        CameraFollow cf = cachedGameplayFollow;
+        if (cf != null)
+        {
+            Vector3 e = cam.transform.eulerAngles;
+            float pitchX = e.x; if (pitchX > 180f) pitchX -= 360f;
+            cf.SyncRotation(e.y, pitchX);
+            cf.BeginHandoffBlend(0.7f);
+        }
+        SetCinematicMode(false);
+        if (cf != null) { while (cf.IsHandoffBlending) yield return null; }
+
+        if (pc != null) pc.isControlBlocked = false;
+        StartCoroutine(MovementHintRoutine());   // "WASD to move" — shown before they walk
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
+        if (objectiveUI != null) objectiveUI.gameObject.SetActive(true);
+        if (tutorialTrail != null && strangerTransform != null)
+        {
+            tutorialTrail.gameObject.SetActive(false);
+            tutorialTrail.gameObject.SetActive(true);
+            tutorialTrail.enabled = true;
+            tutorialTrail.SetTarget(strangerTransform);
+        }
+        UpdateObjectiveUI();
     }
 
-    // Waits out the illustrated opening cutscene, then runs the normal Timeline
-    // intro + camera handoff exactly as before. Inert if no cutscene is playing
-    // (e.g. already seen this save) — it falls straight through.
-    private IEnumerator DeferIntroUntilCutscene()
+    private Transform FindSceneTransform(string n)
     {
-        // Let every component's Start() run so StoryIntroPlayer.IsPlaying settles.
-        yield return null;
-        while (StoryIntroPlayer.IsPlaying) yield return null;
-
-        if (introDirector != null)
+        foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
         {
-            SetCinematicMode(true);
-            if (cachedGameplayBrain != null) cachedGameplayBrain.enabled = true;
-            introDirector.Play();
+            if (t != null && t.name == n && t.gameObject.scene.IsValid()) return t;
         }
-
-        StartCoroutine(LevelStartRoutine());
+        return null;
     }
 
     private void FindPlayer() { GameObject p = GameObject.FindGameObjectWithTag("Player"); if (p != null) playerTransform = p.transform; }
@@ -213,9 +289,10 @@ public class Level1_QuestManager : MonoBehaviour
             }
 
             if (pc != null) pc.isControlBlocked = false;
+            StartCoroutine(MovementHintRoutine());   // "WASD to move" — shown before they walk
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-            // ФІКС UI: Прибрано Canvas.ForceUpdateCanvases() та маніпуляції з альфою, 
+            // ФІКС UI: Прибрано Canvas.ForceUpdateCanvases() та маніпуляції з альфою,
             // щоб не переривати рідну анімацію плашки!
             if (objectiveUI != null) objectiveUI.gameObject.SetActive(true);
 
@@ -262,7 +339,8 @@ public class Level1_QuestManager : MonoBehaviour
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
 
         AdvanceQuest();
-        StartCoroutine(ShowTutorialHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.", 5f));
+        StartCoroutine(SmartHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.",
+            () => ResourceManager.Instance != null && (ResourceManager.Instance.runWood - startingWood) >= 1, 3f, 16f));
     }
 
     public void AdvanceQuest()
@@ -455,7 +533,8 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        StartCoroutine(ShowTutorialHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.", 5f));
+        StartCoroutine(SmartHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
+            () => defeatedSkeletonsW1 >= 1, 3f, 14f));
     }
 
     // Places every EnemyAI child in a fan-shaped formation on the ACTUAL
@@ -576,7 +655,8 @@ public class Level1_QuestManager : MonoBehaviour
         if (tutorialTrail != null && evacuationHorse != null)
             tutorialTrail.SetTarget(evacuationHorse.transform);
 
-        StartCoroutine(ShowTutorialHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!", 6f));
+        StartCoroutine(SmartHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
+            () => Input.GetKey(KeyCode.LeftShift), 3f, 16f));
     }
 
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
@@ -729,6 +809,44 @@ public class Level1_QuestManager : MonoBehaviour
             yield return new WaitForSecondsRealtime(duration);
             GlobalHUD.Instance.HidePrompt();
         }
+    }
+
+    // Proactive tutorial hint: shows the tip the moment it becomes relevant
+    // (BEFORE the action) and clears it the instant the player performs the
+    // action (clearWhen), instead of a blind fixed timer. Stays up at least
+    // minShow so it's readable, and never longer than maxShow. Respects the
+    // Tutorial Hints setting.
+    private IEnumerator SmartHint(string text, System.Func<bool> clearWhen, float minShow = 2.5f, float maxShow = 14f)
+    {
+        if (GlobalHUD.Instance == null) yield break;
+        if (PlayerPrefs.GetInt("Settings_TutorialHints", 1) == 0) yield break;
+
+        GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(text));
+        float t = 0f;
+        while (t < maxShow)
+        {
+            t += Time.unscaledDeltaTime;
+            if (t >= minShow && clearWhen != null && clearWhen()) break;
+            yield return null;
+        }
+        GlobalHUD.Instance.HidePrompt();
+    }
+
+    // Shown the moment the player is handed control, BEFORE they start walking;
+    // clears itself once they've actually moved.
+    private IEnumerator MovementHintRoutine()
+    {
+        if (playerTransform == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerTransform = p.transform;
+        }
+        if (playerTransform == null) yield break;
+        Vector3 start = playerTransform.position;
+        yield return StartCoroutine(SmartHint(
+            "[TIP] Use WASD to move and the mouse to look around.",
+            () => playerTransform != null && Vector3.Distance(playerTransform.position, start) > 3f,
+            2.5f, 10f));
     }
 
     private void UpdateObjectiveUI()

@@ -261,6 +261,22 @@ public class StoryIntroPlayer : MonoBehaviour
             _imgHomePos = _imgRT.anchoredPosition;
         }
 
+        // Make the subtitle always fit its frame: wrap long lines and auto-size
+        // the font down so a 2-3 sentence narration never spills out of the box.
+        if (subtitleText != null)
+        {
+            subtitleText.enableWordWrapping = true;
+            subtitleText.enableAutoSizing = true;
+            subtitleText.fontSizeMin = 20f;
+            subtitleText.fontSizeMax = 38f;
+            subtitleText.overflowMode = TextOverflowModes.Overflow;
+            var srt = subtitleText.rectTransform;
+            // A roomier box (kept bottom-anchored) so wrapped lines have space.
+            srt.sizeDelta = new Vector2(Mathf.Max(srt.sizeDelta.x, 1400f), Mathf.Max(srt.sizeDelta.y, 170f));
+            if (srt.anchoredPosition.y < 90f)
+                srt.anchoredPosition = new Vector2(srt.anchoredPosition.x, 90f);
+        }
+
         BuildCinematicOverlays();
 
         if (locationTitle == null && autoLocationTitle)

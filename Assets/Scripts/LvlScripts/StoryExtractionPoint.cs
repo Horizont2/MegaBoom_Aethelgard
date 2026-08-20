@@ -197,9 +197,9 @@ public class StoryExtractionPoint : MonoBehaviour
 
             foreach (var col in horseColliders) if (col != null) col.enabled = false;
 
-            if (Physics.Raycast(nextPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 30f, ~0, QueryTriggerInteraction.Ignore))
+            if (TryGroundY(nextPos, out float groundY))
             {
-                nextPos.y = hit.point.y + horseHeightOffset;
+                nextPos.y = groundY + horseHeightOffset;
             }
 
             foreach (var col in horseColliders) if (col != null) col.enabled = true;
@@ -245,9 +245,9 @@ public class StoryExtractionPoint : MonoBehaviour
 
             foreach (var col in horseColliders) if (col != null) col.enabled = false;
 
-            if (Physics.Raycast(nextPos + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 30f, ~0, QueryTriggerInteraction.Ignore))
+            if (TryGroundY(nextPos, out float groundY))
             {
-                nextPos.y = hit.point.y + horseHeightOffset;
+                nextPos.y = groundY + horseHeightOffset;
             }
 
             foreach (var col in horseColliders) if (col != null) col.enabled = true;
@@ -270,6 +270,40 @@ public class StoryExtractionPoint : MonoBehaviour
         if (ResourceManager.Instance != null) ResourceManager.Instance.EvacuateRunToStash();
         AchievementSystem.Unlock("FIRST_STEPS");
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+    }
+
+    private static readonly string[] GroundNames = { "terrain", "floor", "ground", "road", "path", "plane" };
+
+    // Ground-snap that ONLY accepts real ground — never enemies, the player, the
+    // horse or trees. The old raycast used ~0 (all layers), so an enemy standing
+    // in the horse's path got hit and lifted the horse up onto it.
+    private bool TryGroundY(Vector3 pos, out float y)
+    {
+        y = pos.y;
+        RaycastHit[] hits = Physics.RaycastAll(pos + Vector3.up * 10f, Vector3.down, 40f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NegativeInfinity;
+        bool found = false;
+        foreach (var h in hits)
+        {
+            Collider col = h.collider;
+            if (col == null) continue;
+            if (col.GetComponentInParent<EnemyAI>() != null) continue;                 // not enemies
+            if (col.GetComponentInParent<PlayerController>() != null) continue;         // not the player
+            if (horseTransform != null && col.transform.IsChildOf(horseTransform)) continue;
+            if (riderDummy != null && col.transform.IsChildOf(riderDummy.transform)) continue;
+
+            bool isGround = col.GetComponentInParent<Terrain>() != null;
+            if (!isGround)
+            {
+                string n = col.name.ToLowerInvariant();
+                foreach (var g in GroundNames) if (n.Contains(g)) { isGround = true; break; }
+            }
+            if (!isGround) continue;
+
+            if (h.point.y > best) { best = h.point.y; found = true; }
+        }
+        if (found) { y = best; return true; }
+        return false;
     }
 
     private IEnumerator HeavyImpactRoutine(Vector3 horseDirection)
