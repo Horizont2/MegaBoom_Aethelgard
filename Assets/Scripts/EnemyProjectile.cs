@@ -95,7 +95,7 @@ public class EnemyProjectile : MonoBehaviour
     {
         if (hitVFXPrefab != null) Instantiate(hitVFXPrefab, transform.position, transform.rotation);
         if (playHitSfx && AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+            AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
         Destroy(gameObject);
     }
 }

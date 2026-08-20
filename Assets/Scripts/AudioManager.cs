@@ -40,6 +40,8 @@ public static class AudioID
     public const string Enemy_Die = "Enemy/Die";
     public const string Enemy_Footstep = "Enemy/Footsteps";
     public const string Enemy_Hit = "Enemy/Hit";
+    public const string Arrow_Fire = "Enemy/Arrow_Fire";
+    public const string Arrow_Hit = "Enemy/Arrow_Hit";
 
     public const string Camp_CollectItem = "ENV/Camp_Collect_Item";
     public const string Camp_CollectGem = "ENV/Camp_Collect_Gem";
@@ -119,6 +121,10 @@ public class AudioManager : MonoBehaviour
     public SoundGroup enemyDie;
     public SoundGroup enemyFootstep;
     public SoundGroup enemyHit;
+    [Tooltip("Bow release / arrow launch — played by the archer when it fires.")]
+    public SoundGroup arrowFire;
+    [Tooltip("Arrow impact — played where the arrow lands / hits the player.")]
+    public SoundGroup arrowHit;
 
     [Header("=== ENVIRONMENT & CAMP ===")]
     public SoundGroup campCollectItem;
@@ -540,6 +546,8 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Enemy_Die, enemyDie);
         sfxDictionary.Add(AudioID.Enemy_Footstep, enemyFootstep);
         sfxDictionary.Add(AudioID.Enemy_Hit, enemyHit);
+        sfxDictionary.Add(AudioID.Arrow_Fire, arrowFire);
+        sfxDictionary.Add(AudioID.Arrow_Hit, arrowHit);
 
         sfxDictionary.Add(AudioID.Camp_CollectItem, campCollectItem);
         sfxDictionary.Add(AudioID.Camp_CollectGem, campCollectGem);

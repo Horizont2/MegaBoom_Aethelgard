@@ -812,7 +812,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (AudioManager.Instance != null && Time.time - lastAttackSfxTime > ATTACK_SFX_COOLDOWN)
             {
                 lastAttackSfxTime = Time.time;
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+                AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Fire, transform.position); // bow release
             }
         }
         // Keep Aim ON — UpdateRangedBehavior lowers it only when disengaged, so
