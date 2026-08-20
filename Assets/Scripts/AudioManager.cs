@@ -396,6 +396,39 @@ public class AudioManager : MonoBehaviour
         musicDuckRoutine = StartCoroutine(RampMusicMultiplier(1f, Mathf.Max(0.01f, fadeOut)));
     }
 
+    // Duck the CURRENT music EventInstance directly. Unlike DuckMusic (which
+    // lowers the music BUS), this works even when a track isn't routed through
+    // that bus — e.g. the intro cutscene music, which only responded to Master.
+    // Held until UnduckMusicInstance is called.
+    private Coroutine musicInstanceDuckRoutine;
+    public void DuckMusicInstance(float level, float fade = 0.5f)
+    {
+        if (musicInstanceDuckRoutine != null) StopCoroutine(musicInstanceDuckRoutine);
+        musicInstanceDuckRoutine = StartCoroutine(RampMusicInstance(Mathf.Clamp01(level), Mathf.Max(0.01f, fade)));
+    }
+
+    public void UnduckMusicInstance(float fade = 0.6f)
+    {
+        if (musicInstanceDuckRoutine != null) StopCoroutine(musicInstanceDuckRoutine);
+        musicInstanceDuckRoutine = StartCoroutine(RampMusicInstance(1f, Mathf.Max(0.01f, fade)));
+    }
+
+    private IEnumerator RampMusicInstance(float target, float duration)
+    {
+        float start = 1f;
+        if (currentMusicInstance.isValid()) currentMusicInstance.getVolume(out start);
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            if (currentMusicInstance.isValid())
+                currentMusicInstance.setVolume(Mathf.Lerp(start, target, t / duration));
+            yield return null;
+        }
+        if (currentMusicInstance.isValid()) currentMusicInstance.setVolume(target);
+        musicInstanceDuckRoutine = null;
+    }
+
     private IEnumerator MusicDuckRoutine(float target, float fadeIn, float hold, float fadeOut)
     {
         yield return StartCoroutine(RampMusicMultiplier(target, Mathf.Max(0.01f, fadeIn)));

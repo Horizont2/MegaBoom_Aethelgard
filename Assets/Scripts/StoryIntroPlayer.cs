@@ -166,6 +166,16 @@ public class StoryIntroPlayer : MonoBehaviour
     public bool autoEmbers = true;
     [Range(0f, 1f)] public float emberOpacity = 0.5f;
     public Color emberColor = new Color(1f, 0.6f, 0.25f, 1f);
+    [Tooltip("Drifting soft fog banks across the frame (UI overlay).")]
+    public bool autoFog = true;
+    [Range(0f, 1f)] public float fogOpacity = 0.22f;
+    [Tooltip("Subtle animated film grain over everything (UI overlay).")]
+    public bool autoGrain = true;
+    [Range(0f, 1f)] public float grainOpacity = 0.07f;
+    [Tooltip("Soft light shaft glowing from the top of the frame (UI overlay).")]
+    public bool autoLightRays = true;
+    [Range(0f, 1f)] public float lightRayOpacity = 0.16f;
+    public Color lightRayColor = new Color(1f, 0.85f, 0.55f, 1f);
 
     [Header("Skip")]
     public bool allowSkip = true;
@@ -178,6 +188,10 @@ public class StoryIntroPlayer : MonoBehaviour
 
     [Header("On finish")]
     public LocationTitleReveal locationTitle;              // shown after the slides
+    [Tooltip("If no LocationTitleReveal is assigned, build one automatically on its own top canvas so the location name animates over the Timeline handoff.")]
+    public bool autoLocationTitle = true;
+    public string locationTitleKey = "THE BLIGHTED WOODS";
+    public string locationSubtitleKey = "";
     public UnityEngine.Events.UnityEvent onFinished;
 
     public static bool IsPlaying { get; private set; }
@@ -206,11 +220,12 @@ public class StoryIntroPlayer : MonoBehaviour
     private bool _voiceInstanceValid;
 
     // Generated (code-only) cinematic overlays for the whole cutscene.
-    private GameObject _vignetteGO;
-    private GameObject _emberFieldGO;
-    private Coroutine _emberRoutine;
+    private readonly List<GameObject> _ambientGOs = new List<GameObject>();
+    private readonly List<Coroutine> _ambientRoutines = new List<Coroutine>();
     private Sprite _vignetteSprite;
     private Sprite _dotSprite;
+    private Sprite _noiseSprite;
+    private Sprite _vGradSprite;
 
     private void Awake()
     {
@@ -243,6 +258,72 @@ public class StoryIntroPlayer : MonoBehaviour
         }
 
         BuildCinematicOverlays();
+
+        if (locationTitle == null && autoLocationTitle)
+            locationTitle = BuildAutoLocationTitle();
+    }
+
+    // Builds a self-contained location-title overlay (its own top canvas + big
+    // TMP text) and returns a configured LocationTitleReveal, so the location
+    // name animates over the Timeline even when nothing was wired by hand. It
+    // lives on its OWN object (not under the cutscene canvas) so it survives the
+    // cutscene teardown.
+    private LocationTitleReveal BuildAutoLocationTitle()
+    {
+        var canvasGO = new GameObject("AutoLocationTitle",
+            typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var canvas = canvasGO.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 5000; // above the cutscene canvas
+        var scaler = canvasGO.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        var group = canvasGO.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.blocksRaycasts = false;
+        group.interactable = false;
+
+        // Big centred title.
+        var titleGO = new GameObject("Title", typeof(RectTransform));
+        titleGO.transform.SetParent(canvasGO.transform, false);
+        var trt = (RectTransform)titleGO.transform;
+        trt.anchorMin = new Vector2(0.1f, 0.42f);
+        trt.anchorMax = new Vector2(0.9f, 0.62f);
+        trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+        var title = titleGO.AddComponent<TextMeshProUGUI>();
+        if (subtitleText != null && subtitleText.font != null) title.font = subtitleText.font;
+        title.fontSize = 90f;
+        title.enableAutoSizing = true; title.fontSizeMin = 40f; title.fontSizeMax = 110f;
+        title.alignment = TextAlignmentOptions.Center;
+        title.color = Color.white;
+        title.fontStyle = FontStyles.SmallCaps;
+        title.characterSpacing = 8f;
+
+        // Smaller line under it.
+        var subGO = new GameObject("Subtitle", typeof(RectTransform));
+        subGO.transform.SetParent(canvasGO.transform, false);
+        var srt = (RectTransform)subGO.transform;
+        srt.anchorMin = new Vector2(0.1f, 0.35f);
+        srt.anchorMax = new Vector2(0.9f, 0.42f);
+        srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
+        var sub = subGO.AddComponent<TextMeshProUGUI>();
+        if (subtitleText != null && subtitleText.font != null) sub.font = subtitleText.font;
+        sub.fontSize = 34f;
+        sub.alignment = TextAlignmentOptions.Center;
+        sub.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+        sub.characterSpacing = 6f;
+
+        var reveal = canvasGO.AddComponent<LocationTitleReveal>();
+        reveal.group = group;
+        reveal.titleText = title;
+        reveal.subtitleText = sub;
+        reveal.locationKey = locationTitleKey;
+        reveal.subtitleKey = locationSubtitleKey;
+        reveal.descendCamera = false; // the Timeline owns the camera descent
+        canvasGO.SetActive(true);
+        return reveal;
     }
 
     // Creates the flash sheet + letterbox bars as children of the overlay and
@@ -311,7 +392,11 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_imgRT != null) { _imgRT.localScale = Vector3.one; _imgRT.anchoredPosition = _imgHomePos; }
         if (voiceSource != null) voiceSource.Stop();
         StopVoiceInstance();
-        if (duckMusicUnderNarration && AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.3f);
+        if (duckMusicUnderNarration && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.UnduckMusic(0.3f);
+            AudioManager.Instance.UnduckMusicInstance(0.3f);
+        }
         if (_barTop != null) _barTop.sizeDelta = new Vector2(0f, 0f);
         if (_barBottom != null) _barBottom.sizeDelta = new Vector2(0f, 0f);
         DespawnEffects(0f);
@@ -494,32 +579,124 @@ public class StoryIntroPlayer : MonoBehaviour
         if (rootGroup == null) return;
         Transform parent = rootGroup.transform;
 
+        // Soft top light shaft (behind everything else atmospheric).
+        if (autoLightRays)
+        {
+            if (_vGradSprite == null) _vGradSprite = MakeVerticalGradientSprite();
+            var img = NewOverlayImage("LightRays", parent, _vGradSprite);
+            Color c = lightRayColor; c.a = lightRayOpacity; img.color = c;
+        }
+
         if (autoVignette)
         {
             if (_vignetteSprite == null) _vignetteSprite = MakeVignetteSprite();
-            _vignetteGO = new GameObject("Vignette", typeof(RectTransform), typeof(Image));
-            _vignetteGO.transform.SetParent(parent, false);
-            var rt = (RectTransform)_vignetteGO.transform;
-            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            var img = _vignetteGO.GetComponent<Image>();
-            img.sprite = _vignetteSprite;
-            img.raycastTarget = false;
+            var img = NewOverlayImage("Vignette", parent, _vignetteSprite);
             img.color = new Color(0f, 0f, 0f, Mathf.Clamp01(vignetteStrength));
+        }
+
+        if (autoFog)
+        {
+            if (_dotSprite == null) _dotSprite = MakeDotSprite();
+            var fogGO = NewOverlayContainer("Fog", parent);
+            _ambientRoutines.Add(StartCoroutine(FogBanks((RectTransform)fogGO.transform)));
         }
 
         if (autoEmbers)
         {
             if (_dotSprite == null) _dotSprite = MakeDotSprite();
-            _emberFieldGO = new GameObject("Embers", typeof(RectTransform));
-            _emberFieldGO.transform.SetParent(parent, false);
-            var frt = (RectTransform)_emberFieldGO.transform;
-            frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
-            frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
-            _emberRoutine = StartCoroutine(EmberField(frt));
+            var emberGO = NewOverlayContainer("Embers", parent);
+            _ambientRoutines.Add(StartCoroutine(EmberField((RectTransform)emberGO.transform)));
+        }
+
+        if (autoGrain)
+        {
+            if (_noiseSprite == null) _noiseSprite = MakeNoiseSprite();
+            var img = NewOverlayImage("FilmGrain", parent, _noiseSprite);
+            img.color = new Color(1f, 1f, 1f, grainOpacity);
+            // oversize so jitter never shows an edge
+            var rt = img.rectTransform;
+            rt.offsetMin = new Vector2(-40f, -40f); rt.offsetMax = new Vector2(40f, 40f);
+            _ambientRoutines.Add(StartCoroutine(GrainJitter(rt)));
         }
 
         BringOverlaysToFront();
+    }
+
+    private Image NewOverlayImage(string name, Transform parent, Sprite sprite)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        var img = go.GetComponent<Image>();
+        img.sprite = sprite;
+        img.raycastTarget = false;
+        _ambientGOs.Add(go);
+        return img;
+    }
+
+    private GameObject NewOverlayContainer(string name, Transform parent)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        _ambientGOs.Add(go);
+        return go;
+    }
+
+    // A few big, very soft blobs drifting sideways at different speeds/heights —
+    // reads as slow fog banks.
+    private IEnumerator FogBanks(RectTransform field)
+    {
+        const int N = 4;
+        float w = Screen.width, h = Screen.height;
+        var rts = new RectTransform[N];
+        var spd = new float[N];
+        var yoff = new float[N];
+        for (int i = 0; i < N; i++)
+        {
+            var go = new GameObject("fog", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(field, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            float size = UnityEngine.Random.Range(h * 0.7f, h * 1.3f);
+            rt.sizeDelta = new Vector2(size * 1.6f, size);
+            yoff[i] = UnityEngine.Random.Range(-h * 0.3f, h * 0.3f);
+            rt.anchoredPosition = new Vector2(UnityEngine.Random.Range(-w * 0.6f, w * 0.6f), yoff[i]);
+            var img = go.GetComponent<Image>();
+            img.sprite = _dotSprite;
+            img.raycastTarget = false;
+            img.color = new Color(0.6f, 0.65f, 0.72f, fogOpacity * UnityEngine.Random.Range(0.5f, 1f));
+            rts[i] = rt;
+            spd[i] = UnityEngine.Random.Range(6f, 16f) * (UnityEngine.Random.value < 0.5f ? -1f : 1f);
+        }
+        while (true)
+        {
+            float dt = Time.unscaledDeltaTime;
+            for (int i = 0; i < N; i++)
+            {
+                if (rts[i] == null) continue;
+                Vector2 p = rts[i].anchoredPosition;
+                p.x += spd[i] * dt;
+                if (p.x > w * 0.7f) p.x = -w * 0.7f;
+                else if (p.x < -w * 0.7f) p.x = w * 0.7f;
+                rts[i].anchoredPosition = p;
+            }
+            yield return null;
+        }
+    }
+
+    // Jitters the grain sheet a few px each frame so the noise shimmers.
+    private IEnumerator GrainJitter(RectTransform rt)
+    {
+        while (rt != null)
+        {
+            rt.anchoredPosition = new Vector2(UnityEngine.Random.Range(-20f, 20f), UnityEngine.Random.Range(-20f, 20f));
+            yield return null;
+        }
     }
 
     // ~12 soft motes that rise slowly and wrap, with gentle horizontal sway —
@@ -612,11 +789,48 @@ public class StoryIntroPlayer : MonoBehaviour
         return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
     }
 
+    // Warm top light shaft: bright at the top, fading to nothing below.
+    private Sprite MakeVerticalGradientSprite()
+    {
+        const int W = 4, H = 128;
+        var tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
+        {
+            float t = y / (float)(H - 1);            // 0 bottom → 1 top
+            float a = Mathf.SmoothStep(0f, 1f, t);
+            a *= a;
+            for (int x = 0; x < W; x++) px[y * W + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    // Fine random grain.
+    private Sprite MakeNoiseSprite()
+    {
+        const int S = 256;
+        var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Repeat;
+        var px = new Color32[S * S];
+        for (int i = 0; i < px.Length; i++)
+        {
+            byte v = (byte)UnityEngine.Random.Range(0, 256);
+            px[i] = new Color32(v, v, v, v);
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+    }
+
     private void DespawnAmbientOverlays()
     {
-        if (_emberRoutine != null) { StopCoroutine(_emberRoutine); _emberRoutine = null; }
-        if (_emberFieldGO != null) { Destroy(_emberFieldGO); _emberFieldGO = null; }
-        if (_vignetteGO != null) { Destroy(_vignetteGO); _vignetteGO = null; }
+        foreach (var r in _ambientRoutines) if (r != null) StopCoroutine(r);
+        _ambientRoutines.Clear();
+        foreach (var go in _ambientGOs) if (go != null) Destroy(go);
+        _ambientGOs.Clear();
     }
 
     // ---- Narration (FMOD event OR Unity clip) ------------------------------
@@ -686,12 +900,15 @@ public class StoryIntroPlayer : MonoBehaviour
 
         StartCoroutine(AnimateLetterbox(true));
 
-        // Duck the music for the ENTIRE cutscene (hold until we unduck at the
-        // end). Doing it once — instead of per narration line — means it works
-        // even when an FMOD voice event's length can't be read, and it can't be
-        // out-timed by a line that starts before the previous duck released.
+        // Duck the music for the ENTIRE cutscene (hold until the end). Duck BOTH
+        // the music bus AND the music EventInstance directly — the cutscene track
+        // isn't routed through the music bus (it only responded to Master), so
+        // the instance-level duck is what actually lowers it under the narration.
         if (duckMusicUnderNarration && AudioManager.Instance != null)
+        {
             AudioManager.Instance.DuckMusic(musicDuckLevel, 0.5f, 0f, 0.6f);
+            AudioManager.Instance.DuckMusicInstance(musicDuckLevel, 0.5f);
+        }
 
         SpawnAmbientOverlays();   // vignette + embers for the whole cutscene
 
@@ -805,14 +1022,23 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
         if (voiceSource != null) voiceSource.Stop();
         StopVoiceInstance();
-        if (duckMusicUnderNarration && AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
+        if (duckMusicUnderNarration && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.UnduckMusic(0.6f);
+            AudioManager.Instance.UnduckMusicInstance(0.6f);
+        }
+
+        // Hand off NOW — while the overlay is still up — so the Timeline camera
+        // starts moving and the location title animates BEHIND the fade. If we
+        // waited until after the fade, the plain gameplay camera (behind the
+        // player) would flash on screen for ~1s before the Timeline kicked in.
+        IsPlaying = false;
+        onFinished?.Invoke();
+        if (locationTitle != null) locationTitle.Play();
 
         yield return AnimateLetterbox(false);
         yield return FadeGroup(rootGroup, 0f, imageFadeDuration);
         HideImmediate();
-
-        onFinished?.Invoke();
-        if (locationTitle != null) locationTitle.Play();
     }
 
     // Slow pan + zoom over the still, with an additive decaying shake on top.
