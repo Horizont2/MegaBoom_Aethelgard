@@ -60,6 +60,10 @@ public class RegionTotem : MonoBehaviour
              "mixed warband, boss+adds, etc., different each run.")]
     public bool useEncounterTemplates = false;
     public TotemEncounter[] encounterTemplates;
+    [Tooltip("When ON and no templates are authored above, the totem BUILDS varied " +
+             "encounters (warband / ambush / elite pack / boss+adds) from its weak/" +
+             "medium/elite + boss pools automatically — instant variety, no wiring.")]
+    public bool autoGenerateEncounters = true;
 
     [Header("Standalone / Side Objective")]
     [Tooltip("Увімкни це, якщо тотем стоїть у тупику як побічна місія (не головний тотем регіону)")]
@@ -235,7 +239,15 @@ public class RegionTotem : MonoBehaviour
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
 
-        if (useEncounterTemplates && encounterTemplates != null && encounterTemplates.Length > 0)
+        bool haveTemplates = useEncounterTemplates && encounterTemplates != null && encounterTemplates.Length > 0;
+        // Auto-build varied encounters from the pools when none were authored.
+        if (!haveTemplates && autoGenerateEncounters)
+        {
+            List<TotemEncounter> auto = BuildAutoEncounters();
+            if (auto.Count > 0) { encounterTemplates = auto.ToArray(); haveTemplates = true; }
+        }
+
+        if (haveTemplates)
         {
             yield return StartCoroutine(RunEncounterTemplate(finalHpMult, finalDmgMult));
         }
@@ -274,6 +286,70 @@ public class RegionTotem : MonoBehaviour
         }
 
         StartCoroutine(MonitorCombatRoutine());
+    }
+
+    // Builds a varied set of encounters from whatever prefab pools this totem
+    // has (weak / medium / elite + a boss pool), so every road totem offers
+    // random variety — a warband, an ambush, an elite pack, or a boss with adds
+    // — with zero manual authoring.
+    private List<TotemEncounter> BuildAutoEncounters()
+    {
+        var list = new List<TotemEncounter>();
+        bool hasWeak = weakPrefabs != null && weakPrefabs.Length > 0;
+        bool hasMed = mediumPrefabs != null && mediumPrefabs.Length > 0;
+        bool hasElite = elitePrefabs != null && elitePrefabs.Length > 0;
+
+        GameObject[] bossPool = (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
+            ? standaloneBossPrefabs
+            : (manager != null && manager.currentRegion != null ? manager.currentRegion.regionBossPrefabs : null);
+        bool hasBoss = bossPool != null && bossPool.Length > 0;
+
+        // Warband — one mixed melee pack.
+        if (hasMed || hasWeak)
+            list.Add(Encounter("Warband", 1.5f,
+                Group("warband", CombinePools(mediumPrefabs, weakPrefabs), hasMed ? 8 : 10, 1f, 1f, 0f)));
+
+        // Ambush — a weak swarm followed by a couple of elites.
+        if (hasWeak && hasElite)
+            list.Add(Encounter("Ambush", 1.2f,
+                Group("swarm", weakPrefabs, 10, 0.85f, 0.85f, 0.8f),
+                Group("elites", elitePrefabs, 2, 1.3f, 1.15f, 0f)));
+
+        // Elite pack.
+        if (hasElite)
+            list.Add(Encounter("Elite Pack", 0.8f,
+                Group("elites", elitePrefabs, 3, 1.2f, 1.1f, 0f)));
+
+        // Boss (+ adds if we have fodder).
+        if (hasBoss)
+        {
+            if (hasWeak)
+                list.Add(Encounter("Boss & Adds", 0.7f,
+                    Group("boss", bossPool, 1, 1f, 1f, 0.6f),
+                    Group("adds", weakPrefabs, 6, 0.8f, 0.8f, 0f)));
+            else
+                list.Add(Encounter("Boss", 1f, Group("boss", bossPool, 1, 1f, 1f, 0f)));
+        }
+
+        return list;
+    }
+
+    private static TotemEncounter Encounter(string name, float weight, params TotemSpawnGroup[] groups)
+    {
+        return new TotemEncounter { name = name, weight = weight, groups = groups };
+    }
+
+    private static TotemSpawnGroup Group(string label, GameObject[] prefabs, int count, float hp, float dmg, float after)
+    {
+        return new TotemSpawnGroup { label = label, prefabs = prefabs, count = count, hpMult = hp, dmgMult = dmg, delayBetween = 0.15f, delayAfter = after };
+    }
+
+    private static GameObject[] CombinePools(GameObject[] a, GameObject[] b)
+    {
+        var list = new List<GameObject>();
+        if (a != null) list.AddRange(a);
+        if (b != null) list.AddRange(b);
+        return list.ToArray();
     }
 
     // Weighted-random pick among this totem's encounter templates.

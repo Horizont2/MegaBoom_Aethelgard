@@ -45,6 +45,28 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     [Tooltip("Радіус кругу-маркера під босом у стагері")]
     public float staggerRingRadius = 3.5f;
 
+    [Header("Charge Attack (gap-closer, phase 2+)")]
+    [Tooltip("Boss telegraphs then dashes at the player to close distance, damaging anyone it runs over.")]
+    public bool useCharge = true;
+    public float chargeSpeed = 13f;
+    public float chargeDamageMult = 1.25f;
+    public float chargeMaxDistance = 13f;
+
+    [Header("Cleave — 360° sweep around the boss (close range)")]
+    [Tooltip("A radial slam centred on the BOSS (not the player) — punishes standing right next to it.")]
+    public bool useCleave = true;
+    public float cleaveRadius = 4f;
+    public float cleaveDamageMult = 1.15f;
+    [Range(0f, 1f)] public float cleaveChance = 0.28f;
+
+    [Header("Summon adds (periodic, phase 2+)")]
+    [Tooltip("Mid-fight reinforcements. Falls back to Enrage Add Prefabs if left empty.")]
+    public bool useSummon = true;
+    public GameObject[] summonPrefabs;
+    public int summonCount = 3;
+    public float summonCooldown = 15f;
+    private float lastSummonTime = -999f;
+
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
@@ -196,6 +218,14 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (distance > attackRange)
         {
+            // Phase 2+: close the gap with a telegraphed CHARGE instead of plodding.
+            if (useCharge && Phase() >= 2 && distance <= chargeMaxDistance
+                && Time.time >= lastAttackTime + attackCooldown)
+            {
+                StartCoroutine(ChargeAttackRoutine());
+                return;
+            }
+
             if (animator != null) animator.SetBool("isMoving", true);
             Vector3 dir = (target.position - transform.position).normalized;
             dir.y = 0;
@@ -219,15 +249,40 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (dir != Vector3.zero) transform.rotation = Quaternion.LookRotation(dir);
 
             if (Time.time >= lastAttackTime + attackCooldown)
-            {
-                // Mix it up: sometimes a telegraphed ground slam, otherwise the
-                // melee swing — so the boss reads as an opponent, not a poker.
-                if (useSlamAttack && Random.value < slamChance)
-                    StartCoroutine(SlamAttackRoutine());
-                else
-                    StartCoroutine(TelegraphAndAttackRoutine());
-            }
+                PickInRangeAttack();
         }
+    }
+
+    // Which third of its health the boss is in: 1 (>66%), 2 (33-66%), 3 (<33%).
+    // Later phases unlock more of the move-set so the fight escalates.
+    private int Phase()
+    {
+        float f = maxHealth > 0f ? currentHealth / maxHealth : 1f;
+        if (f > 0.66f) return 1;
+        if (f > 0.33f) return 2;
+        return 3;
+    }
+
+    // Weighted move-set for when the player is in melee range. Summon takes
+    // priority when it's off cooldown; otherwise a weighted roll between slam,
+    // cleave and the plain melee swing (more variety in later phases).
+    private void PickInRangeAttack()
+    {
+        int phase = Phase();
+
+        if (useSummon && phase >= 2 && Time.time >= lastSummonTime + summonCooldown)
+        {
+            StartCoroutine(SummonRoutine());
+            return;
+        }
+
+        float roll = Random.value;
+        float slamW = useSlamAttack ? slamChance : 0f;
+        float cleaveW = (useCleave && phase >= 1) ? cleaveChance : 0f;
+
+        if (roll < slamW) StartCoroutine(SlamAttackRoutine());
+        else if (roll < slamW + cleaveW) StartCoroutine(CleaveAttackRoutine());
+        else StartCoroutine(TelegraphAndAttackRoutine());
     }
 
     private IEnumerator TelegraphAndAttackRoutine()
@@ -338,6 +393,143 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                         KnockbackForce = 20f,
                         SourceName = bossName
                     });
+                }
+            }
+        }
+
+        lastAttackTime = Time.time;
+        yield return new WaitForSeconds(0.5f);
+        isPreparingAttack = false;
+    }
+
+    // CHARGE: telegraph, lock the aim, then dash forward — damages the player if
+    // it runs them over, and stops once it blows past them. A gap-closer that
+    // makes distance dangerous instead of a safe zone.
+    private IEnumerator ChargeAttackRoutine()
+    {
+        isPreparingAttack = true;
+        if (animator != null) animator.SetBool("isMoving", false);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+
+        SetColor(new Color(2f, 0.9f, 0f));
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime);
+
+        Vector3 dir = transform.forward;
+        float tw = 0f;
+        while (tw < attackTelegraphTime && !isDead && !isStaggered)
+        {
+            tw += Time.deltaTime;
+            if (target != null)
+            {
+                Vector3 d = target.position - transform.position; d.y = 0f;
+                if (d != Vector3.zero) { dir = d.normalized; transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 8f * Time.deltaTime); }
+            }
+            yield return null;
+        }
+        ResetColor();
+
+        if (!isDead && !isStaggered)
+        {
+            if (animator != null) animator.SetBool("isMoving", true);
+            float traveled = 0f;
+            bool hit = false;
+            while (traveled < chargeMaxDistance && !isDead && !isStaggered)
+            {
+                float step = chargeSpeed * Time.deltaTime;
+                Vector3 next = transform.position + dir * step;
+                if (Terrain.activeTerrain != null)
+                    next.y = Terrain.activeTerrain.SampleHeight(next) + Terrain.activeTerrain.transform.position.y;
+                transform.position = next;
+                traveled += step;
+
+                if (!hit && playerTarget != null && playerTarget.currentHealth > 0)
+                {
+                    Vector3 fp = playerTarget.transform.position; fp.y = transform.position.y;
+                    if (Vector3.Distance(transform.position, fp) <= attackRange)
+                    {
+                        hit = true;
+                        CameraShakeUtil.TryShake(0.3f, 0.14f);
+                        Vector3 push = (playerTarget.transform.position - transform.position); push.y = 0f;
+                        playerTarget.TakeDamage(new DamageInfo { Amount = damage * chargeDamageMult, PushDirection = push.normalized, KnockbackForce = 25f, SourceName = bossName });
+                    }
+                }
+                // Stop once we've run past the player.
+                if (target != null) { Vector3 toT = target.position - transform.position; toT.y = 0f; if (Vector3.Dot(toT, dir) < 0f) break; }
+                yield return null;
+            }
+            if (animator != null) animator.SetBool("isMoving", false);
+        }
+
+        lastAttackTime = Time.time;
+        yield return new WaitForSeconds(0.6f);
+        isPreparingAttack = false;
+    }
+
+    // CLEAVE: a radial sweep centred on the BOSS. Standing right next to it during
+    // the swing is punished, so the player can't just hug its back forever.
+    private IEnumerator CleaveAttackRoutine()
+    {
+        isPreparingAttack = true;
+        if (animator != null) animator.SetBool("isMoving", false);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        SetColor(new Color(2f, 0.3f, 0.6f));
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime * 0.85f);
+
+        float windup = attackTelegraphTime * (isEnraged ? 0.6f : 0.85f);
+        float t = 0f;
+        while (t < windup && !isDead && !isStaggered) { t += Time.deltaTime; yield return null; }
+        ResetColor();
+
+        if (!isDead && !isStaggered)
+        {
+            if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
+            CameraShakeUtil.TryShake(0.3f, 0.13f);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+
+            if (playerTarget != null && playerTarget.currentHealth > 0)
+            {
+                Vector3 bp = transform.position; bp.y = 0f;
+                Vector3 pp = playerTarget.transform.position; pp.y = 0f;
+                if (Vector3.Distance(bp, pp) <= cleaveRadius)
+                {
+                    Vector3 push = (playerTarget.transform.position - transform.position); push.y = 0f;
+                    playerTarget.TakeDamage(new DamageInfo { Amount = damage * cleaveDamageMult, PushDirection = push.normalized, KnockbackForce = 18f, SourceName = bossName });
+                }
+            }
+        }
+
+        lastAttackTime = Time.time;
+        yield return new WaitForSeconds(0.5f);
+        isPreparingAttack = false;
+    }
+
+    // SUMMON: telegraph, then spawn a small pack of adds around the boss. Uses
+    // summonPrefabs, falling back to the enrage add pool.
+    private IEnumerator SummonRoutine()
+    {
+        isPreparingAttack = true;
+        lastSummonTime = Time.time;
+        if (animator != null) animator.SetBool("isMoving", false);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        SetColor(new Color(0.4f, 0f, 1.6f));
+
+        float t = 0f;
+        while (t < attackTelegraphTime && !isDead && !isStaggered) { t += Time.deltaTime; yield return null; }
+        ResetColor();
+
+        if (!isDead && !isStaggered)
+        {
+            GameObject[] pool = (summonPrefabs != null && summonPrefabs.Length > 0) ? summonPrefabs : enrageAddPrefabs;
+            if (pool != null && pool.Length > 0)
+            {
+                CameraShakeUtil.TryShake(0.25f, 0.1f);
+                for (int i = 0; i < summonCount; i++)
+                {
+                    GameObject prefab = pool[Random.Range(0, pool.Length)];
+                    if (prefab == null) continue;
+                    Vector3 p = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(3f, 6f));
+                    p.y = transform.position.y;
+                    Instantiate(prefab, p, Quaternion.identity);
                 }
             }
         }
