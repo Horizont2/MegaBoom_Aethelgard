@@ -38,6 +38,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Tooltip("Arrow/projectile prefab — needs an EnemyProjectile component.")]
     public GameObject projectilePrefab;
     public float projectileSpeed = 18f;
+    [Tooltip("Gravity applied to the arrow so it flies a real arc (higher = steeper lob).")]
+    public float arcGravity = 22f;
     [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
     public Transform projectileSpawnPoint;
 
@@ -730,30 +732,37 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        // Kite — but stay CATCHABLE. Archers used to flee the instant the
-        // player got anywhere near, so they were impossible to melee. Now they
-        // only back off when the player is genuinely close, and do it SLOWLY,
-        // so a chasing (and especially dashing) player runs them down and kills
-        // them. Otherwise they close in when out of range, or strafe in the band.
-        float retreatDist = Mathf.Min(preferredRange * 0.5f, 4.5f);
+        // Catchable archer: mostly HOLDS GROUND and shoots. It walks toward the
+        // player when out of range, and only takes a small, SLOW step back when
+        // the player is right on top of it (never a permanent flee — that made
+        // them unkillable and their movement read as jittery). Inside melee
+        // range it stops backing off entirely so the player can land hits.
+        float backoffDist = 3.2f;   // only edge back inside this
+        float meleeStop = 1.9f;     // this close: stand and take the hit
         float moveSpeedMult;
         Vector3 move;
-        if (dist < retreatDist)
+        if (dist < meleeStop)
         {
-            move = -dir;            // back off, but slowly enough to be caught
+            move = Vector3.zero;    // let the player kill it
+            moveSpeedMult = 0f;
+        }
+        else if (dist < backoffDist)
+        {
+            move = -dir;            // gentle, catchable backpedal
             moveSpeedMult = 0.5f;
         }
         else if (dist > preferredRange * 1.15f)
         {
             move = dir;             // close the gap
-            moveSpeedMult = 0.9f;
+            moveSpeedMult = 0.85f;
         }
         else
         {
-            move = Vector3.Cross(Vector3.up, dir) * strafeDir * 0.5f; // reposition
-            moveSpeedMult = 0.6f;
+            move = Vector3.zero;    // in the band → hold ground and shoot
+            moveSpeedMult = 0f;
         }
-        move = (move + repulsion).normalized;
+        move = (move + repulsion * 0.6f);
+        if (move.sqrMagnitude > 0.0001f) move.Normalize();
 
         if (move != Vector3.zero)
         {
@@ -812,12 +821,23 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 spawn = projectileSpawnPoint != null
             ? projectileSpawnPoint.position
             : transform.position + Vector3.up * 1.2f + transform.forward * 0.5f;
-        Vector3 aimPoint = target.position + Vector3.up * 0.8f; // aim at the torso
-        Vector3 dir = (aimPoint - spawn).normalized;
+        Vector3 aimPoint = target.position + Vector3.up * 0.9f; // aim at the torso
 
-        GameObject proj = Instantiate(projectilePrefab, spawn, Quaternion.LookRotation(dir));
+        GameObject proj = Instantiate(projectilePrefab, spawn, Quaternion.identity);
         EnemyProjectile ep = proj.GetComponent<EnemyProjectile>();
-        if (ep != null) ep.Launch(dir, projectileSpeed, damage, gameObject);
+        if (ep == null) ep = proj.AddComponent<EnemyProjectile>(); // survive a prefab that forgot the component
+
+        // Ballistic solve: choose a flight time from the distance, then the launch
+        // velocity that reaches the aim point under gravity — the arrow lobs in a
+        // real arc and drops onto the player instead of flying dead straight.
+        Vector3 toTarget = aimPoint - spawn;
+        Vector3 flat = new Vector3(toTarget.x, 0f, toTarget.z);
+        float d = flat.magnitude;
+        float g = Mathf.Max(0f, arcGravity);
+        float tFlight = Mathf.Clamp(d / Mathf.Max(1f, projectileSpeed), 0.35f, 2.2f);
+        Vector3 vel = flat / tFlight;
+        vel.y = toTarget.y / tFlight + 0.5f * g * tFlight;
+        ep.LaunchBallistic(vel, g, damage, gameObject);
     }
 
     private IEnumerator AttackRoutine()

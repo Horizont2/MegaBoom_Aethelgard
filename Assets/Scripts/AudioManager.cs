@@ -330,6 +330,7 @@ public class AudioManager : MonoBehaviour
 
         masterUserVol = masterVol;
         musicUserVol = musicVol;
+        _musicUserScale = Mathf.Clamp01(musicVol); // apply Music slider to the instance too
 
         masterBus.setVolume(masterVol * masterFadeMultiplier);
         musicBus.setVolume(musicVol * musicDuckMultiplier);
@@ -344,7 +345,16 @@ public class AudioManager : MonoBehaviour
     // back here or we'd corrupt the stored value into a 0-1 float that the
     // slider then reads as ~0% on the next launch.
     public void SetMasterVolume(float vol) { masterUserVol = vol; masterBus.setVolume(vol * masterFadeMultiplier); }
-    public void SetMusicVolume(float vol)  { musicUserVol = vol;  musicBus.setVolume(vol * musicDuckMultiplier); }
+    public void SetMusicVolume(float vol)
+    {
+        musicUserVol = vol;
+        musicBus.setVolume(vol * musicDuckMultiplier);
+        // The music FMOD events aren't routed through bus:/Music (they only
+        // respond to Master), so the bus set above does nothing to them. Apply
+        // the user's Music volume straight onto the current music instance too.
+        _musicUserScale = Mathf.Clamp01(vol);
+        ApplyMusicInstanceVolume();
+    }
     public void SetSFXVolume(float vol) { sfxBus.setVolume(vol); }
     public void SetUIVolume(float vol) { uiBus.setVolume(vol); }
     public void SetAmbientVolume(float vol) { ambientBus.setVolume(vol); }
@@ -404,12 +414,13 @@ public class AudioManager : MonoBehaviour
     private Coroutine musicInstanceDuckRoutine;
     private float _musicBaseVol = 1f;      // owned by the crossfade (fade-in level)
     private float _musicInstanceDuck = 1f; // owned by the duck
+    private float _musicUserScale = 1f;    // owned by the Music volume slider
 
-    // Whenever either factor changes, re-apply the combined volume.
+    // Whenever any factor changes, re-apply the combined volume.
     private void ApplyMusicInstanceVolume()
     {
         if (currentMusicInstance.isValid())
-            currentMusicInstance.setVolume(Mathf.Clamp01(_musicBaseVol) * Mathf.Clamp01(_musicInstanceDuck));
+            currentMusicInstance.setVolume(Mathf.Clamp01(_musicBaseVol) * Mathf.Clamp01(_musicInstanceDuck) * Mathf.Clamp01(_musicUserScale));
     }
 
     public void DuckMusicInstance(float level, float fade = 0.5f)
@@ -438,6 +449,35 @@ public class AudioManager : MonoBehaviour
         _musicInstanceDuck = target;
         ApplyMusicInstanceVolume();
         musicInstanceDuckRoutine = null;
+    }
+
+    // ---- Combat music: swap to the battle track while the player is fighting,
+    // then crossfade back to whatever was playing once the fight is over. Call
+    // NotifyCombat() from combat events; it keeps the battle track alive for
+    // `sustain` seconds and reverts automatically after the last one.
+    private float _combatUntil = -1f;
+    private string _combatBaseTrack;
+    private bool _inCombatMusic;
+
+    public void NotifyCombat(float sustain = 6f)
+    {
+        _combatUntil = Time.unscaledTime + sustain;
+        if (_inCombatMusic) return;
+        _inCombatMusic = true;
+        if (currentMusicName == AudioID.Music_Battle) return; // already battle (e.g. GameScene)
+        _combatBaseTrack = currentMusicName;                  // remember what to return to
+        PlayMusic(AudioID.Music_Battle);
+    }
+
+    private void Update()
+    {
+        if (_inCombatMusic && Time.unscaledTime > _combatUntil)
+        {
+            _inCombatMusic = false;
+            if (!string.IsNullOrEmpty(_combatBaseTrack) && _combatBaseTrack != AudioID.Music_Battle)
+                PlayMusic(_combatBaseTrack);
+            _combatBaseTrack = null;
+        }
     }
 
     private IEnumerator MusicDuckRoutine(float target, float fadeIn, float hold, float fadeOut)

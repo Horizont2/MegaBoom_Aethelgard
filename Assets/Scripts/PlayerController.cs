@@ -1567,9 +1567,14 @@ public class PlayerController : MonoBehaviour, IDamageable
         for (int idx = 0; idx < hitCount; idx++)
         {
             Collider col = s_overlapBuffer[idx];
-            if (col.TryGetComponent(out IDamageable damageable))
+            // Search PARENTS, not just the collider's own object — an archer (or
+            // any enemy) whose collider sits on a child would otherwise take no
+            // damage at all.
+            IDamageable damageable = col.GetComponentInParent<IDamageable>();
+            if (damageable != null)
             {
-                if (col.gameObject == this.gameObject) continue;
+                GameObject dmgGO = ((MonoBehaviour)damageable).gameObject;
+                if (dmgGO == this.gameObject) continue;
 
                 Vector3 pushDir = (col.transform.position - transform.position).normalized; pushDir.y = 0;
                 float kForce = isCriticalHit ? (isNextAttackGuaranteedCrit ? 20f : 12f) : 8f;
@@ -1585,7 +1590,12 @@ public class PlayerController : MonoBehaviour, IDamageable
                 };
 
                 damageable.TakeDamage(hitInfo);
-                if (col.CompareTag("Enemy")) { hitEnemy = true; totalLifestealDealt += finalDmg; }
+                bool isEnemy = damageable is EnemyAI || dmgGO.CompareTag("Enemy") || col.CompareTag("Enemy");
+                if (isEnemy)
+                {
+                    hitEnemy = true; totalLifestealDealt += finalDmg;
+                    if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat();
+                }
                 else
                 {
                     hitResource = true;
@@ -1667,6 +1677,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (isDead || currentHealth <= 0) return;
         if (isCampMode || isDashing || isBulletTime) return;
+        if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(); // getting hit = combat
 
         // Feed the death recap's "Slain by ___" line. Overwrites on
         // every hit — whatever landed the LAST blow before Die() wins.
