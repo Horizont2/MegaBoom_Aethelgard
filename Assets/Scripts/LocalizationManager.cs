@@ -352,6 +352,9 @@ public static class LocalizationManager
 
         SeedFullLocale();
 
+        // === Opening cutscene narration + new tutorial strings ===
+        SeedIntroCutscene();
+
         // === Lore codex entries ===
         SeedLore();
 
@@ -572,6 +575,91 @@ public static class LocalizationManager
         Add("REGION_CLEARED_3",
             "Aethelgard remembers what was taken. Aethelgard remembers what was returned.",
             "Етельгард пам'ятає, що було забрано. Етельгард пам'ятає, що було повернуто.");
+    }
+
+    // Opening story cutscene narration (self-keyed by the English scene text) +
+    // the new movement hint + the location-title reveal. All 7 locales so a
+    // language flip re-renders them.
+    private static void SeedIntroCutscene()
+    {
+        // -- Slide narration (keys MUST match the scene subtitle text exactly) --
+        Add7("Once upon a time, these forests breathed life. People cut wood, lit fires, and darkness stayed away.",
+            "Once upon a time, these forests breathed life. People cut wood, lit fires, and darkness stayed away.",
+            "Колись ці ліси дихали життям. Люди рубали дерево, палили вогні — і темрява трималася осторонь.",
+            "Когда-то эти леса дышали жизнью. Люди рубили дерево, жгли костры — и тьма держалась в стороне.",
+            "Érase una vez, estos bosques respiraban vida. La gente cortaba leña, encendía fuegos, y la oscuridad se mantenía lejos.",
+            "Einst atmeten diese Wälder Leben. Menschen schlugen Holz, entfachten Feuer, und die Dunkelheit blieb fern.",
+            "Autrefois, ces forêts respiraient la vie. Les gens coupaient du bois, allumaient des feux, et les ténèbres restaient à distance.",
+            "Dawno temu te lasy tętniły życiem. Ludzie rąbali drewno, rozpalali ogniska, a mrok trzymał się z dala.");
+
+        Add7("No one remembers where the Wasteland came from. It swallowed up the light, tree after tree, hearth after hearth.",
+            "No one remembers where the Wasteland came from. It swallowed up the light, tree after tree, hearth after hearth.",
+            "Ніхто не памʼятає, звідки прийшла Пустка. Вона поглинала світло — дерево за деревом, вогнище за вогнищем.",
+            "Никто не помнит, откуда пришла Пустошь. Она поглощала свет — дерево за деревом, очаг за очагом.",
+            "Nadie recuerda de dónde vino el Yermo. Engulló la luz, árbol tras árbol, hogar tras hogar.",
+            "Niemand weiß mehr, woher das Ödland kam. Es verschlang das Licht, Baum für Baum, Herd für Herd.",
+            "Nul ne se souvient d'où vint la Désolation. Elle engloutit la lumière, arbre après arbre, foyer après foyer.",
+            "Nikt nie pamięta, skąd przyszła Pustka. Pochłaniała światło, drzewo po drzewie, palenisko po palenisku.");
+
+        Add7("What lurked in the darkness no longer sleeps. Now the forest is full of those who were once human.",
+            "What lurked in the darkness no longer sleeps. Now the forest is full of those who were once human.",
+            "Те, що ховалося в темряві, більше не спить. Тепер ліс повний тих, хто колись був людиною.",
+            "То, что таилось во тьме, больше не спит. Теперь лес полон тех, кто когда-то был человеком.",
+            "Lo que acechaba en la oscuridad ya no duerme. Ahora el bosque está lleno de los que una vez fueron humanos.",
+            "Was in der Dunkelheit lauerte, schläft nicht mehr. Nun ist der Wald voll von jenen, die einst Menschen waren.",
+            "Ce qui rôdait dans les ténèbres ne dort plus. La forêt est désormais pleine de ceux qui furent humains.",
+            "To, co czaiło się w mroku, już nie śpi. Las jest teraz pełen tych, którzy kiedyś byli ludźmi.");
+
+        Add7("But one fire still burns. The last camp—and the old one who guarded it when all the others went out.",
+            "But one fire still burns. The last camp—and the old one who guarded it when all the others went out.",
+            "Та один вогонь ще горить. Останній табір — і старий, що беріг його, коли згасли всі інші.",
+            "Но один огонь ещё горит. Последний лагерь — и старик, что хранил его, когда погасли все остальные.",
+            "Pero un fuego aún arde. El último campamento, y el anciano que lo guardó cuando todos los demás se apagaron.",
+            "Doch ein Feuer brennt noch. Das letzte Lager — und der Alte, der es hütete, als alle anderen erloschen.",
+            "Mais un feu brûle encore. Le dernier camp, et le vieil homme qui le garda quand tous les autres s'éteignirent.",
+            "Lecz jeden ogień wciąż płonie. Ostatni obóz — i starzec, który go strzegł, gdy wszystkie inne zgasły.");
+
+        Add7("And then you emerged from the darkness. Another one who had nowhere else to go.",
+            "And then you emerged from the darkness. Another one who had nowhere else to go.",
+            "А тоді з темряви вийшов ти. Ще один, кому більше не було куди йти.",
+            "А затем из тьмы вышел ты. Ещё один, кому больше некуда было идти.",
+            "Y entonces surgiste de la oscuridad. Otro más que no tenía adónde ir.",
+            "Und dann tratst du aus der Dunkelheit. Noch einer, der nirgendwo sonst hingehen konnte.",
+            "Et puis tu as émergé des ténèbres. Un de plus qui n'avait nulle part où aller.",
+            "A wtedy z mroku wyłoniłeś się ty. Kolejny, który nie miał dokąd pójść.");
+
+        Add7("Here, survival is not by the sword, but by hard work. Every felled tree, every stone is a wall between us and the Wasteland.",
+            "Here, survival is not by the sword, but by hard work. Every felled tree, every stone is a wall between us and the Wasteland.",
+            "Тут виживають не мечем, а тяжкою працею. Кожне зрубане дерево, кожен камінь — це стіна між нами й Пусткою.",
+            "Здесь выживают не мечом, а тяжёлым трудом. Каждое срубленное дерево, каждый камень — это стена между нами и Пустошью.",
+            "Aquí no se sobrevive con la espada, sino con el trabajo duro. Cada árbol talado, cada piedra es un muro entre nosotros y el Yermo.",
+            "Hier überlebt man nicht durch das Schwert, sondern durch harte Arbeit. Jeder gefällte Baum, jeder Stein ist eine Mauer zwischen uns und dem Ödland.",
+            "Ici, on ne survit pas par l'épée, mais par le labeur. Chaque arbre abattu, chaque pierre est un mur entre nous et la Désolation.",
+            "Tu przetrwanie zależy nie od miecza, lecz od ciężkiej pracy. Każde ścięte drzewo, każdy kamień to mur między nami a Pustką.");
+
+        Add7("So take up your sword. The forest does not forgive the weak—but while the fire burns, we have a chance to reclaim what the darkness has taken.",
+            "So take up your sword. The forest does not forgive the weak—but while the fire burns, we have a chance to reclaim what the darkness has taken.",
+            "Тож бери меч. Ліс не прощає слабких — та поки горить вогонь, ми маємо шанс повернути те, що забрала темрява.",
+            "Так возьми меч. Лес не прощает слабых — но пока горит огонь, у нас есть шанс вернуть то, что забрала тьма.",
+            "Así que empuña tu espada. El bosque no perdona a los débiles, pero mientras el fuego arda, tenemos una oportunidad de recuperar lo que la oscuridad se llevó.",
+            "Also nimm dein Schwert. Der Wald verzeiht den Schwachen nicht — doch solange das Feuer brennt, haben wir eine Chance, zurückzuholen, was die Dunkelheit nahm.",
+            "Alors prends ton épée. La forêt ne pardonne pas aux faibles — mais tant que le feu brûle, nous avons une chance de reprendre ce que les ténèbres ont pris.",
+            "Więc chwyć za miecz. Las nie wybacza słabym — lecz póki płonie ogień, mamy szansę odzyskać to, co zabrał mrok.");
+
+        // -- Location title reveal --
+        Add7("THE BLIGHTED WOODS",
+            "THE BLIGHTED WOODS", "ПРОКЛЯТИЙ ЛІС", "ПРОКЛЯТЫЙ ЛЕС", "EL BOSQUE MARCHITO",
+            "DER VERDORBENE WALD", "LES BOIS FLÉTRIS", "SPUSTOSZONY LAS");
+
+        // -- New movement hint --
+        Add7("Use WASD to move and the mouse to look around.",
+            "Use WASD to move and the mouse to look around.",
+            "Використовуй WASD, щоб рухатися, і мишу, щоб роззиратися.",
+            "Используй WASD для движения и мышь, чтобы осматриваться.",
+            "Usa WASD para moverte y el ratón para mirar alrededor.",
+            "Nutze WASD zum Bewegen und die Maus zum Umsehen.",
+            "Utilise WASD pour te déplacer et la souris pour regarder autour.",
+            "Użyj WASD do poruszania się i myszy, aby się rozglądać.");
     }
 
     private static void Add(string key, string en, string uk)
