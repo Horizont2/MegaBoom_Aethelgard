@@ -339,8 +339,7 @@ public class Level1_QuestManager : MonoBehaviour
         yield return StartCoroutine(ShowSubtitleTypewriter("Stranger: I need wood to fix the wheels. Gather 12 pieces, or we're not getting out of here alive!", 3f, 7));
 
         AdvanceQuest();
-        StartCoroutine(SmartHint("[TIP] Walk up to a tree and press Left Mouse Button to attack and gather wood.",
-            () => ResourceManager.Instance != null && (ResourceManager.Instance.runWood - startingWood) >= 1, 3f, 16f));
+        Hint("LVL1_GATHER", "Walk up to a tree and press Left Mouse Button to attack and gather wood.");
     }
 
     public void AdvanceQuest()
@@ -533,8 +532,7 @@ public class Level1_QuestManager : MonoBehaviour
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
-        StartCoroutine(SmartHint("[TIP] Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
-            () => defeatedSkeletonsW1 >= 1, 3f, 14f));
+        Hint("LVL1_COMBAT", "Enemies are attacking! Use Left Mouse Button to fight back and watch your health.");
     }
 
     // Places every EnemyAI child in a fan-shaped formation on the ACTUAL
@@ -655,8 +653,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (tutorialTrail != null && evacuationHorse != null)
             tutorialTrail.SetTarget(evacuationHorse.transform);
 
-        StartCoroutine(SmartHint("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
-            () => Input.GetKey(KeyCode.LeftShift), 3f, 16f));
+        Hint("LVL1_FLEE", "You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!");
     }
 
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
@@ -811,35 +808,23 @@ public class Level1_QuestManager : MonoBehaviour
         }
     }
 
-    // Proactive tutorial hint: shows the tip the moment it becomes relevant
-    // (BEFORE the action) and clears it the instant the player performs the
-    // action (clearWhen), instead of a blind fixed timer. Stays up at least
-    // minShow so it's readable, and never longer than maxShow. Respects the
-    // Tutorial Hints setting.
-    private IEnumerator SmartHint(string text, System.Func<bool> clearWhen, float minShow = 2.5f, float maxShow = 14f)
+    // Fires a tutorial hint through the game's data-driven TutorialHints system,
+    // which shows the styled side panel (title + body + optional looping video)
+    // from a TutorialHintData asset matched by key. The panel appears the moment
+    // this is called (BEFORE the action), fires once per save, and falls back to
+    // the given text if no asset exists for the key. Settings / once-per-save
+    // gating is handled inside TutorialHints.ShowIfNew.
+    private void Hint(string key, string fallbackBody)
     {
-        if (PlayerPrefs.GetInt("Settings_TutorialHints", 1) == 0) yield break;
-        // Nice animated side panel (slides in before the action, slides out the
-        // instant the player does it) — not a plain bottom prompt.
-        SmartTutorialHint.Instance.ShowHint("TIP", text, clearWhen, minShow, maxShow);
-        yield break;
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew(key, fallbackBody);
     }
 
-    // Shown the moment the player is handed control, BEFORE they start walking;
-    // clears itself once they've actually moved.
+    // Shown the moment the player is handed control, BEFORE they start walking.
     private IEnumerator MovementHintRoutine()
     {
-        if (playerTransform == null)
-        {
-            GameObject p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null) playerTransform = p.transform;
-        }
-        if (playerTransform == null) yield break;
-        Vector3 start = playerTransform.position;
-        yield return StartCoroutine(SmartHint(
-            "[TIP] Use WASD to move and the mouse to look around.",
-            () => playerTransform != null && Vector3.Distance(playerTransform.position, start) > 3f,
-            2.5f, 10f));
+        yield return null; // let the handoff settle a frame
+        Hint("LVL1_MOVE", "Use WASD to move and the mouse to look around.");
     }
 
     private void UpdateObjectiveUI()

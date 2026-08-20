@@ -45,7 +45,14 @@ public class CameraFollow : MonoBehaviour
     private float currentDistance;
     private float distanceVelocity;
     private float actualCollisionDistance;
-    private float collisionDistVel;
+
+    private static bool IsGroundCollider(Collider col)
+    {
+        if (col == null) return false;
+        if (col.GetComponentInParent<Terrain>() != null) return true;
+        string n = col.name.ToLowerInvariant();
+        return n.Contains("terrain") || n.Contains("ground") || n.Contains("floor");
+    }
 
     private float targetFOVValue;
     private Camera camComponent;
@@ -122,15 +129,18 @@ public class CameraFollow : MonoBehaviour
         float hitDistance = currentDistance;
         if (Physics.SphereCast(lookAtPos, 0.1f, direction, out RaycastHit hit, currentDistance, collisionLayers))
         {
-            hitDistance = Mathf.Clamp(hit.distance, minDistance, currentDistance);
+            // IGNORE the ground/terrain for the boom — the terrain Y-clamp below
+            // keeps the camera above the floor. Letting the ground pull the boom
+            // in made the camera bob/jitter when tilted down (pull in -> rise ->
+            // miss -> extend -> hit again). REAL obstacles (walls) still pull in
+            // instantly so the camera never clips through them.
+            if (!IsGroundCollider(hit.collider))
+                hitDistance = Mathf.Clamp(hit.distance, minDistance, currentDistance);
         }
 
-        // Smooth the boom length BOTH ways (fast in, slower out). The old code
-        // snapped instantly to a shorter distance, so near the ground the boom
-        // oscillated (hit ground -> snap in -> rise -> miss -> extend -> hit
-        // again), which read as camera jitter when the player tilted down.
-        float collisionSmoothT = hitDistance < actualCollisionDistance ? 0.05f : 0.14f;
-        actualCollisionDistance = Mathf.SmoothDamp(actualCollisionDistance, hitDistance, ref collisionDistVel, collisionSmoothT, Mathf.Infinity, dt);
+        // Instant pull-in (never clip a wall), slow push-out (no popping).
+        if (hitDistance < actualCollisionDistance) actualCollisionDistance = hitDistance;
+        else actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, hitDistance, dt * 4f);
 
         Vector3 finalPosition = lookAtPos + direction * actualCollisionDistance;
 

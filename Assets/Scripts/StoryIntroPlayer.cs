@@ -132,6 +132,10 @@ public class StoryIntroPlayer : MonoBehaviour
     public TextMeshProUGUI subtitleText;
     public float imageFadeDuration = 1f;
     public float typingSpeed = 0.035f;
+    [Tooltip("Seconds of black held at the very START (after the load screen) before the first slide — lets the moment breathe and the music fade in.")]
+    public float startBlackHold = 1.4f;
+    [Tooltip("Seconds of black held at the END, after the last slide, before handing off to gameplay — no abrupt snap into the level.")]
+    public float endBlackHold = 1.2f;
 
     [Header("Cutscene music (its own track, replaces the level music)")]
     [Tooltip("Dedicated music for the cutscene. Drag an FMOD event here (preferred). If set, the Level 1 track is silenced for the cutscene and restored at the end.")]
@@ -1052,7 +1056,18 @@ public class StoryIntroPlayer : MonoBehaviour
 
         SpawnAmbientOverlays();   // vignette + embers for the whole cutscene
 
+        // Opening black beat: hold on black (image still at alpha 0) so the
+        // cutscene doesn't snap in straight off the loading screen and the music
+        // has a moment to breathe in. Skippable.
+        if (startBlackHold > 0f)
+        {
+            float bh = 0f;
+            while (bh < startBlackHold && !CheckSkip()) { bh += Time.unscaledDeltaTime; yield return null; }
+        }
+
         int token = SubtitleGuard.Claim();
+        // Cue timings are authored relative to the FIRST slide, so start the SFX
+        // clock AFTER the opening black beat (not at PlayRoutine entry).
         float startTime = Time.unscaledTime;
         Coroutine cueRunner = StartCoroutine(CueRunner(startTime));
 
@@ -1070,6 +1085,13 @@ public class StoryIntroPlayer : MonoBehaviour
                     yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration * 0.5f);
                     float bt = 0f;
                     while (bt < slide.blackHoldBefore && !CheckSkip()) { bt += Time.unscaledDeltaTime; yield return null; }
+                }
+                // Otherwise, on a Fade slide gently fade the PREVIOUS image out
+                // first (a soft dip) instead of hard-cutting its alpha to 0.
+                else if (s > 0 && slide.transition == SlideTransition.Fade && imageDisplay.color.a > 0.01f)
+                {
+                    if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
+                    yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration * 0.55f);
                 }
 
                 if (slide.image != null) imageDisplay.sprite = slide.image;
@@ -1156,6 +1178,17 @@ public class StoryIntroPlayer : MonoBehaviour
 
             // Clear this slide's overlays before the next slide (fade them out).
             DespawnEffects(slide.transition == SlideTransition.Fade ? imageFadeDuration : 0f);
+        }
+
+        // Closing black beat: fade the last image to black and hold, so the level
+        // doesn't snap in the instant the narration ends. Skipped if the player
+        // skipped the cutscene.
+        if (!_skipped)
+        {
+            if (imageDisplay != null) yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration);
+            if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
+            float eh = 0f;
+            while (eh < endBlackHold && !CheckSkip()) { eh += Time.unscaledDeltaTime; yield return null; }
         }
 
         if (cueRunner != null) StopCoroutine(cueRunner);
