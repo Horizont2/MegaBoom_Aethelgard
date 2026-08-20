@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using FMODUnity;
 
 public enum SlideTransition { Fade, HardCut }
 
@@ -46,6 +47,11 @@ public class IntroSlide
     [TextArea(2, 4)]
     [Tooltip("Subtitle for this slide (run through localization).")]
     public string subtitle;
+
+    [Header("Narration — use EITHER an FMOD event OR a clip")]
+    [Tooltip("Drag an FMOD event for this narration line (event:/...). Preferred. If set, the clip below is ignored.")]
+    public EventReference fmodVoice;
+    [Tooltip("Fallback Unity AudioClip, used only when no FMOD event is set.")]
     public AudioClip voiceover;
     [Tooltip("Minimum time this slide stays after it finishes typing (seconds). " +
              "If a voiceover is assigned and Hold For Voiceover is on, the slide " +
@@ -88,8 +94,15 @@ public class IntroSfxCue
 {
     [Tooltip("Seconds from the START of the whole cutscene (straight from the timing table).")]
     public float time;
+
+    [Header("Sound — use EITHER an FMOD event OR a clip")]
+    [Tooltip("Drag an FMOD event here (event:/...). Preferred. If set, the clip below is ignored.")]
+    public EventReference fmodEvent;
+    [Tooltip("Fallback Unity AudioClip, used only when no FMOD event is set.")]
     public AudioClip clip;
-    [Range(0f, 1f)] public float volume = 1f;
+    [Range(0f, 1f)]
+    [Tooltip("Volume for the Unity AudioClip fallback. FMOD events set their own level in the mixer.")]
+    public float volume = 1f;
 
     [Header("Sync visual punch to this beat")]
     [Tooltip("Flash the screen when this SFX fires (bass drop, taiko, whoosh).")]
@@ -175,6 +188,10 @@ public class StoryIntroPlayer : MonoBehaviour
 
     // Live per-slide overlay effects (destroyed when the slide ends).
     private readonly List<GameObject> _activeEffects = new List<GameObject>();
+
+    // Tracked FMOD narration instance so a skip can cut it off.
+    private FMOD.Studio.EventInstance _voiceInstance;
+    private bool _voiceInstanceValid;
 
     private void Awake()
     {
@@ -273,6 +290,8 @@ public class StoryIntroPlayer : MonoBehaviour
         IsPlaying = false;
         if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
         if (_imgRT != null) { _imgRT.localScale = Vector3.one; _imgRT.anchoredPosition = _imgHomePos; }
+        if (voiceSource != null) voiceSource.Stop();
+        StopVoiceInstance();
         if (duckMusicUnderNarration && AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.3f);
         if (_barTop != null) _barTop.sizeDelta = new Vector2(0f, 0f);
         if (_barBottom != null) _barBottom.sizeDelta = new Vector2(0f, 0f);
@@ -429,6 +448,55 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_flashOverlay != null && _flashOverlay.transform.parent == p) _flashOverlay.transform.SetAsLastSibling();
     }
 
+    // ---- Narration (FMOD event OR Unity clip) ------------------------------
+
+    // Duration of a slide's narration in seconds, whichever source is used.
+    private float SlideVoiceLength(IntroSlide s)
+    {
+        if (s == null) return 0f;
+        if (!s.fmodVoice.IsNull) return GetFmodLengthSeconds(s.fmodVoice);
+        if (s.voiceover != null) return s.voiceover.length;
+        return 0f;
+    }
+
+    // Starts the slide's narration. FMOD event wins; else the Unity clip.
+    private void PlaySlideVoice(IntroSlide s)
+    {
+        if (s == null) return;
+        StopVoiceInstance();
+        if (!s.fmodVoice.IsNull)
+        {
+            _voiceInstance = RuntimeManager.CreateInstance(s.fmodVoice);
+            _voiceInstance.start();
+            _voiceInstanceValid = true;
+        }
+        else if (voiceSource != null && s.voiceover != null)
+        {
+            voiceSource.PlayOneShot(s.voiceover, voiceVolume);
+        }
+    }
+
+    private void StopVoiceInstance()
+    {
+        if (!_voiceInstanceValid) return;
+        _voiceInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+        _voiceInstance.release();
+        _voiceInstanceValid = false;
+    }
+
+    // Reads an FMOD event's authored length (ms → s); 0 if unavailable.
+    private float GetFmodLengthSeconds(EventReference ev)
+    {
+        try
+        {
+            FMOD.Studio.EventDescription desc = RuntimeManager.GetEventDescription(ev);
+            if (desc.isValid() && desc.getLength(out int ms) == FMOD.RESULT.OK && ms > 0)
+                return ms / 1000f;
+        }
+        catch { }
+        return 0f;
+    }
+
     private IEnumerator PlayRoutine()
     {
         IsPlaying = true;
@@ -482,7 +550,7 @@ public class StoryIntroPlayer : MonoBehaviour
                 {
                     float motionDur = imageFadeDuration
                                     + (subtitleText != null ? LocalizationManager.Tr(slide.subtitle).Length * typingSpeed : 0f)
-                                    + Mathf.Max(slide.duration, slide.voiceover != null ? slide.voiceover.length : 0f);
+                                    + Mathf.Max(slide.duration, SlideVoiceLength(slide));
                     _kenBurns = StartCoroutine(KenBurns(slide.zoomFrom, slide.zoomTo, slide.panFrom, slide.panTo, motionDur));
                 }
 
@@ -508,12 +576,10 @@ public class StoryIntroPlayer : MonoBehaviour
             }
 
             float slideStartTime = Time.unscaledTime;
-            if (voiceSource != null && slide.voiceover != null)
-            {
-                voiceSource.PlayOneShot(slide.voiceover, voiceVolume);
-                if (duckMusicUnderNarration && AudioManager.Instance != null)
-                    AudioManager.Instance.DuckMusic(musicDuckLevel, 0.25f, slide.voiceover.length + 0.3f, 0.7f);
-            }
+            float voLen = SlideVoiceLength(slide);
+            PlaySlideVoice(slide);
+            if (voLen > 0f && duckMusicUnderNarration && AudioManager.Instance != null)
+                AudioManager.Instance.DuckMusic(musicDuckLevel, 0.25f, voLen + 0.3f, 0.7f);
 
             string full = LocalizationManager.Tr(slide.subtitle);
             if (subtitleText != null)
@@ -535,8 +601,8 @@ public class StoryIntroPlayer : MonoBehaviour
             // Hold long enough to cover BOTH the authored duration and the whole
             // narration line (so the voice is never cut off mid-sentence).
             float voRemaining = 0f;
-            if (holdForVoiceover && slide.voiceover != null)
-                voRemaining = (slide.voiceover.length + voiceoverTail) - (Time.unscaledTime - slideStartTime);
+            if (holdForVoiceover && voLen > 0f)
+                voRemaining = (voLen + voiceoverTail) - (Time.unscaledTime - slideStartTime);
             float target = Mathf.Max(slide.duration, voRemaining);
             float held = 0f;
             while (held < target && !CheckSkip())
@@ -552,6 +618,7 @@ public class StoryIntroPlayer : MonoBehaviour
         if (cueRunner != null) StopCoroutine(cueRunner);
         if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
         if (voiceSource != null) voiceSource.Stop();
+        StopVoiceInstance();
         if (duckMusicUnderNarration && AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
         yield return AnimateLetterbox(false);
@@ -649,7 +716,8 @@ public class StoryIntroPlayer : MonoBehaviour
             while (next < count && elapsed >= sfxCues[next].time)
             {
                 IntroSfxCue cue = sfxCues[next++];
-                if (cue.clip != null && sfxSource != null) sfxSource.PlayOneShot(cue.clip, cue.volume);
+                if (!cue.fmodEvent.IsNull) RuntimeManager.PlayOneShot(cue.fmodEvent);
+                else if (cue.clip != null && sfxSource != null) sfxSource.PlayOneShot(cue.clip, cue.volume);
                 if (cue.flash) TriggerFlash(cue.flashStrength, 0.4f);
                 if (cue.shake > 0f) TriggerShake(cue.shake);
             }
