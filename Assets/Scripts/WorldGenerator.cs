@@ -1588,6 +1588,58 @@ public class WorldGenerator : MonoBehaviour
         spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
         roadTargets.Add(spawnedTotemPos);
+
+        // Optional extra capture LOCATIONS: additional totems at spread-out
+        // clearings so a region has several points to capture (bonus side
+        // objectives). Default 0 → nothing extra spawns, behaviour unchanged.
+        int extra = activeRegionData != null ? activeRegionData.extraCaptureLocations : 0;
+        if (extra > 0 && validSpots.Count > 1)
+            yield return StartCoroutine(SpawnExtraCaptureTotems(totemPrefab, validSpots, bestSpot, extra, flatRadius, bottomOfCollider, locationYOffset));
+    }
+
+    // Places `count` additional capture totems at valid clearings that are well
+    // separated from the main totem and from each other, grounding each the same
+    // way as the main one and flagging them standalone (bonus objectives).
+    private IEnumerator SpawnExtraCaptureTotems(GameObject totemPrefab, List<Vector2> validSpots, Vector2 mainSpot, int count, float flatRadius, float bottomOfCollider, float locationYOffset)
+    {
+        List<Vector2> placed = new List<Vector2> { mainSpot };
+        float minSep = flatRadius * 2f + 90f;
+        int spawned = 0;
+
+        for (int attempt = 0; attempt < validSpots.Count * 2 && spawned < count; attempt++)
+        {
+            Vector2 cand = validSpots[UnityEngine.Random.Range(0, validSpots.Count)];
+            bool ok = true;
+            foreach (var p in placed) if (Vector2.Distance(cand, p) < minSep) { ok = false; break; }
+            if (!ok) continue;
+            placed.Add(cand);
+
+            Vector3 centerPos = new Vector3(cand.x, 0, cand.y);
+            float gY = terrain.SampleHeight(centerPos) + transform.position.y;
+            centerPos.y = gY;
+
+            FlattenTerrainRobust(centerPos, flatRadius, 18f, gY);
+            terrain.Flush();
+            TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
+            if (tc != null) { tc.enabled = false; tc.enabled = true; }
+            yield return new WaitForFixedUpdate();
+
+            float gY2 = terrain.SampleHeight(centerPos) + transform.position.y;
+            float finalY = gY2 - bottomOfCollider + locationYOffset;
+            Vector3 finalPos = new Vector3(centerPos.x, finalY, centerPos.z);
+            Quaternion rot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0) * totemPrefab.transform.rotation;
+
+            GameObject extraTotem = Instantiate(totemPrefab, finalPos, rot);
+            extraTotem.transform.SetParent(this.transform);
+            SnapInstanceToGround(extraTotem, gY2 + locationYOffset);
+
+            RegionTotem rt = extraTotem.GetComponent<RegionTotem>();
+            if (rt != null) rt.isStandalone = true; // bonus capture point, not a region gate
+
+            forbiddenZones.Add(extraTotem.transform.position);
+            roadTargets.Add(extraTotem.transform.position);
+            spawned++;
+        }
     }
 
     // Snap an instantiated object so its FLOOR sits at `targetGroundY`.

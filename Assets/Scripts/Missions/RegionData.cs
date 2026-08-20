@@ -78,6 +78,11 @@ public class RegionData : ScriptableObject
     public float locationYOffset = 0f;
     [Tooltip("������ ����, �� ������������ �� ��� ��������� ������")]
     public GameObject[] regionBossPrefabs;
+    [Tooltip("Extra capture LOCATIONS beyond the main totem. When > 0, that many " +
+             "additional totems are placed at spread-out clearings as bonus " +
+             "capture points (side objectives that reward but don't gate the " +
+             "region). 0 = only the main totem, unchanged.")]
+    [Range(0, 5)] public int extraCaptureLocations = 0;
 
     [Header("One-Time Rewards (�� �����������)")]
     public int woodReward = 100;
