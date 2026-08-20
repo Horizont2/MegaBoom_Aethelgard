@@ -818,18 +818,11 @@ public class Level1_QuestManager : MonoBehaviour
     // Tutorial Hints setting.
     private IEnumerator SmartHint(string text, System.Func<bool> clearWhen, float minShow = 2.5f, float maxShow = 14f)
     {
-        if (GlobalHUD.Instance == null) yield break;
         if (PlayerPrefs.GetInt("Settings_TutorialHints", 1) == 0) yield break;
-
-        GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr(text));
-        float t = 0f;
-        while (t < maxShow)
-        {
-            t += Time.unscaledDeltaTime;
-            if (t >= minShow && clearWhen != null && clearWhen()) break;
-            yield return null;
-        }
-        GlobalHUD.Instance.HidePrompt();
+        // Nice animated side panel (slides in before the action, slides out the
+        // instant the player does it) — not a plain bottom prompt.
+        SmartTutorialHint.Instance.ShowHint("TIP", text, clearWhen, minShow, maxShow);
+        yield break;
     }
 
     // Shown the moment the player is handed control, BEFORE they start walking;
