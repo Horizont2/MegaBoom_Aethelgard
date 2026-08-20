@@ -45,6 +45,7 @@ public class CameraFollow : MonoBehaviour
     private float currentDistance;
     private float distanceVelocity;
     private float actualCollisionDistance;
+    private float collisionDistVel;
 
     private float targetFOVValue;
     private Camera camComponent;
@@ -124,8 +125,12 @@ public class CameraFollow : MonoBehaviour
             hitDistance = Mathf.Clamp(hit.distance, minDistance, currentDistance);
         }
 
-        if (hitDistance < actualCollisionDistance) actualCollisionDistance = hitDistance;
-        else actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, hitDistance, dt * 4f);
+        // Smooth the boom length BOTH ways (fast in, slower out). The old code
+        // snapped instantly to a shorter distance, so near the ground the boom
+        // oscillated (hit ground -> snap in -> rise -> miss -> extend -> hit
+        // again), which read as camera jitter when the player tilted down.
+        float collisionSmoothT = hitDistance < actualCollisionDistance ? 0.05f : 0.14f;
+        actualCollisionDistance = Mathf.SmoothDamp(actualCollisionDistance, hitDistance, ref collisionDistVel, collisionSmoothT, Mathf.Infinity, dt);
 
         Vector3 finalPosition = lookAtPos + direction * actualCollisionDistance;
 
@@ -156,13 +161,17 @@ public class CameraFollow : MonoBehaviour
         {
             float terrainHeight = relevant.SampleHeight(transform.position) + relevant.transform.position.y;
 
-            if (transform.position.y < terrainHeight + 0.3f)
+            float minY = terrainHeight + 0.35f;
+            if (transform.position.y < minY)
             {
                 Vector3 safePos = transform.position;
-                safePos.y = terrainHeight + 0.3f;
+                // Ease the camera up to the floor instead of hard-snapping every
+                // frame (frame-rate independent). The hard snap fought the boom
+                // and made the camera shake near the ground.
+                safePos.y = Mathf.Lerp(transform.position.y, minY, 1f - Mathf.Exp(-14f * dt));
+                // Absolute floor so it can still never clip under the ground.
+                if (safePos.y < terrainHeight + 0.2f) safePos.y = terrainHeight + 0.2f;
                 transform.position = safePos;
-
-                actualCollisionDistance = Mathf.Lerp(actualCollisionDistance, minDistance, dt * 8f);
             }
         }
     }
