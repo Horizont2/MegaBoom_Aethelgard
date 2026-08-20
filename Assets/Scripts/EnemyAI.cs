@@ -714,8 +714,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (dir != Vector3.zero)
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
 
+        // Hold the drawn-bow (aim) pose the whole time it's engaged, so the bow
+        // stays nocked between shots instead of dropping to idle.
+        bool engaged = dist <= preferredRange * 1.5f;
+        SetAnimBoolSafe("Aim", engaged);
+
+        // Can fire from point-blank up to max range (no dead min-range), so a
+        // cornered archer keeps shooting instead of standing there doing nothing.
         bool ready = Time.time >= lastAttackTime + attackCooldown;
-        if (ready && dist >= preferredRange * 0.6f && dist <= preferredRange * 1.35f)
+        if (ready && dist <= preferredRange * 1.35f)
         {
             if (animator != null) animator.SetBool("isMoving", false);
             StartCoroutine(RangedAttackRoutine());
@@ -736,23 +743,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
         }
 
-        // Catchable archer: mostly HOLDS GROUND and shoots. It walks toward the
-        // player when out of range, and only takes a small, SLOW step back when
-        // the player is right on top of it (never a permanent flee — that made
-        // them unkillable and their movement read as jittery). Inside melee
-        // range it stops backing off entirely so the player can land hits.
-        float backoffDist = 3.2f;   // only edge back inside this
-        float meleeStop = 1.9f;     // this close: stand and take the hit
+        // Catchable kiter: when the player gets close it BACKPEDALS (and keeps
+        // shooting) instead of standing AFK — but slowly enough that a running or
+        // dashing player runs it down, so it never becomes an unkillable fleer.
+        // Out of range it closes the gap; in the sweet spot it holds and shoots.
+        float backoffDist = 3.6f;
         float moveSpeedMult;
         Vector3 move;
-        if (dist < meleeStop)
+        if (dist < backoffDist)
         {
-            move = Vector3.zero;    // let the player kill it
-            moveSpeedMult = 0f;
-        }
-        else if (dist < backoffDist)
-        {
-            move = -dir;            // gentle, catchable backpedal
+            move = -dir;            // kite back at a catchable pace, still firing
             moveSpeedMult = 0.5f;
         }
         else if (dist > preferredRange * 1.15f)
@@ -815,7 +815,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
             }
         }
-        SetAnimBoolSafe("Aim", false);  // release — leave the aim state
+        // Keep Aim ON — UpdateRangedBehavior lowers it only when disengaged, so
+        // the archer holds the bow nocked between shots instead of dropping it.
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
     }
