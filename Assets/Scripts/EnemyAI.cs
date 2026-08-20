@@ -279,6 +279,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.CullCompletely;
+            // Tell the SHARED enemy Animator whether this instance is an archer,
+            // so the aiming state's transitions (gated on IsRanged) only fire for
+            // ranged enemies. Guarded so a controller without the param stays quiet.
+            SetAnimBoolSafe("IsRanged", isRanged);
         }
 
         randomOffset = Random.Range(0f, 100f);
@@ -778,6 +782,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         isPreparingAttack = true;
         if (animator != null) animator.SetBool("isMoving", false);
+        SetAnimBoolSafe("Aim", true);   // archer draws the bow (aim state) during the wind-up
         PlayVocal(AudioID.Enemy_Telegraph);
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
 
@@ -810,8 +815,22 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
             }
         }
+        SetAnimBoolSafe("Aim", false);  // release — leave the aim state
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
+    }
+
+    // Sets an Animator bool only if the controller actually has that parameter,
+    // so a shared controller without the archer-specific params logs no warnings.
+    private void SetAnimBoolSafe(string param, bool value)
+    {
+        if (animator == null) return;
+        foreach (var p in animator.parameters)
+            if (p.type == AnimatorControllerParameterType.Bool && p.name == param)
+            {
+                animator.SetBool(param, value);
+                return;
+            }
     }
 
     private void FireProjectile()
