@@ -1,9 +1,43 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 public enum SlideTransition { Fade, HardCut }
+
+// How an inserted overlay effect animates itself on the canvas.
+public enum OverlayMotion { None, Drift, Rise, Pulse, SlowZoom }
+
+// A drop-in visual effect for a slide. Insert a full-screen sprite (fog, embers
+// sheet, light rays, film grain, vignette) OR a prefab (e.g. a particle system),
+// and the player auto-places it on the canvas at the right size, animates it,
+// and cleans it up when the slide ends. You only fill the fields you need.
+[System.Serializable]
+public class IntroEffect
+{
+    [Tooltip("Full-screen overlay sprite (fog / embers / light rays / grain / vignette). Auto-stretched to fill unless 'Fullscreen' is off.")]
+    public Sprite sprite;
+    [Tooltip("OR a prefab to spawn on the canvas (e.g. a particle system). Destroyed automatically when the slide ends.")]
+    public GameObject prefab;
+
+    [Range(0f, 1f)] public float opacity = 1f;
+    public Color tint = Color.white;
+
+    [Header("Auto motion")]
+    public OverlayMotion motion = OverlayMotion.Drift;
+    [Tooltip("Strength: px for Drift/Rise, scale delta for SlowZoom, alpha swing for Pulse.")]
+    public float motionAmount = 40f;
+    [Tooltip("Speed multiplier of the motion.")]
+    public float motionSpeed = 1f;
+    public float fadeIn = 0.6f;
+
+    [Header("Size / placement")]
+    [Tooltip("On = fill the whole screen. Off = use the Size + Anchored Pos below.")]
+    public bool fullscreen = true;
+    public Vector2 size = new Vector2(600f, 600f);
+    public Vector2 anchoredPos = Vector2.zero;
+}
 
 [System.Serializable]
 public class IntroSlide
@@ -42,6 +76,11 @@ public class IntroSlide
     [Range(0f, 1f)] public float impactFlash = 0.6f;
     [Tooltip("Screen-shake amplitude in px (0 = none). ~16-24 for a solid hit.")]
     public float impactShake = 18f;
+
+    [Header("Overlay effects on this slide")]
+    [Tooltip("Drop in fog / embers / light rays / grain / vignette sprites or prefabs — " +
+             "they auto-size to the screen, animate, and are removed when the slide ends.")]
+    public IntroEffect[] effects;
 }
 
 [System.Serializable]
@@ -87,8 +126,11 @@ public class StoryIntroPlayer : MonoBehaviour
     [Tooltip("Duck the FMOD music bus while a narration line plays so the voice sits on top.")]
     public bool duckMusicUnderNarration = true;
     [Range(0f, 1f)]
-    [Tooltip("How far the music drops under the voice (0.32 = down to ~32%).")]
-    public float musicDuckLevel = 0.32f;
+    [Tooltip("How far the music drops under the voice (0.18 = down to ~18% — narration clearly on top).")]
+    public float musicDuckLevel = 0.18f;
+    [Range(0f, 1f)]
+    [Tooltip("Narration gain. Bump toward 1 if the recorded VO is quiet.")]
+    public float voiceVolume = 1f;
     [Tooltip("Slides wait out their whole voiceover clip (+tail) before advancing, so narration is never cut off.")]
     public bool holdForVoiceover = true;
     public float voiceoverTail = 0.6f;
@@ -130,6 +172,9 @@ public class StoryIntroPlayer : MonoBehaviour
     private Coroutine _flashRoutine;
     private RectTransform _barTop, _barBottom;
     private float _barTargetH;
+
+    // Live per-slide overlay effects (destroyed when the slide ends).
+    private readonly List<GameObject> _activeEffects = new List<GameObject>();
 
     private void Awake()
     {
@@ -231,6 +276,7 @@ public class StoryIntroPlayer : MonoBehaviour
         if (duckMusicUnderNarration && AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.3f);
         if (_barTop != null) _barTop.sizeDelta = new Vector2(0f, 0f);
         if (_barBottom != null) _barBottom.sizeDelta = new Vector2(0f, 0f);
+        DespawnEffects(0f);
         if (rootGroup != null)
         {
             rootGroup.alpha = 0f;
@@ -238,6 +284,149 @@ public class StoryIntroPlayer : MonoBehaviour
             rootGroup.gameObject.SetActive(false);
         }
         if (skipHint != null) skipHint.SetActive(false);
+    }
+
+    // ---- Drop-in overlay effects -------------------------------------------
+
+    // Spawns every effect on the slide as a canvas child, auto-sized and
+    // animated, then keeps the bars/subtitle/flash drawn above them.
+    private void SpawnEffects(IntroSlide slide)
+    {
+        if (slide == null || slide.effects == null || rootGroup == null) return;
+        Transform parent = rootGroup.transform;
+
+        foreach (IntroEffect fx in slide.effects)
+        {
+            if (fx == null) continue;
+            GameObject go = null;
+
+            if (fx.prefab != null)
+            {
+                go = Instantiate(fx.prefab, parent, false);
+                // If it's a UI prefab, make it fill the screen; world prefabs
+                // keep their own transform.
+                RectTransform prt = go.transform as RectTransform;
+                if (prt != null) StretchOrSize(prt, fx);
+            }
+            else if (fx.sprite != null)
+            {
+                go = new GameObject("Effect_" + fx.sprite.name, typeof(RectTransform), typeof(Image));
+                go.transform.SetParent(parent, false);
+                var img = go.GetComponent<Image>();
+                img.sprite = fx.sprite;
+                img.raycastTarget = false;
+                Color c = fx.tint; c.a = 0f; img.color = c;         // fade in
+                StretchOrSize((RectTransform)go.transform, fx);
+                StartCoroutine(EffectRoutine(img, (RectTransform)go.transform, fx));
+            }
+
+            if (go != null) _activeEffects.Add(go);
+        }
+
+        BringOverlaysToFront();
+    }
+
+    private void StretchOrSize(RectTransform rt, IntroEffect fx)
+    {
+        if (fx.fullscreen)
+        {
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        }
+        else
+        {
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = fx.size;
+            rt.anchoredPosition = fx.anchoredPos;
+        }
+    }
+
+    // Fades the overlay in, then drives its chosen motion until destroyed.
+    private IEnumerator EffectRoutine(Image img, RectTransform rt, IntroEffect fx)
+    {
+        Vector2 home = rt.anchoredPosition;
+        Vector3 homeScale = rt.localScale;
+        float targetA = Mathf.Clamp01(fx.opacity);
+
+        // fade in
+        float t = 0f;
+        float fin = Mathf.Max(0.01f, fx.fadeIn);
+        while (t < fin && img != null)
+        {
+            t += Time.unscaledDeltaTime;
+            Color c = img.color; c.a = Mathf.Lerp(0f, targetA, t / fin); img.color = c;
+            yield return null;
+        }
+        if (img != null) { Color c = img.color; c.a = targetA; img.color = c; }
+
+        // continuous motion
+        float phase = 0f;
+        while (img != null && rt != null)
+        {
+            phase += Time.unscaledDeltaTime * fx.motionSpeed;
+            switch (fx.motion)
+            {
+                case OverlayMotion.Drift:
+                    rt.anchoredPosition = home + new Vector2(Mathf.Sin(phase * 0.5f) * fx.motionAmount,
+                                                             Mathf.Cos(phase * 0.35f) * fx.motionAmount * 0.4f);
+                    break;
+                case OverlayMotion.Rise:
+                    rt.anchoredPosition = home + new Vector2(Mathf.Sin(phase * 0.6f) * fx.motionAmount * 0.3f,
+                                                             Mathf.Sin(phase * 0.8f) * fx.motionAmount);
+                    break;
+                case OverlayMotion.Pulse:
+                    {
+                        Color c = img.color;
+                        c.a = Mathf.Clamp01(targetA * (0.65f + 0.35f * Mathf.Sin(phase * 1.5f)));
+                        img.color = c;
+                    }
+                    break;
+                case OverlayMotion.SlowZoom:
+                    {
+                        float z = 1f + (Mathf.Sin(phase * 0.4f) * 0.5f + 0.5f) * (fx.motionAmount * 0.01f);
+                        rt.localScale = homeScale * z;
+                    }
+                    break;
+            }
+            yield return null;
+        }
+    }
+
+    private void DespawnEffects(float fadeOut)
+    {
+        if (_activeEffects.Count == 0) return;
+        foreach (GameObject go in _activeEffects)
+        {
+            if (go == null) continue;
+            var img = go.GetComponent<Image>();
+            if (fadeOut > 0.01f && img != null) StartCoroutine(FadeAndDestroy(go, img, fadeOut));
+            else Destroy(go);
+        }
+        _activeEffects.Clear();
+    }
+
+    private IEnumerator FadeAndDestroy(GameObject go, Image img, float dur)
+    {
+        float start = img != null ? img.color.a : 0f;
+        float t = 0f;
+        while (t < dur && img != null)
+        {
+            t += Time.unscaledDeltaTime;
+            Color c = img.color; c.a = Mathf.Lerp(start, 0f, t / dur); img.color = c;
+            yield return null;
+        }
+        if (go != null) Destroy(go);
+    }
+
+    private void BringOverlaysToFront()
+    {
+        if (rootGroup == null) return;
+        Transform p = rootGroup.transform;
+        if (_barTop != null && _barTop.parent == p) _barTop.SetAsLastSibling();
+        if (_barBottom != null && _barBottom.parent == p) _barBottom.SetAsLastSibling();
+        if (subtitleText != null && subtitleText.transform.parent == p) subtitleText.transform.SetAsLastSibling();
+        if (skipHint != null && skipHint.transform.parent == p) skipHint.transform.SetAsLastSibling();
+        if (_flashOverlay != null && _flashOverlay.transform.parent == p) _flashOverlay.transform.SetAsLastSibling();
     }
 
     private IEnumerator PlayRoutine()
@@ -308,6 +497,9 @@ public class StoryIntroPlayer : MonoBehaviour
                 }
             }
 
+            // Spawn this slide's overlay effects (fog / embers / rays / grain…).
+            SpawnEffects(slide);
+
             // Punch on arrival (bass drop / reveal / finale frames).
             if (slide.impactOnStart)
             {
@@ -318,9 +510,9 @@ public class StoryIntroPlayer : MonoBehaviour
             float slideStartTime = Time.unscaledTime;
             if (voiceSource != null && slide.voiceover != null)
             {
-                voiceSource.PlayOneShot(slide.voiceover);
+                voiceSource.PlayOneShot(slide.voiceover, voiceVolume);
                 if (duckMusicUnderNarration && AudioManager.Instance != null)
-                    AudioManager.Instance.DuckMusic(musicDuckLevel, 0.4f, slide.voiceover.length + 0.2f, 0.7f);
+                    AudioManager.Instance.DuckMusic(musicDuckLevel, 0.25f, slide.voiceover.length + 0.3f, 0.7f);
             }
 
             string full = LocalizationManager.Tr(slide.subtitle);
@@ -352,6 +544,9 @@ public class StoryIntroPlayer : MonoBehaviour
                 held += Time.unscaledDeltaTime;
                 yield return null;
             }
+
+            // Clear this slide's overlays before the next slide (fade them out).
+            DespawnEffects(slide.transition == SlideTransition.Fade ? imageFadeDuration : 0f);
         }
 
         if (cueRunner != null) StopCoroutine(cueRunner);
@@ -374,8 +569,10 @@ public class StoryIntroPlayer : MonoBehaviour
         float t = 0f;
         while (true)
         {
-            float k = dur > 0.01f ? Mathf.Clamp01(t / dur) : 1f;
-            float e = Mathf.SmoothStep(0f, 1f, k);
+            // LINEAR (constant velocity) — SmoothStep is flat at the start, which
+            // made the image sit still during the narration (played at the slide
+            // start). Linear drifts visibly from the very first frame.
+            float e = dur > 0.01f ? Mathf.Clamp01(t / dur) : 1f;
             float z = Mathf.Lerp(zFrom, zTo, e);
             _imgRT.localScale = new Vector3(z, z, 1f);
             _basePan = Vector2.Lerp(pFrom, pTo, e);
