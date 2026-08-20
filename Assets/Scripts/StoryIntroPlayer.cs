@@ -133,6 +133,15 @@ public class StoryIntroPlayer : MonoBehaviour
     public float imageFadeDuration = 1f;
     public float typingSpeed = 0.035f;
 
+    [Header("Cutscene music (its own track, replaces the level music)")]
+    [Tooltip("Dedicated music for the cutscene. Drag an FMOD event here (preferred). If set, the Level 1 track is silenced for the cutscene and restored at the end.")]
+    public EventReference cutsceneMusicEvent;
+    [Tooltip("OR a Unity AudioClip (looped) if you don't want to author an FMOD event.")]
+    public AudioClip cutsceneMusicClip;
+    [Range(0f, 1f)] public float cutsceneMusicVolume = 0.55f;
+    public float cutsceneMusicFadeIn = 1.5f;
+    public float cutsceneMusicFadeOut = 1.5f;
+
     [Header("Audio")]
     public AudioSource voiceSource;    // narration
     public AudioSource sfxSource;      // sound effects
@@ -223,6 +232,13 @@ public class StoryIntroPlayer : MonoBehaviour
     private FMOD.Studio.EventInstance _voiceInstance;
     private bool _voiceInstanceValid;
 
+    // Dedicated cutscene music (FMOD instance or Unity source).
+    private AudioSource _musicSource;
+    private FMOD.Studio.EventInstance _cutMusicInstance;
+    private bool _cutMusicValid;
+    private Coroutine _cutMusicFade;
+    private bool HasCutsceneMusic => !cutsceneMusicEvent.IsNull || cutsceneMusicClip != null;
+
     // Generated (code-only) cinematic overlays for the whole cutscene.
     private readonly List<GameObject> _ambientGOs = new List<GameObject>();
     private readonly List<Coroutine> _ambientRoutines = new List<Coroutine>();
@@ -254,6 +270,11 @@ public class StoryIntroPlayer : MonoBehaviour
             sfxSource.playOnAwake = false;
             sfxSource.spatialBlend = 0f;
         }
+        // Dedicated 2D looping source for the cutscene music clip path.
+        _musicSource = gameObject.AddComponent<AudioSource>();
+        _musicSource.playOnAwake = false;
+        _musicSource.spatialBlend = 0f;
+        _musicSource.loop = true;
 
         if (imageDisplay != null)
         {
@@ -412,10 +433,11 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_imgRT != null) { _imgRT.localScale = Vector3.one; _imgRT.anchoredPosition = _imgHomePos; }
         if (voiceSource != null) voiceSource.Stop();
         StopVoiceInstance();
+        StopCutsceneMusic(0.25f);
         if (duckMusicUnderNarration && AudioManager.Instance != null)
         {
             AudioManager.Instance.UnduckMusic(0.3f);
-            AudioManager.Instance.UnduckMusicInstance(0.3f);
+            AudioManager.Instance.UnduckMusicInstance(0.4f);
         }
         if (_barTop != null) _barTop.sizeDelta = new Vector2(0f, 0f);
         if (_barBottom != null) _barBottom.sizeDelta = new Vector2(0f, 0f);
@@ -866,6 +888,86 @@ public class StoryIntroPlayer : MonoBehaviour
         _ambientGOs.Clear();
     }
 
+    // ---- Cutscene music (FMOD event OR Unity clip) -------------------------
+
+    private void StartCutsceneMusic()
+    {
+        if (!cutsceneMusicEvent.IsNull)
+        {
+            StopCutsceneMusic(0f);
+            _cutMusicInstance = RuntimeManager.CreateInstance(cutsceneMusicEvent);
+            _cutMusicInstance.setVolume(0f);
+            _cutMusicInstance.start();
+            _cutMusicValid = true;
+            if (_cutMusicFade != null) StopCoroutine(_cutMusicFade);
+            _cutMusicFade = StartCoroutine(FadeFmodMusic(cutsceneMusicVolume, cutsceneMusicFadeIn));
+        }
+        else if (cutsceneMusicClip != null && _musicSource != null)
+        {
+            _musicSource.clip = cutsceneMusicClip;
+            _musicSource.volume = 0f;
+            _musicSource.Play();
+            if (_cutMusicFade != null) StopCoroutine(_cutMusicFade);
+            _cutMusicFade = StartCoroutine(FadeUnityMusic(cutsceneMusicVolume, cutsceneMusicFadeIn));
+        }
+    }
+
+    private void StopCutsceneMusic(float fade)
+    {
+        if (_cutMusicFade != null) { StopCoroutine(_cutMusicFade); _cutMusicFade = null; }
+        if (_cutMusicValid)
+        {
+            // Fade handled by the event's own AHDSR on stop; ALLOWFADEOUT keeps it smooth.
+            _cutMusicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+            _cutMusicInstance.release();
+            _cutMusicValid = false;
+        }
+        if (_musicSource != null && _musicSource.isPlaying)
+        {
+            if (fade > 0.01f) StartCoroutine(FadeOutAndStopUnity(fade));
+            else _musicSource.Stop();
+        }
+    }
+
+    private IEnumerator FadeUnityMusic(float target, float dur)
+    {
+        float start = _musicSource.volume;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            _musicSource.volume = Mathf.Lerp(start, target, t / dur);
+            yield return null;
+        }
+        _musicSource.volume = target;
+    }
+
+    private IEnumerator FadeOutAndStopUnity(float dur)
+    {
+        float start = _musicSource.volume;
+        float t = 0f;
+        while (t < dur && _musicSource != null)
+        {
+            t += Time.unscaledDeltaTime;
+            _musicSource.volume = Mathf.Lerp(start, 0f, t / dur);
+            yield return null;
+        }
+        if (_musicSource != null) { _musicSource.Stop(); _musicSource.volume = 0f; }
+    }
+
+    private IEnumerator FadeFmodMusic(float target, float dur)
+    {
+        float start = 0f;
+        float t = 0f;
+        while (t < dur && _cutMusicValid)
+        {
+            t += Time.unscaledDeltaTime;
+            _cutMusicInstance.setVolume(Mathf.Lerp(start, target, t / dur));
+            yield return null;
+        }
+        if (_cutMusicValid) _cutMusicInstance.setVolume(target);
+    }
+
     // ---- Narration (FMOD event OR Unity clip) ------------------------------
 
     // Duration of a slide's narration in seconds, whichever source is used.
@@ -933,15 +1035,20 @@ public class StoryIntroPlayer : MonoBehaviour
 
         StartCoroutine(AnimateLetterbox(true));
 
-        // Duck the music for the ENTIRE cutscene (hold until the end). Duck BOTH
-        // the music bus AND the music EventInstance directly — the cutscene track
-        // isn't routed through the music bus (it only responded to Master), so
-        // the instance-level duck is what actually lowers it under the narration.
+        // Duck/silence the level music for the ENTIRE cutscene. If a dedicated
+        // cutscene track is set, push the level music to near-silence so the two
+        // don't clash; otherwise just duck it under the narration. Duck BOTH the
+        // music bus AND the current music EventInstance (the level track isn't on
+        // the music bus, so the instance duck is what actually lowers it).
         if (duckMusicUnderNarration && AudioManager.Instance != null)
         {
-            AudioManager.Instance.DuckMusic(musicDuckLevel, 0.5f, 0f, 0.6f);
-            AudioManager.Instance.DuckMusicInstance(musicDuckLevel, 0.5f);
+            float lvl = HasCutsceneMusic ? 0.0f : musicDuckLevel;
+            AudioManager.Instance.DuckMusic(lvl, 0.5f, 0f, 0.6f);
+            AudioManager.Instance.DuckMusicInstance(lvl, 0.5f);
         }
+
+        // Start the dedicated cutscene music (FMOD event or Unity clip).
+        StartCutsceneMusic();
 
         SpawnAmbientOverlays();   // vignette + embers for the whole cutscene
 
@@ -1055,10 +1162,11 @@ public class StoryIntroPlayer : MonoBehaviour
         if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
         if (voiceSource != null) voiceSource.Stop();
         StopVoiceInstance();
+        StopCutsceneMusic(cutsceneMusicFadeOut);
         if (duckMusicUnderNarration && AudioManager.Instance != null)
         {
             AudioManager.Instance.UnduckMusic(0.6f);
-            AudioManager.Instance.UnduckMusicInstance(0.6f);
+            AudioManager.Instance.UnduckMusicInstance(0.8f);
         }
 
         // Hand off NOW — while the overlay is still up — so the Timeline camera
