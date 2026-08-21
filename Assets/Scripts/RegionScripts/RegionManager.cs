@@ -477,6 +477,11 @@ public class RegionManager : MonoBehaviour
             ShowRegionRewardToast(currentRegion);
         }
 
+        // Hold on the reward screen so the player can actually read what they
+        // earned before we leave for camp — it used to fade out instantly.
+        // Skippable with Space / Enter / Esc.
+        yield return StartCoroutine(WaitOrSkip(5f));
+
         if (dnc != null) dnc.isWeatherLocked = false;
         if (GlobalHUD.Instance != null)
         {
