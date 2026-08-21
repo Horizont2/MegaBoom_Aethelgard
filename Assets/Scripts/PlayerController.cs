@@ -606,26 +606,25 @@ public class PlayerController : MonoBehaviour, IDamageable
             lastHpFill = targetHpFill;
         }
 
-        // ФІКС: Плавне доведення білої смужки (Catchup) без зависання
+        // Smoothly drain the white catch-up bar down to the current HP. The old
+        // code had a write-gate (|Δ| > 0.0005) COARSER than its snap threshold,
+        // so the bar could park a hair above the red fill and never get written
+        // to target — leaving a permanent white sliver (very visible under an
+        // archer's steady chip damage). Now it always writes while converging and
+        // snaps the final sliver clean.
         if (hpCatchupFill != null)
         {
-            if (hpCatchupFill.fillAmount > targetHpFill)
+            float cur = hpCatchupFill.fillAmount;
+            if (cur > targetHpFill + 0.0002f)
             {
-                float catchup = Mathf.Lerp(hpCatchupFill.fillAmount, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
-                // Якщо залишився міліметр - примагнічуємо до кінця
-                if (Mathf.Abs(catchup - targetHpFill) < 0.005f)
-                    catchup = targetHpFill;
-
-                if (Mathf.Abs(catchup - lastHpCatchupFill) > 0.0005f)
-                {
-                    hpCatchupFill.fillAmount = catchup;
-                    lastHpCatchupFill = catchup;
-                }
+                float catchup = Mathf.Lerp(cur, targetHpFill, Time.unscaledDeltaTime * uiLerpSpeed);
+                if (catchup - targetHpFill < 0.004f) catchup = targetHpFill; // snap last sliver
+                hpCatchupFill.fillAmount = catchup;
+                lastHpCatchupFill = catchup;
             }
-            else if (hpCatchupFill.fillAmount < targetHpFill)
+            else if (cur < targetHpFill)
             {
-                // При лікуванні біла смужка одразу доганяє здоров'я
-                hpCatchupFill.fillAmount = targetHpFill;
+                hpCatchupFill.fillAmount = targetHpFill; // healing → white catches up instantly
                 lastHpCatchupFill = targetHpFill;
             }
         }

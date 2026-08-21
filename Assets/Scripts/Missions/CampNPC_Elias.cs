@@ -201,6 +201,13 @@ public class CampNPC_Elias : MonoBehaviour
         }
 
         PlayerPrefs.Save();
+        // Guarantee the label is clear when the talk ends (belt-and-suspenders
+        // against a line left on screen).
+        if (subtitleText != null && SubtitleGuard.Owns(_subtitleSeq))
+        {
+            subtitleText.text = "";
+            subtitleText.ForceMeshUpdate();
+        }
         isTalking = false;
         UpdateNPCState();
 
@@ -218,7 +225,12 @@ public class CampNPC_Elias : MonoBehaviour
         // can be translated by the LocalizationManager. Untranslated keys
         // fall back to the passed English verbatim.
         string full = LocalizationManager.Tr(text);
+        subtitleText.richText = true;
         subtitleText.maxVisibleCharacters = 99999;
+        subtitleText.text = ""; subtitleText.ForceMeshUpdate(); // no residue from a prior line
+        // Swallow input for a moment so the SAME keypress that opened the
+        // dialogue (or advanced the previous line) can't instantly skip this one.
+        float lineStart = Time.unscaledTime;
 
         // Typewriter via an <alpha=#00> tag: the full line is laid out from the
         // start (reveal "in place", no layout jumps) with the untyped tail
@@ -230,7 +242,7 @@ public class CampNPC_Elias : MonoBehaviour
         for (int i = 0; i <= full.Length; i++)
         {
             if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
-            if (!skippedTypewriter && WasSkipPressed())
+            if (!skippedTypewriter && Time.unscaledTime - lineStart > 0.25f && WasSkipPressed())
             {
                 skippedTypewriter = true;
                 i = full.Length; // jump to fully visible
@@ -245,9 +257,10 @@ public class CampNPC_Elias : MonoBehaviour
 
         // Skippable read-hold — same trigger cuts the wait short.
         float t = 0f;
+        float holdStart = Time.unscaledTime;
         while (t < stayDuration)
         {
-            if (WasSkipPressed()) break;
+            if (Time.unscaledTime - holdStart > 0.25f && WasSkipPressed()) break;
             if (!SubtitleGuard.Owns(_subtitleSeq)) yield break;
             t += Time.deltaTime;
             yield return null;
@@ -259,8 +272,10 @@ public class CampNPC_Elias : MonoBehaviour
 
     private static bool WasSkipPressed()
     {
+        // NOTE: E is deliberately NOT a skip key — it's the interact key that
+        // opens/advances the talk, and using it to skip made pressing E to start
+        // a conversation instantly blast through the first line.
         return Input.GetKeyDown(KeyCode.Space)
-            || Input.GetKeyDown(KeyCode.E)
             || Input.GetKeyDown(KeyCode.Return)
             || Input.GetKeyDown(KeyCode.KeypadEnter);
     }

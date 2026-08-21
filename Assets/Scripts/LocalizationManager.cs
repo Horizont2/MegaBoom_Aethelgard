@@ -674,6 +674,16 @@ public static class LocalizationManager
             "AN ALLY JOINS THE FIGHT!", "СОЮЗНИК ПРИЄДНУЄТЬСЯ ДО БОЮ!", "СОЮЗНИК ВСТУПАЕТ В БОЙ!",
             "¡UN ALIADO SE UNE A LA LUCHA!", "EIN VERBÜNDETER TRITT BEI!",
             "UN ALLIÉ REJOINT LE COMBAT !", "SOJUSZNIK DOŁĄCZA DO WALKI!");
+
+        // -- Barracks proximity hint --
+        Add7("This is the Barracks — press <b>F</b> to hire mercenaries. They conquer regions on the map for you while you raid others.",
+            "This is the Barracks — press <b>F</b> to hire mercenaries. They conquer regions on the map for you while you raid others.",
+            "Це Казарма — натисни <b>F</b>, щоб наймати найманців. Вони захоплюють регіони на мапі за тебе, поки ти штурмуєш інші.",
+            "Это Казарма — нажми <b>F</b>, чтобы нанимать наёмников. Они захватывают регионы на карте за тебя, пока ты штурмуешь другие.",
+            "Este es el Cuartel — pulsa <b>F</b> para contratar mercenarios. Conquistan regiones del mapa por ti mientras asaltas otras.",
+            "Das ist die Kaserne — drücke <b>F</b>, um Söldner anzuheuern. Sie erobern für dich Regionen auf der Karte, während du andere stürmst.",
+            "Voici la Caserne — appuie sur <b>F</b> pour engager des mercenaires. Ils conquièrent des régions sur la carte pour toi pendant que tu en assailles d'autres.",
+            "To są Koszary — naciśnij <b>F</b>, aby najmować najemników. Zdobywają regiony na mapie za ciebie, gdy ty szturmujesz inne.");
     }
 
     private static void Add(string key, string en, string uk)

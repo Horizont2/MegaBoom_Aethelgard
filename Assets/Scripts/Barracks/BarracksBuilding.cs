@@ -173,4 +173,28 @@ public class BarracksBuilding : MonoBehaviour, ICustomBuildingPanel
     {
         if (barracksPanel != null) barracksPanel.Close();
     }
+
+    // Proximity discoverability: the unlock hint fires once on the very first
+    // camp entry, which is easy to miss. Fire a second, location-anchored hint
+    // the first time the player actually walks up to the Barracks so they learn
+    // where units are hired. Once per save (ShowIfNew).
+    private Transform _hintPlayer;
+    private bool _proximityHintDone;
+    private void Update()
+    {
+        if (_proximityHintDone) return;
+        if (_hintPlayer == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p == null) return;
+            _hintPlayer = p.transform;
+        }
+        if (Vector3.SqrMagnitude(transform.position - _hintPlayer.position) < 6f * 6f)
+        {
+            _proximityHintDone = true;
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("BarracksHire",
+                    "This is the Barracks — press <b>F</b> to hire mercenaries. They conquer regions on the map for you while you raid others.", 7f);
+        }
+    }
 }
