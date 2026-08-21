@@ -28,7 +28,7 @@ MonoBehaviour:
   enemyDamageMultiplier: 1.6
   enemyStrength: 950
   autoBattleDiamondReward: 340
-  regionTotemPrefab: {fileID: 8299824053145540121, guid: f6c9dd5bbf3959c46b64db0c57406655, type: 3}
+  regionTotemPrefab: {fileID: 551460717933574289, guid: f6c9dd5bbf3959c46b64db0c57406655, type: 3}
   regionBossPrefabs:
   - {fileID: 8299824053145540121, guid: 566386cdff57847489df448d42981283, type: 3}
   woodReward: 200
