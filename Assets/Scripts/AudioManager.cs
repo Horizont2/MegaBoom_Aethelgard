@@ -256,6 +256,11 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // Kill any looping SFX carried over from the previous scene (region rain
+        // / storm ambience, enemy vocals, etc.) BEFORE the new scene starts its
+        // own — otherwise they bleed through (rain heard in the camp).
+        StopAllLoopedSFX();
+
         // Match every gameplay context to a track so the game is never
         // silent on scene entry. Menu / Shop / camp share the calmer
         // camp theme; combat scenes get the battle score.
@@ -685,6 +690,24 @@ public class AudioManager : MonoBehaviour
     // release. FMOD's ALLOWFADEOUT only applies the AHDSR release the sound
     // designer authored — if the event has none, the sound would still
     // snap off. The manual fade guarantees a graceful tail.
+    // Stop + release EVERY looping SFX instance. Called on scene change so a
+    // region loop (rain/storm ambience, enemy vocals, build/campfire loops)
+    // can't bleed into the next scene — the AudioManager is DontDestroyOnLoad,
+    // so without this its looped instances survive the scene that started them
+    // (that was the "rain still playing in the camp" bug).
+    public void StopAllLoopedSFX()
+    {
+        if (loopedInstances.Count == 0) return;
+        foreach (var kv in loopedInstances)
+        {
+            EventInstance inst = kv.Value;
+            if (!inst.isValid()) continue;
+            inst.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+            inst.release();
+        }
+        loopedInstances.Clear();
+    }
+
     public void StopLoopingSFX(int handle, float fadeSeconds = 0.4f)
     {
         if (handle < 0) return;
