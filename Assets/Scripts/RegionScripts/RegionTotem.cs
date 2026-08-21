@@ -90,8 +90,8 @@ public class RegionTotem : MonoBehaviour
 
     // ─── AAA multi-phase RAID CAPTURE ────────────────────────────────────
     [Header("Raid Capture (multi-phase: anchors → channel → boss)")]
-    [Tooltip("Turn the totem into a 3-phase mini-raid: break the corruption anchors, hold the totem while it channels under reinforcements, then slay the region boss. Falls back to the classic wave when OFF.")]
-    public bool useRaidCapture = false;
+    [Tooltip("Turn the totem into a 3-phase mini-raid: break the corruption anchors, hold the totem while it channels under reinforcements, then slay the region boss. Falls back to the classic wave when OFF. Standalone roadside altars ignore this and stay quick encounters.")]
+    public bool useRaidCapture = true;
     [Header("Phase 1 — Corruption Anchors")]
     [Tooltip("Number of anchors to destroy around the totem before the channel can begin.")]
     public int anchorCount = 3;
@@ -270,8 +270,10 @@ public class RegionTotem : MonoBehaviour
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
 
-        // AAA multi-phase raid capture takes over the whole encounter.
-        if (useRaidCapture)
+        // AAA multi-phase raid capture takes over the whole encounter — but only
+        // for real region-location totems, never for standalone roadside altars
+        // (those stay quick single-boss/warband encounters).
+        if (useRaidCapture && !isStandalone)
         {
             yield return StartCoroutine(RaidCaptureRoutine(finalHpMult, finalDmgMult));
             yield break; // RaidCaptureRoutine starts its own MonitorCombat at the boss phase
