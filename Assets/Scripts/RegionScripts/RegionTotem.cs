@@ -88,6 +88,37 @@ public class RegionTotem : MonoBehaviour
     [Header("Interaction")]
     public float interactionRadius = 8f;
 
+    // ─── AAA multi-phase RAID CAPTURE ────────────────────────────────────
+    [Header("Raid Capture (multi-phase: anchors → channel → boss)")]
+    [Tooltip("Turn the totem into a 3-phase mini-raid: break the corruption anchors, hold the totem while it channels under reinforcements, then slay the region boss. Falls back to the classic wave when OFF.")]
+    public bool useRaidCapture = false;
+    [Header("Phase 1 — Corruption Anchors")]
+    [Tooltip("Number of anchors to destroy around the totem before the channel can begin.")]
+    public int anchorCount = 3;
+    [Tooltip("Optional anchor visual/prefab (needs a CorruptionAnchor or one is added). Empty = procedural glowing crystal.")]
+    public GameObject anchorPrefab;
+    public float anchorRadius = 13f;
+    public float anchorHealth = 120f;
+    [Tooltip("Guards spawned around EACH anchor. Falls back to weak/medium pools if empty.")]
+    public GameObject[] anchorGuardPrefabs;
+    public int guardsPerAnchor = 3;
+    [Header("Phase 2 — Channel / Hold")]
+    [Tooltip("Seconds the totem channels while you survive reinforcements.")]
+    public float purifyDuration = 32f;
+    [Tooltip("Seconds between reinforcement waves during the channel.")]
+    public float reinforceInterval = 6.5f;
+    [Tooltip("Reinforcements that pour in from the compass during the channel. Falls back to weak/medium pools.")]
+    public GameObject[] reinforcementPrefabs;
+    [Header("Free the Ally (optional)")]
+    [Tooltip("An AllyAI companion freed when the first anchor falls — fights at your side for the raid.")]
+    public GameObject allyPrefab;
+    [Header("World Heal on capture")]
+    public bool healWorldOnCapture = true;
+    [Tooltip("Optional expanding purification burst spawned at the totem on capture.")]
+    public GameObject purifyBurstVFX;
+    public Color healedFogColor = new Color(0.62f, 0.72f, 0.82f);
+    [Range(0.1f, 1f)] public float healedFogDensityMult = 0.45f;
+
     [HideInInspector] public bool isPurified = false;
 
     private bool isLocked = false;
@@ -238,6 +269,13 @@ public class RegionTotem : MonoBehaviour
         float difficultyMult = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, recommendedPower);
         float finalHpMult = hpMultBase * difficultyMult;
         float finalDmgMult = dmgMultBase * difficultyMult;
+
+        // AAA multi-phase raid capture takes over the whole encounter.
+        if (useRaidCapture)
+        {
+            yield return StartCoroutine(RaidCaptureRoutine(finalHpMult, finalDmgMult));
+            yield break; // RaidCaptureRoutine starts its own MonitorCombat at the boss phase
+        }
 
         bool haveTemplates = useEncounterTemplates && encounterTemplates != null && encounterTemplates.Length > 0;
         // Auto-build varied encounters from the pools when none were authored.
@@ -408,7 +446,12 @@ public class RegionTotem : MonoBehaviour
     {
         Vector3 spawnPos = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(6f, 12f));
         spawnPos.y = GetGroundHeight(spawnPos);
+        SpawnEntityAt(prefab, spawnPos, hpMult, dmgMult);
+    }
 
+    private void SpawnEntityAt(GameObject prefab, Vector3 spawnPos, float hpMult, float dmgMult)
+    {
+        if (prefab == null) return;
         GameObject entity = Instantiate(prefab, spawnPos, Quaternion.identity);
         activeEnemies.Add(entity);
 
@@ -429,6 +472,162 @@ public class RegionTotem : MonoBehaviour
                 enemyAI.damage *= dmgMult;
             }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  AAA multi-phase RAID CAPTURE
+    // ─────────────────────────────────────────────────────────────────────
+    private int _anchorsRemaining;
+    private int _anchorsTotal;
+    private bool _allyFreed;
+
+    private IEnumerator RaidCaptureRoutine(float hpMult, float dmgMult)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(12f);
+
+        // ── PHASE 1 — break the corruption anchors (sub-points) ──
+        _anchorsTotal = Mathf.Max(1, anchorCount);
+        _anchorsRemaining = _anchorsTotal;
+        UpdateAnchorObjective();
+
+        GameObject[] guardPool = (anchorGuardPrefabs != null && anchorGuardPrefabs.Length > 0)
+            ? anchorGuardPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
+
+        for (int i = 0; i < _anchorsTotal; i++)
+        {
+            float ang = (360f / _anchorsTotal) * i + Random.Range(-12f, 12f);
+            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+            Vector3 pos = transform.position + dir * anchorRadius;
+            pos.y = GetGroundHeight(pos);
+            SpawnAnchor(pos, anchorHealth * Mathf.Lerp(1f, hpMult, 0.5f));
+
+            for (int g = 0; g < guardsPerAnchor && guardPool != null && guardPool.Length > 0; g++)
+            {
+                Vector3 gp = pos + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(2f, 4.5f));
+                gp.y = GetGroundHeight(gp);
+                SpawnEntityAt(guardPool[Random.Range(0, guardPool.Length)], gp, hpMult, dmgMult);
+            }
+            yield return new WaitForSeconds(0.35f);
+        }
+
+        while (_anchorsRemaining > 0) yield return new WaitForSeconds(0.25f);
+
+        // ── PHASE 2 — hold the totem while it channels, under reinforcements ──
+        if (activationShieldVFX != null && !activationShieldVFX.isPlaying) activationShieldVFX.Play();
+        CameraShakeUtil.TryShake(0.3f, 0.12f);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, transform.position);
+
+        GameObject[] reinforcePool = (reinforcementPrefabs != null && reinforcementPrefabs.Length > 0)
+            ? reinforcementPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
+
+        float elapsed = 0f, nextWave = 1.5f;
+        while (elapsed < purifyDuration)
+        {
+            elapsed += Time.deltaTime;
+            if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(6f);
+            int pct = Mathf.RoundToInt(Mathf.Clamp01(elapsed / purifyDuration) * 100f);
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr("HOLD THE TOTEM — PURIFYING") + "  " + pct + "%");
+
+            if (totemLight != null) totemLight.color = Color.Lerp(Color.red, new Color(0f, 0.8f, 1f), elapsed / purifyDuration);
+
+            if (elapsed >= nextWave)
+            {
+                nextWave = elapsed + reinforceInterval;
+                float frac = elapsed / purifyDuration;
+                int count = Mathf.RoundToInt(Mathf.Lerp(3f, 7f, frac));
+                float ramp = Mathf.Lerp(0.75f, 1.5f, frac);
+                StartCoroutine(ReinforcementWave(reinforcePool, count, hpMult * ramp, dmgMult));
+            }
+            yield return null;
+        }
+
+        // ── PHASE 3 — final wave + region boss ──
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr("SLAY THE OVERLORD!"));
+        if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(25f);
+        CameraShakeUtil.TryShake(0.5f, 0.18f);
+
+        for (int i = 0; i < 5 && reinforcePool != null && reinforcePool.Length > 0; i++)
+        {
+            SpawnEntity(reinforcePool[Random.Range(0, reinforcePool.Length)], hpMult, dmgMult);
+            yield return new WaitForSeconds(0.15f);
+        }
+
+        GameObject[] bossPool = (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
+            ? standaloneBossPrefabs
+            : (manager != null && manager.currentRegion != null ? manager.currentRegion.regionBossPrefabs : null);
+        if (bossPool != null && bossPool.Length > 0)
+            for (int i = 0; i < bossPool.Length; i++)
+            {
+                SpawnEntity(bossPool[i], hpMult, dmgMult);
+                yield return new WaitForSeconds(0.6f);
+            }
+
+        // Now that the boss + final wave are out, watch for the clear → purify.
+        StartCoroutine(MonitorCombatRoutine());
+    }
+
+    private void SpawnAnchor(Vector3 pos, float hp)
+    {
+        GameObject go = anchorPrefab != null ? Instantiate(anchorPrefab, pos, Quaternion.identity)
+                                             : new GameObject("CorruptionAnchor");
+        if (anchorPrefab == null) go.transform.position = pos;
+        CorruptionAnchor anchor = go.GetComponent<CorruptionAnchor>();
+        if (anchor == null) anchor = go.AddComponent<CorruptionAnchor>();
+        anchor.Setup(hp);
+        anchor.onDestroyed += OnAnchorDestroyed;
+    }
+
+    private void OnAnchorDestroyed(CorruptionAnchor a)
+    {
+        _anchorsRemaining = Mathf.Max(0, _anchorsRemaining - 1);
+        UpdateAnchorObjective();
+        PlayCorruptionFlare();
+        CameraShakeUtil.TryShake(0.25f, 0.1f);
+
+        // Free the ally the moment the first anchor falls.
+        if (!_allyFreed && allyPrefab != null)
+        {
+            _allyFreed = true;
+            Vector3 p = (player != null ? player.position : transform.position) + Vector3.forward * 2f;
+            p.y = GetGroundHeight(p);
+            Instantiate(allyPrefab, p, Quaternion.identity);
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("AN ALLY JOINS THE FIGHT!"));
+        }
+    }
+
+    private void UpdateAnchorObjective()
+    {
+        if (GlobalHUD.Instance == null) return;
+        int destroyed = _anchorsTotal - _anchorsRemaining;
+        GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr("DESTROY THE CORRUPTION ANCHORS") + "  " + destroyed + "/" + _anchorsTotal);
+    }
+
+    // A telegraphed reinforcement wave from a random compass edge.
+    private IEnumerator ReinforcementWave(GameObject[] pool, int count, float hpMult, float dmgMult)
+    {
+        if (pool == null || pool.Length == 0 || count <= 0) yield break;
+
+        float ang = Random.Range(0f, 360f);
+        Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+        Vector3 edge = transform.position + dir * (anchorRadius + 6f);
+        edge.y = GetGroundHeight(edge);
+
+        // Telegraph the incoming direction.
+        GameObject marker = new GameObject("ReinforceMarker");
+        marker.transform.position = edge + Vector3.up * 1f;
+        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(marker.transform, 1.4f);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, edge);
+        yield return new WaitForSeconds(1.3f);
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector3 p = edge + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(1.5f, 4f));
+            p.y = GetGroundHeight(p);
+            SpawnEntityAt(pool[Random.Range(0, pool.Length)], p, hpMult, dmgMult);
+            yield return new WaitForSeconds(0.12f);
+        }
+        if (marker != null) Destroy(marker);
     }
 
     private IEnumerator MonitorCombatRoutine()
@@ -459,6 +658,11 @@ public class RegionTotem : MonoBehaviour
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }
         CameraShakeUtil.TryShake(0.4f, 0.1f);
 
+        // The world visibly HEALS around the captured totem: a purification burst
+        // sweeps out, the corrupt fog lifts to a lighter/warmer tone, and the
+        // battle music releases back to calm.
+        if (healWorldOnCapture) StartCoroutine(WorldHealRoutine());
+
         if (manager != null)
         {
             manager.OnTotemPurified(this);
@@ -474,6 +678,29 @@ public class RegionTotem : MonoBehaviour
                 ResourceManager.Instance.AddDiamonds(standaloneDiamondReward);
             var pc = player != null ? player.GetComponent<PlayerController>() : null;
             if (pc != null && standaloneXpReward > 0) pc.GainXP(standaloneXpReward);
+        }
+    }
+
+    private IEnumerator WorldHealRoutine()
+    {
+        if (purifyBurstVFX != null) Instantiate(purifyBurstVFX, transform.position + Vector3.up * 1f, Quaternion.identity);
+
+        // Release the battle music so the score eases back to calm.
+        if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusicInstance(1.2f);
+
+        // Lift the corrupt fog: ease colour toward the healed tone and thin the
+        // density out. Captured from whatever the region currently has.
+        Color fromColor = RenderSettings.fogColor;
+        float fromDensity = RenderSettings.fogDensity;
+        float toDensity = fromDensity * healedFogDensityMult;
+        float t = 0f, dur = 3.5f;
+        while (t < dur)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, t / dur);
+            RenderSettings.fogColor = Color.Lerp(fromColor, healedFogColor, k);
+            RenderSettings.fogDensity = Mathf.Lerp(fromDensity, toDensity, k);
+            yield return null;
         }
     }
 

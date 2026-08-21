@@ -660,6 +660,20 @@ public static class LocalizationManager
             "Nutze WASD zum Bewegen und die Maus zum Umsehen.",
             "Utilise WASD pour te déplacer et la souris pour regarder autour.",
             "Użyj WASD do poruszania się i myszy, aby się rozglądać.");
+
+        // -- Region raid capture HUD --
+        Add7("DESTROY THE CORRUPTION ANCHORS",
+            "DESTROY THE CORRUPTION ANCHORS", "ЗНИЩ ЯКОРІ КОРУПЦІЇ", "УНИЧТОЖЬ ЯКОРЯ СКВЕРНЫ",
+            "DESTRUYE LAS ANCLAS DE CORRUPCIÓN", "ZERSTÖRE DIE VERDERBNIS-ANKER",
+            "DÉTRUIS LES ANCRES DE CORRUPTION", "ZNISZCZ KOTWICE ZEPSUCIA");
+        Add7("HOLD THE TOTEM — PURIFYING",
+            "HOLD THE TOTEM — PURIFYING", "УТРИМУЙ ТОТЕМ — ОЧИЩЕННЯ", "УДЕРЖИВАЙ ТОТЕМ — ОЧИЩЕНИЕ",
+            "DEFIENDE EL TÓTEM — PURIFICANDO", "HALTE DAS TOTEM — REINIGUNG",
+            "TIENS LE TOTEM — PURIFICATION", "UTRZYMAJ TOTEM — OCZYSZCZANIE");
+        Add7("AN ALLY JOINS THE FIGHT!",
+            "AN ALLY JOINS THE FIGHT!", "СОЮЗНИК ПРИЄДНУЄТЬСЯ ДО БОЮ!", "СОЮЗНИК ВСТУПАЕТ В БОЙ!",
+            "¡UN ALIADO SE UNE A LA LUCHA!", "EIN VERBÜNDETER TRITT BEI!",
+            "UN ALLIÉ REJOINT LE COMBAT !", "SOJUSZNIK DOŁĄCZA DO WALKI!");
     }
 
     private static void Add(string key, string en, string uk)
