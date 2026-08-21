@@ -77,6 +77,27 @@ public static class AudioID
     public const string Ambient_Crow = "AMB/AMB_Crow";
     public const string Ambient_DistantThunder = "AMB/AMB_Distant_Thunder";
     public const string Ambient_LeafRustle = "AMB/AMB_Leaf_Rustle";
+
+    // ── NEW / previously-missing sounds (wire the FMOD events in the Inspector) ──
+    public const string Ambient_Rain = "AMB/AMB_Rain";           // looping rain bed
+    public const string UI_Open = "UI/Open";
+    public const string UI_Close = "UI/Close";
+    public const string UI_Back = "UI/Back";
+    public const string UI_Toggle = "UI/Toggle";
+    public const string UI_Achievement = "UI/Achievement";
+    public const string Player_LevelUp = "Player/LevelUp";
+    public const string Player_XPPickup = "Player/XP_Pickup";
+    public const string Player_CoinPickup = "Player/Coin_Pickup";
+    public const string Player_LowHealth = "Player/LowHealth";   // looping heartbeat warning
+    public const string Player_Land = "Player/Land";
+    public const string Player_Crit = "Player/Crit";
+    public const string Enemy_Spawn = "Enemy/Spawn";             // rise-from-ground
+    public const string Boss_Slam = "Enemy/Boss/Slam";
+    public const string Boss_Enrage = "Enemy/Boss/Enrage";
+    public const string Env_TreeFall = "ENV/TreeFall";
+    public const string Env_StoneBreak = "ENV/StoneBreak";
+    public const string Region_AnchorDestroy = "UI/AnchorDestroy";
+    public const string Region_PurifyComplete = "UI/PurifyComplete";
 }
 
 [System.Serializable]
@@ -158,6 +179,28 @@ public class AudioManager : MonoBehaviour
     public SoundGroup ambientCrow;
     public SoundGroup ambientDistantThunder;
     public SoundGroup ambientLeafRustle;
+    [Tooltip("Looping rain bed — wire an FMOD event set to loop.")]
+    public SoundGroup ambientRain;
+
+    [Header("=== NEW / MISSING SOUNDS (wire FMOD events) ===")]
+    public SoundGroup uiOpen;
+    public SoundGroup uiClose;
+    public SoundGroup uiBack;
+    public SoundGroup uiToggle;
+    public SoundGroup uiAchievement;
+    public SoundGroup playerLevelUp;
+    public SoundGroup playerXpPickup;
+    public SoundGroup playerCoinPickup;
+    public SoundGroup playerLowHealth;
+    public SoundGroup playerLand;
+    public SoundGroup playerCrit;
+    public SoundGroup enemySpawn;
+    public SoundGroup bossSlam;
+    public SoundGroup bossEnrage;
+    public SoundGroup envTreeFall;
+    public SoundGroup envStoneBreak;
+    public SoundGroup regionAnchorDestroy;
+    public SoundGroup regionPurifyComplete;
 
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp;
@@ -581,6 +624,27 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Ambient_Crow, ambientCrow);
         sfxDictionary.Add(AudioID.Ambient_DistantThunder, ambientDistantThunder);
         sfxDictionary.Add(AudioID.Ambient_LeafRustle, ambientLeafRustle);
+        sfxDictionary.Add(AudioID.Ambient_Rain, ambientRain);
+
+        // New / previously-missing sounds.
+        sfxDictionary.Add(AudioID.UI_Open, uiOpen);
+        sfxDictionary.Add(AudioID.UI_Close, uiClose);
+        sfxDictionary.Add(AudioID.UI_Back, uiBack);
+        sfxDictionary.Add(AudioID.UI_Toggle, uiToggle);
+        sfxDictionary.Add(AudioID.UI_Achievement, uiAchievement);
+        sfxDictionary.Add(AudioID.Player_LevelUp, playerLevelUp);
+        sfxDictionary.Add(AudioID.Player_XPPickup, playerXpPickup);
+        sfxDictionary.Add(AudioID.Player_CoinPickup, playerCoinPickup);
+        sfxDictionary.Add(AudioID.Player_LowHealth, playerLowHealth);
+        sfxDictionary.Add(AudioID.Player_Land, playerLand);
+        sfxDictionary.Add(AudioID.Player_Crit, playerCrit);
+        sfxDictionary.Add(AudioID.Enemy_Spawn, enemySpawn);
+        sfxDictionary.Add(AudioID.Boss_Slam, bossSlam);
+        sfxDictionary.Add(AudioID.Boss_Enrage, bossEnrage);
+        sfxDictionary.Add(AudioID.Env_TreeFall, envTreeFall);
+        sfxDictionary.Add(AudioID.Env_StoneBreak, envStoneBreak);
+        sfxDictionary.Add(AudioID.Region_AnchorDestroy, regionAnchorDestroy);
+        sfxDictionary.Add(AudioID.Region_PurifyComplete, regionPurifyComplete);
 
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp);
         sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
