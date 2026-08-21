@@ -2490,13 +2490,31 @@ public static class LocalizationManager
         Add("MERC_BTN_MAX", "MAX", "МАКС");
         Add("MERC_OWNED", "OWNED: {0}", "Є: {0}");
 
-        // Mercenary unit flavour descriptions (self-keyed by the English text).
-        AddSelf("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Militia would break against.",
-            "Помазані звитяжці Етельгарду, віддані сталі й вогню. Один Лицар у строю втримає пролом, об який Ополчення розбилося б.");
-        AddSelf("Silent scouts from the borderland forests. Devastating against unarmoured conscripts and the pace-setters of any ambush.",
-            "Мовчазні розвідники з прикордонних лісів. Нищівні проти неброньованих новобранців і задають темп будь-якій засідці.");
-        AddSelf("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
-            "Селяни з вилами і впертою відвагою. Дешеві, гинуть швидко — але повний ряд перетворює безнадійний штурм на рівний бій.");
+        // Mercenary unit flavour descriptions (self-keyed by the English text), all 7 locales.
+        Add7("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Militia would break against.",
+            "Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Militia would break against.",
+            "Помазані звитяжці Етельгарду, віддані сталі й вогню. Один Лицар у строю втримає пролом, об який Ополчення розбилося б.",
+            "Помазанные защитники Этельгарда, преданные стали и огню. Один Рыцарь в строю удержит брешь, о которую Ополчение разбилось бы.",
+            "Campeones ungidos de Aethelgard, jurados al acero y al fuego. Un solo Caballero en la línea sostiene una brecha contra la que la Milicia se quebraría.",
+            "Gesalbte Streiter von Aethelgard, dem Stahl und Feuer geweiht. Ein einzelner Ritter in der Reihe hält eine Bresche, an der die Miliz zerbrechen würde.",
+            "Champions oints d'Aethelgard, voués à l'acier et au feu. Un seul Chevalier dans la ligne tient une brèche contre laquelle la Milice se briserait.",
+            "Namaszczeni bohaterowie Aethelgardu, zaprzysiężeni stali i ogniu. Jeden Rycerz w szeregu utrzyma wyłom, o który Milicja by się rozbiła.");
+        Add7("Silent scouts from the borderland forests. Devastating against unarmoured conscripts and the pace-setters of any ambush.",
+            "Silent scouts from the borderland forests. Devastating against unarmoured conscripts and the pace-setters of any ambush.",
+            "Мовчазні розвідники з прикордонних лісів. Нищівні проти неброньованих новобранців і задають темп будь-якій засідці.",
+            "Молчаливые разведчики из приграничных лесов. Разрушительны против небронированных новобранцев и задают темп любой засаде.",
+            "Exploradores silenciosos de los bosques fronterizos. Devastadores contra reclutas sin armadura y marcan el ritmo de cualquier emboscada.",
+            "Stille Späher aus den Grenzwäldern. Verheerend gegen ungepanzerte Rekruten und die Taktgeber jedes Hinterhalts.",
+            "Éclaireurs silencieux des forêts frontalières. Dévastateurs contre les conscrits sans armure et les meneurs de toute embuscade.",
+            "Cisi zwiadowcy z pogranicznych lasów. Zabójczy przeciw nieopancerzonym rekrutom i nadający tempo każdej zasadzce.");
+        Add7("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
+            "Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
+            "Селяни з вилами і впертою відвагою. Дешеві, гинуть швидко — але повний ряд перетворює безнадійний штурм на рівний бій.",
+            "Крестьяне с вилами и упрямой отвагой. Дёшевы, гибнут быстро — но полный ряд превращает безнадёжный штурм в равный бой.",
+            "Campesinos con horcas y terca valentía. Baratos de contratar, rápidos en caer, pero una línea completa convierte un asalto imposible en uno igualado.",
+            "Bauern mit Mistgabeln und störrischem Mut. Billig anzuheuern, schnell gefallen — doch eine volle Reihe macht aus einem aussichtslosen Angriff einen ausgeglichenen.",
+            "Paysans armés de fourches et d'un courage têtu. Bon marché à engager, prompts à tomber, mais une ligne entière transforme un assaut désespéré en combat égal.",
+            "Chłopi z widłami i upartą odwagą. Tani w najmie, szybko giną — lecz pełny szereg zmienia beznadziejny szturm w wyrównaną walkę.");
         Add("MERC_AVAILABLE", "Available: {0}", "Доступно: {0}");
         Add("MERC_LEVEL_XY", "LEVEL {0} / {1}", "РІВЕНЬ {0} / {1}");
         Add("MERC_MAX_LEVEL", "MAX LEVEL", "МАКС РІВЕНЬ");
