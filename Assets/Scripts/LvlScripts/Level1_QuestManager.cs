@@ -8,6 +8,9 @@ using Unity.Cinemachine;
 public class Level1_QuestManager : MonoBehaviour
 {
     public static Level1_QuestManager Instance;
+    // True from level load until control is handed to the player after the intro
+    // cutscene + camera descent. GlobalHUD gates the pause key on this.
+    public static bool IntroInProgress { get; private set; }
 
     [Header("Cinematic & UI")]
     public PlayableDirector introDirector;
@@ -143,6 +146,11 @@ public class Level1_QuestManager : MonoBehaviour
 
         Invoke("FindPlayer", 0.1f);
 
+        // Block the pause key for the whole opening cutscene + camera descent —
+        // Escape is the cutscene skip key, and without this it also opened the
+        // pause camera. Cleared when control is handed to the player.
+        IntroInProgress = true;
+
         if (storyIntro != null)
         {
             // The illustrated new-game cutscene runs first. The existing
@@ -233,6 +241,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (cf != null) { while (cf.IsHandoffBlending) yield return null; }
 
         if (pc != null) pc.isControlBlocked = false;
+        IntroInProgress = false;                 // control is the player's now → pause key allowed
         StartCoroutine(MovementHintRoutine());   // "WASD to move" — shown before they walk
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
         if (objectiveUI != null) objectiveUI.gameObject.SetActive(true);
@@ -289,7 +298,8 @@ public class Level1_QuestManager : MonoBehaviour
             }
 
             if (pc != null) pc.isControlBlocked = false;
-            StartCoroutine(MovementHintRoutine());   // "WASD to move" — shown before they walk
+            IntroInProgress = false;                 // control is the player's now → pause key allowed
+        StartCoroutine(MovementHintRoutine());   // "WASD to move" — shown before they walk
             if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetGameplayPanelsActive(true);
 
             // ФІКС UI: Прибрано Canvas.ForceUpdateCanvases() та маніпуляції з альфою,

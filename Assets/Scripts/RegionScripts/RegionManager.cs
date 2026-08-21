@@ -451,9 +451,16 @@ public class RegionManager : MonoBehaviour
 
         if (currentRegion != null)
         {
+            // Bump the global conquered counter ONCE per region — this is what
+            // the camp "capture your first region" mission and Elias' lore gate
+            // on. Hand-played totem conquest never touched it before, so the
+            // mission never ticked. Guard against a re-clear double-counting.
+            bool wasAlreadyConquered = PlayerPrefs.GetInt("RegionState_" + currentRegion.regionID, 0) == 2;
             currentRegion.currentState = RegionState.Conquered;
             PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
             PlayerPrefs.SetInt("AutoOpenMap", 1);
+            if (!wasAlreadyConquered)
+                PlayerPrefs.SetInt("TotalConqueredRegions", PlayerPrefs.GetInt("TotalConqueredRegions", 0) + 1);
             PlayerPrefs.Save();
 
             if (ResourceManager.Instance != null)
@@ -522,9 +529,16 @@ public class RegionManager : MonoBehaviour
 
         if (currentRegion != null)
         {
+            // Bump the global conquered counter ONCE per region — this is what
+            // the camp "capture your first region" mission and Elias' lore gate
+            // on. Hand-played totem conquest never touched it before, so the
+            // mission never ticked. Guard against a re-clear double-counting.
+            bool wasAlreadyConquered = PlayerPrefs.GetInt("RegionState_" + currentRegion.regionID, 0) == 2;
             currentRegion.currentState = RegionState.Conquered;
             PlayerPrefs.SetInt("RegionState_" + currentRegion.regionID, 2);
             PlayerPrefs.SetInt("AutoOpenMap", 1);
+            if (!wasAlreadyConquered)
+                PlayerPrefs.SetInt("TotalConqueredRegions", PlayerPrefs.GetInt("TotalConqueredRegions", 0) + 1);
             PlayerPrefs.Save();
 
             if (ResourceManager.Instance != null)

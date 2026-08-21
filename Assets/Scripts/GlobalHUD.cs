@@ -158,6 +158,11 @@ public class GlobalHUD : MonoBehaviour
             // beat is playing (menu intro OR the camp arrival narration).
             if (IntroCinematicManager.IsPlaying) return;
             if (CampDirector.IsPlaying) return;
+            // Escape is also the Level 1 cutscene's skip key — without these
+            // guards one Escape both skipped the cutscene AND opened the pause
+            // (waterfall) camera, which then stuck until Escape was pressed again.
+            if (StoryIntroPlayer.IsPlaying) return;
+            if (Level1_QuestManager.IntroInProgress) return;
 
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {

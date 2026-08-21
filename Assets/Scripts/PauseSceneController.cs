@@ -33,6 +33,12 @@ public class PauseSceneController : MonoBehaviour
 
     private void Awake()
     {
+        // Defensive: make sure the pause camera starts OFF and the flag clear,
+        // so a stray state (or a scene that loaded with it enabled) can't leave
+        // the pause "location" on screen before any real pause happens.
+        IsPauseActive = false;
+        if (pauseCamera != null) pauseCamera.enabled = false;
+
         var anims = GetComponentsInChildren<Animator>(true);
         foreach (var a in anims)
         {
