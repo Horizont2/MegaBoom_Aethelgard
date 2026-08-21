@@ -2488,7 +2488,15 @@ public static class LocalizationManager
         Add("MERC_BTN_HIRE", "HIRE", "НАЙНЯТИ");
         Add("MERC_BTN_UPGRADE", "UPGRADE", "ПОЛІПШИТИ");
         Add("MERC_BTN_MAX", "MAX", "МАКС");
-        Add("MERC_OWNED", "OWNED: {0}", "ЄСТЬ: {0}");
+        Add("MERC_OWNED", "OWNED: {0}", "Є: {0}");
+
+        // Mercenary unit flavour descriptions (self-keyed by the English text).
+        AddSelf("Anointed champions of Aethelgard, sworn to steel and fire. A single Knight in the line can hold a breach the Militia would break against.",
+            "Помазані звитяжці Етельгарду, віддані сталі й вогню. Один Лицар у строю втримає пролом, об який Ополчення розбилося б.");
+        AddSelf("Silent scouts from the borderland forests. Devastating against unarmoured conscripts and the pace-setters of any ambush.",
+            "Мовчазні розвідники з прикордонних лісів. Нищівні проти неброньованих новобранців і задають темп будь-якій засідці.");
+        AddSelf("Farmers with pitchforks and stubborn courage. Cheap to hire, quick to fall, but a full line of them turns a hopeless assault into an even one.",
+            "Селяни з вилами і впертою відвагою. Дешеві, гинуть швидко — але повний ряд перетворює безнадійний штурм на рівний бій.");
         Add("MERC_AVAILABLE", "Available: {0}", "Доступно: {0}");
         Add("MERC_LEVEL_XY", "LEVEL {0} / {1}", "РІВЕНЬ {0} / {1}");
         Add("MERC_MAX_LEVEL", "MAX LEVEL", "МАКС РІВЕНЬ");

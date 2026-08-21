@@ -140,6 +140,16 @@ public class BarracksUpgradePanel : MonoBehaviour
     private void OnEnable()
     {
         MercenaryRoster.OnRosterChanged += Refresh;
+        LocalizeTabs();
+    }
+
+    // The tab labels were baked into the prefab in English ("HIRE") / wrong case
+    // ("ПОКРАЩИТИ КАЗАРМА") and never localised at runtime. Apply the proper keys.
+    private void LocalizeTabs()
+    {
+        if (tabHireLabel != null) tabHireLabel.text = LocalizationManager.Tr("MERC_TAB_HIRE");
+        if (tabUpgradeUnitsLabel != null) tabUpgradeUnitsLabel.text = LocalizationManager.Tr("MERC_TAB_UPGRADE_UNITS");
+        if (tabUpgradeBarracksLabel != null) tabUpgradeBarracksLabel.text = LocalizationManager.Tr("MERC_TAB_UPGRADE_BARRACKS");
     }
 
     private void OnDisable()

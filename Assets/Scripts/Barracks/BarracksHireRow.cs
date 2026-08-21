@@ -50,6 +50,9 @@ public class BarracksHireRow : MonoBehaviour
             hireButton.interactable = unlocked && canAfford && hasRoom;
             hireButton.onClick.RemoveAllListeners();
             hireButton.onClick.AddListener(OnHireClick);
+            // The button label was baked into the prefab in English ("HIRE"); localise it.
+            var lbl = hireButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (lbl != null) lbl.text = LocalizationManager.Tr("MERC_BTN_HIRE");
         }
     }
 
