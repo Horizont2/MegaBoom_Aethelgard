@@ -420,6 +420,11 @@ public class WorldGenerator : MonoBehaviour
             }
 
             if (!foundSafeSpot) safePos.y += 5f;
+            // Do the synchronous realtime-GI refresh HERE — before control is
+            // handed back — instead of after. Running it once the player could
+            // already walk produced the hitch right as gameplay started.
+            yield return new WaitForEndOfFrame();
+            DynamicGI.UpdateEnvironment();
             CharacterController cc = player.GetComponent<CharacterController>();
             if (cc != null) { cc.enabled = false; player.transform.position = safePos; cc.enabled = true; }
             else { player.transform.position = safePos; Rigidbody rb = player.GetComponent<Rigidbody>(); if (rb != null) { rb.isKinematic = false; rb.linearVelocity = Vector3.zero; } }
@@ -430,8 +435,6 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
-        yield return new WaitForEndOfFrame();
-        DynamicGI.UpdateEnvironment();
         CurrentProgress = 1f;
         IsGenerationDone = true;
     }

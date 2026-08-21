@@ -103,7 +103,11 @@ public class DamagePopup : MonoBehaviour
 
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            // UNSCALED: with scaled Time.deltaTime the popup froze whenever the
+            // game paused (timeScale=0 — pause/level-up/cinematics), never faded,
+            // never returned to the pool, and drained the pool so new numbers
+            // stopped appearing. That was the "logs hang on screen" bug.
+            elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration; // ������� �� 0 �� 1
 
             // 1. ��� �� ��� (Lerp + Sin ��� ������ �������������/���������)
