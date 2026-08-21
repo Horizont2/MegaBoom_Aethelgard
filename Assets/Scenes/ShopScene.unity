@@ -13980,6 +13980,22 @@ MonoBehaviour:
         Data3: 272835771
         Data4: 68754711
       Path: event:/ENemy/Hit
+  arrowFire:
+    fmodEvent:
+      Guid:
+        Data1: 719720196
+        Data2: 1159230767
+        Data3: -1160556143
+        Data4: 1363651007
+      Path: event:/ENemy/Bow_fire
+  arrowHit:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   campCollectItem:
     fmodEvent:
       Guid:
@@ -14103,11 +14119,11 @@ MonoBehaviour:
   encounterCleared:
     fmodEvent:
       Guid:
-        Data1: -1635300041
-        Data2: 1089793008
-        Data3: 1328735149
-        Data4: -2058419140
-      Path: event:/UI/Encounter Cleared
+        Data1: -627275080
+        Data2: 1290713026
+        Data3: -1194149997
+        Data4: -1175275279
+      Path: event:/Raid/Encounter_Cleared
   totemActivate:
     fmodEvent:
       Guid:
@@ -14151,11 +14167,11 @@ MonoBehaviour:
   ambientDistantThunder:
     fmodEvent:
       Guid:
-        Data1: 1445464367
-        Data2: 1209521328
-        Data3: -451331425
-        Data4: -1879353210
-      Path: event:/AMB/AMB_Distant_Thunder
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientLeafRustle:
     fmodEvent:
       Guid:
@@ -14164,6 +14180,158 @@ MonoBehaviour:
         Data3: 1891996549
         Data4: -356795183
       Path: event:/AMB/AMB_Leaf_Rustle
+  ambientRain:
+    fmodEvent:
+      Guid:
+        Data1: -2130433249
+        Data2: 1157974612
+        Data3: 669768075
+        Data4: 1726526011
+      Path: event:/AMB/AMB_Thunder
+  uiOpen:
+    fmodEvent:
+      Guid:
+        Data1: -848183364
+        Data2: 1271262640
+        Data3: 257930428
+        Data4: 531731841
+      Path: event:/UI/Open
+  uiClose:
+    fmodEvent:
+      Guid:
+        Data1: -16651634
+        Data2: 1311930506
+        Data3: 949870001
+        Data4: 374281053
+      Path: event:/UI/Close
+  uiBack:
+    fmodEvent:
+      Guid:
+        Data1: -101778152
+        Data2: 1257063936
+        Data3: 2108648364
+        Data4: 906143898
+      Path: event:/UI/Back
+  uiToggle:
+    fmodEvent:
+      Guid:
+        Data1: 200928006
+        Data2: 1237283903
+        Data3: 1942702764
+        Data4: 339065722
+      Path: event:/UI/Toggle
+  uiAchievement:
+    fmodEvent:
+      Guid:
+        Data1: -366840844
+        Data2: 1270627608
+        Data3: -1237376
+        Data4: -954656280
+      Path: event:/UI/Achievement
+  playerLevelUp:
+    fmodEvent:
+      Guid:
+        Data1: 1514384386
+        Data2: 1273233340
+        Data3: -952038230
+        Data4: 1254541772
+      Path: event:/UI/LVLUP
+  playerXpPickup:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerCoinPickup:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  playerLowHealth:
+    fmodEvent:
+      Guid:
+        Data1: 501193411
+        Data2: 1313586915
+        Data3: 718835094
+        Data4: 44284245
+      Path: event:/Player/Low_HP
+  playerLand:
+    fmodEvent:
+      Guid:
+        Data1: 61055840
+        Data2: 1298368530
+        Data3: -1651624265
+        Data4: 1397112567
+      Path: event:/Player/Land
+  playerCrit:
+    fmodEvent:
+      Guid:
+        Data1: 233146286
+        Data2: 1256365968
+        Data3: -937785202
+        Data4: 1150542798
+      Path: event:/Player/Crit_Hit
+  enemySpawn:
+    fmodEvent:
+      Guid:
+        Data1: -1184852886
+        Data2: 1220955663
+        Data3: -1702398577
+        Data4: 752382863
+      Path: event:/ENemy/Spawn
+  bossSlam:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  bossEnrage:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  envTreeFall:
+    fmodEvent:
+      Guid:
+        Data1: -92311389
+        Data2: 1246765113
+        Data3: -1104431944
+        Data4: 1085826037
+      Path: event:/ENV/Tree_fall
+  envStoneBreak:
+    fmodEvent:
+      Guid:
+        Data1: -1802219689
+        Data2: 1138705947
+        Data3: -1798579568
+        Data4: 1966749758
+      Path: event:/ENV/Rock_break
+  regionAnchorDestroy:
+    fmodEvent:
+      Guid:
+        Data1: 9224204
+        Data2: 1272961740
+        Data3: -698907206
+        Data4: -2130900314
+      Path: event:/Raid/Anchor_Destroy
+  regionPurifyComplete:
+    fmodEvent:
+      Guid:
+        Data1: 106817768
+        Data2: 1119402003
+        Data3: -1399672903
+        Data4: -207979194
+      Path: event:/Raid/Purify_Complete
   musicCamp:
     fmodEvent:
       Guid:
@@ -14180,86 +14348,94 @@ MonoBehaviour:
         Data3: -1294364284
         Data4: -1267188723
       Path: event:/Music/Music_Journey
+  musicLevel1:
+    fmodEvent:
+      Guid:
+        Data1: -1695889442
+        Data2: 1141103115
+        Data3: 1454776976
+        Data4: -247606392
+      Path: event:/Music/Lvl1_Music
   dialogue1:
     fmodEvent:
       Guid:
-        Data1: -56570961
-        Data2: 1112080766
-        Data3: 186498705
-        Data4: -1006490679
-      Path: event:/Dialogue/Dialogue1
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue2:
     fmodEvent:
       Guid:
-        Data1: -835453275
-        Data2: 1175108346
-        Data3: -1380227964
-        Data4: 1274974632
-      Path: event:/Dialogue/Dialogue2
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue3:
     fmodEvent:
       Guid:
-        Data1: -1581335787
-        Data2: 1252278220
-        Data3: 1397179576
-        Data4: -197192432
-      Path: event:/Dialogue/Dialogue3
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue4:
     fmodEvent:
       Guid:
-        Data1: -387594757
-        Data2: 1099872219
-        Data3: -910128474
-        Data4: 880927783
-      Path: event:/Dialogue/Dialogue4
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue5:
     fmodEvent:
       Guid:
-        Data1: 941721244
-        Data2: 1149008904
-        Data3: -1231348345
-        Data4: -1573884790
-      Path: event:/Dialogue/Dialogue5
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue6:
     fmodEvent:
       Guid:
-        Data1: -1274647598
-        Data2: 1113306871
-        Data3: 988026777
-        Data4: 2026982229
-      Path: event:/Dialogue/Dialogue6
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue7:
     fmodEvent:
       Guid:
-        Data1: -1014525079
-        Data2: 1318183965
-        Data3: 740381859
-        Data4: -144367151
-      Path: event:/Dialogue/Dialogue7
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue8:
     fmodEvent:
       Guid:
-        Data1: -294020184
-        Data2: 1133653142
-        Data3: -562419274
-        Data4: -540823255
-      Path: event:/Dialogue/Dialogue8
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue9:
     fmodEvent:
       Guid:
-        Data1: 1700423914
-        Data2: 1318461073
-        Data3: -879997552
-        Data4: 1074459988
-      Path: event:/Dialogue/Dialogue9
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue10:
     fmodEvent:
       Guid:
-        Data1: 1319556318
-        Data2: 1205044369
-        Data3: 630293942
-        Data4: -1736516694
-      Path: event:/Dialogue/Dialogue10
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
 --- !u!4 &1754025062
 Transform:
   m_ObjectHideFlags: 0
