@@ -249,6 +249,8 @@ public class AudioManager : MonoBehaviour
     // after construction ended, or the bush-rustle that outlived the
     // bush.
     private readonly Dictionary<int, EventInstance> loopedInstances = new Dictionary<int, EventInstance>();
+    // Single tracked instance per accidentally-looping "one-shot" event (see PlaySFX).
+    private readonly Dictionary<string, EventInstance> _loopingBeds = new Dictionary<string, EventInstance>();
     private int nextLoopId = 1;
 
     private void Awake()
@@ -269,27 +271,33 @@ public class AudioManager : MonoBehaviour
         InitializeDictionaries();
     }
 
-    private void Start()
+    private IEnumerator Start()
     {
-        // Diagnostic — if the FMOD banks aren't loaded, nothing below
-        // will make sound and every PlaySFX call will emit a warning.
-        // Print the loaded bank count once at startup so it's obvious
-        // when the FMOD → Import Banks step was skipped.
-        FMOD.RESULT bcRes = RuntimeManager.StudioSystem.getBankCount(out int bankCount);
-        if (bcRes != FMOD.RESULT.OK || bankCount <= 1)
-        {
-            Debug.LogWarning($"[AudioManager] FMOD reports {bankCount} bank(s) loaded (result={bcRes}). Enemy / hit / build SFX will be silent until you run FMOD → Import Banks (or copy FMOD/Build/Desktop/*.bank into Assets/StreamingAssets/).");
-        }
+        // Wait until FMOD is initialised before touching buses. On WebGL banks
+        // load ASYNCHRONOUSLY, so the old plain Start() fetched the buses and set
+        // their volume BEFORE they existed — the saved volumes were lost and
+        // everything played quiet + stuttery until the player wiggled a slider
+        // (which re-set the volume once the buses were finally valid).
+        float t = 0f;
+        while (!RuntimeManager.IsInitialized && t < 10f) { t += Time.unscaledDeltaTime; yield return null; }
 
         masterBus = RuntimeManager.GetBus("bus:/");
-        PreloadAllSampleData();
         musicBus = RuntimeManager.GetBus("bus:/Music");
         sfxBus = RuntimeManager.GetBus("bus:/Sound FX");
         uiBus = RuntimeManager.GetBus("bus:/Ui");
         ambientBus = RuntimeManager.GetBus("bus:/Ambient");
         voiceBus = RuntimeManager.GetBus("bus:/Voice");
 
-        LoadAudioSettings();
+        // Give the buses a moment to resolve valid before applying volumes.
+        t = 0f;
+        while (!masterBus.isValid() && t < 5f) { t += Time.unscaledDeltaTime; yield return null; }
+
+        RuntimeManager.StudioSystem.getBankCount(out int bankCount);
+        if (bankCount <= 1)
+            Debug.LogWarning($"[AudioManager] FMOD reports {bankCount} bank(s) loaded. SFX may be silent until FMOD → Import Banks is run.");
+
+        PreloadAllSampleData();
+        LoadAudioSettings();   // now the saved Settings_*Vol land on valid buses
     }
 
     private void OnDestroy()
@@ -682,6 +690,23 @@ public class AudioManager : MonoBehaviour
                     WarnMissing(soundName, $"FMOD event GUID {group.fmodEvent.Guid} resolves with error {r} — bank not loaded, or GUID stale. Reimport banks from FMOD → Import Banks menu.");
                     return;
                 }
+                // Guard: a LOOPING event (e.g. AMB_Wind is authored looping) fired
+                // via PlayOneShot spawns an immortal, untracked instance that stacks
+                // and bleeds into the next scene (that was "rain still in the camp").
+                // Play ONE tracked instance instead so it can be stopped on scene
+                // change, and never stack duplicates.
+                if (desc.isOneshot(out bool oneshot) == FMOD.RESULT.OK && !oneshot)
+                {
+                    if (_loopingBeds.TryGetValue(soundName, out var existing) && existing.isValid())
+                    {
+                        existing.getPlaybackState(out var st);
+                        if (st != FMOD.Studio.PLAYBACK_STATE.STOPPED) return; // already playing → no stacking
+                    }
+                    var inst = RuntimeManager.CreateInstance(group.fmodEvent);
+                    inst.start();
+                    _loopingBeds[soundName] = inst;
+                    return;
+                }
                 RuntimeManager.PlayOneShot(group.fmodEvent);
                 return;
             }
@@ -761,7 +786,6 @@ public class AudioManager : MonoBehaviour
     // (that was the "rain still playing in the camp" bug).
     public void StopAllLoopedSFX()
     {
-        if (loopedInstances.Count == 0) return;
         foreach (var kv in loopedInstances)
         {
             EventInstance inst = kv.Value;
@@ -770,6 +794,15 @@ public class AudioManager : MonoBehaviour
             inst.release();
         }
         loopedInstances.Clear();
+        // Also kill any looping "one-shot" beds (AMB_Wind etc.).
+        foreach (var kv in _loopingBeds)
+        {
+            EventInstance inst = kv.Value;
+            if (!inst.isValid()) continue;
+            inst.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+            inst.release();
+        }
+        _loopingBeds.Clear();
     }
 
     public void StopLoopingSFX(int handle, float fadeSeconds = 0.4f)
