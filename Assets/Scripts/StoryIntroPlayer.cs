@@ -82,6 +82,8 @@ public class IntroSlide
     [Range(0f, 1f)] public float impactFlash = 0.6f;
     [Tooltip("Screen-shake amplitude in px (0 = none). ~16-24 for a solid hit.")]
     public float impactShake = 18f;
+    [Tooltip("SFX fired the INSTANT this slide appears — slide-anchored, so it stays in sync no matter how long earlier slides run (unlike the absolute-time Sfx Cues). Put the bass drop / taiko here.")]
+    public FMODUnity.EventReference impactSfx;
 
     [Header("Overlay effects on this slide")]
     [Tooltip("Drop in fog / embers / light rays / grain / vignette sprites or prefabs — " +
@@ -1135,7 +1137,9 @@ public class StoryIntroPlayer : MonoBehaviour
             // Spawn this slide's overlay effects (fog / embers / rays / grain…).
             SpawnEffects(slide);
 
-            // Punch on arrival (bass drop / reveal / finale frames).
+            // Punch on arrival (bass drop / reveal / finale frames). Slide-anchored
+            // SFX + flash + shake — always in sync with the cut, unlike Sfx Cues.
+            if (!slide.impactSfx.IsNull) RuntimeManager.PlayOneShot(slide.impactSfx);
             if (slide.impactOnStart)
             {
                 TriggerFlash(slide.impactFlash, 0.35f);
