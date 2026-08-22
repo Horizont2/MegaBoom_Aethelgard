@@ -55,7 +55,6 @@ public static class SceneLoader
         {
             s_running = true;
 
-            SaveLifecycle();
             var (canvas, fader) = BuildOverlay();
 
             // Fade to black over ~0.4s (unscaled — timeScale can be 0).
@@ -66,6 +65,13 @@ public static class SceneLoader
                 yield return null;
             }
             fader.color = Color.black;
+
+            // Flush the save AFTER the screen is fully black. SaveLifecycle does a
+            // synchronous SaveSystem.Save + PlayerPrefs.Save (a disk hitch); doing
+            // it before the fade froze the first frame of every transition. Hidden
+            // behind the opaque overlay now, plus one frame to let it present.
+            yield return null;
+            SaveLifecycle();
 
             AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
             if (op == null)

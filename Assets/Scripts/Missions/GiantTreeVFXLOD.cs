@@ -60,6 +60,7 @@ public class GiantTreeVFXLOD : MonoBehaviour
     private Light[] lights;
     private float[] lightBaseIntensities;
     private Renderer[] treeRenderers;
+    private LODGroup treeLodGroup;
     private Transform player;
     private float nextCheckTime;
     private float lastPlayerSqrDist = float.MaxValue;
@@ -126,6 +127,7 @@ public class GiantTreeVFXLOD : MonoBehaviour
         //     cached for the far-cull toggle. ---
         if (transform.parent != null)
         {
+            treeLodGroup = transform.parent.GetComponent<LODGroup>();
             Renderer[] r = transform.parent.GetComponentsInChildren<Renderer>(true);
             var keep = new List<Renderer>(r.Length);
             for (int i = 0; i < r.Length; i++)
@@ -281,6 +283,30 @@ public class GiantTreeVFXLOD : MonoBehaviour
     private void SetTreeRenderers(bool on)
     {
         treesVisible = on;
+
+        // When a LODGroup is present, drive IT rather than the individual
+        // renderers. The old code force-enabled ALL cached renderers at once,
+        // which meant every LOD mesh (LOD0..LOD3) drew simultaneously until the
+        // next LOD boundary — quadrupling the draw + overdraw. Toggling the
+        // LODGroup lets Unity keep exactly one LOD active; on show it re-selects
+        // the correct single LOD, on hide we also disable the meshes so nothing
+        // lingers at the last-picked level.
+        if (treeLodGroup != null)
+        {
+            if (on)
+            {
+                treeLodGroup.enabled = true;   // re-selects the one correct LOD
+            }
+            else
+            {
+                treeLodGroup.enabled = false;
+                if (treeRenderers != null)
+                    for (int i = 0; i < treeRenderers.Length; i++)
+                        if (treeRenderers[i] != null) treeRenderers[i].enabled = false;
+            }
+            return;
+        }
+
         if (treeRenderers == null) return;
         for (int i = 0; i < treeRenderers.Length; i++)
             if (treeRenderers[i] != null) treeRenderers[i].enabled = on;

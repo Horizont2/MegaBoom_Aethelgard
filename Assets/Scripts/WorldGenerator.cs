@@ -247,6 +247,14 @@ public class WorldGenerator : MonoBehaviour
     private int currentTreeCount = 0;
     private int currentBushCount = 0;
     private int currentRockCount = 0;
+    private int currentGiantTreeCount = 0;
+
+    [Tooltip("Hard cap on giant trees for the whole map. They are the heaviest overdraw source (large alpha-tested canopies); too many packed together drops FPS to single digits.")]
+    public int maxGiantTrees = 45;
+    [Tooltip("Minimum spacing between two giant trees (metres). Prevents their canopies from stacking and multiplying overdraw.")]
+    public float giantTreeMinSpacing = 28f;
+    // Positions of placed giant trees, for the spacing check above.
+    private readonly List<Vector3> giantTreePositions = new List<Vector3>();
 
     private Vector3 spawnedTotemPos = Vector3.zero;
     private System.Random prng;
@@ -1293,6 +1301,10 @@ public class WorldGenerator : MonoBehaviour
 
         float startTime = Time.realtimeSinceStartup;
 
+        // One reusable weights buffer for the whole paint pass — the old code
+        // allocated a new float[5] for every alphamap cell (~262k allocations on
+        // a 512² map), which churned the GC during generation.
+        float[] weights = new float[5];
         for (int y = 0; y < aHeight; y++)
         {
             for (int x = 0; x < aWidth; x++)
@@ -1300,7 +1312,7 @@ public class WorldGenerator : MonoBehaviour
                 float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
                 float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
                 float normalizedHeight = terrainData.GetHeight(y, x) / depth;
-                float[] weights = new float[5];
+                weights[0] = weights[1] = weights[2] = weights[3] = weights[4] = 0f;
 
                 if (normalizedHeight > 0.65f) weights[2] = 1f;
                 else if (normalizedHeight <= waterLevel + 0.02f) weights[1] = 1f;
@@ -1892,6 +1904,12 @@ public class WorldGenerator : MonoBehaviour
         float startTime = Time.realtimeSinceStartup;
         int roadsBuilt = 0;
 
+        // Read the heightmap ONCE; every road carves into this shared array and
+        // it's written back a single time after the loop (see fix below).
+        TerrainData roadTd = terrain.terrainData;
+        int roadRes = roadTd.heightmapResolution;
+        float[,] roadHeights = roadTd.GetHeights(0, 0, roadRes, roadRes);
+
         foreach (Vector3 targetPos in allTargets)
         {
             Vector2Int startGrid = new Vector2Int(
@@ -1947,22 +1965,26 @@ public class WorldGenerator : MonoBehaviour
                     roadNetwork[pX, pZ] = true;
                 }
                 roadSplines.Add(sc);
-                CarveAndRasterizeRoad(sc);
+                CarveAndRasterizeRoad(sc, roadHeights);
                 roadsBuilt++;
-
-                // After carving the heightmap, the TerrainCollider caches
-                // the pre-carve surface until we cycle it. Without this,
-                // players hit invisible walls where the old hilltops
-                // used to be along the new road.
-                terrain.Flush();
-                TerrainCollider tcRoad = terrain.GetComponent<TerrainCollider>();
-                if (tcRoad != null) { tcRoad.enabled = false; tcRoad.enabled = true; }
             }
             else
             {
                 Debug.LogWarning($"[Smart Roads] Шлях заблоковано ландшафтом для цілі: {targetPos}");
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
+        }
+
+        // Write the carved heightmap back ONCE, then rebuild the TerrainCollider
+        // ONCE. Previously each road did its own SetHeights + collider cycle —
+        // ~20 full-terrain writes and physics-mesh bakes back-to-back, the single
+        // biggest load-time stall. The end state is identical.
+        if (roadsBuilt > 0)
+        {
+            roadTd.SetHeights(0, 0, roadHeights);
+            terrain.Flush();
+            TerrainCollider tcRoad = terrain.GetComponent<TerrainCollider>();
+            if (tcRoad != null) { tcRoad.enabled = false; tcRoad.enabled = true; }
         }
         GameLog.Info($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг.");
     }
@@ -2145,11 +2167,33 @@ public class WorldGenerator : MonoBehaviour
 
                 if (density > forestThreshold && steepness <= 25f)
                 {
-                    if (currentTreeCount < maxTrees && density > forestThreshold + 0.2f && randomSpawn > 0.85f && giantTrees != null && giantTrees.Length > 0)
+                    // Giant trees are gated by a DEDICATED cap and a spacing rule
+                    // (on top of the density/roll test) so their big alpha-tested
+                    // canopies can't stack and multiply overdraw — that stacking
+                    // was the real cause of the 1-5 FPS drops next to giant trees.
+                    bool giantTreeAllowed = currentGiantTreeCount < maxGiantTrees && giantTrees != null && giantTrees.Length > 0;
+                    if (giantTreeAllowed)
+                    {
+                        float giantSpacingSqr = giantTreeMinSpacing * giantTreeMinSpacing;
+                        for (int gi = 0; gi < giantTreePositions.Count; gi++)
+                        {
+                            Vector3 gd = currentPos - giantTreePositions[gi];
+                            if (gd.x * gd.x + gd.z * gd.z < giantSpacingSqr) { giantTreeAllowed = false; break; }
+                        }
+                    }
+
+                    if (currentTreeCount < maxTrees && giantTreeAllowed && density > forestThreshold + 0.2f && randomSpawn > 0.85f)
                     {
                         GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
                         GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
                         obj.transform.localScale *= GetRandomRange(1.0f, 1.4f);
+
+                        // Bias the prefab's LODGroup so it drops to the cheaper LODs
+                        // sooner — the full-detail canopy (LOD0) is the overdraw hog
+                        // at close range. Shrinking the group's reference size pulls
+                        // every LOD switch nearer without touching the prefab.
+                        LODGroup giantLod = obj.GetComponent<LODGroup>();
+                        if (giantLod != null) giantLod.size *= 0.6f;
 
                         if (currentGiantTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentGiantTreeMat);
                         else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
@@ -2168,6 +2212,8 @@ public class WorldGenerator : MonoBehaviour
                             if (r != null) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
                         currentTreeCount++;
+                        currentGiantTreeCount++;
+                        giantTreePositions.Add(currentPos);
 
                         if (vfxToSpawn != null)
                         {
@@ -2246,6 +2292,13 @@ public class WorldGenerator : MonoBehaviour
                 }
             }
             catch (System.Exception e) { Debug.LogError($"[Помилка генерації префабу]: {e.Message}"); }
+
+            // Post-iteration budget check: a single giant-tree iteration does a
+            // lot of uninterrupted work (Instantiate a 4-LOD prefab + VFX + a
+            // clutter cluster + several GetComponentsInChildren). The top-of-loop
+            // check alone let one such iteration overshoot the frame; re-check
+            // here so a heavy iteration yields before the next one starts.
+            if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
     }
 
@@ -2860,16 +2913,27 @@ public class WorldGenerator : MonoBehaviour
         return null; // Шлях занадто складний або заблокований, скасовуємо цю дорогу
     }
 
-    private void CarveAndRasterizeRoad(SplineContainer sc)
+    // Carves the road into the SHARED heights array (caller owns the single
+    // GetHeights/SetHeights). Previously each road did its own full-heightmap
+    // GetHeights + SetHeights — a multi-MB read/write and terrain recompute per
+    // road, ~20× per map. Now the caller reads once, passes the array through
+    // every road, and writes once.
+    private void CarveAndRasterizeRoad(SplineContainer sc, float[,] heights)
     {
         TerrainData td = terrain.terrainData; int res = td.heightmapResolution; int aWidth = td.alphamapWidth; int aHeight = td.alphamapHeight;
-        float[,] heights = td.GetHeights(0, 0, res, res); float splLen = sc.CalculateLength(); float step = 2f;
+        float splLen = sc.CalculateLength(); float step = 2f;
+        int stepIndex = 0;
 
-        for (float d = 0; d < splLen; d += step)
+        for (float d = 0; d < splLen; d += step, stepIndex++)
         {
             sc.Evaluate(d / splLen, out float3 p, out float3 tan, out float3 up);
             Vector3 worldPos = sc.transform.TransformPoint(new Vector3(p.x, p.y, p.z));
-            forbiddenZones.Add(worldPos);
+            // Register a forbidden point only every ~8th step. The exclusion
+            // radius is 18 m and steps are 2 m apart, so one sphere every 16 m
+            // still overlaps continuously along the road — but the biome loop
+            // then scans a FRACTION of the points (it ran up to 60k× over the
+            // full list, which roads had been flooding with a point every 2 m).
+            if ((stepIndex & 7) == 0) forbiddenZones.Add(worldPos);
 
             int ax = Mathf.Clamp(Mathf.RoundToInt(((worldPos.x - transform.position.x) / td.size.x) * aWidth), 0, aWidth - 1);
             int ay = Mathf.Clamp(Mathf.RoundToInt(((worldPos.z - transform.position.z) / td.size.z) * aHeight), 0, aHeight - 1);
@@ -2896,7 +2960,7 @@ public class WorldGenerator : MonoBehaviour
                     heights[sy, sx] = Mathf.Lerp(centerH, heights[sy, sx], t);
                 }
         }
-        td.SetHeights(0, 0, heights);
+        // NOTE: no SetHeights here — the caller writes the shared array once.
     }
 
     // Adjust the intended spawn position so the visual BOTTOM of the
