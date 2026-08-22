@@ -1088,12 +1088,13 @@ public class StoryIntroPlayer : MonoBehaviour
                     float bt = 0f;
                     while (bt < slide.blackHoldBefore && !CheckSkip()) { bt += Time.unscaledDeltaTime; yield return null; }
                 }
-                // Otherwise, on a Fade slide gently fade the PREVIOUS image out
-                // first (a soft dip) instead of hard-cutting its alpha to 0.
+                // Otherwise, on a Fade slide quickly dip the PREVIOUS image out
+                // first instead of hard-cutting its alpha to 0. Kept short so the
+                // gap between slides doesn't drag (the "resetting takes time" beat).
                 else if (s > 0 && slide.transition == SlideTransition.Fade && imageDisplay.color.a > 0.01f)
                 {
                     if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
-                    yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration * 0.55f);
+                    yield return FadeGraphicAlpha(imageDisplay, 0f, imageFadeDuration * 0.3f);
                 }
 
                 if (slide.image != null) imageDisplay.sprite = slide.image;
@@ -1106,6 +1107,12 @@ public class StoryIntroPlayer : MonoBehaviour
                 if (autoCameraMoves && pF == pT)
                     AutoMove(s, out zF, out zT, out pF, out pT);
 
+                // How long this slide fades in: none for a hard cut, the full
+                // cinematic fade for the opening slide, and a quicker fade for
+                // every slide after that so the story keeps moving.
+                float entryFade = slide.transition == SlideTransition.HardCut ? 0f
+                                : (s == 0 ? imageFadeDuration : imageFadeDuration * 0.5f);
+
                 // Reset framing + (re)start the Ken-Burns move for this slide so
                 // the image is drifting the whole time it's on screen.
                 if (_kenBurns != null) { StopCoroutine(_kenBurns); _kenBurns = null; }
@@ -1117,9 +1124,14 @@ public class StoryIntroPlayer : MonoBehaviour
                 }
                 if (slide.useKenBurns && _imgRT != null)
                 {
-                    float motionDur = imageFadeDuration
-                                    + (subtitleText != null ? LocalizationManager.Tr(slide.subtitle).Length * typingSpeed : 0f)
-                                    + Mathf.Max(slide.duration, SlideVoiceLength(slide));
+                    // Drift over the whole time the slide is actually on screen:
+                    // fade-in + max(minimum-total-time, typing-time). Matches the
+                    // total-time hold below so the image never freezes early nor
+                    // gets cut off mid-drift.
+                    float typingLen = subtitleText != null ? LocalizationManager.Tr(slide.subtitle).Length * typingSpeed : 0f;
+                    float voFull = SlideVoiceLength(slide); if (voFull > 0f) voFull += voiceoverTail;
+                    float minTotal = Mathf.Max(slide.duration, voFull);
+                    float motionDur = entryFade + Mathf.Max(minTotal, typingLen);
                     _kenBurns = StartCoroutine(KenBurns(zF, zT, pF, pT, motionDur));
                 }
 
@@ -1130,7 +1142,7 @@ public class StoryIntroPlayer : MonoBehaviour
                 else
                 {
                     Color c = imageDisplay.color; c.a = 0f; imageDisplay.color = c;
-                    yield return FadeGraphicAlpha(imageDisplay, 1f, imageFadeDuration);
+                    yield return FadeGraphicAlpha(imageDisplay, 1f, entryFade);
                 }
             }
 
@@ -1167,12 +1179,15 @@ public class StoryIntroPlayer : MonoBehaviour
                 }
             }
 
-            // Hold long enough to cover BOTH the authored duration and the whole
-            // narration line (so the voice is never cut off mid-sentence).
-            float voRemaining = 0f;
-            if (holdForVoiceover && voLen > 0f)
-                voRemaining = (voLen + voiceoverTail) - (Time.unscaledTime - slideStartTime);
-            float target = Mathf.Max(slide.duration, voRemaining);
+            // Hold so the slide's TOTAL on-screen time (typing included) reaches
+            // the authored duration or the narration length — whichever is longer
+            // — instead of tacking a full `duration` on AFTER the text finished.
+            // The old code added `duration` on top of the already-elapsed typing
+            // time, so every slide sat idle for several extra seconds once the
+            // story text was done (the "slide won't change for ages" bug).
+            float minVoice = (holdForVoiceover && voLen > 0f) ? voLen + voiceoverTail : 0f;
+            float minTotalHold = Mathf.Max(slide.duration, minVoice);
+            float target = Mathf.Max(0f, minTotalHold - (Time.unscaledTime - slideStartTime));
             float held = 0f;
             while (held < target && !CheckSkip())
             {
