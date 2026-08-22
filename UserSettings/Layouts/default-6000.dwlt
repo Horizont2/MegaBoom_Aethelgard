@@ -5855,12 +5855,12 @@ MonoBehaviour:
       displayed: 1
       id: Play Mode Controls
       index: 0
-      contents: '{"m_Layout":4,"m_Collapsed":false,"m_Folded":false,"m_Floating":false,"m_FloatingSnapOffset":{"x":510.4000244140625,"y":0.0},"m_SnapOffsetDelta":{"x":0.0,"y":0.0},"m_FloatingSnapCorner":0,"m_Size":{"x":0.0,"y":0.0},"m_SizeOverridden":false}'
+      contents: '{"m_Layout":4,"m_Collapsed":false,"m_Folded":false,"m_Floating":false,"m_FloatingSnapOffset":{"x":-769.5999755859375,"y":-36.0},"m_SnapOffsetDelta":{"x":0.0,"y":0.0},"m_FloatingSnapCorner":3,"m_Size":{"x":0.0,"y":0.0},"m_SizeOverridden":false}'
       floating: 0
       collapsed: 0
-      snapOffset: {x: 510.40002, y: 0}
+      snapOffset: {x: -769.6, y: -36}
       snapOffsetDelta: {x: 0, y: 0}
-      snapCorner: 0
+      snapCorner: 3
       layout: 4
       size: {x: 0, y: 0}
       sizeOverridden: 0
@@ -6567,9 +6567,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: -174.89459, y: 51.303062, z: 412.93616}
+    m_Target: {x: 194.8573, y: 10.933227, z: 82.96066}
     speed: 2
-    m_Value: {x: -515.31354, y: -222.22414, z: 235.35397}
+    m_Value: {x: -174.89459, y: 51.303062, z: 412.93616}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -6617,11 +6617,11 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.032648914, y: -0.9671171, z: 0.16524677, w: 0.19185965}
     speed: 2
-    m_Value: {x: -0.15330043, y: 0.57743704, z: -0.111729965, w: -0.7943979}
+    m_Value: {x: -0.032640785, y: 0.96687627, z: -0.16520563, w: -0.19181187}
   m_Size:
-    m_Target: 3.2290328
+    m_Target: 3.9933612
     speed: 2
-    m_Value: 336.82968
+    m_Value: 3.2290328
   m_Ortho:
     m_Target: 0
     speed: 2
@@ -21616,25 +21616,25 @@ MonoBehaviour:
       m_Data: 1000000000
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 67272
-    - m_Data: 67274
-    - m_Data: 67276
-    - m_Data: 67278
-    - m_Data: 67280
-    - m_Data: 67282
-    - m_Data: 67284
-    - m_Data: 67286
-    - m_Data: 67288
-    - m_Data: 67290
-    - m_Data: 67292
-    - m_Data: 67294
-    - m_Data: 67296
-    - m_Data: 67298
-    - m_Data: 67300
-    - m_Data: 67302
-    - m_Data: 67304
-    - m_Data: 67306
-    - m_Data: 67308
+    - m_Data: 67338
+    - m_Data: 67340
+    - m_Data: 67342
+    - m_Data: 67344
+    - m_Data: 67346
+    - m_Data: 67348
+    - m_Data: 67350
+    - m_Data: 67352
+    - m_Data: 67354
+    - m_Data: 67356
+    - m_Data: 67358
+    - m_Data: 67360
+    - m_Data: 67362
+    - m_Data: 67364
+    - m_Data: 67366
+    - m_Data: 67368
+    - m_Data: 67370
+    - m_Data: 67372
+    - m_Data: 67374
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -21667,25 +21667,25 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 67272
-    - m_Data: 67274
-    - m_Data: 67276
-    - m_Data: 67278
-    - m_Data: 67280
-    - m_Data: 67282
-    - m_Data: 67284
-    - m_Data: 67286
-    - m_Data: 67288
-    - m_Data: 67290
-    - m_Data: 67292
-    - m_Data: 67294
-    - m_Data: 67296
-    - m_Data: 67298
-    - m_Data: 67300
-    - m_Data: 67302
-    - m_Data: 67304
-    - m_Data: 67306
-    - m_Data: 67308
+    - m_Data: 67338
+    - m_Data: 67340
+    - m_Data: 67342
+    - m_Data: 67344
+    - m_Data: 67346
+    - m_Data: 67348
+    - m_Data: 67350
+    - m_Data: 67352
+    - m_Data: 67354
+    - m_Data: 67356
+    - m_Data: 67358
+    - m_Data: 67360
+    - m_Data: 67362
+    - m_Data: 67364
+    - m_Data: 67366
+    - m_Data: 67368
+    - m_Data: 67370
+    - m_Data: 67372
+    - m_Data: 67374
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
