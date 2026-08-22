@@ -2515,6 +2515,18 @@ public static class LocalizationManager
             "Bauern mit Mistgabeln und störrischem Mut. Billig anzuheuern, schnell gefallen — doch eine volle Reihe macht aus einem aussichtslosen Angriff einen ausgeglichenen.",
             "Paysans armés de fourches et d'un courage têtu. Bon marché à engager, prompts à tomber, mais une ligne entière transforme un assaut désespéré en combat égal.",
             "Chłopi z widłami i upartą odwagą. Tani w najmie, szybko giną — lecz pełny szereg zmienia beznadziejny szturm w wyrównaną walkę.");
+
+        // Barracks / PreBattle static labels that AutoLocalize self-keys off the
+        // baked English text but had no dictionary entry (so they showed English).
+        Add7("[F] CLOSE", "[F] CLOSE", "[F] ЗАКРИТИ", "[F] ЗАКРЫТЬ", "[F] CERRAR", "[F] SCHLIESSEN", "[F] FERMER", "[F] ZAMKNIJ");
+        Add7("CHOOSE TACTIC", "CHOOSE TACTIC", "ОБЕРИ ТАКТИКУ", "ВЫБЕРИ ТАКТИКУ", "ELIGE TÁCTICA", "TAKTIK WÄHLEN", "CHOISIR UNE TACTIQUE", "WYBIERZ TAKTYKĘ");
+        Add7("Choose", "Choose", "Обрати", "Выбрать", "Elegir", "Wählen", "Choisir", "Wybierz");
+        Add7("Ambush", "Ambush", "Засідка", "Засада", "Emboscada", "Hinterhalt", "Embuscade", "Zasadzka");
+        Add7("Assault", "Assault", "Штурм", "Штурм", "Asalto", "Sturm", "Assaut", "Szturm");
+        Add7("Siege", "Siege", "Облога", "Осада", "Asedio", "Belagerung", "Siège", "Oblężenie");
+        Add7("ATK", "ATK", "АТК", "АТК", "ATQ", "ANG", "ATT", "ATK");
+        Add7("DEF", "DEF", "ЗАХ", "ЗАЩ", "DEF", "VERT", "DÉF", "OBR");
+        Add7("Subtitles", "Subtitles", "Субтитри", "Субтитры", "Subtítulos", "Untertitel", "Sous-titres", "Napisy");
         Add("MERC_AVAILABLE", "Available: {0}", "Доступно: {0}");
         Add("MERC_LEVEL_XY", "LEVEL {0} / {1}", "РІВЕНЬ {0} / {1}");
         Add("MERC_MAX_LEVEL", "MAX LEVEL", "МАКС РІВЕНЬ");
