@@ -339,9 +339,17 @@ public class RegionTotem : MonoBehaviour
         bool hasMed = mediumPrefabs != null && mediumPrefabs.Length > 0;
         bool hasElite = elitePrefabs != null && elitePrefabs.Length > 0;
 
-        GameObject[] bossPool = (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
-            ? standaloneBossPrefabs
-            : (manager != null && manager.currentRegion != null ? manager.currentRegion.regionBossPrefabs : null);
+        // Resolve the final-boss pool. Prefer explicit standalone bosses; then
+        // the RegionManager's active region; and finally fall back to
+        // GameManager.currentRegion — critical for world-gen-spawned totems,
+        // where `manager` is null and the boss phase would otherwise be empty.
+        GameObject[] bossPool = null;
+        if (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
+            bossPool = standaloneBossPrefabs;
+        else if (manager != null && manager.currentRegion != null)
+            bossPool = manager.currentRegion.regionBossPrefabs;
+        else if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+            bossPool = GameManager.Instance.currentRegion.regionBossPrefabs;
         bool hasBoss = bossPool != null && bossPool.Length > 0;
 
         // Warband — one mixed melee pack.
@@ -555,9 +563,17 @@ public class RegionTotem : MonoBehaviour
             yield return new WaitForSeconds(0.15f);
         }
 
-        GameObject[] bossPool = (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
-            ? standaloneBossPrefabs
-            : (manager != null && manager.currentRegion != null ? manager.currentRegion.regionBossPrefabs : null);
+        // Resolve the final-boss pool. Prefer explicit standalone bosses; then
+        // the RegionManager's active region; and finally fall back to
+        // GameManager.currentRegion — critical for world-gen-spawned totems,
+        // where `manager` is null and the boss phase would otherwise be empty.
+        GameObject[] bossPool = null;
+        if (standaloneBossPrefabs != null && standaloneBossPrefabs.Length > 0)
+            bossPool = standaloneBossPrefabs;
+        else if (manager != null && manager.currentRegion != null)
+            bossPool = manager.currentRegion.regionBossPrefabs;
+        else if (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
+            bossPool = GameManager.Instance.currentRegion.regionBossPrefabs;
         if (bossPool != null && bossPool.Length > 0)
             for (int i = 0; i < bossPool.Length; i++)
             {
