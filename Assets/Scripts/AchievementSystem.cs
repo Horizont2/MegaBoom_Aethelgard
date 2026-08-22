@@ -103,7 +103,7 @@ public static class AchievementSystem
 
         // Still play the celebratory sound so the moment lands
         // regardless of whether Steam overlay is enabled / offline mode.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Achievement);
 
         GameLog.Info($"[AchievementSystem] Unlocked '{key}': {def.title}");
     }

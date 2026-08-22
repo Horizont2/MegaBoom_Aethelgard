@@ -220,7 +220,7 @@ public class SettingsUI : MonoBehaviour
         if (invertYToggle) invertYToggle.onValueChanged.AddListener(v =>
         {
             PlayerPrefs.SetInt("Settings_InvertYAxis", v ? 1 : 0);
-            if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
+            if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Hover);
         });
 
         if (subtitlesToggle) subtitlesToggle.onValueChanged.AddListener(v => { PlayerPrefs.SetInt("Settings_Subtitles", v ? 1 : 0); });
@@ -429,7 +429,7 @@ public class SettingsUI : MonoBehaviour
         if (tabTexts == null || index < 0 || index >= tabTexts.Length) return;
 
         if (AudioManager.Instance != null && settingsPanel.activeSelf)
-            AudioManager.Instance.PlayUI("UI_Click");
+            AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         currentTabIndex = index;
         Vector3 targetWorldPos = tabTexts[index].rectTransform.position;
@@ -461,7 +461,7 @@ public class SettingsUI : MonoBehaviour
 
     public void OpenSettings()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Open);
 
         settingsPanel.SetActive(true);
         settingsPanel.transform.SetAsLastSibling();
@@ -631,7 +631,7 @@ public class SettingsUI : MonoBehaviour
 
     public void CloseSettings()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Back);
 
         if (masterSlider) PlayerPrefs.SetFloat("Settings_MasterVol", masterSlider.value);
         if (musicSlider) PlayerPrefs.SetFloat("Settings_MusicVol", musicSlider.value);
@@ -837,12 +837,12 @@ public class SettingsUI : MonoBehaviour
         else { if (sfxInput) sfxInput.text = sfxSlider.value.ToString("0"); }
     }
 
-    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover"); }
-    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover"); }
+    private void OnDamagePopupsChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Toggle); }
+    private void OnScreenShakeChanged(bool isOn) { if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Toggle); }
 
     private void OnFPSLimitChanged(bool isOn)
     {
-        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Toggle);
         ApplyFpsLimit(isOn);
     }
 
@@ -866,7 +866,7 @@ public class SettingsUI : MonoBehaviour
 
     private void OnShowFPSChanged(bool isOn)
     {
-        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI("UI_Hover");
+        if (AudioManager.Instance != null && settingsPanel.activeSelf) AudioManager.Instance.PlayUI(AudioID.UI_Toggle);
         PlayerPrefs.SetInt("Settings_ShowFPS", isOn ? 1 : 0);
         if (FPSDisplay.Instance != null) FPSDisplay.Instance.UpdateVisibility();
     }
@@ -1038,7 +1038,7 @@ public class AutoButtonAnimator : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (textToColor != null) textToColor.color = Color.Lerp(textToColor.color, targetColor, Time.unscaledDeltaTime * 15f);
     }
 
-    public void OnPointerEnter(PointerEventData eventData) { if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Hover"); targetScale = Vector3.one * 1.05f; if (isCloseButton) targetColor = hoverColor; }
+    public void OnPointerEnter(PointerEventData eventData) { if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Hover); targetScale = Vector3.one * 1.05f; if (isCloseButton) targetColor = hoverColor; }
     public void OnPointerExit(PointerEventData eventData) { targetScale = Vector3.one; if (isCloseButton) targetColor = normalColor; }
     public void OnPointerDown(PointerEventData eventData) { targetScale = Vector3.one * 0.95f; }
     public void OnPointerUp(PointerEventData eventData) { targetScale = Vector3.one * 1.05f; }

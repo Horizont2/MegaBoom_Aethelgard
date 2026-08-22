@@ -302,6 +302,19 @@ public class DayNightCycle : MonoBehaviour
             if (lightningCoroutine == null) lightningCoroutine = StartCoroutine(LightningRoutine());
         }
         else { if (lightningCoroutine != null) { StopCoroutine(lightningCoroutine); lightningCoroutine = null; } }
+
+        ApplyRainAmbience();
+    }
+
+    // Start/stop the looping rain bed to match the current weather. Rain only
+    // exists in the forest biome (biome 0), same as the rain VFX above.
+    private void ApplyRainAmbience()
+    {
+        if (AudioManager.Instance == null) return;
+        bool wet = currentBiome == 0 &&
+                   (currentWeather == WeatherState.Precipitation || currentWeather == WeatherState.Storm);
+        if (wet) AudioManager.Instance.PlaySFX(AudioID.Ambient_Rain);
+        else AudioManager.Instance.StopLoopedBed(AudioID.Ambient_Rain);
     }
 
     public void ForceWeather(WeatherState state)
@@ -314,6 +327,8 @@ public class DayNightCycle : MonoBehaviour
             if (lightningCoroutine == null) lightningCoroutine = StartCoroutine(LightningRoutine());
         }
         else { if (lightningCoroutine != null) { StopCoroutine(lightningCoroutine); lightningCoroutine = null; } }
+
+        ApplyRainAmbience();
     }
 
     private IEnumerator LightningRoutine()

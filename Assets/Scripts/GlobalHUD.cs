@@ -675,7 +675,7 @@ public class GlobalHUD : MonoBehaviour
 
         isPaused = !isPaused;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI("UI_Click");
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         // 1. ПОВЕРТАЄМО ВІДОБРАЖЕННЯ UI МЕНЮ
         if (isPaused)

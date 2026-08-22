@@ -161,6 +161,9 @@ public class ResourceNode : MonoBehaviour, IDamageable
 
         if (nodeType == NodeType.Tree)
         {
+            // Timber! Play the tree-fall crack/crash as the trunk starts to topple.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Env_TreeFall, transform.position);
+
             Vector3 pivotPoint = transform.position;
             Collider[] cols = GetComponentsInChildren<Collider>();
 
@@ -203,6 +206,9 @@ public class ResourceNode : MonoBehaviour, IDamageable
         }
         else
         {
+            // Rock/ore shatters — play the stone-break crumble.
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, transform.position);
+
             if (hitEffect != null)
             {
                 if (!hitEffect.gameObject.activeSelf) hitEffect.gameObject.SetActive(true);

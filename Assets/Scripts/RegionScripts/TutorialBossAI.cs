@@ -377,7 +377,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         {
             if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
             CameraShakeUtil.TryShake(0.35f, 0.15f);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, center);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Slam, center);
 
             if (playerTarget != null && playerTarget.currentHealth > 0)
             {
@@ -547,7 +547,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         slamChance = Mathf.Min(1f, slamChance + 0.2f);
 
         CameraShakeUtil.TryShake(0.5f, 0.2f);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Enrage, transform.position);
         StartCoroutine(EnrageFlashRoutine());
 
         // Summon a one-off pack of adds so the low-HP phase spikes in threat.

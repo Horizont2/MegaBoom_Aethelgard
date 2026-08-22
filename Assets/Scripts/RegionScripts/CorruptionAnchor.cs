@@ -104,7 +104,7 @@ public class CorruptionAnchor : MonoBehaviour, IDamageable
         if (dead) return;
         dead = true;
         if (destroyVFXPrefab != null) Instantiate(destroyVFXPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Region_AnchorDestroy, transform.position);
         CameraShakeUtil.TryShake(0.25f, 0.1f);
         onDestroyed?.Invoke(this);
         Destroy(gameObject);

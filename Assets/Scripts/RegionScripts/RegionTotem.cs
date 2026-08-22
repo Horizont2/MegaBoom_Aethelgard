@@ -676,6 +676,9 @@ public class RegionTotem : MonoBehaviour
         if (totemLight != null) { totemLight.color = new Color(0f, 0.8f, 1f); totemLight.intensity *= 3f; }
         CameraShakeUtil.TryShake(0.4f, 0.1f);
 
+        // Purification stinger — the region is cleansed.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Region_PurifyComplete);
+
         // The world visibly HEALS around the captured totem: a purification burst
         // sweeps out, the corrupt fog lifts to a lighter/warmer tone, and the
         // battle music releases back to calm.

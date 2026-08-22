@@ -179,7 +179,7 @@ public class XpCrystal : MonoBehaviour
 
         if (Time.time - lastPlayTime > 0.05f)
         {
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_XPPickup);
             lastPlayTime = Time.time;
         }
 

@@ -284,6 +284,10 @@ public class EnemySpawner : MonoBehaviour
             enemyScript.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
         }
 
+        // Rise-from-ground spawn cue, played 3D so it distance-attenuates and
+        // distant spawns don't clutter the mix.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Spawn, spawnPos);
+
         StartCoroutine(RiseFromGroundRoutine(newEnemy));
     }
 

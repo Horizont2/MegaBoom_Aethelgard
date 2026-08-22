@@ -793,6 +793,30 @@ public class AudioManager : MonoBehaviour
             Debug.LogWarning($"[AudioManager] PlaySFX('{soundName}') failed: {reason}. Further warnings for this key are suppressed.");
     }
 
+    // Low-health heartbeat: a single looping warning instance the player HUD
+    // toggles on/off as HP crosses the danger threshold. Kept separate from the
+    // pooled looped SFX so it can be driven by a simple bool without handles.
+    private EventInstance _lowHealthInst;
+    public void SetLowHealthWarning(bool active)
+    {
+        if (active)
+        {
+            if (_lowHealthInst.isValid()) return; // already warning
+            if (sfxDictionary != null && sfxDictionary.TryGetValue(AudioID.Player_LowHealth, out SoundGroup g)
+                && g != null && !g.fmodEvent.IsNull)
+            {
+                _lowHealthInst = RuntimeManager.CreateInstance(g.fmodEvent);
+                _lowHealthInst.start();
+            }
+        }
+        else if (_lowHealthInst.isValid())
+        {
+            _lowHealthInst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+            _lowHealthInst.release();
+            _lowHealthInst = default;
+        }
+    }
+
     public void PlaySFX3D(string soundName, Vector3 position)
     {
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group) && !group.fmodEvent.IsNull)
@@ -871,6 +895,20 @@ public class AudioManager : MonoBehaviour
             inst.release();
         }
         _loopingBeds.Clear();
+        // Kill the low-health heartbeat too so it can't bleed into a new scene.
+        SetLowHealthWarning(false);
+    }
+
+    // Stop a looping "one-shot" bed started via PlaySFX (e.g. AMB_Rain) by its
+    // AudioID, with a short fade. No-ops if it isn't currently playing.
+    public void StopLoopedBed(string soundName, float fadeSeconds = 0.8f)
+    {
+        if (_loopingBeds.TryGetValue(soundName, out EventInstance inst) && inst.isValid())
+        {
+            _loopingBeds.Remove(soundName);
+            if (fadeSeconds <= 0f) { inst.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); inst.release(); }
+            else StartCoroutine(FadeAndStopInstanceRoutine(inst, fadeSeconds));
+        }
     }
 
     public void StopLoopingSFX(int handle, float fadeSeconds = 0.4f)

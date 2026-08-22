@@ -31,6 +31,7 @@ public class AmbientSoundscape : MonoBehaviour
     {
         new AmbientEntry { id = AudioID.Ambient_Wind,        minDelay = 14f, maxDelay = 26f, weight = 3f },
         new AmbientEntry { id = AudioID.Ambient_Crow,        minDelay = 18f, maxDelay = 40f, weight = 2f },
+        new AmbientEntry { id = AudioID.Ambient_LeafRustle,  minDelay = 12f, maxDelay = 28f, weight = 2.5f },
     };
 
     private readonly List<AmbientEntry> combatEntries = new List<AmbientEntry>
@@ -39,6 +40,7 @@ public class AmbientSoundscape : MonoBehaviour
         new AmbientEntry { id = AudioID.Ambient_Howl,            minDelay = 22f, maxDelay = 48f, weight = 2.5f },
         new AmbientEntry { id = AudioID.Ambient_Crow,            minDelay = 16f, maxDelay = 32f, weight = 1.5f },
         new AmbientEntry { id = AudioID.Ambient_DistantThunder,  minDelay = 30f, maxDelay = 70f, weight = 1.5f },
+        new AmbientEntry { id = AudioID.Ambient_LeafRustle,      minDelay = 14f, maxDelay = 30f, weight = 2f },
     };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

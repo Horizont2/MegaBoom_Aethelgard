@@ -947,6 +947,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             currentHealth = Mathf.Min(currentHealth, maxHealth);
             UpdateHUD();
         }
+
+        // Low-health heartbeat warning: on below 25% HP (alive, in combat), off
+        // once healed back above the threshold. AudioManager de-dupes the loop.
+        if (AudioManager.Instance != null)
+        {
+            bool danger = !isCampMode && currentHealth > 0f && currentHealth <= maxHealth * 0.25f;
+            AudioManager.Instance.SetLowHealthWarning(danger);
+        }
     }
 
     // Layer mask used to detect both aim-raycast and trajectory collisions.
@@ -1529,6 +1537,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         isDashing = false;
+        // Soft touchdown thud as the dash settles — pairs with the dash whoosh.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Land);
 
         float elapsed = 0f;
         while (elapsed < 0.3f)
@@ -1626,6 +1636,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (hitEnemy)
         {
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(GetEquippedHitSfx());
+            // Extra crunch layer on a critical hit so crits read audibly.
+            if (isCriticalHit && AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Crit);
             Vector3 recoilDir = -transform.forward;
             if (isCriticalHit) { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.5f, 0.3f, 0.2f); StartCoroutine(HitStopRoutine(0.12f)); }
             else { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f); StartCoroutine(HitStopRoutine(0.04f)); }
@@ -1783,6 +1795,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (isDead) return;
         isDead = true;
+
+        // Silence the low-health heartbeat the instant the player dies.
+        if (AudioManager.Instance != null) AudioManager.Instance.SetLowHealthWarning(false);
 
         // Fold this run's tallies into the persistent career stats before
         // the run ends, then record the death. CommitToCareer no-ops if

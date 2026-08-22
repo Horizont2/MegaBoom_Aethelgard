@@ -187,6 +187,7 @@ public class DiamondPickup : MonoBehaviour
         }
 
         playerController.GainDiamond(diamondAmount);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_CoinPickup);
 
         if (TutorialHints.Instance != null)
             TutorialHints.Instance.ShowIfNew("DiamondPickup",

@@ -185,7 +185,7 @@ public class LoreCodexUIController : MonoBehaviour
     {
         if (panelRoot == null) return;
         panelRoot.SetActive(true);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Open);
         RepopulateList();
     }
 
@@ -193,7 +193,7 @@ public class LoreCodexUIController : MonoBehaviour
     {
         if (panelRoot == null) return;
         panelRoot.SetActive(false);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Close);
     }
 
     private void RepopulateList()
