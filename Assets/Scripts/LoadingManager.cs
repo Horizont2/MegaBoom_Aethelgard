@@ -184,7 +184,7 @@ public class LoadingManager : MonoBehaviour
     {
         while (true)
         {
-            if (hintText != null)
+            if (hintText != null && gameHints != null && gameHints.Length > 0)
                 // Wrap through Tr — hint strings are authored in English
                 // in the Inspector; the localisation table can override
                 // each one via self-keyed entries.
