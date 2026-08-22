@@ -264,11 +264,52 @@ public class AudioManager : MonoBehaviour
         }
         else
         {
+            // A second AudioManager exists in this scene. The first one to load
+            // (e.g. the BootLogo instance) wins and persists via DontDestroyOnLoad
+            // — but if THIS duplicate was authored with FMOD events the survivor
+            // lacks (because the survivor's scene serialization went stale after
+            // new SoundGroup fields were added), donate them before dying. This
+            // makes audio self-healing regardless of which scene loads first.
+            Instance.AdoptMissingEvents(this);
             Destroy(gameObject);
             return;
         }
 
         InitializeDictionaries();
+    }
+
+    // Copy any wired FMOD events from `other` into slots this instance is
+    // missing (null group or null event). Only fills gaps — never overwrites
+    // an already-wired event.
+    private void AdoptMissingEvents(AudioManager other)
+    {
+        if (other == null) return;
+        var otherDict = other.BuildDictionarySnapshot();
+        if (sfxDictionary == null) InitializeDictionaries();
+        int adopted = 0;
+        foreach (var kv in otherDict)
+        {
+            SoundGroup src = kv.Value;
+            if (src == null || src.fmodEvent.IsNull) continue;
+            if (!sfxDictionary.TryGetValue(kv.Key, out SoundGroup mine)) continue;
+            if (mine == null) { sfxDictionary[kv.Key] = src; adopted++; }
+            else if (mine.fmodEvent.IsNull) { mine.fmodEvent = src.fmodEvent; adopted++; }
+        }
+        if (adopted > 0)
+        {
+            Debug.LogWarning($"[AudioManager] Adopted {adopted} missing FMOD event(s) from a duplicate instance — the persistent AudioManager's scene serialization is stale. Re-open that scene and re-apply the AudioManager once to make this permanent.");
+            if (RuntimeManager.IsInitialized) PreloadAllSampleData();
+        }
+    }
+
+    // Build a name→SoundGroup map straight from this component's serialized
+    // fields (mirrors InitializeDictionaries) without disturbing state.
+    private Dictionary<string, SoundGroup> BuildDictionarySnapshot()
+    {
+        var d = sfxDictionary;
+        if (d != null) return d;
+        InitializeDictionaries();
+        return sfxDictionary;
     }
 
     private IEnumerator Start()
@@ -672,6 +713,20 @@ public class AudioManager : MonoBehaviour
 
     public void PlayUI(string soundName) { PlaySFX(soundName); }
 
+    // Graceful fallbacks: a handful of AudioIDs have no dedicated FMOD event
+    // authored yet (arrow impact, XP/coin pickup, boss slam/enrage). Rather
+    // than play silence at those moments, route them to the nearest wired
+    // event so the action always has audible feedback. Remove an entry once
+    // its real event is wired in the AudioManager inspector.
+    private static readonly Dictionary<string, string> s_sfxFallback = new Dictionary<string, string>
+    {
+        { AudioID.Arrow_Hit,          AudioID.Enemy_Hit },
+        { AudioID.Player_XPPickup,    AudioID.Camp_CollectGem },
+        { AudioID.Player_CoinPickup,  AudioID.Camp_CollectItem },
+        { AudioID.Boss_Slam,          AudioID.Region_Shockwave },
+        { AudioID.Boss_Enrage,        AudioID.Boss_Roar },
+    };
+
     // Warn once per missing sound so a broken bank / unwired SoundGroup
     // stops being invisible. Previously PlaySFX silently returned when
     // the FMOD event was null — that made "no enemy sounds" impossible
@@ -680,8 +735,21 @@ public class AudioManager : MonoBehaviour
 
     public void PlaySFX(string soundName)
     {
+        PlaySFX(soundName, allowFallback: true);
+    }
+
+    private void PlaySFX(string soundName, bool allowFallback)
+    {
         if (sfxDictionary.TryGetValue(soundName, out SoundGroup group))
         {
+            // Unwired event → try the nearest wired fallback once, so the
+            // action isn't silent while its dedicated event is unauthored.
+            if ((group == null || group.fmodEvent.IsNull) && allowFallback
+                && s_sfxFallback.TryGetValue(soundName, out string fb))
+            {
+                PlaySFX(fb, allowFallback: false);
+                return;
+            }
             if (group != null && !group.fmodEvent.IsNull)
             {
                 FMOD.RESULT r = RuntimeManager.StudioSystem.getEventByID(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
