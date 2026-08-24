@@ -124,6 +124,19 @@ public class CampBuilding : MonoBehaviour
         // coroutine between scene loads) the raw "New Text" placeholder can
         // flash on screen the moment the camp scene finishes loading.
         if (aaaPanel != null && aaaPanel.activeSelf) aaaPanel.SetActive(false);
+
+        // These labels are set by code (BUILD vs UPGRADE by level, live info /
+        // costs). AutoLocalize was re-capturing the baked "HOLD [E] TO BUILD"
+        // and re-applying it whenever the panel re-enabled, which fought the
+        // 1-second UpdateUIData refresh and made the hint flip BUILD<->UPGRADE.
+        MarkNoAutoLocalize(buildHintTMP);
+        MarkNoAutoLocalize(infoTMP);
+    }
+
+    private static void MarkNoAutoLocalize(TMPro.TextMeshProUGUI t)
+    {
+        if (t != null && t.GetComponent<NoAutoLocalize>() == null)
+            t.gameObject.AddComponent<NoAutoLocalize>();
     }
 
     private void OnEnable()

@@ -28,6 +28,8 @@ public class MissionUIElement : MonoBehaviour
     private Color originalBgColor = Color.white;
     private bool originalBgCached = false;
 
+    private bool _setupCalled = false;
+
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
@@ -38,15 +40,33 @@ public class MissionUIElement : MonoBehaviour
             originalBgCached = true;
         }
 
-        if (animateAppearance)
-        {
-            canvasGroup.alpha = 0f;
-        }
+        // Start HIDDEN and blank the prefab's placeholder text. The tile is only
+        // meaningful once Setup() gives it a real mission — otherwise (e.g. in the
+        // camp after a scene transition where no mission is assigned) it showed
+        // the raw "New Text" placeholder in the top-left. It reveals itself in
+        // Setup. Also stop AutoLocalize from re-keying the placeholder.
+        if (titleText != null) { titleText.text = ""; MarkNoAutoLocalize(titleText); }
+        if (descriptionText != null) { descriptionText.text = ""; MarkNoAutoLocalize(descriptionText); }
+        if (canvasGroup != null) canvasGroup.alpha = 0f;
+    }
+
+    private void OnEnable()
+    {
+        // If the object gets re-enabled without a mission (scene transitions
+        // re-activate HUD panels), keep it hidden until Setup runs.
+        if (!_setupCalled && canvasGroup != null) canvasGroup.alpha = 0f;
+    }
+
+    private static void MarkNoAutoLocalize(TextMeshProUGUI t)
+    {
+        if (t != null && t.GetComponent<NoAutoLocalize>() == null)
+            t.gameObject.AddComponent<NoAutoLocalize>();
     }
 
     public void Setup(string title, string description, int current, int target)
     {
         isCompleted = false;
+        _setupCalled = true;
         StopAllCoroutines();
 
         // Restore the background if a previous CompleteMission flash was
@@ -128,6 +148,7 @@ public class MissionUIElement : MonoBehaviour
     public void SetCompletedStateInstant()
     {
         isCompleted = true;
+        _setupCalled = true;
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
         if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
 

@@ -14,6 +14,7 @@ public class RegionManager : MonoBehaviour
     public GameObject corruptionTransferVFX;
 
     private int currentTotemIndex = 0;
+    private bool _finalPurificationStarted = false; // guards the victory cinematic against re-entry
     private PlayerController playerController;
 
     private void Start()
@@ -164,6 +165,12 @@ public class RegionManager : MonoBehaviour
         }
         else
         {
+            // Guard: only run the victory cinematic (and its stingers) ONCE.
+            // If OnTotemPurified is somehow reached again, the second run stacked
+            // another victory stinger — that was the "victory sound plays many
+            // times" bug.
+            if (_finalPurificationStarted) return;
+            _finalPurificationStarted = true;
             StartCoroutine(FinalRegionPurificationRoutine(purifiedTotem.transform.position));
         }
     }
@@ -334,10 +341,11 @@ public class RegionManager : MonoBehaviour
             yield return null;
         }
 
-        // Quest-complete sting at apex
+        // Quest-complete sting at apex. The triumphant VICTORY stinger is saved
+        // for the title-card reveal in phase 4 so it only plays once — firing it
+        // here too stacked a double hit.
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
             AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
         }
         if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
