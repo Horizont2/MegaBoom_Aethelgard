@@ -444,6 +444,25 @@ public static class LocalizationManager
         Add7("Press SPACE to Continue","Press SPACE to Continue","Натисни ПРОБІЛ, щоб продовжити","Нажми ПРОБЕЛ, чтобы продолжить","Pulsa ESPACIO para continuar","LEERTASTE zum Fortfahren","ESPACE pour continuer","Naciśnij SPACJĘ, by kontynuować");
         Add7("Press E to Enter the Shop","Press E to Enter the Shop","E — увійти в магазин","E — войти в магазин","Pulsa E para la tienda","E zum Betreten des Ladens","E pour la boutique","E — wejdź do sklepu");
         Add7("There are no new contracts right now. Come back later.","There are no new contracts right now. Come back later.","Нових контрактів поки немає. Зазирни пізніше.","Новых контрактов пока нет. Загляни позже.","No hay contratos nuevos ahora. Vuelve más tarde.","Derzeit keine neuen Aufträge. Komm später wieder.","Aucun contrat pour l'instant. Reviens plus tard.","Brak nowych kontraktów. Wróć później.");
+        // ── Settings: remaining toggles / headers ──
+        Add7("V-Sync",        "V-Sync",        "Верт. синхр.",   "Верт. синхр.",   "V-Sync",         "V-Sync",         "V-Sync",         "V-Sync");
+        Add7("Voice",         "Voice",         "Голос",          "Голос",          "Voz",            "Stimme",         "Voix",           "Głos");
+        Add7("Window Mode",   "Window Mode",   "Режим вікна",    "Режим окна",     "Modo ventana",   "Fenstermodus",   "Mode fenêtre",   "Tryb okna");
+        Add7("VISUAL AIDS",   "VISUAL AIDS",   "ВІЗУАЛЬНА ДОПОМОГА","ВИЗУАЛЬНАЯ ПОМОЩЬ","AYUDAS VISUALES","SEHHILFEN",     "AIDES VISUELLES","POMOC WIZUALNA");
+        Add7("UI",            "UI",            "Інтерфейс",      "Интерфейс",      "IU",             "UI",             "IU",             "UI");
+        Add7("TUTORIAL",      "TUTORIAL",      "НАВЧАННЯ",       "ОБУЧЕНИЕ",       "TUTORIAL",       "TUTORIAL",       "TUTORIEL",       "SAMOUCZEK");
+        Add7("Tutorial Hints","Tutorial Hints","Підказки навчання","Подсказки обучения","Consejos","Tutorial-Tipps", "Conseils",       "Podpowiedzi");
+        // ── Barracks: upgrade tabs / cost ──
+        Add7("UPGRADE BARRACKS","UPGRADE BARRACKS","ПОКРАЩИТИ КАЗАРМИ","УЛУЧШИТЬ КАЗАРМЫ","MEJORAR CUARTEL","KASERNE VERBESSERN","AMÉLIORER CASERNE","ULEPSZ KOSZARY");
+        Add7("UPGRADE UNITS", "UPGRADE UNITS", "ПОКРАЩИТИ ЮНІТІВ","УЛУЧШИТЬ ЮНИТОВ", "MEJORAR UNIDADES","EINHEITEN VERBESSERN","AMÉLIORER UNITÉS","ULEPSZ JEDNOSTKI");
+        Add7("UPGRADE COST",  "UPGRADE COST",  "ВАРТІСТЬ",       "СТОИМОСТЬ",      "COSTE",          "KOSTEN",         "COÛT",           "KOSZT");
+        Add7("Win Probability","Win Probability","Шанс перемоги","Шанс победы",    "Prob. de victoria","Siegchance",   "Chance de victoire","Szansa wygranej");
+        // ── Death screen ──
+        Add7("YOU DIED",      "YOU DIED",      "ТИ ЗАГИНУВ",     "ТЫ ПОГИБ",       "HAS MUERTO",     "DU BIST TOT",    "VOUS ÊTES MORT", "ZGINĄŁEŚ");
+        Add7("Try again",     "Try again",     "Спробувати знову","Попробовать снова","Reintentar",   "Erneut versuchen","Réessayer",     "Spróbuj ponownie");
+        // ── Misc HUD ──
+        Add7("Crystals:",     "Crystals:",     "Кристали:",      "Кристаллы:",     "Cristales:",     "Kristalle:",     "Cristaux :",     "Kryształy:");
+        Add7("Press Esc or Space to skip...","Press Esc or Space to skip...","Esc або Пробіл, щоб пропустити...","Esc или Пробел, чтобы пропустить...","Esc o Espacio para saltar...","Esc oder Leertaste zum Überspringen...","Échap ou Espace pour passer...","Esc lub Spacja, aby pominąć...");
     }
 
     private static void SeedLore()
