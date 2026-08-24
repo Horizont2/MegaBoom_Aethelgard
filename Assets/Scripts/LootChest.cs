@@ -76,7 +76,10 @@ public class LootChest : MonoBehaviour
 
         // Правильний звук відкриття скрині замість перевикористаного
         // звуку рубання дерева, який тут стояв раніше.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Env_ChestOpen);
+        // MUST be 3D: the WoodChestOpen FMOD event is spatialised, so the 2D
+        // PlaySFX played it at world origin (0,0,0) and it attenuated to silence
+        // away from there — that's why the chest sound never seemed to play.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Env_ChestOpen, transform.position);
 
         float elapsed = 0f;
         while (elapsed < shakeDuration)

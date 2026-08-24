@@ -175,6 +175,8 @@ public class AudioManager : MonoBehaviour
 
     [Header("=== AMBIENT SOUNDSCAPE ===")]
     public SoundGroup ambientWind;
+    [Tooltip("Looping fire crackle for the camp bonfire. Wire an FMOD fire-loop event or CampfireAudio stays silent.")]
+    public SoundGroup ambientCampFire;
     public SoundGroup ambientHowl;
     public SoundGroup ambientCrow;
     public SoundGroup ambientDistantThunder;
@@ -669,6 +671,7 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Player_PerfectDodge, playerPerfectDodge);
 
         sfxDictionary.Add(AudioID.Ambient_Wind, ambientWind);
+        sfxDictionary.Add(AudioID.Ambient_CampFire, ambientCampFire);
         sfxDictionary.Add(AudioID.Ambient_Howl, ambientHowl);
         sfxDictionary.Add(AudioID.Ambient_Crow, ambientCrow);
         sfxDictionary.Add(AudioID.Ambient_DistantThunder, ambientDistantThunder);
