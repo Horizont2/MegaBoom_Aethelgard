@@ -35,6 +35,17 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] altarPrefabs;
     public int altarsAmount = 2; // Скільки вівтарів гарантовано з'явиться на мапі
 
+    [Header("Caged Ally Event (roadside captive + skeleton guards)")]
+    [Tooltip("Skeleton prefabs that guard the cage. Reuse the region's enemy prefabs.")]
+    public GameObject[] cagedAllyGuardPrefabs;
+    [Tooltip("The captive humanoid freed on clearing the guards (e.g. Knight). AllyAI is added automatically.")]
+    public GameObject cagedAllyPrefab;
+    [Range(0f, 1f)]
+    [Tooltip("Chance a road dead-end hosts a caged-ally event instead of an altar.")]
+    public float cagedAllyChance = 0.35f;
+    public int maxCagedAllies = 2;
+    private int spawnedCagedAllies = 0;
+
     [Header("Smart Road System")]
     public TerrainLayer roadLayer; // Текстура доріг (має бути 5-м шаром в масиві)
     public float roadWidth = 5f;
@@ -3160,8 +3171,30 @@ public class WorldGenerator : MonoBehaviour
                 {
                     endSpawn.y = terrain.SampleHeight(endSpawn) + transform.position.y;
 
+                    // Caged-ally event: a captive guarded by a skeleton pack. Takes
+                    // priority on some dead-ends (chance-gated + capped) — clearing
+                    // the guards frees an ally that fights for the player.
+                    bool spawnedCaged = false;
+                    if (spawnedCagedAllies < maxCagedAllies
+                        && cagedAllyGuardPrefabs != null && cagedAllyGuardPrefabs.Length > 0
+                        && cagedAllyPrefab != null
+                        && GetRandomFloat() < cagedAllyChance)
+                    {
+                        GameObject go = new GameObject("CagedAllyEvent");
+                        go.transform.SetParent(decorContainer);
+                        go.transform.position = endSpawn;
+                        CagedAllyEvent ev = go.AddComponent<CagedAllyEvent>();
+                        ev.guardPrefabs = cagedAllyGuardPrefabs;
+                        ev.allyPrefab = cagedAllyPrefab;
+                        spawnedCagedAllies++;
+                        forbiddenZones.Add(endSpawn);
+                        spawnedCaged = true;
+                        GameLog.Info($"[Smart Roads] Caged-ally event spawned at {endSpawn} ({spawnedCagedAllies}/{maxCagedAllies}).");
+                    }
+
                     // ФІКС: Ніяких перевірок IsPositionClear. Ставимо Алтар СИЛОЮ!
-                    if (spawnedAltars < altarsAmount && altarPrefabs != null && altarPrefabs.Length > 0)
+                    if (spawnedCaged) { /* dead-end taken by the caged-ally event */ }
+                    else if (spawnedAltars < altarsAmount && altarPrefabs != null && altarPrefabs.Length > 0)
                     {
                         GameObject prefab = GetRandomPrefab(altarPrefabs);
                         Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
