@@ -236,14 +236,16 @@ public class CampWorkerAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
 
             agent.isStopped = false;
-            agent.stoppingDistance = workDistance;
-            // Pathfind to a point OUTSIDE the tree trunk instead of at
-            // its centre. Anywhere from 0.8-1.4m reads as "next to the
-            // tree" — user picked 1.0 as the tightest that doesn't clip.
+            // Reach the approach point itself (small stopping distance) so the
+            // worker actually stands NEXT to the trunk instead of halting
+            // ~1.8m short (old stoppingDistance = workDistance stacked on the
+            // 1m offset made it chop from too far away).
+            agent.stoppingDistance = 0.15f;
+            // Pathfind to a point just outside the tree trunk.
             Vector3 approachOffset = transform.position - targetTree.transform.position;
             approachOffset.y = 0f;
             if (approachOffset.sqrMagnitude < 0.01f) approachOffset = Vector3.forward;
-            approachOffset = approachOffset.normalized * 1.0f;
+            approachOffset = approachOffset.normalized * 1.1f;
             Vector3 approachPos = targetTree.transform.position + approachOffset;
             agent.SetDestination(approachPos);
 
@@ -266,14 +268,19 @@ public class CampWorkerAI : MonoBehaviour
                     transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
             }
 
-            if (targetTree != null && !targetTree.isChopped)
+            // Don't chop from across the clearing: if the path didn't actually
+            // reach the tree (timed out far away), skip this cycle rather than
+            // swinging at thin air.
+            bool closeEnough = targetTree != null &&
+                Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z),
+                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 2.2f;
+
+            if (closeEnough && !targetTree.isChopped)
             {
                 while (targetTree != null && !targetTree.isChopped)
                 {
-                    Vector3 lookPos = targetTree.transform.position;
-                    lookPos.y = transform.position.y;
-                    transform.LookAt(lookPos);
-
+                    // Already facing the tree from the arrival turn above — no
+                    // per-hit LookAt snap.
                     if (anim != null) anim.SetTrigger("Work");
                     // 3D so the chopping sound sits at the worker/tree in
                     // the world instead of glued to the player's ears.

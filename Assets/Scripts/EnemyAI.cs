@@ -93,6 +93,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private int updateSkipCounter = 0;
     private PlayerController playerTarget;
+    // When a friendly ally is nearer than the player, the enemy fights IT instead.
+    private IDamageable currentTargetDamageable;   // who ExecuteAttackDamage actually hits
+    private AllyAI allyTarget;
+    private float nextAllyScanTime;
     private Animator animator;
     private bool isDead = false;
     // ONE tracked handle for the enemy's current combat vocal — the
@@ -136,6 +140,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
             t = s_player; pc = s_playerController; return true;
         }
         t = null; pc = null; return false;
+    }
+
+    // Nearest living ally companion within `range`, or null. Uses AllyAI's static
+    // registry so this is cheap even with many enemies.
+    private AllyAI FindNearestAlly(float range)
+    {
+        var list = AllyAI.Active;
+        if (list == null || list.Count == 0) return null;
+        AllyAI best = null;
+        float bestSqr = range * range;
+        Vector3 p = transform.position;
+        for (int i = 0; i < list.Count; i++)
+        {
+            AllyAI a = list[i];
+            if (a == null) continue;
+            float sq = (a.transform.position - p).sqrMagnitude;
+            if (sq < bestSqr) { bestSqr = sq; best = a; }
+        }
+        return best;
     }
 
     private static Terrain CachedTerrain
@@ -451,6 +474,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             if (animator != null) animator.SetBool("isMoving", false);
             return;
+        }
+
+        // Retarget: fight the player by default, but if a living ally companion is
+        // CLOSER, switch to it — so freed captives/mercenaries actually draw and
+        // trade blows with enemies instead of being ignored.
+        if (Time.time >= nextAllyScanTime)
+        {
+            nextAllyScanTime = Time.time + 0.3f;
+            allyTarget = FindNearestAlly(18f);
+        }
+        if (allyTarget != null)
+        {
+            float dPlayer = playerTarget != null ? (playerTarget.transform.position - transform.position).sqrMagnitude : float.MaxValue;
+            float dAlly = (allyTarget.transform.position - transform.position).sqrMagnitude;
+            if (dAlly < dPlayer) { target = allyTarget.transform; currentTargetDamageable = allyTarget; }
+            else { if (playerTarget != null) target = playerTarget.transform; currentTargetDamageable = playerTarget; }
+        }
+        else
+        {
+            if (playerTarget != null) target = playerTarget.transform;
+            currentTargetDamageable = playerTarget;
         }
 
         CheckNightBuff();
@@ -944,7 +988,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     public void ExecuteAttackDamage()
     {
-        if (isDead || playerTarget == null || playerTarget.currentHealth <= 0) return;
+        if (isDead || target == null) return;
+        // Resolve who we're actually swinging at (ally or player). Fall back to
+        // the player if the cached damageable was cleared.
+        IDamageable tgt = currentTargetDamageable;
+        if (tgt == null) tgt = playerTarget;
+        if (tgt == null) return;
+        // Don't hit a dead player.
+        if (tgt == (IDamageable)playerTarget && playerTarget != null && playerTarget.currentHealth <= 0) return;
+
         if (Vector3.Distance(transform.position, target.position) <= attackRange + 1f)
         {
             // Name feeds the death recap "Slain by …" line. Uses the
@@ -953,7 +1005,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             string src = gameObject.name;
             int cloneIdx = src.IndexOf("(Clone)");
             if (cloneIdx > 0) src = src.Substring(0, cloneIdx).TrimEnd();
-            playerTarget.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = src });
+            tgt.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = src });
             // Landed-hit impact SFX. Enemy_Hit is the meaty thud; the
             // player's own Hurt SFX plays inside TakeDamage.
             if (AudioManager.Instance != null)

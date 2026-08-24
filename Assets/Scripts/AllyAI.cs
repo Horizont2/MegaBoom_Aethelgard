@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 // Lightweight friendly companion — e.g. a freed caged mercenary. Follows the
 // player, seeks the nearest enemy within aggro range, closes to melee and
@@ -16,10 +17,14 @@ public class AllyAI : MonoBehaviour, IDamageable
 
     [Header("Combat")]
     public float attackRange = 1.8f;
-    public float attackCooldown = 1.2f;
+    [Tooltip("Seconds between the START of one swing and the next. Must be >= the attack clip length or the ally re-triggers mid-swing and deals two hits per animation.")]
+    public float attackCooldown = 1.4f;
     public float damage = 20f;
-    [Tooltip("Delay from the swing starting to the hit landing (sync with the attack anim).")]
-    public float attackImpactDelay = 0.25f;
+    [Tooltip("Delay from the swing starting to the hit landing — should match the weapon-contact frame of the attack clip.")]
+    public float attackImpactDelay = 0.9f;
+    [Tooltip("Length of the attack animation; the ally is locked from re-attacking for this long so one windup = one hit.")]
+    public float attackClipLength = 1.4f;
+    private bool isAttacking;
 
     [Header("Survivability")]
     [Tooltip("The ally CAN die — it isn't invincible. Kept modest so a freed captive is a helper, not a juggernaut.")]
@@ -42,12 +47,22 @@ public class AllyAI : MonoBehaviour, IDamageable
     private bool leaving;
     private static readonly Collider[] s_buf = new Collider[24];
 
+    // Global registry so enemies can find nearby allies cheaply (no per-enemy
+    // FindObjectsByType). Kept in sync via OnEnable/OnDisable.
+    public static readonly List<AllyAI> Active = new List<AllyAI>();
+
     private void OnEnable()
     {
         bornTime = Time.time;
         lastAttackTime = -999f;
         currentHealth = maxHealth;
         dead = false;
+        if (!Active.Contains(this)) Active.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        Active.Remove(this);
     }
 
     // IDamageable — grenades, boss AoE, and any area attack that hits the ally's
@@ -101,6 +116,8 @@ public class AllyAI : MonoBehaviour, IDamageable
             }
         }
 
+        if (isAttacking) { SetMoving(false); return; } // one swing at a time — no double-hit
+
         Component enemy = FindNearestEnemy();
         if (enemy != null)
         {
@@ -112,8 +129,7 @@ public class AllyAI : MonoBehaviour, IDamageable
                 if (Time.time >= lastAttackTime + attackCooldown)
                 {
                     lastAttackTime = Time.time;
-                    if (animator != null) animator.SetTrigger("Attack");
-                    StartCoroutine(DealAfterDelay(enemy, attackImpactDelay));
+                    StartCoroutine(AttackRoutine(enemy));
                 }
             }
             else { MoveToward(ep); SetMoving(true); }
@@ -131,16 +147,28 @@ public class AllyAI : MonoBehaviour, IDamageable
         }
     }
 
-    private IEnumerator DealAfterDelay(Component target, float delay)
+    // One full swing: lock out re-attacking for the clip length, trigger the
+    // anim, land exactly ONE hit at the contact frame. This fixes the "winds up
+    // once but hits twice" bug (the 2.4s clip fit two 1.2s cooldowns).
+    private IEnumerator AttackRoutine(Component target)
     {
-        yield return new WaitForSeconds(delay);
+        isAttacking = true;
+        if (animator != null) animator.SetTriggerSafe("Attack");
+
+        yield return new WaitForSeconds(attackImpactDelay);
+
         // Component == null uses Unity's lifetime check, so a target destroyed
         // mid-swing is safely skipped.
-        if (target == null) yield break;
-        IDamageable dmg = target as IDamageable;
-        if (dmg == null) yield break;
-        dmg.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = "Ally" });
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+        if (target != null && target is IDamageable dmg && !dead)
+        {
+            dmg.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = "Ally" });
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+        }
+
+        // Hold the lock until the swing animation is actually finished.
+        float rest = Mathf.Max(0f, attackClipLength - attackImpactDelay);
+        if (rest > 0f) yield return new WaitForSeconds(rest);
+        isAttacking = false;
     }
 
     // Nearest enemy on the enemy layer (9). Returns the EnemyAI/TutorialBossAI
@@ -165,13 +193,17 @@ public class AllyAI : MonoBehaviour, IDamageable
         return best;
     }
 
+    private float _curSpeed; // ramped, for non-robotic accel/decel
+
     private void MoveToward(Vector3 dest)
     {
         Vector3 dir = dest - transform.position; dir.y = 0f;
         float d = dir.magnitude;
         if (d < 0.001f) return;
         dir /= d;
-        Vector3 next = transform.position + dir * moveSpeed * Time.deltaTime;
+        // Ease speed up/down instead of snapping to full velocity instantly.
+        _curSpeed = Mathf.MoveTowards(_curSpeed, moveSpeed, moveSpeed * 3f * Time.deltaTime);
+        Vector3 next = transform.position + dir * _curSpeed * Time.deltaTime;
         next.y = GroundY(next);
         transform.position = next;
     }
@@ -183,7 +215,17 @@ public class AllyAI : MonoBehaviour, IDamageable
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
     }
 
-    private void SetMoving(bool m) { if (animator != null) animator.SetBool("isMoving", m); }
+    private void SetMoving(bool m)
+    {
+        if (animator == null) return;
+        if (!m) _curSpeed = Mathf.MoveTowards(_curSpeed, 0f, moveSpeed * 4f * Time.deltaTime);
+        // Drive BOTH conventions safely: a plain "isMoving" bool AND the
+        // Speed/MoveX/MoveZ blend-tree params HeroAnimator uses. Set…Safe no-ops
+        // when a param is absent, so nothing warns whichever controller is on it.
+        animator.SetBoolSafe("isMoving", m);
+        animator.SetBoolSafe("IsGrounded", true);
+        animator.SetFloatSafe("Speed", m ? _curSpeed : 0f);
+    }
 
     private static float FlatDist(Vector3 a, Vector3 b)
     {

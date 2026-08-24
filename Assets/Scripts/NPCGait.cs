@@ -112,11 +112,33 @@ public static class NPCGait
     // Ground-snap helper for grass-heavy terrain that lifts the agent up.
     // Call from LateUpdate. Only kicks in on drifts > threshold so cliff
     // edges and small NavMesh height variations aren't clobbered.
+    private static readonly RaycastHit[] s_groundHits = new RaycastHit[8];
+
     public static void GroundSnap(Transform t, float driftThreshold = 0.2f)
     {
-        if (t == null || Terrain.activeTerrain == null) return;
-        Terrain terrain = Terrain.activeTerrain;
-        float groundY = terrain.SampleHeight(t.position) + terrain.transform.position.y;
+        if (t == null) return;
+
+        // Prefer a real downward raycast so NPCs standing on a wooden deck /
+        // raised camp floor snap to THAT surface. Terrain.SampleHeight ignores
+        // mesh colliders, so at the campfire (often on a non-terrain floor) it
+        // buried the NPC underground — most visible during the low ground-sit.
+        float groundY;
+        Vector3 origin = t.position + Vector3.up * 3f;
+        int n = Physics.RaycastNonAlloc(origin, Vector3.down, s_groundHits, 8f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NegativeInfinity; bool found = false;
+        for (int i = 0; i < n; i++)
+        {
+            var h = s_groundHits[i];
+            if (h.collider == null || h.collider.isTrigger) continue;
+            // Ignore the NPC's own colliders.
+            if (h.collider.transform == t || h.collider.transform.IsChildOf(t)) continue;
+            if (h.point.y > best) { best = h.point.y; found = true; }
+        }
+        if (found) groundY = best;
+        else if (Terrain.activeTerrain != null)
+            groundY = Terrain.activeTerrain.SampleHeight(t.position) + Terrain.activeTerrain.transform.position.y;
+        else return;
+
         float drift = t.position.y - groundY;
         if (Mathf.Abs(drift) > driftThreshold)
         {
