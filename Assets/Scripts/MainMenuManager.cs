@@ -40,6 +40,22 @@ public class MainMenuManager : MonoBehaviour
     public Transform heroSpawnPoint;
     public RuntimeAnimatorController menuAnimatorController;
 
+    private void Awake()
+    {
+        // Mark the Continue/Start button label so AutoLocalize never overwrites
+        // it — its text is chosen by CheckContinueStatus (Continue vs Start
+        // Adventure) and AutoLocalize was reverting it to the baked "Continue"
+        // on the boot language-apply, so it read "Продовжити" even before the
+        // tutorial was done. Done in Awake so the marker is present before
+        // AutoLocalize captures texts.
+        if (continueButton != null)
+        {
+            var lbl = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (lbl != null && lbl.GetComponent<NoAutoLocalize>() == null)
+                lbl.gameObject.AddComponent<NoAutoLocalize>();
+        }
+    }
+
     private void Start()
     {
         Cursor.visible = true;
@@ -49,6 +65,15 @@ public class MainMenuManager : MonoBehaviour
         CheckContinueStatus();
         SpawnSelectedHero();
         WireExtendedMenu();
+
+        // Re-evaluate the label on language change (it's excluded from
+        // AutoLocalize, so nothing else would refresh it).
+        LocalizationManager.OnLanguageChanged += CheckContinueStatus;
+    }
+
+    private void OnDestroy()
+    {
+        LocalizationManager.OnLanguageChanged -= CheckContinueStatus;
     }
 
     // Wire the optional New Game / Credits / Quit buttons + confirm

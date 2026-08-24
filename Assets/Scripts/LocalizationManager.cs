@@ -2384,7 +2384,7 @@ public static class LocalizationManager
         // Same mixed-case pair for the other locales — MainMenuManager
         // sets these at runtime, they aren't inspector-baked.
         Add7("Continue", "Continue", "Продовжити", "Продолжить", "Continuar", "Fortsetzen", "Continuer", "Kontynuuj");
-        Add7("Start Adventure!", "Start Adventure!", "Почати пригоду!", "Начать приключение!", "¡Comenzar aventura!", "Abenteuer starten!", "Commencer l'aventure !", "Rozpocznij przygodę!");
+        Add7("Start Adventure!", "Start Adventure!", "Почати подорож", "Начать приключение!", "¡Comenzar aventura!", "Abenteuer starten!", "Commencer l'aventure !", "Rozpocznij przygodę!");
         Add7("You sure?\nAll journey progress will be lost",
              "You sure?\nAll journey progress will be lost",
              "Точно?\nВесь прогрес подорожі буде втрачено",

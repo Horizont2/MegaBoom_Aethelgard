@@ -101,6 +101,9 @@ public class AutoLocalize : MonoBehaviour
             // a DontLocalize tag set up.
             if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.tag == ignoreTag) continue;
             if (t.GetComponent<LocalizedText>() != null) continue;
+            // Skip labels whose text is driven by code (marked NoAutoLocalize on
+            // themselves or an ancestor) — e.g. the menu Continue/Start button.
+            if (t.GetComponentInParent<NoAutoLocalize>() != null) continue;
             // Skip TMP_Dropdown's own captionText / itemText — the dropdown
             // owns them and re-renders their text every time the value
             // changes. If we capture them we end up overwriting "Polski"
@@ -117,6 +120,7 @@ public class AutoLocalize : MonoBehaviour
             if (t == null) continue;
             if (!string.IsNullOrEmpty(ignoreTag) && t.gameObject.tag == ignoreTag) continue;
             if (IsPartOfDropdown(t.transform)) continue;
+            if (t.GetComponentInParent<NoAutoLocalize>() != null) continue;
             string key = (t.text ?? "").Trim();
             if (string.IsNullOrEmpty(key)) continue;
             legacyTargets.Add((t, key));
