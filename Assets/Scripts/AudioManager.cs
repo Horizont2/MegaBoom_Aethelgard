@@ -744,7 +744,13 @@ public class AudioManager : MonoBehaviour
         var inst = RuntimeManager.CreateInstance(group.fmodEvent);
         if (!inst.isValid()) return;
         inst.start();
-        StartCoroutine(StopInstanceAfter(inst, Mathf.Max(0.1f, maxSeconds)));
+        // Stop after ONE playthrough. The event is authored looping, so if we
+        // waited a fixed 6s it repeated ~6×. Use the event's authored length so
+        // exactly one pass plays, capped by maxSeconds.
+        float stopAfter = maxSeconds;
+        if (desc.getLength(out int lenMs) == FMOD.RESULT.OK && lenMs > 0)
+            stopAfter = Mathf.Min(maxSeconds, lenMs / 1000f + 0.05f);
+        StartCoroutine(StopInstanceAfter(inst, Mathf.Max(0.1f, stopAfter)));
     }
 
     private IEnumerator StopInstanceAfter(EventInstance inst, float seconds)

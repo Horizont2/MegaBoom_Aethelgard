@@ -250,7 +250,7 @@ public class RegionManager : MonoBehaviour
             GlobalHUD.Instance.ShowSkipPrompt(LocalizationManager.Tr("Press <b>SPACE</b> to Skip"));
         }
 
-        if (playerController != null) playerController.isControlBlocked = true;
+        if (playerController != null) { playerController.isControlBlocked = true; playerController.isCinematicInvincible = true; }
 
         Camera mainCam = Camera.main;
         CameraFollow camFollow = mainCam != null ? mainCam.GetComponent<CameraFollow>() : null;
@@ -436,7 +436,7 @@ public class RegionManager : MonoBehaviour
         CinematicHandheld.End(mainCam);
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
-        if (playerController != null) playerController.isControlBlocked = false;
+        if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
 
         if (currentRegion != null)
         {
@@ -519,7 +519,7 @@ public class RegionManager : MonoBehaviour
         CinematicHandheld.End(mainCam);
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
-        if (playerController != null) playerController.isControlBlocked = false;
+        if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
 
         if (currentRegion != null)
         {

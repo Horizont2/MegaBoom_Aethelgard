@@ -9,6 +9,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     [Header("Scene Mode")]
     public bool isCampMode = false;
     [HideInInspector] public bool isControlBlocked = false;
+    // Set during victory / defeat cinematics: the player can't act, so lingering
+    // enemies must not be able to kill them while they watch the flythrough.
+    [HideInInspector] public bool isCinematicInvincible = false;
     private Coroutine activeFlashRoutine;
     private float actionLockEndTime = 0f;
 
@@ -1700,6 +1703,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     public void TakeDamage(DamageInfo info)
     {
         if (isDead || currentHealth <= 0) return;
+        if (isCinematicInvincible) return; // untouchable during the victory flythrough
         if (isCampMode || isDashing || isBulletTime) return;
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(); // getting hit = combat
 
