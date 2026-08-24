@@ -124,6 +124,19 @@ public class CampNPC_Elias : MonoBehaviour
         }
     }
 
+    private IEnumerator SmoothFacePlayer()
+    {
+        float t = 0f;
+        while (t < 0.5f && playerTransform != null)
+        {
+            t += Time.deltaTime;
+            Vector3 dir = playerTransform.position - transform.position; dir.y = 0f;
+            if (dir.sqrMagnitude > 0.001f)
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), 360f * Time.deltaTime);
+            yield return null;
+        }
+    }
+
     private IEnumerator EliasDialogueRoutine()
     {
         isTalking = true;
@@ -131,13 +144,8 @@ public class CampNPC_Elias : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
         if (exclamationMark != null) exclamationMark.SetActive(false);
 
-        // Բ�� ����̲��ֲ�: ������������� ��� ���������� playerTransform
-        if (playerTransform != null)
-        {
-            Vector3 lookPos = playerTransform.position - transform.position;
-            lookPos.y = 0;
-            transform.rotation = Quaternion.LookRotation(lookPos);
-        }
+        // Turn to face the player SMOOTHLY instead of snapping (robotic).
+        if (playerTransform != null) StartCoroutine(SmoothFacePlayer());
 
         int lodgeLvl = PlayerPrefs.GetInt("SaveBld_ScoutsLodge", 1);
         int conqueredCount = PlayerPrefs.GetInt("TotalConqueredRegions", 0);
