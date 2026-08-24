@@ -132,7 +132,9 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyFpsCap()
     {
-        bool limited = PlayerPrefs.GetInt("Settings_FPSLimit", 1) == 1;
+        // Default OFF (uncapped), like most AAA PC games — the player opts INTO a
+        // cap. Auto-capping to 60 on first launch felt like the game was throttled.
+        bool limited = PlayerPrefs.GetInt("Settings_FPSLimit", 0) == 1;
         if (!limited)
         {
             QualitySettings.vSyncCount = 0;

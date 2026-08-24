@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class GrenadeLogic : MonoBehaviour
 {
@@ -24,6 +25,9 @@ public class GrenadeLogic : MonoBehaviour
     private MeshRenderer meshRenderer;
 
     private static readonly Collider[] s_explosionBuffer = new Collider[64];
+    // Dedupe set so an enemy with several child colliders only takes one hit
+    // per explosion.
+    private static readonly HashSet<IDamageable> s_hitThisBlast = new HashSet<IDamageable>();
 
     private void Start()
     {
@@ -103,18 +107,34 @@ public class GrenadeLogic : MonoBehaviour
             StartCoroutine(HitStopRoutine(currentHitStop));
         }
 
+        s_hitThisBlast.Clear();
         for (int i = 0; i < colliderCount; i++)
         {
             Collider nearbyObject = s_explosionBuffer[i];
-            if (nearbyObject.TryGetComponent(out IDamageable damageable))
-            {
-                // Բ��: ������� �������� ����� Ҳ���� ������� �� ������ (������ ������/�������)
-                if (!nearbyObject.CompareTag("Enemy") && !nearbyObject.CompareTag("Player")) continue;
+            if (nearbyObject == null) continue;
 
+            // Resolve the damageable on the collider OR its parent. Archers and
+            // bosses keep their EnemyAI on the parent with CHILD colliders, so the
+            // old TryGetComponent (collider's own object only) never found them —
+            // that's why grenades did no damage to archers.
+            IDamageable damageable = nearbyObject.GetComponentInParent<IDamageable>();
+            if (damageable == null) continue;
+
+            // Tag check against the object that OWNS the damageable (parent), not
+            // the child collider which is often untagged.
+            Component dmgComp = damageable as Component;
+            GameObject dmgGO = dmgComp != null ? dmgComp.gameObject : nearbyObject.gameObject;
+            bool isEnemy = dmgGO.CompareTag("Enemy") || nearbyObject.CompareTag("Enemy");
+            bool isPlayer = dmgGO.CompareTag("Player") || nearbyObject.CompareTag("Player");
+            if (!isEnemy && !isPlayer) continue;
+
+            // One enemy with several child colliders must only take one hit.
+            if (!s_hitThisBlast.Add(damageable)) continue;
+
+            {
                 Vector3 pushDir = (nearbyObject.transform.position - transform.position).normalized;
                 pushDir.y = 0;
 
-                bool isPlayer = nearbyObject.CompareTag("Player");
                 float finalDamage = isPlayer ? 20f : damage;
 
                 DamageInfo info = new DamageInfo

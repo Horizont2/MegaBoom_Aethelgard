@@ -456,7 +456,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             yield return new WaitForSecondsRealtime(8f);
             TutorialHints.Instance.ShowIfNew("Grenade",
-                "Hold <b>G</b> to aim a grenade — releases when you let go. Slows time while aiming.");
+                "Hold <b>RMB</b> to aim a grenade. Time slows while aiming. Release to throw.");
         }
     }
 

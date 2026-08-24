@@ -310,6 +310,12 @@ public class NoticeBoardManager : MonoBehaviour
             GameManager.Instance.isRegionMission = false;
         }
 
+        // Also clear the lingering static region pointer. It's set when a region
+        // is attacked and survives a lost run (it's a static, not tied to the
+        // GameManager), so WorldGenerator would otherwise fall back to it and
+        // regenerate the region location even though we asked for a normal run.
+        MissionInitializer.PendingMissionRegion = null;
+
         PlayerPrefs.SetInt("IsRegionMission", 0);
         PlayerPrefs.SetInt("IsRunActive", 1);
         PlayerPrefs.SetInt("IsContinuing", 0);

@@ -153,10 +153,23 @@ public class TutorialHints : MonoBehaviour
         if (currentRoutine == null) currentRoutine = StartCoroutine(DrainRoutine());
     }
 
+    // True while an intro / cutscene is on screen — hints must wait so they
+    // don't clutter the cinematic and steal attention (they appear right after).
+    private static bool HintsSuppressed()
+    {
+        if (StoryIntroPlayer.IsPlaying) return true;
+        if (Level1_QuestManager.IntroInProgress) return true;
+        if (CampDirector.IsPlaying) return true; // the camp-overview intro cutscene
+        return false;
+    }
+
     private IEnumerator DrainRoutine()
     {
         while (queue.Count > 0)
         {
+            // Hold the whole queue while a cutscene plays; drain once it ends.
+            while (HintsSuppressed()) yield return null;
+
             float since = Time.unscaledTime - lastShownAt;
             if (since < minSpacing)
                 yield return new WaitForSecondsRealtime(minSpacing - since);
