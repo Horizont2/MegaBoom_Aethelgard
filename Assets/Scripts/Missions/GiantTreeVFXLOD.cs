@@ -36,13 +36,13 @@ public class GiantTreeVFXLOD : MonoBehaviour
     [Tooltip("Particles run at full multiplier when player is closer than this.")]
     public float nearDistance = 15f;
     [Tooltip("Particles + renderers off entirely beyond this distance.")]
-    public float farDistance = 45f;
+    public float farDistance = 32f;
     [Tooltip("Per-light pixel-shading cap. Lights disabled past this distance from the player.")]
     public float lightDistance = 12f;
     [Tooltip("Extreme cull — tree trunk/canopy renderers hide past this distance. Give it plenty of headroom over farDistance to hide the pop.")]
     public float treeCullDistance = 90f;
     [Tooltip("Hard cap on simultaneous particles.")]
-    public int maxParticlesCap = 12;
+    public int maxParticlesCap = 8;
     [Tooltip("Cap on the close-range emission multiplier (1.0 = original prefab rate).")]
     [Range(0.05f, 1f)] public float closeRangeMultiplierCap = 0.3f;
     [Tooltip("Global cap on giant-tree lights active at once — only the N nearest instances get their lights on. Forward+ URP tile rebuilds stall past ~4 close lights.")]

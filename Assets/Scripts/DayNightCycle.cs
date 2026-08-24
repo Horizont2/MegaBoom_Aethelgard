@@ -98,11 +98,57 @@ public class DayNightCycle : MonoBehaviour
 
         weatherVFXCache = new ParticleSystem[] { rainVFX, snowVFX, dustVFX };
 
+        // Make rain/snow behave like real weather instead of a narrow column that
+        // vanishes when the camera turns. Two fixes:
+        //  1) World simulation space — camera-local space made existing drops
+        //     jump/streak on rotation and briefly disappear.
+        //  2) A wide overhead box emitter — the drops used to fall in a thin row.
+        ConfigureWeatherVolume(rainVFX);
+        ConfigureWeatherVolume(snowVFX);
+
         CheckAndUpdateSkybox();
+    }
+
+    [Header("Weather Volume")]
+    [Tooltip("Horizontal size of the rain/snow emitter box (metres). Should comfortably exceed the visible radius so it never looks like a narrow strip.")]
+    public float weatherBoxSize = 75f;
+    [Tooltip("Height above the player the weather emitter sits at.")]
+    public float weatherBoxHeight = 28f;
+    private Transform weatherFollowTarget;
+
+    private void ConfigureWeatherVolume(ParticleSystem ps)
+    {
+        if (ps == null) return;
+        var main = ps.main;
+        main.simulationSpace = ParticleSystemSimulationSpace.World; // don't rotate with the camera
+        var shape = ps.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(weatherBoxSize, 1f, weatherBoxSize);
+        // Emit straight down regardless of where the camera looks.
+        ps.transform.rotation = Quaternion.identity;
+    }
+
+    // Keep the weather volume centred over the player each frame (position only —
+    // never inherit rotation, so the downpour always falls vertically).
+    private void FollowWeatherToPlayer()
+    {
+        if (rainVFX == null && snowVFX == null) return;
+        if (weatherFollowTarget == null)
+        {
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) weatherFollowTarget = p.transform;
+            if (weatherFollowTarget == null) return;
+        }
+        Vector3 pos = weatherFollowTarget.position + Vector3.up * weatherBoxHeight;
+        if (rainVFX != null) { rainVFX.transform.position = pos; rainVFX.transform.rotation = Quaternion.identity; }
+        if (snowVFX != null) { snowVFX.transform.position = pos; snowVFX.transform.rotation = Quaternion.identity; }
     }
 
     private void Update()
     {
+        FollowWeatherToPlayer();
+
         timeOfDay += (Time.deltaTime / dayDurationInSeconds) * 24f;
         if (timeOfDay >= 24f) timeOfDay = 0f;
 
