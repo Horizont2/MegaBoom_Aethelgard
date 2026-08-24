@@ -150,6 +150,12 @@ public class PlayerController : MonoBehaviour, IDamageable
     private CharacterController characterController;
     private Vector3 velocity;
     private Animator anim;
+
+    // Horizontal world-space velocity (m/s). Used by ranged enemies to LEAD
+    // their shots at where the player is going, not where they are.
+    public Vector3 HorizontalVelocity =>
+        characterController != null ? new Vector3(characterController.velocity.x, 0f, characterController.velocity.z) : Vector3.zero;
+
     private bool isDead = false;
     public bool IsDead => isDead;
 

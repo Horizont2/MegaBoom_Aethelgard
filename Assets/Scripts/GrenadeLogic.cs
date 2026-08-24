@@ -120,12 +120,14 @@ public class GrenadeLogic : MonoBehaviour
             IDamageable damageable = nearbyObject.GetComponentInParent<IDamageable>();
             if (damageable == null) continue;
 
-            // Tag check against the object that OWNS the damageable (parent), not
-            // the child collider which is often untagged.
+            // Classify by COMPONENT TYPE, not tag. Archers/bosses put their AI on
+            // the parent and their child colliders are often untagged, so the old
+            // tag gate skipped them entirely (that's why grenades did no damage to
+            // archers — melee works because it has no tag gate). Any EnemyAI /
+            // boss is an enemy; the PlayerController is the player.
             Component dmgComp = damageable as Component;
-            GameObject dmgGO = dmgComp != null ? dmgComp.gameObject : nearbyObject.gameObject;
-            bool isEnemy = dmgGO.CompareTag("Enemy") || nearbyObject.CompareTag("Enemy");
-            bool isPlayer = dmgGO.CompareTag("Player") || nearbyObject.CompareTag("Player");
+            bool isPlayer = dmgComp is PlayerController;
+            bool isEnemy = !isPlayer && (dmgComp is EnemyAI || dmgComp is TutorialBossAI);
             if (!isEnemy && !isPlayer) continue;
 
             // One enemy with several child colliders must only take one hit.

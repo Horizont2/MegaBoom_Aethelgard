@@ -40,6 +40,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public float projectileSpeed = 18f;
     [Tooltip("Gravity applied to the arrow so it flies a real arc (higher = steeper lob).")]
     public float arcGravity = 22f;
+    [Range(0f, 1f)]
+    [Tooltip("How much the archer leads a moving player (0 = aim where they are, 1 = full prediction). ~0.7 reads as smart but is still dodgeable by dashing / turning.")]
+    public float rangedLeadFactor = 0.7f;
+    [Tooltip("HP multiplier for archers — they're glass cannons: threatening shots but they die fast, so kiting doesn't make them unkillable.")]
+    public float rangedHealthFactor = 0.6f;
     [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
     public Transform projectileSpawnPoint;
 
@@ -326,6 +331,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
             maxHealth *= timeMultiplier;
             damage *= timeMultiplier;
         }
+
+        // Archers are glass cannons — cut their HP so kiting can't make them
+        // unkillable damage sponges.
+        if (isRanged) maxHealth *= Mathf.Clamp(rangedHealthFactor, 0.1f, 1f);
 
         baseActualMoveSpeed = actualMoveSpeed;
         baseDamage = damage;
@@ -851,6 +860,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
             ? projectileSpawnPoint.position
             : transform.position + Vector3.up * 1.2f + transform.forward * 0.5f;
         Vector3 aimPoint = target.position + Vector3.up * 0.9f; // aim at the torso
+
+        // LEAD the shot: predict where the player will be after the arrow's flight
+        // time and aim there, so a running player can't just walk out of every
+        // arrow. leadFactor < 1 keeps it beatable (dashing/turning still dodges).
+        float roughDist = Vector3.Distance(spawn, aimPoint);
+        float tPredict = Mathf.Clamp(roughDist / Mathf.Max(1f, projectileSpeed), 0.35f, 2.2f);
+        if (playerTarget != null)
+            aimPoint += playerTarget.HorizontalVelocity * (tPredict * rangedLeadFactor);
 
         GameObject proj = Instantiate(projectilePrefab, spawn, Quaternion.identity);
         EnemyProjectile ep = proj.GetComponent<EnemyProjectile>();
