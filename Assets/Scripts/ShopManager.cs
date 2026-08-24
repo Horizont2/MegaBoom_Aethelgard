@@ -1143,7 +1143,11 @@ public class ShopManager : MonoBehaviour
             bool isEquipped = PlayerPrefs.GetInt("SelectedWeaponID", 0) == w.weaponID;
 
             UpdateItemDetails(w.weaponName, w.description, w.icon, lvl, w.maxUpgradeLevel, w.price, isBought, isEquipped, myDiamonds, w.GetUpgradeCost(lvl));
-            UpdateStatsUI(w.damageBonus + (lvl * w.damagePerLevel), 400f, w.attackSpeed + (lvl * w.attackSpeedPerLevel), 3f, w.critChance + (lvl * w.critChancePerLevel), 1f, w.basePower + (lvl * w.powerPerLevel));
+            bool wPreview = isBought && lvl < w.maxUpgradeLevel;
+            int nl = lvl + 1;
+            UpdateStatsUI(w.damageBonus + (lvl * w.damagePerLevel), 400f, w.attackSpeed + (lvl * w.attackSpeedPerLevel), 3f, w.critChance + (lvl * w.critChancePerLevel), 1f, w.basePower + (lvl * w.powerPerLevel),
+                wPreview,
+                w.damageBonus + (nl * w.damagePerLevel), w.attackSpeed + (nl * w.attackSpeedPerLevel), w.critChance + (nl * w.critChancePerLevel), w.basePower + (nl * w.powerPerLevel));
         }
         else if (!isViewingWeapon && selectedArmorData != null)
         {
@@ -1153,7 +1157,11 @@ public class ShopManager : MonoBehaviour
             bool isEquipped = PlayerPrefs.GetInt($"EquippedArmor_{a.category}", 0) == a.prefabIndex;
 
             UpdateItemDetails(a.armorName, a.description, a.icon, lvl, a.maxUpgradeLevel, a.price, isBought, isEquipped, myDiamonds, a.GetUpgradeCost(lvl));
-            UpdateStatsUI(a.baseHealthBonus + (lvl * a.healthPerLevel), 500f, (a.baseDamageReduction + (lvl * a.reductionPerLevel)) * 100f, 60f, 0, 1f, a.basePower + (lvl * a.powerPerLevel));
+            bool aPreview = isBought && lvl < a.maxUpgradeLevel;
+            int nla = lvl + 1;
+            UpdateStatsUI(a.baseHealthBonus + (lvl * a.healthPerLevel), 500f, (a.baseDamageReduction + (lvl * a.reductionPerLevel)) * 100f, 60f, 0, 1f, a.basePower + (lvl * a.powerPerLevel),
+                aPreview,
+                a.baseHealthBonus + (nla * a.healthPerLevel), (a.baseDamageReduction + (nla * a.reductionPerLevel)) * 100f, 0, a.basePower + (nla * a.powerPerLevel));
         }
 
         if (animateText)
@@ -1249,13 +1257,34 @@ public class ShopManager : MonoBehaviour
 
     private Coroutine[] statBarLerps = new Coroutine[4];
 
-    private void UpdateStatsUI(float val1, float max1, float val2, float max2, float val3, float max3, int power)
+    // preview* params: when showPreview is true (item is owned and not max), the
+    // stat readouts show "current → next" so the player sees exactly what an
+    // upgrade grants instead of buying blind. -1 max/val disables that stat's row.
+    private void UpdateStatsUI(float val1, float max1, float val2, float max2, float val3, float max3, int power,
+                              bool showPreview = false, float n1 = 0f, float n2 = 0f, float n3 = 0f, int nPower = 0)
     {
-        if (stat1PercentText) stat1PercentText.text = isViewingWeapon ? Mathf.RoundToInt((val1 / max1) * 100) + "%" : "+" + Mathf.RoundToInt(val1) + " HP";
-        if (stat2PercentText) stat2PercentText.text = isViewingWeapon ? Mathf.RoundToInt((val2 / max2) * 100) + "%" : "+" + val2.ToString("F1") + "%";
-        if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt((val3 / max3) * 100) + "%";
-        if (powerPercentText) powerPercentText.text = power.ToString();
+        string arrow = " <color=#A8E6CF>→</color> ";
+        if (stat1PercentText)
+        {
+            string cur = isViewingWeapon ? Mathf.RoundToInt((val1 / max1) * 100) + "%" : "+" + Mathf.RoundToInt(val1) + " HP";
+            string nxt = isViewingWeapon ? Mathf.RoundToInt((n1 / max1) * 100) + "%" : "+" + Mathf.RoundToInt(n1) + " HP";
+            stat1PercentText.text = showPreview ? cur + arrow + "<color=#A8E6CF>" + nxt + "</color>" : cur;
+        }
+        if (stat2PercentText)
+        {
+            string cur = isViewingWeapon ? Mathf.RoundToInt((val2 / max2) * 100) + "%" : "+" + val2.ToString("F1") + "%";
+            string nxt = isViewingWeapon ? Mathf.RoundToInt((n2 / max2) * 100) + "%" : "+" + n2.ToString("F1") + "%";
+            stat2PercentText.text = showPreview ? cur + arrow + "<color=#A8E6CF>" + nxt + "</color>" : cur;
+        }
+        if (stat3PercentText)
+        {
+            string cur = Mathf.RoundToInt((val3 / max3) * 100) + "%";
+            string nxt = Mathf.RoundToInt((n3 / max3) * 100) + "%";
+            stat3PercentText.text = showPreview ? cur + arrow + "<color=#A8E6CF>" + nxt + "</color>" : cur;
+        }
+        if (powerPercentText) powerPercentText.text = showPreview ? power + arrow + "<color=#A8E6CF>" + nPower + "</color>" : power.ToString();
 
+        // Bars ease to the CURRENT value (the → text carries the preview).
         LerpBar(0, stat1Fill, Mathf.Clamp01(val1 / max1));
         LerpBar(1, stat2Fill, Mathf.Clamp01(val2 / max2));
         LerpBar(2, stat3Fill, Mathf.Clamp01(val3 / max3));
