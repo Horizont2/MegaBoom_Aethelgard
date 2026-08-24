@@ -559,11 +559,11 @@ MonoBehaviour:
   ambientLeafRustle:
     fmodEvent:
       Guid:
-        Data1: -1149515787
-        Data2: 1327063369
-        Data3: 1891996549
-        Data4: -356795183
-      Path: event:/AMB/AMB_Leaf_Rustle
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientRain:
     fmodEvent:
       Guid:
@@ -743,84 +743,83 @@ MonoBehaviour:
   dialogue1:
     fmodEvent:
       Guid:
-        Data1: -56570961
-        Data2: 1112080766
-        Data3: 186498705
-        Data4: -1006490679
-      Path: event:/Dialogue/Dialogue1
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue2:
     fmodEvent:
       Guid:
-        Data1: -835453275
-        Data2: 1175108346
-        Data3: -1380227964
-        Data4: 1274974632
-      Path: event:/Dialogue/Dialogue2
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue3:
     fmodEvent:
       Guid:
-        Data1: -1581335787
-        Data2: 1252278220
-        Data3: 1397179576
-        Data4: -197192432
-      Path: event:/Dialogue/Dialogue3
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue4:
     fmodEvent:
       Guid:
-        Data1: -387594757
-        Data2: 1099872219
-        Data3: -910128474
-        Data4: 880927783
-      Path: event:/Dialogue/Dialogue4
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue5:
     fmodEvent:
       Guid:
-        Data1: 941721244
-        Data2: 1149008904
-        Data3: -1231348345
-        Data4: -1573884790
-      Path: event:/Dialogue/Dialogue5
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue6:
     fmodEvent:
       Guid:
-        Data1: -1274647598
-        Data2: 1113306871
-        Data3: 988026777
-        Data4: 2026982229
-      Path: event:/Dialogue/Dialogue6
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue7:
     fmodEvent:
       Guid:
-        Data1: -1014525079
-        Data2: 1318183965
-        Data3: 740381859
-        Data4: -144367151
-      Path: event:/Dialogue/Dialogue7
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue8:
     fmodEvent:
       Guid:
-        Data1: -294020184
-        Data2: 1133653142
-        Data3: -562419274
-        Data4: -540823255
-      Path: event:/Dialogue/Dialogue8
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue9:
     fmodEvent:
       Guid:
-        Data1: 1700423914
-        Data2: 1318461073
-        Data3: -879997552
-        Data4: 1074459988
-      Path: event:/Dialogue/Dialogue9
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   dialogue10:
     fmodEvent:
       Guid:
-        Data1: 1319556318
-        Data2: 1205044369
-        Data3: 630293942
-        Data4: -1736516694
-      Path: event:/Dialogue/Dialogue10
-
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
 --- !u!4 &61894746
 Transform:
   m_ObjectHideFlags: 0

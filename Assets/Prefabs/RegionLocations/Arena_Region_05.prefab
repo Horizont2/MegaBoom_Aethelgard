@@ -12234,8 +12234,13 @@ MonoBehaviour:
   mediumCount: 5
   elitePrefabs: []
   eliteCount: 2
+  useEncounterTemplates: 0
+  encounterTemplates: []
+  autoGenerateEncounters: 1
   isStandalone: 0
   standaloneBossPrefabs: []
+  standaloneDiamondReward: 25
+  standaloneXpReward: 40
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 4163123452099726292}
   skyBeamVFX: {fileID: 0}
@@ -12243,8 +12248,24 @@ MonoBehaviour:
   totemLight: {fileID: 5986773422087031048}
   interactHintVFX: {fileID: 5969306444898048857}
   interactionRadius: 4
+  useRaidCapture: 1
+  anchorCount: 3
+  anchorPrefab: {fileID: 0}
+  anchorRadius: 13
+  anchorHealth: 120
+  anchorGuardPrefabs: []
+  guardsPerAnchor: 3
+  purifyDuration: 32
+  reinforceInterval: 6.5
+  reinforcementPrefabs: []
+  allyPrefab: {fileID: 0}
+  healWorldOnCapture: 1
+  purifyBurstVFX: {fileID: 0}
+  healedFogColor: {r: 0.62, g: 0.72, b: 0.82, a: 1}
+  healedFogDensityMult: 0.45
   isPurified: 0
   isActivated: 0
+  preGateApproachRadius: 32
 --- !u!64 &5725909929566149420
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -25849,8 +25870,13 @@ MonoBehaviour:
   mediumCount: 5
   elitePrefabs: []
   eliteCount: 2
+  useEncounterTemplates: 0
+  encounterTemplates: []
+  autoGenerateEncounters: 1
   isStandalone: 0
   standaloneBossPrefabs: []
+  standaloneDiamondReward: 25
+  standaloneXpReward: 40
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3951772551200764606}
   skyBeamVFX: {fileID: 0}
@@ -25858,8 +25884,24 @@ MonoBehaviour:
   totemLight: {fileID: 435689802031376914}
   interactHintVFX: {fileID: 4952860893049912046}
   interactionRadius: 4
+  useRaidCapture: 1
+  anchorCount: 3
+  anchorPrefab: {fileID: 0}
+  anchorRadius: 13
+  anchorHealth: 120
+  anchorGuardPrefabs: []
+  guardsPerAnchor: 3
+  purifyDuration: 32
+  reinforceInterval: 6.5
+  reinforcementPrefabs: []
+  allyPrefab: {fileID: 0}
+  healWorldOnCapture: 1
+  purifyBurstVFX: {fileID: 0}
+  healedFogColor: {r: 0.62, g: 0.72, b: 0.82, a: 1}
+  healedFogDensityMult: 0.45
   isPurified: 0
   isActivated: 0
+  preGateApproachRadius: 32
 --- !u!64 &6135284607533228155
 MeshCollider:
   m_ObjectHideFlags: 0

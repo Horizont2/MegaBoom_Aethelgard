@@ -130,7 +130,7 @@
 	<object class="MixerBusFader" id="{6fb180d4-73da-4143-b411-a82fafd803ca}" />
 	<object class="SingleSound" id="{d22a8d41-c190-47fb-a2e6-a18611e1a613}">
 		<property name="startOffset">
-			<value>28.5</value>
+			<value>42.5</value>
 		</property>
 		<relationship name="audioFile">
 			<destination>{c5424c7b-1027-48dd-a2bc-bb56ff4f6ff3}</destination>
@@ -138,7 +138,7 @@
 	</object>
 	<object class="SingleSound" id="{27b99ad5-26e7-4a86-98ed-70c9be4b61fb}">
 		<property name="startOffset">
-			<value>44.5</value>
+			<value>46.5</value>
 		</property>
 		<relationship name="audioFile">
 			<destination>{f03eab81-18fc-4618-9317-f904b915e22c}</destination>
@@ -146,7 +146,7 @@
 	</object>
 	<object class="SingleSound" id="{c5132579-7faf-47c7-a9c5-a9464ae7e332}">
 		<property name="startOffset">
-			<value>41.5</value>
+			<value>49</value>
 		</property>
 		<property name="pitch">
 			<value>-2</value>
@@ -157,7 +157,7 @@
 	</object>
 	<object class="SingleSound" id="{ac6e0d3b-bc4f-4b1d-8041-3ef5889b9642}">
 		<property name="startOffset">
-			<value>35.5</value>
+			<value>41</value>
 		</property>
 		<property name="pitch">
 			<value>-2</value>
@@ -168,7 +168,7 @@
 	</object>
 	<object class="SingleSound" id="{d0be344c-ce8a-4c84-a4ac-d629cca7def4}">
 		<property name="startOffset">
-			<value>33</value>
+			<value>41</value>
 		</property>
 		<property name="pitch">
 			<value>-3</value>
@@ -179,7 +179,7 @@
 	</object>
 	<object class="SingleSound" id="{628f0f9e-0d51-40bf-82b5-9db0d77f40c9}">
 		<property name="startOffset">
-			<value>41.5</value>
+			<value>48.5</value>
 		</property>
 		<property name="pitch">
 			<value>-3</value>

@@ -90,7 +90,7 @@
 	<object class="MixerBusPanner" id="{3af05c90-211f-4ce8-a770-14280756917c}" />
 	<object class="SingleSound" id="{26e8b94d-a5fd-40e7-896c-92bcff22e981}">
 		<property name="length">
-			<value>0.86399999999999988</value>
+			<value>0.64000000000000001</value>
 		</property>
 		<relationship name="fadeInCurve">
 			<destination>{693bdf49-91c1-48a6-87e2-1a9aa7e87a1b}</destination>
