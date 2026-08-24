@@ -463,6 +463,10 @@ public static class LocalizationManager
         // ── Misc HUD ──
         Add7("Crystals:",     "Crystals:",     "Кристали:",      "Кристаллы:",     "Cristales:",     "Kristalle:",     "Cristaux :",     "Kryształy:");
         Add7("Press Esc or Space to skip...","Press Esc or Space to skip...","Esc або Пробіл, щоб пропустити...","Esc или Пробел, чтобы пропустить...","Esc o Espacio para saltar...","Esc oder Leertaste zum Überspringen...","Échap ou Espace pour passer...","Esc lub Spacja, aby pominąć...");
+        // ── Raid pre-gate (corruption anchors shield the totem) ──
+        Add7("DESTROY THE ANCHORS FIRST","DESTROY THE ANCHORS FIRST","СПОЧАТКУ ЗНИЩ ЯКОРІ","СНАЧАЛА УНИЧТОЖЬ ЯКОРЯ","DESTRUYE PRIMERO LOS ANCLAJES","ZUERST DIE ANKER ZERSTÖREN","DÉTRUIS D'ABORD LES ANCRAGES","NAJPIERW ZNISZCZ KOTWICE");
+        Add7("THE SHIELD IS DOWN — PURIFY THE TOTEM","THE SHIELD IS DOWN — PURIFY THE TOTEM","ЩИТ ЗНЯТО — ОЧИСТИ ТОТЕМ","ЩИТ СНЯТ — ОЧИСТИ ТОТЕМ","EL ESCUDO CAYÓ — PURIFICA EL TÓTEM","SCHILD UNTEN — TOTEM REINIGEN","LE BOUCLIER EST TOMBÉ — PURIFIE LE TOTEM","TARCZA ZDJĘTA — OCZYŚĆ TOTEM");
+        Add7("DESTROY THE CORRUPTION ANCHORS","DESTROY THE CORRUPTION ANCHORS","ЗНИЩ ЯКОРІ СКВЕРНИ","УНИЧТОЖЬ ЯКОРЯ СКВЕРНЫ","DESTRUYE LOS ANCLAJES DE CORRUPCIÓN","ZERSTÖRE DIE VERDERBNIS-ANKER","DÉTRUIS LES ANCRAGES DE CORRUPTION","ZNISZCZ KOTWICE ZEPSUCIA");
     }
 
     private static void SeedLore()

@@ -196,6 +196,33 @@ public class RegionTotem : MonoBehaviour
 
         float dist = Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(player.position.x, player.position.z));
 
+        // Pre-gate: the moment the player draws near a raid totem, spawn its
+        // corruption anchors. The totem stays locked until they're destroyed.
+        if (useRaidCapture && !isStandalone && !_preGateSpawned && dist <= preGateApproachRadius)
+        {
+            SpawnPreGateAnchors();
+        }
+
+        // While anchors still stand, the totem is shielded — show a "destroy the
+        // anchors" prompt instead of the purify prompt and refuse activation.
+        if (_preGateActive)
+        {
+            if (dist <= interactionRadius)
+            {
+                if (!isPromptShowing && GlobalHUD.Instance != null)
+                {
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("DESTROY THE ANCHORS FIRST"));
+                    isPromptShowing = true;
+                }
+            }
+            else if (isPromptShowing && GlobalHUD.Instance != null)
+            {
+                GlobalHUD.Instance.HidePrompt();
+                isPromptShowing = false;
+            }
+            return; // locked until the shield is down
+        }
+
         if (dist <= interactionRadius)
         {
             if (!isPromptShowing && GlobalHUD.Instance != null)
@@ -491,36 +518,29 @@ public class RegionTotem : MonoBehaviour
     private int _anchorsTotal;
     private bool _allyFreed;
 
+    // ── Pre-gate: the corruption anchors now appear AROUND the totem the moment
+    //    the player draws near, and the main totem stays LOCKED until every
+    //    anchor is destroyed. Only then does the "[F] PURIFY" prompt appear.
+    [Header("Raid pre-gate")]
+    [Tooltip("Distance at which approaching the totem spawns its corruption anchors (should exceed interactionRadius).")]
+    public float preGateApproachRadius = 32f;
+    private bool _preGateSpawned;   // anchors have been placed
+    private bool _preGateActive;    // anchors placed AND not all destroyed yet → totem locked
+    private float _preGateHpMult = 1f;
+    private float _preGateDmgMult = 1f;
+
     private IEnumerator RaidCaptureRoutine(float hpMult, float dmgMult)
     {
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(12f);
 
         // ── PHASE 1 — break the corruption anchors (sub-points) ──
-        _anchorsTotal = Mathf.Max(1, anchorCount);
-        _anchorsRemaining = _anchorsTotal;
-        UpdateAnchorObjective();
-
-        GameObject[] guardPool = (anchorGuardPrefabs != null && anchorGuardPrefabs.Length > 0)
-            ? anchorGuardPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
-
-        for (int i = 0; i < _anchorsTotal; i++)
+        // With the pre-gate the anchors were already spawned + destroyed BEFORE
+        // the player could activate the totem, so skip straight to the channel.
+        if (!_preGateSpawned)
         {
-            float ang = (360f / _anchorsTotal) * i + Random.Range(-12f, 12f);
-            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
-            Vector3 pos = transform.position + dir * anchorRadius;
-            pos.y = GetGroundHeight(pos);
-            SpawnAnchor(pos, anchorHealth * Mathf.Lerp(1f, hpMult, 0.5f));
-
-            for (int g = 0; g < guardsPerAnchor && guardPool != null && guardPool.Length > 0; g++)
-            {
-                Vector3 gp = pos + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(2f, 4.5f));
-                gp.y = GetGroundHeight(gp);
-                SpawnEntityAt(guardPool[Random.Range(0, guardPool.Length)], gp, hpMult, dmgMult);
-            }
-            yield return new WaitForSeconds(0.35f);
+            yield return StartCoroutine(SpawnRaidAnchorsRoutine(hpMult, dmgMult));
+            while (_anchorsRemaining > 0) yield return new WaitForSeconds(0.25f);
         }
-
-        while (_anchorsRemaining > 0) yield return new WaitForSeconds(0.25f);
 
         // ── PHASE 2 — hold the totem while it channels, under reinforcements ──
         if (activationShieldVFX != null && !activationShieldVFX.isPlaying) activationShieldVFX.Play();
@@ -585,6 +605,63 @@ public class RegionTotem : MonoBehaviour
         StartCoroutine(MonitorCombatRoutine());
     }
 
+    // Spawn the ring of corruption anchors + their guards. Shared by the raid
+    // routine (legacy post-activation path) and the pre-gate.
+    private IEnumerator SpawnRaidAnchorsRoutine(float hpMult, float dmgMult)
+    {
+        _anchorsTotal = Mathf.Max(1, anchorCount);
+        _anchorsRemaining = _anchorsTotal;
+        UpdateAnchorObjective();
+
+        GameObject[] guardPool = (anchorGuardPrefabs != null && anchorGuardPrefabs.Length > 0)
+            ? anchorGuardPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
+
+        for (int i = 0; i < _anchorsTotal; i++)
+        {
+            float ang = (360f / _anchorsTotal) * i + Random.Range(-12f, 12f);
+            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+            Vector3 pos = transform.position + dir * anchorRadius;
+            pos.y = GetGroundHeight(pos);
+            SpawnAnchor(pos, anchorHealth * Mathf.Lerp(1f, hpMult, 0.5f));
+
+            for (int g = 0; g < guardsPerAnchor && guardPool != null && guardPool.Length > 0; g++)
+            {
+                Vector3 gp = pos + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(2f, 4.5f));
+                gp.y = GetGroundHeight(gp);
+                SpawnEntityAt(guardPool[Random.Range(0, guardPool.Length)], gp, hpMult, dmgMult);
+            }
+            yield return new WaitForSeconds(0.35f);
+        }
+    }
+
+    // Pre-gate: called from Update when the player first approaches. Spawns the
+    // anchors around the still-locked totem so they must be cleared before the
+    // totem can be purified. Combat begins here, not on activation.
+    private void SpawnPreGateAnchors()
+    {
+        if (_preGateSpawned) return;
+        _preGateSpawned = true;
+        _preGateActive = true;
+        EnemySpawner.IsSpawningBlocked = true;
+
+        // Difficulty scaling, resolved up front (mirrors ActivationEventRoutine).
+        int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
+        RegionData region = manager != null ? manager.currentRegion
+                          : (GameManager.Instance != null ? GameManager.Instance.currentRegion : null);
+        int recommendedPower = region != null ? region.recommendedPower : 100;
+        float difficultyMult = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, recommendedPower);
+        _preGateHpMult = (region != null ? region.enemyHpMultiplier : 1f) * difficultyMult;
+        _preGateDmgMult = (region != null ? region.enemyDamageMultiplier : 1f) * difficultyMult;
+
+        if (idleCorruptionVFX != null && !idleCorruptionVFX.isPlaying) idleCorruptionVFX.Play();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
+        if (TutorialHints.Instance != null)
+            TutorialHints.Instance.ShowIfNew("CorruptionAnchors",
+                "The totem is shielded by <b>corruption anchors</b>. Destroy every anchor to break the shield — only then can you purify the totem.", 6f);
+
+        StartCoroutine(SpawnRaidAnchorsRoutine(_preGateHpMult, _preGateDmgMult));
+    }
+
     private void SpawnAnchor(Vector3 pos, float hp)
     {
         GameObject go = anchorPrefab != null ? Instantiate(anchorPrefab, pos, Quaternion.identity)
@@ -602,6 +679,15 @@ public class RegionTotem : MonoBehaviour
         UpdateAnchorObjective();
         PlayCorruptionFlare();
         CameraShakeUtil.TryShake(0.25f, 0.1f);
+
+        // Pre-gate: the last anchor down unlocks the main totem.
+        if (_preGateActive && _anchorsRemaining <= 0)
+        {
+            _preGateActive = false;
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Region_AnchorDestroy);
+            if (GlobalHUD.Instance != null)
+                GlobalHUD.Instance.SetLevelObjective(LocalizationManager.Tr("THE SHIELD IS DOWN — PURIFY THE TOTEM"));
+        }
 
         // Free the ally the moment the first anchor falls.
         if (!_allyFreed && allyPrefab != null)
