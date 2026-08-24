@@ -423,11 +423,11 @@ MonoBehaviour:
   envThunder:
     fmodEvent:
       Guid:
-        Data1: -2130433249
-        Data2: 1157974612
-        Data3: 669768075
-        Data4: 1726526011
-      Path: event:/AMB/AMB_Thunder
+        Data1: 1445464367
+        Data2: 1209521328
+        Data3: -451331425
+        Data4: -1879353210
+      Path: event:/AMB/AMB_Distant_Thunder
   envChestOpen:
     fmodEvent:
       Guid:
@@ -532,6 +532,14 @@ MonoBehaviour:
         Data3: 1137872263
         Data4: -40351538
       Path: event:/AMB/AMB_Wind
+  ambientCampFire:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
     fmodEvent:
       Guid:
@@ -623,19 +631,19 @@ MonoBehaviour:
   playerXpPickup:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1482439877
+        Data2: 1142886581
+        Data3: -904170367
+        Data4: 1867173031
+      Path: event:/ENV/Camp_Collect_Gem
   playerCoinPickup:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: 1482439877
+        Data2: 1142886581
+        Data3: -904170367
+        Data4: 1867173031
+      Path: event:/ENV/Camp_Collect_Gem
   playerLowHealth:
     fmodEvent:
       Guid:
