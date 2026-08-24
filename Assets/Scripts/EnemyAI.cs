@@ -188,7 +188,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
             if (hit.point.y > bestY) { bestY = hit.point.y; found = true; }
         }
-        return found ? bestY : worldPos.y;
+        if (found) return bestY;
+        // Raycast missed every ground collider (spawn over a gap, collider
+        // momentarily disabled during generation, or ground over 150m below the
+        // origin). Fall back to the terrain's authoritative sampled height rather
+        // than worldPos.y — returning the enemy's own (possibly airborne) Y was
+        // what made skeletons + their emerge VFX appear floating in the air.
+        Terrain terr = Terrain.activeTerrain;
+        if (terr != null)
+            return terr.SampleHeight(worldPos) + terr.transform.position.y;
+        return worldPos.y;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
