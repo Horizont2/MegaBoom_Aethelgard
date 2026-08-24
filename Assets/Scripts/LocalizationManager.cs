@@ -2451,7 +2451,7 @@ public static class LocalizationManager
         Add7("Escape!",            "Escape!",            "Тікай!",            "Беги!",           "¡Escapa!",           "Flieh!",             "Fuir !",               "Uciekaj!");
         Add7("REACH THE HORSE BEFORE THEY KILL YOU!",
              "REACH THE HORSE BEFORE THEY KILL YOU!",
-             "ДОБІГАЙ ДО КОНЯ, ДОКИ ЇХ НЕ УБИЛИ!",
+             "ДІСТАНЬСЯ КОНЯ, ПОКИ ТЕБЕ НЕ ВБИЛИ!",
              "ДОБЕГИ ДО КОНЯ, ПОКА ТЕБЯ НЕ УБИЛИ!",
              "¡LLEGA AL CABALLO ANTES DE QUE TE MATEN!",
              "ERREICHE DAS PFERD, BEVOR SIE DICH TÖTEN!",
