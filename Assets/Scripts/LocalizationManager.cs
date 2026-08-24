@@ -371,6 +371,79 @@ public static class LocalizationManager
         Add("ACH_PERFECT_DODGE_10", "Wind-Touched", "Тінь Вітру");
         Add("ACH_DIAMOND_HOARDER", "Hoarder's Gaze", "Скарбничий");
         Add("ACH_NG_PLUS", "Eternal Return", "Вічне Повернення");
+
+        // Baked scene/prefab UI labels that AutoLocalize self-keys but had no
+        // matching entry (settings labels, barracks/shop/HUD text) — they showed
+        // in raw English until now.
+        SeedBakedUILabels();
+    }
+
+    // Self-keyed entries whose KEY is the exact English text baked into a scene
+    // or prefab, so AutoLocalize (which uses the on-screen text as the key) can
+    // translate them. Only STATIC labels — anything the code rewrites at runtime
+    // with a number/name is handled in code instead.
+    private static void SeedBakedUILabels()
+    {
+        // ── Settings: volume mixer ──
+        Add7("Master",        "Master",        "Загальна",       "Общая",          "Maestro",        "Gesamt",         "Général",        "Główny");
+        Add7("Music",         "Music",         "Музика",         "Музыка",         "Música",         "Musik",          "Musique",        "Muzyka");
+        Add7("Sound FX",      "Sound FX",      "Звукові ефекти", "Звук. эффекты",  "Efectos",        "Soundeffekte",   "Effets sonores", "Efekty");
+        Add7("Ambient",       "Ambient",       "Оточення",       "Окружение",      "Ambiente",       "Umgebung",       "Ambiance",       "Otoczenie");
+        Add7("MIX",           "MIX",           "МІКС",           "МИКС",           "MEZCLA",         "MIX",            "MIX",            "MIKS");
+        // ── Settings: display ──
+        Add7("DISPLAY",       "DISPLAY",       "ЕКРАН",          "ЭКРАН",          "PANTALLA",       "ANZEIGE",        "AFFICHAGE",      "EKRAN");
+        Add7("Resolution",    "Resolution",    "Роздільність",   "Разрешение",     "Resolución",     "Auflösung",      "Résolution",     "Rozdzielczość");
+        Add7("Monitor",       "Monitor",       "Монітор",        "Монитор",        "Monitor",        "Monitor",        "Écran",          "Monitor");
+        Add7("Refresh Rate",  "Refresh Rate",  "Частота оновл.", "Частота обновл.","Frecuencia",     "Bildrate",       "Fréquence",      "Odświeżanie");
+        Add7("FPS Cap",       "FPS Cap",       "Ліміт FPS",      "Лимит FPS",      "Límite FPS",     "FPS-Limit",      "Limite FPS",     "Limit FPS");
+        Add7("Limit FPS",     "Limit FPS",     "Обмежити FPS",   "Ограничить FPS", "Limitar FPS",    "FPS begrenzen",  "Limiter FPS",    "Ogranicz FPS");
+        Add7("Show FPS",      "Show FPS",      "Показувати FPS", "Показывать FPS", "Mostrar FPS",    "FPS anzeigen",   "Afficher FPS",   "Pokaż FPS");
+        Add7("QUALITY PRESET","QUALITY PRESET","ЯКІСТЬ",         "КАЧЕСТВО",       "CALIDAD",        "QUALITÄT",       "QUALITÉ",        "JAKOŚĆ");
+        Add7("TIERS",         "TIERS",         "РІВНІ",          "УРОВНИ",         "NIVELES",        "STUFEN",         "NIVEAUX",        "POZIOMY");
+        // ── Settings: post-fx / camera ──
+        Add7("POST-FX",       "POST-FX",       "ПОСТ-ЕФЕКТИ",    "ПОСТ-ЭФФЕКТЫ",   "POST-FX",        "POST-FX",        "POST-FX",        "POST-FX");
+        Add7("Brightness",    "Brightness",    "Яскравість",     "Яркость",        "Brillo",         "Helligkeit",     "Luminosité",     "Jasność");
+        Add7("Gamma",         "Gamma",         "Гамма",          "Гамма",          "Gamma",          "Gamma",          "Gamma",          "Gamma");
+        Add7("CAMERA",        "CAMERA",        "КАМЕРА",         "КАМЕРА",         "CÁMARA",         "KAMERA",         "CAMÉRA",         "KAMERA");
+        Add7("Field of View", "Field of View", "Поле зору",      "Поле зрения",    "Campo de visión","Sichtfeld",      "Champ de vision","Pole widzenia");
+        Add7("Screen Shake",  "Screen Shake",  "Тряска екрана",  "Тряска экрана",  "Vibración",      "Bildschütteln",  "Tremblement",    "Wstrząsy");
+        Add7("Damage Popups", "Damage Popups", "Числа шкоди",    "Числа урона",    "Números de daño","Schadenszahlen", "Chiffres dégâts","Liczby obrażeń");
+        Add7("Hit-Stop FX",   "Hit-Stop FX",   "Хіт-стоп",       "Хит-стоп",       "Hit-Stop",       "Trefferstopp",   "Hit-Stop",       "Hit-Stop");
+        Add7("Low HP Vignette","Low HP Vignette","Віньєтка HP",  "Виньетка HP",    "Viñeta HP baja", "HP-Vignette",    "Vignette PV bas","Winieta HP");
+        Add7("High Contrast", "High Contrast", "Контрастність",  "Контрастность",  "Alto contraste", "Hoher Kontrast", "Contraste élevé","Wysoki kontrast");
+        // ── Settings: sections / misc ──
+        Add7("HUD",           "HUD",           "Інтерфейс",      "Интерфейс",      "HUD",            "HUD",            "ATH",            "HUD");
+        Add7("SUBTITLES",     "SUBTITLES",     "СУБТИТРИ",       "СУБТИТРЫ",       "SUBTÍTULOS",     "UNTERTITEL",     "SOUS-TITRES",    "NAPISY");
+        Add7("TEXT",          "TEXT",          "ТЕКСТ",          "ТЕКСТ",          "TEXTO",          "TEXT",           "TEXTE",          "TEKST");
+        Add7("FEEDBACK",      "FEEDBACK",      "ВІДГУК",         "ОТКЛИК",         "RESPUESTA",      "FEEDBACK",       "RETOUR",         "REAKCJE");
+        Add7("BEHAVIOUR",     "BEHAVIOUR",     "ПОВЕДІНКА",      "ПОВЕДЕНИЕ",      "COMPORTAMIENTO", "VERHALTEN",      "COMPORTEMENT",   "ZACHOWANIE");
+        Add7("DIFFICULTY",    "DIFFICULTY",    "СКЛАДНІСТЬ",     "СЛОЖНОСТЬ",      "DIFICULTAD",     "SCHWIERIGKEIT",  "DIFFICULTÉ",     "TRUDNOŚĆ");
+        Add7("Auto-Save",     "Auto-Save",     "Автозбереження", "Автосохранение", "Autoguardado",   "Auto-Speichern", "Sauvegarde auto","Autozapis");
+        Add7("Mute When Unfocused","Mute When Unfocused","Без звуку у фоні","Без звука в фоне","Silenciar en 2.º plano","Stumm im Hintergrund","Muet en arrière-plan","Wycisz w tle");
+        Add7("GAMEPAD",       "GAMEPAD",       "ГЕЙМПАД",        "ГЕЙМПАД",        "MANDO",          "GAMEPAD",        "MANETTE",        "PAD");
+        Add7("MOUSE & KEYBOARD","MOUSE & KEYBOARD","МИША ТА КЛАВІАТУРА","МЫШЬ И КЛАВИАТУРА","RATÓN Y TECLADO","MAUS & TASTATUR","SOURIS & CLAVIER","MYSZ I KLAWIATURA");
+        Add7("BINDINGS",      "BINDINGS",      "ПРИЗНАЧЕННЯ",    "НАЗНАЧЕНИЯ",     "CONTROLES",      "TASTENBELEGUNG", "TOUCHES",        "PRZYPISANIA");
+        Add7("SAVE",          "SAVE",          "ЗБЕРЕГТИ",       "СОХРАНИТЬ",      "GUARDAR",        "SPEICHERN",      "ENREGISTRER",    "ZAPISZ");
+        // ── Barracks ──
+        Add7("HIRE",          "HIRE",          "НАЙНЯТИ",        "НАНЯТЬ",         "CONTRATAR",      "ANHEUERN",       "RECRUTER",       "NAJMIJ");
+        Add7("CANCEL",        "CANCEL",        "СКАСУВАТИ",      "ОТМЕНА",         "CANCELAR",       "ABBRECHEN",      "ANNULER",        "ANULUJ");
+        Add7("DEPLOY ARMY",   "DEPLOY ARMY",   "РОЗГОРНУТИ АРМІЮ","РАЗВЕРНУТЬ АРМИЮ","DESPLEGAR EJÉRCITO","ARMEE ENTSENDEN","DÉPLOYER L'ARMÉE","ROZMIEŚĆ ARMIĘ");
+        Add7("ARMY DEPLOYMENT","ARMY DEPLOYMENT","РОЗГОРТАННЯ АРМІЇ","РАЗВЁРТЫВАНИЕ АРМИИ","DESPLIEGUE","ARMEE-AUFSTELLUNG","DÉPLOIEMENT","ROZMIESZCZENIE");
+        // ── Shop ──
+        Add7("Choose Category","Choose Category","Оберіть категорію","Выбери категорию","Elige categoría","Kategorie wählen","Choisir catégorie","Wybierz kategorię");
+        Add7("Back to camp",  "Back to camp",  "Назад до табору","Назад в лагерь", "Volver al campamento","Zurück zum Lager","Retour au camp","Powrót do obozu");
+        Add7("Back to Camp",  "Back to Camp",  "Назад до табору","Назад в лагерь", "Volver al campamento","Zurück zum Lager","Retour au camp","Powrót do obozu");
+        Add7("Back to categories","Back to categories","Назад до категорій","К категориям","A las categorías","Zu Kategorien","Aux catégories","Do kategorii");
+        Add7("Power",         "Power",         "Сила",           "Сила",           "Poder",          "Stärke",         "Puissance",      "Moc");
+        Add7("Speed",         "Speed",         "Швидкість",      "Скорость",       "Velocidad",      "Tempo",          "Vitesse",        "Prędkość");
+        // ── HUD / world prompts ──
+        Add7("Backpack",      "Backpack",      "Рюкзак",         "Рюкзак",         "Mochila",        "Rucksack",       "Sac à dos",      "Plecak");
+        Add7("Give up",       "Give up",       "Здатися",        "Сдаться",        "Rendirse",       "Aufgeben",       "Abandonner",     "Poddaj się");
+        Add7("[F] Close",     "[F] Close",     "[F] Закрити",    "[F] Закрыть",    "[F] Cerrar",     "[F] Schließen",  "[F] Fermer",     "[F] Zamknij");
+        Add7("Hold [E] to Build","Hold [E] to Build","Утримуй [E] щоб будувати","Держи [E] для стройки","Mantén [E] para construir","[E] halten zum Bauen","Maintiens [E] pour bâtir","Przytrzymaj [E] by budować");
+        Add7("Press SPACE to Continue","Press SPACE to Continue","Натисни ПРОБІЛ, щоб продовжити","Нажми ПРОБЕЛ, чтобы продолжить","Pulsa ESPACIO para continuar","LEERTASTE zum Fortfahren","ESPACE pour continuer","Naciśnij SPACJĘ, by kontynuować");
+        Add7("Press E to Enter the Shop","Press E to Enter the Shop","E — увійти в магазин","E — войти в магазин","Pulsa E para la tienda","E zum Betreten des Ladens","E pour la boutique","E — wejdź do sklepu");
+        Add7("There are no new contracts right now. Come back later.","There are no new contracts right now. Come back later.","Нових контрактів поки немає. Зазирни пізніше.","Новых контрактов пока нет. Загляни позже.","No hay contratos nuevos ahora. Vuelve más tarde.","Derzeit keine neuen Aufträge. Komm später wieder.","Aucun contrat pour l'instant. Reviens plus tard.","Brak nowych kontraktów. Wróć później.");
     }
 
     private static void SeedLore()
