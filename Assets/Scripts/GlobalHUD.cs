@@ -1180,6 +1180,93 @@ public class GlobalHUD : MonoBehaviour
     // used to kill everything).
     private readonly List<Coroutine> activePickupCoroutines = new List<Coroutine>();
 
+    // ── Coalescing resource toasts ────────────────────────────────────────
+    // Passive income (region map nodes + camp gather buildings) grants a trickle
+    // of resources every tick. Spawning a fresh pickup popup per tick flooded the
+    // bottom-left and they piled up overlapping. Instead, resource gains COALESCE
+    // by label: one growing "+N Wood" toast that accumulates and only fades once
+    // that resource stops flowing.
+    private class ResourceToast { public RectTransform rt; public TextMeshProUGUI tmp; public int total; public float expire; public Color color; }
+    private readonly Dictionary<string, ResourceToast> resourceToasts = new Dictionary<string, ResourceToast>();
+    private const float RESOURCE_TOAST_HOLD = 1.6f;
+
+    public void ShowResourceGain(int amount, string label, Color color)
+    {
+        if (!gameObject.activeInHierarchy || amount == 0) return;
+        CreatePickupPopupContainerIfNeeded();
+        if (pickupPopupContainer == null) return;
+
+        if (resourceToasts.TryGetValue(label, out var existing) && existing != null && existing.rt != null)
+        {
+            existing.total += amount;
+            existing.color = color;
+            existing.expire = Time.unscaledTime + RESOURCE_TOAST_HOLD;
+            ApplyResourceToastText(existing, label);
+            return;
+        }
+
+        GameObject go = new GameObject("ResourceToast_" + label);
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(pickupPopupContainer, false);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 0f);
+        rt.sizeDelta = new Vector2(400f, 36f);
+
+        TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.fontSize = 26f; tmp.fontStyle = FontStyles.Bold;
+        tmp.outlineWidth = 0.18f; tmp.outlineColor = Color.black;
+        tmp.alignment = TextAlignmentOptions.Left; tmp.raycastTarget = false;
+
+        var toast = new ResourceToast { rt = rt, tmp = tmp, total = amount, color = color, expire = Time.unscaledTime + RESOURCE_TOAST_HOLD };
+        resourceToasts[label] = toast;
+        ApplyResourceToastText(toast, label);
+        RestackResourceToasts();
+    }
+
+    private void ApplyResourceToastText(ResourceToast t, string label)
+    {
+        if (t == null || t.tmp == null) return;
+        string sign = t.total > 0 ? "+" : "";
+        t.tmp.text = $"{sign}{t.total} {label}";
+        Color c = t.color; c.a = 1f; t.tmp.color = c;
+    }
+
+    private void TickResourceToasts()
+    {
+        if (resourceToasts.Count == 0) return;
+        bool removed = false;
+        var toRemove = s_toastKeyScratch;
+        toRemove.Clear();
+        foreach (var kv in resourceToasts)
+        {
+            var t = kv.Value;
+            if (t == null || t.rt == null) { toRemove.Add(kv.Key); continue; }
+            float remain = t.expire - Time.unscaledTime;
+            if (remain <= 0f) { if (t.rt != null) Destroy(t.rt.gameObject); toRemove.Add(kv.Key); removed = true; }
+            else if (remain < 0.4f && t.tmp != null)
+            {
+                Color c = t.tmp.color; c.a = remain / 0.4f; t.tmp.color = c; // fade out
+            }
+        }
+        for (int i = 0; i < toRemove.Count; i++) resourceToasts.Remove(toRemove[i]);
+        if (removed) RestackResourceToasts();
+    }
+
+    private static readonly List<string> s_toastKeyScratch = new List<string>(8);
+
+    private void RestackResourceToasts()
+    {
+        int i = 0;
+        foreach (var kv in resourceToasts)
+        {
+            var t = kv.Value;
+            if (t == null || t.rt == null) continue;
+            t.rt.anchoredPosition = new Vector2(0f, i * 36f);
+            i++;
+        }
+    }
+
     private void CreatePickupPopupContainerIfNeeded()
     {
         if (pickupPopupContainer != null) return;
@@ -1308,6 +1395,7 @@ public class GlobalHUD : MonoBehaviour
     {
         for (int i = activePickupPopups.Count - 1; i >= 0; i--)
             if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
+        TickResourceToasts();
     }
 
     private void RestackPickupPopups()
@@ -1353,5 +1441,6 @@ public class GlobalHUD : MonoBehaviour
             for (int i = pickupPopupContainer.childCount - 1; i >= 0; i--)
                 Destroy(pickupPopupContainer.GetChild(i).gameObject);
         }
+        resourceToasts.Clear(); // coalescing toasts live in the same container
     }
 }

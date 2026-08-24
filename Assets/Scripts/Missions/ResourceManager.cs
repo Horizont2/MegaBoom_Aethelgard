@@ -399,8 +399,10 @@ public class ResourceManager : MonoBehaviour
     private void ShowResourceToast(int amount, string label, Color color)
     {
         if (GlobalHUD.Instance == null || amount == 0) return;
-        string sign = amount > 0 ? "+" : "";
-        GlobalHUD.Instance.ShowPickupPopup($"{sign}{amount} {label}", color);
+        // Coalescing toast: passive income trickles in every tick, so this
+        // accumulates into ONE growing "+N Wood" line instead of spawning a
+        // fresh popup per tick (which stacked/overlapped bottom-left).
+        GlobalHUD.Instance.ShowResourceGain(amount, LocalizationManager.Tr(label), color);
     }
 
     // --- ������� �Ͳ��ֲ� UI (JUICE) ---
