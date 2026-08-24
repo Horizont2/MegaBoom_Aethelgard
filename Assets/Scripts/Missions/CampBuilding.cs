@@ -437,8 +437,18 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
+    // Only ONE building panel may be open at a time. Several open panels render
+    // at the same screen position and their 1-second UpdateUIData refreshes
+    // overlapped, which made the hint flicker BUILD<->UPGRADE between buildings.
+    private static CampBuilding s_openBuilding;
+
     private void OpenPanel()
     {
+        // Close any other building's panel first so two never overlap.
+        if (s_openBuilding != null && s_openBuilding != this)
+            s_openBuilding.ClosePanel();
+        s_openBuilding = this;
+
         // Per-building first-open hints — teach what each building does
         // the first time the player inspects it. Keyed on buildingID so
         // each building gets its own one-shot.
@@ -525,6 +535,7 @@ public class CampBuilding : MonoBehaviour
     private void ClosePanel()
     {
         isPanelOpen = false;
+        if (s_openBuilding == this) s_openBuilding = null;
         currentHoldTime = 0f;
 
         if (holdFillImage != null) holdFillImage.fillAmount = 0f;
