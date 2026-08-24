@@ -7,7 +7,7 @@ using System.Collections;
 // the companion is a pure damage helper; it leaves after allyLifetime seconds
 // (0 = stays until the scene ends). Drives animator params isMoving (bool) and
 // Attack (trigger) if the model has them.
-public class AllyAI : MonoBehaviour
+public class AllyAI : MonoBehaviour, IDamageable
 {
     [Header("Movement")]
     public float moveSpeed = 5f;
@@ -21,8 +21,17 @@ public class AllyAI : MonoBehaviour
     [Tooltip("Delay from the swing starting to the hit landing (sync with the attack anim).")]
     public float attackImpactDelay = 0.25f;
 
+    [Header("Survivability")]
+    [Tooltip("The ally CAN die — it isn't invincible. Kept modest so a freed captive is a helper, not a juggernaut.")]
+    public float maxHealth = 60f;
+    [Tooltip("Chip damage per second the ally takes for EACH enemy in melee range — so a lone ally worn down by a crowd eventually falls.")]
+    public float meleeRetaliationDPS = 5f;
+    public GameObject deathVFXPrefab;
+    private float currentHealth;
+    private bool dead;
+
     [Header("Lifetime")]
-    [Tooltip("Seconds the ally fights before leaving. 0 = stays for the whole scene.")]
+    [Tooltip("Seconds the ally fights before leaving. 0 = stays until it dies / the scene ends.")]
     public float allyLifetime = 45f;
     public GameObject leaveVFXPrefab;
 
@@ -37,6 +46,26 @@ public class AllyAI : MonoBehaviour
     {
         bornTime = Time.time;
         lastAttackTime = -999f;
+        currentHealth = maxHealth;
+        dead = false;
+    }
+
+    // IDamageable — grenades, boss AoE, and any area attack that hits the ally's
+    // spot wear it down. Combined with melee retaliation, this lets the ally die.
+    public void TakeDamage(DamageInfo info)
+    {
+        if (dead) return;
+        currentHealth -= Mathf.Max(0f, info.Amount);
+        if (currentHealth <= 0f) Die();
+    }
+
+    private void Die()
+    {
+        if (dead) return;
+        dead = true;
+        if (deathVFXPrefab != null) Instantiate(deathVFXPrefab, transform.position + Vector3.up, Quaternion.identity);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
+        Destroy(gameObject);
     }
 
     private void Start()
@@ -53,9 +82,24 @@ public class AllyAI : MonoBehaviour
 
     private void Update()
     {
-        if (leaving) return;
+        if (leaving || dead) return;
         if (allyLifetime > 0f && Time.time - bornTime > allyLifetime) { StartCoroutine(LeaveRoutine()); return; }
         if (player == null) { CachePlayer(); if (player == null) return; }
+
+        // Retaliation: take chip damage for each enemy pressed into melee range,
+        // so a lone ally caught by a crowd is worn down and can fall.
+        if (meleeRetaliationDPS > 0f)
+        {
+            int adj = 0;
+            int m = Physics.OverlapSphereNonAlloc(transform.position, attackRange + 0.6f, s_buf, 1 << 9);
+            for (int i = 0; i < m; i++)
+                if (s_buf[i] != null && (s_buf[i].GetComponentInParent<EnemyAI>() != null || s_buf[i].GetComponentInParent<TutorialBossAI>() != null)) adj++;
+            if (adj > 0)
+            {
+                currentHealth -= meleeRetaliationDPS * adj * Time.deltaTime;
+                if (currentHealth <= 0f) { Die(); return; }
+            }
+        }
 
         Component enemy = FindNearestEnemy();
         if (enemy != null)

@@ -32,6 +32,12 @@ public class CagedAllyEvent : MonoBehaviour
     public bool buildProceduralCage = true;
     public Color cageBarColor = new Color(0.32f, 0.28f, 0.22f);
 
+    [Header("Freed ally balance (basic militia — not a juggernaut)")]
+    [Tooltip("Damage per hit of the freed ally.")]
+    public float allyDamage = 12f;
+    [Tooltip("Health of the freed ally — modest, so it can die if overwhelmed.")]
+    public float allyHealth = 60f;
+
     [Header("Trigger")]
     public float triggerRadius = 10f;
 
@@ -63,6 +69,11 @@ public class CagedAllyEvent : MonoBehaviour
             AllyAI ai = allyObject.GetComponent<AllyAI>();
             if (ai == null) ai = allyObject.AddComponent<AllyAI>();
             ai.enabled = false;
+            // Freed captive = a basic militia helper: stays for the whole run
+            // (until it DIES), but deliberately modest so it isn't a juggernaut.
+            ai.allyLifetime = 0f;      // no auto-leave; persists until killed
+            ai.damage = allyDamage;
+            ai.maxHealth = allyHealth;
             // A captive spawned from an ENEMY prefab must not attack the player —
             // disable any EnemyAI on it while caged/allied.
             EnemyAI foe = allyObject.GetComponent<EnemyAI>();
