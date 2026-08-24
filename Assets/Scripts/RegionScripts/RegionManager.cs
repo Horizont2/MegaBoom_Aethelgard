@@ -350,42 +350,12 @@ public class RegionManager : MonoBehaviour
         }
         if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
 
-        // === PHASE 3: orbit camera around totem (2.5 s) =============================
-        float initialFogStart = RenderSettings.fogStartDistance;
-        float initialFogEnd = RenderSettings.fogEndDistance;
-        float targetFogStart = initialFogStart + mapScale;
-        float targetFogEnd = initialFogEnd + (mapScale * 1.5f);
-        Color initialAmbient = RenderSettings.ambientLight;
-
-        Vector3 toApex = apexCamPos - finalTotemPos;
-        float orbitRadius = new Vector2(toApex.x, toApex.z).magnitude;
-        float orbitHeight = toApex.y;
-        float baseAngle = Mathf.Atan2(toApex.z, toApex.x);
-
-        elapsed = 0f;
-        const float orbitDuration = 2.5f;
-        while (elapsed < orbitDuration)
-        {
-            if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-            elapsed += Time.deltaTime;
-            float t = elapsed / orbitDuration;
-            float smoothT = t * t * (3f - 2f * t);
-
-            float angle = baseAngle + Mathf.Lerp(0f, 30f * Mathf.Deg2Rad, smoothT);
-            Vector3 orbitPos = finalTotemPos + new Vector3(
-                Mathf.Cos(angle) * orbitRadius,
-                orbitHeight + Mathf.Sin(elapsed * 0.6f) * 1.5f,
-                Mathf.Sin(angle) * orbitRadius);
-            mainCam.transform.position = orbitPos;
-            mainCam.transform.rotation = Quaternion.LookRotation(finalTotemPos - orbitPos);
-
-            RenderSettings.fogStartDistance = Mathf.Lerp(initialFogStart, targetFogStart, smoothT);
-            RenderSettings.fogEndDistance = Mathf.Lerp(initialFogEnd, targetFogEnd, smoothT);
-            RenderSettings.ambientLight = Color.Lerp(initialAmbient,
-                new Color(initialAmbient.r + 0.3f, initialAmbient.g + 0.3f, initialAmbient.b + 0.3f), t);
-
-            yield return null;
-        }
+        // === PHASE 3: BIRD-FLIGHT REVEAL — the cleansed land blooms beneath ======
+        // A swooping, banking flight low over the landscape (skimming the canopy,
+        // dipping toward water) while the corruption visibly lifts: fog warms and
+        // thins, ambient + sun brighten, and golden life-motes drift up. This is
+        // the "look what you saved" beat that replaces the old flat orbit.
+        yield return StartCoroutine(BirdFlightRevealRoutine(mainCam, camFollow, finalTotemPos, mapScale));
 
         if (corruptionBeam != null) Destroy(corruptionBeam);
 
@@ -596,6 +566,200 @@ public class RegionManager : MonoBehaviour
             cam.transform.position = from + worldDelta * Mathf.Clamp01(t / duration);
             yield return null;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  BIRD-FLIGHT REVEAL — swooping flythrough while the world heals
+    // ─────────────────────────────────────────────────────────────────────
+    private IEnumerator BirdFlightRevealRoutine(Camera cam, CameraFollow camFollow, Vector3 totemPos, float mapScale)
+    {
+        if (cam == null) yield break;
+
+        // Snapshot the corrupt render state we lerp AWAY from.
+        float fog0Start = RenderSettings.fogStartDistance;
+        float fog0End = RenderSettings.fogEndDistance;
+        float fog0Dens = RenderSettings.fogDensity;
+        Color fog0Col = RenderSettings.fogColor;
+        Color amb0 = RenderSettings.ambientLight;
+
+        // Healed targets: airy, warm, bright.
+        float fogTStart = fog0Start + mapScale * 0.6f;
+        float fogTEnd = fog0End + mapScale * 1.6f;
+        float fogTDens = fog0Dens * 0.4f;
+        Color fogTCol = new Color(0.82f, 0.87f, 0.93f);
+        Color ambT = new Color(Mathf.Min(1f, amb0.r + 0.35f), Mathf.Min(1f, amb0.g + 0.38f), Mathf.Min(1f, amb0.b + 0.30f));
+
+        // Optional sun swell.
+        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
+        Light sun = dnc != null ? dnc.sunLight : null;
+        float sun0 = sun != null ? sun.intensity : 1f;
+        Color sunC0 = sun != null ? sun.color : Color.white;
+        Color sunCT = new Color(1f, 0.96f, 0.85f);
+
+        List<Vector3> path = BuildBirdPath(totemPos, mapScale);
+        GameObject motes = CreateLifeMotes(cam.transform);
+
+        float startFov = cam.fieldOfView;
+        Vector3 prevFwd = cam.transform.forward; prevFwd.y = 0f; if (prevFwd.sqrMagnitude < 0.001f) prevFwd = Vector3.forward; prevFwd.Normalize();
+        float roll = 0f;
+
+        const float flightDur = 8.5f;
+        float elapsed = 0f;
+        while (elapsed < flightDur)
+        {
+            if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
+            elapsed += Time.deltaTime;
+            float u = Mathf.Clamp01(elapsed / flightDur);
+            float e = u * u * (3f - 2f * u); // ease in/out
+
+            Vector3 pos = SampleBirdPath(path, e);
+            float clear = GroundHeightAt(pos) + 7f;       // skim the canopy, never clip
+            if (pos.y < clear) pos.y = clear;
+            cam.transform.position = pos;
+
+            // Forward = velocity along the path; gaze tilts down toward the land.
+            Vector3 ahead = SampleBirdPath(path, Mathf.Min(1f, e + 0.02f));
+            Vector3 fwd = ahead - pos;
+            if (fwd.sqrMagnitude < 0.0001f) fwd = cam.transform.forward;
+            fwd.Normalize();
+            Vector3 gaze = (fwd + Vector3.down * 0.30f).normalized;
+            Quaternion targetRot = Quaternion.LookRotation(gaze, Vector3.up);
+
+            // Bank into turns like a bird: roll proportional to heading change.
+            Vector3 fwdFlat = new Vector3(fwd.x, 0f, fwd.z).normalized;
+            float turn = Vector3.SignedAngle(prevFwd, fwdFlat, Vector3.up);
+            prevFwd = fwdFlat;
+            float targetRoll = Mathf.Clamp(-turn * 4.5f, -28f, 28f);
+            roll = Mathf.Lerp(roll, targetRoll, Time.deltaTime * 3f);
+            cam.transform.rotation = targetRot * Quaternion.Euler(0f, 0f, roll);
+
+            // A touch wider FOV mid-flight for a sense of speed, easing back.
+            cam.fieldOfView = Mathf.Lerp(startFov, 72f, Mathf.Sin(u * Mathf.PI));
+
+            // Heal the world proportionally to how far we've flown.
+            RenderSettings.fogStartDistance = Mathf.Lerp(fog0Start, fogTStart, e);
+            RenderSettings.fogEndDistance = Mathf.Lerp(fog0End, fogTEnd, e);
+            RenderSettings.fogDensity = Mathf.Lerp(fog0Dens, fogTDens, e);
+            RenderSettings.fogColor = Color.Lerp(fog0Col, fogTCol, e);
+            RenderSettings.ambientLight = Color.Lerp(amb0, ambT, e);
+            if (sun != null)
+            {
+                sun.intensity = Mathf.Lerp(sun0, sun0 * 1.6f, e);
+                sun.color = Color.Lerp(sunC0, sunCT, e);
+            }
+            yield return null;
+        }
+
+        // Crane up into a wide hero shot over the cleansed region, facing the totem.
+        Vector3 heroStartPos = cam.transform.position;
+        Quaternion heroStartRot = cam.transform.rotation;
+        float heroFov = cam.fieldOfView;
+        float heroH = Mathf.Clamp(mapScale * 0.18f, 40f, 70f);
+        Vector3 heroPos = totemPos + new Vector3(heroH * 0.6f, heroH, -heroH * 0.6f);
+        float ct = 0f; const float craneDur = 1.6f;
+        while (ct < craneDur)
+        {
+            if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
+            ct += Time.deltaTime;
+            float k = ct / craneDur; k = k * k * (3f - 2f * k);
+            cam.transform.position = Vector3.Lerp(heroStartPos, heroPos, k);
+            cam.transform.rotation = Quaternion.Slerp(heroStartRot, Quaternion.LookRotation(totemPos + Vector3.up * 3f - heroPos), k);
+            cam.fieldOfView = Mathf.Lerp(heroFov, 60f, k);
+            yield return null;
+        }
+
+        if (motes != null) Destroy(motes, 3f); // let the last motes drift out
+    }
+
+    // Scenic S-curve across the map at bird height, starting by the totem.
+    private List<Vector3> BuildBirdPath(Vector3 totemPos, float mapScale)
+    {
+        var pts = new List<Vector3>();
+        Terrain terr = Terrain.activeTerrain;
+        Vector3 origin = terr != null ? terr.transform.position : Vector3.zero;
+        float size = terr != null ? terr.terrainData.size.x : mapScale;
+        Vector3 center = origin + new Vector3(size * 0.5f, 0f, size * 0.5f);
+
+        Vector3 dir = center - totemPos; dir.y = 0f;
+        if (dir.sqrMagnitude < 1f) dir = Vector3.forward;
+        dir.Normalize();
+        Vector3 rightV = Vector3.Cross(Vector3.up, dir);
+        float span = size * 0.55f;
+
+        pts.Add(totemPos - dir * 8f + Vector3.up * 4f);              // launch by the totem
+        pts.Add(totemPos + dir * span * 0.25f + rightV * span * 0.22f);
+        pts.Add(totemPos + dir * span * 0.55f - rightV * span * 0.24f);
+        pts.Add(totemPos + dir * span * 0.85f + rightV * span * 0.16f);
+        pts.Add(center);                                            // finish over the interior
+
+        for (int i = 0; i < pts.Count; i++)
+        {
+            Vector3 p = pts[i];
+            // Clamp inside the map so we never fly off the edge into skybox.
+            p.x = Mathf.Clamp(p.x, origin.x + 12f, origin.x + size - 12f);
+            p.z = Mathf.Clamp(p.z, origin.z + 12f, origin.z + size - 12f);
+            p.y = GroundHeightAt(p) + 11f;                          // bird height above local ground
+            pts[i] = p;
+        }
+        return pts;
+    }
+
+    // Catmull-Rom sample over the waypoint list, param in [0,1].
+    private Vector3 SampleBirdPath(List<Vector3> pts, float t)
+    {
+        if (pts == null || pts.Count == 0) return Vector3.zero;
+        if (pts.Count == 1) return pts[0];
+        int seg = pts.Count - 1;
+        float ft = Mathf.Clamp01(t) * seg;
+        int i = Mathf.Min((int)ft, seg - 1);
+        float lt = ft - i;
+        Vector3 p0 = pts[Mathf.Max(0, i - 1)];
+        Vector3 p1 = pts[i];
+        Vector3 p2 = pts[i + 1];
+        Vector3 p3 = pts[Mathf.Min(pts.Count - 1, i + 2)];
+        return 0.5f * ((2f * p1) + (-p0 + p2) * lt
+            + (2f * p0 - 5f * p1 + 4f * p2 - p3) * lt * lt
+            + (-p0 + 3f * p1 - 3f * p2 + p3) * lt * lt * lt);
+    }
+
+    private float GroundHeightAt(Vector3 pos)
+    {
+        Terrain t = Terrain.activeTerrain;
+        if (t != null) return t.SampleHeight(pos) + t.transform.position.y;
+        return 0f;
+    }
+
+    // Golden life-motes that drift up around the camera — "life returning".
+    private GameObject CreateLifeMotes(Transform follow)
+    {
+        var go = new GameObject("VictoryLifeMotes");
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop();
+        var main = ps.main;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.startLifetime = 4f;
+        main.startSpeed = 1.2f;
+        main.startSize = 0.25f;
+        main.startColor = new Color(1f, 0.85f, 0.45f, 0.9f);
+        main.maxParticles = 300;
+        main.gravityModifier = -0.05f; // gentle rise
+        var em = ps.emission; em.rateOverTime = 60f;
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(40f, 6f, 40f);
+        var col = ps.colorOverLifetime; col.enabled = true;
+        var grad = new Gradient();
+        grad.SetKeys(
+            new[] { new GradientColorKey(new Color(1f, 0.9f, 0.6f), 0f), new GradientColorKey(new Color(1f, 0.8f, 0.4f), 1f) },
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.9f, 0.2f), new GradientAlphaKey(0f, 1f) });
+        col.color = grad;
+        var rend = ps.GetComponent<ParticleSystemRenderer>();
+        rend.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
+        rend.material.color = new Color(1f, 0.85f, 0.45f, 0.9f);
+        rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        if (follow != null) { go.transform.SetParent(follow, false); go.transform.localPosition = new Vector3(0f, -2f, 12f); }
+        ps.Play();
+        return go;
     }
 
     // Slow, one-way FOV drift — no snap-back. Used for the title-reveal
