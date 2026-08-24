@@ -730,6 +730,33 @@ public class AudioManager : MonoBehaviour
         { AudioID.Boss_Enrage,        AudioID.Boss_Roar },
     };
 
+    // Play a sound EXACTLY once, guaranteed to stop after `maxSeconds`, even if
+    // the FMOD event was authored looping. Regular PlaySFX routes a looping
+    // event into _loopingBeds where it repeats until the scene changes — which
+    // is why the victory stinger "played many times". This creates a private
+    // tracked instance and force-stops it.
+    public void PlaySFXOnce(string soundName, float maxSeconds = 5f)
+    {
+        if (sfxDictionary == null || !sfxDictionary.TryGetValue(soundName, out SoundGroup group)) return;
+        if (group == null || group.fmodEvent.IsNull) return;
+        FMOD.RESULT r = RuntimeManager.StudioSystem.getEventByID(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
+        if (r != FMOD.RESULT.OK || !desc.isValid()) return;
+        var inst = RuntimeManager.CreateInstance(group.fmodEvent);
+        if (!inst.isValid()) return;
+        inst.start();
+        StartCoroutine(StopInstanceAfter(inst, Mathf.Max(0.1f, maxSeconds)));
+    }
+
+    private IEnumerator StopInstanceAfter(EventInstance inst, float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        if (inst.isValid())
+        {
+            inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+            inst.release();
+        }
+    }
+
     // Warn once per missing sound so a broken bank / unwired SoundGroup
     // stops being invisible. Previously PlaySFX silently returned when
     // the FMOD event was null — that made "no enemy sounds" impossible

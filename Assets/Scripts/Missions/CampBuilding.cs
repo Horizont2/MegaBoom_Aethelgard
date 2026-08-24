@@ -576,6 +576,14 @@ public class CampBuilding : MonoBehaviour
 
     private void UpdateUIData()
     {
+        // Read the AUTHORITATIVE saved level every refresh. The hint (BUILD vs
+        // UPGRADE) is chosen from currentLevel; if that field was ever stale
+        // (e.g. not reloaded after an upgrade, or a second code path holding an
+        // old value), the 1-second refresh flipped the hint back and forth.
+        // PlayerPrefs is the single source of truth (written on build/upgrade).
+        if (!string.IsNullOrEmpty(ppKey_Save))
+            currentLevel = PlayerPrefs.GetInt(ppKey_Save, currentLevel);
+
         // 1. Оновлюємо базові тексти ЗАВЖДИ (навіть якщо максимальний рівень).
         // Building name + description live on the SO/prefab in English;
         // wrap through Tr so the localisation table can override.

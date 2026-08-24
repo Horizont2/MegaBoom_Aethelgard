@@ -355,7 +355,16 @@ public class RegionManager : MonoBehaviour
         // dipping toward water) while the corruption visibly lifts: fog warms and
         // thins, ambient + sun brighten, and golden life-motes drift up. This is
         // the "look what you saved" beat that replaces the old flat orbit.
+        // Depth-of-field looks wrong on a fast flythrough (focus racks over the
+        // whole terrain) — turn it off for the flight and restore it for the
+        // static title beat. Also settle the handheld so it doesn't fight the
+        // scripted flight path.
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
+        CinematicHandheld.End(mainCam);
+
         yield return StartCoroutine(BirdFlightRevealRoutine(mainCam, camFollow, finalTotemPos, mapScale));
+
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
 
         if (corruptionBeam != null) Destroy(corruptionBeam);
 
@@ -382,7 +391,9 @@ public class RegionManager : MonoBehaviour
 
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
+            // Force a single, bounded play — the stinger event is authored
+            // looping, so plain PlaySFX let it repeat until the scene changed.
+            AudioManager.Instance.PlaySFXOnce(AudioID.Region_VictoryStinger, 6f);
         }
 
         if (CinematicTitleUI.Instance != null)
@@ -603,7 +614,10 @@ public class RegionManager : MonoBehaviour
         Vector3 prevFwd = cam.transform.forward; prevFwd.y = 0f; if (prevFwd.sqrMagnitude < 0.001f) prevFwd = Vector3.forward; prevFwd.Normalize();
         float roll = 0f;
 
-        const float flightDur = 8.5f;
+        // Slower + a touch higher than before: the old 8.5s low skim raced past
+        // and the low altitude packed the frustum with close canopy (overdraw →
+        // the lag). 13s at a gentle glide reads as a majestic bird's-eye reveal.
+        const float flightDur = 13f;
         float elapsed = 0f;
         while (elapsed < flightDur)
         {
@@ -613,7 +627,7 @@ public class RegionManager : MonoBehaviour
             float e = u * u * (3f - 2f * u); // ease in/out
 
             Vector3 pos = SampleBirdPath(path, e);
-            float clear = GroundHeightAt(pos) + 7f;       // skim the canopy, never clip
+            float clear = GroundHeightAt(pos) + 10f;      // glide just over the canopy
             if (pos.y < clear) pos.y = clear;
             cam.transform.position = pos;
 
@@ -698,7 +712,7 @@ public class RegionManager : MonoBehaviour
             // Clamp inside the map so we never fly off the edge into skybox.
             p.x = Mathf.Clamp(p.x, origin.x + 12f, origin.x + size - 12f);
             p.z = Mathf.Clamp(p.z, origin.z + 12f, origin.z + size - 12f);
-            p.y = GroundHeightAt(p) + 11f;                          // bird height above local ground
+            p.y = GroundHeightAt(p) + 14f;                          // bird height above local ground
             pts[i] = p;
         }
         return pts;
@@ -737,27 +751,46 @@ public class RegionManager : MonoBehaviour
         ps.Stop();
         var main = ps.main;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.startLifetime = 4f;
-        main.startSpeed = 1.2f;
-        main.startSize = 0.25f;
-        main.startColor = new Color(1f, 0.85f, 0.45f, 0.9f);
-        main.maxParticles = 300;
-        main.gravityModifier = -0.05f; // gentle rise
-        var em = ps.emission; em.rateOverTime = 60f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 6f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 1.0f);
+        // Small, varied motes read as delicate spores of life, not blobs.
+        main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.22f);
+        main.startColor = new Color(1f, 0.88f, 0.55f, 1f);
+        main.startRotation = new ParticleSystem.MinMaxCurve(0f, 6.28f);
+        main.maxParticles = 140;
+        main.gravityModifier = -0.03f; // gentle rise
+        var em = ps.emission; em.rateOverTime = 28f;
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(40f, 6f, 40f);
+        shape.scale = new Vector3(45f, 8f, 45f);
+
+        // Fade in, hold, fade out — with a soft twinkle.
         var col = ps.colorOverLifetime; col.enabled = true;
         var grad = new Gradient();
         grad.SetKeys(
-            new[] { new GradientColorKey(new Color(1f, 0.9f, 0.6f), 0f), new GradientColorKey(new Color(1f, 0.8f, 0.4f), 1f) },
-            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.9f, 0.2f), new GradientAlphaKey(0f, 1f) });
+            new[] { new GradientColorKey(new Color(1f, 0.95f, 0.7f), 0f), new GradientColorKey(new Color(1f, 0.8f, 0.4f), 1f) },
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.85f, 0.25f), new GradientAlphaKey(0.85f, 0.7f), new GradientAlphaKey(0f, 1f) });
         col.color = grad;
+
+        // Size swells then settles so each mote "breathes".
+        var sol = ps.sizeOverLifetime; sol.enabled = true;
+        var sizeCurve = new AnimationCurve(new Keyframe(0f, 0.2f), new Keyframe(0.35f, 1f), new Keyframe(1f, 0.5f));
+        sol.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        // Slow drift/rotation for life.
+        var rot = ps.rotationOverLifetime; rot.enabled = true;
+        rot.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+        var noise = ps.noise; noise.enabled = true; noise.strength = 0.25f; noise.frequency = 0.3f; noise.scrollSpeed = 0.2f;
+
         var rend = ps.GetComponent<ParticleSystemRenderer>();
-        rend.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
-        rend.material.color = new Color(1f, 0.85f, 0.45f, 0.9f);
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Sprites/Default");
+        rend.material = new Material(shader);
+        rend.material.color = new Color(1f, 0.88f, 0.55f, 1f);
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        if (follow != null) { go.transform.SetParent(follow, false); go.transform.localPosition = new Vector3(0f, -2f, 12f); }
+        rend.receiveShadows = false;
+        // Spread the emitter box AHEAD of and below the camera so motes rise
+        // through frame rather than clumping at one point.
+        if (follow != null) { go.transform.SetParent(follow, false); go.transform.localPosition = new Vector3(0f, -4f, 16f); }
         ps.Play();
         return go;
     }
