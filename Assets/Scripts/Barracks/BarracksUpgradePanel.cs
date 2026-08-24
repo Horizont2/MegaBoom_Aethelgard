@@ -129,9 +129,9 @@ public class BarracksUpgradePanel : MonoBehaviour
     private void Awake()
     {
         if (closeButton != null) closeButton.onClick.AddListener(Close);
-        if (tabHireButton != null) tabHireButton.onClick.AddListener(() => ShowTab(0));
-        if (tabUpgradeUnitsButton != null) tabUpgradeUnitsButton.onClick.AddListener(() => ShowTab(1));
-        if (tabUpgradeBarracksButton != null) tabUpgradeBarracksButton.onClick.AddListener(() => ShowTab(2));
+        if (tabHireButton != null) tabHireButton.onClick.AddListener(() => { PlayTabClick(); ShowTab(0); });
+        if (tabUpgradeUnitsButton != null) tabUpgradeUnitsButton.onClick.AddListener(() => { PlayTabClick(); ShowTab(1); });
+        if (tabUpgradeBarracksButton != null) tabUpgradeBarracksButton.onClick.AddListener(() => { PlayTabClick(); ShowTab(2); });
         if (barracksUpgradeButton != null) barracksUpgradeButton.onClick.AddListener(OnUpgradeBarracks);
 
         if (rootObject != null) rootObject.SetActive(false);
@@ -211,6 +211,11 @@ public class BarracksUpgradePanel : MonoBehaviour
         Cursor.visible = false;
         cursorStateSaved = false;
         IsOpen = false;
+    }
+
+    private void PlayTabClick()
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
     }
 
     private void ShowTab(int idx)

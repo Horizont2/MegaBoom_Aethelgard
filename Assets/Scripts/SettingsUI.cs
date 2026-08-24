@@ -428,7 +428,9 @@ public class SettingsUI : MonoBehaviour
     {
         if (tabTexts == null || index < 0 || index >= tabTexts.Length) return;
 
-        if (AudioManager.Instance != null && settingsPanel.activeSelf)
+        // Play unconditionally — a tab is only clickable while settings are open,
+        // and the old activeSelf guard could suppress the click sound.
+        if (AudioManager.Instance != null)
             AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         currentTabIndex = index;
