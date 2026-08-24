@@ -813,8 +813,23 @@ public class RegionTotem : MonoBehaviour
 
     private float GetGroundHeight(Vector3 pos)
     {
-        if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 100f, LayerMask.GetMask("Default", "Terrain", "Ground"))) return hit.point.y;
-        if (Terrain.activeTerrain != null) return Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+        // Use the TERRAIN height as the authoritative ground. The old raycast
+        // grabbed the first Default-layer collider under the point — which is
+        // often a TREE CANOPY or ROCK sitting where the anchor lands, so anchors
+        // spawned up in the air on top of props. A raycast is only used when the
+        // hit is the actual terrain (or as a fallback with no active terrain).
+        if (Terrain.activeTerrain != null)
+        {
+            float th = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+            // If a raycast hits the TerrainCollider specifically, trust it (it's
+            // more precise on steep slopes); otherwise keep the sampled height.
+            if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 100f, ~0, QueryTriggerInteraction.Ignore)
+                && hit.collider is TerrainCollider)
+                return hit.point.y;
+            return th;
+        }
+        if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit h2, 100f, LayerMask.GetMask("Default", "Terrain", "Ground")))
+            return h2.point.y;
         return pos.y;
     }
 }

@@ -775,6 +775,13 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (!wasGroundedLastFrame && isGroundedNow)
         {
+            // Landing sound fires on a REAL landing from a height (fall/jump),
+            // scaled by how hard the drop was — not at the end of a dash on flat
+            // ground. Anything softer than a jump (-8) is just a step and stays
+            // silent.
+            if (yVelocityBeforeMove < -8f && AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX(AudioID.Player_Land);
+
             if (yVelocityBeforeMove <= hardLandingVelocityThreshold)
             {
                 if (hardLandingVFX != null) hardLandingVFX.Play();
@@ -1543,8 +1550,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         isDashing = false;
-        // Soft touchdown thud as the dash settles — pairs with the dash whoosh.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Land);
+        // (Landing sound moved to the real hard-landing detection — a dash on
+        // flat ground is not a landing.)
 
         float elapsed = 0f;
         while (elapsed < 0.3f)

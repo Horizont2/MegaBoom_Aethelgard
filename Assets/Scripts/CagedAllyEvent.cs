@@ -85,8 +85,9 @@ public class CagedAllyEvent : MonoBehaviour
             cageObject = BuildProceduralCage(transform.position);
     }
 
-    // A simple bone/wood cage from primitives — a ring of vertical bars plus a
-    // top and bottom hoop. No external asset required.
+    // A clean cage from primitives — vertical bars capped by top + bottom hoops
+    // whose segments span EXACTLY between adjacent bars (chord length, tangent
+    // orientation) so nothing overlaps or leaves gaps. No external asset needed.
     private GameObject BuildProceduralCage(Vector3 center)
     {
         center.y = GroundY(center);
@@ -97,34 +98,67 @@ public class CagedAllyEvent : MonoBehaviour
         if (mat != null) mat.color = cageBarColor;
 
         const int bars = 8;
-        const float radius = 1.1f;
+        const float radius = 1.0f;
         const float height = 2.6f;
+        const float barThick = 0.07f;
+        const float ringThick = 0.08f;
+        const float baseY = 0.12f;      // bottom hoop height (a little off the ground)
+        const float topY = height;      // top hoop height
+
+        // Vertices where the bars stand.
+        Vector3[] verts = new Vector3[bars];
         for (int i = 0; i < bars; i++)
         {
             float ang = (Mathf.PI * 2f / bars) * i;
-            GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            Destroy(bar.GetComponent<Collider>()); // bars are decorative; guards block the player
+            verts[i] = new Vector3(Mathf.Cos(ang) * radius, 0f, Mathf.Sin(ang) * radius);
+        }
+
+        // Vertical bars — thin boxes from the bottom hoop to just above the top.
+        for (int i = 0; i < bars; i++)
+        {
+            GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(bar.GetComponent<Collider>()); // decorative; guards block the player
             bar.transform.SetParent(cage.transform, false);
-            bar.transform.localPosition = new Vector3(Mathf.Cos(ang) * radius, height * 0.5f, Mathf.Sin(ang) * radius);
-            bar.transform.localScale = new Vector3(0.08f, height * 0.5f, 0.08f);
+            bar.transform.localPosition = new Vector3(verts[i].x, (baseY + topY) * 0.5f, verts[i].z);
+            bar.transform.localScale = new Vector3(barThick, topY - baseY, barThick);
             if (mat != null) bar.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
-        // Top + bottom hoops (flattened tori faked with thin cylinders in a ring).
+
+        // Bottom + top hoops: one segment per edge, sized to the chord and
+        // oriented along it so the ends meet the bars exactly.
         for (int ring = 0; ring < 2; ring++)
         {
-            float y = ring == 0 ? 0.15f : height - 0.1f;
-            int seg = 12;
-            for (int i = 0; i < seg; i++)
+            float y = ring == 0 ? baseY : topY;
+            for (int i = 0; i < bars; i++)
             {
-                float a0 = (Mathf.PI * 2f / seg) * i;
-                GameObject piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                Destroy(piece.GetComponent<Collider>());
-                piece.transform.SetParent(cage.transform, false);
-                piece.transform.localPosition = new Vector3(Mathf.Cos(a0) * radius, y, Mathf.Sin(a0) * radius);
-                piece.transform.localRotation = Quaternion.Euler(0f, -a0 * Mathf.Rad2Deg, 0f);
-                piece.transform.localScale = new Vector3(0.6f, 0.08f, 0.08f);
-                if (mat != null) piece.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                Vector3 a = verts[i];
+                Vector3 b = verts[(i + 1) % bars];
+                Vector3 mid = (a + b) * 0.5f; mid.y = y;
+                float len = Vector3.Distance(a, b) + ringThick; // overlap the bars slightly so no gap
+                GameObject seg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(seg.GetComponent<Collider>());
+                seg.transform.SetParent(cage.transform, false);
+                seg.transform.localPosition = mid;
+                seg.transform.localRotation = Quaternion.LookRotation((b - a).normalized, Vector3.up);
+                seg.transform.localScale = new Vector3(ringThick, ringThick, len);
+                if (mat != null) seg.GetComponent<MeshRenderer>().sharedMaterial = mat;
             }
+        }
+
+        // A small pointed apex: short bars leaning inward from the top ring to a
+        // central point — reads as a proper cage roof instead of an open tube.
+        Vector3 apex = new Vector3(0f, topY + 0.55f, 0f);
+        for (int i = 0; i < bars; i++)
+        {
+            Vector3 top = new Vector3(verts[i].x, topY, verts[i].z);
+            Vector3 mid = (top + apex) * 0.5f;
+            GameObject rib = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(rib.GetComponent<Collider>());
+            rib.transform.SetParent(cage.transform, false);
+            rib.transform.localPosition = mid;
+            rib.transform.localRotation = Quaternion.LookRotation((apex - top).normalized, Vector3.up);
+            rib.transform.localScale = new Vector3(barThick * 0.8f, barThick * 0.8f, Vector3.Distance(top, apex));
+            if (mat != null) rib.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
         return cage;
     }
