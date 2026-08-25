@@ -2005,6 +2005,7 @@ MonoBehaviour:
   - {fileID: 1354862358720268131, guid: daf6fff187d74094c82bedfb9104f478, type: 3}
   bloomedTreeVariants: []
   cursedTreeBloomVFX: {fileID: 0}
+  cursedTreeRotationOffset: {x: 0, y: 0, z: 0}
   useCursedTrees: 1
   cursedTreeChance: 0.55
   baseRocks:
@@ -2064,7 +2065,7 @@ MonoBehaviour:
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
   maxPOIs: 70
   maxPOISteepness: 10
-  poiClearanceRadius: 6
+  poiClearanceRadius: 10
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
   extractionCartsAmount: 10
   cartClearanceRadius: 8
@@ -14988,8 +14989,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DistanceOptimizer
   player: {fileID: 615663591}
-  enableDistance: 230
-  disableDistance: 250
+  enableDistance: 250
+  disableDistance: 270
   checkInterval: 0.05
   checksPerFrame: 800
 --- !u!4 &507569706
@@ -22685,11 +22686,13 @@ MonoBehaviour:
   - enemyPrefab: {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
     spawnAtMinute: 0
   - enemyPrefab: {fileID: 2058852120935944091, guid: c7c47f0ce5b83fa46918e9cf2dbb7155, type: 3}
-    spawnAtMinute: 3
+    spawnAtMinute: 2
   - enemyPrefab: {fileID: 7222315261462194013, guid: 16dba44f4007f494eba84c5d550de4e1, type: 3}
-    spawnAtMinute: 5
+    spawnAtMinute: 4
   - enemyPrefab: {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
-    spawnAtMinute: 7
+    spawnAtMinute: 6
+  - enemyPrefab: {fileID: 811209472075591554, guid: 553284ce68d6a7447a2d06ff4d3b9163, type: 3}
+    spawnAtMinute: 8
   player: {fileID: 615663591}
   baseSpawnInterval: 5
   minSpawnRadius: 10
