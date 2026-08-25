@@ -1191,6 +1191,7 @@ public static class LocalizationManager
         SeedPrompts();
         SeedFiveLangSupplements();
         SeedRemainingLangSupplements();
+        SeedBuildingAndHintText();
     }
 
     // === 5-language supplement (RU/ES/DE/FR/PL) for keys originally
@@ -3766,6 +3767,341 @@ public static class LocalizationManager
 
         // --- Save & Close ---
         Add7("SAVE & CLOSE",   "SAVE & CLOSE",   "ЗБЕРЕГТИ І ЗАКРИТИ","СОХРАНИТЬ И ЗАКРЫТЬ","GUARDAR Y CERRAR","SPEICHERN & SCHLIESSEN","SAUVEGARDER ET FERMER","ZAPISZ I ZAMKNIJ");
+    }
+
+    // === Building-panel descriptions, per-level production lines, tutorial
+    // hint bodies (the actual .asset text, self-keyed), the level-1 quest
+    // fallback hints and the raid corruption-anchor prompt — every one of
+    // these strings was still showing in raw English in RU/ES/DE/FR/PL
+    // because it self-keys on the English literal and had no Add7 entry.
+    // Keys must match the source byte-for-byte (real <b> tags, em-dash —,
+    // arrow →, straight apostrophes) or Tr falls back to English. ===
+    private static void SeedBuildingAndHintText()
+    {
+        // ── Building descriptions (the long blurb in the inspect panel).
+        //    Storage/Vault already covered elsewhere; these three were not. ──
+        Add7("A roaring hearth for crafting tools and weapons. Attracts skilled metalworkers to your camp.",
+             "A roaring hearth for crafting tools and weapons. Attracts skilled metalworkers to your camp.",
+             "Гуркітливе горно для виготовлення знарядь і зброї. Приваблює вправних ковалів до твого табору.",
+             "Ревущий горн для ковки инструментов и оружия. Привлекает умелых кузнецов в твой лагерь.",
+             "Un horno rugiente para forjar herramientas y armas. Atrae a hábiles herreros a tu campamento.",
+             "Eine lodernde Esse zum Fertigen von Werkzeugen und Waffen. Zieht geschickte Metallhandwerker in dein Lager.",
+             "Un âtre rugissant pour forger outils et armes. Attire d'habiles forgerons dans ton camp.",
+             "Buchające palenisko do wykuwania narzędzi i broni. Przyciąga zdolnych kowali do twojego obozu.");
+        Add7("A quiet lodge for skilled trackers. Provides fresh meat and pelts to keep the camp fed and warm.",
+             "A quiet lodge for skilled trackers. Provides fresh meat and pelts to keep the camp fed and warm.",
+             "Тиха хатина для вправних слідопитів. Дає свіже м'ясо та шкури, щоб табір був ситий і в теплі.",
+             "Тихая хижина для умелых следопытов. Даёт свежее мясо и шкуры, чтобы лагерь был сыт и в тепле.",
+             "Un albergue tranquilo para hábiles rastreadores. Aporta carne fresca y pieles para mantener el campamento alimentado y abrigado.",
+             "Eine ruhige Hütte für geschickte Fährtenleser. Liefert frisches Fleisch und Felle, damit das Lager satt und warm bleibt.",
+             "Un gîte tranquille pour d'habiles pisteurs. Fournit viande fraîche et peaux pour nourrir et réchauffer le camp.",
+             "Cicha chata dla zdolnych tropicieli. Zapewnia świeże mięso i skóry, by obóz był najedzony i ogrzany.");
+        Add7("A sturdy hut for the camp's woodcutters. Ensures a steady supply of timber from the dark woods.",
+             "A sturdy hut for the camp's woodcutters. Ensures a steady supply of timber from the dark woods.",
+             "Міцна хата для табірних лісорубів. Забезпечує стабільний потік деревини з темних лісів.",
+             "Крепкая хижина для лагерных лесорубов. Обеспечивает стабильный поток древесины из тёмных лесов.",
+             "Una cabaña robusta para los leñadores del campamento. Asegura un suministro constante de madera de los bosques oscuros.",
+             "Eine robuste Hütte für die Holzfäller des Lagers. Sichert einen steten Nachschub an Holz aus den dunklen Wäldern.",
+             "Une hutte solide pour les bûcherons du camp. Assure un approvisionnement régulier en bois des forêts sombres.",
+             "Solidna chata dla drwali z obozu. Zapewnia stały dopływ drewna z mrocznych lasów.");
+
+        // ── Per-level production lines (Barracks/inspect panels self-key on
+        //    these; every value is a distinct string). ──
+        // Hunter — FOOD/MIN
+        Add7("+2 FOOD/MIN",  "+2 FOOD/MIN",  "+2 ЇЖІ/ХВ",  "+2 ЕДЫ/МИН",  "+2 COMIDA/MIN",  "+2 NAHRUNG/MIN",  "+2 NOURRITURE/MIN",  "+2 JEDZENIA/MIN");
+        Add7("+6 FOOD/MIN",  "+6 FOOD/MIN",  "+6 ЇЖІ/ХВ",  "+6 ЕДЫ/МИН",  "+6 COMIDA/MIN",  "+6 NAHRUNG/MIN",  "+6 NOURRITURE/MIN",  "+6 JEDZENIA/MIN");
+        Add7("+11 FOOD/MIN", "+11 FOOD/MIN", "+11 ЇЖІ/ХВ", "+11 ЕДЫ/МИН", "+11 COMIDA/MIN", "+11 NAHRUNG/MIN", "+11 NOURRITURE/MIN", "+11 JEDZENIA/MIN");
+        Add7("+18 FOOD/MIN", "+18 FOOD/MIN", "+18 ЇЖІ/ХВ", "+18 ЕДЫ/МИН", "+18 COMIDA/MIN", "+18 NAHRUNG/MIN", "+18 NOURRITURE/MIN", "+18 JEDZENIA/MIN");
+        Add7("+25 FOOD/MIN", "+25 FOOD/MIN", "+25 ЇЖІ/ХВ", "+25 ЕДЫ/МИН", "+25 COMIDA/MIN", "+25 NAHRUNG/MIN", "+25 NOURRITURE/MIN", "+25 JEDZENIA/MIN");
+        // Forge — % WEAPON DMG
+        Add7("+2% WEAPON DMG",  "+2% WEAPON DMG",  "+2% ШКОДИ ЗБРОЇ",  "+2% УРОНА ОРУЖИЯ",  "+2% DAÑO DE ARMA",  "+2% WAFFENSCHADEN",  "+2% DÉGÂTS D'ARME",  "+2% OBRAŻEŃ BRONI");
+        Add7("+5% WEAPON DMG",  "+5% WEAPON DMG",  "+5% ШКОДИ ЗБРОЇ",  "+5% УРОНА ОРУЖИЯ",  "+5% DAÑO DE ARMA",  "+5% WAFFENSCHADEN",  "+5% DÉGÂTS D'ARME",  "+5% OBRAŻEŃ BRONI");
+        Add7("+8% WEAPON DMG",  "+8% WEAPON DMG",  "+8% ШКОДИ ЗБРОЇ",  "+8% УРОНА ОРУЖИЯ",  "+8% DAÑO DE ARMA",  "+8% WAFFENSCHADEN",  "+8% DÉGÂTS D'ARME",  "+8% OBRAŻEŃ BRONI");
+        Add7("+11% WEAPON DMG", "+11% WEAPON DMG", "+11% ШКОДИ ЗБРОЇ", "+11% УРОНА ОРУЖИЯ", "+11% DAÑO DE ARMA", "+11% WAFFENSCHADEN", "+11% DÉGÂTS D'ARME", "+11% OBRAŻEŃ BRONI");
+        Add7("+15% WEAPON DMG", "+15% WEAPON DMG", "+15% ШКОДИ ЗБРОЇ", "+15% УРОНА ОРУЖИЯ", "+15% DAÑO DE ARMA", "+15% WAFFENSCHADEN", "+15% DÉGÂTS D'ARME", "+15% OBRAŻEŃ BRONI");
+        // Lumberjack — LOGS/MIN
+        Add7("+6 LOGS/MIN",  "+6 LOGS/MIN",  "+6 КОЛОД/ХВ",  "+6 БРЁВЕН/МИН",  "+6 TRONCOS/MIN",  "+6 STÄMME/MIN",  "+6 RONDINS/MIN",  "+6 KŁÓD/MIN");
+        Add7("+12 LOGS/MIN", "+12 LOGS/MIN", "+12 КОЛОД/ХВ", "+12 БРЁВЕН/МИН", "+12 TRONCOS/MIN", "+12 STÄMME/MIN", "+12 RONDINS/MIN", "+12 KŁÓD/MIN");
+        Add7("+19 LOGS/MIN", "+19 LOGS/MIN", "+19 КОЛОД/ХВ", "+19 БРЁВЕН/МИН", "+19 TRONCOS/MIN", "+19 STÄMME/MIN", "+19 RONDINS/MIN", "+19 KŁÓD/MIN");
+        Add7("+31 LOGS/MIN", "+31 LOGS/MIN", "+31 КОЛОД/ХВ", "+31 БРЁВЕН/МИН", "+31 TRONCOS/MIN", "+31 STÄMME/MIN", "+31 RONDINS/MIN", "+31 KŁÓD/MIN");
+        Add7("+50 LOGS/MIN", "+50 LOGS/MIN", "+50 КОЛОД/ХВ", "+50 БРЁВЕН/МИН", "+50 TRONCOS/MIN", "+50 STÄMME/MIN", "+50 RONDINS/MIN", "+50 KŁÓD/MIN");
+        // Storage Vault (Elias + Storage variants) — MAX CAPACITY
+        Add7("+100 MAX CAPACITY",  "+100 MAX CAPACITY",  "+100 МАКС. ЄМНІСТЬ",  "+100 МАКС. ВМЕСТИМОСТЬ",  "+100 CAPACIDAD MÁX",  "+100 MAX. KAPAZITÄT",  "+100 CAPACITÉ MAX",  "+100 MAKS. POJEMNOŚĆ");
+        Add7("+220 MAX CAPACITY",  "+220 MAX CAPACITY",  "+220 МАКС. ЄМНІСТЬ",  "+220 МАКС. ВМЕСТИМОСТЬ",  "+220 CAPACIDAD MÁX",  "+220 MAX. KAPAZITÄT",  "+220 CAPACITÉ MAX",  "+220 MAKS. POJEMNOŚĆ");
+        Add7("+400 MAX CAPACITY",  "+400 MAX CAPACITY",  "+400 МАКС. ЄМНІСТЬ",  "+400 МАКС. ВМЕСТИМОСТЬ",  "+400 CAPACIDAD MÁX",  "+400 MAX. KAPAZITÄT",  "+400 CAPACITÉ MAX",  "+400 MAKS. POJEMNOŚĆ");
+        Add7("+600 MAX CAPACITY",  "+600 MAX CAPACITY",  "+600 МАКС. ЄМНІСТЬ",  "+600 МАКС. ВМЕСТИМОСТЬ",  "+600 CAPACIDAD MÁX",  "+600 MAX. KAPAZITÄT",  "+600 CAPACITÉ MAX",  "+600 MAKS. POJEMNOŚĆ");
+        Add7("+1000 MAX CAPACITY", "+1000 MAX CAPACITY", "+1000 МАКС. ЄМНІСТЬ", "+1000 МАКС. ВМЕСТИМОСТЬ", "+1000 CAPACIDAD MÁX", "+1000 MAX. KAPAZITÄT", "+1000 CAPACITÉ MAX", "+1000 MAKS. POJEMNOŚĆ");
+        Add7("+125 MAX CAPACITY",  "+125 MAX CAPACITY",  "+125 МАКС. ЄМНІСТЬ",  "+125 МАКС. ВМЕСТИМОСТЬ",  "+125 CAPACIDAD MÁX",  "+125 MAX. KAPAZITÄT",  "+125 CAPACITÉ MAX",  "+125 MAKS. POJEMNOŚĆ");
+        Add7("+275 MAX CAPACITY",  "+275 MAX CAPACITY",  "+275 МАКС. ЄМНІСТЬ",  "+275 МАКС. ВМЕСТИМОСТЬ",  "+275 CAPACIDAD MÁX",  "+275 MAX. KAPAZITÄT",  "+275 CAPACITÉ MAX",  "+275 MAKS. POJEMNOŚĆ");
+        Add7("+500 MAX CAPACITY",  "+500 MAX CAPACITY",  "+500 МАКС. ЄМНІСТЬ",  "+500 МАКС. ВМЕСТИМОСТЬ",  "+500 CAPACIDAD MÁX",  "+500 MAX. KAPAZITÄT",  "+500 CAPACITÉ MAX",  "+500 MAKS. POJEMNOŚĆ");
+        Add7("+750 MAX CAPACITY",  "+750 MAX CAPACITY",  "+750 МАКС. ЄМНІСТЬ",  "+750 МАКС. ВМЕСТИМОСТЬ",  "+750 CAPACIDAD MÁX",  "+750 MAX. KAPAZITÄT",  "+750 CAPACITÉ MAX",  "+750 MAKS. POJEMNOŚĆ");
+        Add7("+1250 MAX CAPACITY", "+1250 MAX CAPACITY", "+1250 МАКС. ЄМНІСТЬ", "+1250 МАКС. ВМЕСТИМОСТЬ", "+1250 CAPACIDAD MÁX", "+1250 MAX. KAPAZITÄT", "+1250 CAPACITÉ MAX", "+1250 MAKS. POJEMNOŚĆ");
+
+        // ── Tutorial hint bodies — the exact .asset `body` strings that
+        //    TutorialPanelUI runs through Tr. ──
+        Add7("Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
+             "Six slots: Head, Chest, Arms, Belt, Legs, Feet. Mix tiers freely — Power Score sums every equipped piece.",
+             "Шість слотів: Голова, Груди, Руки, Пояс, Ноги, Ступні. Змішуй тири вільно — Power Score підсумовує кожен вдягнений предмет.",
+             "Шесть слотов: Голова, Грудь, Руки, Пояс, Ноги, Ступни. Смешивай тиры свободно — Power Score суммирует каждый надетый предмет.",
+             "Seis ranuras: Cabeza, Pecho, Brazos, Cinturón, Piernas, Pies. Mezcla niveles libremente: el Power Score suma cada pieza equipada.",
+             "Sechs Slots: Kopf, Brust, Arme, Gürtel, Beine, Füße. Mische Stufen frei — Power Score summiert jedes angelegte Teil.",
+             "Six emplacements : Tête, Torse, Bras, Ceinture, Jambes, Pieds. Mélange les paliers librement — le Power Score additionne chaque pièce équipée.",
+             "Sześć slotów: Głowa, Klatka, Ramiona, Pas, Nogi, Stopy. Mieszaj poziomy dowolnie — Power Score sumuje każdy założony element.");
+        Add7("Hold <b>LMB</b> to chain swings.",
+             "Hold <b>LMB</b> to chain swings.",
+             "Тримай <b>ЛКМ</b> для серії ударів.",
+             "Удерживай <b>ЛКМ</b> для серии ударов.",
+             "Mantén <b>clic izq.</b> para encadenar golpes.",
+             "Halte <b>LMT</b> für Schlagketten.",
+             "Maintiens <b>clic gauche</b> pour enchaîner les coups.",
+             "Przytrzymaj <b>LPM</b>, by łączyć ciosy.");
+        Add7("Hold <b>E</b> to start construction. Resources are spent up-front. The build runs on a real-time timer — even while you're away.",
+             "Hold <b>E</b> to start construction. Resources are spent up-front. The build runs on a real-time timer — even while you're away.",
+             "Тримай <b>E</b>, щоб почати будівництво. Ресурси витрачаються одразу. Будівництво йде за таймером реального часу — навіть коли тебе немає.",
+             "Удерживай <b>E</b>, чтобы начать строительство. Ресурсы тратятся сразу. Стройка идёт по таймеру реального времени — даже пока тебя нет.",
+             "Mantén <b>E</b> para iniciar la construcción. Los recursos se gastan por adelantado. La obra corre con un temporizador en tiempo real, incluso si no estás.",
+             "Halte <b>E</b>, um den Bau zu starten. Ressourcen werden im Voraus verbraucht. Der Bau läuft über einen Echtzeit-Timer — auch wenn du weg bist.",
+             "Maintiens <b>E</b> pour lancer la construction. Les ressources sont dépensées d'avance. Le chantier suit un minuteur en temps réel, même en ton absence.",
+             "Przytrzymaj <b>E</b>, by rozpocząć budowę. Zasoby są wydawane z góry. Budowa działa na zegarze czasu rzeczywistego — nawet gdy cię nie ma.");
+        Add7("Your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+             "Your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
+             "Твій безпечний хаб. Підійди до слота будівлі й натисни <b>F</b> для огляду чи будівництва. Місії обирай на Дошці оголошень.",
+             "Твой безопасный хаб. Подойди к слоту здания и нажми <b>F</b> для осмотра или постройки. Миссии выбирай на Доске объявлений.",
+             "Tu refugio seguro. Acércate a un espacio de edificio y pulsa <b>F</b> para inspeccionar o construir. Elige misiones en el Tablón de anuncios.",
+             "Dein sicherer Hub. Geh zu einem Gebäudeplatz und drücke <b>F</b> zum Prüfen oder Bauen. Missionen wählst du am Anschlagbrett.",
+             "Ton refuge sûr. Approche-toi d'un emplacement de bâtiment et appuie sur <b>F</b> pour inspecter ou construire. Choisis les missions au Tableau d'affichage.",
+             "Twój bezpieczny hub. Podejdź do miejsca na budynek i wciśnij <b>F</b>, by sprawdzić lub zbudować. Misje wybierz na Tablicy ogłoszeń.");
+        Add7("An enemy is winding up. Watch the <b>red pulse</b> grow brighter — peak brightness means the strike lands NOW. Dash to evade.",
+             "An enemy is winding up. Watch the <b>red pulse</b> grow brighter — peak brightness means the strike lands NOW. Dash to evade.",
+             "Ворог замахується. Стеж за <b>червоним пульсом</b> — коли він найяскравіший, удар влучає ЗАРАЗ. Ривок, щоб ухилитись.",
+             "Враг замахивается. Следи за <b>красным пульсом</b> — на пике яркости удар проходит СЕЙЧАС. Рывок, чтобы уклониться.",
+             "Un enemigo prepara su golpe. Observa cómo el <b>pulso rojo</b> brilla más — el brillo máximo significa que el golpe cae AHORA. Esquiva con el dash.",
+             "Ein Feind holt aus. Beobachte, wie der <b>rote Puls</b> heller wird — maximale Helligkeit heißt, der Schlag trifft JETZT. Weiche mit dem Dash aus.",
+             "Un ennemi charge son attaque. Regarde la <b>pulsation rouge</b> s'intensifier — au pic, le coup frappe MAINTENANT. Esquive avec le dash.",
+             "Wróg się zamachuje. Obserwuj, jak <b>czerwony puls</b> jaśnieje — szczyt jasności oznacza, że cios pada TERAZ. Unik dashem.");
+        Add7("This region is already purified — totems are silent. Small patrols remain for farming, but no boss waves.",
+             "This region is already purified — totems are silent. Small patrols remain for farming, but no boss waves.",
+             "Цей регіон уже очищено — тотеми мовчать. Лишились малі патрулі для фарму, але без хвиль босів.",
+             "Этот регион уже очищен — тотемы молчат. Остались мелкие патрули для фарма, но без волн боссов.",
+             "Esta región ya está purificada: los tótems callan. Quedan pequeñas patrullas para farmear, pero sin oleadas de jefes.",
+             "Diese Region ist bereits gereinigt — die Totems schweigen. Kleine Patrouillen bleiben zum Farmen, aber keine Boss-Wellen.",
+             "Cette région est déjà purifiée — les totems se taisent. De petites patrouilles restent pour farmer, mais sans vagues de boss.",
+             "Ten region jest już oczyszczony — totemy milczą. Zostały małe patrole do farmienia, ale bez fal bossów.");
+        Add7("Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
+             "Diamonds are persistent currency. <b>Carry them out alive</b> — they're spent in the Shop on weapons, armor, and meta.",
+             "Діаманти — постійна валюта. <b>Винеси їх живим</b> — вони витрачаються в Магазині на зброю, броню та мету.",
+             "Алмазы — постоянная валюта. <b>Вынеси их живым</b> — они тратятся в Магазине на оружие, броню и мету.",
+             "Los diamantes son moneda persistente. <b>Sácalos con vida</b> — se gastan en la Tienda en armas, armaduras y mejoras meta.",
+             "Diamanten sind dauerhafte Währung. <b>Bring sie lebend heraus</b> — sie werden im Shop für Waffen, Rüstung und Meta ausgegeben.",
+             "Les diamants sont une monnaie persistante. <b>Ressors-en vivant</b> — ils se dépensent à la Boutique en armes, armures et méta.",
+             "Diamenty to trwała waluta. <b>Wynieś je żywy</b> — wydajesz je w Sklepie na broń, pancerz i meta-ulepszenia.");
+        Add7("Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
+             "Wiping a whole patrol or camp drops a bonus loot cluster. Hunt encounters between totems to stack XP and diamonds.",
+             "Знищення цілого патруля чи табору дає бонусний кластер лута. Полюй на сутички між тотемами, щоб стакати XP і діаманти.",
+             "Уничтожение целого патруля или лагеря даёт бонусный кластер лута. Охоться на стычки между тотемами, чтобы копить XP и алмазы.",
+             "Aniquilar una patrulla o campamento entero suelta un botín extra. Caza encuentros entre tótems para acumular XP y diamantes.",
+             "Das Auslöschen einer ganzen Patrouille oder eines Lagers lässt Bonus-Beute fallen. Jage Begegnungen zwischen den Totems, um XP und Diamanten zu sammeln.",
+             "Anéantir une patrouille ou un camp entier fait tomber un butin bonus. Chasse les rencontres entre les totems pour cumuler XP et diamants.",
+             "Wybicie całego patrolu lub obozu upuszcza bonusowy łup. Poluj na spotkania między totemami, by zbierać XP i diamenty.");
+        Add7("Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
+             "Each Forge level raises your in-mission <b>weapon damage</b>: +2% / +5% / +8% / +11% / +15%. Stacks on top of weapon stats.",
+             "Кожен рівень Кузні підіймає <b>шкоду зброї</b> в місії: +2% / +5% / +8% / +11% / +15%. Додається поверх характеристик зброї.",
+             "Каждый уровень Кузницы повышает <b>урон оружия</b> в миссии: +2% / +5% / +8% / +11% / +15%. Складывается поверх характеристик оружия.",
+             "Cada nivel de la Fragua aumenta tu <b>daño de arma</b> en misión: +2% / +5% / +8% / +11% / +15%. Se acumula sobre las estadísticas del arma.",
+             "Jede Schmiede-Stufe erhöht deinen <b>Waffenschaden</b> im Einsatz: +2% / +5% / +8% / +11% / +15%. Zählt zusätzlich zu den Waffenwerten.",
+             "Chaque niveau de la Forge augmente tes <b>dégâts d'arme</b> en mission : +2% / +5% / +8% / +11% / +15%. S'ajoute aux stats de l'arme.",
+             "Każdy poziom Kuźni zwiększa <b>obrażenia broni</b> w misji: +2% / +5% / +8% / +11% / +15%. Kumuluje się ze statystykami broni.");
+        Add7("Hold <b>RMB</b> to aim a grenade. Time slows while aiming. Release to throw. Cooldown — don't waste it on stragglers. You can also cancel aiming a grenade using LMB.",
+             "Hold <b>RMB</b> to aim a grenade. Time slows while aiming. Release to throw. Cooldown — don't waste it on stragglers. You can also cancel aiming a grenade using LMB.",
+             "Тримай <b>ПКМ</b>, щоб прицілити гранату. Час сповільнюється під час прицілювання. Відпусти, щоб кинути. Є перезарядка — не витрачай на одинаків. Прицілювання гранати можна скасувати натиском ЛКМ.",
+             "Удерживай <b>ПКМ</b>, чтобы прицелить гранату. Время замедляется при прицеливании. Отпусти, чтобы бросить. Есть перезарядка — не трать на одиночек. Прицеливание гранаты можно отменить нажатием ЛКМ.",
+             "Mantén <b>clic der.</b> para apuntar una granada. El tiempo se ralentiza al apuntar. Suelta para lanzar. Tiene enfriamiento — no la malgastes en rezagados. También puedes cancelar el apuntado con clic izq.",
+             "Halte <b>RMT</b>, um eine Granate zu zielen. Beim Zielen verlangsamt sich die Zeit. Loslassen zum Werfen. Es gibt eine Abklingzeit — verschwende sie nicht an Nachzügler. Das Zielen kannst du auch mit LMT abbrechen.",
+             "Maintiens <b>clic droit</b> pour viser une grenade. Le temps ralentit pendant la visée. Relâche pour lancer. Il y a un temps de recharge — ne la gaspille pas sur les traînards. Tu peux aussi annuler la visée avec le clic gauche.",
+             "Przytrzymaj <b>PPM</b>, by wycelować granat. Czas zwalnia podczas celowania. Puść, by rzucić. Jest czas odnowienia — nie marnuj go na maruderów. Celowanie granatem możesz też anulować LPM.");
+        Add7("Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
+             "Produces <b>FOOD</b> per minute. Food is the rarest of the basic resources; upgrade the Cabin before high-tier builds.",
+             "Виробляє <b>ЇЖУ</b> щохвилини. Їжа — найрідкісніший базовий ресурс; прокачай Хатину перед високими тирами будівель.",
+             "Производит <b>ЕДУ</b> в минуту. Еда — самый редкий из базовых ресурсов; улучши Хижину перед высокоуровневыми постройками.",
+             "Produce <b>COMIDA</b> por minuto. La comida es el más raro de los recursos básicos; mejora la Cabaña antes de construcciones de alto nivel.",
+             "Produziert <b>NAHRUNG</b> pro Minute. Nahrung ist die seltenste der Grundressourcen; verbessere die Hütte vor hochstufigen Bauten.",
+             "Produit de la <b>NOURRITURE</b> par minute. La nourriture est la plus rare des ressources de base ; améliore la Cabane avant les constructions de haut niveau.",
+             "Produkuje <b>JEDZENIE</b> na minutę. Jedzenie to najrzadszy z podstawowych surowców; ulepsz Chatę przed budowlami wysokiego poziomu.");
+        Add7("Pick one of three upgrade cards each level. Hover for the effect, click to commit — your choice locks in for the run.",
+             "Pick one of three upgrade cards each level. Hover for the effect, click to commit — your choice locks in for the run.",
+             "Обирай одну з трьох карток покращень щорівня. Наведи, щоб побачити ефект, клацни, щоб підтвердити — вибір фіксується на забіг.",
+             "Выбирай одну из трёх карт улучшений на каждом уровне. Наведи, чтобы увидеть эффект, кликни, чтобы подтвердить — выбор фиксируется на забег.",
+             "Elige una de las tres cartas de mejora en cada nivel. Pasa el cursor para ver el efecto, haz clic para confirmar — tu elección queda fijada para la partida.",
+             "Wähle auf jeder Stufe eine von drei Upgrade-Karten. Zeige darauf für den Effekt, klicke zum Bestätigen — deine Wahl gilt für den ganzen Run.",
+             "Choisis l'une des trois cartes d'amélioration à chaque niveau. Survole pour voir l'effet, clique pour valider — ton choix est verrouillé pour la partie.",
+             "Wybierz jedną z trzech kart ulepszeń na każdym poziomie. Najedź, by zobaczyć efekt, kliknij, by zatwierdzić — wybór jest wiążący na całą rozgrywkę.");
+        Add7("Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
+             "Produces <b>LOGS</b> per minute, stored in the Vault. Wood is the cheapest resource — but everything costs some.",
+             "Виробляє <b>КОЛОДИ</b> щохвилини, що зберігаються у Сховищі. Дерево — найдешевший ресурс, але його потребує все.",
+             "Производит <b>БРЁВНА</b> в минуту, хранятся в Хранилище. Дерево — самый дешёвый ресурс, но оно нужно для всего.",
+             "Produce <b>TRONCOS</b> por minuto, guardados en la Bóveda. La madera es el recurso más barato — pero todo cuesta algo.",
+             "Produziert <b>STÄMME</b> pro Minute, gelagert im Gewölbe. Holz ist die billigste Ressource — aber alles kostet etwas davon.",
+             "Produit des <b>RONDINS</b> par minute, stockés dans le Coffre. Le bois est la ressource la moins chère — mais tout en coûte un peu.",
+             "Produkuje <b>KŁODY</b> na minutę, magazynowane w Skarbcu. Drewno to najtańszy surowiec — ale wszystko go trochę wymaga.");
+        Add7("<b>Drag</b> to pan. <b>Scroll</b> to zoom. Click any unlocked region to see rewards and deploy. Each capture opens its neighbors.",
+             "<b>Drag</b> to pan. <b>Scroll</b> to zoom. Click any unlocked region to see rewards and deploy. Each capture opens its neighbors.",
+             "<b>Тягни</b>, щоб рухати. <b>Скрол</b> для масштабу. Клацни будь-який відкритий регіон, щоб побачити нагороди й вирушити. Кожне захоплення відкриває сусідів.",
+             "<b>Тяни</b>, чтобы перемещать. <b>Скролл</b> для масштаба. Кликни любой открытый регион, чтобы увидеть награды и отправиться. Каждый захват открывает соседей.",
+             "<b>Arrastra</b> para desplazar. <b>Rueda</b> para acercar. Haz clic en cualquier región desbloqueada para ver recompensas y desplegarte. Cada conquista abre a sus vecinas.",
+             "<b>Ziehen</b> zum Verschieben. <b>Scrollen</b> zum Zoomen. Klicke eine freigeschaltete Region an, um Belohnungen zu sehen und aufzubrechen. Jede Eroberung öffnet die Nachbarn.",
+             "<b>Glisse</b> pour te déplacer. <b>Molette</b> pour zoomer. Clique sur une région débloquée pour voir les récompenses et partir. Chaque conquête ouvre ses voisines.",
+             "<b>Przeciągnij</b>, by przesuwać. <b>Kółko</b>, by przybliżać. Kliknij dowolny odblokowany region, by zobaczyć nagrody i wyruszyć. Każdy podbój otwiera sąsiadów.");
+        Add7("<b>WASD</b> to move. Mouse to look. Hold <b>SHIFT</b> to dash through danger — i-frames during the dash.",
+             "<b>WASD</b> to move. Mouse to look. Hold <b>SHIFT</b> to dash through danger — i-frames during the dash.",
+             "<b>WASD</b> — рух. Миша — огляд. Тримай <b>SHIFT</b> для ривка крізь небезпеку — під час ривка є кадри невразливості.",
+             "<b>WASD</b> — движение. Мышь — обзор. Удерживай <b>SHIFT</b> для рывка сквозь опасность — во время рывка есть кадры неуязвимости.",
+             "<b>WASD</b> para moverte. Ratón para mirar. Mantén <b>SHIFT</b> para hacer dash a través del peligro — con fotogramas de invulnerabilidad durante el dash.",
+             "<b>WASD</b> zum Bewegen. Maus zum Umsehen. Halte <b>SHIFT</b>, um durch Gefahr zu dashen — mit unverwundbaren Frames während des Dashs.",
+             "<b>WASD</b> pour te déplacer. Souris pour regarder. Maintiens <b>SHIFT</b> pour esquiver à travers le danger — frames d'invincibilité pendant le dash.",
+             "<b>WASD</b>, by się poruszać. Mysz, by patrzeć. Przytrzymaj <b>SHIFT</b>, by przemknąć przez niebezpieczeństwo — klatki nietykalności podczas dashu.");
+        Add7("Buildings produce resources while you're playing missions or away from the camp. Check the panel for current rate.",
+             "Buildings produce resources while you're playing missions or away from the camp. Check the panel for current rate.",
+             "Будівлі виробляють ресурси, поки ти в місіях або поза табором. Поточну швидкість дивись у панелі.",
+             "Здания производят ресурсы, пока ты на миссиях или вне лагеря. Текущую скорость смотри в панели.",
+             "Los edificios producen recursos mientras juegas misiones o estás fuera del campamento. Consulta el panel para ver la tasa actual.",
+             "Gebäude produzieren Ressourcen, während du Missionen spielst oder vom Lager weg bist. Die aktuelle Rate siehst du im Panel.",
+             "Les bâtiments produisent des ressources pendant que tu joues des missions ou es loin du camp. Consulte le panneau pour le taux actuel.",
+             "Budynki produkują surowce, gdy grasz misje lub jesteś poza obozem. Aktualne tempo sprawdzisz w panelu.");
+        Add7("Elite tells are slower. Dash (<b>SHIFT</b>) right as the windup peaks to slow time and guarantee a critical follow-up.",
+             "Elite tells are slower. Dash (<b>SHIFT</b>) right as the windup peaks to slow time and guarantee a critical follow-up.",
+             "Замахи еліт повільніші. Ривок (<b>SHIFT</b>) точно в пік замаху сповільнює час і гарантує критичну відповідь.",
+             "Замахи элит медленнее. Рывок (<b>SHIFT</b>) точно на пике замаха замедляет время и гарантирует критический ответ.",
+             "Los avisos de las élites son más lentos. Haz dash (<b>SHIFT</b>) justo en el pico del gesto para ralentizar el tiempo y garantizar un golpe crítico.",
+             "Elite-Ankündigungen sind langsamer. Dashe (<b>SHIFT</b>) genau am Höhepunkt des Ausholens, um die Zeit zu verlangsamen und einen kritischen Konter zu sichern.",
+             "Les signaux des élites sont plus lents. Esquive (<b>SHIFT</b>) pile au pic de la charge pour ralentir le temps et garantir un coup critique.",
+             "Zapowiedzi elit są wolniejsze. Dash (<b>SHIFT</b>) dokładnie w szczycie zamachu spowalnia czas i gwarantuje krytyczne kontr-uderzenie.");
+        Add7("Power = your weapon + armor + meta. Regions show a Recommended Power. Below it: enemies hit harder. Above it: easier, lower XP.",
+             "Power = your weapon + armor + meta. Regions show a Recommended Power. Below it: enemies hit harder. Above it: easier, lower XP.",
+             "Сила = твоя зброя + броня + мета. Регіони показують Рекомендовану Силу. Нижче неї: вороги б'ють сильніше. Вище: легше, але менше XP.",
+             "Сила = твоё оружие + броня + мета. Регионы показывают Рекомендуемую Силу. Ниже неё: враги бьют сильнее. Выше: легче, но меньше XP.",
+             "Poder = tu arma + armadura + meta. Las regiones muestran un Poder Recomendado. Por debajo: los enemigos pegan más fuerte. Por encima: más fácil, menos XP.",
+             "Stärke = deine Waffe + Rüstung + Meta. Regionen zeigen eine empfohlene Stärke. Darunter: Feinde treffen härter. Darüber: leichter, weniger XP.",
+             "Puissance = ton arme + armure + méta. Les régions affichent une Puissance recommandée. En dessous : les ennemis frappent plus fort. Au-dessus : plus facile, moins d'XP.",
+             "Moc = twoja broń + pancerz + meta. Regiony pokazują Zalecaną Moc. Poniżej: wrogowie biją mocniej. Powyżej: łatwiej, mniej XP.");
+        Add7("Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it. The wave can't be skipped.",
+             "Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it. The wave can't be skipped.",
+             "Активація тотема викликає хвилю. Знищ <b>кожного</b> ворога, щоб очистити його. Хвилю не можна пропустити.",
+             "Активация тотема вызывает волну. Уничтожь <b>каждого</b> врага, чтобы очистить его. Волну нельзя пропустить.",
+             "Activar un tótem invoca una oleada. Derrota a <b>todos</b> los enemigos para purificarlo. La oleada no se puede saltar.",
+             "Das Aktivieren eines Totems beschwört eine Welle. Besiege <b>jeden</b> Feind, um es zu reinigen. Die Welle kann nicht übersprungen werden.",
+             "Activer un totem invoque une vague. Vaincs <b>tous</b> les ennemis pour le purifier. La vague ne peut pas être ignorée.",
+             "Aktywacja totemu przywołuje falę. Pokonaj <b>każdego</b> wroga, by go oczyścić. Fali nie można pominąć.");
+        Add7("The tall red pillar marks the next corrupted totem — visible across the whole region. Run toward it.",
+             "The tall red pillar marks the next corrupted totem — visible across the whole region. Run toward it.",
+             "Високий червоний стовп позначає наступний заражений тотем — його видно з усього регіону. Біжи до нього.",
+             "Высокий красный столб отмечает следующий заражённый тотем — виден по всему региону. Беги к нему.",
+             "El alto pilar rojo marca el siguiente tótem corrupto — visible en toda la región. Corre hacia él.",
+             "Die hohe rote Säule markiert das nächste verdorbene Totem — in der ganzen Region sichtbar. Lauf darauf zu.",
+             "Le grand pilier rouge marque le prochain totem corrompu — visible dans toute la région. Cours vers lui.",
+             "Wysoki czerwony filar oznacza następny skażony totem — widoczny w całym regionie. Biegnij ku niemu.");
+        Add7("Spend diamonds to unlock and upgrade gear. Higher tiers raise your Power Score, which gates the harder regions.",
+             "Spend diamonds to unlock and upgrade gear. Higher tiers raise your Power Score, which gates the harder regions.",
+             "Витрачай діаманти, щоб відкривати та покращувати спорядження. Вищі тири підіймають Power Score, який відкриває складніші регіони.",
+             "Трать алмазы, чтобы открывать и улучшать снаряжение. Высшие тиры повышают Power Score, который открывает более сложные регионы.",
+             "Gasta diamantes para desbloquear y mejorar equipo. Los niveles superiores elevan tu Power Score, que da acceso a las regiones más difíciles.",
+             "Gib Diamanten aus, um Ausrüstung freizuschalten und zu verbessern. Höhere Stufen steigern deinen Power Score, der die schwereren Regionen freischaltet.",
+             "Dépense des diamants pour débloquer et améliorer l'équipement. Les paliers supérieurs augmentent ton Power Score, qui donne accès aux régions plus difficiles.",
+             "Wydawaj diamenty, by odblokowywać i ulepszać sprzęt. Wyższe poziomy podnoszą Power Score, który otwiera trudniejsze regiony.");
+        Add7("The STACK counts enemies near you. At <b>15+</b> damage starts multiplying. At <b>30+</b> you become a typhoon — but you lose acceleration.",
+             "The STACK counts enemies near you. At <b>15+</b> damage starts multiplying. At <b>30+</b> you become a typhoon — but you lose acceleration.",
+             "STACK рахує ворогів поруч. Від <b>15+</b> шкода починає множитись. Від <b>30+</b> ти стаєш тайфуном — але втрачаєш прискорення.",
+             "STACK считает врагов рядом. От <b>15+</b> урон начинает множиться. От <b>30+</b> ты становишься тайфуном — но теряешь ускорение.",
+             "El STACK cuenta los enemigos cercanos. A partir de <b>15+</b> el daño empieza a multiplicarse. A partir de <b>30+</b> te vuelves un tifón — pero pierdes aceleración.",
+             "Der STACK zählt Feinde in deiner Nähe. Ab <b>15+</b> beginnt der Schaden sich zu vervielfachen. Ab <b>30+</b> wirst du zum Taifun — aber du verlierst Beschleunigung.",
+             "Le STACK compte les ennemis proches. À <b>15+</b>, les dégâts commencent à se multiplier. À <b>30+</b>, tu deviens un typhon — mais tu perds en accélération.",
+             "STACK liczy wrogów w pobliżu. Od <b>15+</b> obrażenia zaczynają się mnożyć. Od <b>30+</b> stajesz się tajfunem — ale tracisz przyspieszenie.");
+        Add7("Raises your maximum Wood / Stone / Food capacity. Without enough capacity, passive income caps and starts wasting.",
+             "Raises your maximum Wood / Stone / Food capacity. Without enough capacity, passive income caps and starts wasting.",
+             "Підіймає максимальну ємність Дерева / Каменю / Їжі. Без достатньої ємності пасивний дохід упирається в стелю й марнується.",
+             "Повышает максимальную вместимость Дерева / Камня / Еды. Без достаточной вместимости пассивный доход упирается в предел и тратится впустую.",
+             "Aumenta tu capacidad máxima de Madera / Piedra / Comida. Sin suficiente capacidad, el ingreso pasivo se topa y empieza a desperdiciarse.",
+             "Erhöht deine maximale Holz- / Stein- / Nahrungskapazität. Ohne genug Kapazität stößt das passive Einkommen an die Grenze und wird verschwendet.",
+             "Augmente ta capacité maximale de Bois / Pierre / Nourriture. Sans capacité suffisante, le revenu passif plafonne et commence à se gaspiller.",
+             "Zwiększa maksymalną pojemność Drewna / Kamienia / Jedzenia. Bez wystarczającej pojemności dochód pasywny osiąga limit i się marnuje.");
+        Add7("Stand on the corrupted totem and press <b>F</b>. A wave will spawn — survive to purify it. Next totem unlocks afterward.",
+             "Stand on the corrupted totem and press <b>F</b>. A wave will spawn — survive to purify it. Next totem unlocks afterward.",
+             "Стань на заражений тотем і натисни <b>F</b>. З'явиться хвиля — виживи, щоб очистити його. Далі відкриється наступний тотем.",
+             "Встань на заражённый тотем и нажми <b>F</b>. Появится волна — выживи, чтобы очистить его. Потом откроется следующий тотем.",
+             "Colócate sobre el tótem corrupto y pulsa <b>F</b>. Aparecerá una oleada — sobrevive para purificarlo. Después se desbloquea el siguiente tótem.",
+             "Stell dich auf das verdorbene Totem und drücke <b>F</b>. Eine Welle erscheint — überlebe, um es zu reinigen. Danach wird das nächste Totem freigeschaltet.",
+             "Place-toi sur le totem corrompu et appuie sur <b>F</b>. Une vague apparaîtra — survis pour le purifier. Le totem suivant se débloque ensuite.",
+             "Stań na skażonym totemie i wciśnij <b>F</b>. Pojawi się fala — przetrwaj, by go oczyścić. Potem odblokuje się następny totem.");
+        Add7("Each armor piece can be levelled 0→5. Linear cost — no surprise spikes. Maxed sets unlock the toughest regions.",
+             "Each armor piece can be levelled 0→5. Linear cost — no surprise spikes. Maxed sets unlock the toughest regions.",
+             "Кожен елемент броні можна прокачати 0→5. Лінійна ціна — без несподіваних стрибків. Повністю прокачані сети відкривають найважчі регіони.",
+             "Каждый элемент брони можно прокачать 0→5. Линейная цена — без неожиданных скачков. Полностью прокачанные сеты открывают самые сложные регионы.",
+             "Cada pieza de armadura sube de 0→5. Coste lineal — sin picos sorpresa. Los conjuntos al máximo desbloquean las regiones más duras.",
+             "Jedes Rüstungsteil lässt sich von 0→5 aufwerten. Lineare Kosten — keine überraschenden Sprünge. Maximierte Sets schalten die härtesten Regionen frei.",
+             "Chaque pièce d'armure monte de 0→5. Coût linéaire — pas de pics surprise. Les sets au max débloquent les régions les plus dures.",
+             "Każdy element pancerza można ulepszyć 0→5. Liniowy koszt — bez niespodziewanych skoków. Maksymalne zestawy odblokowują najtrudniejsze regiony.");
+        Add7("Hold <b>E</b> to begin an upgrade. Each tier raises production and unlocks a stronger passive bonus.",
+             "Hold <b>E</b> to begin an upgrade. Each tier raises production and unlocks a stronger passive bonus.",
+             "Тримай <b>E</b>, щоб почати покращення. Кожен тир підіймає виробництво й відкриває сильніший пасивний бонус.",
+             "Удерживай <b>E</b>, чтобы начать улучшение. Каждый тир повышает производство и открывает более сильный пассивный бонус.",
+             "Mantén <b>E</b> para iniciar una mejora. Cada nivel aumenta la producción y desbloquea un bonus pasivo más fuerte.",
+             "Halte <b>E</b>, um eine Verbesserung zu starten. Jede Stufe steigert die Produktion und schaltet einen stärkeren passiven Bonus frei.",
+             "Maintiens <b>E</b> pour lancer une amélioration. Chaque palier augmente la production et débloque un bonus passif plus fort.",
+             "Przytrzymaj <b>E</b>, by rozpocząć ulepszenie. Każdy poziom zwiększa produkcję i odblokowuje silniejszy bonus pasywny.");
+        Add7("Spend diamonds in the Shop to level up your equipped weapon. Each level scales damage, crit, and Power Score.",
+             "Spend diamonds in the Shop to level up your equipped weapon. Each level scales damage, crit, and Power Score.",
+             "Витрачай діаманти в Магазині, щоб прокачати вдягнену зброю. Кожен рівень масштабує шкоду, крит і Power Score.",
+             "Трать алмазы в Магазине, чтобы прокачать снаряжённое оружие. Каждый уровень масштабирует урон, крит и Power Score.",
+             "Gasta diamantes en la Tienda para subir de nivel el arma equipada. Cada nivel escala daño, crítico y Power Score.",
+             "Gib Diamanten im Shop aus, um deine ausgerüstete Waffe zu verbessern. Jede Stufe skaliert Schaden, Krit und Power Score.",
+             "Dépense des diamants à la Boutique pour améliorer l'arme équipée. Chaque niveau augmente les dégâts, le crit et le Power Score.",
+             "Wydawaj diamenty w Sklepie, by ulepszać założoną broń. Każdy poziom skaluje obrażenia, kryta i Power Score.");
+        Add7("Enemies drop XP shards. Fill the XP bar to level up and pick an in-run upgrade.",
+             "Enemies drop XP shards. Fill the XP bar to level up and pick an in-run upgrade.",
+             "Вороги лишають осколки XP. Заповни шкалу XP, щоб підняти рівень і обрати покращення на забіг.",
+             "Враги роняют осколки XP. Заполни шкалу XP, чтобы поднять уровень и выбрать улучшение на забег.",
+             "Los enemigos sueltan fragmentos de XP. Llena la barra de XP para subir de nivel y elegir una mejora para la partida.",
+             "Feinde lassen XP-Splitter fallen. Fülle die XP-Leiste, um aufzusteigen und ein Upgrade für den Run zu wählen.",
+             "Les ennemis lâchent des éclats d'XP. Remplis la barre d'XP pour monter de niveau et choisir une amélioration pour la partie.",
+             "Wrogowie upuszczają odłamki XP. Wypełnij pasek XP, by awansować i wybrać ulepszenie na rozgrywkę.");
+
+        // ── Level-1 quest fallback hints. These self-key on the RAW English
+        //    body the quest manager passes to Tr (no "[TIP] " prefix — the
+        //    panel shows the "TIP" title separately). The earlier "[TIP] "-
+        //    prefixed entries never matched and were dead. ──
+        Add7("Walk up to a tree and press Left Mouse Button to attack and gather wood.",
+             "Walk up to a tree and press Left Mouse Button to attack and gather wood.",
+             "Підійди до дерева і натисни ліву кнопку миші, щоб рубати і збирати дерево.",
+             "Подойди к дереву и нажми левую кнопку мыши, чтобы рубить и собирать древесину.",
+             "Acércate a un árbol y pulsa el botón izquierdo del ratón para atacar y recolectar madera.",
+             "Geh zu einem Baum und drücke die linke Maustaste, um zu schlagen und Holz zu sammeln.",
+             "Approche-toi d'un arbre et clique gauche pour l'attaquer et récolter du bois.",
+             "Podejdź do drzewa i wciśnij lewy przycisk myszy, by atakować i zbierać drewno.");
+        Add7("Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
+             "Enemies are attacking! Use Left Mouse Button to fight back and watch your health.",
+             "Вороги атакують! Ліва кнопка миші — атака, стеж за здоров'ям.",
+             "Враги атакуют! Левая кнопка мыши — атака, следи за здоровьем.",
+             "¡Los enemigos atacan! Usa el botón izquierdo del ratón y vigila tu salud.",
+             "Feinde greifen an! Linke Maustaste zum Kämpfen, achte auf deine Gesundheit.",
+             "Ennemis en approche ! Clic gauche pour attaquer, surveille ta santé.",
+             "Wrogowie atakują! Lewy przycisk myszy do walki, uważaj na zdrowie.");
+        Add7("You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
+             "You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
+             "Їх не вбити! Утримуй SHIFT, щоб бігти, і дістанься точки евакуації!",
+             "Их не убить! Удерживай SHIFT для спринта и добеги до точки эвакуации!",
+             "¡No puedes matarlos! Mantén SHIFT para esprintar y llega al Punto de Extracción!",
+             "Sie sind unbesiegbar! Halte SHIFT zum Sprinten und erreiche den Fluchtpunkt!",
+             "Impossible de les tuer ! Maintiens SHIFT pour sprinter jusqu'au Point d'Extraction !",
+             "Nie da się ich zabić! Trzymaj SHIFT, by biec, i dotrzyj do Punktu Ewakuacji!");
+
+        // ── Raid pre-gate prompt shown when the totem is anchor-shielded. ──
+        Add7("The totem is shielded by <b>corruption anchors</b>. Destroy every anchor to break the shield — only then can you purify the totem.",
+             "The totem is shielded by <b>corruption anchors</b>. Destroy every anchor to break the shield — only then can you purify the totem.",
+             "Тотем захищено <b>якорями скверни</b>. Знищ кожен якір, щоб зруйнувати щит — лише тоді ти зможеш очистити тотем.",
+             "Тотем защищён <b>якорями скверны</b>. Уничтожь каждый якорь, чтобы разрушить щит — только тогда ты сможешь очистить тотем.",
+             "El tótem está protegido por <b>anclas de corrupción</b>. Destruye cada ancla para romper el escudo — solo entonces podrás purificar el tótem.",
+             "Das Totem wird von <b>Verderbnis-Ankern</b> geschützt. Zerstöre jeden Anker, um den Schild zu brechen — erst dann kannst du das Totem reinigen.",
+             "Le totem est protégé par des <b>ancres de corruption</b>. Détruis chaque ancre pour briser le bouclier — alors seulement tu pourras purifier le totem.",
+             "Totem jest chroniony przez <b>kotwice zepsucia</b>. Zniszcz każdą kotwicę, by przełamać tarczę — dopiero wtedy oczyścisz totem.");
     }
 
     // Full-locale add — feed all 6 translations at once. Polish silently
