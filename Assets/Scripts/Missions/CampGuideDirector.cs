@@ -188,16 +188,28 @@ public class CampGuideDirector : MonoBehaviour
 
         Transform barracksT = null;
         string barracksKey = "SaveBld_Barracks";
-        var barracks = FindFirstObjectByType<BarracksBuilding>();
-        if (barracks != null)
+        // Include INACTIVE — the barracks' built model is often disabled until
+        // construction finishes, so the default (active-only) search returned
+        // null and the hire/build-barracks steps had no trail. That left the
+        // guide showing an earlier step (the storage vault, which sits next to
+        // Elias), so the "hire a unit" trail appeared to lead to Elias.
+        var barracks = FindFirstObjectByType<BarracksBuilding>(FindObjectsInactive.Include);
+        CampBuilding barracksCB = barracks != null ? barracks.GetComponent<CampBuilding>() : null;
+        // Fallback: resolve the barracks as a CampBuilding by id/name so the
+        // step still points somewhere sensible even if the BarracksBuilding
+        // component isn't found.
+        if (barracksCB == null) barracksCB = FindBuilding("Barracks", "barrack");
+        if (barracksCB != null)
+        {
+            barracksT = barracksCB.transform;
+            // The companion CampBuilding's real buildingID drives the key so
+            // the step credits even if the ID isn't literally "Barracks".
+            if (!string.IsNullOrEmpty(barracksCB.buildingID))
+                barracksKey = "SaveBld_" + barracksCB.buildingID;
+        }
+        else if (barracks != null)
         {
             barracksT = barracks.transform;
-            // Same save-key-derivation fix as storage: the companion
-            // CampBuilding's real buildingID drives the key so the step
-            // credits even if the ID isn't literally "Barracks".
-            var barracksCB = barracks.GetComponent<CampBuilding>();
-            if (barracksCB != null && !string.IsNullOrEmpty(barracksCB.buildingID))
-                barracksKey = "SaveBld_" + barracksCB.buildingID;
         }
 
         // Distinct targets per step — the earlier version pointed BOTH the

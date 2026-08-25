@@ -64,7 +64,13 @@ public class SettingsAAARuntime : MonoBehaviour
                 if (btn != null)
                 {
                     btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(() => SwitchCategory(captured));
+                    // Play the tab-switch click here (not inside SwitchCategory)
+                    // so the programmatic SwitchCategory(0) on open stays silent.
+                    btn.onClick.AddListener(() =>
+                    {
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+                        SwitchCategory(captured);
+                    });
                 }
             }
         }

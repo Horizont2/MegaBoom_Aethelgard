@@ -3143,6 +3143,14 @@ public class WorldGenerator : MonoBehaviour
 
         int spawnedAltars = 0;
 
+        // Only HALF of each event type is allowed to claim a road dead-end
+        // (dead-ends sit at the map border, so an edge-only quota made every
+        // altar / caged-ally cluster around the rim — the player never saw one
+        // mid-map). The remaining share is filled by the interior random-spline
+        // pass below, spreading the encounters across the whole terrain.
+        int deadEndAltarCap = Mathf.Max(1, Mathf.CeilToInt(altarsAmount * 0.5f));
+        int deadEndCagedCap = Mathf.Max(1, Mathf.CeilToInt(maxCagedAllies * 0.5f));
+
         // ДІАГНОСТИКА: Перевіряємо чи не порожній масив в Інспекторі
         if (!hasAltars)
         {
@@ -3236,8 +3244,20 @@ public class WorldGenerator : MonoBehaviour
                     // Caged-ally event: a captive guarded by a skeleton pack. Takes
                     // priority on some dead-ends (chance-gated + capped) — clearing
                     // the guards frees an ally that fights for the player.
+                    // Clearance guard: the old code force-placed the event at the
+                    // dead-end tip with NO overlap test, so altars / cages ended
+                    // up buried inside cliff rocks at the terrain edge. Skip a
+                    // blocked or steep tip — the interior pass will make up the
+                    // count on clear ground instead.
+                    float endNx = (endSpawn.x - transform.position.x) / mapW;
+                    float endNz = (endSpawn.z - transform.position.z) / mapL;
+                    bool tipUsable = endSpawn.y > absWaterH + 2f
+                                     && terrain.terrainData.GetSteepness(endNx, endNz) <= deadEndMaxSteepness
+                                     && IsPositionClear(endSpawn, 3f);
+
                     bool spawnedCaged = false;
-                    if (spawnedCagedAllies < maxCagedAllies
+                    if (tipUsable
+                        && spawnedCagedAllies < deadEndCagedCap
                         && cagedAllyGuardPrefabs != null && cagedAllyGuardPrefabs.Length > 0
                         && cagedAllyPrefab != null
                         && GetRandomFloat() < cagedAllyChance)
@@ -3254,9 +3274,8 @@ public class WorldGenerator : MonoBehaviour
                         GameLog.Info($"[Smart Roads] Caged-ally event spawned at {endSpawn} ({spawnedCagedAllies}/{maxCagedAllies}).");
                     }
 
-                    // ФІКС: Ніяких перевірок IsPositionClear. Ставимо Алтар СИЛОЮ!
                     if (spawnedCaged) { /* dead-end taken by the caged-ally event */ }
-                    else if (spawnedAltars < altarsAmount && altarPrefabs != null && altarPrefabs.Length > 0)
+                    else if (tipUsable && spawnedAltars < deadEndAltarCap && altarPrefabs != null && altarPrefabs.Length > 0)
                     {
                         GameObject prefab = GetRandomPrefab(altarPrefabs);
                         Vector3 grounded = GroundPrefabToTerrain(prefab, endSpawn);
@@ -3297,9 +3316,12 @@ public class WorldGenerator : MonoBehaviour
         // Fallback: pick random points along random road splines
         // (comfortably off-road, off-water, off-flat-terrain) so at
         // least `altarsAmount` show up per map.
-        if (hasAltars && spawnedAltars < altarsAmount && roadSplines.Count > 0)
+        bool cagedReady = cagedAllyPrefab != null && cagedAllyGuardPrefabs != null && cagedAllyGuardPrefabs.Length > 0;
+        bool needInterior = (hasAltars && spawnedAltars < altarsAmount)
+                          || (cagedReady && spawnedCagedAllies < maxCagedAllies);
+        if (needInterior && roadSplines.Count > 0)
         {
-            Debug.LogWarning($"[Smart Roads] Only {spawnedAltars}/{altarsAmount} dead-end altars matched. Falling back to random-spline placement for the remaining {altarsAmount - spawnedAltars}.");
+            Debug.LogWarning($"[Smart Roads] Interior pass: altars {spawnedAltars}/{altarsAmount}, caged {spawnedCagedAllies}/{maxCagedAllies}. Placing the remainder along mid-map road stretches.");
             // Wrap the whole fallback in try/catch — an exception here
             // (null spline, GroundPrefabToTerrain edge case) must NOT
             // kill the parent GenerateWorld coroutine, or IsGenerationDone
@@ -3307,8 +3329,10 @@ public class WorldGenerator : MonoBehaviour
             try
             {
                 int fallbackAttempts = 0;
-                int fallbackMax = (altarsAmount - spawnedAltars) * 30;
-                while (spawnedAltars < altarsAmount && fallbackAttempts++ < fallbackMax)
+                int remaining = Mathf.Max(0, altarsAmount - spawnedAltars) + Mathf.Max(0, maxCagedAllies - spawnedCagedAllies);
+                int fallbackMax = Mathf.Max(30, remaining * 30);
+                while (((hasAltars && spawnedAltars < altarsAmount) || (cagedReady && spawnedCagedAllies < maxCagedAllies))
+                       && fallbackAttempts++ < fallbackMax)
                 {
                     // Fully-qualify UnityEngine.Random — the file also
                     // imports Unity.Mathematics, whose Random type
@@ -3346,18 +3370,42 @@ public class WorldGenerator : MonoBehaviour
                         if (Vector3.Distance(spawnPos, forbiddenZones[k]) < deadEndMinSeparation) { nearForbidden = true; break; }
                     }
                     if (nearForbidden) continue;
+                    // Same rock/obstacle guard as the dead-end tips — no more
+                    // events buried inside cliffs or props.
+                    if (!IsPositionClear(spawnPos, 3f)) continue;
 
-                    GameObject prefab = GetRandomPrefab(altarPrefabs);
-                    if (prefab == null) continue;
-                    Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
-                    GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
-                    SnapAltarInstanceToGround(inst, spawnPos.y);
-                    spawnedAltars++;
-                    forbiddenZones.Add(inst.transform.position);
-                    GameLog.Info($"[Smart Roads] Fallback altar spawned at {inst.transform.position} ({spawnedAltars}/{altarsAmount}).");
+                    // Alternate between caged-ally events and altars so both
+                    // types reach the map interior. Prefer whichever is further
+                    // from its quota; coin-flip when both still need one.
+                    bool wantCaged = cagedReady && spawnedCagedAllies < maxCagedAllies
+                                     && (!hasAltars || spawnedAltars >= altarsAmount || UnityEngine.Random.value < 0.5f);
+
+                    if (wantCaged)
+                    {
+                        GameObject cageGo = new GameObject("CagedAllyEvent");
+                        cageGo.transform.SetParent(decorContainer);
+                        cageGo.transform.position = spawnPos;
+                        CagedAllyEvent ev = cageGo.AddComponent<CagedAllyEvent>();
+                        ev.guardPrefabs = cagedAllyGuardPrefabs;
+                        ev.allyPrefab = cagedAllyPrefab;
+                        spawnedCagedAllies++;
+                        forbiddenZones.Add(spawnPos);
+                        GameLog.Info($"[Smart Roads] Interior caged-ally spawned at {spawnPos} ({spawnedCagedAllies}/{maxCagedAllies}).");
+                    }
+                    else if (hasAltars && spawnedAltars < altarsAmount)
+                    {
+                        GameObject prefab = GetRandomPrefab(altarPrefabs);
+                        if (prefab == null) continue;
+                        Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
+                        GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
+                        SnapAltarInstanceToGround(inst, spawnPos.y);
+                        spawnedAltars++;
+                        forbiddenZones.Add(inst.transform.position);
+                        GameLog.Info($"[Smart Roads] Interior altar spawned at {inst.transform.position} ({spawnedAltars}/{altarsAmount}).");
+                    }
                 }
-                if (spawnedAltars < altarsAmount)
-                    Debug.LogWarning($"[Smart Roads] Fallback exhausted — still only {spawnedAltars}/{altarsAmount} altars. Map likely too constrained (water/edges/slopes).");
+                if (spawnedAltars < altarsAmount || spawnedCagedAllies < maxCagedAllies)
+                    Debug.LogWarning($"[Smart Roads] Interior pass exhausted — altars {spawnedAltars}/{altarsAmount}, caged {spawnedCagedAllies}/{maxCagedAllies}. Map likely too constrained (water/edges/slopes).");
             }
             catch (System.Exception e)
             {
