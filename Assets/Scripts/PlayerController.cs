@@ -117,6 +117,19 @@ public class PlayerController : MonoBehaviour, IDamageable
     [HideInInspector] public float globalCritChance = 0.05f;
     [HideInInspector] public float damageReduction = 0f;
 
+    // === Gear-stat wiring tunables ===
+    // Armor's HP bonus + damage reduction and the weapon's crit + attack speed
+    // used to be written by the shop but never applied — gear only moved the
+    // Power number. These scale the now-live effects so a full set is strong
+    // but not invincible. Tune here after playtesting.
+    private const float ARMOR_HP_SCALE = 0.5f;       // fraction of raw armor HP applied
+    private const float ARMOR_DR_SCALE = 0.4f;       // fraction of raw armor reduction applied
+    private const float MAX_TOTAL_DR = 0.65f;        // hard cap on damage reduction from gear
+    private const float ATTACK_SPEED_SCALE = 0.5f;   // dampening on the weapon attack-speed bonus
+    private const float MIN_ATTACK_COOLDOWN = 0.28f; // floor so attacks can't get trivially fast
+    private const float MAX_CRIT_CHANCE = 0.85f;     // clamp so maxed crit stays below certainty
+    private float baseAttackCooldown = 0f;           // captured inspector cooldown before gear scaling
+
     // === LvlUp-driven RPG stats (extended in this polish pass) ===
     [HideInInspector] public float critDamageMultiplier = 2.5f;   // base crit mult; LvlUp adds on top
     [HideInInspector] public float lifeStealFraction = 0f;        // 0..1, % of finalDmg returned as HP
@@ -481,7 +494,27 @@ public class PlayerController : MonoBehaviour, IDamageable
         float weaponDmgBonus = PlayerPrefs.GetFloat("EquippedWeaponDamage", 0f);
         meleeDamage += weaponDmgBonus;
 
-        globalCritChance = PlayerPrefs.GetFloat("EquippedWeaponCrit", 0.05f);
+        // Weapon crit — now sourced from the equipped weapon (the shop finally
+        // writes EquippedWeaponCrit; before, this key was never set so crit was
+        // permanently the 5% default and weapon critChance/perLevel were dead).
+        globalCritChance = Mathf.Clamp(PlayerPrefs.GetFloat("EquippedWeaponCrit", 0.05f), 0f, MAX_CRIT_CHANCE);
+
+        // Weapon attack speed → attack cooldown. Normalised against the starter
+        // weapon's 1.0 so only the bonus ABOVE baseline speeds you up, dampened
+        // and floored so the best weapon can't trivialise the attack loop.
+        if (baseAttackCooldown <= 0f) baseAttackCooldown = attackCooldown;
+        float atkSpd = PlayerPrefs.GetFloat("EquippedWeaponAttackSpeed", 1f);
+        float atkSpdBonus = Mathf.Max(0f, atkSpd - 1f) * ATTACK_SPEED_SCALE;
+        attackCooldown = Mathf.Max(MIN_ATTACK_COOLDOWN, baseAttackCooldown / (1f + atkSpdBonus));
+
+        // Armor defences — HP bonus + damage reduction were written by the shop
+        // but never applied (armor was only a Power number). Now armor actually
+        // protects: HP scaled by ARMOR_HP_SCALE, reduction by ARMOR_DR_SCALE and
+        // capped so a full set is tanky, not invincible.
+        float armorHP = PlayerPrefs.GetFloat("EquippedArmorHealth", 0f);
+        maxHealth += armorHP * ARMOR_HP_SCALE;
+        float armorDR = PlayerPrefs.GetFloat("EquippedArmorReduction", 0f);
+        damageReduction = Mathf.Clamp(damageReduction + armorDR * ARMOR_DR_SCALE, 0f, MAX_TOTAL_DR);
 
         int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
         float forgeDamageBonus = 0f;

@@ -1331,6 +1331,12 @@ public class ShopManager : MonoBehaviour
                     int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
                     baseTotal += w.basePower + (lvl * w.powerPerLevel);
                     PlayerPrefs.SetFloat("EquippedWeaponDamage", w.damageBonus + (lvl * w.damagePerLevel));
+                    // Crit and attack speed were shown in the shop UI but never
+                    // persisted, so the player never actually received them
+                    // (crit stuck at 5%, attack rate fixed). Write them so
+                    // PlayerController can apply the equipped weapon's real stats.
+                    PlayerPrefs.SetFloat("EquippedWeaponCrit", w.critChance + (lvl * w.critChancePerLevel));
+                    PlayerPrefs.SetFloat("EquippedWeaponAttackSpeed", w.attackSpeed + (lvl * w.attackSpeedPerLevel));
                 }
             }
         }

@@ -345,6 +345,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             maxHealth *= region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier;
             damage *= region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
+
+            // Armor HP + damage reduction are now actually applied to the player
+            // (they used to be dead), so the player is markedly tankier — most so
+            // in late regions where a full high-tier set is worn. Scale enemy
+            // damage up by region depth (enemyHpMultiplier is the depth proxy) so
+            // the added durability doesn't trivialise progression. R1 ≈ ×1.0,
+            // R24 ≈ ×1.7. Tune ENEMY_DMG_GEAR_COMP if it feels off.
+            const float ENEMY_DMG_GEAR_COMP = 0.10f;
+            damage *= 1f + Mathf.Max(0f, region.enemyHpMultiplier - 1f) * ENEMY_DMG_GEAR_COMP;
+
             if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.15f;
 
             // XP scales with REGION difficulty and survival time, floored at
