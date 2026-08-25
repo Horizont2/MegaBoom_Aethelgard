@@ -219,6 +219,20 @@ public class WorldGenerator : MonoBehaviour
     [Header("Base Nature Prefabs")]
     public GameObject[] giantTrees;
     public GameObject[] baseTrees;
+
+    [Header("Cursed → Bloomed Trees (story regions)")]
+    [Tooltip("Blighted/dead tree prefabs spawned in cursed STORY regions. Their trunks are recoloured to the biome like normal trees, and they transform into living trees during the victory flythrough.")]
+    public GameObject[] cursedDeadTrees;
+    [Tooltip("Living tree the husk becomes when the curse lifts — PAIRED BY INDEX with Cursed Dead Trees. If shorter/empty, a random Base Tree is used.")]
+    public GameObject[] bloomedTreeVariants;
+    [Tooltip("Optional shared burst VFX played when a cursed tree blooms (procedural puff used if empty).")]
+    public GameObject cursedTreeBloomVFX;
+    [Tooltip("Spawn cursed dead trees in story regions.")]
+    public bool useCursedTrees = true;
+    [Range(0f, 1f)]
+    [Tooltip("Fraction of tree slots in a story region that become cursed dead trees.")]
+    public float cursedTreeChance = 0.55f;
+
     public GameObject[] baseRocks;
     public GameObject[] baseBushes;
     public GameObject[] baseMushrooms;
@@ -307,6 +321,7 @@ public class WorldGenerator : MonoBehaviour
     {
         IsGenerationDone = false;
         CurrentProgress = 0f;
+        CursedTree.ResetWave(); // fresh region: don't let a stale bloom wave insta-bloom
         forbiddenZones.Clear();
         generatedRivers.Clear();
 
@@ -2245,20 +2260,56 @@ public class WorldGenerator : MonoBehaviour
                     }
                     else if (currentTreeCount < maxTrees && randomSpawn > 0.65f)
                     {
-                        bool useDeadTree = (isSnow || isDesert) && GetRandomFloat() > 0.5f && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
-                        GameObject treePrefab = useDeadTree ? GetRandomPrefab(deadTreesPrefabs) : GetRandomPrefab(baseTrees);
+                        // In a cursed STORY region, a share of the trees are
+                        // blighted husks that transform into living trees during
+                        // the victory flythrough. Their trunks are still recoloured
+                        // to the biome so they read as "this biome, but withered".
+                        bool useCursed = useCursedTrees && isRegionMissionCached
+                                         && cursedDeadTrees != null && cursedDeadTrees.Length > 0
+                                         && GetRandomFloat() < cursedTreeChance;
 
-                        GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
-                        obj.transform.localScale *= GetRandomRange(0.8f, 1.1f);
-
-                        if (!useDeadTree)
+                        if (useCursed)
                         {
-                            if (currentBaseTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentBaseTreeMat);
-                            else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
-                        }
-                        else { ApplyBiomeColor(obj, currentRockColor, true); }
+                            int ci = GetRandomRangeInt(0, cursedDeadTrees.Length);
+                            GameObject deadPrefab = cursedDeadTrees[ci];
+                            if (deadPrefab != null)
+                            {
+                                GameObject husk = Instantiate(deadPrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                                husk.transform.localScale *= GetRandomRange(0.8f, 1.1f);
 
-                        currentTreeCount++;
+                                // Recolour the withered trunk to the biome.
+                                bool appliedMat = false;
+                                if (currentBaseTreeMat != null) { ApplyBiomeSpecificMaterial(husk, currentBaseTreeMat); appliedMat = true; }
+                                else { ApplyBiomeTexture(husk, currentTreeTexture); ApplyBiomeColor(husk, currentRockColor, true); }
+
+                                // Pick the living version it becomes (paired by
+                                // index, else a random base tree).
+                                GameObject bloomed = (bloomedTreeVariants != null && ci < bloomedTreeVariants.Length && bloomedTreeVariants[ci] != null)
+                                                   ? bloomedTreeVariants[ci] : GetRandomPrefab(baseTrees);
+
+                                CursedTree ct = husk.AddComponent<CursedTree>();
+                                ct.Configure(bloomed, currentBaseTreeMat, currentFoliageColor, appliedMat, !appliedMat, cursedTreeBloomVFX);
+
+                                currentTreeCount++;
+                            }
+                        }
+                        else
+                        {
+                            bool useDeadTree = (isSnow || isDesert) && GetRandomFloat() > 0.5f && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
+                            GameObject treePrefab = useDeadTree ? GetRandomPrefab(deadTreesPrefabs) : GetRandomPrefab(baseTrees);
+
+                            GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                            obj.transform.localScale *= GetRandomRange(0.8f, 1.1f);
+
+                            if (!useDeadTree)
+                            {
+                                if (currentBaseTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentBaseTreeMat);
+                                else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
+                            }
+                            else { ApplyBiomeColor(obj, currentRockColor, true); }
+
+                            currentTreeCount++;
+                        }
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)
                     {

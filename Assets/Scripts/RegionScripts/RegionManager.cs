@@ -618,6 +618,12 @@ public class RegionManager : MonoBehaviour
         // and the low altitude packed the frustum with close canopy (overdraw →
         // the lag). 13s at a gentle glide reads as a majestic bird's-eye reveal.
         const float flightDur = 13f;
+
+        // Sweep the curse off the land: blighted trees bloom outward from the
+        // totem over the flight, so the camera literally flies over the wave of
+        // life returning. Radius covers the whole map from the totem.
+        CursedTree.BeginWorldBloom(totemPos, flightDur, mapScale * 1.3f);
+
         float elapsed = 0f;
         while (elapsed < flightDur)
         {
