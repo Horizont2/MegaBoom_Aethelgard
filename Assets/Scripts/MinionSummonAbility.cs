@@ -96,7 +96,9 @@ public class MinionSummonAbility : MonoBehaviour
 
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (anim != null && !string.IsNullOrEmpty(castAnimTrigger)) anim.SetTriggerSafe(castAnimTrigger);
-        if (castVFX != null) Instantiate(castVFX, transform.position + Vector3.up * 1.2f, Quaternion.identity);
+        // Auto-destroy — these VFX prefabs loop, so an un-cleaned instance would
+        // hang around forever.
+        if (castVFX != null) Destroy(Instantiate(castVFX, transform.position + Vector3.up * 0.1f, Quaternion.identity), 3.5f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, transform.position);
 
         yield return new WaitForSeconds(castWindup);
@@ -114,7 +116,7 @@ public class MinionSummonAbility : MonoBehaviour
             Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
             Vector3 pos = GroundAt(transform.position + dir * spawnRadius);
 
-            if (minionSpawnVFX != null) Instantiate(minionSpawnVFX, pos, Quaternion.identity);
+            if (minionSpawnVFX != null) Destroy(Instantiate(minionSpawnVFX, pos, Quaternion.identity), 3f);
             GameObject m = Instantiate(prefab, pos, Quaternion.Euler(0f, ang + 180f, 0f));
             if (m != null) active.Add(m);
         }

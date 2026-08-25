@@ -545,7 +545,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                         p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
                     else p.y = transform.position.y;
 
-                    if (summonSpawnVFX != null) Instantiate(summonSpawnVFX, p, Quaternion.identity);
+                    if (summonSpawnVFX != null) Destroy(Instantiate(summonSpawnVFX, p, Quaternion.identity), 3f);
                     Instantiate(prefab, p, Quaternion.Euler(0f, ang + 180f, 0f));
                 }
             }
