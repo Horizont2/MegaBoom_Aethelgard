@@ -227,6 +227,8 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] bloomedTreeVariants;
     [Tooltip("Optional shared burst VFX played when a cursed tree blooms (procedural puff used if empty).")]
     public GameObject cursedTreeBloomVFX;
+    [Tooltip("Rotation correction for the dead-tree models if they import lying down (e.g. set X = -90 for Z-up FBX models). Applied on top of the random yaw.")]
+    public Vector3 cursedTreeRotationOffset = Vector3.zero;
     [Tooltip("Spawn cursed dead trees in story regions.")]
     public bool useCursedTrees = true;
     [Range(0f, 1f)]
@@ -321,6 +323,14 @@ public class WorldGenerator : MonoBehaviour
     {
         IsGenerationDone = false;
         CurrentProgress = 0f;
+        // Reset statics that survive a scene reload — otherwise a "Try again"
+        // after dying MID-RAID inherits a stuck state: AnyActivatingRightNow
+        // left true makes every totem's Update early-return (no anchors spawn →
+        // capture impossible), a stuck timeScale=0 freezes the survival timer and
+        // hangs the anchor spawn coroutine, and IsSpawningBlocked stops enemies.
+        Time.timeScale = 1f;
+        RegionTotem.AnyActivatingRightNow = false;
+        EnemySpawner.IsSpawningBlocked = false;
         CursedTree.ResetWave(); // fresh region: don't let a stale bloom wave insta-bloom
         forbiddenZones.Clear();
         generatedRivers.Clear();
@@ -2274,7 +2284,8 @@ public class WorldGenerator : MonoBehaviour
                             GameObject deadPrefab = cursedDeadTrees[ci];
                             if (deadPrefab != null)
                             {
-                                GameObject husk = Instantiate(deadPrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                                Quaternion huskRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0) * Quaternion.Euler(cursedTreeRotationOffset);
+                                GameObject husk = Instantiate(deadPrefab, new Vector3(worldX, worldY, worldZ), huskRot, treeContainer);
                                 husk.transform.localScale *= GetRandomRange(0.8f, 1.1f);
 
                                 // Recolour the withered trunk to the biome.
