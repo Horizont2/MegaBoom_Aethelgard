@@ -15,30 +15,45 @@ public static class DeathAshEffect
     {
         if (source == null) return;
 
-        // Fit the emission volume to the body's rendered bounds so tall/short
-        // enemies both look right; fall back to a humanoid default.
-        Vector3 center = source.position + Vector3.up * 0.9f;
-        float height = 1.8f, radius = 0.4f;
-        var rends = source.GetComponentsInChildren<Renderer>();
-        bool any = false;
+        // Measure the BODY only. Prefer the skinned body mesh so a held staff /
+        // weapon (a separate MeshRenderer that juts out sideways) doesn't skew
+        // the centre or inflate the size — that's what made the burst sit
+        // crooked and too big next to the mage/necromancer.
         Bounds b = new Bounds(source.position, Vector3.zero);
-        foreach (var r in rends)
+        bool any = false;
+        var skinned = source.GetComponentsInChildren<SkinnedMeshRenderer>();
+        foreach (var r in skinned)
         {
-            if (r == null || r is TrailRenderer || r is LineRenderer) continue;
+            if (r == null) continue;
             if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
         }
-        if (any)
+        if (!any)
         {
-            center = b.center;
-            height = Mathf.Clamp(b.size.y, 0.6f, 4f);
-            radius = Mathf.Clamp(Mathf.Max(b.size.x, b.size.z) * 0.5f, 0.2f, 1.5f);
+            foreach (var r in source.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (r == null) continue;
+                string n = r.name.ToLowerInvariant();
+                if (n.Contains("staff") || n.Contains("weapon") || n.Contains("sword") ||
+                    n.Contains("bow") || n.Contains("wand")) continue;   // skip held props
+                if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+            }
         }
+
+        float bodyHeight = any ? Mathf.Clamp(b.size.y, 0.6f, 4f) : 1.7f;
+        float radius = any ? Mathf.Clamp(Mathf.Max(b.size.x, b.size.z) * 0.35f, 0.15f, 0.5f) : 0.3f;
+        // Anchor at the WAIST: horizontally on the body pivot (not the staff-
+        // skewed bounds centre), vertically halfway up from the feet.
+        float feetY = any ? b.min.y : source.position.y;
+        Vector3 center = new Vector3(source.position.x, feetY + bodyHeight * 0.5f, source.position.z);
+
+        // Emit over a shorter volume centred on the waist so it hugs the torso.
+        float emitHeight = bodyHeight * 0.55f;
 
         var root = new GameObject("DeathAsh");
         root.transform.position = center;
 
-        BuildAsh(root.transform, height, radius);
-        BuildEmbers(root.transform, height, radius);
+        BuildAsh(root.transform, emitHeight, radius);
+        BuildEmbers(root.transform, emitHeight, radius);
         BuildDust(root.transform, radius);
 
         // Auto-clean after the longest layer finishes (lifetime + emission window).
@@ -56,23 +71,23 @@ public static class DeathAshEffect
         var main = ps.main;
         main.duration = 1.3f;
         main.loop = false;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(1.8f, 3.2f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.7f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.14f);
+        main.startLifetime = new ParticleSystem.MinMaxCurve(1.6f, 2.9f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.12f, 0.55f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.10f);
         main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startColor = new ParticleSystem.MinMaxGradient(
             new Color(0.62f, 0.60f, 0.57f), new Color(0.42f, 0.40f, 0.38f));
         main.gravityModifier = -0.03f;              // drift upward
-        main.maxParticles = 500;
+        main.maxParticles = 350;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
 
         var em = ps.emission;
-        em.rateOverTime = 130f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 70) });
+        em.rateOverTime = 90f;
+        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 45) });
 
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(radius * 1.7f, height, radius * 1.7f);
+        shape.scale = new Vector3(radius * 1.2f, height, radius * 1.2f);
 
         var vel = ps.velocityOverLifetime;
         vel.enabled = true;
@@ -135,23 +150,23 @@ public static class DeathAshEffect
         var main = ps.main;
         main.duration = 1.0f;
         main.loop = false;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.9f, 2.0f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.6f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.08f);
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.45f, 1.4f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
         // HDR-bright orange so the URP bloom makes them actually glow.
         main.startColor = new ParticleSystem.MinMaxGradient(
             new Color(2.4f, 1.1f, 0.35f), new Color(1.6f, 0.6f, 0.15f));
         main.gravityModifier = -0.05f;
-        main.maxParticles = 120;
+        main.maxParticles = 90;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
 
         var em = ps.emission;
-        em.rateOverTime = 26f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 20) });
+        em.rateOverTime = 18f;
+        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
 
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(radius * 1.4f, height * 0.85f, radius * 1.4f);
+        shape.scale = new Vector3(radius * 1.1f, height * 0.9f, radius * 1.1f);
 
         var vel = ps.velocityOverLifetime;
         vel.enabled = true;
@@ -196,16 +211,16 @@ public static class DeathAshEffect
     {
         var go = new GameObject("Dust");
         go.transform.SetParent(parent, false);
-        go.transform.localPosition = new Vector3(0f, -0.7f, 0f);
+        go.transform.localPosition = new Vector3(0f, -0.5f, 0f);
         var ps = go.AddComponent<ParticleSystem>();
         ps.Stop();
 
         var main = ps.main;
         main.duration = 0.8f;
         main.loop = false;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 1.8f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f, 0.4f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.5f, 1.1f);
+        main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.6f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.08f, 0.3f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
         main.startColor = new ParticleSystem.MinMaxGradient(
             new Color(0.5f, 0.48f, 0.45f, 0.5f), new Color(0.4f, 0.38f, 0.36f, 0.4f));
         main.gravityModifier = -0.01f;
