@@ -15,10 +15,6 @@ public class PowerSystemManager : MonoBehaviour
     public float damageWeight = 5f;
     [Tooltip("Скільки Power за рівень кузні")]
     public float forgeBonusPower = 20f;
-    [Tooltip("Скільки Power за рівень MetaDamage")]
-    public int metaDamageBonus = 15;
-    [Tooltip("Скільки Power за рівень MetaHealth")]
-    public int metaHealthBonus = 10;
 
     private void Awake()
     {
@@ -42,13 +38,12 @@ public class PowerSystemManager : MonoBehaviour
         int gearPower = PlayerPrefs.GetInt("PlayerTotalPower_Gear", -1);
         if (gearPower < 0) gearPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
 
-        int metaDmgLvl = PlayerPrefs.GetInt("UpgradeLevel_MetaDamage", 0);
-        int metaHpLvl = PlayerPrefs.GetInt("UpgradeLevel_MetaHealth", 0);
         int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
 
+        // Power = equipped gear (weapon + armor) + forge bonus. The old
+        // MetaDamage/MetaHealth terms were removed: those perks had no
+        // purchase path, so they were always 0 and only muddied the formula.
         int power = gearPower;
-        power += metaDmgLvl * metaDamageBonus;
-        power += metaHpLvl * metaHealthBonus;
         power += Mathf.RoundToInt(forgeLevel * forgeBonusPower);
         return power;
     }

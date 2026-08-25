@@ -229,14 +229,15 @@ public class NoticeBoardManager : MonoBehaviour
 
         int missionsToSpawn = UnityEngine.Random.Range(1, maxToSpawn + 1);
 
-        int powerLevel = 0;
-        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaHealth", 0);
-        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaDamage", 0);
-        powerLevel += PlayerPrefs.GetInt("UpgradeLevel_MetaArmor", 0);
-        powerLevel = Mathf.Min(powerLevel, 30);
+        // Scale mission rewards/goals with actual progression. This used to
+        // read the Meta* perk levels, but those were always 0 (no purchase
+        // path — the dead system was removed), so missions never scaled.
+        // Conquered-region count is a clean 0..24 progress proxy: reward grows
+        // faster than the goal so later missions stay worth doing.
+        int progress = Mathf.Clamp(PlayerPrefs.GetInt("TotalConqueredRegions", 0), 0, 24);
 
-        float rewardMultiplier = 1f + (powerLevel * 0.15f);
-        float goalMultiplier = 1f + (powerLevel * 0.03f);
+        float rewardMultiplier = 1f + (progress * 0.06f);
+        float goalMultiplier = 1f + (progress * 0.02f);
 
         List<MissionData> availableMissions = new List<MissionData>(baseMissions);
 

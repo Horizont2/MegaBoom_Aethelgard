@@ -471,17 +471,12 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private void ApplyMetaUpgrades()
     {
-        int healthLvl = SaveManager.GetUpgradeLevel("MetaHealth");
-        maxHealth += maxHealth * (healthLvl * 0.1f);
-        int speedLvl = SaveManager.GetUpgradeLevel("MetaSpeed");
-        moveSpeed += moveSpeed * (speedLvl * 0.05f);
-        int magnetLvl = SaveManager.GetUpgradeLevel("MetaMagnet");
-        pickupRadius += pickupRadius * (magnetLvl * 0.2f);
-        int armorLvl = SaveManager.GetUpgradeLevel("MetaArmor");
-        damageReduction = armorLvl * 0.05f;
-
-        int dmgLvl = SaveManager.GetUpgradeLevel("MetaDamage");
-        globalDamageMultiplier = 1f + (dmgLvl * 0.1f);
+        // The "Meta" perk levels (MetaHealth/Speed/Magnet/Armor/Damage) had no
+        // purchase UI anywhere — SetUpgradeLevel was never called, so they were
+        // always 0 and only inflated the Power score with phantom levels. The
+        // dead system was removed; progression comes from gear + the forge.
+        // Base combat multiplier starts neutral (was 1 + MetaDamage*0.1).
+        globalDamageMultiplier = 1f;
 
         float weaponDmgBonus = PlayerPrefs.GetFloat("EquippedWeaponDamage", 0f);
         meleeDamage += weaponDmgBonus;
