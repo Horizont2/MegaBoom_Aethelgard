@@ -286,7 +286,8 @@ MonoBehaviour:
   cleaveDamageMult: 1.15
   cleaveChance: 0.28
   useSummon: 1
-  summonPrefabs: []
+  summonPrefabs:
+  - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
   summonCount: 3
   summonCooldown: 15
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}

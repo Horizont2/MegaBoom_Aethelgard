@@ -48,6 +48,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
     public Transform projectileSpawnPoint;
 
+    [Header("Summon Ability (optional — e.g. the Necromancer)")]
+    [Tooltip("Enable to give this enemy the reusable minion-summon ability. Assign at least one minion prefab below.")]
+    public bool canSummon = false;
+    public GameObject[] summonMinionPrefabs;
+    public int summonMinCount = 2;
+    public int summonMaxCount = 4;
+    [Tooltip("Cap on simultaneously-alive summons from this caster.")]
+    public int summonMaxActive = 6;
+    public float summonCooldown = 12f;
+    [Tooltip("Delay between the cast animation and the minions rising, so the summon reads.")]
+    public float summonWindup = 0.8f;
+    [Tooltip("Player distance under which the caster will summon.")]
+    public float summonAggroRange = 28f;
+    public float summonSpawnRadius = 3.5f;
+    [Tooltip("Animator trigger for the cast. 'Attack' always exists; use a dedicated 'Cast' if the model has one.")]
+    public string summonAnimTrigger = "Attack";
+    public GameObject summonCastVFX;
+    public GameObject summonMinionSpawnVFX;
+
     [Header("Drops & Economy")]
     public GameObject xpCrystalPrefab;
     public GameObject diamondPrefab;
@@ -393,6 +412,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         lastAttackTime = Time.time - Random.Range(0f, attackCooldown);
+
+        // Give summoner enemies (the Necromancer) their minion-call ability.
+        // Reuses one component; guarded so pooled reuse doesn't stack copies.
+        if (canSummon && summonMinionPrefabs != null && summonMinionPrefabs.Length > 0)
+        {
+            var summon = GetComponent<MinionSummonAbility>();
+            if (summon == null) summon = gameObject.AddComponent<MinionSummonAbility>();
+            summon.Configure(summonMinionPrefabs, summonMinCount, summonMaxCount, summonMaxActive,
+                             summonCooldown, summonWindup, summonAggroRange, summonSpawnRadius,
+                             summonAnimTrigger, summonCastVFX, summonMinionSpawnVFX);
+        }
+
         StartCoroutine(SpawnRoutine());
     }
 

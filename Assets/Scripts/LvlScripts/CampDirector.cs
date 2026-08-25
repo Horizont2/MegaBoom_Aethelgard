@@ -52,10 +52,34 @@ public class CampDirector : MonoBehaviour
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
 
+        WireCampfireAudio();
+
         bool tutorialPlayed = PlayerPrefs.GetInt("CampTutorialPlayed", 0) == 1;
 
         if (!tutorialPlayed) StartCampTutorial();
         else StopCutsceneImmediately();
+    }
+
+    // The camp bonfire is a raw imported FBX model, so it can't carry a
+    // CampfireAudio component in the project — its crackle loop never played.
+    // Attach one at runtime to any object whose name reads as a fire so the
+    // camp actually sounds alive. Idempotent (skips objects already wired).
+    private void WireCampfireAudio()
+    {
+        Transform[] all = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        int wired = 0;
+        foreach (Transform t in all)
+        {
+            if (t == null) continue;
+            string n = t.name.ToLowerInvariant();
+            bool isFire = n.Contains("campfire") || n.Contains("bonfire")
+                          || (n.Contains("fire") && (n.Contains("pit") || n.Contains("camp")));
+            if (!isFire) continue;
+            if (t.GetComponent<CampfireAudio>() != null) continue;
+            t.gameObject.AddComponent<CampfireAudio>();
+            wired++;
+        }
+        if (wired > 0) GameLog.Info($"[CampDirector] Wired campfire crackle onto {wired} fire object(s).");
     }
 
     private void StartCampTutorial()

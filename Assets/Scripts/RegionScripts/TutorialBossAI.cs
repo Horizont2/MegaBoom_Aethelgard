@@ -63,8 +63,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     [Tooltip("Mid-fight reinforcements. Falls back to Enrage Add Prefabs if left empty.")]
     public bool useSummon = true;
     public GameObject[] summonPrefabs;
-    public int summonCount = 3;
+    public int summonCount = 4;
     public float summonCooldown = 15f;
+    [Tooltip("Animator trigger played when the boss casts the summon (the 'call the army' gesture). 'Attack' is a safe default; use a dedicated 'Cast'/'Roar' if the rig has one.")]
+    public string summonAnimTrigger = "Attack";
+    [Tooltip("Optional VFX spawned at each add's emerge point (a ground rift / smoke puff).")]
+    public GameObject summonSpawnVFX;
     private float lastSummonTime = -999f;
 
     [Header("Drops & Economy")]
@@ -510,6 +514,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         isPreparingAttack = true;
         lastSummonTime = Time.time;
         if (animator != null) animator.SetBool("isMoving", false);
+        // Play the "call the army" cast gesture + telegraph so the summon reads.
+        if (animator != null && !string.IsNullOrEmpty(summonAnimTrigger)) animator.SetTriggerSafe(summonAnimTrigger);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
         SetColor(new Color(0.4f, 0f, 1.6f));
 
@@ -522,14 +528,25 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             GameObject[] pool = (summonPrefabs != null && summonPrefabs.Length > 0) ? summonPrefabs : enrageAddPrefabs;
             if (pool != null && pool.Length > 0)
             {
-                CameraShakeUtil.TryShake(0.25f, 0.1f);
-                for (int i = 0; i < summonCount; i++)
+                CameraShakeUtil.TryShake(0.3f, 0.15f);
+                int count = Mathf.Max(1, summonCount);
+                for (int i = 0; i < count; i++)
                 {
                     GameObject prefab = pool[Random.Range(0, pool.Length)];
                     if (prefab == null) continue;
-                    Vector3 p = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(3f, 6f));
-                    p.y = transform.position.y;
-                    Instantiate(prefab, p, Quaternion.identity);
+                    // Proper ground RING around the boss (the old code offset in
+                    // the XY plane, so adds spawned in a vertical line, not a ring).
+                    float ang = (360f / count) * i + Random.Range(-18f, 18f);
+                    Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+                    Vector3 p = transform.position + dir * Random.Range(3f, 6f);
+                    if (Physics.Raycast(p + Vector3.up * 6f, Vector3.down, out RaycastHit gh, 12f, ~0, QueryTriggerInteraction.Ignore))
+                        p.y = gh.point.y;
+                    else if (Terrain.activeTerrain != null)
+                        p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
+                    else p.y = transform.position.y;
+
+                    if (summonSpawnVFX != null) Instantiate(summonSpawnVFX, p, Quaternion.identity);
+                    Instantiate(prefab, p, Quaternion.Euler(0f, ang + 180f, 0f));
                 }
             }
         }

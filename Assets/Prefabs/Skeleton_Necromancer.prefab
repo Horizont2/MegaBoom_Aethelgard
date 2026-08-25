@@ -546,6 +546,19 @@ MonoBehaviour:
   rangedLeadFactor: 0.7
   rangedHealthFactor: 0.6
   projectileSpawnPoint: {fileID: 0}
+  canSummon: 1
+  summonMinionPrefabs:
+  - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+  summonMinCount: 3
+  summonMaxCount: 5
+  summonMaxActive: 6
+  summonCooldown: 12
+  summonWindup: 0.8
+  summonAggroRange: 28
+  summonSpawnRadius: 3.5
+  summonAnimTrigger: Attack
+  summonCastVFX: {fileID: 0}
+  summonMinionSpawnVFX: {fileID: 0}
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   diamondPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   diamondDropChance: 0.3

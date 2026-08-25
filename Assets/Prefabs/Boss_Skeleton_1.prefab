@@ -855,6 +855,12 @@ MonoBehaviour:
   attackCooldown: 3
   attackTelegraphTime: 1.2
   bossWeapon: {fileID: 5934978669388820802}
+  useSummon: 1
+  summonPrefabs:
+  - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
+  summonCount: 4
+  summonAnimTrigger: Attack
+  summonSpawnVFX: {fileID: 0}
   staggerRingColor: {r: 1, g: 0.65, b: 0.1, a: 0.8}
   staggerRingRadius: 3.5
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
