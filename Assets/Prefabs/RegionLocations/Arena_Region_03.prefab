@@ -540,7 +540,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 2209239493191468457, guid: 254bd85c722f56a45b620ef7ca823317, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 463012961798419574}
+      addedObject: {fileID: 1000475496456183481}
   m_SourcePrefab: {fileID: 100100000, guid: 254bd85c722f56a45b620ef7ca823317, type: 3}
 --- !u!4 &1353099557484140849 stripped
 Transform:
@@ -552,8 +552,8 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 2209239493191468457, guid: 254bd85c722f56a45b620ef7ca823317, type: 3}
   m_PrefabInstance: {fileID: 514597629562570274}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &463012961798419574
-MeshCollider:
+--- !u!65 &1000475496456183481
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -570,10 +570,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 8.4044895, y: 6.178773, z: 14.008594}
+  m_Center: {x: 0.02541542, y: 3.1110702, z: 0.58088446}
 --- !u!1001 &570753424241769125
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5634,8 +5633,13 @@ MonoBehaviour:
   elitePrefabs:
   - {fileID: 4104418599950814217, guid: c38876e7e4e1a354eaebb6048da8bf8c, type: 3}
   eliteCount: 2
+  useEncounterTemplates: 0
+  encounterTemplates: []
+  autoGenerateEncounters: 1
   isStandalone: 0
   standaloneBossPrefabs: []
+  standaloneDiamondReward: 25
+  standaloneXpReward: 40
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3983897766243503468}
   skyBeamVFX: {fileID: 0}
@@ -5643,8 +5647,24 @@ MonoBehaviour:
   totemLight: {fileID: 12369837516678083}
   interactHintVFX: {fileID: 4336474234598293403}
   interactionRadius: 3
+  useRaidCapture: 1
+  anchorCount: 3
+  anchorPrefab: {fileID: 0}
+  anchorRadius: 13
+  anchorHealth: 120
+  anchorGuardPrefabs: []
+  guardsPerAnchor: 3
+  purifyDuration: 32
+  reinforceInterval: 6.5
+  reinforcementPrefabs: []
+  allyPrefab: {fileID: 0}
+  healWorldOnCapture: 1
+  purifyBurstVFX: {fileID: 0}
+  healedFogColor: {r: 0.62, g: 0.72, b: 0.82, a: 1}
+  healedFogDensityMult: 0.45
   isPurified: 0
   isActivated: 0
+  preGateApproachRadius: 32
 --- !u!65 &4806410382807903856
 BoxCollider:
   m_ObjectHideFlags: 0
