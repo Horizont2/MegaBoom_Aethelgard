@@ -1997,6 +1997,16 @@ MonoBehaviour:
   - {fileID: 3438365831924901988, guid: c847f36ff465f9d4687850c1982d3683, type: 3}
   - {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
   - {fileID: 5194611686949037208, guid: 61bdbc13522514f4e9095e7fec63a76e, type: 3}
+  cursedDeadTrees:
+  - {fileID: 2809105836309699613, guid: 152257b5c99f8cd4b9c6b925e5ab2f36, type: 3}
+  - {fileID: 7006040512898528087, guid: 50c6b75a59436424ebe4d0fae94c29d6, type: 3}
+  - {fileID: 4350436972047838058, guid: c4dde710136585c41803b96a25de70a4, type: 3}
+  - {fileID: 5655507735613366596, guid: 52a82da841325674bb0124e42358246a, type: 3}
+  - {fileID: 1354862358720268131, guid: daf6fff187d74094c82bedfb9104f478, type: 3}
+  bloomedTreeVariants: []
+  cursedTreeBloomVFX: {fileID: 0}
+  useCursedTrees: 1
+  cursedTreeChance: 0.55
   baseRocks:
   - {fileID: 3173614303439725726, guid: ae390e1c956557b43851c43417dcc52e, type: 3}
   - {fileID: 1612657073637104694, guid: a2ea7d649c236f9458fb76384050faa6, type: 3}
@@ -2058,6 +2068,8 @@ MonoBehaviour:
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
   extractionCartsAmount: 10
   cartClearanceRadius: 8
+  maxGiantTrees: 45
+  giantTreeMinSpacing: 28
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -2547,6 +2559,8 @@ MonoBehaviour:
   dustVFX: {fileID: 0}
   lightningVFXPrefab: {fileID: 5627696518775099638, guid: 6839a8d6998e86d4282063ffdacb0c15, type: 3}
   lightningSpawnRadius: 60
+  weatherBoxSize: 75
+  weatherBoxHeight: 28
 --- !u!4 &249127116
 Transform:
   m_ObjectHideFlags: 0
@@ -7948,6 +7962,14 @@ MonoBehaviour:
         Data3: 1137872263
         Data4: -40351538
       Path: event:/AMB/AMB_Wind
+  ambientCampFire:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
     fmodEvent:
       Guid:
@@ -22686,6 +22708,13 @@ MonoBehaviour:
   packChance: 0.3
   packSize: {x: 3, y: 6}
   hordeEveryNPeaks: 4
+  enableGroundAmbush: 1
+  groundAmbushInterval: {x: 10, y: 18}
+  groundAmbushChance: 0.55
+  groundAmbushCount: {x: 1, y: 3}
+  groundAmbushMinDist: 6
+  groundAmbushMaxDist: 12
+  groundAmbushMinPlayerSpeed: 2.5
 --- !u!4 &1241868304
 Transform:
   m_ObjectHideFlags: 0
