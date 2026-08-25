@@ -56,6 +56,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public int summonMaxCount = 4;
     [Tooltip("Cap on simultaneously-alive summons from this caster.")]
     public int summonMaxActive = 6;
+    [Tooltip("When true this caster won't summon again until all its previous minions are dead (e.g. the Skeleton Mage).")]
+    public bool summonRequireAllDead = false;
     public float summonCooldown = 12f;
     [Tooltip("Delay between the cast animation and the minions rising, so the summon reads.")]
     public float summonWindup = 0.8f;
@@ -421,7 +423,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (summon == null) summon = gameObject.AddComponent<MinionSummonAbility>();
             summon.Configure(summonMinionPrefabs, summonMinCount, summonMaxCount, summonMaxActive,
                              summonCooldown, summonWindup, summonAggroRange, summonSpawnRadius,
-                             summonAnimTrigger, summonCastVFX, summonMinionSpawnVFX);
+                             summonAnimTrigger, summonCastVFX, summonMinionSpawnVFX,
+                             summonRequireAllDead);
         }
 
         StartCoroutine(SpawnRoutine());

@@ -17,6 +17,8 @@ public class MinionSummonAbility : MonoBehaviour
     public int maxCount = 4;
     [Tooltip("Cap on simultaneously-alive summons from THIS caster.")]
     public int maxActiveMinions = 8;
+    [Tooltip("When true the caster refuses to summon again until EVERY previous minion is dead (e.g. the Skeleton Mage). The cooldown timer still gates the next cast once they're gone.")]
+    public bool requireAllDead = false;
 
     [Header("Timing")]
     public float cooldown = 12f;
@@ -44,12 +46,14 @@ public class MinionSummonAbility : MonoBehaviour
     // trigger is left at its serialized default.
     public void Configure(GameObject[] prefabs, int min, int max, int maxActive,
                           float cd, float windup, float range, float radius,
-                          string trigger, GameObject castFx, GameObject spawnFx)
+                          string trigger, GameObject castFx, GameObject spawnFx,
+                          bool reqAllDead = false)
     {
         minionPrefabs = prefabs;
         minCount = Mathf.Max(1, min);
         maxCount = Mathf.Max(minCount, max);
         maxActiveMinions = Mathf.Max(1, maxActive);
+        requireAllDead = reqAllDead;
         cooldown = Mathf.Max(1f, cd);
         castWindup = Mathf.Max(0f, windup);
         aggroRange = Mathf.Max(1f, range);
@@ -73,6 +77,10 @@ public class MinionSummonAbility : MonoBehaviour
         if (Time.time < nextCastTime) return;
 
         PruneActive();
+        // "Can't summon while my children live" casters wait for the whole
+        // previous pack to die before the next batch (checked again, not just
+        // the cap). Poll cheaply until they're gone.
+        if (requireAllDead && active.Count > 0) { nextCastTime = Time.time + 1f; return; }
         if (active.Count >= maxActiveMinions) { nextCastTime = Time.time + 2f; return; }
 
         Transform p = ResolvePlayer();
