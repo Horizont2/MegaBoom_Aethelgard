@@ -85,9 +85,13 @@ public class CursedTree : MonoBehaviour
         if (bloomedPrefab != null)
         {
             alive = Instantiate(bloomedPrefab, pos, rot, transform.parent);
-            alive.transform.localScale = scale * 0.35f;
+            // Grow to the bloomed prefab's OWN authored scale — NOT the husk's
+            // scale, which is tuned for the dead model and made the living tree
+            // spawn giant when the two prefabs differ in base size.
+            Vector3 target = alive.transform.localScale;
+            alive.transform.localScale = target * 0.35f;
             PaintBiome(alive);
-            StartCoroutine(GrowRoutine(alive.transform, scale, 0.9f));
+            StartCoroutine(GrowRoutine(alive.transform, target, 0.9f));
             StartCoroutine(LifeFlashRoutine(alive));
         }
 

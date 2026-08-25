@@ -132,6 +132,11 @@ public static class NPCGait
             if (h.collider == null || h.collider.isTrigger) continue;
             // Ignore the NPC's own colliders.
             if (h.collider.transform == t || h.collider.transform.IsChildOf(t)) continue;
+            // NEVER snap onto a character. Raycasting all colliders and taking the
+            // highest hit meant that when the player walked into an NPC, the ray
+            // hit the PLAYER and the NPC climbed onto their head. Skip the player
+            // (CharacterController), tagged Player/Enemy, and any AI-driven body.
+            if (IsCharacterCollider(h.collider)) continue;
             if (h.point.y > best) { best = h.point.y; found = true; }
         }
         if (found) groundY = best;
@@ -146,6 +151,16 @@ public static class NPCGait
             p.y = groundY;
             t.position = p;
         }
+    }
+
+    private static bool IsCharacterCollider(Collider c)
+    {
+        if (c is CharacterController) return true;                 // the player
+        if (c.CompareTag("Player") || c.CompareTag("Enemy")) return true;
+        if (c.attachedRigidbody != null) return true;             // physics props / ragdolls
+        // AI-driven bodies (other NPCs, allies, enemies).
+        if (c.GetComponentInParent<NavMeshAgent>() != null) return true;
+        return false;
     }
 
     // Convenience — combined "at deep night, standing still, near a rest

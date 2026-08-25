@@ -1143,9 +1143,26 @@ public class EnemyAI : MonoBehaviour, IDamageable
             animator.ResetTrigger("Hit");        // Видаляємо всі "застряглі" тригери
             animator.ResetTrigger("Attack");
 
+            // Archers were stuck in Bow_Attack: the AnyState→Bow_Attack transition
+            // is gated on IsRanged && Aim, so with Aim still true it kept
+            // overriding the Die trigger. Clear both so Die actually plays.
+            SetAnimBoolSafe("Aim", false);
+            SetAnimBoolSafe("IsRanged", false);
+
             // Якщо смерть все одно іноді не програється (через складні transitions),
             // заміни рядок нижче на: animator.Play("Die", 0, 0f);
             animator.SetTrigger("Die");
+        }
+
+        // Remove the red minimap marker INSTANTLY on death — it lived on a
+        // MinimapOnly-layer renderer that otherwise stayed visible for the whole
+        // corpse fade, so dead enemies kept showing as blips.
+        int deadMinimapLayer = LayerMask.NameToLayer("MinimapOnly");
+        if (deadMinimapLayer >= 0)
+        {
+            Renderer[] allR = GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < allR.Length; i++)
+                if (allR[i] != null && allR[i].gameObject.layer == deadMinimapLayer) allR[i].enabled = false;
         }
 
         if (AudioManager.Instance != null)

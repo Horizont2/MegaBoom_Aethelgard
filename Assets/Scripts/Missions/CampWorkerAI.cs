@@ -250,16 +250,18 @@ public class CampWorkerAI : MonoBehaviour
             agent.SetDestination(approachPos);
 
             float timeout = 0f;
+            bool arrived = false;
             while (timeout < 15f)
             {
                 timeout += Time.deltaTime;
-                if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+                if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f) { arrived = true; break; }
                 yield return null;
             }
 
             if (agent.isOnNavMesh) agent.isStopped = true;
 
             // Face the tree so the swing animation lands the right way.
+            if (targetTree != null)
             {
                 Vector3 lookAt = targetTree.transform.position;
                 lookAt.y = transform.position.y;
@@ -268,14 +270,15 @@ public class CampWorkerAI : MonoBehaviour
                     transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
             }
 
-            // Don't chop from across the clearing: if the path didn't actually
-            // reach the tree (timed out far away), skip this cycle rather than
-            // swinging at thin air.
-            bool closeEnough = targetTree != null &&
+            // Chop when we actually REACHED the tree. Gating on arrival (not a
+            // fixed distance-to-centre) means wide-trunk trees no longer make the
+            // worker skip chopping and walk straight back to deposit. The generous
+            // distance fallback covers arrival-detection edge cases.
+            bool canChop = targetTree != null && !targetTree.isChopped && (arrived ||
                 Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z),
-                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 2.2f;
+                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 4f);
 
-            if (closeEnough && !targetTree.isChopped)
+            if (canChop)
             {
                 while (targetTree != null && !targetTree.isChopped)
                 {

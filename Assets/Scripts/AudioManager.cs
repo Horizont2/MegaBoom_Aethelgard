@@ -744,18 +744,27 @@ public class AudioManager : MonoBehaviour
         var inst = RuntimeManager.CreateInstance(group.fmodEvent);
         if (!inst.isValid()) return;
         inst.start();
-        // Stop after ONE playthrough. The event is authored looping, so if we
-        // waited a fixed 6s it repeated ~6×. Use the event's authored length so
-        // exactly one pass plays, capped by maxSeconds.
-        float stopAfter = maxSeconds;
-        if (desc.getLength(out int lenMs) == FMOD.RESULT.OK && lenMs > 0)
-            stopAfter = Mathf.Min(maxSeconds, lenMs / 1000f + 0.05f);
-        StartCoroutine(StopInstanceAfter(inst, Mathf.Max(0.1f, stopAfter)));
+        StartCoroutine(StopAfterOnePlay(inst, Mathf.Max(0.2f, maxSeconds)));
     }
 
-    private IEnumerator StopInstanceAfter(EventInstance inst, float seconds)
+    // Stop the instance after EXACTLY ONE play, even if the event has an internal
+    // loop region. Polls the timeline: when the position jumps backwards it has
+    // wrapped (looped), so we stop right there. maxSeconds is a hard safety cap.
+    private IEnumerator StopAfterOnePlay(EventInstance inst, float maxSeconds)
     {
-        yield return new WaitForSecondsRealtime(seconds);
+        float t = 0f;
+        int lastPos = -1;
+        while (t < maxSeconds && inst.isValid())
+        {
+            t += Time.unscaledDeltaTime;
+            if (inst.getPlaybackState(out var st) == FMOD.RESULT.OK && st == FMOD.Studio.PLAYBACK_STATE.STOPPED) break;
+            if (inst.getTimelinePosition(out int pos) == FMOD.RESULT.OK)
+            {
+                if (lastPos >= 0 && pos < lastPos - 40) break; // wrapped → one play done
+                lastPos = pos;
+            }
+            yield return null;
+        }
         if (inst.isValid())
         {
             inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
