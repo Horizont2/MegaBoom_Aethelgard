@@ -347,7 +347,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
             damage *= region.enemyDamageMultiplier * dynamicMultiplier * timeMultiplier;
             if (dynamicMultiplier > 1.4f) actualMoveSpeed *= 1.15f;
 
-            xpRewardMultiplier = region.enemyHpMultiplier * dynamicMultiplier * timeMultiplier * 0.5f;
+            // XP scales with REGION difficulty and survival time, floored at
+            // 1× so early regions still pay the base crystal (the old
+            // ×0.5 quietly halved early-game XP). Deliberately NOT tied to the
+            // player-power dynamic multiplier — out-gearing a region shouldn't
+            // cut its XP. Preserve any higher value the spawner already set
+            // (its steeper per-minute ramp for endless/survival waves).
+            float regionXp = Mathf.Max(1f, region.enemyHpMultiplier * 0.6f) * timeMultiplier;
+            xpRewardMultiplier = Mathf.Max(xpRewardMultiplier, regionXp);
         }
         else
         {
@@ -1190,7 +1197,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (xpCrystalPrefab != null)
         {
-            Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+            GameObject xc = Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
+            // Scale the XP payout by this enemy's reward multiplier (region
+            // difficulty + survival time). This was COMPUTED in Start()/the
+            // spawner but never actually applied — every enemy dropped a flat
+            // crystal, so hard regions and long runs gave no extra XP.
+            XpCrystal xcData = xc.GetComponent<XpCrystal>();
+            if (xcData != null && xpRewardMultiplier > 0f)
+                xcData.xpAmount *= xpRewardMultiplier;
         }
 
         if (diamondPrefab != null && Random.value <= diamondDropChance)

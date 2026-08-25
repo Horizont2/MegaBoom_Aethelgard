@@ -290,26 +290,31 @@ MonoBehaviour:
     costFood: 38
     productionValue: 2
     productionDescription: +2% WEAPON DMG
+    buildTime: 15
   - costWood: 210
     costStone: 210
     costFood: 75
     productionValue: 5
     productionDescription: +5% WEAPON DMG
+    buildTime: 45
   - costWood: 338
     costStone: 338
     costFood: 135
     productionValue: 8
     productionDescription: +8% WEAPON DMG
+    buildTime: 90
   - costWood: 562
     costStone: 562
     costFood: 225
     productionValue: 11
     productionDescription: +11% WEAPON DMG
+    buildTime: 180
   - costWood: 900
     costStone: 900
     costFood: 375
     productionValue: 15
     productionDescription: +15% WEAPON DMG
+    buildTime: 300
   holdTimeRequired: 3
   uiCanvas: {fileID: 1618168786322232979}
   holdFillImage: {fileID: 8295392345776013337}

@@ -82,26 +82,31 @@ MonoBehaviour:
     costFood: 15
     productionValue: 125
     productionDescription: +125 MAX CAPACITY
+    buildTime: 15
   - costWood: 165
     costStone: 112
     costFood: 30
     productionValue: 275
     productionDescription: +275 MAX CAPACITY
+    buildTime: 45
   - costWood: 285
     costStone: 210
     costFood: 60
     productionValue: 500
     productionDescription: +500 MAX CAPACITY
+    buildTime: 90
   - costWood: 450
     costStone: 338
     costFood: 112
     productionValue: 750
     productionDescription: +750 MAX CAPACITY
+    buildTime: 180
   - costWood: 675
     costStone: 525
     costFood: 188
     productionValue: 1250
     productionDescription: +1250 MAX CAPACITY
+    buildTime: 300
   holdTimeRequired: 3
   uiCanvas: {fileID: 2424843414473500971}
   holdFillImage: {fileID: 4957621718778036129}

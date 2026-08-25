@@ -83,26 +83,31 @@ MonoBehaviour:
     costFood: 0
     productionValue: 6
     productionDescription: +6 LOGS/MIN
+    buildTime: 15
   - costWood: 60
     costStone: 15
     costFood: 0
     productionValue: 12
     productionDescription: +12 LOGS/MIN
+    buildTime: 45
   - costWood: 98
     costStone: 30
     costFood: 8
     productionValue: 19
     productionDescription: +19 LOGS/MIN
+    buildTime: 90
   - costWood: 150
     costStone: 52
     costFood: 15
     productionValue: 31
     productionDescription: +31 LOGS/MIN
+    buildTime: 180
   - costWood: 225
     costStone: 90
     costFood: 30
     productionValue: 50
     productionDescription: +50 LOGS/MIN
+    buildTime: 300
   holdTimeRequired: 3
   uiCanvas: {fileID: 8239858602073554204}
   holdFillImage: {fileID: 1671432697445067670}
