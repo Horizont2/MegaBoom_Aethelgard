@@ -535,11 +535,11 @@ MonoBehaviour:
   ambientCampFire:
     fmodEvent:
       Guid:
-        Data1: 0
-        Data2: 0
-        Data3: 0
-        Data4: 0
-      Path: 
+        Data1: -323915593
+        Data2: 1125239421
+        Data3: -1099064400
+        Data4: -946760886
+      Path: event:/AMB/Fire
   ambientHowl:
     fmodEvent:
       Guid:
