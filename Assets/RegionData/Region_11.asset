@@ -29,7 +29,7 @@ MonoBehaviour:
   combatMode: 0
   enemyStrength: 730
   autoBattleDiamondReward: 240
-  regionTotemPrefab: {fileID: 701240076730928711, guid: 332b763a8c2c5c54198df110a0504e91, type: 3}
+  regionTotemPrefab: {fileID: 551460717933574289, guid: f6c9dd5bbf3959c46b64db0c57406655, type: 3}
   locationYOffset: 0
   regionBossPrefabs: []
   extraCaptureLocations: 0

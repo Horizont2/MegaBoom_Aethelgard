@@ -29,9 +29,10 @@ MonoBehaviour:
   combatMode: 0
   enemyStrength: 170
   autoBattleDiamondReward: 55
-  regionTotemPrefab: {fileID: 0}
+  regionTotemPrefab: {fileID: 8299824053145540121, guid: 446dff08dec8fd7448778d479dc4ed3d, type: 3}
   locationYOffset: 0
   regionBossPrefabs: []
+  extraCaptureLocations: 0
   woodReward: 130
   stoneReward: 70
   foodReward: 30
