@@ -22778,6 +22778,8 @@ MonoBehaviour:
     spawnAtMinute: 6
   - enemyPrefab: {fileID: 811209472075591554, guid: 553284ce68d6a7447a2d06ff4d3b9163, type: 3}
     spawnAtMinute: 8
+  - enemyPrefab: {fileID: 5831695762426202601, guid: f60c3dd267039a34893cbd4934c12fa3, type: 3}
+    spawnAtMinute: 7
   player: {fileID: 615663591}
   baseSpawnInterval: 5
   minSpawnRadius: 10
