@@ -278,7 +278,7 @@ public static class DeathAshEffect
 
         rend.material = mat;
         rend.renderMode = ParticleSystemRenderMode.Billboard;
-        rend.sortMode = ParticleSystemSortMode.ByDistance;
+        rend.sortMode = ParticleSystemSortMode.Distance;
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rend.receiveShadows = false;
     }
