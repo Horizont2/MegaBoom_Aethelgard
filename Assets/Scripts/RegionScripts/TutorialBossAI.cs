@@ -1144,6 +1144,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         yield return new WaitForSeconds(2.5f);
 
         if (dissolveAshVFX != null) dissolveAshVFX.Play();
+        // Big crumble-to-ash cloud — auto-scales to the boss's larger silhouette.
+        DeathAshEffect.Spawn(transform);
 
         float dissolveDuration = 2f;
         float elapsed = 0f;

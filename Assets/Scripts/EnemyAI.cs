@@ -1279,6 +1279,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         yield return new WaitForSeconds(1.5f);
 
         if (dissolveAshVFX != null) dissolveAshVFX.Play();
+        // Procedural "crumble to ash" burst over the body's silhouette — grey
+        // flakes + glowing embers that rise and scatter on the wind as the
+        // skeleton dissolves. Captured now, before the body shrinks away.
+        DeathAshEffect.Spawn(transform);
 
         float dissolveDuration = 1.5f;
         float elapsed = 0f;
