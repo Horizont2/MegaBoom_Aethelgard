@@ -1541,6 +1541,19 @@ public class WorldGenerator : MonoBehaviour
             bottomOfCollider = cy - (sy / 2f);
         }
 
+        // The root box is often a small trigger (an activation zone), so the box
+        // math above gave a tiny flatten radius — the terrain was leveled only in
+        // a ~20m circle while a whole TOWN location extends much further, leaving
+        // it perched on ungraded bumps. Measure the prefab's real mesh footprint
+        // and flatten at least that far so the entire location sits on level
+        // ground. Bottom of the mesh footprint also gives a better base Y than a
+        // mis-sized trigger box.
+        if (MeasurePrefabFootprint(totemPrefab, out float meshRadius, out float meshBottomY))
+        {
+            if (meshRadius + 8f > flatRadius) flatRadius = meshRadius + 8f;
+            bottomOfCollider = meshBottomY;
+        }
+
         Vector2 bestSpot = Vector2.zero;
         bool foundSpot = false;
         List<Vector2> validSpots = new List<Vector2>();
@@ -1707,6 +1720,48 @@ public class WorldGenerator : MonoBehaviour
     //      SkinnedMeshRenderer only when there's no root BoxCollider.
     //      (Inactive renderers carry stale/origin bounds; particle
     //      renderers glow below the base — both are excluded.)
+    // Measures a prefab's combined MESH footprint (not its collider box):
+    //   radius  = half the larger XZ extent, in world units,
+    //   bottomY = the lowest mesh point relative to the root pivot, world units.
+    // Used to flatten a large enough pad and to place a location by its real
+    // base when the root collider is a small/mis-sized trigger.
+    private bool MeasurePrefabFootprint(GameObject prefab, out float radius, out float bottomY)
+    {
+        radius = 0f; bottomY = 0f;
+        if (prefab == null) return false;
+
+        Matrix4x4 w2l = prefab.transform.worldToLocalMatrix;
+        Bounds b = new Bounds();
+        bool has = false;
+
+        void Accumulate(Mesh mesh, Transform t)
+        {
+            if (mesh == null || t == null) return;
+            Matrix4x4 m = w2l * t.localToWorldMatrix;   // mesh-local → prefab-root-local
+            Vector3 c = mesh.bounds.center, e = mesh.bounds.extents;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = c + new Vector3((i & 1) == 0 ? -e.x : e.x,
+                                                 (i & 2) == 0 ? -e.y : e.y,
+                                                 (i & 4) == 0 ? -e.z : e.z);
+                Vector3 p = m.MultiplyPoint3x4(corner);
+                if (!has) { b = new Bounds(p, Vector3.zero); has = true; } else b.Encapsulate(p);
+            }
+        }
+
+        foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+            if (mf != null) Accumulate(mf.sharedMesh, mf.transform);
+        foreach (var smr in prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            if (smr != null) Accumulate(smr.sharedMesh, smr.transform);
+
+        if (!has) return false;
+
+        Vector3 s = prefab.transform.localScale;
+        radius = Mathf.Max(b.size.x * Mathf.Abs(s.x), b.size.z * Mathf.Abs(s.z)) * 0.5f;
+        bottomY = b.min.y * s.y;
+        return true;
+    }
+
     private void SnapInstanceToGround(GameObject go, float targetGroundY)
     {
         if (go == null) return;
