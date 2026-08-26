@@ -1711,16 +1711,13 @@ public class WorldGenerator : MonoBehaviour
     {
         if (go == null) return;
 
-        BoxCollider rootBox = go.GetComponent<BoxCollider>();
-        if (rootBox != null)
-        {
-            // World-space bottom of the collider box.
-            float colliderBottom = rootBox.bounds.min.y;
-            float deltaBox = targetGroundY - colliderBottom;
-            go.transform.position += new Vector3(0f, deltaBox, 0f);
-            return;
-        }
-
+        // Ground by the lowest VISIBLE mesh point — the model's REAL base.
+        // The old code trusted a root BoxCollider first, but a location prefab's
+        // blocking/interaction box often doesn't align with the visual base: if
+        // its bottom sits below the base (e.g. Arena_Region_07's box bottom was
+        // ~1.2m under the buildings) snapping the box to the ground lifts the
+        // whole location into the air. Measuring renderer bounds plants every
+        // location on its visible footing regardless of how its collider is set.
         float lowestY = float.MaxValue;
         bool any = false;
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
@@ -1735,7 +1732,16 @@ public class WorldGenerator : MonoBehaviour
             lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
             any = true;
         }
-        if (!any) return;
+
+        // Only if the prefab has no active renderers at all do we fall back to
+        // a root collider box.
+        if (!any)
+        {
+            BoxCollider rootBox = go.GetComponent<BoxCollider>();
+            if (rootBox == null) return;
+            lowestY = rootBox.bounds.min.y;
+        }
+
         float delta = targetGroundY - lowestY;
         go.transform.position += new Vector3(0f, delta, 0f);
     }
