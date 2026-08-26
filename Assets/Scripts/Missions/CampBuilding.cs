@@ -131,6 +131,11 @@ public class CampBuilding : MonoBehaviour
         // 1-second UpdateUIData refresh and made the hint flip BUILD<->UPGRADE.
         MarkNoAutoLocalize(buildHintTMP);
         MarkNoAutoLocalize(infoTMP);
+        // The name + description are set in code via Tr(...) each refresh.
+        // Exclude them from AutoLocalize so it can't re-capture the baked English
+        // text and fight the translated value (descriptions showing in English).
+        MarkNoAutoLocalize(titleTMP);
+        MarkNoAutoLocalize(descTMP);
     }
 
     private static void MarkNoAutoLocalize(TMPro.TextMeshProUGUI t)

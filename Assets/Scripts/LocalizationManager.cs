@@ -1192,6 +1192,140 @@ public static class LocalizationManager
         SeedFiveLangSupplements();
         SeedRemainingLangSupplements();
         SeedBuildingAndHintText();
+        SeedLevelUpFiveLang();
+    }
+
+    // RU/ES/DE/FR/PL for the 15 in-run level-up cards (name + flavour + stat
+    // line each). They were registered EN+UK only, so the other languages showed
+    // the cards in English. Keys are the exact English strings from
+    // LevelUpManager (self-keyed via Tr).
+    private static void SeedLevelUpFiveLang()
+    {
+        // ── Names ──
+        Add5("Vitality Reserves", "Резервы жизненных сил", "Reservas de vitalidad", "Vitalitätsreserven", "Réserves de vitalité", "Rezerwy witalności");
+        Add5("Vanguard March", "Марш авангарда", "Marcha de vanguardia", "Vorhut-Marsch", "Marche d'avant-garde", "Marsz awangardy");
+        Add5("Siege Might", "Осадная мощь", "Poder de asedio", "Belagerungswucht", "Puissance de siège", "Potęga oblężnicza");
+        Add5("Crystal Lure", "Кристальная приманка", "Señuelo de cristal", "Kristalllockung", "Appât de cristal", "Kryształowa przynęta");
+        Add5("Whetstone Rhythm", "Ритм точила", "Ritmo de amoladera", "Wetzstein-Rhythmus", "Rythme de la meule", "Rytm osełki");
+        Add5("Aethelgard Plate", "Латы Этельгарда", "Placa de Aethelgard", "Aethelgard-Platte", "Plaque d'Aethelgard", "Płyta Aethelgardu");
+        Add5("Field Medicine", "Полевая медицина", "Medicina de campaña", "Feldmedizin", "Médecine de campagne", "Medycyna polowa");
+        Add5("Keen Eye", "Острый глаз", "Ojo agudo", "Scharfes Auge", "Œil aiguisé", "Bystre oko");
+        Add5("Executioner's Edge", "Клинок палача", "Filo del verdugo", "Klinge des Henkers", "Tranchant du bourreau", "Ostrze kata");
+        Add5("Bloodbound Pact", "Кровавый пакт", "Pacto de sangre", "Blutbund-Pakt", "Pacte de sang", "Pakt krwi");
+        Add5("Wind-Touched", "Тронутый ветром", "Tocado por el viento", "Windberührt", "Touché par le vent", "Muśnięty wiatrem");
+        Add5("Reaver's Reward", "Награда налётчика", "Recompensa del asaltante", "Lohn des Räubers", "Récompense du pillard", "Nagroda grabieżcy");
+        Add5("Wardbreaker Sigil", "Печать взлома оберегов", "Sigilo rompeguardas", "Wallbrecher-Sigille", "Sceau brise-garde", "Sygil łamacza osłon");
+        Add5("Soulreader", "Чтец душ", "Lector de almas", "Seelenleser", "Liseur d'âmes", "Czytelnik dusz");
+        Add5("Hoarder's Gaze", "Взор скопидома", "Mirada del avaro", "Blick des Hamsterers", "Regard de l'avare", "Spojrzenie skąpca");
+
+        // ── Flavour descriptions ──
+        Add5("Forged sinew. Each layer means another swing you outlast.",
+             "Закалённые жилы. Каждый слой — ещё один удар, который ты переживёшь.",
+             "Tendones forjados. Cada capa es otro golpe que sobrevives.",
+             "Geschmiedete Sehnen. Jede Schicht ist ein weiterer Schlag, den du überstehst.",
+             "Tendons forgés. Chaque couche est un coup de plus que tu encaisses.",
+             "Zahartowane ścięgna. Każda warstwa to kolejny cios, który przetrwasz.");
+        Add5("Lighter step, longer stride. The blade always arrives first.",
+             "Легче шаг, шире размах. Клинок всегда приходит первым.",
+             "Paso más ligero, zancada más larga. La hoja siempre llega primero.",
+             "Leichterer Schritt, längere Schrittweite. Die Klinge kommt immer zuerst.",
+             "Pas plus léger, foulée plus longue. La lame arrive toujours en premier.",
+             "Lżejszy krok, dłuższy zamach. Ostrze zawsze przybywa pierwsze.");
+        Add5("The hammer drinks deeper. Bones break at half the effort.",
+             "Молот пьёт глубже. Кости ломаются с половины усилия.",
+             "El martillo bebe más hondo. Los huesos se rompen con la mitad de esfuerzo.",
+             "Der Hammer trinkt tiefer. Knochen brechen mit halber Mühe.",
+             "Le marteau boit plus profond. Les os cèdent à moitié moins d'effort.",
+             "Młot pije głębiej. Kości pękają przy połowie wysiłku.");
+        Add5("Aether shards leap toward you from farther afield.",
+             "Осколки эфира летят к тебе с большего расстояния.",
+             "Los fragmentos de éter saltan hacia ti desde más lejos.",
+             "Äthersplitter springen aus größerer Entfernung zu dir.",
+             "Les éclats d'éther bondissent vers toi de plus loin.",
+             "Odłamki eteru skaczą ku tobie z większej odległości.");
+        Add5("The swing-arc tightens. More strikes per breath.",
+             "Дуга удара сжимается. Больше ударов на вдох.",
+             "El arco del golpe se estrecha. Más golpes por aliento.",
+             "Der Schwungbogen wird enger. Mehr Schläge pro Atemzug.",
+             "L'arc du coup se resserre. Plus de frappes par souffle.",
+             "Łuk zamachu się zacieśnia. Więcej ciosów na oddech.");
+        Add5("Damp the next blow with old steel and older oaths.",
+             "Смягчи следующий удар старой сталью и ещё более старыми клятвами.",
+             "Amortigua el próximo golpe con acero viejo y juramentos aún más viejos.",
+             "Dämpfe den nächsten Schlag mit altem Stahl und älteren Schwüren.",
+             "Amortis le prochain coup avec de l'acier ancien et des serments plus anciens.",
+             "Stłum następny cios starą stalą i jeszcze starszymi przysięgami.");
+        Add5("Slow knit, but knit it does. Health returns with every footfall.",
+             "Медленно, но затягивается. Здоровье возвращается с каждым шагом.",
+             "Cierra despacio, pero cierra. La salud vuelve con cada paso.",
+             "Langsam, aber es heilt. Gesundheit kehrt mit jedem Schritt zurück.",
+             "Lente, mais la plaie se referme. La santé revient à chaque pas.",
+             "Powoli, ale się zrasta. Zdrowie wraca z każdym krokiem.");
+        Add5("You read where bone is brittle. Strikes find the weak point oftener.",
+             "Ты видишь, где кость хрупка. Удары чаще находят слабое место.",
+             "Lees dónde el hueso es frágil. Los golpes hallan el punto débil más a menudo.",
+             "Du erkennst, wo Knochen spröde sind. Schläge finden die Schwachstelle öfter.",
+             "Tu lis où l'os est fragile. Les coups trouvent plus souvent le point faible.",
+             "Widzisz, gdzie kość jest krucha. Ciosy częściej trafiają w słaby punkt.");
+        Add5("When the blade bites true, it bites deeper.",
+             "Когда клинок бьёт точно, он бьёт глубже.",
+             "Cuando la hoja muerde certera, muerde más hondo.",
+             "Wenn die Klinge richtig trifft, trifft sie tiefer.",
+             "Quand la lame mord juste, elle mord plus profond.",
+             "Gdy ostrze tnie celnie, tnie głębiej.");
+        Add5("Every wound you deliver feeds you back a sip.",
+             "Каждая нанесённая рана возвращает тебе глоток.",
+             "Cada herida que infliges te devuelve un sorbo.",
+             "Jede Wunde, die du zufügst, gibt dir einen Schluck zurück.",
+             "Chaque blessure que tu infliges te rend une gorgée.",
+             "Każda zadana rana zwraca ci łyk.");
+        Add5("The air parts before you. Some blows pass through nothing.",
+             "Воздух расступается перед тобой. Некоторые удары бьют в пустоту.",
+             "El aire se abre ante ti. Algunos golpes no dan en nada.",
+             "Die Luft teilt sich vor dir. Manche Schläge treffen ins Leere.",
+             "L'air s'écarte devant toi. Certains coups ne frappent que le vide.",
+             "Powietrze rozstępuje się przed tobą. Niektóre ciosy trafiają w pustkę.");
+        Add5("Each kill stitches another scar shut.",
+             "Каждое убийство затягивает ещё один шрам.",
+             "Cada muerte cierra otra cicatriz.",
+             "Jeder Kill vernäht eine weitere Narbe.",
+             "Chaque mise à mort referme une cicatrice de plus.",
+             "Każde zabójstwo zaszywa kolejną bliznę.");
+        Add5("Those who strike you bleed for the privilege.",
+             "Те, кто бьёт тебя, платят за это кровью.",
+             "Quienes te golpean sangran por el privilegio.",
+             "Wer dich schlägt, blutet für das Privileg.",
+             "Ceux qui te frappent saignent pour ce privilège.",
+             "Ci, którzy cię uderzają, krwawią za ten przywilej.");
+        Add5("You hear the song each fallen soul carries. Learn faster.",
+             "Ты слышишь песню каждой павшей души. Учишься быстрее.",
+             "Oyes la canción que porta cada alma caída. Aprendes más rápido.",
+             "Du hörst das Lied jeder gefallenen Seele. Lerne schneller.",
+             "Tu entends le chant que porte chaque âme tombée. Apprends plus vite.",
+             "Słyszysz pieśń każdej poległej duszy. Uczysz się szybciej.");
+        Add5("Aether shards spill heavier where you walk.",
+             "Осколки эфира сыплются щедрее там, где ты идёшь.",
+             "Los fragmentos de éter caen más abundantes por donde caminas.",
+             "Äthersplitter fallen reichlicher, wo du gehst.",
+             "Les éclats d'éther se répandent plus abondamment sur tes pas.",
+             "Odłamki eteru sypią się obficiej tam, gdzie stąpasz.");
+
+        // ── Stat lines ──
+        Add5("+10 Max HP", "+10 макс. HP", "+10 HP máx", "+10 max. LP", "+10 PV max", "+10 maks. HP");
+        Add5("+0.5 Speed", "+0.5 скорости", "+0.5 velocidad", "+0.5 Tempo", "+0.5 vitesse", "+0.5 prędkości");
+        Add5("+5 Damage", "+5 урона", "+5 daño", "+5 Schaden", "+5 dégâts", "+5 obrażeń");
+        Add5("+0.5 Pickup Range", "+0.5 радиуса подбора", "+0.5 rango de recogida", "+0.5 Aufsammelreichweite", "+0.5 portée de ramassage", "+0.5 zasięgu zbierania");
+        Add5("+15 Atk Speed", "+15 скорости атаки", "+15 vel. de ataque", "+15 Angriffstempo", "+15 vitesse d'attaque", "+15 szybkości ataku");
+        Add5("+5% Damage Resist", "+5% сопротивления урону", "+5% resist. al daño", "+5% Schadensresistenz", "+5% résist. aux dégâts", "+5% odporności na obrażenia");
+        Add5("+0.3 HP/sec", "+0.3 HP/сек", "+0.3 HP/seg", "+0.3 LP/Sek", "+0.3 PV/s", "+0.3 HP/s");
+        Add5("+5% Crit Chance", "+5% шанс крита", "+5% prob. crítico", "+5% Kritchance", "+5% chance de crit", "+5% szansy kryt.");
+        Add5("+25% Crit Damage", "+25% крит. урона", "+25% daño crítico", "+25% Kritschaden", "+25% dégâts crit.", "+25% obrażeń kryt.");
+        Add5("+5% Lifesteal", "+5% вампиризма", "+5% robo de vida", "+5% Lebensraub", "+5% vol de vie", "+5% kradzieży życia");
+        Add5("+5% Dodge", "+5% уклонения", "+5% evasión", "+5% Ausweichen", "+5% esquive", "+5% uniku");
+        Add5("+3 HP per Kill", "+3 HP за убийство", "+3 HP por muerte", "+3 LP pro Kill", "+3 PV par kill", "+3 HP za zabójstwo");
+        Add5("+15% Thorns", "+15% шипов", "+15% espinas", "+15% Dornen", "+15% épines", "+15% kolców");
+        Add5("+15% XP Gain", "+15% к опыту", "+15% de XP", "+15% EP-Gewinn", "+15% d'XP", "+15% XP");
+        Add5("+20% Diamond Gain", "+20% к алмазам", "+20% de diamantes", "+20% Diamanten", "+20% de diamants", "+20% diamentów");
     }
 
     // === 5-language supplement (RU/ES/DE/FR/PL) for keys originally
