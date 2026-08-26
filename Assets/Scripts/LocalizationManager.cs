@@ -1235,6 +1235,12 @@ public static class LocalizationManager
              "Débloque la Carte d'hiver (24 régions)",
              "Odblokowuje Zimową mapę (24 regiony)");
 
+        // ── Building names (title is Tr(buildingName).ToUpper()). FORGE / CABIN /
+        //    HUT / VAULT were registered elsewhere; these two were not. ──
+        Add7("SCOUT'S LODGE", "SCOUT'S LODGE", "ХИЖА РОЗВІДНИКА", "ХИЖИНА РАЗВЕДЧИКА",
+             "REFUGIO DEL EXPLORADOR", "SPÄHERHÜTTE", "GÎTE DE L'ÉCLAIREUR", "CHATA ZWIADOWCY");
+        Add7("Barracks", "Barracks", "Казарма", "Казарма", "Cuartel", "Kaserne", "Caserne", "Koszary");
+
         // ── Barracks ──
         Add7("A barracks trains and dispatches mercenary companies to distant regions.",
              "A barracks trains and dispatches mercenary companies to distant regions.",

@@ -1012,7 +1012,15 @@ public class ShopManager : MonoBehaviour
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }
 
-        if (didUpgrade) PlayPurchaseCelebration();
+        if (didUpgrade)
+        {
+            PlayPurchaseCelebration();
+            // Upgrading gear counts as a shop purchase for the guide/mission
+            // that asks the player to spend in the shop — the flag was only set
+            // on BUY, so upgrading gear you already owned never credited it.
+            if (PlayerPrefs.GetInt("ShopFirstPurchase", 0) == 0)
+                PlayerPrefs.SetInt("ShopFirstPurchase", 1);
+        }
 
         PlayerPrefs.Save();
         UpdateUI(true);

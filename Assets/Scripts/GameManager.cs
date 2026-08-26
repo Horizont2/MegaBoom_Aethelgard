@@ -107,9 +107,10 @@ public class GameManager : MonoBehaviour
             // (a spawn routine exception kills the whole GenerateWorld
             // chain before it sets IsGenerationDone), this used to spin
             // forever and the survival timer never started (stuck 00:00).
-            // Cap the wait at 30s of real time so the timer always begins
-            // even on a partially-failed generation.
-            float genWaitTimeout = 30f;
+            // Cap the wait so the timer always begins even on a slow or
+            // partially-failed generation. 8s is plenty for a normal gen and
+            // stops the "timer stuck at 00:00" feel when a region's gen stalls.
+            float genWaitTimeout = 8f;
             float genWaitElapsed = 0f;
             while (!WorldGenerator.IsGenerationDone && genWaitElapsed < genWaitTimeout)
             {
