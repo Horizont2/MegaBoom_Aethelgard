@@ -390,7 +390,90 @@ public class PlayerController : MonoBehaviour, IDamageable
             currentWeapon.transform.localPosition = Vector3.zero;
             currentWeapon.transform.localRotation = Quaternion.identity;
             weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
+            // Weapons ship without a trail — build a clean AAA one so swings read.
+            if (weaponTrail == null) weaponTrail = CreateWeaponTrail(currentWeapon);
+            if (weaponTrail != null) weaponTrail.emitting = false;
         }
+    }
+
+    // Builds a short, tapered blade trail near the weapon tip. Additive + soft
+    // so it glows subtly under bloom without smearing the screen. Emitting is
+    // driven per-swing by TriggerWeaponTrail (and the StartSwing/EndSwing anim
+    // events if the clip has them).
+    private TrailRenderer CreateWeaponTrail(GameObject weapon)
+    {
+        if (weapon == null) return null;
+        // Anchor near the blade tip: most held weapons point up +Y from the hand.
+        var tip = new GameObject("BladeTrailPoint");
+        tip.transform.SetParent(weapon.transform, false);
+        tip.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+
+        var tr = tip.AddComponent<TrailRenderer>();
+        tr.time = 0.16f;                       // short — no lingering smear
+        tr.minVertexDistance = 0.02f;
+        tr.numCornerVertices = 4;
+        tr.numCapVertices = 4;
+        tr.autodestruct = false;
+        tr.emitting = false;
+        tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        tr.receiveShadows = false;
+        tr.alignment = LineAlignment.View;
+
+        // Taper the width to a point.
+        tr.widthCurve = new AnimationCurve(new Keyframe(0f, 0.13f), new Keyframe(1f, 0f));
+
+        // Soft cool-white ribbon fading out.
+        var grad = new Gradient();
+        grad.SetKeys(
+            new[] { new GradientColorKey(new Color(0.8f, 0.9f, 1f), 0f), new GradientColorKey(new Color(0.5f, 0.7f, 1f), 1f) },
+            new[] { new GradientAlphaKey(0.55f, 0f), new GradientAlphaKey(0f, 1f) });
+        tr.colorGradient = grad;
+
+        Shader sh = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default");
+        var mat = new Material(sh);
+        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
+        if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 1f);
+        if (mat.HasProperty("_SrcBlend")) mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (mat.HasProperty("_DstBlend")) mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
+        if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        tr.material = mat;
+
+        // Keep it off the minimap like the other effects.
+        VFXAutoFade.HideFromMinimap(tip);
+        return tr;
+    }
+
+    private Coroutine weaponTrailRoutine;
+
+    private void TriggerWeaponTrail(bool crit)
+    {
+        if (weaponTrail == null) return;
+        // Warmer + slightly stronger on a crit.
+        var grad = new Gradient();
+        if (crit)
+            grad.SetKeys(
+                new[] { new GradientColorKey(new Color(1f, 0.85f, 0.4f), 0f), new GradientColorKey(new Color(1f, 0.5f, 0.15f), 1f) },
+                new[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0f, 1f) });
+        else
+            grad.SetKeys(
+                new[] { new GradientColorKey(new Color(0.8f, 0.9f, 1f), 0f), new GradientColorKey(new Color(0.5f, 0.7f, 1f), 1f) },
+                new[] { new GradientAlphaKey(0.55f, 0f), new GradientAlphaKey(0f, 1f) });
+        weaponTrail.colorGradient = grad;
+
+        weaponTrail.Clear();
+        weaponTrail.emitting = true;
+        if (weaponTrailRoutine != null) StopCoroutine(weaponTrailRoutine);
+        weaponTrailRoutine = StartCoroutine(StopWeaponTrailRoutine());
+    }
+
+    private System.Collections.IEnumerator StopWeaponTrailRoutine()
+    {
+        // Emit only for the swing window, then stop so idle poses draw nothing.
+        yield return new WaitForSeconds(0.22f);
+        if (weaponTrail != null) weaponTrail.emitting = false;
+        weaponTrailRoutine = null;
     }
 
     private void ReconnectUI()
@@ -1630,6 +1713,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         int hitCount = Physics.OverlapSphereNonAlloc(meleePoint.position, meleeRadius, s_overlapBuffer);
         bool hitEnemy = false; bool hitResource = false;
         bool isCriticalHit = isNextAttackGuaranteedCrit || Random.value <= globalCritChance;
+
+        // AAA blade trail — a short, tapered ribbon along the swing arc. Warmer/
+        // brighter on a crit. Kept subtle and brief so it never clutters play.
+        TriggerWeaponTrail(isCriticalHit);
 
         float finalDmg = meleeDamage * globalDamageMultiplier;
         // critDamageMultiplier is the LvlUp-scaled normal crit. Guaranteed crit
