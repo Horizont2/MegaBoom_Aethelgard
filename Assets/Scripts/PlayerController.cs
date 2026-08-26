@@ -155,6 +155,21 @@ public class PlayerController : MonoBehaviour, IDamageable
     public float perfectDodgeDuration = 1.5f;
     public GameObject perfectDodgeVFX;
 
+    [Header("Game-Feel VFX (Hovl pack — assigned on the Player prefab)")]
+    [Tooltip("Golden star aura burst on level-up.")]
+    public GameObject levelUpVFX;
+    [Tooltip("Aura pulse when the STACK first hits 15 (damage starts multiplying).")]
+    public GameObject stack15VFX;
+    [Tooltip("Lightning aura when the STACK first hits 30 (typhoon tier).")]
+    public GameObject stack30VFX;
+    [Tooltip("Green heal aura when HP is restored.")]
+    public GameObject healVFX;
+    [Tooltip("Red spark burst when the player takes a hit.")]
+    public GameObject hitVFX;
+    // Stack-milestone edge tracking so the aura fires once on crossing, not every frame.
+    private bool stack15Fired = false;
+    private bool stack30Fired = false;
+
     private float dodgeWindowTimer = 0f;
     [HideInInspector] public bool isNextAttackGuaranteedCrit = false;
     private bool isBulletTime = false;
@@ -546,6 +561,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         else if (currentStack >= 20) currentMultiplier = 4;
         else if (currentStack >= 15) currentMultiplier = 2;
         else currentMultiplier = 1;
+
+        // Milestone auras — fire ONCE on crossing each threshold, reset when the
+        // stack drops back below so re-stacking re-triggers them.
+        if (currentStack >= 15 && !stack15Fired) { stack15Fired = true; SpawnFeelFX(stack15VFX, attach: true, life: 2f); }
+        else if (currentStack < 15) stack15Fired = false;
+        if (currentStack >= 30 && !stack30Fired) { stack30Fired = true; SpawnFeelFX(stack30VFX, attach: true, life: 3f); }
+        else if (currentStack < 30) stack30Fired = false;
 
         if (currentMultiplier > 1)
         {
@@ -1750,6 +1772,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         float finalDamage = info.Amount * (1f - damageReduction);
         currentHealth -= finalDamage;
+        SpawnFeelFX(hitVFX, attach: false, life: 1.2f);
 
         if (thornDamageFraction > 0f)
         {
@@ -1920,6 +1943,19 @@ public class PlayerController : MonoBehaviour, IDamageable
         return 40f + level * level * 4f + level * 6f;
     }
 
+    // Spawns a Hovl game-feel effect. Auras (attach=true) parent to the player
+    // so they follow; impacts spawn free at the player's chest. Everything
+    // auto-destroys since the pack's particle systems loop.
+    private void SpawnFeelFX(GameObject prefab, bool attach, float life, float scale = 1f)
+    {
+        if (prefab == null) return;
+        Vector3 pos = transform.position + Vector3.up * 1f;
+        GameObject fx = Instantiate(prefab, pos, Quaternion.identity);
+        if (attach && fx != null) fx.transform.SetParent(transform, true);
+        if (fx != null && !Mathf.Approximately(scale, 1f)) fx.transform.localScale *= scale;
+        if (fx != null) Destroy(fx, life);
+    }
+
     private void LevelUp()
     {
         currentXP -= xpToNextLevel;
@@ -1928,6 +1964,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         visualXP = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
+        SpawnFeelFX(levelUpVFX, attach: true, life: 2.5f);
 
         RunSession.AddLevelUp(currentLevel);
 
@@ -1981,6 +2018,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             // lifesteal doesn't turn into a heal spam channel.
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySFX(AudioID.Player_Heal);
+            SpawnFeelFX(healVFX, attach: true, life: 1.6f);
         }
         UpdateHUD();
     }
