@@ -52,6 +52,7 @@ public static class DeathAshEffect
         var root = new GameObject("DeathAsh");
         root.transform.position = center;
 
+        BuildBoneShards(root.transform, bodyHeight, radius);   // skeleton crumbles into pieces
         BuildAsh(root.transform, emitHeight, radius);
         BuildEmbers(root.transform, emitHeight, radius);
         BuildDust(root.transform, radius);
@@ -59,6 +60,67 @@ public static class DeathAshEffect
 
         // Auto-clean after the longest layer finishes (lifetime + emission window).
         Object.Destroy(root, 5f);
+    }
+
+    // ── Bone shards — chunky fragments that burst from the whole body and fall,
+    //    so the skeleton reads as breaking into pieces. ──
+    private static void BuildBoneShards(Transform parent, float bodyHeight, float radius)
+    {
+        var go = new GameObject("BoneShards");
+        go.transform.SetParent(parent, false);
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop();
+
+        var main = ps.main;
+        main.duration = 0.4f;
+        main.loop = false;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 2.2f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(1.4f, 3.8f);   // burst outward
+        main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.18f);  // chunky, bigger than ash
+        main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+        main.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(0.86f, 0.83f, 0.72f), new Color(0.66f, 0.63f, 0.55f));  // bone / weathered bone
+        main.gravityModifier = 1.0f;   // they fall — key to "breaking apart"
+        main.maxParticles = 80;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+        var em = ps.emission;
+        em.rateOverTime = 0f;
+        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 34) });   // one shatter burst
+
+        // Emit over the WHOLE body so fragments look like the whole skeleton.
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(radius * 1.4f, Mathf.Max(0.6f, bodyHeight), radius * 1.4f);
+
+        var rot = ps.rotationOverLifetime;
+        rot.enabled = true;
+        rot.z = new ParticleSystem.MinMaxCurve(-2.5f, 2.5f);   // tumble
+
+        // Bounce off the ground and settle — sells the physical shatter.
+        var col = ps.collision;
+        col.enabled = true;
+        col.type = ParticleSystemCollisionType.World;
+        col.mode = ParticleSystemCollisionMode.Collision3D;
+        col.bounce = 0.35f;
+        col.dampen = 0.3f;
+        col.quality = ParticleSystemCollisionQuality.Medium;
+
+        var colOL = ps.colorOverLifetime;
+        colOL.enabled = true;
+        var g = new Gradient();
+        g.SetKeys(
+            new[] { new GradientColorKey(new Color(0.86f, 0.83f, 0.72f), 0f), new GradientColorKey(new Color(0.6f, 0.57f, 0.5f), 1f) },
+            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) });
+        colOL.color = g;
+
+        var sol = ps.sizeOverLifetime;
+        sol.enabled = true;
+        sol.size = new ParticleSystem.MinMaxCurve(1f,
+            new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.8f, 1f), new Keyframe(1f, 0.3f)));
+
+        ApplyRenderer(ps, additive: false, new Color(0.82f, 0.79f, 0.68f, 1f));
+        ps.Play();
     }
 
     // ── Fine ash flakes — the body of the effect ──
