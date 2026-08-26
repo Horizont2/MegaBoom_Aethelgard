@@ -46,8 +46,13 @@ public class GameManager : MonoBehaviour
         if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // Guards the Start() failsafe below: true once any scene has been
+    // initialised (via OnSceneLoaded or the Start fallback).
+    private bool sceneInitDone = false;
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        sceneInitDone = true;
         // �����Ҳ�: ����������� ���, ���� ����� ���� �������!
         Time.timeScale = 1f;
 
@@ -79,6 +84,15 @@ public class GameManager : MonoBehaviour
         survivalTime = 0f;
         nextSurvivalTick = 1f;
         isGameOver = false;
+
+        // FAILSAFE: on the very first scene GameManager is created in, the
+        // sceneLoaded event already fired before Awake subscribed to it, so
+        // OnSceneLoaded never ran — which meant the survival timer flow never
+        // started and the timer sat frozen at 00:00 (only the FIRST region of a
+        // session; later scenes work because the singleton persists and does
+        // receive the event). Run the same init now if nothing handled it.
+        if (!sceneInitDone)
+            OnSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
     }
 
     private IEnumerator CheckForLoadingManager()
