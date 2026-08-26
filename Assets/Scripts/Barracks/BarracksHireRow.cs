@@ -73,6 +73,6 @@ public class BarracksHireRow : MonoBehaviour
         var hired = boundRoster.Hire(boundData.unitID);
         if (hired == null) return; // refused (race) — nothing charged
         ResourceManager.Instance.SpendDiamonds(cost);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Purchase);
     }
 }

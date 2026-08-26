@@ -101,6 +101,6 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
 
         ResourceManager.Instance.SpendDiamonds(cost);
         boundRoster.SetUpgradeLevel(boundData.unitID, lvl + 1);
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Purchase);
     }
 }

@@ -369,6 +369,9 @@ public class CampBuilding : MonoBehaviour
                         {
                             ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
                         }
+                        // Purchase confirmation ding at the moment resources are spent
+                        // (the Camp_BuildStart loop that follows is the construction SFX).
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Purchase);
 
                         long startTimeBinary = DateTime.UtcNow.ToBinary();
                         PlayerPrefs.SetString("UpgradeStart_" + buildingID, startTimeBinary.ToString());
