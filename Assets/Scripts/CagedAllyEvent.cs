@@ -51,9 +51,15 @@ public class CagedAllyEvent : MonoBehaviour
     private readonly List<GameObject> guards = new List<GameObject>();
     private Transform player;
 
+    private GameObject minimapMarker;
+
     private void Start()
     {
         CachePlayer();
+
+        // A cyan marker on the minimap so the player can find the rescue event
+        // (matches the enemies' red minimap dots). Removed when the ally is freed.
+        minimapMarker = CreateMinimapMarker(transform.position, new Color(0.35f, 0.85f, 1f));
 
         // Spawn the captive from a prefab if none was placed by hand.
         if (allyObject == null && allyPrefab != null)
@@ -221,6 +227,8 @@ public class CagedAllyEvent : MonoBehaviour
         if (cleared) return;
         cleared = true;
 
+        if (minimapMarker != null) { Destroy(minimapMarker); minimapMarker = null; }
+
         if (promptShowing && GlobalHUD.Instance != null) { GlobalHUD.Instance.HidePrompt(); promptShowing = false; }
 
         // Shatter the cage.
@@ -247,6 +255,33 @@ public class CagedAllyEvent : MonoBehaviour
             PlayerController pc = player.GetComponent<PlayerController>();
             if (pc != null && xpReward > 0) pc.GainXP(xpReward);
         }
+    }
+
+    // Flat coloured quad on the MinimapOnly layer — the top-down minimap camera
+    // renders that layer, so this shows as an icon on the map (like the enemy
+    // dots) without any UI wiring. Double-sided so its facing never hides it.
+    private GameObject CreateMinimapMarker(Vector3 worldPos, Color color)
+    {
+        int layer = LayerMask.NameToLayer("MinimapOnly");
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        go.name = "CagedAllyMinimapMarker";
+        var col = go.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+        go.transform.position = worldPos + Vector3.up * 3f;
+        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   // lie flat for the top-down cam
+        go.transform.localScale = Vector3.one * 9f;
+        if (layer >= 0) go.layer = layer;
+
+        var mr = go.GetComponent<MeshRenderer>();
+        Shader sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+        var mat = new Material(sh);
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);   // double-sided
+        mr.material = mat;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        return go;
     }
 
     private static float FlatDist(Vector3 a, Vector3 b) { a.y = 0f; b.y = 0f; return Vector3.Distance(a, b); }

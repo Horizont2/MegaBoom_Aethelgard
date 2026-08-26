@@ -93,9 +93,27 @@ public class LootChest : MonoBehaviour
         if (chestAnimator != null)
         {
             chestAnimator.SetTrigger("Open");
-        }
 
-        yield return new WaitForSeconds(delayForLoot);
+            // Sync loot to the ACTUAL open animation instead of a fixed guess
+            // (delayForLoot drifted from the clip after the chest anim changed).
+            // Wait for the transition into the Open state, then hold until the
+            // lid is ~85% open so the loot bursts out exactly as it finishes.
+            float waited = 0f;
+            while (waited < 0.4f)   // let the transition settle onto the Open state
+            {
+                var s = chestAnimator.GetCurrentAnimatorStateInfo(0);
+                if (s.length > 0.05f && !chestAnimator.IsInTransition(0)) break;
+                waited += Time.deltaTime;
+                yield return null;
+            }
+            var open = chestAnimator.GetCurrentAnimatorStateInfo(0);
+            float openLen = (open.length > 0.05f) ? open.length * 0.85f : delayForLoot;
+            yield return new WaitForSeconds(openLen);
+        }
+        else
+        {
+            yield return new WaitForSeconds(delayForLoot);
+        }
 
         SpawnLoot();
 

@@ -23,8 +23,22 @@ public class VFXAutoFade : MonoBehaviour
         worldSpace = world;
     }
 
+    // The minimap camera renders the Default layer (terrain/buildings), so any
+    // VFX on Default also showed up as clutter on the minimap. TransparentFX is
+    // rendered by the main camera but excluded from the minimap — move effects
+    // there so they stay off the map. Shared by procedural effects too.
+    public static void HideFromMinimap(GameObject go)
+    {
+        if (go == null) return;
+        int layer = LayerMask.NameToLayer("TransparentFX");
+        if (layer < 0) return;
+        var all = go.GetComponentsInChildren<Transform>(true);
+        foreach (var t in all) if (t != null) t.gameObject.layer = layer;
+    }
+
     private void Start()
     {
+        HideFromMinimap(gameObject);
         systems = GetComponentsInChildren<ParticleSystem>(true);
         if (worldSpace && systems != null)
         {

@@ -55,6 +55,7 @@ public static class DeathAshEffect
         BuildAsh(root.transform, emitHeight, radius);
         BuildEmbers(root.transform, emitHeight, radius);
         BuildDust(root.transform, radius);
+        VFXAutoFade.HideFromMinimap(root);   // keep ash off the minimap
 
         // Auto-clean after the longest layer finishes (lifetime + emission window).
         Object.Destroy(root, 5f);
