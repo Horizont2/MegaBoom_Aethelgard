@@ -1194,6 +1194,203 @@ public static class LocalizationManager
         SeedBuildingAndHintText();
         SeedLevelUpFiveLang();
         SeedCampSceneBuildingText();
+        SeedCampMissionText();
+    }
+
+    // 7-language names + flavour for the 21 Notice Board camp missions. These
+    // self-key on the English string from the Mission_* assets and were showing
+    // in English in every language.
+    private static void SeedCampMissionText()
+    {
+        Add7("Skeleton Cull", "Skeleton Cull", "Відбір скелетів", "Отбраковка скелетов", "Purga de esqueletos", "Skelett-Ausmerzung", "Élagage des squelettes", "Odstrzał szkieletów");
+        Add7("Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
+             "Thin the patrols circling the outer wood-line. Their bones rot what the loam should feed.",
+             "Проріди патрулі, що кружляють уздовж узлісся. Їхні кістки гноять те, що мала б живити земля.",
+             "Проредить патрули, кружащие вдоль опушки. Их кости гноят то, что должна питать земля.",
+             "Diezma las patrullas que rondan la linde del bosque. Sus huesos pudren lo que la tierra debería nutrir.",
+             "Lichte die Patrouillen am Waldrand. Ihre Knochen verderben, was der Boden nähren sollte.",
+             "Éclaircis les patrouilles qui rôdent à la lisière. Leurs os pourrissent ce que la terre devrait nourrir.",
+             "Przerzedź patrole krążące wzdłuż skraju lasu. Ich kości gniją to, co ziemia powinna żywić.");
+        Add7("Scrap Run", "Scrap Run", "Виліт по брухт", "Ходка за ломом", "Recogida de chatarra", "Schrott-Lauf", "Course à la ferraille", "Wyprawa po złom");
+        Add7("Drag back enough aether shards to feed the camp's furnace through dawn.",
+             "Drag back enough aether shards to feed the camp's furnace through dawn.",
+             "Притягни досить осколків ефіру, щоб горно табору дотягнуло до світанку.",
+             "Притащи достаточно осколков эфира, чтобы горн лагеря дожил до рассвета.",
+             "Arrastra suficientes fragmentos de éter para alimentar el horno del campamento hasta el alba.",
+             "Schlepp genug Äthersplitter heran, damit die Esse des Lagers bis zum Morgengrauen brennt.",
+             "Ramène assez d'éclats d'éther pour nourrir la forge du camp jusqu'à l'aube.",
+             "Przywlecz dość odłamków eteru, by piec obozu dotrwał do świtu.");
+        Add7("Long Watch", "Long Watch", "Довга варта", "Долгий дозор", "Larga guardia", "Lange Wache", "Longue veille", "Długa warta");
+        Add7("Hold position while the runners get clear. Don't die. Don't move.",
+             "Hold position while the runners get clear. Don't die. Don't move.",
+             "Тримай позицію, поки гінці не відірвуться. Не помри. Не рухайся.",
+             "Держи позицию, пока гонцы не оторвутся. Не умри. Не двигайся.",
+             "Mantén la posición mientras los correos escapan. No mueras. No te muevas.",
+             "Halte die Stellung, bis die Läufer entkommen sind. Stirb nicht. Beweg dich nicht.",
+             "Tiens la position le temps que les coureurs s'échappent. Ne meurs pas. Ne bouge pas.",
+             "Utrzymaj pozycję, aż gońcy się oddalą. Nie zgiń. Nie ruszaj się.");
+        Add7("Bone Tide", "Bone Tide", "Кістяний приплив", "Костяной прилив", "Marea de huesos", "Knochenflut", "Marée d'os", "Kościany przypływ");
+        Add7("The hollowed dead drift in waves now. Break the next one before it reaches the palisade.",
+             "The hollowed dead drift in waves now. Break the next one before it reaches the palisade.",
+             "Порожні мерці тепер сунуть хвилями. Розбий наступну, поки вона не дійшла до частоколу.",
+             "Полые мертвецы теперь идут волнами. Разбей следующую, пока она не дошла до частокола.",
+             "Los muertos huecos avanzan ya en oleadas. Rompe la siguiente antes de que llegue a la empalizada.",
+             "Die ausgehöhlten Toten treiben nun in Wellen. Brich die nächste, bevor sie die Palisade erreicht.",
+             "Les morts creux déferlent en vagues désormais. Brise la prochaine avant qu'elle n'atteigne la palissade.",
+             "Wydrążeni umarli nadciągają teraz falami. Rozbij następną, nim dotrze do palisady.");
+        Add7("Crystal Vein", "Crystal Vein", "Кристальна жила", "Кристальная жила", "Veta de cristal", "Kristallader", "Filon de cristal", "Żyła kryształu");
+        Add7("A cluster surfaced near the old shrine. Strip it before the mist returns.",
+             "A cluster surfaced near the old shrine. Strip it before the mist returns.",
+             "Скупчення проступило біля старого святилища. Обдери його, поки не повернувся туман.",
+             "Скопление проступило у старого святилища. Обдери его, пока не вернулся туман.",
+             "Un cúmulo afloró cerca del viejo santuario. Despójalo antes de que vuelva la niebla.",
+             "Ein Cluster ist beim alten Schrein aufgetaucht. Räum ihn ab, bevor der Nebel zurückkehrt.",
+             "Un amas a surgi près du vieux sanctuaire. Dépouille-le avant le retour de la brume.",
+             "Skupisko wyszło na powierzchnię przy starej kapliczce. Ogołoć je, nim wróci mgła.");
+        Add7("Forest Patrol", "Forest Patrol", "Лісовий патруль", "Лесной патруль", "Patrulla del bosque", "Waldpatrouille", "Patrouille forestière", "Patrol leśny");
+        Add7("Sweep the south road. The traders will not pay tribute if they cannot reach us.",
+             "Sweep the south road. The traders will not pay tribute if they cannot reach us.",
+             "Зачисти південну дорогу. Торговці не платитимуть данину, якщо не зможуть дістатися нас.",
+             "Зачисти южную дорогу. Торговцы не заплатят дань, если не смогут добраться до нас.",
+             "Despeja el camino del sur. Los mercaderes no pagarán tributo si no pueden llegar hasta nosotros.",
+             "Räum die Südstraße frei. Die Händler zahlen keinen Tribut, wenn sie uns nicht erreichen.",
+             "Ratisse la route du sud. Les marchands ne paieront pas tribut s'ils ne peuvent nous atteindre.",
+             "Oczyść południową drogę. Kupcy nie zapłacą daniny, jeśli nie zdołają do nas dotrzeć.");
+        Add7("Hold the Line", "Hold the Line", "Тримати лінію", "Держать оборону", "Mantener la línea", "Die Linie halten", "Tenir la ligne", "Utrzymać linię");
+        Add7("Three runners are crossing the bog. Hold here until the signal-fire lights.",
+             "Three runners are crossing the bog. Hold here until the signal-fire lights.",
+             "Троє гінців переходять трясовину. Тримайся тут, поки не спалахне сигнальний вогонь.",
+             "Трое гонцов переходят топь. Держись здесь, пока не вспыхнет сигнальный огонь.",
+             "Tres correos cruzan la ciénaga. Aguanta aquí hasta que se encienda la hoguera de señal.",
+             "Drei Läufer durchqueren den Sumpf. Halte hier, bis das Signalfeuer aufflammt.",
+             "Trois coureurs traversent le marécage. Tiens ici jusqu'à ce que le feu de signal s'allume.",
+             "Trzej gońcy przeprawiają się przez bagno. Wytrwaj tu, aż zapłonie ogień sygnałowy.");
+        Add7("Camp Expansion", "Camp Expansion", "Розширення табору", "Расширение лагеря", "Ampliación del campamento", "Lager-Ausbau", "Expansion du camp", "Rozbudowa obozu");
+        Add7("Lay the first stones for a new outpost. The wood comes from your hand.",
+             "Lay the first stones for a new outpost. The wood comes from your hand.",
+             "Заклади перше каміння нового форпосту. Дерево — з твоїх рук.",
+             "Заложи первые камни нового форпоста. Дерево — из твоих рук.",
+             "Coloca las primeras piedras de un nuevo puesto. La madera sale de tu mano.",
+             "Leg die ersten Steine für einen neuen Vorposten. Das Holz kommt aus deiner Hand.",
+             "Pose les premières pierres d'un nouvel avant-poste. Le bois vient de ta main.",
+             "Połóż pierwsze kamienie nowej placówki. Drewno pochodzi z twojej ręki.");
+        Add7("Wildcrop Harvest", "Wildcrop Harvest", "Дикий врожай", "Дикий урожай", "Cosecha silvestre", "Wildernte", "Récolte sauvage", "Dziki zbiór");
+        Add7("Bring in enough aether shards to refill the war-stores.",
+             "Bring in enough aether shards to refill the war-stores.",
+             "Принеси досить осколків ефіру, щоб поповнити воєнні запаси.",
+             "Принеси достаточно осколков эфира, чтобы пополнить военные запасы.",
+             "Trae suficientes fragmentos de éter para reponer las reservas de guerra.",
+             "Bring genug Äthersplitter, um die Kriegsvorräte aufzufüllen.",
+             "Rapporte assez d'éclats d'éther pour reconstituer les réserves de guerre.",
+             "Przynieś dość odłamków eteru, by uzupełnić zapasy wojenne.");
+        Add7("Elite Hunt", "Elite Hunt", "Полювання на еліту", "Охота на элиту", "Caza de élite", "Elite-Jagd", "Chasse à l'élite", "Polowanie na elitę");
+        Add7("An iron-marked captain leads the next patrol. End him and his honor guard.",
+             "An iron-marked captain leads the next patrol. End him and his honor guard.",
+             "Наступний патруль веде капітан із залізним тавром. Прикінчи його та його почесну варту.",
+             "Следующий патруль ведёт капитан с железным клеймом. Прикончи его и его почётную стражу.",
+             "Un capitán marcado con hierro dirige la próxima patrulla. Acaba con él y su guardia de honor.",
+             "Ein eisengezeichneter Hauptmann führt die nächste Patrouille. Beende ihn und seine Ehrengarde.",
+             "Un capitaine marqué au fer mène la prochaine patrouille. Achève-le, lui et sa garde d'honneur.",
+             "Następny patrol prowadzi kapitan z żelaznym piętnem. Skończ z nim i jego gwardią honorową.");
+        Add7("Mountain Vigil", "Mountain Vigil", "Гірська варта", "Горный дозор", "Vigilia de la montaña", "Bergwache", "Vigie de la montagne", "Górska straż");
+        Add7("Keep the high pass watched. If you fall, the eastern villages fall with you.",
+             "Keep the high pass watched. If you fall, the eastern villages fall with you.",
+             "Стеж за високим перевалом. Якщо ти впадеш — східні села впадуть із тобою.",
+             "Следи за высоким перевалом. Если падёшь — восточные деревни падут с тобой.",
+             "Vigila el paso alto. Si caes, los pueblos del este caen contigo.",
+             "Bewache den hohen Pass. Fällst du, fallen die östlichen Dörfer mit dir.",
+             "Surveille le haut col. Si tu tombes, les villages de l'est tombent avec toi.",
+             "Pilnuj wysokiej przełęczy. Jeśli padniesz, wschodnie wioski padną z tobą.");
+        Add7("Crystal Rush", "Crystal Rush", "Кристальний рейд", "Кристальный рывок", "Fiebre del cristal", "Kristallrausch", "Ruée du cristal", "Gorączka kryształu");
+        Add7("The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
+             "The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
+             "Ефірні джерела кровоточать. Збери те, що вони точать, поки скверна їх не запечатала.",
+             "Эфирные источники кровоточат. Собери то, что они точат, пока скверна их не запечатала.",
+             "Los pozos de éter sangran. Cosecha lo que rezuman antes de que la corrupción los selle.",
+             "Die Ätherquellen bluten. Ernte, was sie lecken, bevor die Verderbnis sie versiegelt.",
+             "Les puits d'éther saignent. Récolte ce qu'ils suintent avant que la corruption ne les scelle.",
+             "Źródła eteru krwawią. Zbierz to, co sączą, nim zepsucie je zapieczętuje.");
+        Add7("Highland Purge", "Highland Purge", "Чистка нагір'я", "Зачистка нагорья", "Purga de las tierras altas", "Hochland-Säuberung", "Purge des hautes terres", "Czystka wyżyn");
+        Add7("Burn the hillside clean. Every skeleton, every wraith, every chained thing.",
+             "Burn the hillside clean. Every skeleton, every wraith, every chained thing.",
+             "Випали схил дочиста. Кожен скелет, кожен привид, кожну ланцюгову тварюку.",
+             "Выжги склон дочиста. Каждый скелет, каждый призрак, каждую цепную тварь.",
+             "Quema la ladera hasta dejarla limpia. Cada esqueleto, cada espectro, cada cosa encadenada.",
+             "Brenn den Hang sauber. Jedes Skelett, jeden Geist, jedes angekettete Ding.",
+             "Brûle le versant à blanc. Chaque squelette, chaque spectre, chaque chose enchaînée.",
+             "Wypal zbocze do czysta. Każdy szkielet, każdą zjawę, każde skute stworzenie.");
+        Add7("Engineering Mastery", "Engineering Mastery", "Майстерність будівництва", "Мастерство строительства", "Maestría de ingeniería", "Baumeisterschaft", "Maîtrise du génie", "Mistrzostwo inżynierii");
+        Add7("Two more structures, and the camp will hold a winter.",
+             "Two more structures, and the camp will hold a winter.",
+             "Ще дві будівлі — і табір перезимує.",
+             "Ещё две постройки — и лагерь переживёт зиму.",
+             "Dos estructuras más, y el campamento resistirá un invierno.",
+             "Zwei weitere Bauten, und das Lager übersteht einen Winter.",
+             "Deux structures de plus, et le camp tiendra un hiver.",
+             "Jeszcze dwie budowle, a obóz przetrwa zimę.");
+        Add7("Frontline Trench", "Frontline Trench", "Окоп на передовій", "Окоп на передовой", "Trinchera del frente", "Frontgraben", "Tranchée de front", "Okop na froncie");
+        Add7("Four minutes alone against everything in the wood. The wall comes after.",
+             "Four minutes alone against everything in the wood. The wall comes after.",
+             "Чотири хвилини сам проти всього, що є в лісі. Стіна — потім.",
+             "Четыре минуты в одиночку против всего, что есть в лесу. Стена — потом.",
+             "Cuatro minutos solo contra todo lo que hay en el bosque. El muro viene después.",
+             "Vier Minuten allein gegen alles im Wald. Die Mauer kommt danach.",
+             "Quatre minutes seul contre tout ce qui rôde dans le bois. Le mur viendra ensuite.",
+             "Cztery minuty sam przeciw wszystkiemu w lesie. Mur potem.");
+        Add7("Bone Tide Eternal", "Bone Tide Eternal", "Вічний кістяний приплив", "Вечный костяной прилив", "Marea de huesos eterna", "Ewige Knochenflut", "Marée d'os éternelle", "Wieczny kościany przypływ");
+        Add7("Wave after wave, until the dawn breaks them. None pass the line.",
+             "Wave after wave, until the dawn breaks them. None pass the line.",
+             "Хвиля за хвилею, доки світанок їх не зламає. Ніхто не пройде лінію.",
+             "Волна за волной, пока рассвет их не сломит. Никто не пройдёт линию.",
+             "Oleada tras oleada, hasta que el alba las quiebre. Ninguna cruza la línea.",
+             "Welle um Welle, bis der Morgen sie bricht. Keiner passiert die Linie.",
+             "Vague après vague, jusqu'à ce que l'aube les brise. Nul ne franchit la ligne.",
+             "Fala za falą, aż świt je złamie. Nikt nie przejdzie linii.");
+        Add7("Aether Motherlode", "Aether Motherlode", "Ефірна жила-матка", "Эфирная материнская жила", "Filón madre de éter", "Äther-Mutterader", "Filon-mère d'éther", "Eterowa macierz złoża");
+        Add7("A motherlode under the chapel. Strip it bare before the wardens wake.",
+             "A motherlode under the chapel. Strip it bare before the wardens wake.",
+             "Багатюща жила під каплицею. Обдери її до дна, поки не прокинулися вартові.",
+             "Богатая жила под часовней. Обдери её до дна, пока не проснулись стражи.",
+             "Un filón enorme bajo la capilla. Despójalo por completo antes de que despierten los guardianes.",
+             "Eine Mutterader unter der Kapelle. Räum sie leer, bevor die Wächter erwachen.",
+             "Un filon-mère sous la chapelle. Dépouille-le entièrement avant le réveil des gardiens.",
+             "Bogate złoże pod kaplicą. Ogołoć je do dna, nim obudzą się strażnicy.");
+        Add7("The Long Night", "The Long Night", "Довга ніч", "Долгая ночь", "La larga noche", "Die lange Nacht", "La longue nuit", "Długa noc");
+        Add7("Six minutes between you and Aethelgard's mercy. Stand.",
+             "Six minutes between you and Aethelgard's mercy. Stand.",
+             "Шість хвилин між тобою і милістю Ітельгарду. Вистій.",
+             "Шесть минут между тобой и милостью Этельгарда. Устой.",
+             "Seis minutos entre tú y la clemencia de Aethelgard. Resiste.",
+             "Sechs Minuten zwischen dir und Aethelgards Gnade. Halte stand.",
+             "Six minutes entre toi et la clémence d'Aethelgard. Tiens bon.",
+             "Sześć minut między tobą a łaską Aethelgardu. Wytrwaj.");
+        Add7("Captain Hunt", "Captain Hunt", "Полювання на капітанів", "Охота на капитанов", "Caza de capitanes", "Hauptmann-Jagd", "Chasse aux capitaines", "Polowanie na kapitanów");
+        Add7("Five captains in the field tonight. Bring back proof of all five.",
+             "Five captains in the field tonight. Bring back proof of all five.",
+             "Сьогодні в полі п'ятеро капітанів. Принеси доказ усіх п'ятьох.",
+             "Сегодня в поле пять капитанов. Принеси доказательство всех пятерых.",
+             "Cinco capitanes en el campo esta noche. Trae prueba de los cinco.",
+             "Fünf Hauptleute heute Nacht im Feld. Bring den Beweis für alle fünf.",
+             "Cinq capitaines sur le terrain cette nuit. Rapporte la preuve des cinq.",
+             "Pięciu kapitanów w polu tej nocy. Przynieś dowód całej piątki.");
+        Add7("Master Architect", "Master Architect", "Головний зодчий", "Главный зодчий", "Arquitecto maestro", "Baumeister", "Maître architecte", "Mistrz architekt");
+        Add7("Three pillars. Stone, wood, and patience. The camp must endure.",
+             "Three pillars. Stone, wood, and patience. The camp must endure.",
+             "Три стовпи. Камінь, дерево і терпіння. Табір мусить вистояти.",
+             "Три столпа. Камень, дерево и терпение. Лагерь должен выстоять.",
+             "Tres pilares. Piedra, madera y paciencia. El campamento debe perdurar.",
+             "Drei Säulen. Stein, Holz und Geduld. Das Lager muss bestehen.",
+             "Trois piliers. Pierre, bois et patience. Le camp doit tenir.",
+             "Trzy filary. Kamień, drewno i cierpliwość. Obóz musi przetrwać.");
+        Add7("Final Stand", "Final Stand", "Останній рубіж", "Последний рубеж", "Última resistencia", "Letztes Gefecht", "Dernier combat", "Ostatni bastion");
+        Add7("The last contract on the board. Hold the wall until the bells of dawn. Then live, if you can.",
+             "The last contract on the board. Hold the wall until the bells of dawn. Then live, if you can.",
+             "Останній контракт на дошці. Тримай стіну до світанкових дзвонів. А тоді живи, якщо зможеш.",
+             "Последний контракт на доске. Держи стену до рассветных колоколов. А потом живи, если сможешь.",
+             "El último contrato del tablón. Aguanta el muro hasta las campanas del alba. Luego vive, si puedes.",
+             "Der letzte Auftrag am Brett. Halte die Mauer bis zu den Glocken der Morgendämmerung. Dann lebe, wenn du kannst.",
+             "Le dernier contrat du tableau. Tiens le mur jusqu'aux cloches de l'aube. Puis vis, si tu le peux.",
+             "Ostatni kontrakt na tablicy. Utrzymaj mur do dzwonów świtu. A potem żyj, jeśli zdołasz.");
     }
 
     // Scout's Lodge + Barracks descriptions and per-level feature lines live
