@@ -1275,7 +1275,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // — its posed mesh is split by bone and each piece is launched outward.
         // A dust puff accompanies the break. Falls back to the fade for any
         // non-skinned enemy.
-        bool shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 1.0f, 5.5f);
+        bool shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 2.2f);
         if (shattered)
         {
             DeathAshEffect.Spawn(transform);

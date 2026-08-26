@@ -1886,6 +1886,12 @@ MonoBehaviour:
   cagedAllyPrefab: {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
   cagedAllyChance: 0.5
   maxCagedAllies: 2
+  ambientCrowPrefabs:
+  - {fileID: 5902143773153862722, guid: 9761bf1cc42a4154bb5a956da516f25d, type: 3}
+  - {fileID: 5902143773153862722, guid: 6140aabb4832aa3428194a93a84a20ec, type: 3}
+  ambientCrowCount: 3
+  ambientCrowMinHeight: 14
+  ambientCrowMaxHeight: 32
   roadLayer: {fileID: 8574412962073106934, guid: 6e541dfea746e4b348a941c11dbf1e61, type: 2}
   roadWidth: 5
   roadEdgeDecorations:

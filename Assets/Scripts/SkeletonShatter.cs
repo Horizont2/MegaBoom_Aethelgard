@@ -114,10 +114,11 @@ public static class SkeletonShatter
             box.size = Vector3.Max(m.bounds.size, Vector3.one * 0.05f);
 
             var rb = go.AddComponent<Rigidbody>();
-            rb.mass = 0.3f;
+            rb.mass = 0.6f;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-            rb.AddExplosionForce(force, center, 4f, 1.4f, ForceMode.Impulse);
-            rb.AddTorque(Random.insideUnitSphere * force * 0.6f, ForceMode.Impulse);
+            // Gentle nudge outward — pieces separate and drop rather than launch.
+            rb.AddExplosionForce(force, center, 3.5f, 0.35f, ForceMode.Impulse);
+            rb.AddTorque(Random.insideUnitSphere * force * 0.25f, ForceMode.Impulse);
 
             madeAny = true;
         }
