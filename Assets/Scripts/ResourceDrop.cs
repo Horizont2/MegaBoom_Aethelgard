@@ -79,8 +79,17 @@ public class ResourceDrop : MonoBehaviour
         }
     }
 
+    private bool isCollected = false;
+
     private void Collect()
     {
+        // Guard against double-collection. Destroy() is deferred to end-of-frame,
+        // so without this a drop that lingered a frame (physics settle, low FPS,
+        // a second magnet tick) could add its resources more than once — the
+        // "one node fills the whole backpack" bug.
+        if (isCollected) return;
+        isCollected = true;
+
         if (ResourceManager.Instance != null)
         {
             // ResourceManager.AddRunResources now fires its own toast

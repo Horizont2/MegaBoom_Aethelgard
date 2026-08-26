@@ -1501,7 +1501,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         actionLockEndTime = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
-        if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(true);
+        if (perfectDodgeVFX != null) ActivateSceneVFX(perfectDodgeVFX);
 
         yield return StartCoroutine(BlinkBehindRoutine(fallbackDirection));
 
@@ -1510,7 +1510,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (!isAimingGrenade) Time.timeScale = 1f;
         isBulletTime = false;
         if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
-        if (perfectDodgeVFX != null) perfectDodgeVFX.SetActive(false);
+        if (perfectDodgeVFX != null) StartCoroutine(FadeOutSceneVFX(perfectDodgeVFX));
     }
 
     private IEnumerator BlinkBehindRoutine(Vector3 fallbackDirection)
@@ -1953,7 +1953,42 @@ public class PlayerController : MonoBehaviour, IDamageable
         GameObject fx = Instantiate(prefab, pos, Quaternion.identity);
         if (attach && fx != null) fx.transform.SetParent(transform, true);
         if (fx != null && !Mathf.Approximately(scale, 1f)) fx.transform.localScale *= scale;
-        if (fx != null) Destroy(fx, life);
+        // Fade out gracefully + World simulation so turning the player doesn't
+        // drag the aura around (see VFXAutoFade).
+        if (fx != null) fx.AddComponent<VFXAutoFade>().Configure(life, world: true);
+    }
+
+    // Enable a PERSISTENT (scene-child) VFX object: switch its systems to World
+    // sim so it doesn't smear when the player turns, then (re)play them.
+    private void ActivateSceneVFX(GameObject go)
+    {
+        if (go == null) return;
+        go.SetActive(true);
+        foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (ps == null) continue;
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            ps.Clear(true);
+            ps.Play(true);
+        }
+    }
+
+    // Turn a persistent VFX object off GRACEFULLY: stop emitting, let living
+    // particles fade over their lifetime, THEN deactivate (no hard cut).
+    private IEnumerator FadeOutSceneVFX(GameObject go)
+    {
+        if (go == null) yield break;
+        float maxLife = 0.5f;
+        foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (ps == null) continue;
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            float l = Mathf.Max(ps.main.startLifetime.constant, ps.main.startLifetime.constantMax);
+            if (l > maxLife) maxLife = l;
+        }
+        yield return new WaitForSeconds(maxLife + 0.3f);
+        if (go != null) go.SetActive(false);
     }
 
     private void LevelUp()
@@ -1964,7 +1999,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         visualXP = 0f;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
-        SpawnFeelFX(levelUpVFX, attach: true, life: 2.5f);
 
         RunSession.AddLevelUp(currentLevel);
 

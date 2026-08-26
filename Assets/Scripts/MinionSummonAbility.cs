@@ -104,9 +104,14 @@ public class MinionSummonAbility : MonoBehaviour
 
         if (anim == null) anim = GetComponentInChildren<Animator>();
         if (anim != null && !string.IsNullOrEmpty(castAnimTrigger)) anim.SetTriggerSafe(castAnimTrigger);
-        // Auto-destroy — these VFX prefabs loop, so an un-cleaned instance would
-        // hang around forever.
-        if (castVFX != null) Destroy(Instantiate(castVFX, transform.position + Vector3.up * 0.1f, Quaternion.identity), 3.5f);
+        // World-space + graceful fade (VFXAutoFade) — these VFX prefabs loop, so
+        // an un-cleaned instance would hang around forever, and a hard Destroy
+        // would cut them mid-emission.
+        if (castVFX != null)
+        {
+            var cfx = Instantiate(castVFX, transform.position + Vector3.up * 0.1f, Quaternion.identity);
+            cfx.AddComponent<VFXAutoFade>().Configure(2.5f, world: true);
+        }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, transform.position);
 
         yield return new WaitForSeconds(castWindup);
@@ -124,7 +129,8 @@ public class MinionSummonAbility : MonoBehaviour
             Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
             Vector3 pos = GroundAt(transform.position + dir * spawnRadius);
 
-            if (minionSpawnVFX != null) Destroy(Instantiate(minionSpawnVFX, pos, Quaternion.identity), 3f);
+            if (minionSpawnVFX != null)
+                Instantiate(minionSpawnVFX, pos, Quaternion.identity).AddComponent<VFXAutoFade>().Configure(2f, world: true);
             GameObject m = Instantiate(prefab, pos, Quaternion.Euler(0f, ang + 180f, 0f));
             if (m != null) active.Add(m);
         }
