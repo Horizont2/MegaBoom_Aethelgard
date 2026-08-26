@@ -1711,15 +1711,22 @@ public class WorldGenerator : MonoBehaviour
     {
         if (go == null) return;
 
-        // Ground by the lowest VISIBLE mesh point — the model's REAL base.
-        // The old code trusted a root BoxCollider first, but a location prefab's
-        // blocking/interaction box often doesn't align with the visual base: if
-        // its bottom sits below the base (e.g. Arena_Region_07's box bottom was
-        // ~1.2m under the buildings) snapping the box to the ground lifts the
-        // whole location into the air. Measuring renderer bounds plants every
-        // location on its visible footing regardless of how its collider is set.
+        // Ground so the model's PHYSICAL FOOTPRINT sits on the terrain. We take
+        // the lowest point across BOTH the colliders (what the player stands on)
+        // and the visible meshes, then snap that to the ground. Using colliders
+        // alone floated prefabs whose interaction box dips below the base;
+        // using renderers alone sank prefabs that have a mesh below their base.
+        // The min of the two lands the true bottom on the ground for both.
+        // Per-region fine-tuning is still available via RegionData.locationYOffset.
         float lowestY = float.MaxValue;
         bool any = false;
+
+        foreach (var col in go.GetComponentsInChildren<Collider>(false))
+        {
+            if (col == null || col.isTrigger) continue;      // triggers aren't footing
+            lowestY = Mathf.Min(lowestY, col.bounds.min.y);
+            any = true;
+        }
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
         {
             if (mr == null || !mr.enabled) continue;
@@ -1733,8 +1740,7 @@ public class WorldGenerator : MonoBehaviour
             any = true;
         }
 
-        // Only if the prefab has no active renderers at all do we fall back to
-        // a root collider box.
+        // Last-resort fallback to a root box (even a trigger one).
         if (!any)
         {
             BoxCollider rootBox = go.GetComponent<BoxCollider>();
