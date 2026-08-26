@@ -1271,6 +1271,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // isBoss:true).
         RunSession.AddKill(isElite: isElite, isBoss: false);
 
+        // Physically SHATTER the skeleton into flying chunks the instant it dies
+        // — its posed mesh is split by bone and each piece is launched outward.
+        // A dust puff accompanies the break. Falls back to the fade for any
+        // non-skinned enemy.
+        bool shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 1.0f, 5.5f);
+        if (shattered)
+        {
+            DeathAshEffect.Spawn(transform);
+            Destroy(gameObject, 0.15f);   // the model is now independent chunks
+            return;
+        }
+
         StartCoroutine(DeathDissolveRoutine());
     }
 

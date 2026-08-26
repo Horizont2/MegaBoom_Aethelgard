@@ -52,7 +52,8 @@ public static class DeathAshEffect
         var root = new GameObject("DeathAsh");
         root.transform.position = center;
 
-        BuildBoneShards(root.transform, bodyHeight, radius);   // skeleton crumbles into pieces
+        // (Bone shards are now REAL mesh chunks via SkeletonShatter — this stays
+        // as the accompanying dust + embers puff.)
         BuildAsh(root.transform, emitHeight, radius);
         BuildEmbers(root.transform, emitHeight, radius);
         BuildDust(root.transform, radius);
