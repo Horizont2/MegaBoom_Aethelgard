@@ -2556,6 +2556,8 @@ MonoBehaviour:
   starsParticles: {fileID: 0}
   firefliesVFX: {fileID: 0}
   rainVFX: {fileID: 919215059}
+  godRaysObject: {fileID: 3332198111309508980, guid: 99ebe2175175c9444bfe4b2a8b2a2023, type: 3}
+  godRayMaxScale: 1
   snowVFX: {fileID: 316599055}
   dustVFX: {fileID: 0}
   lightningVFXPrefab: {fileID: 5627696518775099638, guid: 6839a8d6998e86d4282063ffdacb0c15, type: 3}
