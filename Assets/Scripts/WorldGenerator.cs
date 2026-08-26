@@ -46,6 +46,13 @@ public class WorldGenerator : MonoBehaviour
     public int maxCagedAllies = 2;
     private int spawnedCagedAllies = 0;
 
+    [Header("Ambient Crows (distant flock atmosphere)")]
+    [Tooltip("Looping crow-flock effects, e.g. P_Crows_Random / P_Crows_Orbit. A few are placed circling high over the map for atmosphere. Leave empty to skip.")]
+    public GameObject[] ambientCrowPrefabs;
+    public int ambientCrowCount = 3;
+    public float ambientCrowMinHeight = 14f;
+    public float ambientCrowMaxHeight = 32f;
+
     [Header("Smart Road System")]
     public TerrainLayer roadLayer; // Текстура доріг (має бути 5-м шаром в масиві)
     public float roadWidth = 5f;
@@ -479,8 +486,42 @@ public class WorldGenerator : MonoBehaviour
             }
         }
 
+        SpawnAmbientCrows();
+
         CurrentProgress = 1f;
         IsGenerationDone = true;
+    }
+
+    // Places a few looping crow-flock effects high over the land for ambient
+    // "distant crows" atmosphere. Purely visual — no colliders, over land only.
+    private void SpawnAmbientCrows()
+    {
+        if (ambientCrowPrefabs == null || ambientCrowPrefabs.Length == 0 || terrain == null) return;
+
+        Transform container = new GameObject("AmbientCrows").transform;
+        container.SetParent(this.transform);
+
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+        float absWaterH = transform.position.y + (depth * waterLevel);
+
+        int placed = 0, attempts = 0;
+        int target = Mathf.Max(1, ambientCrowCount);
+        while (placed < target && attempts++ < target * 40)
+        {
+            float px = transform.position.x + GetRandomRange(w * 0.15f, w * 0.85f);
+            float pz = transform.position.z + GetRandomRange(l * 0.15f, l * 0.85f);
+            float groundY = terrain.SampleHeight(new Vector3(px, 0, pz)) + transform.position.y;
+            if (groundY <= absWaterH + 2f) continue;   // keep them over land
+
+            GameObject prefab = ambientCrowPrefabs[GetRandomRangeInt(0, ambientCrowPrefabs.Length)];
+            if (prefab == null) continue;
+
+            float h = groundY + GetRandomRange(ambientCrowMinHeight, ambientCrowMaxHeight);
+            Instantiate(prefab, new Vector3(px, h, pz),
+                        Quaternion.Euler(0f, GetRandomRange(0f, 360f), 0f), container);
+            placed++;
+        }
     }
 
     private IEnumerator CalculateAndCarveRiversRoutine(TerrainData td)
