@@ -7,8 +7,14 @@ public class DynamicWind : MonoBehaviour
     private WindZone windZone;
 
     [Header("Wind Settings")]
-    public float minWindWaitTime = 15f; // Мінімальний час між змінами вітру
-    public float maxWindWaitTime = 35f; // Максимальний час
+    public float minWindWaitTime = 15f; // МіпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+    public float maxWindWaitTime = 35f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
+
+    [Header("Systemic wind")]
+    [Tooltip("Publish the wind as global shader properties (_GlobalWindDir.xyz = direction, .w = strength) so grass/foliage/cloth shaders can all sway with the SAME wind as the trees.")]
+    public bool publishGlobalWind = true;
+    [Tooltip("Also push scene particle systems (smoke, dust, ash) with the wind so they drift the same way. Uses WindZone as an external force вЂ” the particle systems must enable their External Forces module.")]
+    public bool driveParticles = true;
 
     void Start()
     {
@@ -16,25 +22,40 @@ public class DynamicWind : MonoBehaviour
         StartCoroutine(WindRoutine());
     }
 
+    void Update()
+    {
+        if (windZone == null) return;
+        // One global wind vector the whole world can read вЂ” the systemic part.
+        if (publishGlobalWind)
+        {
+            Vector3 dir = transform.forward;
+            float strength = windZone.windMain;
+            Shader.SetGlobalVector("_GlobalWindDir", new Vector4(dir.x, dir.y, dir.z, strength));
+            Shader.SetGlobalFloat("_GlobalWindStrength", strength);
+            // Also feed Unity's built-in foliage wind param used by many shaders.
+            Shader.SetGlobalVector("_Wind", new Vector4(dir.x, dir.z, strength * 0.5f, windZone.windTurbulence));
+        }
+    }
+
     IEnumerator WindRoutine()
     {
         while (true)
         {
-            // Генеруємо нову ціль для вітру
-            float targetMain = Random.Range(0.1f, 1.2f); // Сила вітру
-            float targetTurbulence = Random.Range(0.1f, 0.8f); // Хаотичність
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+            float targetMain = Random.Range(0.1f, 1.2f); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+            float targetTurbulence = Random.Range(0.1f, 0.8f); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-            // Випадковий напрямок (повертаємо сам об'єкт)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅ)
             Quaternion targetRotation = Quaternion.Euler(0, Random.Range(0, 360), 0);
 
             float t = 0;
-            float transitionDuration = 6f; // Вітер плавно змінюється цілих 6 секунд!
+            float transitionDuration = 6f; // ВіпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 6 пїЅпїЅпїЅпїЅпїЅпїЅ!
 
             float startMain = windZone.windMain;
             float startTurbulence = windZone.windTurbulence;
             Quaternion startRotation = transform.rotation;
 
-            // Плавна інтерполяція (зміна не б'є по очах)
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ'пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ)
             while (t < 1)
             {
                 t += Time.deltaTime / transitionDuration;
@@ -44,7 +65,7 @@ public class DynamicWind : MonoBehaviour
                 yield return null;
             }
 
-            // Чекаємо перед наступною зміною
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             yield return new WaitForSeconds(Random.Range(minWindWaitTime, maxWindWaitTime));
         }
     }

@@ -44,6 +44,10 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem starsParticles;
     public GameObject firefliesVFX;
     public ParticleSystem rainVFX;
+    [Tooltip("God-ray / sun-shaft effect (e.g. P_Sunshaft). Fades in at dawn & dusk, orients along the sun, hidden at midday/night. Assign like firefliesVFX.")]
+    public GameObject godRaysObject;
+    [Tooltip("Peak scale of the god-ray effect at the height of golden hour.")]
+    public float godRayMaxScale = 1f;
     public ParticleSystem snowVFX;
     public ParticleSystem dustVFX;
 
@@ -324,6 +328,30 @@ public class DayNightCycle : MonoBehaviour
             main.startColor = new Color(1f, 1f, 1f, starAlpha);
         }
         if (firefliesVFX != null) firefliesVFX.SetActive(isNight && currentBiome == 0 && currentWeather == WeatherState.Clear);
+
+        ManageGodRays();
+    }
+
+    // Golden-hour god rays: fade in around dawn (~5-8h) and dusk (~17-20h),
+    // hidden at midday and night, and orient along the sun so shafts read as
+    // sunlight. Fades via scale so it never pops.
+    private void ManageGodRays()
+    {
+        if (godRaysObject == null) return;
+
+        // Triangular bumps peaking at 6.5 (dawn) and 18.5 (dusk), ~2.5h wide.
+        float dawn = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 6.5f) / 2.5f);
+        float dusk = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 18.5f) / 2.5f);
+        float factor = Mathf.Max(dawn, dusk) * (1f - weatherBlend);   // clear skies only
+
+        bool on = factor > 0.03f;
+        if (godRaysObject.activeSelf != on) godRaysObject.SetActive(on);
+        if (!on) return;
+
+        godRaysObject.transform.localScale = Vector3.one * (godRayMaxScale * factor);
+        // Point the shafts along the sun's travel so they read as sunlight.
+        if (sunLight != null)
+            godRaysObject.transform.rotation = Quaternion.LookRotation(sunLight.transform.forward, Vector3.up);
     }
 
     private void ChangeWeatherRandomly()
