@@ -640,7 +640,7 @@ public class CampBuilding : MonoBehaviour
             if (currentLevel > 0 && currentLevel - 1 < levels.Length)
                 infoText += $"{prodLabel}: <b><color=#FFFFFF>{LocalizationManager.Tr(levels[currentLevel - 1].productionDescription)}</color></b>";
 
-            infoText += $" ➔ <b><color=#A8E6CF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
+            infoText += $" → <b><color=#A8E6CF>{LocalizationManager.Tr(nextLevelData.productionDescription)}</color></b>\n";
             infoText += LocalizationManager.Tr("CB_UPGRADE_TIME", $"<b><color=#FFFFFF>{nextLevelData.buildTime}</color></b>");
 
             if (buildHintTMP != null) buildHintTMP.text = GamepadGlyphs.Apply(LocalizationManager.Tr("HOLD [E] TO UPGRADE"));

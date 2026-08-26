@@ -1193,6 +1193,97 @@ public static class LocalizationManager
         SeedRemainingLangSupplements();
         SeedBuildingAndHintText();
         SeedLevelUpFiveLang();
+        SeedCampSceneBuildingText();
+    }
+
+    // Scout's Lodge + Barracks descriptions and per-level feature lines live
+    // INLINE in CampScene (not in the Buildings prefabs), self-keyed via Tr, so
+    // they showed in English in every language until now.
+    private static void SeedCampSceneBuildingText()
+    {
+        // ── Scout's Lodge ──
+        Add7("Elias's quarters and cartography workshop. Upgrading it provides him with better tools to chart dangerous territories.",
+             "Elias's quarters and cartography workshop. Upgrading it provides him with better tools to chart dangerous territories.",
+             "Покої Еліаса та картографічна майстерня. Покращення дає йому кращі інструменти, щоб наносити небезпечні території на карту.",
+             "Покои Элиаса и картографическая мастерская. Улучшение даёт ему лучшие инструменты для картографирования опасных территорий.",
+             "Los aposentos de Elias y su taller de cartografía. Mejorarlo le da mejores herramientas para cartografiar territorios peligrosos.",
+             "Elias' Gemächer und Kartografie-Werkstatt. Ein Ausbau gibt ihm bessere Werkzeuge, um gefährliche Gebiete zu kartieren.",
+             "Les quartiers d'Elias et son atelier de cartographie. L'améliorer lui donne de meilleurs outils pour cartographier les territoires dangereux.",
+             "Kwatery Eliasa i pracownia kartograficzna. Ulepszenie daje mu lepsze narzędzia do nanoszenia niebezpiecznych terenów na mapę.");
+        Add7("Unlocks Map Table (8 Regions)",
+             "Unlocks Map Table (8 Regions)",
+             "Відкриває Карту (8 регіонів)",
+             "Открывает Карту (8 регионов)",
+             "Desbloquea la Mesa de Mapas (8 regiones)",
+             "Schaltet den Kartentisch frei (8 Regionen)",
+             "Débloque la Table des cartes (8 régions)",
+             "Odblokowuje Stół map (8 regionów)");
+        Add7("Unlocks next  8 regions (16 Regions)",
+             "Unlocks next  8 regions (16 Regions)",
+             "Відкриває наступні 8 регіонів (16 регіонів)",
+             "Открывает следующие 8 регионов (16 регионов)",
+             "Desbloquea 8 regiones más (16 regiones)",
+             "Schaltet 8 weitere Regionen frei (16 Regionen)",
+             "Débloque 8 régions de plus (16 régions)",
+             "Odblokowuje kolejne 8 regionów (16 regionów)");
+        Add7("Unlocks Winter Map (24 Regions)",
+             "Unlocks Winter Map (24 Regions)",
+             "Відкриває Зимову мапу (24 регіони)",
+             "Открывает Зимнюю карту (24 региона)",
+             "Desbloquea el Mapa de Invierno (24 regiones)",
+             "Schaltet die Winterkarte frei (24 Regionen)",
+             "Débloque la Carte d'hiver (24 régions)",
+             "Odblokowuje Zimową mapę (24 regiony)");
+
+        // ── Barracks ──
+        Add7("A barracks trains and dispatches mercenary companies to distant regions.",
+             "A barracks trains and dispatches mercenary companies to distant regions.",
+             "Казарма тренує та відправляє загони найманців у далекі регіони.",
+             "Казарма обучает и отправляет отряды наёмников в дальние регионы.",
+             "El cuartel entrena y despacha compañías de mercenarios a regiones lejanas.",
+             "Die Kaserne bildet Söldnertruppen aus und entsendet sie in ferne Regionen.",
+             "La caserne entraîne et envoie des compagnies de mercenaires vers des régions lointaines.",
+             "Koszary szkolą i wysyłają kompanie najemników do odległych regionów.");
+        Add7("Basic Levy — Militia only",
+             "Basic Levy — Militia only",
+             "Базовий призов — лише Ополчення",
+             "Базовый призыв — только Ополчение",
+             "Leva básica — solo Milicia",
+             "Grundaushebung — nur Miliz",
+             "Levée de base — Milice uniquement",
+             "Podstawowy zaciąg — tylko Milicja");
+        Add7("Unlocks Ranger recruits",
+             "Unlocks Ranger recruits",
+             "Відкриває найм Рейнджерів",
+             "Открывает наём Рейнджеров",
+             "Desbloquea reclutas Montaraces",
+             "Schaltet Waldläufer-Rekruten frei",
+             "Débloque les recrues Rôdeurs",
+             "Odblokowuje rekrutów Łowców");
+        Add7("Unlocks Knight recruits",
+             "Unlocks Knight recruits",
+             "Відкриває найм Лицарів",
+             "Открывает наём Рыцарей",
+             "Desbloquea reclutas Caballeros",
+             "Schaltet Ritter-Rekruten frei",
+             "Débloque les recrues Chevaliers",
+             "Odblokowuje rekrutów Rycerzy");
+        Add7("+Army cap, Ambush & Siege tactics",
+             "+Army cap, Ambush & Siege tactics",
+             "+Ліміт армії, тактики Засідка та Облога",
+             "+Лимит армии, тактики Засада и Осада",
+             "+Límite de ejército, tácticas Emboscada y Asedio",
+             "+Armeelimit, Hinterhalt- & Belagerungstaktiken",
+             "+Limite d'armée, tactiques Embuscade et Siège",
+             "+Limit armii, taktyki Zasadzka i Oblężenie");
+        Add7("Max army cap, +30% march speed",
+             "Max army cap, +30% march speed",
+             "Макс. ліміт армії, +30% швидкості маршу",
+             "Макс. лимит армии, +30% скорости марша",
+             "Límite máx. de ejército, +30% velocidad de marcha",
+             "Max. Armeelimit, +30% Marschtempo",
+             "Limite d'armée max, +30% vitesse de marche",
+             "Maks. limit armii, +30% szybkości marszu");
     }
 
     // RU/ES/DE/FR/PL for the 15 in-run level-up cards (name + flavour + stat
