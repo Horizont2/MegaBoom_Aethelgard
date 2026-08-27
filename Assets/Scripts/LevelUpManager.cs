@@ -116,7 +116,22 @@ public class LevelUpManager : MonoBehaviour
         });
     }
 
+    // Level-ups that arrived while a choice was already on screen. A single big
+    // XP gain (boss / region reward) can cross several thresholds in one frame;
+    // PlayerController calls ShowMenu once per level, so without a queue every
+    // call after the first re-rolled the same cards and the player picked ONE
+    // upgrade for several levels — silently losing the rest.
+    private int pendingExtraMenus = 0;
+
     public void ShowMenu()
+    {
+        // Already choosing? Queue this level-up and show its own card screen
+        // after the current pick, so the player gets one upgrade per level.
+        if (IsMenuOpen) { pendingExtraMenus++; return; }
+        OpenChoiceScreen();
+    }
+
+    private void OpenChoiceScreen()
     {
         levelUpPanel.SetActive(true);
         Time.timeScale = 0f;
@@ -318,6 +333,15 @@ public class LevelUpManager : MonoBehaviour
 
     private void ResumeGame()
     {
+        // More level-ups earned this frame? Show the next card screen instead of
+        // handing control back — one upgrade pick per level gained.
+        if (pendingExtraMenus > 0)
+        {
+            pendingExtraMenus--;
+            OpenChoiceScreen();
+            return;
+        }
+
         levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
         IsMenuOpen = false;
