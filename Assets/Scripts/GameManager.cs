@@ -88,6 +88,18 @@ public class GameManager : MonoBehaviour
 
         if (gameOverPanel != null) gameOverPanel.alpha = 0f;
 
+        // Arm the Update-driven timer watchdog on gameplay (arena) scenes only.
+        // This is a resilient backup for StartLevelTimer that cannot be killed
+        // by a coroutine exception mid-generation, nor left stuck if a second
+        // sceneLoaded (e.g. an additive HUD/lighting scene) re-zeroes
+        // isTimerActive after the coroutine already finished. It force-starts
+        // the survival timer the moment loading + generation report done.
+        string sn = scene.name;
+        bool nonArena = sn == "Menu" || sn == "MainMenu" || sn == "CampScene"
+                        || sn == "ShopScene" || sn == "0_BootLogo";
+        timerWatchdogArmed = !nonArena;
+        timerWatchdogElapsed = 0f;
+
         StartCoroutine(CheckForLoadingManager());
     }
 
@@ -152,8 +164,37 @@ public class GameManager : MonoBehaviour
         StartLevelTimer();
     }
 
+    // Resilient backup that guarantees the survival timer starts on any arena
+    // scene even if the coroutine path fails or is undone. Runs BEFORE the
+    // isTimerActive gate below.
+    private bool timerWatchdogArmed = false;
+    private float timerWatchdogElapsed = 0f;
+
+    private void TickTimerWatchdog()
+    {
+        if (!timerWatchdogArmed || isGameOver || isTimerActive) return;
+
+        timerWatchdogElapsed += Time.unscaledDeltaTime;
+
+        bool loadingDone = LoadingManager.Instance == null || !LoadingManager.Instance.isLoading;
+        // Natural start: loading overlay gone and the world reported generated.
+        if (loadingDone && WorldGenerator.IsGenerationDone && timerWatchdogElapsed >= 0.4f)
+        {
+            StartLevelTimer();
+            return;
+        }
+        // Absolute fallback: start anyway if nothing ever reports done (a
+        // generation exception, a missing LoadingManager, etc.).
+        if (timerWatchdogElapsed >= 12f)
+        {
+            StartLevelTimer();
+        }
+    }
+
     private void Update()
     {
+        TickTimerWatchdog();
+
         if (isGameOver || !isTimerActive) return;
 
         survivalTime += Time.deltaTime;
