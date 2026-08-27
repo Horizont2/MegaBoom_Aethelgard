@@ -260,6 +260,38 @@ public class CampWorkerAI : MonoBehaviour
 
             if (agent.isOnNavMesh) agent.isStopped = true;
 
+            // The NavMesh path is truncated at the trunk's carved edge, so the
+            // agent often "arrives" 2-4m short and then chopped from way out
+            // there. Close that last gap manually: step the worker straight in
+            // to a proper chop distance from the trunk before swinging.
+            const float chopStand = 1.4f;   // planar metres from trunk centre
+            if (targetTree != null && !targetTree.isChopped)
+            {
+                Vector3 tp = targetTree.transform.position;
+                Vector3 flatSelf = new Vector3(transform.position.x, 0f, transform.position.z);
+                Vector3 flatTree = new Vector3(tp.x, 0f, tp.z);
+                float planar = Vector3.Distance(flatSelf, flatTree);
+                if (planar > chopStand + 0.35f)
+                {
+                    Vector3 back = (flatSelf - flatTree);
+                    if (back.sqrMagnitude < 0.01f) back = -transform.forward;
+                    back.y = 0f; back = back.normalized;
+                    Vector3 standPos = flatTree + back * chopStand;
+                    standPos.y = transform.position.y;
+                    // Temporarily hand control from the agent to a short manual
+                    // walk-in so it isn't yanked back to the navmesh edge.
+                    if (agent != null && agent.isOnNavMesh) agent.isStopped = true;
+                    float nt = 0f;
+                    Vector3 from = transform.position;
+                    while (nt < 1f)
+                    {
+                        nt += Time.deltaTime * 2.2f;
+                        transform.position = Vector3.Lerp(from, standPos, Mathf.Clamp01(nt));
+                        yield return null;
+                    }
+                }
+            }
+
             // Face the tree so the swing animation lands the right way.
             if (targetTree != null)
             {
@@ -270,13 +302,12 @@ public class CampWorkerAI : MonoBehaviour
                     transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
             }
 
-            // Chop when we actually REACHED the tree. Gating on arrival (not a
-            // fixed distance-to-centre) means wide-trunk trees no longer make the
-            // worker skip chopping and walk straight back to deposit. The generous
-            // distance fallback covers arrival-detection edge cases.
-            bool canChop = targetTree != null && !targetTree.isChopped && (arrived ||
+            // Chop when we're actually next to the trunk. After the manual
+            // walk-in above the worker stands ~1.4m out, so a tight 2.2m gate
+            // both confirms he reached it and stops the old "chop from 6m away".
+            bool canChop = targetTree != null && !targetTree.isChopped &&
                 Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z),
-                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 6f);
+                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 2.2f;
 
             bool didChop = false;
             if (canChop)
@@ -302,6 +333,17 @@ public class CampWorkerAI : MonoBehaviour
                 // did nothing, and carried logs back). Try again next loop.
                 yield return new WaitForSeconds(0.5f);
                 continue;
+            }
+
+            // The manual walk-in toward the trunk can leave the worker a hair
+            // off the carved navmesh; snap the agent back on before it paths to
+            // the drop point (otherwise agent.isOnNavMesh is false and it never
+            // walks back).
+            if (agent != null && !agent.isOnNavMesh)
+            {
+                NavMeshHit snap;
+                if (NavMesh.SamplePosition(transform.position, out snap, 4f, NavMesh.AllAreas))
+                    agent.Warp(snap.position);
             }
 
             if (myBuilding != null && myBuilding.IsVisualsFull())

@@ -14,7 +14,7 @@ public class CampTree : MonoBehaviour
     private Quaternion originalRotation;
     private Vector3 originalScale;
 
-    // Зв'язок із новим скриптом ефектів
+    // пїЅпїЅ'пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     private TreeVFX vfxHandler;
 
     private void Start()
@@ -25,7 +25,7 @@ public class CampTree : MonoBehaviour
 
         currentHits = requiredHits;
 
-        // Автоматично шукаємо скрипт VFX на цьому ж дереві
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ VFX пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
         vfxHandler = GetComponent<TreeVFX>();
     }
 
@@ -35,7 +35,7 @@ public class CampTree : MonoBehaviour
 
         currentHits--;
 
-        // Кажемо скрипту ефектів показати тріски (якщо він є)
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ)
         if (vfxHandler != null) vfxHandler.PlayHitEffect();
 
         StopCoroutine("ShakeRoutine");
@@ -64,6 +64,11 @@ public class CampTree : MonoBehaviour
     private IEnumerator FallAndRespawnRoutine()
     {
         isChopped = true;
+
+        // Timber! Play the same tree-fall crack/crash the arena trees use вЂ” the
+        // camp tree toppled silently before.
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX3D(AudioID.Env_TreeFall, transform.position);
 
         Collider col = GetComponent<Collider>();
         Vector3 rootPoint = transform.position;
@@ -94,7 +99,7 @@ public class CampTree : MonoBehaviour
             yield return null;
         }
 
-        // Дерево впало! Кажемо скрипту ефектів показати хмару пилу навколо кореня
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (vfxHandler != null) vfxHandler.PlayFallEffect(rootPoint);
 
         yield return new WaitForSeconds(2f);

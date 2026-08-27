@@ -372,6 +372,15 @@ public class AudioManager : MonoBehaviour
                 {
                     PlayMusic(AudioID.Music_Camp);
                 }
+                else
+                {
+                    // The intro is about to play its own Timeline audio. Actively
+                    // STOP whatever track was already running (the boot-logo music
+                    // kept looping under the intro before) so the cinematic's
+                    // narration/score plays alone — the AudioManager stays silent
+                    // until IntroCinematicManager hands the music back when done.
+                    StopMusic(0.4f);
+                }
                 break;
             case "Lvl_1":
                 // Level 1 gets its own theme; falls back to the battle score

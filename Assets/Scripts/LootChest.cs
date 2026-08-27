@@ -92,22 +92,36 @@ public class LootChest : MonoBehaviour
 
         if (chestAnimator != null)
         {
+            int closedHash = chestAnimator.GetCurrentAnimatorStateInfo(0).fullPathHash;
             chestAnimator.SetTrigger("Open");
 
-            // Sync loot to the ACTUAL open animation instead of a fixed guess
-            // (delayForLoot drifted from the clip after the chest anim changed).
-            // Wait for the transition into the Open state, then hold until the
-            // lid is ~85% open so the loot bursts out exactly as it finishes.
-            float waited = 0f;
-            while (waited < 0.4f)   // let the transition settle onto the Open state
+            // Sync loot to the ACTUAL open animation. The previous version
+            // broke out of its wait on the very first frame — right after
+            // SetTrigger the animator is still sitting in the CLOSED state
+            // (not yet in transition, clip length > 0), so it measured the
+            // closed clip and dumped the loot before the lid ever moved.
+            //
+            // 1) Wait until we actually LEAVE the closed state (transition
+            //    into Open has begun).
+            float t = 0f;
+            while (t < 1.5f)
             {
                 var s = chestAnimator.GetCurrentAnimatorStateInfo(0);
-                if (s.length > 0.05f && !chestAnimator.IsInTransition(0)) break;
-                waited += Time.deltaTime;
+                if (chestAnimator.IsInTransition(0) || s.fullPathHash != closedHash) break;
+                t += Time.deltaTime;
                 yield return null;
             }
+            // 2) Wait for the transition to settle onto the Open state.
+            t = 0f;
+            while (t < 1f && chestAnimator.IsInTransition(0))
+            {
+                t += Time.deltaTime;
+                yield return null;
+            }
+            // 3) Now genuinely on the Open clip — hold until it's ~90% played
+            //    so the loot bursts out as the lid finishes opening.
             var open = chestAnimator.GetCurrentAnimatorStateInfo(0);
-            float openLen = (open.length > 0.05f) ? open.length * 0.85f : delayForLoot;
+            float openLen = (open.length > 0.05f) ? open.length * 0.9f : delayForLoot;
             yield return new WaitForSeconds(openLen);
         }
         else

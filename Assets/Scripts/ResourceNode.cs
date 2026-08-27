@@ -181,7 +181,7 @@ public class ResourceNode : MonoBehaviour, IDamageable
             // ���в����� ��������� ����ֲ� ������ �� ���� �� ���� �����
             Quaternion initialRotation = transform.rotation;
 
-            float fallDuration = 0.32f;   // snappier fall, tighter to the crack/crash SFX
+            float fallDuration = 0.7f;   // natural topple — 0.32 whipped over far too fast
             float fallSpeed = 90f / fallDuration;
             float t = 0;
 

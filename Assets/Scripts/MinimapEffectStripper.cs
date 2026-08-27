@@ -36,7 +36,11 @@ public class MinimapEffectStripper : MonoBehaviour
         if (vfxLayer < 0 || vfxLayer == DefaultLayer) return;
         timer -= Time.unscaledDeltaTime;
         if (timer > 0f) return;
-        timer = 0.35f;
+        // 20 Hz — short-lived bursts (hit sparks, muzzle flashes) used to spawn
+        // and die inside a single slow 0.35s window and flash on the map the
+        // whole time. At 0.05s they're pulled off Default within ~one frame or
+        // two, before they read as a blip.
+        timer = 0.05f;
         Strip();
     }
 
