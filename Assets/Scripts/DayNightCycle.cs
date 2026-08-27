@@ -75,6 +75,17 @@ public class DayNightCycle : MonoBehaviour
     {
         mainCam = Camera.main;
 
+        // The godRaysObject field was wired to the P_Sunshaft PREFAB ASSET, not
+        // a scene instance, so it never existed in the running world and the
+        // effect was never visible. If the reference is a prefab (its scene is
+        // not a valid loaded scene), instantiate a live working copy.
+        if (godRaysObject != null && !godRaysObject.scene.IsValid())
+        {
+            godRaysObject = Instantiate(godRaysObject);
+            godRaysObject.name = "Sunshaft_Runtime";
+        }
+        if (godRaysObject != null) godRaysObject.SetActive(false);
+
         if (sunLight == null)
         {
             GameObject dirLightObj = GameObject.Find("Directional Light");
@@ -339,9 +350,10 @@ public class DayNightCycle : MonoBehaviour
     {
         if (godRaysObject == null) return;
 
-        // Triangular bumps peaking at 6.5 (dawn) and 18.5 (dusk), ~2.5h wide.
-        float dawn = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 6.5f) / 2.5f);
-        float dusk = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 18.5f) / 2.5f);
+        // Triangular bumps peaking at 6.5 (dawn) and 18.5 (dusk), ~3.5h wide
+        // (widened from 2.5h so the effect is on-screen long enough to notice).
+        float dawn = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 6.5f) / 3.5f);
+        float dusk = 1f - Mathf.Clamp01(Mathf.Abs(timeOfDay - 18.5f) / 3.5f);
         float factor = Mathf.Max(dawn, dusk) * (1f - weatherBlend);   // clear skies only
 
         bool on = factor > 0.03f;
@@ -349,6 +361,17 @@ public class DayNightCycle : MonoBehaviour
         if (!on) return;
 
         godRaysObject.transform.localScale = Vector3.one * (godRayMaxScale * factor);
+
+        // Follow the camera toward the sun so the shafts are actually in view.
+        // Without this the prefab sat at its authored spot far from the roaming
+        // player and was never seen. Place the source between the camera and the
+        // sun, slightly elevated.
+        if (mainCam != null)
+        {
+            Vector3 sunDir = (sunLight != null) ? -sunLight.transform.forward : Vector3.up;
+            godRaysObject.transform.position =
+                mainCam.transform.position + sunDir * 25f + Vector3.up * 6f;
+        }
         // Point the shafts along the sun's travel so they read as sunlight.
         if (sunLight != null)
             godRaysObject.transform.rotation = Quaternion.LookRotation(sunLight.transform.forward, Vector3.up);
