@@ -276,25 +276,32 @@ public class CampWorkerAI : MonoBehaviour
             // distance fallback covers arrival-detection edge cases.
             bool canChop = targetTree != null && !targetTree.isChopped && (arrived ||
                 Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z),
-                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 4f);
+                                 new Vector3(targetTree.transform.position.x, 0f, targetTree.transform.position.z)) <= 6f);
 
+            bool didChop = false;
             if (canChop)
             {
                 while (targetTree != null && !targetTree.isChopped)
                 {
-                    // Already facing the tree from the arrival turn above — no
-                    // per-hit LookAt snap.
-                    if (anim != null) anim.SetTrigger("Work");
-                    // 3D so the chopping sound sits at the worker/tree in
-                    // the world instead of glued to the player's ears.
-                    if (AudioManager.Instance != null)
-                        AudioManager.Instance.PlaySFX3D(AudioID.NPC_Work, transform.position);
-
-                    yield return new WaitForSeconds(timeBetweenHits);
+                    // No worker animator actually has a "Work" chop state, so drive
+                    // the swing PROCEDURALLY — the model leans in and back on each
+                    // hit — guaranteeing a visible chop regardless of the rig.
+                    // (Still fires the trigger in case a controller does have it.)
+                    if (anim != null) anim.SetTriggerSafe("Work");
+                    yield return StartCoroutine(ChopSwingRoutine());
+                    didChop = true;
 
                     if (targetTree != null && !targetTree.isChopped) targetTree.TakeHit();
                 }
-                yield return new WaitForSeconds(1f);
+                yield return new WaitForSeconds(0.4f);
+            }
+            else
+            {
+                // Couldn't actually reach the tree — DON'T fake-deliver resources
+                // (the old code deposited anyway, so it looked like it walked up,
+                // did nothing, and carried logs back). Try again next loop.
+                yield return new WaitForSeconds(0.5f);
+                continue;
             }
 
             if (myBuilding != null && myBuilding.IsVisualsFull())
@@ -328,6 +335,36 @@ public class CampWorkerAI : MonoBehaviour
             if (carryItemVisual != null) carryItemVisual.SetActive(false);
             if (myBuilding != null) myBuilding.ShowNextVisualResource();
         }
+    }
+
+    // Procedural chop: lean the model in toward the tree and back, with the
+    // impact SFX at the bottom of the swing. Works with ANY rig since no worker
+    // animator actually has a chop state.
+    private IEnumerator ChopSwingRoutine()
+    {
+        Transform model = (anim != null) ? anim.transform : transform;
+        Quaternion rest = model.localRotation;
+
+        // Small wind-up back.
+        float t = 0f, wind = 0.10f;
+        while (t < wind) { t += Time.deltaTime; model.localRotation = rest * Quaternion.Euler(-10f * (t / wind), 0f, 0f); yield return null; }
+
+        // Fast chop down toward the trunk.
+        Quaternion top = model.localRotation;
+        Quaternion low = rest * Quaternion.Euler(40f, 0f, 0f);
+        t = 0f; float down = 0.09f;
+        while (t < down) { t += Time.deltaTime; model.localRotation = Quaternion.Slerp(top, low, t / down); yield return null; }
+
+        // Impact.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.NPC_Work, transform.position);
+
+        // Return to rest.
+        t = 0f; float ret = 0.18f;
+        while (t < ret) { t += Time.deltaTime; model.localRotation = Quaternion.Slerp(low, rest, t / ret); yield return null; }
+        model.localRotation = rest;
+
+        float pad = timeBetweenHits - (wind + down + ret);
+        if (pad > 0f) yield return new WaitForSeconds(pad);
     }
 
     private CampTree FindNearestTree()
