@@ -33,7 +33,7 @@ public class WorldGenerator : MonoBehaviour
 
     [Header("Side Objectives (Dead End Altars)")]
     public GameObject[] altarPrefabs;
-    public int altarsAmount = 2; // Скільки вівтарів гарантовано з'явиться на мапі
+    public int altarsAmount = 4; // Скільки вівтарів гарантовано з'явиться на мапі
 
     [Header("Caged Ally Event (roadside captive + skeleton guards)")]
     [Tooltip("Skeleton prefabs that guard the cage. Reuse the region's enemy prefabs.")]
@@ -42,14 +42,14 @@ public class WorldGenerator : MonoBehaviour
     public GameObject cagedAllyPrefab;
     [Range(0f, 1f)]
     [Tooltip("Chance a road dead-end hosts a caged-ally event instead of an altar.")]
-    public float cagedAllyChance = 0.35f;
-    public int maxCagedAllies = 2;
+    public float cagedAllyChance = 0.85f;
+    public int maxCagedAllies = 4;
     private int spawnedCagedAllies = 0;
 
     [Header("Ambient Crows (distant flock atmosphere)")]
     [Tooltip("Looping crow-flock effects, e.g. P_Crows_Random / P_Crows_Orbit. A few are placed circling high over the map for atmosphere. Leave empty to skip.")]
     public GameObject[] ambientCrowPrefabs;
-    public int ambientCrowCount = 3;
+    public int ambientCrowCount = 0;   // 0 = off (crows rendered as untextured planes; disabled)
     public float ambientCrowMinHeight = 14f;
     public float ambientCrowMaxHeight = 32f;
 
@@ -59,7 +59,7 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] roadEdgeDecorations;
     public GameObject[] deadEndAssets;
     [Range(0f, 1f)] public float roadDecorSpawnChance = 0.3f;
-    public int extraDeadEndRoads = 3;
+    public int extraDeadEndRoads = 7;
     // Minimum XZ distance between two dead-end targets — stops A* from
     // building two parallel almost-touching stub roads.
     public float deadEndMinSeparation = 60f;
@@ -496,6 +496,10 @@ public class WorldGenerator : MonoBehaviour
     // "distant crows" atmosphere. Purely visual — no colliders, over land only.
     private void SpawnAmbientCrows()
     {
+        // Disabled: the crow prefabs draw an untextured plane mesh (M_Crow has
+        // no _MainTex), so they read as gray floating squares in the sky rather
+        // than birds. Count 0 keeps them off until the material is fixed.
+        if (ambientCrowCount <= 0) return;
         if (ambientCrowPrefabs == null || ambientCrowPrefabs.Length == 0 || terrain == null) return;
 
         Transform container = new GameObject("AmbientCrows").transform;
@@ -3256,8 +3260,12 @@ public class WorldGenerator : MonoBehaviour
         // altar / caged-ally cluster around the rim — the player never saw one
         // mid-map). The remaining share is filled by the interior random-spline
         // pass below, spreading the encounters across the whole terrain.
-        int deadEndAltarCap = Mathf.Max(1, Mathf.CeilToInt(altarsAmount * 0.5f));
-        int deadEndCagedCap = Mathf.Max(1, Mathf.CeilToInt(maxCagedAllies * 0.5f));
+        // Was halved (*0.5) which, together with the low quotas, meant the
+        // natural dead-end pass placed at most ~1 of each and the rest leaned on
+        // the heavily-guarded interior fallback — so on many maps 0 events
+        // showed. Allow the dead-end pass to place up to ~75% of the quota.
+        int deadEndAltarCap = Mathf.Max(1, Mathf.CeilToInt(altarsAmount * 0.75f));
+        int deadEndCagedCap = Mathf.Max(1, Mathf.CeilToInt(maxCagedAllies * 0.75f));
 
         // ДІАГНОСТИКА: Перевіряємо чи не порожній масив в Інспекторі
         if (!hasAltars)
@@ -3472,10 +3480,15 @@ public class WorldGenerator : MonoBehaviour
                     // Keep altars the SAME minimum distance apart as the
                     // dead-end ones (was 25m — far too clustered). Uses
                     // deadEndMinSeparation so all altars honour one rule.
+                    // Interior spots use a LOOSER separation than the edge
+                    // dead-ends (60m rejected almost every interior candidate on
+                    // smaller maps, so the fallback pass placed nothing). 0.6x
+                    // still keeps events comfortably apart.
+                    float interiorSeparation = deadEndMinSeparation * 0.6f;
                     bool nearForbidden = false;
                     for (int k = 0; k < forbiddenZones.Count; k++)
                     {
-                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < deadEndMinSeparation) { nearForbidden = true; break; }
+                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < interiorSeparation) { nearForbidden = true; break; }
                     }
                     if (nearForbidden) continue;
                     // Same rock/obstacle guard as the dead-end tips — no more
