@@ -21,15 +21,19 @@ public class HammerDamage : MonoBehaviour
         if (Camera.main != null) cameraFollow = Camera.main.GetComponent<CameraFollow>();
     }
 
-    private void OnTriggerEnter(Collider other)
+    // OnTriggerStay, NOT Enter: the weapon orbits and stays INSIDE a large
+    // enemy/boss collider, so OnTriggerEnter fired exactly once and bosses took
+    // a single hit ever. Stay + the per-collider cooldown below gives one hit
+    // per hitCooldown for every target size.
+    private void OnTriggerStay(Collider other)
     {
-        // --- ФІКС: Молот б'є тільки об'єкти з тегом Enemy ---
+        // --- ФІпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅ пїЅ'пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ'пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ Enemy ---
         if (!other.CompareTag("Enemy")) return;
 
-        // Запобіжник, щоб гравець не вдарив сам себе
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         if (player != null && other.gameObject == player.gameObject) return;
 
-        // Перевірка на інтерфейс
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (other.TryGetComponent(out IDamageable damageable))
         {
             if (lastHitTimes.TryGetValue(other, out float lastTime))
@@ -46,8 +50,16 @@ public class HammerDamage : MonoBehaviour
             if (player != null)
             {
                 actualDamage *= player.globalDamageMultiplier;
+                // Honour the same crit/STACK/lifesteal the melee swing uses вЂ”
+                // the orbit weapon previously hardcoded a x2.5 crit and ignored
+                // CritDamage, Lifesteal and STACK level-up choices entirely, so
+                // builds around them didn't affect the primary auto-weapon.
                 isCrit = Random.value <= player.globalCritChance;
-                if (isCrit) actualDamage *= 2.5f;
+                if (isCrit) actualDamage *= player.critDamageMultiplier;
+                actualDamage *= player.currentMultiplier;   // STACK x1..x5
+
+                if (player.lifeStealFraction > 0f)
+                    player.Heal(actualDamage * player.lifeStealFraction);
 
                 pushDir = (other.transform.position - player.transform.position).normalized;
                 pushDir.y = 0;

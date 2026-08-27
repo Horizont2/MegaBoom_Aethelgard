@@ -1741,9 +1741,17 @@ public class PlayerController : MonoBehaviour, IDamageable
                 Vector3 pushDir = (col.transform.position - transform.position).normalized; pushDir.y = 0;
                 float kForce = isCriticalHit ? (isNextAttackGuaranteedCrit ? 20f : 12f) : 8f;
 
+                bool isEnemy = damageable is EnemyAI || dmgGO.CompareTag("Enemy") || col.CompareTag("Enemy");
+                // STACK payoff: the x2/x4/x5 multiplier the HUD shows for standing
+                // in a crowd now actually multiplies damage — but ONLY vs enemies,
+                // never resource nodes (chopping a tree shouldn't scale with the
+                // swarm). This is the game's signature mechanic; it was computed
+                // and displayed but never applied to any damage.
+                float dmgForThis = isEnemy ? finalDmg * currentMultiplier : finalDmg;
+
                 DamageInfo hitInfo = new DamageInfo
                 {
-                    Amount = finalDmg,
+                    Amount = dmgForThis,
                     IsCritical = isCriticalHit,
                     PushDirection = pushDir,
                     KnockbackForce = kForce,
@@ -1752,10 +1760,9 @@ public class PlayerController : MonoBehaviour, IDamageable
                 };
 
                 damageable.TakeDamage(hitInfo);
-                bool isEnemy = damageable is EnemyAI || dmgGO.CompareTag("Enemy") || col.CompareTag("Enemy");
                 if (isEnemy)
                 {
-                    hitEnemy = true; totalLifestealDealt += finalDmg;
+                    hitEnemy = true; totalLifestealDealt += dmgForThis;
                     if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat();
                 }
                 else
