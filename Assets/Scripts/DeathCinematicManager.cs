@@ -99,6 +99,13 @@ public class DeathCinematicManager : MonoBehaviour
         Time.timeScale = 1f;
         if (AudioManager.Instance != null) AudioManager.Instance.UnduckMusic(0.6f);
 
+        // Retry is a FRESH run: the arena reloads (not camp), so the run
+        // inventory would otherwise survive the death. Player XP/level/upgrades
+        // reset with the new PlayerController, so the backpack must reset too —
+        // matches the pause-menu "Restart Run" path and closes a die/retry/
+        // extract farm of the previous run's resources.
+        if (ResourceManager.Instance != null) ResourceManager.Instance.ClearRunInventory();
+
         Canvas canvas = GetComponent<Canvas>();
         if (canvas != null) canvas.enabled = false;
         else if (deathCanvas != null) deathCanvas.SetActive(false);
