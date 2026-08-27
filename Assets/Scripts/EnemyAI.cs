@@ -1037,8 +1037,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
         isPreparingAttack = false;
     }
 
+    // Guards against a single swing landing twice. The animation event that
+    // calls this fired twice per attack on some rigs (a duplicate Animator on
+    // the model / a state re-entry), so the player took double damage and got
+    // two blood splats + two impact "sword" SFX. Real attacks are gated by
+    // attackCooldown (>=~0.5s), so ignoring a second call within 0.2s can never
+    // drop a legitimate follow-up hit.
+    private float lastExecuteDamageTime = -10f;
+
     public void ExecuteAttackDamage()
     {
+        if (Time.time - lastExecuteDamageTime < 0.2f) return;
+        lastExecuteDamageTime = Time.time;
+
         if (isDead || target == null) return;
         // Resolve who we're actually swinging at (ally or player). Fall back to
         // the player if the cached damageable was cleared.

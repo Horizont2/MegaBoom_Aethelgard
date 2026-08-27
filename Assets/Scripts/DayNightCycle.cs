@@ -46,6 +46,8 @@ public class DayNightCycle : MonoBehaviour
     public ParticleSystem rainVFX;
     [Tooltip("God-ray / sun-shaft effect (e.g. P_Sunshaft). Fades in at dawn & dusk, orients along the sun, hidden at midday/night. Assign like firefliesVFX.")]
     public GameObject godRaysObject;
+    [Tooltip("OFF by default — the procedural camera-follow placement read as a strange cluster of vertical beams. Re-enable only after a P_Sunshaft instance is hand-placed in the scene.")]
+    public bool enableGodRays = false;
     [Tooltip("Peak scale of the god-ray effect at the height of golden hour.")]
     public float godRayMaxScale = 1f;
     public ParticleSystem snowVFX;
@@ -76,10 +78,12 @@ public class DayNightCycle : MonoBehaviour
         mainCam = Camera.main;
 
         // The godRaysObject field was wired to the P_Sunshaft PREFAB ASSET, not
-        // a scene instance, so it never existed in the running world and the
-        // effect was never visible. If the reference is a prefab (its scene is
-        // not a valid loaded scene), instantiate a live working copy.
-        if (godRaysObject != null && !godRaysObject.scene.IsValid())
+        // a scene instance, so it never existed in the running world. When
+        // instantiated + camera-followed it read as a strange cluster of
+        // vertical beams, so it's OFF by default now (enableGodRays) until a
+        // P_Sunshaft is hand-placed in the scene. If the reference is a prefab,
+        // instantiate a live working copy only when enabled.
+        if (enableGodRays && godRaysObject != null && !godRaysObject.scene.IsValid())
         {
             godRaysObject = Instantiate(godRaysObject);
             godRaysObject.name = "Sunshaft_Runtime";
@@ -348,7 +352,7 @@ public class DayNightCycle : MonoBehaviour
     // sunlight. Fades via scale so it never pops.
     private void ManageGodRays()
     {
-        if (godRaysObject == null) return;
+        if (!enableGodRays || godRaysObject == null) return;
 
         // Triangular bumps peaking at 6.5 (dawn) and 18.5 (dusk), ~3.5h wide
         // (widened from 2.5h so the effect is on-screen long enough to notice).
