@@ -65,6 +65,10 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     public GameObject[] summonPrefabs;
     public int summonCount = 4;
     public float summonCooldown = 15f;
+    [Tooltip("Hard cap on simultaneously-alive summoned/enrage adds. Without it a long fight floods the arena with unbounded reinforcements.")]
+    public int maxActiveAdds = 12;
+    // Live tracking of this boss's spawned adds so the cap can be enforced.
+    private readonly List<GameObject> activeAdds = new List<GameObject>();
     [Tooltip("Animator trigger played when the boss casts the summon (the 'call the army' gesture). 'Attack' is a safe default; use a dedicated 'Cast'/'Roar' if the rig has one.")]
     public string summonAnimTrigger = "Attack";
     [Tooltip("Optional VFX spawned at each add's emerge point (a ground rift / smoke puff).")]
@@ -98,6 +102,8 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private float currentHealth;
     private bool isDead = false;
     private bool isStaggered = false;
+    private float staggerStartTime = 0f;
+    private bool gloryKillStarted = false;   // guards against double-triggering the execute
     private bool isPreparingAttack = false;
     private bool isPromptShowing = false;
     private float lastAttackTime;
@@ -183,6 +189,17 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (isStaggered)
         {
+            // Failsafe: a staggered boss can ONLY be finished by the F execute
+            // within range. If the player walks off and never presses F the
+            // encounter stalls forever, so auto-execute after a timeout.
+            if (!gloryKillStarted && Time.time - staggerStartTime > 15f)
+            {
+                gloryKillStarted = true;
+                if (isPromptShowing && GlobalHUD.Instance != null) { GlobalHUD.Instance.HidePrompt(); isPromptShowing = false; }
+                StartCoroutine(GloryKillRoutine());
+                return;
+            }
+
             float distToPlayer = Vector3.Distance(transform.position, target.position);
 
             if (distToPlayer <= attackRange + 3.0f)
@@ -198,8 +215,9 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
                     }
                 }
 
-                if (Input.GetKeyDown(KeyCode.F))
+                if (!gloryKillStarted && Input.GetKeyDown(KeyCode.F))
                 {
+                    gloryKillStarted = true;
                     if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
                     isPromptShowing = false;
                     StartCoroutine(GloryKillRoutine());
@@ -529,7 +547,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             if (pool != null && pool.Length > 0)
             {
                 CameraShakeUtil.TryShake(0.3f, 0.15f);
-                int count = Mathf.Max(1, summonCount);
+                // Enforce the active-add cap so a drawn-out fight can't flood
+                // the arena with unbounded reinforcements.
+                activeAdds.RemoveAll(a => a == null);
+                int slots = Mathf.Max(0, maxActiveAdds - activeAdds.Count);
+                int count = Mathf.Min(Mathf.Max(1, summonCount), slots);
                 for (int i = 0; i < count; i++)
                 {
                     GameObject prefab = pool[Random.Range(0, pool.Length)];
@@ -547,7 +569,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
                     if (summonSpawnVFX != null)
                         Instantiate(summonSpawnVFX, p, Quaternion.identity).AddComponent<VFXAutoFade>().Configure(2f, world: true);
-                    Instantiate(prefab, p, Quaternion.Euler(0f, ang + 180f, 0f));
+                    activeAdds.Add(Instantiate(prefab, p, Quaternion.Euler(0f, ang + 180f, 0f)));
                 }
             }
         }
@@ -571,13 +593,16 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         // Summon a one-off pack of adds so the low-HP phase spikes in threat.
         if (enrageAddPrefabs != null && enrageAddPrefabs.Length > 0)
         {
-            for (int i = 0; i < enrageAddCount; i++)
+            activeAdds.RemoveAll(a => a == null);
+            int slots = Mathf.Max(0, maxActiveAdds - activeAdds.Count);
+            int count = Mathf.Min(enrageAddCount, slots);
+            for (int i = 0; i < count; i++)
             {
                 GameObject prefab = enrageAddPrefabs[Random.Range(0, enrageAddPrefabs.Length)];
                 if (prefab == null) continue;
                 Vector3 p = transform.position + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(3f, 6f));
                 p.y = transform.position.y;
-                Instantiate(prefab, p, Quaternion.identity);
+                activeAdds.Add(Instantiate(prefab, p, Quaternion.identity));
             }
         }
     }
@@ -660,6 +685,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     private void EnterStaggerState()
     {
         isStaggered = true;
+        staggerStartTime = Time.time;
         isPreparingAttack = false;
         Time.timeScale = 1f;
 

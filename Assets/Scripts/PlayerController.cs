@@ -1092,7 +1092,11 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (!isCampMode && currentHealth < maxHealth && healthRegenRate > 0)
         {
-            currentHealth += healthRegenRate * dt;
+            // Regen on SCALED time, not `dt`. While aiming a grenade / in
+            // perfect-dodge bullet-time `dt` is unscaled, so the player healed
+            // at real-world rate while the world crawled at 0.25-0.4x — up to
+            // ~4x effective regen, i.e. an infinite-heal exploit from holding aim.
+            currentHealth += healthRegenRate * Time.deltaTime;
             currentHealth = Mathf.Min(currentHealth, maxHealth);
             UpdateHUD();
         }
