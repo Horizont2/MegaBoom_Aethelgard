@@ -262,7 +262,11 @@ public class LevelUpManager : MonoBehaviour
                 if (hammer != null) hammer.baseDamage += upgrade.amount;
                 break;
             case UpgradeType.PickupRadius: if (player != null) player.pickupRadius += upgrade.amount; break;
-            case UpgradeType.AttackSpeed: if (weaponOrbit != null) weaponOrbit.baseRotationSpeed += upgrade.amount; break;
+            case UpgradeType.AttackSpeed:
+                // The orbit weapon this used to speed up was removed from the
+                // game, so the card did nothing. Route it to the melee cadence.
+                if (player != null) player.ApplyLevelUpAttackSpeed();
+                break;
             case UpgradeType.Armor:
                 if (player != null) player.damageReduction = Mathf.Clamp(player.damageReduction + upgrade.amount, 0f, 0.85f);
                 break;

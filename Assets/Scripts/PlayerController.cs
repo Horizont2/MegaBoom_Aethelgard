@@ -2137,6 +2137,15 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (crystalText != null) { int displayDiamonds = ResourceManager.Instance != null ? ResourceManager.Instance.diamonds : crystalsCollected; crystalText.text = LocalizationManager.Tr("Diamonds: {0}", displayDiamonds); }
     }
 
+    // Level-up "Attack Speed" pick. The orbit weapon it used to modify was
+    // removed, so the card did nothing; route it to the real melee cadence.
+    // Each pick shortens the swing cooldown ~9%, floored so it can't trivialize.
+    public void ApplyLevelUpAttackSpeed()
+    {
+        if (baseAttackCooldown <= 0f) baseAttackCooldown = attackCooldown;
+        attackCooldown = Mathf.Max(MIN_ATTACK_COOLDOWN, attackCooldown * 0.91f);
+    }
+
     public void Heal(float amount)
     {
         if (amount <= 0f || isDead) return;
