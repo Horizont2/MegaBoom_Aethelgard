@@ -171,6 +171,9 @@ public class GlobalHUD : MonoBehaviour
             }
 
             if (LevelUpManager.IsMenuOpen) return;
+            // No pause during the region-victory cinematic — it drives its own
+            // timeScale and has a SPACE-to-skip; ESC-pausing broke the sequence.
+            if (RegionManager.CinematicActive) return;
             if (MapTableInteract.IsMapActive) return;
 
             // Camp modal panels handle their own ESC and mark themselves open —

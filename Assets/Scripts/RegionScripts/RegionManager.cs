@@ -15,6 +15,10 @@ public class RegionManager : MonoBehaviour
 
     private int currentTotemIndex = 0;
     private bool _finalPurificationStarted = false; // guards the victory cinematic against re-entry
+    // True while the final victory cinematic is playing. GlobalHUD checks this so
+    // ESC can't open the pause menu mid-flythrough (which set timeScale=1 and
+    // broke the sequence). The cinematic has its own SPACE-to-skip.
+    public static bool CinematicActive = false;
     private PlayerController playerController;
 
     private void Start()
@@ -238,6 +242,7 @@ public class RegionManager : MonoBehaviour
         // ~2s cleanse wave and the camera flythrough.
         EnemySpawner.IsSpawningBlocked = true;
         EnemyAI.GlobalFreeze = true;
+        CinematicActive = true;
 
         TutorialBossAI[] remainingBosses = Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None);
         foreach (TutorialBossAI boss in remainingBosses)
@@ -444,6 +449,7 @@ public class RegionManager : MonoBehaviour
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
         EnemyAI.GlobalFreeze = false;
+        RegionManager.CinematicActive = false;
 
         if (currentRegion != null)
         {
@@ -528,6 +534,7 @@ public class RegionManager : MonoBehaviour
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
         EnemyAI.GlobalFreeze = false;
+        RegionManager.CinematicActive = false;
 
         if (currentRegion != null)
         {

@@ -339,6 +339,7 @@ public class WorldGenerator : MonoBehaviour
         RegionTotem.AnyActivatingRightNow = false;
         EnemySpawner.IsSpawningBlocked = false;
         EnemyAI.GlobalFreeze = false;   // never inherit a stuck victory-freeze
+        RegionManager.CinematicActive = false;   // nor a stuck victory-cinematic latch
         CursedTree.ResetWave(); // fresh region: don't let a stale bloom wave insta-bloom
         forbiddenZones.Clear();
         generatedRivers.Clear();
