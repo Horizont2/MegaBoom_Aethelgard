@@ -24,11 +24,23 @@ public class MinimapEffectStripper : MonoBehaviour
 
     private int vfxLayer = -1;
     private const int DefaultLayer = 0;
+    private int damageableLayer = -1;
     private float timer;
 
     private void Awake()
     {
         vfxLayer = LayerMask.NameToLayer("TransparentFX");
+        // Enemies live on Damageable, which the minimap ALSO renders, so VFX
+        // parented to / spawned on enemies (hit sparks, shatter debris, death
+        // puffs) blipped on the map even though Default-layer effects were
+        // already handled. Strip that layer too.
+        damageableLayer = LayerMask.NameToLayer("Damageable");
+    }
+
+    // A particle/trail on any of these layers would show on the minimap.
+    private bool IsMinimapVisibleVfxLayer(int layer)
+    {
+        return layer == DefaultLayer || (damageableLayer >= 0 && layer == damageableLayer);
     }
 
     private void Update()
@@ -52,13 +64,13 @@ public class MinimapEffectStripper : MonoBehaviour
         for (int i = 0; i < ps.Length; i++)
         {
             var g = ps[i] != null ? ps[i].gameObject : null;
-            if (g != null && g.layer == DefaultLayer) g.layer = vfxLayer;
+            if (g != null && IsMinimapVisibleVfxLayer(g.layer)) g.layer = vfxLayer;
         }
         var tr = FindObjectsByType<TrailRenderer>(FindObjectsSortMode.None);
         for (int i = 0; i < tr.Length; i++)
         {
             var g = tr[i] != null ? tr[i].gameObject : null;
-            if (g != null && g.layer == DefaultLayer) g.layer = vfxLayer;
+            if (g != null && IsMinimapVisibleVfxLayer(g.layer)) g.layer = vfxLayer;
         }
     }
 }

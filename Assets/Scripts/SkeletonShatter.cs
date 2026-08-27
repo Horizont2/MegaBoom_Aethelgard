@@ -34,6 +34,11 @@ public static class SkeletonShatter
 
         var cleanup = container.AddComponent<ShatterCleanup>();
         cleanup.life = chunkLife;
+
+        // Chunks inherit the enemy's Damageable layer, which the minimap camera
+        // renders — so the flying debris blipped on the map. Push the whole
+        // container onto TransparentFX (main camera renders it, minimap doesn't).
+        VFXAutoFade.HideFromMinimap(container);
         return true;
     }
 

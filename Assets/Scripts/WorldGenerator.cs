@@ -1849,7 +1849,13 @@ public class WorldGenerator : MonoBehaviour
             lowestY = rootBox.bounds.min.y;
         }
 
-        float delta = targetGroundY - lowestY;
+        // Small downward embed so the base sits FLUSH with (very slightly into)
+        // the terrain rather than perched a hair above it. On uneven ground the
+        // exact bottom sample almost never matches every point under a wide base,
+        // which read as "floating slightly in the air"; sinking the footprint a
+        // touch hides that gap and looks natural (props are normally bedded in).
+        const float groundEmbed = 0.35f;
+        float delta = targetGroundY - lowestY - groundEmbed;
         go.transform.position += new Vector3(0f, delta, 0f);
     }
 
