@@ -120,6 +120,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float nextAllyScanTime;
     private Animator animator;
     private bool isDead = false;
+
+    // Global halt for victory cinematics: when true every enemy stops moving,
+    // deciding, and attacking so it can't chip the player (or wander) while the
+    // camera is off flying the reveal. Reset to false on world generation so an
+    // interrupted cinematic can't leave the next region frozen.
+    public static bool GlobalFreeze = false;
     // ONE tracked handle for the enemy's current combat vocal — the
     // aggro roar OR the attack-telegraph growl. Both are long-ish clips
     // that used to keep ringing off the corpse when the enemy was
@@ -495,6 +501,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (mainCamTransform != null)
                 healthCanvas.transform.rotation = mainCamTransform.rotation;
         }
+
+        // Victory cinematic: freeze in place — no movement, no attack decisions.
+        // (HP-bar billboarding above still runs; it's harmless and cheap.)
+        if (GlobalFreeze && !isDead) return;
 
         if (target == null && !isDead)
         {

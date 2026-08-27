@@ -233,8 +233,11 @@ public class RegionManager : MonoBehaviour
     {
         // Lock down: stop random spawns + clean lingering bosses so nothing kills
         // the player mid-victory. Regular EnemyAI will be cleared visually by a
-        // shockwave below, not yanked from the world.
+        // shockwave below, not yanked from the world. GlobalFreeze halts every
+        // surviving enemy instantly so none keeps swinging/wandering during the
+        // ~2s cleanse wave and the camera flythrough.
         EnemySpawner.IsSpawningBlocked = true;
+        EnemyAI.GlobalFreeze = true;
 
         TutorialBossAI[] remainingBosses = Object.FindObjectsByType<TutorialBossAI>(FindObjectsSortMode.None);
         foreach (TutorialBossAI boss in remainingBosses)
@@ -437,6 +440,7 @@ public class RegionManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
+        EnemyAI.GlobalFreeze = false;
 
         if (currentRegion != null)
         {
@@ -520,6 +524,7 @@ public class RegionManager : MonoBehaviour
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
         if (camFollow != null) { mainCam.fieldOfView = 60f; camFollow.isCinematicMode = false; }
         if (playerController != null) { playerController.isControlBlocked = false; playerController.isCinematicInvincible = false; }
+        EnemyAI.GlobalFreeze = false;
 
         if (currentRegion != null)
         {
@@ -625,6 +630,7 @@ public class RegionManager : MonoBehaviour
         CursedTree.BeginWorldBloom(totemPos, flightDur, mapScale * 1.3f);
 
         float elapsed = 0f;
+        float camY = 0f; bool camYInit = false;   // smoothed altitude
         while (elapsed < flightDur)
         {
             if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
@@ -633,8 +639,20 @@ public class RegionManager : MonoBehaviour
             float e = u * u * (3f - 2f * u); // ease in/out
 
             Vector3 pos = SampleBirdPath(path, e);
-            float clear = GroundHeightAt(pos) + 10f;      // glide just over the canopy
-            if (pos.y < clear) pos.y = clear;
+            // Terrain-follow WITHOUT the jerk: the old code hard-snapped Y to
+            // ground+10 every frame, so the camera bobbed violently over every
+            // hill and peak. Instead take the highest ground across a lookahead
+            // window (so it rises BEFORE a peak, not on top of it) and ease the
+            // altitude toward it. A hard floor still prevents clipping through a
+            // very sharp ridge.
+            float aheadGround = GroundHeightAt(pos);
+            aheadGround = Mathf.Max(aheadGround, GroundHeightAt(SampleBirdPath(path, Mathf.Min(1f, e + 0.05f))));
+            aheadGround = Mathf.Max(aheadGround, GroundHeightAt(SampleBirdPath(path, Mathf.Min(1f, e + 0.10f))));
+            float targetY = Mathf.Max(pos.y, aheadGround + 14f);
+            if (!camYInit) { camY = targetY; camYInit = true; }
+            camY = Mathf.Lerp(camY, targetY, Time.deltaTime * 2.2f);
+            camY = Mathf.Max(camY, GroundHeightAt(pos) + 5f);   // never clip terrain
+            pos.y = camY;
             cam.transform.position = pos;
 
             // Forward = velocity along the path; gaze tilts down toward the land.
