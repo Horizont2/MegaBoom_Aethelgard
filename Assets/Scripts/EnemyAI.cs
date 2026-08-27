@@ -959,6 +959,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void FireProjectile()
     {
+        if (GlobalFreeze || isDead) return;   // no shots during the victory freeze
         if (projectilePrefab == null || target == null) return;
 
         Vector3 spawn = projectileSpawnPoint != null
@@ -1059,6 +1060,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         if (Time.time - lastExecuteDamageTime < 0.2f) return;
         lastExecuteDamageTime = Time.time;
+
+        // A swing already in flight when the victory freeze engages must not
+        // land on the (control-blocked) player during the reveal cinematic.
+        if (GlobalFreeze) return;
 
         if (isDead || target == null) return;
         // Resolve who we're actually swinging at (ally or player). Fall back to

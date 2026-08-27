@@ -1995,6 +1995,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     public void GainXP(float amount)
     {
         if (isCampMode) return;
+        // Dead players don't level up: an XP crystal still flying in when the
+        // player dies could cross a level threshold, pop the upgrade menu
+        // (timeScale=0) over the death flow and hard-freeze the game.
+        if (isDead || currentHealth <= 0) return;
         float scaled = amount * xpGainMultiplier;
         currentXP += scaled;
 

@@ -639,8 +639,19 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             yield break;
         }
         Time.timeScale = 0.1f;
+        // Watchdog so a scene change / boss death during the tiny realtime window
+        // can't strand the game in slow-mo.
+        CinematicTimeGuard.Arm(duration + 1f);
         yield return new WaitForSecondsRealtime(duration);
-        if (!isStaggered && !isDead && !playerTarget.isControlBlocked)
+        // Restore unless a HIGHER-priority owner legitimately holds time (the
+        // glory-kill freeze, the level-up menu, or the pause menu). The old
+        // check skipped the restore whenever the player was control-blocked —
+        // which the pause menu also sets — and NRE'd if playerTarget was null,
+        // both of which could leave slow-mo stuck.
+        bool higherOwnerHoldsTime = isStaggered
+                                    || LevelUpManager.IsMenuOpen
+                                    || (playerTarget != null && playerTarget.isControlBlocked);
+        if (!isDead && !higherOwnerHoldsTime)
         {
             Time.timeScale = 1f;
         }
@@ -880,6 +891,11 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
             // ============================================================
             //  PHASE 1 · SETUP (0.55s realtime)
             // ============================================================
+            // Arm the stuck-time watchdog BEFORE the FIRST slow-mo write. If the
+            // boss is destroyed or the scene reloads during phase 1/2, the
+            // finally never runs and time would otherwise stay at 0.1-0.05x
+            // forever. (Re-armed tighter at the freeze phase below.)
+            CinematicTimeGuard.Arm(gloryKillFreezeDuration + gloryKillAftermathDuration + 4f);
             Time.timeScale = 0.1f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
