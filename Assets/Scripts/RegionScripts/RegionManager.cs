@@ -304,7 +304,10 @@ public class RegionManager : MonoBehaviour
         }
 
         // === PHASE 1: shockwave purifies the world (1.2 s) ===========================
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Region_Shockwave);
+        // Bounded play — any of these cinematic stingers could be authored with
+        // an internal loop region; PlaySFXOnce stops it after a single pass so a
+        // victory sound can't ring out repeatedly.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFXOnce(AudioID.Region_Shockwave, 4f);
         if (camFollow != null) camFollow.TriggerShake(0.5f, 0.4f);
 
         // Procedural corruption-departure beam — black/dark plume rising from the totem
@@ -321,7 +324,7 @@ public class RegionManager : MonoBehaviour
         // the old ease-out-only curve launched at full speed from frame
         // one, which read as a teleport-ish jolt. A crane operator
         // accelerates gently, cruises, then brakes into the apex.
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Cinematic_Whoosh);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFXOnce(AudioID.Cinematic_Whoosh, 3f);
 
         Vector3 startCamPos = mainCam.transform.position;
         Quaternion startCamRot = mainCam.transform.rotation;
@@ -349,7 +352,7 @@ public class RegionManager : MonoBehaviour
         // here too stacked a double hit.
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
+            AudioManager.Instance.PlaySFXOnce(AudioID.UI_QuestComplete, 3f);
         }
         if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
 
