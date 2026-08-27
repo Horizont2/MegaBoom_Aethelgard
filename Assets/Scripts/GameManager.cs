@@ -67,9 +67,21 @@ public class GameManager : MonoBehaviour
         nextSurvivalTick = Mathf.Floor(survivalTime) + 1f;
         isGameOver = false;
         isTimerActive = false;
+        // Force the next Update to rewrite the timer TMP even if the whole-
+        // second value is unchanged — the object was just (re)linked.
+        lastTimerSecond = -1;
 
-        GameObject timerObj = GameObject.Find("TimerText");
-        if (timerObj != null) timerText = timerObj.GetComponent<TextMeshProUGUI>();
+        // Re-link the timer TMP on EVERY scene load. This singleton persists
+        // (DontDestroyOnLoad), so after a "Try Again" reload its inspector-
+        // assigned reference points at the DESTROYED text object from the
+        // previous life — the display then froze (survivalTime kept ticking
+        // internally, but nothing was ever written to the new object). The old
+        // Find only matched the literal name "TimerText"; the arena's object is
+        // actually named "Timer_Text", so the re-link silently failed and the
+        // stale destroyed reference was kept. Resolve by all known names,
+        // including inactive objects, and always replace when found.
+        var freshTimer = ResolveTimerText();
+        if (freshTimer != null) timerText = freshTimer;
 
         GameObject panelObj = GameObject.Find("GameOverPanel");
         if (panelObj != null) gameOverPanel = panelObj.GetComponent<CanvasGroup>();
@@ -128,13 +140,13 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.5f);
 
         // Re-resolve the timer text if the initial Find missed it (the
-        // HUD object can be inactive or renamed at OnSceneLoaded time).
+        // HUD object can be inactive at OnSceneLoaded time). Unity's ==
+        // override makes a destroyed reference compare == null, so this also
+        // recovers after a scene reload wiped the previous life's object.
         if (timerText == null)
         {
-            foreach (var t in FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                if (t != null && t.gameObject.name == "TimerText") { timerText = t; break; }
-            }
+            var fresh = ResolveTimerText();
+            if (fresh != null) timerText = fresh;
         }
 
         StartLevelTimer();
@@ -181,6 +193,20 @@ public class GameManager : MonoBehaviour
     }
 
     private int lastTimerSecond = -1;
+
+    // Finds the survival-timer TMP by any of the names it ships under across
+    // scenes ("Timer_Text" in the arenas, "TimerText" in CampScene). Searches
+    // inactive objects too, since the HUD can still be disabled at load time.
+    private TextMeshProUGUI ResolveTimerText()
+    {
+        foreach (var t in FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (t == null) continue;
+            string n = t.gameObject.name;
+            if (n == "Timer_Text" || n == "TimerText") return t;
+        }
+        return null;
+    }
 
     public void StartLevelTimer()
     {
