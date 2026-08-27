@@ -879,6 +879,22 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    // Moving-source one-shot: plays the event ATTACHED to `source` so it tracks
+    // the object for its whole (short) lifetime. A plain PlaySFX3D pins the
+    // sound at the spawn position, so a roaming enemy's attack/hurt/hit thud
+    // played from where it *was* — the "sound comes from beside the object, not
+    // from it" bug. The instance auto-releases when the one-shot finishes.
+    public void PlaySFX3DAttached(string soundName, Transform source)
+    {
+        if (source == null) return;
+        if (!sfxDictionary.TryGetValue(soundName, out SoundGroup group) || group == null || group.fmodEvent.IsNull) return;
+        EventInstance inst = RuntimeManager.CreateInstance(group.fmodEvent);
+        if (!inst.isValid()) return;
+        RuntimeManager.AttachInstanceToGameObject(inst, source, source.GetComponent<Rigidbody>());
+        inst.start();
+        inst.release();   // released once it finishes playing (non-looping event)
+    }
+
     // Create a tracked EventInstance and start it 3D at `position`. Returns
     // a handle the caller keeps around for StopLoopingSFX. Suitable for
     // build hammers, ambient loops, chopping SFX etc. — anything that

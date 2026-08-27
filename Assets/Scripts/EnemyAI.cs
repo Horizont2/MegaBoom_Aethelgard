@@ -1040,7 +1040,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (AudioManager.Instance != null && Time.time - lastAttackSfxTime > ATTACK_SFX_COOLDOWN)
             {
                 lastAttackSfxTime = Time.time;
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, transform.position);
+                AudioManager.Instance.PlaySFX3DAttached(AudioID.Enemy_Attack, transform);
             }
         }
         yield return new WaitForSeconds(0.2f);
@@ -1081,7 +1081,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Landed-hit impact SFX. Enemy_Hit is the meaty thud; the
             // player's own Hurt SFX plays inside TakeDamage.
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Hit, transform.position);
+                AudioManager.Instance.PlaySFX3DAttached(AudioID.Enemy_Hit, transform);
         }
     }
 
@@ -1106,7 +1106,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         targetHealthRatio = currentHealth / maxHealth;
         // -------------------------------------------------------------
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Hurt, transform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3DAttached(AudioID.Enemy_Hurt, transform);
         StartCoroutine(HitFlashRoutine());
 
         bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
