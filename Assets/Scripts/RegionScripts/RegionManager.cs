@@ -629,8 +629,11 @@ public class RegionManager : MonoBehaviour
 
         // Sweep the curse off the land: blighted trees bloom outward from the
         // totem over the flight, so the camera literally flies over the wave of
-        // life returning. Radius covers the whole map from the totem.
-        CursedTree.BeginWorldBloom(totemPos, flightDur, mapScale * 1.3f);
+        // life returning. Radius must reach the FARTHEST tree from the totem —
+        // a totem placed off-centre sits up to ~1.4x mapScale from the opposite
+        // corner, so 1.3x left far trees stuck as dead husks ("blooms only near
+        // the totem, empty/dead further out"). 2.0x guarantees full coverage.
+        CursedTree.BeginWorldBloom(totemPos, flightDur, mapScale * 2.0f);
 
         float elapsed = 0f;
         float camY = 0f; bool camYInit = false;   // smoothed altitude
