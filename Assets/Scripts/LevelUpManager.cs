@@ -44,8 +44,6 @@ public class LevelUpManager : MonoBehaviour
     public GameObject playerUpgradeVFXPrefab;
 
     private PlayerController player;
-    private HammerDamage hammer;
-    private WeaponOrbit weaponOrbit;
 
     private UpgradeData[] currentOptions = new UpgradeData[3];
 
@@ -59,8 +57,6 @@ public class LevelUpManager : MonoBehaviour
     private void Start()
     {
         player = FindFirstObjectByType<PlayerController>();
-        hammer = FindFirstObjectByType<HammerDamage>();
-        weaponOrbit = FindFirstObjectByType<WeaponOrbit>();
         levelUpPanel.SetActive(false);
 
         if (randomButton != null) randomButton.onClick.AddListener(OnRandomClicked);
@@ -259,7 +255,6 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeType.Speed: player.moveSpeed += upgrade.amount; break;
             case UpgradeType.Damage:
                 if (player != null) player.globalDamageMultiplier += (upgrade.amount / 100f);
-                if (hammer != null) hammer.baseDamage += upgrade.amount;
                 break;
             case UpgradeType.PickupRadius: if (player != null) player.pickupRadius += upgrade.amount; break;
             case UpgradeType.AttackSpeed:

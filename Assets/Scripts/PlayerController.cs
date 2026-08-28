@@ -1972,9 +1972,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         RunStats.Add(RunStats.Stat.DeathsCount);
         RunSession.End();
 
-        WeaponOrbit weapon = FindFirstObjectByType<WeaponOrbit>();
-        if (weapon != null) weapon.gameObject.SetActive(false);
-
         isControlBlocked = true;
         if (characterController != null) characterController.enabled = false;
 
