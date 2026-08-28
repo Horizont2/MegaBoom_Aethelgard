@@ -170,10 +170,14 @@ public class MercenaryCampaignManager : MonoBehaviour
 
     private void ResolveCampaign(MercenaryCampaign c)
     {
-        c.resolved = true;
-
+        // Don't flag resolved until we actually have the roster to run the
+        // battle math. Setting it first meant a momentary null roster locked the
+        // campaign in as an un-winnable default loss (won=false, 0 reward) that
+        // could never re-resolve. Retry next tick instead.
         if (MercenaryRoster.Instance == null) return;
         var roster = MercenaryRoster.Instance;
+
+        c.resolved = true;
 
         // Assemble the live instance list for the battle math.
         var armyInstances = new List<MercenaryUnitInstance>();

@@ -64,25 +64,32 @@ public class MissionManager : MonoBehaviour
     {
         for (int i = activeMissions.Count - 1; i >= 0; i--)
         {
-            if (activeMissions[i].isCompleted || activeMissions[i].currentProgress >= activeMissions[i].targetAmount)
-            {
-                if (ResourceManager.Instance != null)
-                {
-                    ResourceManager.Instance.AddStashResources(
-                        activeMissions[i].data.woodReward,
-                        activeMissions[i].data.stoneReward,
-                        activeMissions[i].data.foodReward
-                    );
-                    ResourceManager.Instance.diamonds += activeMissions[i].data.diamondReward;
-                    ResourceManager.Instance.UpdateUI();
-                }
+            if (!(activeMissions[i].isCompleted || activeMissions[i].currentProgress >= activeMissions[i].targetAmount))
+                continue;
 
-                if (activeMissions[i].uiElement != null)
-                {
-                    Destroy(activeMissions[i].uiElement.gameObject);
-                }
-                activeMissions.RemoveAt(i);
+            // Don't consume a completed mission until we can actually PAY it. If
+            // the ResourceManager isn't up yet (a scene-init race), leaving it in
+            // the list retries next camp load — the old code deleted + persisted
+            // the deletion here, silently swallowing the reward.
+            if (ResourceManager.Instance == null) continue;
+
+            ResourceManager.Instance.AddStashResources(
+                activeMissions[i].data.woodReward,
+                activeMissions[i].data.stoneReward,
+                activeMissions[i].data.foodReward
+            );
+            // AddDiamonds (not a raw `diamonds +=`) so the reward is SAVED
+            // immediately and the toast/achievement fire. The raw increment
+            // only lived in memory + the HUD and was lost if the player quit
+            // before the next resource event triggered a stash save.
+            ResourceManager.Instance.AddDiamonds(activeMissions[i].data.diamondReward);
+            ResourceManager.Instance.UpdateUI();
+
+            if (activeMissions[i].uiElement != null)
+            {
+                Destroy(activeMissions[i].uiElement.gameObject);
             }
+            activeMissions.RemoveAt(i);
         }
         SaveMissions();
     }
