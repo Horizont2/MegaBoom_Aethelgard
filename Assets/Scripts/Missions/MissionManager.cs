@@ -151,8 +151,15 @@ public class MissionManager : MonoBehaviour
         }
     }
 
+    // Max simultaneously-active missions. The Notice Board sizes its paper
+    // count to (cap - active) so this is normally never hit; it's a guard so a
+    // future flow / race can't overflow the 3-slot active-mission HUD.
+    public const int MaxActiveMissions = 3;
+
     public void AddNewMission(MissionData data, int targetAmount)
     {
+        if (activeMissions.Count >= MaxActiveMissions) return;
+
         ActiveMission newMission = new ActiveMission
         {
             data = data,

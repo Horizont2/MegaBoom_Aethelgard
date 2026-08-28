@@ -171,10 +171,13 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (!needsRestock)
         {
-            DateTime lastRestock;
-            if (DateTime.TryParse(lastRestockStr, out lastRestock))
+            // UTC binary timestamp (culture/DST-invariant) instead of the old
+            // DateTime.Now.ToString()/TryParse, which could fail to parse across
+            // a locale change. A parse failure just forces a restock (safe).
+            if (long.TryParse(lastRestockStr, out long lastBin))
             {
-                if ((DateTime.Now - lastRestock).TotalMinutes >= restockTimeMinutes)
+                DateTime lastRestock = DateTime.FromBinary(lastBin);
+                if ((DateTime.UtcNow - lastRestock).TotalMinutes >= restockTimeMinutes)
                     needsRestock = true;
             }
             else
@@ -189,7 +192,7 @@ public class NoticeBoardManager : MonoBehaviour
             currentActiveMissions = MissionManager.Instance.GetActiveMissionCount();
         }
 
-        if (currentActiveMissions >= 3)
+        if (currentActiveMissions >= MissionManager.MaxActiveMissions)
         {
             needsRestock = false;
 
@@ -211,8 +214,8 @@ public class NoticeBoardManager : MonoBehaviour
 
         if (needsRestock)
         {
-            GenerateNewMissions(3 - currentActiveMissions); // ����������� ������� 1-3 �� ��� �������
-            PlayerPrefs.SetString("LastMissionRestockTime", DateTime.Now.ToString());
+            GenerateNewMissions(MissionManager.MaxActiveMissions - currentActiveMissions);
+            PlayerPrefs.SetString("LastMissionRestockTime", DateTime.UtcNow.ToBinary().ToString());
             PlayerPrefs.Save();
         }
 
@@ -264,11 +267,10 @@ public class NoticeBoardManager : MonoBehaviour
 
             paperUI.SetupPaper(scaledMission, 1f);
 
-            paperUI.acceptButton.onClick.AddListener(() =>
-            {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
-                UpdateEmptyMessage();
-            });
+            // NOTE: the accept SFX is played inside MissionPaperUI.AcceptMission —
+            // playing it here too double-fired the sound on every accept. This
+            // listener only refreshes the empty-board message.
+            paperUI.acceptButton.onClick.AddListener(UpdateEmptyMessage);
 
             activePapers.Add(paperObj);
         }
