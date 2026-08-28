@@ -572,6 +572,15 @@ public class PlayerController : MonoBehaviour, IDamageable
         TutorialHints.Instance.ShowIfNew("Move",
             "WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.");
 
+        // Teach the PRIMARY weapon upfront. The old flow only surfaced this the
+        // first time the player happened to press LMB, so a new player was told
+        // to dash and throw grenades but never that LMB is their main attack.
+        // Same "Attack" key AND identical string as the on-swing hint, so that
+        // one dedupes away and this reuses the existing localized entry.
+        yield return new WaitForSecondsRealtime(4f);
+        TutorialHints.Instance.ShowIfNew("Attack",
+            "Hold <b>LMB</b> to chain melee swings. Killing enemies grows the STACK — every 15 stacks adds a damage multiplier.", 6f);
+
         if (grenadePrefab != null)
         {
             yield return new WaitForSecondsRealtime(8f);
