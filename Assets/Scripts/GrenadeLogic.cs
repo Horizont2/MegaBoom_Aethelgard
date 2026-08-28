@@ -169,8 +169,18 @@ public class GrenadeLogic : MonoBehaviour
 
     private IEnumerator HitStopRoutine(float duration)
     {
+        // Don't hit-stop over a slow-mo that a higher-priority system owns
+        // (grenade-aim 0.25x, perfect-dodge bullet-time, a level-up menu at 0,
+        // or the pause menu) — forcing 0.05 then snapping back to 1 broke those.
+        if (LevelUpManager.IsMenuOpen || Time.timeScale < 0.9f) yield break;
+
         Time.timeScale = 0.05f;
+        // Failsafe: a scene change / object destroy during the realtime wait
+        // must not strand the game in slow-mo.
+        CinematicTimeGuard.Arm(duration + 0.5f);
         yield return new WaitForSecondsRealtime(duration);
-        Time.timeScale = 1f;
+        // Only restore if we're still the one holding time (nothing else took
+        // over during the wait).
+        if (Time.timeScale <= 0.06f) Time.timeScale = 1f;
     }
 }
