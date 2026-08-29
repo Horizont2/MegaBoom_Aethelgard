@@ -26,10 +26,13 @@ MonoBehaviour:
   recommendedPower: 560
   enemyHpMultiplier: 2.55
   enemyDamageMultiplier: 1.65
+  combatMode: 0
   enemyStrength: 640
   autoBattleDiamondReward: 210
   regionTotemPrefab: {fileID: 0}
+  locationYOffset: 0
   regionBossPrefabs: []
+  extraCaptureLocations: 2
   woodReward: 150
   stoneReward: 250
   foodReward: 90

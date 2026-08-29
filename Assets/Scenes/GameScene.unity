@@ -1984,9 +1984,9 @@ MonoBehaviour:
   desertRockColor: {r: 0.5471698, g: 0.41472098, b: 0.2756497, a: 1}
   snowRockColor: {r: 0.6509804, g: 0.7176471, b: 0.7882353, a: 1}
   spawnAttempts: 40000
-  maxTrees: 2000
-  maxBushesAndMushroom: 800
-  maxRocks: 500
+  maxTrees: 2500
+  maxBushesAndMushroom: 600
+  maxRocks: 400
   clusterScale: 12
   forestThreshold: 0.43
   globalBiomeScale: 2.5
@@ -2073,8 +2073,8 @@ MonoBehaviour:
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
   extractionCartsAmount: 10
   cartClearanceRadius: 8
-  maxGiantTrees: 45
-  giantTreeMinSpacing: 28
+  maxGiantTrees: 40
+  giantTreeMinSpacing: 30
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -2561,6 +2561,7 @@ MonoBehaviour:
   firefliesVFX: {fileID: 0}
   rainVFX: {fileID: 919215059}
   godRaysObject: {fileID: 3332198111309508980, guid: 99ebe2175175c9444bfe4b2a8b2a2023, type: 3}
+  enableGodRays: 0
   godRayMaxScale: 1
   snowVFX: {fileID: 316599055}
   dustVFX: {fileID: 0}

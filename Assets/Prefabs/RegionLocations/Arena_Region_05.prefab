@@ -569,6 +569,7 @@ MonoBehaviour:
   currentRegion: {fileID: 0}
   totems:
   - {fileID: 7882417276447952253}
+  - {fileID: 5406885986885823110}
   corruptionTransferVFX: {fileID: 4229356196763746463}
 --- !u!65 &3189647685470779105
 BoxCollider:
@@ -604,7 +605,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 30
-  yOffset: 0
+  yOffset: -0.5
   maxAllowedSlope: 6
 --- !u!1 &569042821557284962
 GameObject:

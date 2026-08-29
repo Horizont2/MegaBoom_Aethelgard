@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1536
     height: 780.8
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Project
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -5945,18 +5945,8 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -560314
-      - m_Data: -493214
-      - m_Data: -486050
-      - m_Data: -482022
-      - m_Data: -481570
-      - m_Data: -471586
-      - m_Data: -464890
-      - m_Data: -401180
-      - m_Data: -325652
-      - m_Data: -319132
-      - m_Data: -319092
-      - m_Data: -311360
+      - m_Data: -214334
+      - m_Data: -100602
       - m_Data: -1340
       m_RenameOverlay:
         m_UserAcceptedRename: 0
@@ -6578,9 +6568,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 49.182007, y: 12.533955, z: 20.44927}
+    m_Target: {x: 15.327275, y: 10.530843, z: 3.0151713}
     speed: 2
-    m_Value: {x: 49.182007, y: 12.533955, z: 20.44927}
+    m_Value: {x: 15.327275, y: 10.530843, z: 3.0151713}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -6626,20 +6616,20 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.482
   m_Rotation:
-    m_Target: {x: -0.06450226, y: 0.89594185, z: -0.14010584, w: -0.41733238}
+    m_Target: {x: 0.14927621, y: 0.45051077, z: -0.07548376, w: 0.8773497}
     speed: 2
-    m_Value: {x: -0.064480714, y: 0.8956426, z: -0.14005904, w: -0.41719297}
+    m_Value: {x: 0.1492762, y: 0.45051074, z: -0.075483754, w: 0.8773497}
   m_Size:
-    m_Target: 22.07748
+    m_Target: 12.0180855
     speed: 2
-    m_Value: 22.07748
+    m_Value: 12.0180855
   m_Ortho:
     m_Target: 0
     speed: 2
     m_Value: 0
   m_CameraSettings:
-    m_Speed: 0.22889991
-    m_SpeedNormalized: 0.109999955
+    m_Speed: 0.16919991
+    m_SpeedNormalized: 0.07999995
     m_SpeedMin: 0.01
     m_SpeedMax: 2
     m_EasingEnabled: 1
@@ -6793,7 +6783,7 @@ MonoBehaviour:
     x: 408
     y: 79.200005
     width: 760.4
-    height: 455.6
+    height: 451.6
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -6816,6 +6806,7 @@ MonoBehaviour:
     - {fileID: 4247269102335453819, guid: 7e48ee291c5fb8b43aa066119b1dd8e6, type: 2}
     - {fileID: 5902009867275855547, guid: 8b8981fa55ba56a4592f1400923b80c1, type: 2}
     - {fileID: 1107084109463549506, guid: 529b61144c97e3e4f92f4a56a5defdc5, type: 2}
+    - {fileID: -3284292782727719581, guid: fecf6d756e0aaae41ada7c746eed59b9, type: 2}
     m_ValueSerializationHelper:
     - e00: 1
       e01: 0
@@ -6881,14 +6872,14 @@ MonoBehaviour:
       e31: 0
       e32: 0
       e33: 1
-    - e00: 0.5481905
+    - e00: 0.6596369
       e01: 0
       e02: 0
-      e03: -71.609535
+      e03: -96.84729
       e10: 0
-      e11: 0.5481905
+      e11: 0.6596369
       e12: 0
-      e13: 80.66286
+      e13: 152.99164
       e20: 0
       e21: 0
       e22: 1
@@ -6921,6 +6912,22 @@ MonoBehaviour:
       e11: 0.6058947
       e12: 0
       e13: 150.84001
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    - e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
       e20: 0
       e21: 0
       e22: 1
@@ -7462,10 +7469,10 @@ MonoBehaviour:
     m_TextWithWhitespace: "Timeline\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 336.80002
-    y: 86.4
-    width: 818
-    height: 442.8
+    x: 408
+    y: 79.200005
+    width: 760.4
+    height: 451.6
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -21650,7 +21657,7 @@ MonoBehaviour:
   m_StartGridSize: 16
   m_LastFolders: []
   m_LastFoldersGridSize: 16
-  m_LastProjectPath: D:\Hollow Siege\Hollow Siege
+  m_LastProjectPath: D:\Hollow_Siege\MegaBoom_Aethelgard
   m_LockTracker:
     m_IsLocked: 0
   m_LastLocalAssetsSearchArea: 0
@@ -21660,7 +21667,43 @@ MonoBehaviour:
     - m_Data: 1000000000
     m_LastClickedID:
       m_Data: 1000000000
-    m_ExpandedIDs: []
+    m_ExpandedIDs:
+    - m_Data: 0
+    - m_Data: 71164
+    - m_Data: 161248
+    - m_Data: 161250
+    - m_Data: 161252
+    - m_Data: 161254
+    - m_Data: 161256
+    - m_Data: 161258
+    - m_Data: 161260
+    - m_Data: 161262
+    - m_Data: 161264
+    - m_Data: 161266
+    - m_Data: 161268
+    - m_Data: 161270
+    - m_Data: 161272
+    - m_Data: 161274
+    - m_Data: 161276
+    - m_Data: 161278
+    - m_Data: 161280
+    - m_Data: 161282
+    - m_Data: 161284
+    - m_Data: 161286
+    - m_Data: 161288
+    - m_Data: 161290
+    - m_Data: 161292
+    - m_Data: 161294
+    - m_Data: 161296
+    - m_Data: 161298
+    - m_Data: 161300
+    - m_Data: 161302
+    - m_Data: 161304
+    - m_Data: 161306
+    - m_Data: 161308
+    - m_Data: 161310
+    - m_Data: 161312
+    - m_Data: 161314
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -21687,12 +21730,48 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_AssetTreeState:
-    scrollPos: {x: 0, y: 5380}
+    scrollPos: {x: 0, y: 4956.8}
     m_SelectedIDs:
-    - m_Data: 324578
+    - m_Data: 161342
     m_LastClickedID:
-      m_Data: 0
-    m_ExpandedIDs: []
+      m_Data: 161342
+    m_ExpandedIDs:
+    - m_Data: 0
+    - m_Data: 71164
+    - m_Data: 161248
+    - m_Data: 161250
+    - m_Data: 161252
+    - m_Data: 161254
+    - m_Data: 161256
+    - m_Data: 161258
+    - m_Data: 161260
+    - m_Data: 161262
+    - m_Data: 161264
+    - m_Data: 161266
+    - m_Data: 161268
+    - m_Data: 161270
+    - m_Data: 161272
+    - m_Data: 161274
+    - m_Data: 161276
+    - m_Data: 161278
+    - m_Data: 161280
+    - m_Data: 161282
+    - m_Data: 161284
+    - m_Data: 161286
+    - m_Data: 161288
+    - m_Data: 161290
+    - m_Data: 161292
+    - m_Data: 161294
+    - m_Data: 161296
+    - m_Data: 161298
+    - m_Data: 161300
+    - m_Data: 161302
+    - m_Data: 161304
+    - m_Data: 161306
+    - m_Data: 161308
+    - m_Data: 161310
+    - m_Data: 161312
+    - m_Data: 161314
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -21720,9 +21799,9 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 324578
-    m_LastClickedInstanceID: 324578
-    m_HadKeyboardFocusLastEvent: 1
+    - m_Data: 161342
+    m_LastClickedInstanceID: 161342
+    m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs: []
     m_RenameOverlay:
       m_UserAcceptedRename: 0

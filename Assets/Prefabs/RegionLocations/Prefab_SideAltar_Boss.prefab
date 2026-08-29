@@ -276,9 +276,16 @@ MonoBehaviour:
   mediumCount: 5
   elitePrefabs: []
   eliteCount: 2
+  useEncounterTemplates: 0
+  encounterTemplates: []
+  autoGenerateEncounters: 1
   isStandalone: 1
   standaloneBossPrefabs:
   - {fileID: 4198843849923204017, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
+  - {fileID: 2058852120935944091, guid: 566386cdff57847489df448d42981283, type: 3}
+  - {fileID: 4104418599950814217, guid: 66ac95c89d91db94caea8c58efb64a67, type: 3}
+  standaloneDiamondReward: 25
+  standaloneXpReward: 40
   idleCorruptionVFX: {fileID: 0}
   activationShieldVFX: {fileID: 3875980039661069206}
   skyBeamVFX: {fileID: 0}
@@ -286,8 +293,24 @@ MonoBehaviour:
   totemLight: {fileID: 8542393827051368362}
   interactHintVFX: {fileID: 7804419093611733746}
   interactionRadius: 3
+  useRaidCapture: 1
+  anchorCount: 3
+  anchorPrefab: {fileID: 0}
+  anchorRadius: 13
+  anchorHealth: 120
+  anchorGuardPrefabs: []
+  guardsPerAnchor: 3
+  purifyDuration: 32
+  reinforceInterval: 6.5
+  reinforcementPrefabs: []
+  allyPrefab: {fileID: 0}
+  healWorldOnCapture: 1
+  purifyBurstVFX: {fileID: 0}
+  healedFogColor: {r: 0.62, g: 0.72, b: 0.82, a: 1}
+  healedFogDensityMult: 0.45
   isPurified: 0
   isActivated: 0
+  preGateApproachRadius: 32
 --- !u!65 &9167530096657656755
 BoxCollider:
   m_ObjectHideFlags: 0

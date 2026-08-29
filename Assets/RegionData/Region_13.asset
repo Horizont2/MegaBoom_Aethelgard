@@ -33,7 +33,7 @@ MonoBehaviour:
   locationYOffset: 0
   regionBossPrefabs:
   - {fileID: 8299824053145540121, guid: 566386cdff57847489df448d42981283, type: 3}
-  extraCaptureLocations: 0
+  extraCaptureLocations: 2
   woodReward: 200
   stoneReward: 200
   foodReward: 180

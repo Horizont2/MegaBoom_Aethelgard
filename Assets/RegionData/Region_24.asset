@@ -18,15 +18,20 @@ MonoBehaviour:
     are legendary.
   regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   regionBiome: 2
-  currentState: 0
+  currentState: 1
   neighboringRegions:
   - {fileID: 11400000, guid: bae9a5a11c486674db6414bef83be796, type: 2}
   isNewlyUnlocked: 0
   recommendedPower: 1250
-  enemyHpMultiplier: 8.0
+  enemyHpMultiplier: 8
   enemyDamageMultiplier: 3.5
+  combatMode: 0
   enemyStrength: 4500
   autoBattleDiamondReward: 2500
+  regionTotemPrefab: {fileID: 8880581433793355739, guid: b02c650d96056eb429ab005ac44abf35, type: 3}
+  locationYOffset: 0
+  regionBossPrefabs: []
+  extraCaptureLocations: 3
   woodReward: 1000
   stoneReward: 1000
   foodReward: 1000

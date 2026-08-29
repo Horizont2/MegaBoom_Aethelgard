@@ -34,11 +34,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       propertyPath: m_LocalRotation.y
@@ -50,7 +50,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -157,6 +157,8 @@ MonoBehaviour:
   animator: {fileID: 0}
   lights: []
   particles: []
+  colliders: []
+  disableCollidersWhenHidden: 1
   isCurrentlyVisible: 1
 --- !u!114 &-1484115480546254251
 MonoBehaviour:

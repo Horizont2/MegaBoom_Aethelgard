@@ -553,7 +553,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 30
-  yOffset: 0
+  yOffset: -0.5
   maxAllowedSlope: 6
 --- !u!1001 &676317513453284647
 PrefabInstance:
