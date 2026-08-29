@@ -14324,6 +14324,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CampEconomyManager
   resourceTickInterval: 60
+  maxOfflineHours: 8
 --- !u!114 &128465378
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122449,6 +122450,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DynamicWind
   minWindWaitTime: 150
   maxWindWaitTime: 300
+  publishGlobalWind: 1
+  driveParticles: 1
 --- !u!182 &1309710268
 WindZone:
   m_ObjectHideFlags: 0
@@ -198319,6 +198322,34 @@ PrefabInstance:
       value: -80.652
       objectReference: {fileID: 0}
     - target: {fileID: 809571974800134349, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495020404488391710, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}

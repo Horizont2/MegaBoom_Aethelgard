@@ -10040,13 +10040,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2513957815891165487}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.6088018, y: 0.39310732, z: 0.5297539, w: 0.4406676}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.032932024, y: 0.07904182, z: 0.01193938}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1371421792622735486}
-  m_LocalEulerAnglesHint: {x: 173.105, y: -87.09302, z: -72.25598}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2517586837712548169
 GameObject:
   m_ObjectHideFlags: 0
@@ -12108,6 +12108,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   isCampMode: 1
   isControlBlocked: 0
+  isCinematicInvincible: 0
   weaponPrefabs:
   - {fileID: 919132149155446097, guid: 1b7c5ebd1e164cc4cb2698c1f9995749, type: 3}
   - {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
@@ -12165,6 +12166,13 @@ MonoBehaviour:
   globalDamageMultiplier: 1
   globalCritChance: 0.05
   damageReduction: 0
+  critDamageMultiplier: 2.5
+  lifeStealFraction: 0
+  dodgeChance: 0
+  thornDamageFraction: 0
+  killHealAmount: 0
+  xpGainMultiplier: 1
+  diamondBonusMultiplier: 1
   stackRadius: 12
   stackText: {fileID: 0}
   criticalDamagePerSec: 5
