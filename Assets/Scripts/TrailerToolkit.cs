@@ -64,7 +64,14 @@ public class TrailerToolkit : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F9)) KillAllEnemies();
         if (Input.GetKeyDown(KeyCode.F12)) showHelp = !showHelp;
 
-        if (freeCam) DriveFreeCam();
+        // Authored self-running cinematic shots (auto camera + staging).
+        if (Input.GetKeyDown(KeyCode.Alpha1)) CinematicSequencer.Play("hero");
+        if (Input.GetKeyDown(KeyCode.Alpha2)) CinematicSequencer.Play("encircle");
+        if (Input.GetKeyDown(KeyCode.Alpha3)) CinematicSequencer.Play("orbit");
+        if (Input.GetKeyDown(KeyCode.Alpha4)) CinematicSequencer.Play("crane");
+
+        // Don't fight a running authored sequence for the camera.
+        if (freeCam && !CinematicSequencer.IsPlaying) DriveFreeCam();
     }
 
     // ---------------- Free-fly camera ----------------
@@ -214,8 +221,9 @@ public class TrailerToolkit : MonoBehaviour
             $"F5 time of day: {todIndex switch { 0 => "dawn", 1 => "noon", 2 => "dusk", _ => "night" }}\n" +
             $"F6 weather: {(WeatherState)weatherIndex}\n" +
             "F7 victory cinematic\n" +
-            $"F8 freeze enemies: {(EnemyAI.GlobalFreeze ? "FROZEN" : "off")}";
-        GUI.Label(new Rect(12, 12, 360, 190), s, helpStyle);
+            $"F8 freeze enemies: {(EnemyAI.GlobalFreeze ? "FROZEN" : "off")}\n" +
+            "<b>Auto shots:</b> 1 hero · 2 encircle · 3 orbit · 4 crane";
+        GUI.Label(new Rect(12, 12, 380, 210), s, helpStyle);
     }
 }
 #endif
