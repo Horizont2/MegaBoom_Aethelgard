@@ -24,8 +24,9 @@ public class AutoTrailerDirector : MonoBehaviour
     private float titleAlpha;
     private string titleMain = "AETHELGARD";
     private string titleSub  = "Cleanse the cursed land";
-    private GUIStyle mainStyle, subStyle;
+    private GUIStyle mainStyle, subStyle, stackStyle;
     private Texture2D solid;
+    private bool showStack;
 
     public static void Play()
     {
@@ -76,15 +77,22 @@ public class AutoTrailerDirector : MonoBehaviour
 
         // ===== BEAT 2 — become the storm (STACK typhoon) =====
         EnemyAI.GlobalFreeze = true;
-        SpawnRing(30, 4.5f, 9f);
-        var elite = SpawnRing(1, 3.5f, 3.5f);      // one big "boss-ish" elite in the mix
-        if (elite != null) { elite.transform.localScale *= 2.2f; var ea = elite.GetComponent<EnemyAI>(); if (ea != null) ea.maxHealth *= 6f; }
-        // pose on the frozen crowd
-        yield return Orbit(hero, 1.4f, 7f, 30f, 70f, 3.2f, 1.4f, 52f, false);
+        SpawnRing(30, 4.5f, 9f);                                              // varied crowd (round-robin types)
+        yield return Orbit(hero, 1.4f, 7f, 30f, 70f, 3.2f, 1.4f, 52f, false); // pose on the frozen crowd
         EnemyAI.GlobalFreeze = false;
         if (dnc != null) dnc.ForceWeather(WeatherState.Clear);
-        // the fight — hero auto-swings, STACK climbs to x5, crowd shatters
-        yield return Orbit(hero, 9f, 6.5f, 70f, 430f, 2.8f, 1.35f, 55f, true);
+        showStack = true;                                                    // stylised on-screen STACK counter
+        yield return Orbit(hero, 4.5f, 6.5f, 70f, 250f, 2.8f, 1.35f, 55f, true);
+        StartCoroutine(SlowMoPulse(0.35f, 0.9f));                            // punch the x5 peak
+        yield return Orbit(hero, 4.0f, 5.5f, 250f, 430f, 2.4f, 1.3f, 52f, true);
+        showStack = false;
+
+        // ===== BEAT 2b — the boss (big elite + low-angle slow-mo execution) =====
+        var boss = SpawnRing(1, 4f, 4f);
+        if (boss != null) { boss.transform.localScale *= 2.5f; var ba = boss.GetComponent<EnemyAI>(); if (ba != null) ba.maxHealth *= 2.5f; }
+        yield return Orbit(hero, 3.5f, 4.5f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // low, tense
+        StartCoroutine(SlowMoPulse(0.2f, 1.2f));                                // execution slow-mo
+        yield return Orbit(hero, 1.6f, 3.5f, 150f, 200f, 1.3f, 1.6f, 40f, true);
 
         // ===== BEAT 3 — the curse lifts (victory reveal) + title over it =====
         // The victory cinematic OWNS Camera.main (bird-flight reveal, bloom) and
@@ -97,8 +105,8 @@ public class AutoTrailerDirector : MonoBehaviour
             if (follow != null) follow.enabled = true;   // cinematic sets isCinematicMode; it yields
             rm.DebugTriggerVictoryCinematic();
 
-            // Fly the reveal for a beat, then bring up the game title over it.
-            yield return new WaitForSecondsRealtime(15f);
+            // Fly the reveal to its bloom peak, then bring up the game title.
+            yield return new WaitForSecondsRealtime(10f);
             titleMain = LocalizationManager.Tr("AETHELGARD");
             titleSub  = LocalizationManager.Tr("Cleanse the cursed land");
             float ft = 0f;
@@ -144,6 +152,15 @@ public class AutoTrailerDirector : MonoBehaviour
         }
     }
 
+    private IEnumerator SlowMoPulse(float scale, float dur)
+    {
+        Time.timeScale = scale;
+        Time.fixedDeltaTime = 0.02f * Mathf.Max(0.01f, scale);
+        yield return new WaitForSecondsRealtime(dur);
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+    }
+
     private float nextSwing;
     private void DriveHero()
     {
@@ -174,7 +191,9 @@ public class AutoTrailerDirector : MonoBehaviour
             Vector3 p = hero.position + dir * r;
             if (Physics.Raycast(p + Vector3.up * 14f, Vector3.down, out var hit, 40f)) p.y = hit.point.y;
             else if (Terrain.activeTerrain != null) p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
-            last = Instantiate(prefabs[Random.Range(0, prefabs.Count)], p, Quaternion.LookRotation(-dir));
+            // Round-robin through the distinct enemy types so the crowd reads as
+            // VARIED (skeletons, archers, brutes, ...) instead of 30 clones.
+            last = Instantiate(prefabs[i % prefabs.Count], p, Quaternion.LookRotation(-dir));
         }
         return last;
     }
@@ -205,6 +224,24 @@ public class AutoTrailerDirector : MonoBehaviour
 
     private void OnGUI()
     {
+        // Stylised STACK hook — a big multiplier readout during the typhoon so
+        // the game's signature mechanic is visible without the full cluttered HUD.
+        if (showStack && player != null && player.currentMultiplier > 1)
+        {
+            if (stackStyle == null)
+            {
+                stackStyle = new GUIStyle { alignment = TextAnchor.UpperCenter, fontStyle = FontStyle.Bold, richText = true,
+                    fontSize = Mathf.RoundToInt(Screen.height * 0.075f) };
+            }
+            Color c = player.currentMultiplier >= 5 ? new Color(1f, 0.35f, 0.25f)
+                    : player.currentMultiplier >= 4 ? new Color(1f, 0.75f, 0.2f)
+                    : new Color(1f, 0.95f, 0.6f);
+            stackStyle.normal.textColor = c;
+            float pulse = 1f + 0.05f * Mathf.Sin(Time.unscaledTime * 8f);
+            var r = new Rect(0, Screen.height * (0.10f / pulse), Screen.width, Screen.height * 0.2f);
+            GUI.Label(r, $"STACK ×{player.currentMultiplier}", stackStyle);
+        }
+
         if (titleAlpha <= 0.001f) return;
         if (solid == null) { solid = new Texture2D(1, 1); solid.SetPixel(0, 0, Color.white); solid.Apply(); }
         if (mainStyle == null)
