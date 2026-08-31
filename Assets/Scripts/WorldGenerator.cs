@@ -3274,12 +3274,15 @@ public class WorldGenerator : MonoBehaviour
         // altar / caged-ally cluster around the rim — the player never saw one
         // mid-map). The remaining share is filled by the interior random-spline
         // pass below, spreading the encounters across the whole terrain.
-        // Was halved (*0.5) which, together with the low quotas, meant the
-        // natural dead-end pass placed at most ~1 of each and the rest leaned on
-        // the heavily-guarded interior fallback — so on many maps 0 events
-        // showed. Allow the dead-end pass to place up to ~75% of the quota.
-        int deadEndAltarCap = Mathf.Max(1, Mathf.CeilToInt(altarsAmount * 0.75f));
-        int deadEndCagedCap = Mathf.Max(1, Mathf.CeilToInt(maxCagedAllies * 0.75f));
+        // Dead-ends sit at the MAP BORDER, so anything placed here reads as an
+        // "edge-only" event the player rarely reaches. Cap the edge pass at ONE
+        // of each type and let the interior fallback place the rest along
+        // mid-map road stretches — that's where the player actually travels, and
+        // it's what makes caged-ally rescues (and their minimap markers) show up
+        // in play. (Higher quotas keep the overall count up; this only shifts
+        // WHERE they go.)
+        int deadEndAltarCap = 1;
+        int deadEndCagedCap = 1;
 
         // ДІАГНОСТИКА: Перевіряємо чи не порожній масив в Інспекторі
         if (!hasAltars)
