@@ -1758,6 +1758,29 @@ public class PlayerController : MonoBehaviour, IDamageable
         StartCoroutine(DashRoutine(d.normalized, false));
     }
 
+    // Trailer/cinematic: drive a run in a world direction (movement + run anim),
+    // so the auto-hero weaves through the fight instead of standing rooted.
+    public void TrailerRun(Vector3 worldDir, float speedFrac = 1f)
+    {
+        if (isDashing || isCampMode) return;
+        Vector3 d = worldDir; d.y = 0f;
+        if (d.sqrMagnitude < 0.0001f) return;
+        d.Normalize();
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(d), 0.2f);
+        if (characterController != null && characterController.enabled)
+        {
+            Vector3 move = d * (moveSpeed * speedFrac) + Vector3.down * 8f;   // +gravity so it hugs the ground
+            characterController.Move(move * Time.unscaledDeltaTime);
+        }
+        if (anim != null)
+        {
+            anim.SetFloat("Speed", moveSpeed * speedFrac);
+            anim.SetFloat("MoveZ", speedFrac);
+            anim.SetFloat("MoveX", 0f);
+            anim.SetBool("IsGrounded", true);
+        }
+    }
+
     // Trailer/cinematic: hurl a grenade at the nearest enemy on demand.
     public void TrailerThrowGrenade()
     {

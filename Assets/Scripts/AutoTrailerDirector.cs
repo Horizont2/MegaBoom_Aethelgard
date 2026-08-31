@@ -178,19 +178,38 @@ public class AutoTrailerDirector : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
     }
 
-    private float nextSwing, nextDash;
+    private float nextSwing, nextDash, nextReposition, runUntil;
+    private Vector3 combatAnchor, runTarget;
+    private bool anchorSet;
     private void DriveHero()
     {
         if (player == null || hero == null) return;
+        if (!anchorSet) { combatAnchor = hero.position; anchorSet = true; }
         float t = Time.unscaledTime;
-        if (t >= nextSwing) { player.TrailerAutoAttack(); nextSwing = t + 0.35f; }
-        // Periodic strafe-dash so the hero isn't rooted to one spot — reads as
-        // weaving through the crowd.
+
+        // Run phase: sprint to a nearby point (clean facing — no attacking while
+        // running, so the hero doesn't twitch between run-dir and enemy-dir).
+        if (t < runUntil)
+        {
+            player.TrailerRun(runTarget - hero.position, 0.75f);
+            return;
+        }
+
+        // Fight phase: swing at the nearest enemy + occasional dash.
+        if (t >= nextSwing) { player.TrailerAutoAttack(); nextSwing = t + 0.4f; }
         if (t >= nextDash)
         {
-            Vector3 dir = Quaternion.Euler(0f, Random.Range(70f, 290f), 0f) * hero.forward;
-            player.TrailerDash(dir);
-            nextDash = t + Random.Range(2.4f, 3.6f);
+            player.TrailerDash(Quaternion.Euler(0f, Random.Range(70f, 290f), 0f) * hero.forward);
+            nextDash = t + Random.Range(2.6f, 3.8f);
+        }
+        // Every few seconds, reposition with a short run to a fresh spot near the
+        // anchor so the hero weaves through the fight instead of standing rooted.
+        if (t >= nextReposition)
+        {
+            Vector2 c = Random.insideUnitCircle * 2.6f;
+            runTarget = combatAnchor + new Vector3(c.x, 0f, c.y);
+            runUntil = t + 0.8f;
+            nextReposition = t + Random.Range(3f, 4.5f);
         }
     }
 
