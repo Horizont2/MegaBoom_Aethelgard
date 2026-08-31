@@ -233,6 +233,18 @@ public class RegionManager : MonoBehaviour
         nextTotem.PlayCorruptionFlare();
     }
 
+    // Trailer/debug hook: fire the full victory purification cinematic on
+    // demand (used by TrailerToolkit) without having to clear every totem.
+    public void DebugTriggerVictoryCinematic()
+    {
+        if (_finalPurificationStarted) return;
+        _finalPurificationStarted = true;
+        Vector3 pos = transform.position;
+        if (totems != null && totems.Count > 0 && totems[totems.Count - 1] != null)
+            pos = totems[totems.Count - 1].transform.position;
+        StartCoroutine(FinalRegionPurificationRoutine(pos));
+    }
+
     private IEnumerator FinalRegionPurificationRoutine(Vector3 finalTotemPos)
     {
         // Lock down: stop random spawns + clean lingering bosses so nothing kills
