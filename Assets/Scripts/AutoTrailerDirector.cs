@@ -204,14 +204,18 @@ public class AutoTrailerDirector : MonoBehaviour
             float rad = Mathf.Max(16f, r * 1.5f), h = Mathf.Max(12f, r * 0.85f);
             yield return OrbitPoint(c, 9f, rad, 15f, 205f, h, 1.6f, 55f);
         }
-        // 2. The Notice Board — dolly in and open the missions.
+        // 2. The Notice Board — dolly in and open the missions. Force a restock
+        // first so fresh mission papers are actually on the board for the shot.
         var board = FindFirstObjectByType<NoticeBoardManager>();
         if (board != null)
         {
+            PlayerPrefs.DeleteKey("LastMissionRestockTime");   // encourage fresh papers
             yield return LookAt(board.transform.position, 3f, 4.5f, 2.2f, 42f);
             SetHUD(true);                 // the board is UI
             board.OpenBoard();
-            yield return new WaitForSecondsRealtime(4f);
+            yield return new WaitForSecondsRealtime(4.5f);
+            board.CloseBoard();           // MUST close, or it stays open under the map
+            yield return new WaitForSecondsRealtime(0.4f);
             SetHUD(false);
         }
         // 3. The region table — open the world map and hold on all the regions.
@@ -221,7 +225,9 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return LookAt(mapTable.transform.position, 3f, 4f, 1.8f, 42f);
             SetHUD(true);
             mapTable.TrailerOpenMap();
-            yield return new WaitForSecondsRealtime(6.5f);   // linger on the map / regions
+            yield return new WaitForSecondsRealtime(1f);
+            if (!mapTable.IsMapOpen) mapTable.TrailerOpenMap();   // retry once if it didn't take
+            yield return new WaitForSecondsRealtime(6f);          // linger on the map / regions
             mapTable.TrailerCloseMap();
             yield return new WaitForSecondsRealtime(1f);
         }

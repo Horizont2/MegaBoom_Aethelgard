@@ -1264,24 +1264,35 @@ public class ShopManager : MonoBehaviour
         if (isBought && upgradeButton != null)
         {
             upgradeButton.gameObject.SetActive(true);
+
+            // The upgrade COST wasn't appearing — the button just read "Upgrade".
+            // Write the price string to BOTH the dedicated price label AND the
+            // button's own visible text child, whichever the scene actually shows,
+            // so the cost is always on screen.
+            var btnLabel = upgradeButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (upgradePriceText == null) upgradePriceText = btnLabel;
+
+            string label;
+            Color col;
+            bool interactable;
             if (lvl < maxLvl)
             {
-                upgradePriceText.text = LocalizationManager.Tr("Upgrade for {0}", upgCost.ToString("N0"));
-                upgradePriceText.color = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
-                upgradeButton.interactable = (myDiamonds >= upgCost);
-
-                // Also hint the shortfall on the upgrade side (overwrites the
-                // buy hint if the item is owned but not equipped and unaffordable
-                // for upgrade). Owned + affordable upgrade = no hint.
+                label = LocalizationManager.Tr("Upgrade for {0}", upgCost.ToString("N0"));
+                col = (myDiamonds >= upgCost) ? textNormalColor : textErrorColor;
+                interactable = (myDiamonds >= upgCost);
                 if (myDiamonds < upgCost)
                     SetAffordabilityHint(LocalizationManager.Tr("SHOP_NEED_MORE_DIAMONDS", (upgCost - myDiamonds).ToString("N0")));
             }
             else
             {
-                upgradePriceText.text = LocalizationManager.Tr("MAX");
-                upgradePriceText.color = new Color(0.95f, 0.80f, 0.45f);
-                upgradeButton.interactable = false;
+                label = LocalizationManager.Tr("MAX");
+                col = new Color(0.95f, 0.80f, 0.45f);
+                interactable = false;
             }
+
+            if (upgradePriceText != null) { upgradePriceText.text = label; upgradePriceText.color = col; }
+            if (btnLabel != null && btnLabel != upgradePriceText) { btnLabel.text = label; btnLabel.color = col; }
+            upgradeButton.interactable = interactable;
         }
     }
 

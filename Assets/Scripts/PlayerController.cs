@@ -389,9 +389,12 @@ public class PlayerController : MonoBehaviour, IDamageable
             currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket);
             currentWeapon.transform.localPosition = Vector3.zero;
             currentWeapon.transform.localRotation = Quaternion.identity;
-            weaponTrail = currentWeapon.GetComponentInChildren<TrailRenderer>();
-            // Weapons ship without a trail — build a clean AAA one so swings read.
-            if (weaponTrail == null) weaponTrail = CreateWeaponTrail(currentWeapon);
+            // Disable any trail the prefab ships — several read as huge/curled.
+            // We always build our own consistent one so EVERY weapon matches the
+            // clean look of the default sword.
+            foreach (var shipped in currentWeapon.GetComponentsInChildren<TrailRenderer>())
+                if (shipped != null) { shipped.emitting = false; shipped.enabled = false; }
+            weaponTrail = CreateWeaponTrail(currentWeapon);
             if (weaponTrail != null) weaponTrail.emitting = false;
         }
     }
@@ -410,27 +413,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         // to weapon-local so it tracks the blade.
         var tip = new GameObject("BladeTrailPoint");
         tip.transform.SetParent(weapon.transform, false);
-        // Measure ONLY the solid blade mesh. The previous version used
-        // GetComponentsInChildren<Renderer>(), which also catches the weapon's
-        // particle/trail/glow renderers — their huge bounds flung the anchor far
-        // off the blade, giving the "enormous, curled" trail on some weapons.
-        Vector3 localTip = new Vector3(0f, 0.9f, 0f);
-        Bounds b = default; bool has = false;
-        foreach (var mr in weapon.GetComponentsInChildren<MeshRenderer>())
-        { if (mr == null) continue; if (!has) { b = mr.bounds; has = true; } else b.Encapsulate(mr.bounds); }
-        foreach (var smr in weapon.GetComponentsInChildren<SkinnedMeshRenderer>())
-        { if (smr == null) continue; if (!has) { b = smr.bounds; has = true; } else b.Encapsulate(smr.bounds); }
-        if (has)
-        {
-            Vector3 worldTip = new Vector3(b.center.x, b.max.y, b.center.z);
-            localTip = weapon.transform.InverseTransformPoint(worldTip);
-            // Clamp to a sane blade-tip window so an odd mesh can't blow the
-            // trail out to a giant arc.
-            localTip = new Vector3(Mathf.Clamp(localTip.x, -0.25f, 0.25f),
-                                   Mathf.Clamp(localTip.y, 0.45f, 1.4f),
-                                   Mathf.Clamp(localTip.z, -0.25f, 0.25f));
-        }
-        tip.transform.localPosition = localTip;
+        // Anchor at a FIXED ~0.85m up the blade in WORLD units, divided by the
+        // weapon's world scale so a large / long / scaled weapon can't blow the
+        // trail arc out. Measuring mesh bounds (previous attempts) ballooned the
+        // trail on bigger/scaled weapons; a fixed world offset gives every weapon
+        // the same tight, clean trail the default sword has.
+        float sy = Mathf.Max(0.01f, weapon.transform.lossyScale.y);
+        tip.transform.localPosition = new Vector3(0f, 0.85f / sy, 0f);
 
         var tr = tip.AddComponent<TrailRenderer>();
         tr.time = 0.11f;                       // tighter ribbon, no lingering curl
