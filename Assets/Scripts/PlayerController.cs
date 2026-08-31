@@ -403,10 +403,23 @@ public class PlayerController : MonoBehaviour, IDamageable
     private TrailRenderer CreateWeaponTrail(GameObject weapon)
     {
         if (weapon == null) return null;
-        // Anchor near the blade tip: most held weapons point up +Y from the hand.
+        // Anchor at the ACTUAL blade tip. The old code hardcoded 1m up +Y, which
+        // only fit the starter sword — longer/shorter bought weapons put the
+        // trail point off the blade, so their trail read as crooked. Measure the
+        // weapon's combined mesh bounds and anchor at the top-centre, converted
+        // to weapon-local so it tracks the blade.
         var tip = new GameObject("BladeTrailPoint");
         tip.transform.SetParent(weapon.transform, false);
-        tip.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+        Vector3 localTip = new Vector3(0f, 1.0f, 0f);
+        var rends = weapon.GetComponentsInChildren<Renderer>();
+        if (rends != null && rends.Length > 0)
+        {
+            Bounds b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+            Vector3 worldTip = new Vector3(b.center.x, b.max.y, b.center.z);
+            localTip = weapon.transform.InverseTransformPoint(worldTip);
+        }
+        tip.transform.localPosition = localTip;
 
         var tr = tip.AddComponent<TrailRenderer>();
         tr.time = 0.16f;                       // short — no lingering smear
