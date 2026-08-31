@@ -2652,8 +2652,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
-  flattenRadius: 60
-  yOffset: -0.5
+  flattenRadius: 30
+  yOffset: -2
   maxAllowedSlope: 5
 --- !u!114 &394392939311435686
 MonoBehaviour:

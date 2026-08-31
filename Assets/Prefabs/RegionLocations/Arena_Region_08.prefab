@@ -187,8 +187,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 68.06981, y: 17.632364, z: 31.691479}
-  m_Center: {x: -1.3078995, y: 9.508531, z: 1.9128399}
+  m_Size: {x: 68.06981, y: 18.273542, z: 31.691479}
+  m_Center: {x: -1.3078995, y: 9.187942, z: 1.9128399}
 --- !u!114 &1707654163893908810
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -217,8 +217,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dadd7e805a860b64f8442a9f9d11c47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
-  flattenRadius: 60
-  yOffset: -0.5
+  flattenRadius: 30
+  yOffset: -1
   maxAllowedSlope: 5
 --- !u!1001 &84382222804332051
 PrefabInstance:
