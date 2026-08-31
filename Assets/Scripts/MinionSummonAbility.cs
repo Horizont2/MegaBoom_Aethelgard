@@ -113,6 +113,7 @@ public class MinionSummonAbility : MonoBehaviour
         if (castVFX != null)
         {
             var cfx = Instantiate(castVFX, transform.position + Vector3.up * 0.1f, Quaternion.identity);
+            ShaderRepair.Fix(cfx);   // never let the cast aura render magenta
             cfx.AddComponent<VFXAutoFade>().Configure(2.5f, world: true);
         }
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, transform.position);
@@ -133,7 +134,11 @@ public class MinionSummonAbility : MonoBehaviour
             Vector3 pos = GroundAt(transform.position + dir * spawnRadius);
 
             if (minionSpawnVFX != null)
-                Instantiate(minionSpawnVFX, pos, Quaternion.identity).AddComponent<VFXAutoFade>().Configure(2f, world: true);
+            {
+                var sfx = Instantiate(minionSpawnVFX, pos, Quaternion.identity);
+                ShaderRepair.Fix(sfx);   // never let the spawn puff render magenta
+                sfx.AddComponent<VFXAutoFade>().Configure(2f, world: true);
+            }
             GameObject m = Instantiate(prefab, pos, Quaternion.Euler(0f, ang + 180f, 0f));
             if (m != null)
             {
