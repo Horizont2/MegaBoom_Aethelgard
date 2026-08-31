@@ -82,7 +82,16 @@ public class GrenadeLogic : MonoBehaviour
     {
         hasExploded = true;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Explosion);
+        if (AudioManager.Instance != null)
+        {
+            // The dedicated event:/Player/Explosion resolves but is SILENT in the
+            // FMOD project (repeated "no grenade sound" reports), and it isn't
+            // null so the fallback never kicks in. Route the blast to the region
+            // shockwave boom instead — a signature event that IS audible — with
+            // the Explosion event kept as an extra layer in case it's fixed later.
+            AudioManager.Instance.PlaySFX(AudioID.Region_Shockwave);
+            AudioManager.Instance.PlaySFX(AudioID.Explosion);
+        }
 
         if (explosionEffect != null) ObjectPoolManager.Instance.SpawnFromPool(explosionEffect, transform.position, Quaternion.identity);
 

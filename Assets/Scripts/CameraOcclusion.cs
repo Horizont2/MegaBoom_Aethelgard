@@ -72,6 +72,12 @@ public class CameraOcclusion : MonoBehaviour
             if (col == null) continue;
             if (col is TerrainCollider) continue;
 
+            // NEVER fade living things. A boss/enemy (or the player) that happens
+            // to sit on — or be scaled/placed onto — a layer inside the foliage
+            // mask must not go semi-transparent. Only vegetation fades.
+            if (col.GetComponentInParent<EnemyAI>() != null) continue;
+            if (col.GetComponentInParent<PlayerController>() != null) continue;
+
             Vector3 hp = raw.point;
             // SphereCast returns a zero point when the cast starts already
             // overlapping the collider — fall back to the collider's own

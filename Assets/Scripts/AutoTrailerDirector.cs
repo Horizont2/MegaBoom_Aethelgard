@@ -158,16 +158,17 @@ public class AutoTrailerDirector : MonoBehaviour
             // the boss beat + its finisher never play. Executed explicitly below.
             if (ba != null) { ba.maxHealth *= 30f; ba.isInvincible = true; }
         }
-        yield return Orbit(hero, 3.8f, 4.6f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // the hero wails on it
+        yield return Orbit(hero, 3.8f, 7.5f, 0f, 150f, 2.6f, 1.9f, 45f, true);  // the hero wails on it (pulled back — boss is 2.5x)
 
         // FINISHER: slow-mo, push over the shoulder onto the boss, then the blow.
         StartCoroutine(SlowMoPulse(0.12f, 1.8f));
         if (boss != null)
         {
-            Vector3 bp = boss.transform.position + Vector3.up * 1.3f;
+            Vector3 bp = boss.transform.position + Vector3.up * 1.6f;
             Vector3 from = cam.transform.position;
-            Vector3 to = bp - (bp - hero.position).normalized * 3.2f + Vector3.up * 0.6f;
-            yield return Move(from, to, bp, 40f, 32f, 1.1f, true);
+            // Keep a respectful distance — 3.2m filled the frame with boss torso.
+            Vector3 to = bp - (bp - hero.position).normalized * 6f + Vector3.up * 1.4f;
+            yield return Move(from, to, bp, 42f, 36f, 1.1f, true);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
             if (ba != null)
             {
@@ -253,10 +254,14 @@ public class AutoTrailerDirector : MonoBehaviour
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             if (focus == null) yield break;
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
+            // Never let a battle shot get uncomfortably close — too-tight framing
+            // read as "terrible" in the first cut. Floor the radius/height.
+            float safeRadius = Mathf.Max(radius, 5.5f);
+            float safeHeight = Mathf.Max(height, 2f);
             // Gentle radius/height "breathing" so the arc reads as a hand-operated
             // dolly slowly pushing in and lifting, not a rigid turntable circle.
-            float br = radius * (1f + 0.05f * Mathf.Sin(Time.unscaledTime * 0.5f));
-            float bh = height + 0.35f * Mathf.Sin(Time.unscaledTime * 0.35f + 1.3f);
+            float br = safeRadius * (1f + 0.05f * Mathf.Sin(Time.unscaledTime * 0.5f));
+            float bh = safeHeight + 0.35f * Mathf.Sin(Time.unscaledTime * 0.35f + 1.3f);
             Vector3 p = focus.position + new Vector3(Mathf.Cos(ang) * br, bh, Mathf.Sin(ang) * br);
             SetCamCinematic(p, Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up), fov);
             if (attack) DriveHero();
@@ -537,8 +542,9 @@ public class AutoTrailerDirector : MonoBehaviour
     {
         var ai = prefab != null ? prefab.GetComponent<EnemyAI>() : null;
         if (ai == null) return true;
-        if (ai.isRanged || ai.magicCaster) return false;
-        if (prefab.name.ToLowerInvariant().Contains("mage")) return false;
+        if (ai.isRanged || ai.magicCaster || ai.canSummon) return false;  // no kiters, casters, or SUMMONERS
+        string n = prefab.name.ToLowerInvariant();
+        if (n.Contains("mage") || n.Contains("summon") || n.Contains("necro")) return false;
         return true;
     }
 

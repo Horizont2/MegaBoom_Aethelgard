@@ -750,14 +750,17 @@ public class ShopManager : MonoBehaviour
             if (itemSlot.iconImage != null)
             {
                 if (icon != null) itemSlot.iconImage.sprite = icon;
-                // Icons rendered as flat WHITE boxes even though the sprites are
-                // assigned — the classic cause is a broken/overridden UI material
-                // on the Image (its shader missing from the build). Reset to the
-                // default UI material and a plain opaque tint, and only show the
-                // Image when it actually has a sprite so we never draw a white box.
+                // Icons rendered as flat WHITE even though sprites are assigned —
+                // the classic cause is a broken/overridden UI material on the
+                // Image (its shader missing from the build). Reset to the default
+                // UI material + a plain opaque tint. (Do NOT disable the Image —
+                // that only hid legitimate icons.)
                 itemSlot.iconImage.material = null;
                 itemSlot.iconImage.color = Color.white;
-                itemSlot.iconImage.enabled = itemSlot.iconImage.sprite != null;
+                // Diagnostic: if a default/owned item shows white, this tells us
+                // in the Console EXACTLY which data asset is missing its icon.
+                if (icon == null)
+                    Debug.LogWarning($"[Shop] Item '{name}' has NO icon sprite assigned in its data asset — it will render as the prefab's blank/white placeholder.");
             }
             if (itemSlot.buttonComponent != null)
             {

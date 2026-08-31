@@ -51,10 +51,13 @@ public class MinionSummonAbility : MonoBehaviour
     {
         minionPrefabs = prefabs;
         minCount = Mathf.Max(1, min);
-        maxCount = Mathf.Max(minCount, max);
-        maxActiveMinions = Mathf.Max(1, maxActive);
+        // Cap the pack size + how often it can cast — summoners were flooding the
+        // arena into a "soup" of skeletons. A shorter pack and a real cooldown
+        // floor keep them threatening without overwhelming.
+        maxCount = Mathf.Clamp(Mathf.Max(minCount, max), minCount, 3);
+        maxActiveMinions = Mathf.Clamp(maxActive, 1, 4);
         requireAllDead = reqAllDead;
-        cooldown = Mathf.Max(1f, cd);
+        cooldown = Mathf.Max(10f, cd);
         castWindup = Mathf.Max(0f, windup);
         aggroRange = Mathf.Max(1f, range);
         spawnRadius = Mathf.Max(1f, radius);
