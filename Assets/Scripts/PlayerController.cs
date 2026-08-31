@@ -1791,12 +1791,26 @@ public class PlayerController : MonoBehaviour, IDamageable
     public void TrailerThrowGrenade()
     {
         if (grenadePrefab == null || isCampMode) return;
-        Transform tgt = GetClosestEnemyForFocus(16f, 360f);
+        Transform tgt = GetClosestEnemyForFocus(22f, 360f);
+
+        // CRITICAL: ExecuteThrow throws toward currentGrenadeTarget, which is
+        // normally set by the live aiming loop — which never runs in the trailer.
+        // Without setting it here the grenade flew toward a stale/zero point and
+        // the throw "didn't happen" on screen. Aim it at the enemy (or, if none
+        // is near, a point out in front) so the arc reads.
+        Vector3 aim;
         if (tgt != null)
         {
+            aim = tgt.position;
             Vector3 d = tgt.position - transform.position; d.y = 0f;
             if (d.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(d.normalized);
         }
+        else
+        {
+            aim = transform.position + transform.forward * 10f;
+        }
+        aim.y = transform.position.y;         // ground-level target so it lobs and lands
+        currentGrenadeTarget = aim;
         ExecuteThrow();
     }
 

@@ -143,12 +143,39 @@ public class AutoTrailerDirector : MonoBehaviour
         yield return Orbit(hero, 4.2f, 5.6f, 250f, 400f, 2.4f, 1.3f, 52f, true);
         showStack = false;
 
-        // ===== BEAT 2b — the boss (big elite + low-angle slow-mo execution) =====
+        // ===== BEAT 2c — YOU take over: clear the archers by hand =====
+        // Per request: when only ranged foes are left, control is handed to the
+        // player so they finish the archers themselves.
+        yield return PlayerClearsArchers();
+
+        // ===== BEAT 2b — the boss (big elite + low-angle slow-mo EXECUTION) =====
         var boss = SpawnRing(1, 4.5f, 4.5f);
-        if (boss != null) { boss.transform.localScale *= 2.5f; var ba = boss.GetComponent<EnemyAI>(); if (ba != null) ba.maxHealth *= 2.5f; }
-        yield return Orbit(hero, 3.8f, 4.6f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // low, tense
-        StartCoroutine(SlowMoPulse(0.2f, 1.2f));                                // execution slow-mo
-        yield return Orbit(hero, 1.8f, 3.6f, 150f, 205f, 1.3f, 1.6f, 40f, true);
+        EnemyAI ba = boss != null ? boss.GetComponent<EnemyAI>() : null;
+        if (boss != null)
+        {
+            boss.transform.localScale *= 2.5f;
+            // UNKILLABLE during the wail — otherwise a maxed save one-shots it and
+            // the boss beat + its finisher never play. Executed explicitly below.
+            if (ba != null) { ba.maxHealth *= 30f; ba.isInvincible = true; }
+        }
+        yield return Orbit(hero, 3.8f, 4.6f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // the hero wails on it
+
+        // FINISHER: slow-mo, push over the shoulder onto the boss, then the blow.
+        StartCoroutine(SlowMoPulse(0.12f, 1.8f));
+        if (boss != null)
+        {
+            Vector3 bp = boss.transform.position + Vector3.up * 1.3f;
+            Vector3 from = cam.transform.position;
+            Vector3 to = bp - (bp - hero.position).normalized * 3.2f + Vector3.up * 0.6f;
+            yield return Move(from, to, bp, 40f, 32f, 1.1f, true);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
+            if (ba != null)
+            {
+                ba.isInvincible = false;
+                ba.TakeDamage(new DamageInfo { Amount = 999999f, PushDirection = (boss.transform.position - hero.position).normalized, KnockbackForce = 14f });
+            }
+            yield return new WaitForSecondsRealtime(1.2f);   // hold on the shatter
+        }
 
         // ===== BEAT 3 — the curse lifts (victory reveal) + title over it =====
         // The victory cinematic OWNS Camera.main (bird-flight reveal, bloom) and
@@ -226,7 +253,11 @@ public class AutoTrailerDirector : MonoBehaviour
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             if (focus == null) yield break;
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
-            Vector3 p = focus.position + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
+            // Gentle radius/height "breathing" so the arc reads as a hand-operated
+            // dolly slowly pushing in and lifting, not a rigid turntable circle.
+            float br = radius * (1f + 0.05f * Mathf.Sin(Time.unscaledTime * 0.5f));
+            float bh = height + 0.35f * Mathf.Sin(Time.unscaledTime * 0.35f + 1.3f);
+            Vector3 p = focus.position + new Vector3(Mathf.Cos(ang) * br, bh, Mathf.Sin(ang) * br);
             SetCamCinematic(p, Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up), fov);
             if (attack) DriveHero();
             yield return null;
@@ -514,6 +545,62 @@ public class AutoTrailerDirector : MonoBehaviour
         return last;
     }
 
+    // Hand the fight to the PLAYER to clear the archers themselves (per request).
+    // Spawns a few archers, returns control + camera, waits until they're down
+    // (or a timeout), then reclaims control for the finale.
+    private bool handoverPrompt;
+    private IEnumerator PlayerClearsArchers()
+    {
+        SpawnArchers(4);
+        RefreshEnemies();
+
+        SetHUD(true);
+        if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = true; } // control, but can't die mid-record
+        if (follow != null) follow.enabled = true;
+        handoverPrompt = true;
+
+        float t = 0f;
+        while (t < 14f)
+        {
+            t += Time.unscaledDeltaTime;
+            RefreshEnemies();
+            bool anyArcher = false;
+            foreach (var e in liveEnemies) if (e != null && e.isRanged) { anyArcher = true; break; }
+            if (!anyArcher && t > 1.5f) break;   // player cleared them
+            yield return null;
+        }
+
+        handoverPrompt = false;
+        if (player != null) { player.isControlBlocked = true; player.isCinematicInvincible = true; }
+        if (follow != null) follow.enabled = false;
+        SetHUD(false);
+    }
+
+    // Spawn `count` ARCHERS specifically (ranged prefabs from the pool) in a ring
+    // ahead of the hero — used for the player-controlled archer beat.
+    private void SpawnArchers(int count)
+    {
+        var spawner = FindFirstObjectByType<EnemySpawner>();
+        if (hero == null || spawner == null || spawner.enemyPool == null) return;
+        var archers = new List<GameObject>();
+        foreach (var e in spawner.enemyPool)
+        {
+            if (e == null || e.enemyPrefab == null) continue;
+            var ai = e.enemyPrefab.GetComponent<EnemyAI>();
+            if (ai != null && ai.isRanged) archers.Add(e.enemyPrefab);
+        }
+        if (archers.Count == 0) return;
+        for (int i = 0; i < count; i++)
+        {
+            float ang = (360f / Mathf.Max(1, count)) * i + Random.Range(-10f, 10f);
+            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+            Vector3 p = hero.position + dir * Random.Range(9f, 14f);
+            if (Physics.Raycast(p + Vector3.up * 14f, Vector3.down, out var hit, 40f)) p.y = hit.point.y;
+            else if (Terrain.activeTerrain != null) p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
+            Instantiate(archers[i % archers.Count], p, Quaternion.LookRotation((hero.position - p).normalized));
+        }
+    }
+
     // Spawn a frozen formation of enemies AHEAD of the hero (a grid of rows),
     // each facing back toward the hero — the "army before you" cold-open shot.
     // Uses the same enemy pool as SpawnRing so the horde reads as varied.
@@ -598,6 +685,17 @@ public class AutoTrailerDirector : MonoBehaviour
             float pulse = 1f + 0.05f * Mathf.Sin(Time.unscaledTime * 8f);
             var r = new Rect(0, Screen.height * (0.10f / pulse), Screen.width, Screen.height * 0.2f);
             GUI.Label(r, $"STACK ×{player.currentMultiplier}", stackStyle);
+        }
+
+        // Player-takeover cue during the archer beat.
+        if (handoverPrompt)
+        {
+            if (stackStyle == null)
+                stackStyle = new GUIStyle { alignment = TextAnchor.UpperCenter, fontStyle = FontStyle.Bold, richText = true,
+                    fontSize = Mathf.RoundToInt(Screen.height * 0.045f) };
+            stackStyle.normal.textColor = new Color(1f, 0.85f, 0.35f);
+            GUI.Label(new Rect(0, Screen.height * 0.08f, Screen.width, Screen.height * 0.1f),
+                "YOUR TURN — clear the archers", stackStyle);
         }
 
         if (titleAlpha <= 0.001f) return;

@@ -2541,6 +2541,13 @@ public class WorldGenerator : MonoBehaviour
                 Material mat = rend.sharedMaterials[i];
                 if (mat == null) continue;
 
+                // GPU INSTANCING: colors here are pushed per-renderer via a
+                // MaterialPropertyBlock (below), which is instancing-friendly, so
+                // enabling instancing on the SHARED material lets Unity batch all
+                // trees/bushes of the same mesh+material into a handful of draws
+                // instead of thousands — a large FPS win in dense forests.
+                if (!mat.enableInstancing) mat.enableInstancing = true;
+
                 // Більше ніяких .ToLower(), це економить МЕГАБАЙТИ оперативної пам'яті
                 if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mat.name))
                 {
@@ -2598,6 +2605,8 @@ public class WorldGenerator : MonoBehaviour
     private void ApplyBiomeSpecificMaterial(GameObject obj, Material foliageMat)
     {
         if (foliageMat == null) return;
+        // Batch every tree/bush sharing this biome material via GPU instancing.
+        if (!foliageMat.enableInstancing) foliageMat.enableInstancing = true;
 
         Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
         foreach (Renderer rend in renderers)
