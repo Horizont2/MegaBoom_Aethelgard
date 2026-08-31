@@ -59,6 +59,23 @@ public class CursedTree : MonoBehaviour
     // Reset between regions so a new region's trees don't insta-bloom.
     public static void ResetWave() { s_waveActive = false; }
 
+    // Bloom every cursed tree within `radius` of `center` RIGHT NOW. The victory
+    // flythrough calls this each frame with the camera position so the trees the
+    // camera is actually flying over come alive in view — the radial totem wave
+    // alone often expanded to places the scripted flight path never overlapped,
+    // so the player only saw the green burst particles, never the trees change.
+    public static void BloomNear(Vector3 center, float radius)
+    {
+        float r2 = radius * radius;
+        for (int i = Active.Count - 1; i >= 0; i--)
+        {
+            var t = Active[i];
+            if (t == null || t.bloomed) continue;
+            Vector3 d = t.transform.position - center; d.y = 0f;
+            if (d.sqrMagnitude <= r2) t.StartCoroutine(t.BloomRoutine());
+        }
+    }
+
     private void Update()
     {
         if (bloomed || !s_waveActive) return;

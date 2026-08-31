@@ -641,10 +641,9 @@ public class RegionManager : MonoBehaviour
         Vector3 prevFwd = cam.transform.forward; prevFwd.y = 0f; if (prevFwd.sqrMagnitude < 0.001f) prevFwd = Vector3.forward; prevFwd.Normalize();
         float roll = 0f;
 
-        // Slower + a touch higher than before: the old 8.5s low skim raced past
-        // and the low altitude packed the frustum with close canopy (overdraw →
-        // the lag). 13s at a gentle glide reads as a majestic bird's-eye reveal.
-        const float flightDur = 13f;
+        // Slow, majestic glide. 18s (was 13) so the reveal breathes and the
+        // camera lingers long enough to actually read the trees coming alive.
+        const float flightDur = 18f;
 
         // Sweep the curse off the land: blighted trees bloom outward from the
         // totem over the flight, so the camera literally flies over the wave of
@@ -673,12 +672,21 @@ public class RegionManager : MonoBehaviour
             float aheadGround = GroundHeightAt(pos);
             aheadGround = Mathf.Max(aheadGround, GroundHeightAt(SampleBirdPath(path, Mathf.Min(1f, e + 0.05f))));
             aheadGround = Mathf.Max(aheadGround, GroundHeightAt(SampleBirdPath(path, Mathf.Min(1f, e + 0.10f))));
-            float targetY = Mathf.Max(pos.y, aheadGround + 14f);
+            // Higher, gentler follow: cruise ~24m over the canopy (was 14, which
+            // skimmed too close and clipped hills) with a slow lerp so peaks
+            // don't jolt it, and a generous 12m hard floor so it can never slam
+            // into the ground on a sharp ridge.
+            float targetY = Mathf.Max(pos.y, aheadGround + 24f);
             if (!camYInit) { camY = targetY; camYInit = true; }
-            camY = Mathf.Lerp(camY, targetY, Time.deltaTime * 2.2f);
-            camY = Mathf.Max(camY, GroundHeightAt(pos) + 5f);   // never clip terrain
+            camY = Mathf.Lerp(camY, targetY, Time.deltaTime * 1.4f);
+            camY = Mathf.Max(camY, GroundHeightAt(pos) + 12f);
             pos.y = camY;
             cam.transform.position = pos;
+
+            // Bloom the cursed trees the camera is flying over, right now, so the
+            // land visibly comes alive under the flight — not just a distant
+            // radial wave the path never crosses (which left only green puffs).
+            CursedTree.BloomNear(pos, 60f);
 
             // Forward = velocity along the path; gaze tilts down toward the land.
             Vector3 ahead = SampleBirdPath(path, Mathf.Min(1f, e + 0.02f));
