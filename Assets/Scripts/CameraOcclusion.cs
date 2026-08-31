@@ -127,13 +127,30 @@ public class CameraOcclusion : MonoBehaviour
             if (renderUp != null)
             {
                 host = renderUp.transform;
-                // Climb to the topmost ancestor that still has renderers
-                // somewhere inside it — for typical tree prefabs this lands
-                // on the prefab root so the entire tree fades together.
-                while (host.parent != null && host.parent.GetComponentInChildren<Renderer>(true) != null)
+                // Climb to the tree prefab root so the whole tree fades
+                // together — BUT stay inside the foliage layer. The old
+                // unbounded climb ("any ancestor with a renderer") walked
+                // straight up into shared Default-layer containers like an
+                // "Environment"/"Trees" parent, so a single occluding trunk
+                // faded the ENTIRE scene and cloned hundreds of materials in
+                // one frame (that was both the "everything turns transparent"
+                // bug and the FPS spike). Bounding by layer keeps the fader
+                // scoped to just this tree.
+                int foliageMask = foliageLayer.value;
+                while (host.parent != null
+                    && ((1 << host.parent.gameObject.layer) & foliageMask) != 0
+                    && host.parent.GetComponentInChildren<Renderer>(true) != null)
                 {
                     host = host.parent;
                 }
+
+                // Safety net: if the chosen host still aggregates an
+                // unreasonable number of renderers it isn't a single tree
+                // (mis-layered container) — fall back to the trunk renderer
+                // alone so we never fade a whole forest / building cluster.
+                const int MaxTreeRenderers = 24;
+                if (host.GetComponentsInChildren<Renderer>(true).Length > MaxTreeRenderers)
+                    host = renderUp.transform;
             }
             else
             {

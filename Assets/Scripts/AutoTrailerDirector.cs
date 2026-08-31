@@ -23,9 +23,12 @@ public class AutoTrailerDirector : MonoBehaviour
     private Transform hero;
 
     private float titleAlpha;
-    private string titleMain = "AETHELGARD";
+    private string titleMain = "Hollow Siege";
     private string titleSub  = "Cleanse the cursed land";
-    private GUIStyle mainStyle, subStyle, stackStyle;
+    // Trailer end-card call-to-action. Shown under the title on the final
+    // beat so the reveal doubles as a Steam wishlist prompt.
+    private string titleWishlist = "WISHLIST NOW ON STEAM";
+    private GUIStyle mainStyle, subStyle, stackStyle, wishlistStyle;
     private Texture2D solid;
     private bool showStack;
     private int _hintsWere = 1;
@@ -46,6 +49,7 @@ public class AutoTrailerDirector : MonoBehaviour
     {
         IsPlaying = true;
         cam = Camera.main;
+        if (cam == null) cam = FindFirstObjectByType<Camera>();   // shop/menu cams aren't always tagged MainCamera
         if (cam == null) { Cleanup(); yield break; }
 
         follow = cam.GetComponent("CameraFollow") as MonoBehaviour;
@@ -124,7 +128,10 @@ public class AutoTrailerDirector : MonoBehaviour
 
             // Fly the reveal to its bloom peak, then bring up the game title.
             yield return new WaitForSecondsRealtime(10f);
-            titleMain = LocalizationManager.Tr("AETHELGARD");
+            // Brand name — the final game title. NOT localized (it's a proper
+            // noun / logo), and deliberately "Hollow Siege" rather than the
+            // in-world "Aethelgard" so the end card reads as the store title.
+            titleMain = "Hollow Siege";
             titleSub  = LocalizationManager.Tr("Cleanse the cursed land");
             float ft = 0f;
             while (ft < 1.5f) { ft += Time.unscaledDeltaTime; titleAlpha = Mathf.Clamp01(ft / 1.5f); yield return null; }
@@ -135,6 +142,32 @@ public class AutoTrailerDirector : MonoBehaviour
     }
 
     // ---------- camera beats ----------
+    // Apply the base framing PLUS a cinematic layer: subtle handheld drift, a
+    // gentle roll, and FOV breathing so shots feel filmed, not on rails.
+    private float _prevYaw; private bool _yawSet; private float _bankRoll;
+    private void SetCamCinematic(Vector3 pos, Quaternion lookRot, float fov)
+    {
+        float tt = Time.unscaledTime;
+        // Handheld positional micro-drift (Perlin, unscaled so slow-mo doesn't freeze it).
+        Vector3 drift = new Vector3(
+            Mathf.PerlinNoise(tt * 0.7f, 0.0f) - 0.5f,
+            Mathf.PerlinNoise(0.0f, tt * 0.6f) - 0.5f,
+            Mathf.PerlinNoise(tt * 0.5f, 3.3f) - 0.5f) * 0.14f;
+        cam.transform.position = pos + drift;
+
+        // Bank into the turn: roll toward the direction the aim is swinging, plus
+        // a whisper of handheld roll noise.
+        float yaw = lookRot.eulerAngles.y;
+        if (!_yawSet) { _prevYaw = yaw; _yawSet = true; }
+        float dYaw = Mathf.DeltaAngle(_prevYaw, yaw); _prevYaw = yaw;
+        _bankRoll = Mathf.Lerp(_bankRoll, Mathf.Clamp(-dYaw * 0.6f, -6f, 6f), Time.unscaledDeltaTime * 3f);
+        float noiseRoll = (Mathf.PerlinNoise(tt * 0.35f, 8.1f) - 0.5f) * 1.4f;
+        cam.transform.rotation = lookRot * Quaternion.Euler(0f, 0f, _bankRoll + noiseRoll);
+
+        // FOV breathing.
+        cam.fieldOfView = fov + Mathf.Sin(tt * 0.7f) * 0.7f;
+    }
+
     private IEnumerator Move(Vector3 from, Vector3 to, Vector3 look, float fovA, float fovB, float dur, bool attack)
     {
         float t = 0f;
@@ -143,9 +176,7 @@ public class AutoTrailerDirector : MonoBehaviour
             t += Time.unscaledDeltaTime;
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             Vector3 p = Vector3.Lerp(from, to, e);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation(look - p, Vector3.up);
-            cam.fieldOfView = Mathf.Lerp(fovA, fovB, e);
+            SetCamCinematic(p, Quaternion.LookRotation(look - p, Vector3.up), Mathf.Lerp(fovA, fovB, e));
             if (attack) DriveHero();
             yield return null;
         }
@@ -161,9 +192,7 @@ public class AutoTrailerDirector : MonoBehaviour
             if (focus == null) yield break;
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
             Vector3 p = focus.position + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up), fov);
             if (attack) DriveHero();
             yield return null;
         }
@@ -244,9 +273,27 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return LookAt(mapTable.transform.position, 3f, 4f, 1.8f, 42f);
             SetHUD(true);
             mapTable.TrailerOpenMap();
-            yield return new WaitForSecondsRealtime(1f);
+            yield return new WaitForSecondsRealtime(1.2f);
             if (!mapTable.IsMapOpen) mapTable.TrailerOpenMap();   // retry once if it didn't take
-            yield return new WaitForSecondsRealtime(6f);          // linger on the map / regions
+            yield return new WaitForSecondsRealtime(0.8f);
+
+            // Scroll the UI map itself to reveal the regions: whole map, then a
+            // cinematic pan+zoom across it (the viewer eases toward each view).
+            var viewer = FindFirstObjectByType<MapInteractiveViewer>();
+            if (viewer != null)
+            {
+                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // all regions
+                yield return new WaitForSecondsRealtime(2.5f);
+                Vector2 vp = viewer.ViewportSize;
+                viewer.TrailerSetView(new Vector2(vp.x * 0.22f, vp.y * 0.12f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.45f));
+                yield return new WaitForSecondsRealtime(3f);
+                viewer.TrailerSetView(new Vector2(-vp.x * 0.22f, -vp.y * 0.10f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.5f));
+                yield return new WaitForSecondsRealtime(3f);
+                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // pull back to all regions
+                yield return new WaitForSecondsRealtime(1.5f);
+            }
+            else yield return new WaitForSecondsRealtime(6f);
+
             mapTable.TrailerCloseMap();
             yield return new WaitForSecondsRealtime(1f);
         }
@@ -270,9 +317,7 @@ public class AutoTrailerDirector : MonoBehaviour
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
             Vector3 p = center + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((center + Vector3.up * lookH) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((center + Vector3.up * lookH) - p, Vector3.up), fov);
             yield return null;
         }
     }
@@ -290,9 +335,7 @@ public class AutoTrailerDirector : MonoBehaviour
             t += Time.unscaledDeltaTime;
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             Vector3 p = Vector3.Lerp(from, to, e);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((target + Vector3.up * 0.8f) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((target + Vector3.up * 0.8f) - p, Vector3.up), fov);
             yield return null;
         }
     }
@@ -393,6 +436,9 @@ public class AutoTrailerDirector : MonoBehaviour
             mainStyle.normal.textColor = Color.white;
             subStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(Screen.height * 0.03f) };
             subStyle.normal.textColor = new Color(0.85f, 0.9f, 1f);
+            wishlistStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
+                fontSize = Mathf.RoundToInt(Screen.height * 0.032f) };
+            wishlistStyle.normal.textColor = new Color(0.32f, 0.75f, 1f); // Steam blue
         }
         // dim vignette behind the title
         GUI.color = new Color(0f, 0f, 0f, 0.55f * titleAlpha);
@@ -400,6 +446,14 @@ public class AutoTrailerDirector : MonoBehaviour
         GUI.color = new Color(1f, 1f, 1f, titleAlpha);
         GUI.Label(new Rect(0, Screen.height * 0.40f, Screen.width, Screen.height * 0.14f), titleMain, mainStyle);
         GUI.Label(new Rect(0, Screen.height * 0.54f, Screen.width, Screen.height * 0.06f), titleSub, subStyle);
+        // Wishlist CTA — pulses gently so it draws the eye on the end card.
+        if (!string.IsNullOrEmpty(titleWishlist))
+        {
+            float wl = 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 2f));
+            GUI.color = new Color(1f, 1f, 1f, titleAlpha * wl);
+            GUI.Label(new Rect(0, Screen.height * 0.66f, Screen.width, Screen.height * 0.06f),
+                "⭐ " + titleWishlist + " ⭐", wishlistStyle);
+        }
         GUI.color = Color.white;
     }
 }

@@ -119,6 +119,12 @@ public static class AutoLocalizeScene
     private static void TryTranslateTMP(TMP_Text label)
     {
         if (label == null) return;
+        // Respect the NoAutoLocalize marker. Code-driven labels (shop upgrade
+        // price, building BUILD/UPGRADE hint, notice-board mission text) set
+        // their own text every refresh; without this the 0.5s repeater kept
+        // re-applying Tr(capturedKey) over the live value, so the text visibly
+        // flipped every half-second. CompareTag-free ancestor check.
+        if (label.GetComponentInParent<NoAutoLocalize>() != null) return;
         // Already-translated labels carry the original key on a sibling
         // component. Re-use it for language changes.
         var stored = label.GetComponent<LocalizedLabelKey>();
@@ -137,6 +143,7 @@ public static class AutoLocalizeScene
     private static void TryTranslateUgui(Text label)
     {
         if (label == null) return;
+        if (label.GetComponentInParent<NoAutoLocalize>() != null) return;
         var stored = label.GetComponent<LocalizedLabelKey>();
         string key = stored != null ? stored.key : label.text;
         if (string.IsNullOrWhiteSpace(key)) return;
