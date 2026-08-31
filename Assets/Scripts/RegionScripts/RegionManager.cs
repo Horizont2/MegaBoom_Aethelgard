@@ -287,9 +287,13 @@ public class RegionManager : MonoBehaviour
 
         float mapScale = 200f;
         if (Terrain.activeTerrain != null) mapScale = Terrain.activeTerrain.terrainData.size.x;
-        float camHeight = Mathf.Clamp(mapScale * 0.15f, 35f, 60f);
+        // MUCH lower + flatter than before. The old 35–60 m top-down apex flew so
+        // high that the terrain's tree-distance culling kicked in and the forest
+        // vanished, leaving bare ground under the victory shot. Keep it low and
+        // more horizontal so the trees around the totem stay rendered and in frame.
+        float camHeight = Mathf.Clamp(mapScale * 0.06f, 16f, 26f);
 
-        Vector3 apexCamPos = finalTotemPos + new Vector3(0f, camHeight, -camHeight * 0.8f);
+        Vector3 apexCamPos = finalTotemPos + new Vector3(0f, camHeight, -camHeight * 1.3f);
 
         // --- AAA layer: duck the music bed for the whole sequence, rack
         // cinematic DoF on, and give the camera a living handheld drift.
@@ -681,7 +685,9 @@ public class RegionManager : MonoBehaviour
         Vector3 craneStart = cam.transform.position;
         Quaternion rotStart = cam.transform.rotation;
         float fovStart = cam.fieldOfView;
-        Vector3 craneEnd = craneStart + Vector3.up * (mapScale * 0.05f + 6f) - (totemPos - craneStart).normalized * 4f;
+        // Gentle lift ONLY (was mapScale*0.05+6 which climbed the shot up out of
+        // tree-render range). A small +4 m rise keeps the trees in frame.
+        Vector3 craneEnd = craneStart + Vector3.up * 4f - (totemPos - craneStart).normalized * 3f;
 
         float elapsed = 0f;
         while (elapsed < healDur)

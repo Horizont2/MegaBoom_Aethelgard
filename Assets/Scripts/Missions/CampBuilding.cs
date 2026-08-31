@@ -879,7 +879,39 @@ public class CampBuilding : MonoBehaviour
                 hasResources = ResourceManager.Instance.CanAffordStash(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
             }
 
-            upgradeGlimmer.SetActive(canBeUpgraded && hasResources);
+            bool shouldShow = canBeUpgraded && hasResources;
+            if (shouldShow && !upgradeGlimmer.activeSelf)
+            {
+                upgradeGlimmer.SetActive(true);
+                RestartGlimmerVFX();   // actually PLAY it — see below
+            }
+            else if (!shouldShow && upgradeGlimmer.activeSelf)
+            {
+                upgradeGlimmer.SetActive(false);
+            }
+        }
+    }
+
+    // The glimmer "froze" — it sat on a single frame instead of animating —
+    // because a non-looping ParticleSystem (or an idle Animator) only plays
+    // once when the object is first shown, and re-showing an already-active
+    // object is a no-op. Force its VFX to loop and (re)start every time the
+    // glimmer becomes visible so it always animates.
+    private void RestartGlimmerVFX()
+    {
+        if (upgradeGlimmer == null) return;
+        foreach (var ps in upgradeGlimmer.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            var main = ps.main;
+            main.loop = true;
+            ps.Clear(true);
+            ps.Play(true);
+        }
+        foreach (var an in upgradeGlimmer.GetComponentsInChildren<Animator>(true))
+        {
+            an.enabled = true;
+            an.Rebind();
+            an.Update(0f);
         }
     }
 

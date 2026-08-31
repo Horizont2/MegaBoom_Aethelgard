@@ -37,9 +37,6 @@ public class AutoTrailerDirector : MonoBehaviour
     // second instead of FindObjects every frame.
     private readonly List<EnemyAI> liveEnemies = new List<EnemyAI>(64);
     private float nextEnemyScan;
-    // Director-owned storm VFX (the region scene has no rain/lightning wired).
-    private ParticleSystem trailerRain;
-    private Light trailerLightning;
 
     public static void Play()
     {
@@ -86,13 +83,11 @@ public class AutoTrailerDirector : MonoBehaviour
 
         var dnc = FindFirstObjectByType<DayNightCycle>();
 
-        // Daytime so the scene reads clearly — the sun still lights everything
-        // under the storm skybox, giving a DRAMATIC OVERCAST rather than the
-        // near-black dusk the first pass used ("weather too dark"). Rain +
-        // lightning come from the director's own VFX (the region scene wires
-        // none), so the storm is actually visible on screen.
-        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 14f; dnc.ForceWeather(WeatherState.Storm); }
-        StartStorm();
+        // ONE consistent weather for the whole action run — the game's own rain
+        // (not a director-made effect), set to a readable daytime so the scene
+        // isn't a murky dusk. It never flips to Clear and back mid-trailer, which
+        // read as a glitch before.
+        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 14f; dnc.ForceWeather(WeatherState.Precipitation); }
 
         // ===== BEAT -1 — THE RISE (cinematic cold open) =====================
         // Camera cranes up from just behind the hero to reveal a frozen
@@ -121,19 +116,27 @@ public class AutoTrailerDirector : MonoBehaviour
 
         // ===== BEAT 1 — the spark (grenade + first blows) =====
         EnemyAI.GlobalFreeze = false;
-        if (player != null) { player.TrailerThrowGrenade(); }        // open with a grenade
-        StartCoroutine(SlowMoPulse(0.4f, 0.5f));                     // brief impact beat
-        yield return Orbit(hero, 4.5f, 5.2f, 20f, 130f, 2.3f, 1.3f, 46f, true);
+        {
+            // Frame the hero from a 3/4 side angle BEFORE the throw so the
+            // grenade toss is actually ON CAMERA — the first pass threw it during
+            // a camera transition and you couldn't see it happen.
+            Vector3 h = hero.position;
+            Vector3 side = Vector3.Cross(Vector3.up, hero.forward).normalized;
+            Vector3 framePos = h + side * 4.5f + hero.forward * 2.2f + Vector3.up * 2.3f;
+            yield return Move(cam.transform.position, framePos, h + hero.forward * 4f + Vector3.up * 1.2f, 44f, 40f, 1.3f, false);
+            if (player != null) player.TrailerThrowGrenade();   // now clearly in frame
+            yield return new WaitForSecondsRealtime(0.9f);      // watch the arc + the blast land
+        }
+        StartCoroutine(SlowMoPulse(0.4f, 0.5f));                     // impact beat
+        yield return Orbit(hero, 4.2f, 5.2f, 40f, 150f, 2.3f, 1.3f, 46f, true);
 
         // ===== BEAT 2 — become the storm (STACK typhoon) =====
-        // Crowd trimmed 30 → 16 so the fight reads instead of turning to soup,
-        // and cleared to a bright sky for a crisp showcase of the STACK payoff.
+        // Crowd trimmed 30 → 16 so the fight reads instead of turning to soup.
+        // Weather stays consistent — no jarring flip to Clear and back.
         EnemyAI.GlobalFreeze = true;
         SpawnRing(16, 5f, 9f);                                                // varied crowd (round-robin types)
         yield return Orbit(hero, 1.6f, 7.5f, 30f, 80f, 3.4f, 1.4f, 54f, false); // pose on the frozen crowd
         EnemyAI.GlobalFreeze = false;
-        if (dnc != null) dnc.ForceWeather(WeatherState.Clear);
-        StopStorm();                                                         // crisp, bright peak
         showStack = true;                                                    // stylised on-screen STACK counter
         yield return Orbit(hero, 5.0f, 6.8f, 80f, 250f, 2.8f, 1.35f, 56f, true);
         StartCoroutine(SlowMoPulse(0.35f, 0.9f));                            // punch the x5 peak
@@ -141,14 +144,11 @@ public class AutoTrailerDirector : MonoBehaviour
         showStack = false;
 
         // ===== BEAT 2b — the boss (big elite + low-angle slow-mo execution) =====
-        if (dnc != null) dnc.ForceWeather(WeatherState.Storm);
-        StartStorm();                                                        // storm back for the boss tension
         var boss = SpawnRing(1, 4.5f, 4.5f);
         if (boss != null) { boss.transform.localScale *= 2.5f; var ba = boss.GetComponent<EnemyAI>(); if (ba != null) ba.maxHealth *= 2.5f; }
         yield return Orbit(hero, 3.8f, 4.6f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // low, tense
         StartCoroutine(SlowMoPulse(0.2f, 1.2f));                                // execution slow-mo
         yield return Orbit(hero, 1.8f, 3.6f, 150f, 205f, 1.3f, 1.6f, 40f, true);
-        StopStorm();                                                           // clear the sky for the victory reveal
 
         // ===== BEAT 3 — the curse lifts (victory reveal) + title over it =====
         // The victory cinematic OWNS Camera.main (bird-flight reveal, bloom) and
@@ -423,10 +423,21 @@ public class AutoTrailerDirector : MonoBehaviour
 
     private IEnumerator ShopTour()
     {
-        // The shop is gear UI + the hero model — keep the HUD and drift the
-        // camera gently around the centre so it isn't a dead static frame.
+        // Show what the shop actually IS: selecting items, their stats/prices,
+        // and the Buy/Upgrade buttons. Drive the real UI (ShopManager owns the
+        // showcase since it can reach the private item list). A gentle camera
+        // drift underneath keeps the hero model alive behind the panels.
+        var shop = FindFirstObjectByType<ShopManager>();
         Vector3 c = cam.transform.position + cam.transform.forward * 4f;
-        yield return OrbitPoint(c, 9f, 4f, 200f, 250f, 1.6f, 1.4f, 46f);
+        if (shop != null)
+        {
+            StartCoroutine(OrbitPoint(c, 30f, 4f, 205f, 320f, 1.6f, 1.4f, 46f)); // slow bg drift
+            yield return shop.TrailerShowcaseRoutine();
+        }
+        else
+        {
+            yield return OrbitPoint(c, 9f, 4f, 200f, 250f, 1.6f, 1.4f, 46f);
+        }
     }
 
     // Orbit the camera around a WORLD POINT (no Transform needed).
@@ -503,92 +514,6 @@ public class AutoTrailerDirector : MonoBehaviour
         return last;
     }
 
-    // ---------- director-owned storm (region scene wires no rain/lightning) ----------
-    private Coroutine lightningLoop;
-
-    private void EnsureStormVFX()
-    {
-        if (trailerRain == null && cam != null)
-        {
-            var go = new GameObject("TrailerRain");
-            go.transform.SetParent(cam.transform);
-            go.transform.localPosition = new Vector3(0f, 18f, 6f); // above + slightly ahead of the lens
-            go.transform.localRotation = Quaternion.identity;
-
-            trailerRain = go.AddComponent<ParticleSystem>();
-            trailerRain.Stop();
-            var main = trailerRain.main;
-            main.simulationSpace = ParticleSystemSimulationSpace.World; // streaks stay put as the cam moves
-            main.startLifetime = 1.3f;
-            main.startSpeed = 0f;                 // fall by gravity so streaks are dead-vertical
-            main.gravityModifier = 3.6f;
-            main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.08f);
-            main.startColor = new Color(0.78f, 0.85f, 0.98f, 0.55f);
-            main.maxParticles = 2600;
-            var em = trailerRain.emission; em.rateOverTime = 1300f;
-            var shape = trailerRain.shape;
-            shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(46f, 1f, 46f);
-            var rend = trailerRain.GetComponent<ParticleSystemRenderer>();
-            rend.renderMode = ParticleSystemRenderMode.Stretch;
-            rend.velocityScale = 0.05f;
-            rend.lengthScale = 3.2f;
-            // Sprites/Default is always available in a build (unlike URP particle
-            // shaders that may be stripped) so the rain never renders magenta.
-            var sh = Shader.Find("Sprites/Default");
-            if (sh != null) rend.material = new Material(sh);
-        }
-        if (trailerLightning == null)
-        {
-            var lgo = new GameObject("TrailerLightning");
-            trailerLightning = lgo.AddComponent<Light>();
-            trailerLightning.type = LightType.Directional;
-            trailerLightning.color = new Color(0.85f, 0.9f, 1f);
-            trailerLightning.intensity = 0f;
-            trailerLightning.transform.rotation = Quaternion.Euler(60f, 30f, 0f);
-        }
-    }
-
-    private void StartStorm()
-    {
-        EnsureStormVFX();
-        if (trailerRain != null) trailerRain.Play();
-        if (lightningLoop == null) lightningLoop = StartCoroutine(LightningLoop());
-    }
-
-    private void StopStorm()
-    {
-        if (trailerRain != null) trailerRain.Stop();
-        if (lightningLoop != null) { StopCoroutine(lightningLoop); lightningLoop = null; }
-        if (trailerLightning != null) trailerLightning.intensity = 0f;
-    }
-
-    private IEnumerator LightningLoop()
-    {
-        // A brisk cadence so a short beat still gets a strike or two (the game's
-        // own lightning waits 5–15s and never fired inside the trailer window).
-        while (true)
-        {
-            yield return new WaitForSecondsRealtime(Random.Range(2.2f, 4.5f));
-            yield return StartCoroutine(LightningFlash());
-        }
-    }
-
-    private IEnumerator LightningFlash()
-    {
-        if (trailerLightning == null) yield break;
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Env_Thunder);
-        // Double-tap flicker — a hard flash, a dip, then a softer afterflash.
-        float[] peaks = { 2.4f, 0f, 1.3f, 0f };
-        float[] holds = { 0.05f, 0.04f, 0.06f, 0.05f };
-        for (int i = 0; i < peaks.Length; i++)
-        {
-            trailerLightning.intensity = peaks[i];
-            yield return new WaitForSecondsRealtime(holds[i]);
-        }
-        trailerLightning.intensity = 0f;
-    }
-
     // Spawn a frozen formation of enemies AHEAD of the hero (a grid of rows),
     // each facing back toward the hero — the "army before you" cold-open shot.
     // Uses the same enemy pool as SpawnRing so the horde reads as varied.
@@ -651,9 +576,6 @@ public class AutoTrailerDirector : MonoBehaviour
         if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = false; }
         if (cam != null) cam.fieldOfView = fov0;
         if (follow != null) follow.enabled = followWas;
-        StopStorm();
-        if (trailerRain != null) Destroy(trailerRain.gameObject);
-        if (trailerLightning != null) Destroy(trailerLightning.gameObject);
         IsPlaying = false;
         Destroy(gameObject);
     }
