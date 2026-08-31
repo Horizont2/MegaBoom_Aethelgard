@@ -46,6 +46,7 @@ public class AutoTrailerDirector : MonoBehaviour
     {
         IsPlaying = true;
         cam = Camera.main;
+        if (cam == null) cam = FindFirstObjectByType<Camera>();   // shop/menu cams aren't always tagged MainCamera
         if (cam == null) { Cleanup(); yield break; }
 
         follow = cam.GetComponent("CameraFollow") as MonoBehaviour;
@@ -135,6 +136,32 @@ public class AutoTrailerDirector : MonoBehaviour
     }
 
     // ---------- camera beats ----------
+    // Apply the base framing PLUS a cinematic layer: subtle handheld drift, a
+    // gentle roll, and FOV breathing so shots feel filmed, not on rails.
+    private float _prevYaw; private bool _yawSet; private float _bankRoll;
+    private void SetCamCinematic(Vector3 pos, Quaternion lookRot, float fov)
+    {
+        float tt = Time.unscaledTime;
+        // Handheld positional micro-drift (Perlin, unscaled so slow-mo doesn't freeze it).
+        Vector3 drift = new Vector3(
+            Mathf.PerlinNoise(tt * 0.7f, 0.0f) - 0.5f,
+            Mathf.PerlinNoise(0.0f, tt * 0.6f) - 0.5f,
+            Mathf.PerlinNoise(tt * 0.5f, 3.3f) - 0.5f) * 0.14f;
+        cam.transform.position = pos + drift;
+
+        // Bank into the turn: roll toward the direction the aim is swinging, plus
+        // a whisper of handheld roll noise.
+        float yaw = lookRot.eulerAngles.y;
+        if (!_yawSet) { _prevYaw = yaw; _yawSet = true; }
+        float dYaw = Mathf.DeltaAngle(_prevYaw, yaw); _prevYaw = yaw;
+        _bankRoll = Mathf.Lerp(_bankRoll, Mathf.Clamp(-dYaw * 0.6f, -6f, 6f), Time.unscaledDeltaTime * 3f);
+        float noiseRoll = (Mathf.PerlinNoise(tt * 0.35f, 8.1f) - 0.5f) * 1.4f;
+        cam.transform.rotation = lookRot * Quaternion.Euler(0f, 0f, _bankRoll + noiseRoll);
+
+        // FOV breathing.
+        cam.fieldOfView = fov + Mathf.Sin(tt * 0.7f) * 0.7f;
+    }
+
     private IEnumerator Move(Vector3 from, Vector3 to, Vector3 look, float fovA, float fovB, float dur, bool attack)
     {
         float t = 0f;
@@ -143,9 +170,7 @@ public class AutoTrailerDirector : MonoBehaviour
             t += Time.unscaledDeltaTime;
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             Vector3 p = Vector3.Lerp(from, to, e);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation(look - p, Vector3.up);
-            cam.fieldOfView = Mathf.Lerp(fovA, fovB, e);
+            SetCamCinematic(p, Quaternion.LookRotation(look - p, Vector3.up), Mathf.Lerp(fovA, fovB, e));
             if (attack) DriveHero();
             yield return null;
         }
@@ -161,9 +186,7 @@ public class AutoTrailerDirector : MonoBehaviour
             if (focus == null) yield break;
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
             Vector3 p = focus.position + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((focus.position + Vector3.up * lookH) - p, Vector3.up), fov);
             if (attack) DriveHero();
             yield return null;
         }
@@ -244,9 +267,27 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return LookAt(mapTable.transform.position, 3f, 4f, 1.8f, 42f);
             SetHUD(true);
             mapTable.TrailerOpenMap();
-            yield return new WaitForSecondsRealtime(1f);
+            yield return new WaitForSecondsRealtime(1.2f);
             if (!mapTable.IsMapOpen) mapTable.TrailerOpenMap();   // retry once if it didn't take
-            yield return new WaitForSecondsRealtime(6f);          // linger on the map / regions
+            yield return new WaitForSecondsRealtime(0.8f);
+
+            // Scroll the UI map itself to reveal the regions: whole map, then a
+            // cinematic pan+zoom across it (the viewer eases toward each view).
+            var viewer = FindFirstObjectByType<MapInteractiveViewer>();
+            if (viewer != null)
+            {
+                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // all regions
+                yield return new WaitForSecondsRealtime(2.5f);
+                Vector2 vp = viewer.ViewportSize;
+                viewer.TrailerSetView(new Vector2(vp.x * 0.22f, vp.y * 0.12f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.45f));
+                yield return new WaitForSecondsRealtime(3f);
+                viewer.TrailerSetView(new Vector2(-vp.x * 0.22f, -vp.y * 0.10f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.5f));
+                yield return new WaitForSecondsRealtime(3f);
+                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // pull back to all regions
+                yield return new WaitForSecondsRealtime(1.5f);
+            }
+            else yield return new WaitForSecondsRealtime(6f);
+
             mapTable.TrailerCloseMap();
             yield return new WaitForSecondsRealtime(1f);
         }
@@ -270,9 +311,7 @@ public class AutoTrailerDirector : MonoBehaviour
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
             Vector3 p = center + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((center + Vector3.up * lookH) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((center + Vector3.up * lookH) - p, Vector3.up), fov);
             yield return null;
         }
     }
@@ -290,9 +329,7 @@ public class AutoTrailerDirector : MonoBehaviour
             t += Time.unscaledDeltaTime;
             float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
             Vector3 p = Vector3.Lerp(from, to, e);
-            cam.transform.position = p;
-            cam.transform.rotation = Quaternion.LookRotation((target + Vector3.up * 0.8f) - p, Vector3.up);
-            cam.fieldOfView = fov;
+            SetCamCinematic(p, Quaternion.LookRotation((target + Vector3.up * 0.8f) - p, Vector3.up), fov);
             yield return null;
         }
     }
