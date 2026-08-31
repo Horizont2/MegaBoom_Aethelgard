@@ -659,7 +659,7 @@ MonoBehaviour:
   spawnVFXPrefab: {fileID: 932851175866909499}
   spawnDuration: 1.5
   attackRange: 1
-  attackCooldown: 0.8
+  attackCooldown: 1
   attackTelegraphTime: 0.5
   weaponGlintVFX: {fileID: 0}
   isRanged: 1
@@ -667,7 +667,24 @@ MonoBehaviour:
   projectilePrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
   projectileSpeed: 18
   arcGravity: 22
+  rangedLeadFactor: 0.7
+  rangedHealthFactor: 0.6
   projectileSpawnPoint: {fileID: 5011285377127300615}
+  magicCaster: 0
+  magicOrbColor: {r: 0.55, g: 0.35, b: 1, a: 1}
+  canSummon: 0
+  summonMinionPrefabs: []
+  summonMinCount: 2
+  summonMaxCount: 4
+  summonMaxActive: 6
+  summonRequireAllDead: 0
+  summonCooldown: 12
+  summonWindup: 0.8
+  summonAggroRange: 28
+  summonSpawnRadius: 3.5
+  summonAnimTrigger: Attack
+  summonCastVFX: {fileID: 0}
+  summonMinionSpawnVFX: {fileID: 0}
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   diamondPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   diamondDropChance: 0.15
