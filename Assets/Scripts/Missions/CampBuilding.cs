@@ -163,6 +163,29 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
+    // Also stop the loop if the building is merely DISABLED (not destroyed),
+    // e.g. swapped out or the camp view toggled — otherwise the hammering can
+    // outlive the object.
+    private void OnDisable()
+    {
+        if (buildSfxHandle != -1 && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0f);
+            buildSfxHandle = -1;
+        }
+    }
+
+    // Best anchor for the building's 3D audio: the actual visible model, whose
+    // pivot sits at the building — the ROOT transform is often centred on the
+    // slot/plot, offset from the structure, so sound played there sat away from
+    // where the building visually is.
+    private Transform BuildingAudioAnchor()
+    {
+        if (realModel != null) return realModel.transform;
+        if (pickupPoint != null) return pickupPoint;
+        return transform;
+    }
+
     private void Start()
     {
         seasonManager = FindFirstObjectByType<SmartSeasonManager>();
@@ -300,6 +323,15 @@ public class CampBuilding : MonoBehaviour
                 return;
             }
 
+            // Catch-all: if we reach the idle steady-state (not animating, not
+            // pending-finish, not upgrading) with the construction loop still
+            // live, stop it — it must never outlive its build.
+            if (buildSfxHandle != -1 && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0.2f);
+                buildSfxHandle = -1;
+            }
+
             // 5. Оновлення світіння
             glimmerCheckTimer += Time.deltaTime;
             if (glimmerCheckTimer >= 1f)
@@ -393,7 +425,7 @@ public class CampBuilding : MonoBehaviour
                         if (AudioManager.Instance != null)
                         {
                             if (buildSfxHandle != -1) AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0f);
-                            buildSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Camp_BuildStart, transform);
+                            buildSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Camp_BuildStart, BuildingAudioAnchor());
                         }
 
                         if (GlobalHUD.Instance != null && nextLevelData != null)
@@ -712,7 +744,7 @@ public class CampBuilding : MonoBehaviour
                 AudioManager.Instance.StopLoopingSFX(buildSfxHandle, 0.3f);
                 buildSfxHandle = -1;
             }
-            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildDone, transform.position);
+            AudioManager.Instance.PlaySFX3D(AudioID.Camp_BuildDone, BuildingAudioAnchor().position);
         }
 
         currentLevel = targetLevel;
