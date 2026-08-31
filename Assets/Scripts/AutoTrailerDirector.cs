@@ -78,6 +78,24 @@ public class AutoTrailerDirector : MonoBehaviour
 
         var dnc = FindFirstObjectByType<DayNightCycle>();
 
+        // ===== BEAT -1 — THE RISE (cinematic cold open) =====================
+        // Camera cranes up from just behind the hero to reveal a frozen
+        // skeleton army arrayed ahead of them. This is the trailer's opening
+        // image — the lone hero, back to camera, facing a horde before them.
+        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 18.4f; dnc.ForceWeather(WeatherState.Storm); }
+        EnemyAI.GlobalFreeze = true;
+        SpawnArmyInFront(5, 9, 8f, 2.4f);   // ~45 skeletons in a facing formation
+        {
+            Vector3 h = hero.position;
+            Vector3 fwd = hero.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
+            fwd.Normalize();
+            Vector3 lookAt = h + fwd * 12f + Vector3.up * 1.2f;   // the army ahead
+            Vector3 from   = h - fwd * 4.5f + Vector3.up * 0.5f;  // low, tucked behind the hero
+            Vector3 to     = h - fwd * 9f   + Vector3.up * 7.5f;  // craned up and back
+            yield return Move(from, to, lookAt, 38f, 52f, 7.5f, false);
+        }
+
         // ===== BEAT 0 — the cursed land (storm dusk, slow drift) =====
         if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 18.7f; dnc.ForceWeather(WeatherState.Storm); }
         EnemyAI.GlobalFreeze = true;
@@ -379,6 +397,45 @@ public class AutoTrailerDirector : MonoBehaviour
             last = Instantiate(prefabs[i % prefabs.Count], p, Quaternion.LookRotation(-dir));
         }
         return last;
+    }
+
+    // Spawn a frozen formation of enemies AHEAD of the hero (a grid of rows),
+    // each facing back toward the hero — the "army before you" cold-open shot.
+    // Uses the same enemy pool as SpawnRing so the horde reads as varied.
+    private void SpawnArmyInFront(int rows, int perRow, float startDist, float spacing)
+    {
+        var spawner = FindFirstObjectByType<EnemySpawner>();
+        if (hero == null) return;
+        var prefabs = new List<GameObject>();
+        if (spawner != null && spawner.enemyPool != null)
+            foreach (var e in spawner.enemyPool) if (e != null && e.enemyPrefab != null) prefabs.Add(e.enemyPrefab);
+        if (prefabs.Count == 0) return;
+
+        Vector3 fwd = hero.forward; fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
+        fwd.Normalize();
+        Vector3 right = Vector3.Cross(Vector3.up, fwd);
+
+        int idx = 0;
+        for (int r = 0; r < rows; r++)
+        {
+            float rowDist = startDist + r * spacing * 1.6f;
+            for (int c = 0; c < perRow; c++)
+            {
+                float lateral = (c - (perRow - 1) * 0.5f) * spacing;
+                Vector3 p = hero.position + fwd * rowDist + right * lateral;
+                // Slight scatter so the rows don't read as a rigid checkerboard.
+                p += fwd * Random.Range(-0.4f, 0.4f) + right * Random.Range(-0.4f, 0.4f);
+                if (Physics.Raycast(p + Vector3.up * 20f, Vector3.down, out var hit, 60f)) p.y = hit.point.y;
+                else if (Terrain.activeTerrain != null) p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
+
+                // Face back toward the hero — an army confronting the player.
+                Vector3 face = hero.position - p; face.y = 0f;
+                Quaternion rot = face.sqrMagnitude > 0.01f ? Quaternion.LookRotation(face) : Quaternion.identity;
+                Instantiate(prefabs[idx % prefabs.Count], p, rot);
+                idx++;
+            }
+        }
     }
 
     // ---------- HUD ----------
