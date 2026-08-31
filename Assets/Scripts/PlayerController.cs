@@ -410,30 +410,41 @@ public class PlayerController : MonoBehaviour, IDamageable
         // to weapon-local so it tracks the blade.
         var tip = new GameObject("BladeTrailPoint");
         tip.transform.SetParent(weapon.transform, false);
-        Vector3 localTip = new Vector3(0f, 1.0f, 0f);
-        var rends = weapon.GetComponentsInChildren<Renderer>();
-        if (rends != null && rends.Length > 0)
+        // Measure ONLY the solid blade mesh. The previous version used
+        // GetComponentsInChildren<Renderer>(), which also catches the weapon's
+        // particle/trail/glow renderers — their huge bounds flung the anchor far
+        // off the blade, giving the "enormous, curled" trail on some weapons.
+        Vector3 localTip = new Vector3(0f, 0.9f, 0f);
+        Bounds b = default; bool has = false;
+        foreach (var mr in weapon.GetComponentsInChildren<MeshRenderer>())
+        { if (mr == null) continue; if (!has) { b = mr.bounds; has = true; } else b.Encapsulate(mr.bounds); }
+        foreach (var smr in weapon.GetComponentsInChildren<SkinnedMeshRenderer>())
+        { if (smr == null) continue; if (!has) { b = smr.bounds; has = true; } else b.Encapsulate(smr.bounds); }
+        if (has)
         {
-            Bounds b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) if (rends[i] != null) b.Encapsulate(rends[i].bounds);
             Vector3 worldTip = new Vector3(b.center.x, b.max.y, b.center.z);
             localTip = weapon.transform.InverseTransformPoint(worldTip);
+            // Clamp to a sane blade-tip window so an odd mesh can't blow the
+            // trail out to a giant arc.
+            localTip = new Vector3(Mathf.Clamp(localTip.x, -0.25f, 0.25f),
+                                   Mathf.Clamp(localTip.y, 0.45f, 1.4f),
+                                   Mathf.Clamp(localTip.z, -0.25f, 0.25f));
         }
         tip.transform.localPosition = localTip;
 
         var tr = tip.AddComponent<TrailRenderer>();
-        tr.time = 0.16f;                       // short — no lingering smear
-        tr.minVertexDistance = 0.02f;
-        tr.numCornerVertices = 4;
-        tr.numCapVertices = 4;
+        tr.time = 0.11f;                       // tighter ribbon, no lingering curl
+        tr.minVertexDistance = 0.03f;
+        tr.numCornerVertices = 2;
+        tr.numCapVertices = 2;
         tr.autodestruct = false;
         tr.emitting = false;
         tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         tr.receiveShadows = false;
         tr.alignment = LineAlignment.View;
 
-        // Taper the width to a point.
-        tr.widthCurve = new AnimationCurve(new Keyframe(0f, 0.13f), new Keyframe(1f, 0f));
+        // Taper the width to a point — thinner so it reads as a blade edge.
+        tr.widthCurve = new AnimationCurve(new Keyframe(0f, 0.09f), new Keyframe(1f, 0f));
 
         // Soft cool-white ribbon fading out.
         var grad = new Gradient();

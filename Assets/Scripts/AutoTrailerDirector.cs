@@ -27,6 +27,7 @@ public class AutoTrailerDirector : MonoBehaviour
     private GUIStyle mainStyle, subStyle, stackStyle;
     private Texture2D solid;
     private bool showStack;
+    private int _hintsWere = 1;
 
     public static void Play()
     {
@@ -55,6 +56,12 @@ public class AutoTrailerDirector : MonoBehaviour
         fov0 = cam.fieldOfView;
 
         SetHUD(false);
+        // Silence what would interfere with the capture: tutorial hints, the
+        // level-up modal (guarded in LevelUpManager via IsPlaying), and the
+        // crowd's roars/growls.
+        _hintsWere = PlayerPrefs.GetInt("Settings_TutorialHints", 1);
+        PlayerPrefs.SetInt("Settings_TutorialHints", 0);
+        EnemyAI.SuppressCombatVocals = true;
         if (player != null) { player.isControlBlocked = true; player.isCinematicInvincible = true; }
 
         var dnc = FindFirstObjectByType<DayNightCycle>();
@@ -213,7 +220,10 @@ public class AutoTrailerDirector : MonoBehaviour
     private void Cleanup()
     {
         Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
         EnemyAI.GlobalFreeze = false;
+        EnemyAI.SuppressCombatVocals = false;
+        PlayerPrefs.SetInt("Settings_TutorialHints", _hintsWere);
         SetHUD(true);
         if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = false; }
         if (cam != null) cam.fieldOfView = fov0;

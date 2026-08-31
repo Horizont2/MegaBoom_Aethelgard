@@ -796,9 +796,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // fire-and-forget one-shot if the looping variant is unavailable
     // (missing FMOD event) so the sound still plays; that fallback can't
     // be stopped, but it's the degraded path, not the norm.
+    // Fully mute enemy roars/growls (set by the trailer director so a crowd
+    // doesn't scream over the capture).
+    public static bool SuppressCombatVocals = false;
+    // Global throttle so a big crowd doesn't all roar/telegraph on the same
+    // frame — that stacked into an ear-splitting wall of vocals. One new vocal
+    // per this interval across ALL enemies; the rest silently skip theirs.
+    private static float s_lastVocalTime = -10f;
+    private const float GLOBAL_VOCAL_INTERVAL = 0.22f;
+
     private void PlayVocal(string audioId)
     {
-        if (AudioManager.Instance == null) return;
+        if (AudioManager.Instance == null || SuppressCombatVocals) return;
+        if (Time.time - s_lastVocalTime < GLOBAL_VOCAL_INTERVAL) return;
+        s_lastVocalTime = Time.time;
         StopVocal(0.05f);
         vocalSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(audioId, transform);
         if (vocalSfxHandle == -1)

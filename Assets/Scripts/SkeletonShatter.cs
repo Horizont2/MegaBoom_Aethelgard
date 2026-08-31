@@ -73,6 +73,15 @@ public static class SkeletonShatter
 
         Transform rt = smr.transform;
         Material mat = smr.sharedMaterial;
+        // Some enemy materials render the static chunk as magenta (a null
+        // material, or a shader stripped from the build / failed to compile —
+        // Unity swaps in the pink InternalErrorShader). Fall back to a plain lit
+        // bone-coloured material so shattered remains are never pink.
+        if (mat == null || mat.shader == null || mat.shader.name == "Hidden/InternalErrorShader")
+        {
+            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            if (sh != null) { mat = new Material(sh); mat.color = new Color(0.78f, 0.75f, 0.68f); }
+        }
         int layer = rt.gameObject.layer;
         bool madeAny = false;
 
