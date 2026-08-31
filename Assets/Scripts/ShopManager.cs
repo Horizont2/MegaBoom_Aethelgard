@@ -747,7 +747,18 @@ public class ShopManager : MonoBehaviour
         if (itemSlot != null)
         {
             if (itemSlot.nameText != null) itemSlot.nameText.text = LocalizationManager.Tr(name);
-            if (itemSlot.iconImage != null && icon != null) itemSlot.iconImage.sprite = icon;
+            if (itemSlot.iconImage != null)
+            {
+                if (icon != null) itemSlot.iconImage.sprite = icon;
+                // Icons rendered as flat WHITE boxes even though the sprites are
+                // assigned — the classic cause is a broken/overridden UI material
+                // on the Image (its shader missing from the build). Reset to the
+                // default UI material and a plain opaque tint, and only show the
+                // Image when it actually has a sprite so we never draw a white box.
+                itemSlot.iconImage.material = null;
+                itemSlot.iconImage.color = Color.white;
+                itemSlot.iconImage.enabled = itemSlot.iconImage.sprite != null;
+            }
             if (itemSlot.buttonComponent != null)
             {
                 // Wipe any stale serialised onClick listeners from the
@@ -1289,7 +1300,14 @@ public class ShopManager : MonoBehaviour
 
         if (itemNameText) itemNameText.text = LocalizationManager.Tr(name) + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
         if (itemDescriptionText) itemDescriptionText.text = LocalizationManager.Tr(desc);
-        if (descriptionItemIcon) { descriptionItemIcon.gameObject.SetActive(true); descriptionItemIcon.sprite = icn; }
+        if (descriptionItemIcon)
+        {
+            descriptionItemIcon.gameObject.SetActive(true);
+            descriptionItemIcon.sprite = icn;
+            // Same white-box guard as the list icons: default UI material + opaque tint.
+            descriptionItemIcon.material = null;
+            descriptionItemIcon.color = Color.white;
+        }
 
         if (!isBought)
         {

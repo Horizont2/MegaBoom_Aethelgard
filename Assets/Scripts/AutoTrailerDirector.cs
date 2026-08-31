@@ -417,6 +417,15 @@ public class AutoTrailerDirector : MonoBehaviour
             mapTable.TrailerCloseMap();
             yield return new WaitForSecondsRealtime(1f);
         }
+
+        // FINALE: smoothly hand the camera to the player so YOU can run around the
+        // camp and show off building a house. The blend is gradual (not a hard
+        // cut), the HUD comes up, and control stays with you for a window.
+        SetHUD(false);
+        yield return SmoothHandToPlayer(1.4f);
+        SetHUD(true);
+        // Player is free to move/build for this window; the trailer keeps rolling.
+        yield return new WaitForSecondsRealtime(22f);
     }
 
     // Continuous eased pan+zoom across the world map. Drives the viewer's
@@ -520,13 +529,26 @@ public class AutoTrailerDirector : MonoBehaviour
     }
 
     // ---------- staging ----------
+    // A prefab is "melee" if it isn't a kiting archer or a magic caster — those
+    // shoot at the (invincible) auto-hero and their harmless shots look wrong on
+    // camera, so the auto crowd is melee-only. Archers appear only in the
+    // player-controlled beat, where their shots actually matter.
+    private static bool IsMeleeEnemy(GameObject prefab)
+    {
+        var ai = prefab != null ? prefab.GetComponent<EnemyAI>() : null;
+        if (ai == null) return true;
+        if (ai.isRanged || ai.magicCaster) return false;
+        if (prefab.name.ToLowerInvariant().Contains("mage")) return false;
+        return true;
+    }
+
     private GameObject SpawnRing(int count, float minR, float maxR)
     {
         var spawner = FindFirstObjectByType<EnemySpawner>();
         if (hero == null) return null;
         var prefabs = new List<GameObject>();
         if (spawner != null && spawner.enemyPool != null)
-            foreach (var e in spawner.enemyPool) if (e != null && e.enemyPrefab != null) prefabs.Add(e.enemyPrefab);
+            foreach (var e in spawner.enemyPool) if (e != null && e.enemyPrefab != null && IsMeleeEnemy(e.enemyPrefab)) prefabs.Add(e.enemyPrefab);
         if (prefabs.Count == 0) return null;
 
         GameObject last = null;
@@ -546,18 +568,19 @@ public class AutoTrailerDirector : MonoBehaviour
     }
 
     // Hand the fight to the PLAYER to clear the archers themselves (per request).
-    // Spawns a few archers, returns control + camera, waits until they're down
-    // (or a timeout), then reclaims control for the finale.
-    private bool handoverPrompt;
+    // Spawns a few archers, SMOOTHLY blends the camera to the gameplay follow-cam,
+    // returns control + shows the HUD, waits until they're down (or a timeout),
+    // then reclaims control for the finale.
     private IEnumerator PlayerClearsArchers()
     {
         SpawnArchers(4);
         RefreshEnemies();
 
-        SetHUD(true);
-        if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = true; } // control, but can't die mid-record
-        if (follow != null) follow.enabled = true;
-        handoverPrompt = true;
+        // Give control first, then ease the camera over — feels like the game
+        // handing back to you, not a hard cut.
+        if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = true; } // can't die mid-record
+        yield return SmoothHandToPlayer(1.2f);
+        SetHUD(true);   // HUD appears only now that YOU are in control
 
         float t = 0f;
         while (t < 14f)
@@ -570,10 +593,41 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return null;
         }
 
-        handoverPrompt = false;
+        // Take control back for the finale — hide the HUD again.
         if (player != null) { player.isControlBlocked = true; player.isCinematicInvincible = true; }
         if (follow != null) follow.enabled = false;
         SetHUD(false);
+    }
+
+    // Smoothly blend the camera from wherever it is to a standard 3rd-person
+    // follow pose behind the player, THEN hand off to the gameplay CameraFollow
+    // from a matching pose so there's no snap. Used whenever control returns to
+    // the player (archer beat, camp build demo).
+    private IEnumerator SmoothHandToPlayer(float dur)
+    {
+        Transform p = hero;
+        if (p == null) { var pg = GameObject.FindGameObjectWithTag("Player"); if (pg != null) p = pg.transform; }
+        if (p == null || cam == null) { if (follow != null) follow.enabled = true; yield break; }
+
+        Vector3 fwd = p.forward; fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
+        fwd.Normalize();
+        Vector3 targetPos = p.position - fwd * 6.5f + Vector3.up * 5f;
+        Vector3 from = cam.transform.position;
+        Quaternion fromRot = cam.transform.rotation;
+
+        float t = 0f;
+        dur = Mathf.Max(0.1f, dur);
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float e = Mathf.SmoothStep(0f, 1f, t / dur);
+            Vector3 lookAt = p.position + Vector3.up * 1.2f;
+            cam.transform.position = Vector3.Lerp(from, targetPos, e);
+            cam.transform.rotation = Quaternion.Slerp(fromRot, Quaternion.LookRotation(lookAt - cam.transform.position), e);
+            yield return null;
+        }
+        if (follow != null) follow.enabled = true;   // gameplay cam takes over from a matching pose
     }
 
     // Spawn `count` ARCHERS specifically (ranged prefabs from the pool) in a ring
@@ -610,7 +664,7 @@ public class AutoTrailerDirector : MonoBehaviour
         if (hero == null) return;
         var prefabs = new List<GameObject>();
         if (spawner != null && spawner.enemyPool != null)
-            foreach (var e in spawner.enemyPool) if (e != null && e.enemyPrefab != null) prefabs.Add(e.enemyPrefab);
+            foreach (var e in spawner.enemyPool) if (e != null && e.enemyPrefab != null && IsMeleeEnemy(e.enemyPrefab)) prefabs.Add(e.enemyPrefab);
         if (prefabs.Count == 0) return;
 
         Vector3 fwd = hero.forward; fwd.y = 0f;
@@ -685,17 +739,6 @@ public class AutoTrailerDirector : MonoBehaviour
             float pulse = 1f + 0.05f * Mathf.Sin(Time.unscaledTime * 8f);
             var r = new Rect(0, Screen.height * (0.10f / pulse), Screen.width, Screen.height * 0.2f);
             GUI.Label(r, $"STACK ×{player.currentMultiplier}", stackStyle);
-        }
-
-        // Player-takeover cue during the archer beat.
-        if (handoverPrompt)
-        {
-            if (stackStyle == null)
-                stackStyle = new GUIStyle { alignment = TextAnchor.UpperCenter, fontStyle = FontStyle.Bold, richText = true,
-                    fontSize = Mathf.RoundToInt(Screen.height * 0.045f) };
-            stackStyle.normal.textColor = new Color(1f, 0.85f, 0.35f);
-            GUI.Label(new Rect(0, Screen.height * 0.08f, Screen.width, Screen.height * 0.1f),
-                "YOUR TURN — clear the archers", stackStyle);
         }
 
         if (titleAlpha <= 0.001f) return;

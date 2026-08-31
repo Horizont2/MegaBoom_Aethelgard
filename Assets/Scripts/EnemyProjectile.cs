@@ -110,10 +110,12 @@ public class EnemyProjectile : MonoBehaviour
         if (playHitSfx && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
 
-        // Pull the arrow back slightly along its flight so the shaft sits in the
-        // body with the head buried, not floating past it.
+        // Bury the head INTO the body. The raycast hits the CharacterController
+        // capsule, which is wider than the visible mesh, so sitting at the exact
+        // hit point left the arrow floating in the air beside the player. Push it
+        // forward along its flight so the shaft actually sinks into the model.
         Vector3 dir = velocity.sqrMagnitude > 0.0001f ? velocity.normalized : transform.forward;
-        transform.position = point - dir * 0.22f;
+        transform.position = point + dir * 0.35f;
         transform.rotation = Quaternion.LookRotation(dir) * Quaternion.Euler(Random.Range(-8f, 8f), Random.Range(-8f, 8f), 0f);
 
         // Ride along with whatever it hit (follows the player as they move).
