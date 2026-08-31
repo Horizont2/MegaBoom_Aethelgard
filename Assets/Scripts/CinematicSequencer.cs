@@ -15,6 +15,8 @@ public class CinematicSequencer : MonoBehaviour
 {
     public static bool IsPlaying { get; private set; }
 
+    private float _campRadius = 12f;
+
     private struct Shot
     {
         public float dur;
@@ -36,7 +38,19 @@ public class CinematicSequencer : MonoBehaviour
 
         Camera cam = Camera.main;
         Transform focus = GameObject.FindGameObjectWithTag("Player")?.transform;
-        if (cam == null || focus == null) { IsPlaying = false; Destroy(gameObject); yield break; }
+
+        // META scenes (camp) frame the WHOLE base, not the player — build a temp
+        // focus at the camp centre sized to cover every building.
+        GameObject tempFocus = null;
+        if (sequence == "camp" && CampBounds(out Vector3 cc, out float cr))
+        {
+            tempFocus = new GameObject("CineFocus");
+            tempFocus.transform.position = cc;
+            focus = tempFocus.transform;
+            _campRadius = cr;
+        }
+
+        if (cam == null || focus == null) { if (tempFocus) Destroy(tempFocus); IsPlaying = false; Destroy(gameObject); yield break; }
 
         // Hand the camera over from its follow rig.
         var follow = cam.GetComponent("CameraFollow") as MonoBehaviour;
@@ -63,6 +77,7 @@ public class CinematicSequencer : MonoBehaviour
         if (EnemyAI.GlobalFreeze) EnemyAI.GlobalFreeze = false;
         cam.fieldOfView = fov0;
         if (follow != null) follow.enabled = followWas;
+        if (tempFocus != null) Destroy(tempFocus);
         IsPlaying = false;
         Destroy(gameObject);
     }
@@ -75,8 +90,39 @@ public class CinematicSequencer : MonoBehaviour
             case "encircle": return Encircle();
             case "crane":    return CraneUp();
             case "orbit":    return Orbit();
+            case "camp":     return CampShowcase();
             default:          return HeroReveal();
         }
+    }
+
+    // Wide, slow reveal of the whole base — a high crane-orbit that shows every
+    // building, for the "there's a home to build" meta beat. Focus is the camp
+    // centre (set up in Run); radius sized to the base.
+    private List<Shot> CampShowcase()
+    {
+        float r = Mathf.Max(14f, _campRadius * 1.5f);
+        float h = Mathf.Max(10f, _campRadius * 0.8f);
+        return new List<Shot>
+        {
+            OrbitShot(dur: 10f, radius: r, startAngle: 20f, endAngle: 200f, height: h, lookH: 1.5f, fov: 55f),
+        };
+    }
+
+    // Camp centre + radius from the placed buildings, so the showcase frames all
+    // of them regardless of layout.
+    private bool CampBounds(out Vector3 center, out float radius)
+    {
+        center = Vector3.zero; radius = 12f;
+        var buildings = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
+        if (buildings == null || buildings.Length == 0) return false;
+        Vector3 sum = Vector3.zero; int n = 0;
+        foreach (var b in buildings) { if (b == null) continue; sum += b.transform.position; n++; }
+        if (n == 0) return false;
+        center = sum / n;
+        float maxD = 0f;
+        foreach (var b in buildings) { if (b == null) continue; maxD = Mathf.Max(maxD, Vector3.Distance(center, b.transform.position)); }
+        radius = Mathf.Max(10f, maxD);
+        return true;
     }
 
     // Slow low push-in on the player, then a rising orbit. A clean "meet the

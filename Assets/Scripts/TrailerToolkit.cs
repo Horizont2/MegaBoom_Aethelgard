@@ -69,6 +69,12 @@ public class TrailerToolkit : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha2)) CinematicSequencer.Play("encircle");
         if (Input.GetKeyDown(KeyCode.Alpha3)) CinematicSequencer.Play("orbit");
         if (Input.GetKeyDown(KeyCode.Alpha4)) CinematicSequencer.Play("crane");
+        if (Input.GetKeyDown(KeyCode.Alpha5)) CinematicSequencer.Play("camp");   // meta: base flythrough
+        if (Input.GetKeyDown(KeyCode.Alpha6))                                     // meta: build-choice cards
+        {
+            var lum = FindFirstObjectByType<LevelUpManager>();
+            if (lum != null) lum.ShowMenu();
+        }
 
         // Full self-filming trailer (runs the whole beat sheet automatically).
         if (Input.GetKeyDown(KeyCode.Alpha0)) AutoTrailerDirector.Play();
@@ -226,8 +232,9 @@ public class TrailerToolkit : MonoBehaviour
             "F7 victory cinematic\n" +
             $"F8 freeze enemies: {(EnemyAI.GlobalFreeze ? "FROZEN" : "off")}\n" +
             "<b>Auto shots:</b> 1 hero · 2 encircle · 3 orbit · 4 crane\n" +
+            "<b>Meta:</b> 5 camp flythrough · 6 level-up cards\n" +
             "<b>0 = FULL AUTO TRAILER</b> (films the whole beat sheet)";
-        GUI.Label(new Rect(12, 12, 380, 230), s, helpStyle);
+        GUI.Label(new Rect(12, 12, 380, 250), s, helpStyle);
     }
 }
 #endif
