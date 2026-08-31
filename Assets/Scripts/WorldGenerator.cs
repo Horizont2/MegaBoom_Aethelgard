@@ -1632,18 +1632,24 @@ public class WorldGenerator : MonoBehaviour
                 float minH = float.MaxValue;
                 float maxH = float.MinValue;
                 bool touchesWater = false;
-                Vector3[] scanPts = new Vector3[] {
-                    new Vector3(pX, 0, pZ), new Vector3(pX + flatRadius, 0, pZ),
-                    new Vector3(pX - flatRadius, 0, pZ), new Vector3(pX, 0, pZ + flatRadius),
-                    new Vector3(pX, 0, pZ - flatRadius)
-                };
-
-                foreach (var pt in scanPts)
+                // Dense footprint sampling: centre + two rings (0.5x and 1.0x
+                // flatRadius) at 8 compass directions = 17 probes. The old 5
+                // cardinal points missed a lake sitting UNDER a large location
+                // (between or diagonal to them), so big locations could spawn
+                // inside a carved lake. This covers the whole footprint disc.
+                for (int ring = 0; ring <= 2; ring++)
                 {
-                    float ch = terrain.SampleHeight(pt) + transform.position.y;
-                    if (ch <= absoluteWaterHeight + 1.5f) touchesWater = true;
-                    if (ch > maxH) maxH = ch;
-                    if (ch < minH) minH = ch;
+                    float r = ring == 0 ? 0f : (ring == 1 ? flatRadius * 0.5f : flatRadius);
+                    int dirs = ring == 0 ? 1 : 8;
+                    for (int d = 0; d < dirs; d++)
+                    {
+                        float ang = d * Mathf.PI * 2f / 8f;
+                        Vector3 pt = new Vector3(pX + Mathf.Cos(ang) * r, 0f, pZ + Mathf.Sin(ang) * r);
+                        float ch = terrain.SampleHeight(pt) + transform.position.y;
+                        if (ch <= absoluteWaterHeight + 1.5f) touchesWater = true;
+                        if (ch > maxH) maxH = ch;
+                        if (ch < minH) minH = ch;
+                    }
                 }
 
                 if (!touchesWater && (maxH - minH) <= 12f)
