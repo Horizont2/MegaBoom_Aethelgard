@@ -12,6 +12,8 @@ public class EnemyProjectile : MonoBehaviour
     [Tooltip("Optional impact VFX spawned where the arrow lands.")]
     public GameObject hitVFXPrefab;
     public bool playHitSfx = true;
+    [Tooltip("Arrows embed in the player (true); magic orbs / bolts burst on impact (false).")]
+    public bool stickOnHit = true;
 
     private Vector3 velocity;
     private float gravity;
@@ -72,7 +74,8 @@ public class EnemyProjectile : MonoBehaviour
                     PushDirection = velocity.normalized,
                     SourceName = "Archer"
                 });
-                StickInto(hit.collider.transform, hit.point);
+                if (stickOnHit) StickInto(hit.collider.transform, hit.point);
+                else Impact();
                 return;
             }
 

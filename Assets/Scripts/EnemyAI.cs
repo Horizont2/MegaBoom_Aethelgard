@@ -48,6 +48,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
     public Transform projectileSpawnPoint;
 
+    [Header("Skeleton Mage")]
+    [Tooltip("Casts a flying magic orb instead of meleeing. Auto-enabled for enemies whose name contains 'mage'. Uses ranged behavior; the orb is built at runtime, no prefab needed.")]
+    public bool magicCaster = false;
+    [Tooltip("Color of the mage's magic orb + its glow/trail.")]
+    public Color magicOrbColor = new Color(0.55f, 0.35f, 1f);
+
     [Header("Summon Ability (optional — e.g. the Necromancer)")]
     [Tooltip("Enable to give this enemy the reusable minion-summon ability. Assign at least one minion prefab below.")]
     public bool canSummon = false;
@@ -358,6 +364,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         mainCamTransform = CameraCache.MainTransform;
         dayNightCycle = FindFirstObjectByType<DayNightCycle>();
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
+
+        // Skeleton Mage: casts a flying magic orb instead of meleeing like a
+        // grunt. Detected by name so no per-prefab wiring is needed. Force ranged
+        // behavior so it kites and uses the cast loop; FireProjectile builds the
+        // orb at runtime (no projectile prefab required).
+        if (!magicCaster && name.ToLowerInvariant().Contains("mage"))
+            magicCaster = true;
+        if (magicCaster)
+            isRanged = true;
 
         float timeMultiplier = PowerSystemManager.CalculateTimeMultiplier(Time.timeSinceLevelLoad);
 
@@ -974,7 +989,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void FireProjectile()
     {
         if (GlobalFreeze || isDead) return;   // no shots during the victory freeze
-        if (projectilePrefab == null || target == null) return;
+        if (target == null) return;
+        if (magicCaster) { FireMagicOrb(); return; }
+        if (projectilePrefab == null) return;
 
         Vector3 spawn = projectileSpawnPoint != null
             ? projectileSpawnPoint.position
@@ -1004,6 +1021,72 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 vel = flat / tFlight;
         vel.y = toTarget.y / tFlight + 0.5f * g * tFlight;
         ep.LaunchBallistic(vel, g, damage, gameObject);
+    }
+
+    // Skeleton Mage cast: a glowing magic orb that flies STRAIGHT at the player
+    // (grenade-like sphere, distinct color) and bursts on impact. Built entirely
+    // in code so no projectile prefab has to be wired onto the mage.
+    private void FireMagicOrb()
+    {
+        Vector3 spawn = projectileSpawnPoint != null
+            ? projectileSpawnPoint.position
+            : transform.position + Vector3.up * 1.4f + transform.forward * 0.6f;
+        Vector3 aimPoint = target.position + Vector3.up * 0.9f;
+
+        float roughDist = Vector3.Distance(spawn, aimPoint);
+        float tPredict = Mathf.Clamp(roughDist / Mathf.Max(1f, projectileSpeed), 0.3f, 2f);
+        if (playerTarget != null)
+            aimPoint += playerTarget.HorizontalVelocity * (tPredict * rangedLeadFactor);
+
+        GameObject orb = BuildMagicOrb(spawn);
+        var ep = orb.GetComponent<EnemyProjectile>();
+        ep.stickOnHit = false;   // burst, don't embed like an arrow
+        Vector3 dir = (aimPoint - spawn).normalized;
+        if (dir.sqrMagnitude < 0.0001f) dir = transform.forward;
+        ep.Launch(dir, Mathf.Max(9f, projectileSpeed), damage, gameObject);
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, spawn);
+    }
+
+    private GameObject BuildMagicOrb(Vector3 pos)
+    {
+        var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        orb.name = "MageOrb";
+        orb.transform.position = pos;
+        orb.transform.localScale = Vector3.one * 0.5f;
+        // EnemyProjectile raycasts its own path — a collider would just cause
+        // self-hits and physics noise, so strip the primitive's collider.
+        var pc = orb.GetComponent<Collider>();
+        if (pc != null) Destroy(pc);
+
+        Shader sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        var mat = new Material(sh);
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", magicOrbColor); else mat.color = magicOrbColor;
+        mat.EnableKeyword("_EMISSION");
+        if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", magicOrbColor * 3.5f);
+        var rend = orb.GetComponent<Renderer>();
+        rend.material = mat;
+        rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        var light = orb.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = magicOrbColor;
+        light.range = 6f;
+        light.intensity = 3.2f;
+
+        var trail = orb.AddComponent<TrailRenderer>();
+        trail.time = 0.32f;
+        trail.startWidth = 0.42f;
+        trail.endWidth = 0f;
+        trail.numCapVertices = 4;
+        trail.material = mat;
+        trail.startColor = magicOrbColor;
+        trail.endColor = new Color(magicOrbColor.r, magicOrbColor.g, magicOrbColor.b, 0f);
+
+        var ep = orb.AddComponent<EnemyProjectile>();
+        ep.lifetime = 5f;
+        ep.playHitSfx = true;
+        return orb;
     }
 
     private IEnumerator AttackRoutine()
