@@ -4,12 +4,12 @@ using UnityEngine;
 public class GlimmerSweep : MonoBehaviour
 {
     [Header("Sweep Points")]
-    public Transform startPoint; // Звідки починає
-    public Transform endPoint;   // Куди летить
+    public Transform startPoint; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public Transform endPoint;   // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Settings")]
-    public float speed = 0.5f;   // Швидкість прольоту
-    public float maxIntensity = 50f; // Максимальна яскравість по центру
+    public float speed = 0.5f;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    public float maxIntensity = 50f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     private Light glimmerLight;
     private float progress = 0f;
@@ -21,23 +21,25 @@ public class GlimmerSweep : MonoBehaviour
 
     private void OnEnable()
     {
-        // Скидаємо прогрес щоразу, коли світло вмикається
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         progress = 0f;
     }
 
     private void Update()
     {
-        if (startPoint == null || endPoint == null) return;
+        // Advance the sweep progress unconditionally. The old code early-returned
+        // when startPoint/endPoint were unwired вЂ” so on any building whose glimmer
+        // prefab lacked those references (the lumberjack, per report) the light
+        // just sat frozen. Now the pulse ALWAYS animates; the positional sweep is
+        // the only part that needs the points.
+        progress += Time.deltaTime * Mathf.Max(0.01f, speed);
+        if (progress > 1f) progress -= 1f;
 
-        // Збільшуємо прогрес від 0 до 1
-        progress += Time.deltaTime * speed;
-        if (progress > 1f) progress = 0f; // Зациклюємо
+        if (startPoint != null && endPoint != null)
+            transform.position = Vector3.Lerp(startPoint.position, endPoint.position, progress);
 
-        // 1. Рухаємо світло між точками
-        transform.position = Vector3.Lerp(startPoint.position, endPoint.position, progress);
-
-        // 2. Магія математики: плавно вмикаємо і вимикаємо яскравість!
-        // Sin(progress * PI) дає дугу: 0 на старті, 1 по центру, 0 в кінці.
-        glimmerLight.intensity = Mathf.Sin(progress * Mathf.PI) * maxIntensity;
+        // Sin(progress * PI): 0 at the ends, 1 in the middle вЂ” a soft breathing glow.
+        if (glimmerLight != null)
+            glimmerLight.intensity = Mathf.Sin(progress * Mathf.PI) * maxIntensity;
     }
 }

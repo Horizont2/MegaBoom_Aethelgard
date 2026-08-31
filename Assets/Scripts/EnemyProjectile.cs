@@ -72,7 +72,7 @@ public class EnemyProjectile : MonoBehaviour
                     PushDirection = velocity.normalized,
                     SourceName = "Archer"
                 });
-                Impact();
+                StickInto(hit.collider.transform, hit.point);
                 return;
             }
 
@@ -97,5 +97,29 @@ public class EnemyProjectile : MonoBehaviour
         if (playHitSfx && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
         Destroy(gameObject);
+    }
+
+    // Embed the arrow in the player's body and leave it there for a few seconds
+    // (per feedback) so hits feel weighty, instead of vanishing on contact.
+    private void StickInto(Transform body, Vector3 point)
+    {
+        launched = false;   // stop integrating / raycasting
+        if (playHitSfx && AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
+
+        // Pull the arrow back slightly along its flight so the shaft sits in the
+        // body with the head buried, not floating past it.
+        Vector3 dir = velocity.sqrMagnitude > 0.0001f ? velocity.normalized : transform.forward;
+        transform.position = point - dir * 0.22f;
+        transform.rotation = Quaternion.LookRotation(dir) * Quaternion.Euler(Random.Range(-8f, 8f), Random.Range(-8f, 8f), 0f);
+
+        // Ride along with whatever it hit (follows the player as they move).
+        if (body != null) transform.SetParent(body, worldPositionStays: true);
+
+        // A collider left on the stuck arrow could re-trigger things — strip it.
+        var col = GetComponent<Collider>();
+        if (col != null) col.enabled = false;
+
+        Destroy(gameObject, 4f);   // linger, then drop off
     }
 }

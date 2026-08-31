@@ -132,7 +132,13 @@ public class MinionSummonAbility : MonoBehaviour
             if (minionSpawnVFX != null)
                 Instantiate(minionSpawnVFX, pos, Quaternion.identity).AddComponent<VFXAutoFade>().Configure(2f, world: true);
             GameObject m = Instantiate(prefab, pos, Quaternion.Euler(0f, ang + 180f, 0f));
-            if (m != null) active.Add(m);
+            if (m != null)
+            {
+                // Summoned skeletons were rendering magenta — their prefab
+                // material used a shader missing from the build. Repair on spawn.
+                ShaderRepair.Fix(m);
+                active.Add(m);
+            }
         }
 
         nextCastTime = Time.time + cooldown;

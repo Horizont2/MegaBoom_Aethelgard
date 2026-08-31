@@ -1244,7 +1244,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         bool enemyInBlast = false;
         for (int bi = 0; bi < blastCount; bi++)
         {
-            if (s_overlapBuffer[bi] != null && s_overlapBuffer[bi].CompareTag("Enemy")) { enemyInBlast = true; break; }
+            var col = s_overlapBuffer[bi];
+            if (col == null) continue;
+            // Detect enemies by COMPONENT, not just tag. Archers/bosses keep their
+            // EnemyAI on the parent with untagged child colliders, so the old
+            // CompareTag("Enemy") never saw them and the aim ring stayed blue when
+            // aiming right at an archer. Match the grenade's own damage logic.
+            if (col.CompareTag("Enemy") || col.GetComponentInParent<EnemyAI>() != null) { enemyInBlast = true; break; }
         }
 
         Color currentAimColor = enemyInBlast ? new Color(1f, 0.1f, 0.1f, 0.8f) : new Color(0f, 0.8f, 1f, 0.8f);

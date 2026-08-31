@@ -431,6 +431,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
                              summonCooldown, summonWindup, summonAggroRange, summonSpawnRadius,
                              summonAnimTrigger, summonCastVFX, summonMinionSpawnVFX,
                              summonRequireAllDead);
+            // The summoner "remains" prop was rendering magenta (its material's
+            // shader is missing from the build) — repair it so it reads as bone.
+            ShaderRepair.Fix(gameObject);
         }
 
         StartCoroutine(SpawnRoutine());

@@ -317,6 +317,27 @@ public class CampBuilding : MonoBehaviour
                                 Vector3 startPos = originalModelPos - new Vector3(0, spawnDepth, 0);
                                 realModel.transform.localPosition = Vector3.Lerp(startPos, originalModelPos, progress);
                             }
+
+                            // SELF-COMPLETE once the build time has elapsed. The
+                            // completion used to depend solely on GlobalHUD's
+                            // upgrade tracker firing UpgradeFinished — but that
+                            // tracker is lost on a scene reload, which left the
+                            // building frozen mid-build forever ("stays unbuilt").
+                            // Now the building finishes itself from its own saved
+                            // timestamp regardless of the HUD.
+                            if (progress >= 1f)
+                            {
+                                PlayerPrefs.SetInt(ppKey_UpgradeFinished, 1);
+                                PlayerPrefs.SetInt(ppKey_IsUpgrading, 0);
+                                PlayerPrefs.Save();
+                            }
+                        }
+                        else
+                        {
+                            // A zero/negative build time must not strand the build.
+                            PlayerPrefs.SetInt(ppKey_UpgradeFinished, 1);
+                            PlayerPrefs.SetInt(ppKey_IsUpgrading, 0);
+                            PlayerPrefs.Save();
                         }
                     }
                 }
