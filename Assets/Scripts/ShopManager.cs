@@ -125,6 +125,19 @@ public class ShopManager : MonoBehaviour
     [Tooltip("Scale multiplier used by the character-model \"got it!\" pulse.")]
     public float purchasePulseScale = 1.08f;
 
+    // Per-transform pop tween registry so rapid upgrades don't stack overlapping
+    // scale coroutines on the same text (they raced and could strand it enlarged).
+    private readonly System.Collections.Generic.Dictionary<Transform, Coroutine> _popTweens
+        = new System.Collections.Generic.Dictionary<Transform, Coroutine>();
+
+    private void PopTextSafe(TextMeshProUGUI text)
+    {
+        if (text == null) return;
+        Transform tr = text.transform;
+        if (_popTweens.TryGetValue(tr, out var running) && running != null) StopCoroutine(running);
+        _popTweens[tr] = StartCoroutine(PopText(text));
+    }
+
     private GameObject currentHeroModel;
     private GameObject currentWeaponModel;
     private ModularArmorManager dummyArmorManager;
@@ -1084,7 +1097,24 @@ public class ShopManager : MonoBehaviour
         // celebration sting for the upgrade-level pop.
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Stagger);
         if (purchaseFlashOverlay != null) StartCoroutine(FlashOverlayRoutine());
-        if (currentHeroModel != null) StartCoroutine(HeroPulseRoutine(currentHeroModel.transform));
+        if (currentHeroModel != null) PulseHero(currentHeroModel.transform);
+    }
+
+    private Coroutine _heroPulseCo;
+    private Vector3 _heroPulseBase = Vector3.one;
+    private Transform _heroPulseTarget;
+
+    // Stop any running pulse and restore the TRUE base scale before starting a
+    // new one. The old code StartCoroutine'd each time and re-read t.localScale
+    // as "original" — so a rapid second purchase captured the mid-pulse enlarged
+    // scale as the baseline and the model compounded / froze bigger each buy.
+    private void PulseHero(Transform t)
+    {
+        if (t == null) return;
+        if (_heroPulseCo != null && _heroPulseTarget == t) { StopCoroutine(_heroPulseCo); t.localScale = _heroPulseBase; }
+        if (_heroPulseTarget != t) { _heroPulseTarget = t; _heroPulseBase = t.localScale; }
+        t.localScale = _heroPulseBase;
+        _heroPulseCo = StartCoroutine(HeroPulseRoutine(t, _heroPulseBase));
     }
 
     private IEnumerator FlashOverlayRoutine()
@@ -1109,10 +1139,9 @@ public class ShopManager : MonoBehaviour
         img.color = new Color(baseC.r, baseC.g, baseC.b, 0f);
     }
 
-    private IEnumerator HeroPulseRoutine(Transform t)
+    private IEnumerator HeroPulseRoutine(Transform t, Vector3 originalScale)
     {
         if (t == null) yield break;
-        Vector3 originalScale = t.localScale;
         Vector3 peak = originalScale * Mathf.Max(1.01f, purchasePulseScale);
 
         float up = 0.12f, down = 0.22f;
@@ -1174,8 +1203,8 @@ public class ShopManager : MonoBehaviour
 
         if (animateText)
         {
-            if (itemNameText != null) StartCoroutine(PopText(itemNameText));
-            if (priceText != null) StartCoroutine(PopText(priceText));
+            if (itemNameText != null) PopTextSafe(itemNameText);
+            if (priceText != null) PopTextSafe(priceText);
             // Icon punch — quick scale bounce so the descriptionItemIcon
             // feels responsive to selection. Uses the same PopText coroutine
             // style on the icon's Transform for consistency.
@@ -1442,7 +1471,8 @@ public class ShopManager : MonoBehaviour
     {
         if (textComponent == null) yield break;
         textComponent.transform.localScale = Vector3.one;
-        Vector3 popScale = new Vector3(1.2f, 1.2f, 1.2f);
+        // Softer pop (was 1.2 — too strong for a rapidly-repeating stat text).
+        Vector3 popScale = new Vector3(1.12f, 1.12f, 1.12f);
         float t = 0;
         while (t < 1) { t += Time.unscaledDeltaTime * 12f; textComponent.transform.localScale = Vector3.Lerp(Vector3.one, popScale, t); yield return null; }
         t = 0;

@@ -423,15 +423,19 @@ public class ResourceManager : MonoBehaviour
     private IEnumerator TextBounceRoutine(TextMeshProUGUI textElement)
     {
         Vector3 originalScale = Vector3.one;
-        Vector3 punchScale = new Vector3(1.35f, 1.35f, 1.35f); // �������� ������ ����������
-        float upDuration = 0.08f; // �������� ��������� (���� ������)
-        float downDuration = 0.2f; // �������� ���������� ����� (����� ���������)
+        // Softer punch (1.35 read as too aggressive), and start clean so a
+        // previous bounce stopped mid-punch can't compound.
+        Vector3 punchScale = new Vector3(1.18f, 1.18f, 1.18f);
+        float upDuration = 0.08f;
+        float downDuration = 0.2f;
         float elapsed = 0f;
+        textElement.rectTransform.localScale = originalScale;
 
-        // ���������
+        // ��������� — UNSCALED so a menu at timeScale=0 (shop/pause) doesn't
+        // freeze the text mid-punch at the enlarged scale.
         while (elapsed < upDuration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             textElement.rectTransform.localScale = Vector3.Lerp(originalScale, punchScale, elapsed / upDuration);
             yield return null;
         }
@@ -440,7 +444,7 @@ public class ResourceManager : MonoBehaviour
         elapsed = 0f;
         while (elapsed < downDuration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             textElement.rectTransform.localScale = Vector3.Lerp(punchScale, originalScale, elapsed / downDuration);
             yield return null;
         }
