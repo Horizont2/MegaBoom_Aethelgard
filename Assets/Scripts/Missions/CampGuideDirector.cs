@@ -71,10 +71,21 @@ public class CampGuideDirector : MonoBehaviour
     // called from a MonoBehaviour constructor"), which killed the whole
     // component before Start could run.
     private NavMeshPath scratchPath;
+    // Explicit agent-type filter so CalculatePath never has to guess. The
+    // static NavMesh.CalculatePath(src, dst, areaMask, path) overload spammed
+    // "could not determine precisely which agent type should move" once the
+    // project had more than one baked agent type. Pinning the default
+    // (Humanoid) agent type via a query filter silences it.
+    private NavMeshQueryFilter guideFilter;
 
     private void Awake()
     {
         scratchPath = new NavMeshPath();
+        guideFilter = new NavMeshQueryFilter
+        {
+            areaMask = NavMesh.AllAreas,
+            agentTypeID = NavMesh.GetSettingsByIndex(0).agentTypeID
+        };
     }
 
     private void Start()
@@ -473,7 +484,7 @@ public class CampGuideDirector : MonoBehaviour
         {
             trailTimer = 0f;
             var target = steps[currentStepIndex].target;
-            if (target != null && NavMesh.CalculatePath(player.position, GetAimPoint(target), NavMesh.AllAreas, scratchPath)
+            if (target != null && NavMesh.CalculatePath(player.position, GetAimPoint(target), guideFilter, scratchPath)
                 && scratchPath.corners.Length >= 2)
             {
                 RebuildSmoothTrail(scratchPath.corners);

@@ -42,6 +42,13 @@ public static class AnimatorSafeExtensions
         anim.SetTrigger(Animator.StringToHash(name));
     }
 
+    public static void ResetTriggerSafe(this Animator anim, string name)
+    {
+        if (anim == null || !anim.isActiveAndEnabled) return;
+        if (!HasParameter(anim, name)) return;
+        anim.ResetTrigger(Animator.StringToHash(name));
+    }
+
     public static bool HasParameter(Animator anim, string name)
     {
         if (anim == null || anim.runtimeAnimatorController == null) return false;

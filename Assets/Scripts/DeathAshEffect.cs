@@ -235,7 +235,12 @@ public static class DeathAshEffect
         var vel = ps.velocityOverLifetime;
         vel.enabled = true;
         vel.space = ParticleSystemSimulationSpace.World;
+        // All three axes MUST share one MinMaxCurve mode. Setting only .y to
+        // TwoConstants while .x/.z stayed single-Constant threw "Particle
+        // Velocity curves must all be in the same mode" on every spawn.
+        vel.x = new ParticleSystem.MinMaxCurve(-0.12f, 0.12f);
         vel.y = new ParticleSystem.MinMaxCurve(0.5f, 1.1f);
+        vel.z = new ParticleSystem.MinMaxCurve(-0.12f, 0.12f);
 
         var noise = ps.noise;
         noise.enabled = true;

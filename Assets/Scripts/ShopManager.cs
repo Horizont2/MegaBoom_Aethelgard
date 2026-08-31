@@ -1277,6 +1277,16 @@ public class ShopManager : MonoBehaviour
 
     private void UpdateItemDetails(string name, string desc, Sprite icn, int lvl, int maxLvl, int price, bool isBought, bool isEquipped, int myDiamonds, int upgCost)
     {
+        // Exclude the per-item detail labels from the AutoLocalize walkers.
+        // Otherwise the 0.5s scene repeater re-captured whatever placeholder
+        // these fields shipped with ("Choose Category" on the price button, the
+        // first item's blurb on the description) and forced it back over the
+        // live values — the item texts flashed correct for one frame then
+        // reverted every half-second.
+        MarkNoAutoLocalize(itemNameText);
+        MarkNoAutoLocalize(itemDescriptionText);
+        MarkNoAutoLocalize(priceText);
+
         if (itemNameText) itemNameText.text = LocalizationManager.Tr(name) + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
         if (itemDescriptionText) itemDescriptionText.text = LocalizationManager.Tr(desc);
         if (descriptionItemIcon) { descriptionItemIcon.gameObject.SetActive(true); descriptionItemIcon.sprite = icn; }

@@ -69,6 +69,13 @@ public class StorageWorkerAI : MonoBehaviour
         }
         if (agent != null)
         {
+            // Force the default (baked Humanoid) agent type. If the prefab's
+            // NavMeshAgent was left on a SECOND agent type that has no baked
+            // surface, the agent sits off-mesh forever and the worker just
+            // stands there — and that same extra agent type is what made
+            // NavMesh.CalculatePath ambiguous elsewhere. Pin it to index 0.
+            int defType = NavMesh.GetSettingsByIndex(0).agentTypeID;
+            if (agent.agentTypeID != defType) agent.agentTypeID = defType;
             agent.enabled = true;
             NPCGait.Configure(agent, stoppingDistance: 0.5f);
             // Snap onto the NEAREST navmesh point, not the exact spawn. If the

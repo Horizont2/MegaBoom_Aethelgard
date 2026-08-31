@@ -765,8 +765,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void SetMovingAnim(bool moving, float speed)
     {
         if (animator == null || !animator.enabled) return;
-        animator.SetBool("isMoving", moving);
-        animator.SetFloat("Speed", moving ? speed : 0f);
+        animator.SetBoolSafe("isMoving", moving);
+        animator.SetFloatSafe("Speed", moving ? speed : 0f);
     }
 
     public void Aggro()
@@ -1225,11 +1225,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // ==========================================
         if (animator != null)
         {
-            animator.SetBool("isMoving", false); // Змушуємо забути про біг
-            animator.SetFloat("Speed", 0f);
+            animator.SetBoolSafe("isMoving", false); // Змушуємо забути про біг
+            animator.SetFloatSafe("Speed", 0f);
 
-            animator.ResetTrigger("Hit");        // Видаляємо всі "застряглі" тригери
-            animator.ResetTrigger("Attack");
+            animator.ResetTriggerSafe("Hit");        // Видаляємо всі "застряглі" тригери
+            animator.ResetTriggerSafe("Attack");
 
             // Archers were stuck in Bow_Attack: the AnyState→Bow_Attack transition
             // is gated on IsRanged && Aim, so with Aim still true it kept
