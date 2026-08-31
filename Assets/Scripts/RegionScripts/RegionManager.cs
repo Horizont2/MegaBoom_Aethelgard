@@ -639,6 +639,43 @@ public class RegionManager : MonoBehaviour
 
         GameObject motes = CreateLifeMotes(cam.transform);
 
+        // === PURGE BURST — a sharp climactic beat BEFORE the calm settle ======
+        // The first pass faded straight into a quiet crane, which read as
+        // anticlimactic ("the capture looks boring"). Now a shard of light
+        // erupts from the totem, the camera punches in with a shake, and the
+        // bloom wave rockets outward — so the capture LANDS as a payoff.
+        var burstLightGO = new GameObject("PurgeBurst");
+        burstLightGO.transform.position = totemPos + Vector3.up * 3f;
+        var burstLight = burstLightGO.AddComponent<Light>();
+        burstLight.type = LightType.Point;
+        burstLight.color = new Color(1f, 0.97f, 0.85f);
+        burstLight.range = Mathf.Max(40f, mapScale * 0.8f);
+        burstLight.intensity = 0f;
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFXOnce(AudioID.Region_Shockwave, 4f);
+
+        Vector3 punchStart = cam.transform.position;
+        Vector3 punchTarget = Vector3.Lerp(punchStart, totemPos + Vector3.up * 4f, 0.28f); // push ~28% in
+        Quaternion punchRotStart = cam.transform.rotation;
+        const float burstDur = 0.9f;
+        float bt = 0f;
+        while (bt < burstDur)
+        {
+            if (CheckSkipRequested()) { if (burstLightGO) Destroy(burstLightGO); if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
+            bt += Time.deltaTime;
+            float u = Mathf.Clamp01(bt / burstDur);
+            float pe = 1f - (1f - u) * (1f - u); // ease-out push
+            Vector3 shake = new Vector3(Mathf.PerlinNoise(bt * 40f, 0f) - 0.5f,
+                                        Mathf.PerlinNoise(0f, bt * 40f) - 0.5f, 0f) * (0.6f * (1f - u));
+            cam.transform.position = Vector3.Lerp(punchStart, punchTarget, pe) + shake;
+            cam.transform.rotation = Quaternion.Slerp(punchRotStart,
+                Quaternion.LookRotation(totemPos + Vector3.up * 3f - cam.transform.position), pe);
+            burstLight.intensity = Mathf.Sin(u * Mathf.PI) * 8f;      // spike then fall
+            CursedTree.BloomNear(totemPos, mapScale * 2.0f * u);      // shockwave bloom races out
+            yield return null;
+        }
+        if (burstLightGO != null) Destroy(burstLightGO, 0.2f);
+
         // Slow crane: hold roughly at the apex, drift gently up-and-back over
         // the totem so the shot breathes while the land comes alive. No flight.
         Vector3 craneStart = cam.transform.position;

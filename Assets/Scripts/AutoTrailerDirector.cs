@@ -33,6 +33,14 @@ public class AutoTrailerDirector : MonoBehaviour
     private bool showStack;
     private int _hintsWere = 1;
 
+    // Cached enemy list for the hero's combat AI — refreshed a few times a
+    // second instead of FindObjects every frame.
+    private readonly List<EnemyAI> liveEnemies = new List<EnemyAI>(64);
+    private float nextEnemyScan;
+    // Director-owned storm VFX (the region scene has no rain/lightning wired).
+    private ParticleSystem trailerRain;
+    private Light trailerLightning;
+
     public static void Play()
     {
         if (IsPlaying) return;
@@ -78,60 +86,69 @@ public class AutoTrailerDirector : MonoBehaviour
 
         var dnc = FindFirstObjectByType<DayNightCycle>();
 
+        // Daytime so the scene reads clearly — the sun still lights everything
+        // under the storm skybox, giving a DRAMATIC OVERCAST rather than the
+        // near-black dusk the first pass used ("weather too dark"). Rain +
+        // lightning come from the director's own VFX (the region scene wires
+        // none), so the storm is actually visible on screen.
+        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 14f; dnc.ForceWeather(WeatherState.Storm); }
+        StartStorm();
+
         // ===== BEAT -1 — THE RISE (cinematic cold open) =====================
         // Camera cranes up from just behind the hero to reveal a frozen
-        // skeleton army arrayed ahead of them. This is the trailer's opening
-        // image — the lone hero, back to camera, facing a horde before them.
-        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 18.4f; dnc.ForceWeather(WeatherState.Storm); }
+        // skeleton formation arrayed ahead of them. Deliberately a SMALL, tidy
+        // block (4×4) — the first pass spawned ~45 and read as visual soup.
         EnemyAI.GlobalFreeze = true;
-        SpawnArmyInFront(5, 9, 8f, 2.4f);   // ~45 skeletons in a facing formation
+        SpawnArmyInFront(4, 4, 9f, 2.8f);   // 16 skeletons, clean rows
         {
             Vector3 h = hero.position;
             Vector3 fwd = hero.forward; fwd.y = 0f;
             if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
             fwd.Normalize();
-            Vector3 lookAt = h + fwd * 12f + Vector3.up * 1.2f;   // the army ahead
+            Vector3 lookAt = h + fwd * 11f + Vector3.up * 1.3f;   // the army ahead
             Vector3 from   = h - fwd * 4.5f + Vector3.up * 0.5f;  // low, tucked behind the hero
-            Vector3 to     = h - fwd * 9f   + Vector3.up * 7.5f;  // craned up and back
-            yield return Move(from, to, lookAt, 38f, 52f, 7.5f, false);
+            Vector3 to     = h - fwd * 8.5f + Vector3.up * 7f;    // craned up and back
+            yield return Move(from, to, lookAt, 36f, 50f, 6.5f, false);
         }
 
-        // ===== BEAT 0 — the cursed land (storm dusk, slow drift) =====
-        if (dnc != null) { dnc.isWeatherLocked = true; dnc.timeOfDay = 18.7f; dnc.ForceWeather(WeatherState.Storm); }
-        EnemyAI.GlobalFreeze = true;
-        SpawnRing(6, 6f, 11f);
+        // ===== BEAT 0 — the cursed land (slow menacing drift) =====
         {
             Vector3 c = hero.position;
-            Vector3 a = c + new Vector3(-16f, 12f, -16f);
-            Vector3 b = c + new Vector3(10f, 9f, -18f);
-            yield return Move(a, b, c + Vector3.up * 1.2f, 55f, 50f, 8.5f, false);
+            Vector3 a = c + new Vector3(-13f, 9f, -13f);
+            Vector3 b = c + new Vector3(9f, 7f, -15f);
+            yield return Move(a, b, c + Vector3.up * 1.3f, 50f, 46f, 5.5f, false);
         }
 
-        // ===== BEAT 1 — the spark (dash in, grenade, first blows) =====
-        if (dnc != null) dnc.ForceWeather(WeatherState.Precipitation);
+        // ===== BEAT 1 — the spark (grenade + first blows) =====
         EnemyAI.GlobalFreeze = false;
         if (player != null) { player.TrailerThrowGrenade(); }        // open with a grenade
         StartCoroutine(SlowMoPulse(0.4f, 0.5f));                     // brief impact beat
-        yield return Orbit(hero, 4.2f, 5f, 20f, 120f, 2.3f, 1.3f, 46f, true);
+        yield return Orbit(hero, 4.5f, 5.2f, 20f, 130f, 2.3f, 1.3f, 46f, true);
 
         // ===== BEAT 2 — become the storm (STACK typhoon) =====
+        // Crowd trimmed 30 → 16 so the fight reads instead of turning to soup,
+        // and cleared to a bright sky for a crisp showcase of the STACK payoff.
         EnemyAI.GlobalFreeze = true;
-        SpawnRing(30, 4.5f, 9f);                                              // varied crowd (round-robin types)
-        yield return Orbit(hero, 1.4f, 7f, 30f, 70f, 3.2f, 1.4f, 52f, false); // pose on the frozen crowd
+        SpawnRing(16, 5f, 9f);                                                // varied crowd (round-robin types)
+        yield return Orbit(hero, 1.6f, 7.5f, 30f, 80f, 3.4f, 1.4f, 54f, false); // pose on the frozen crowd
         EnemyAI.GlobalFreeze = false;
         if (dnc != null) dnc.ForceWeather(WeatherState.Clear);
+        StopStorm();                                                         // crisp, bright peak
         showStack = true;                                                    // stylised on-screen STACK counter
-        yield return Orbit(hero, 4.5f, 6.5f, 70f, 250f, 2.8f, 1.35f, 55f, true);
+        yield return Orbit(hero, 5.0f, 6.8f, 80f, 250f, 2.8f, 1.35f, 56f, true);
         StartCoroutine(SlowMoPulse(0.35f, 0.9f));                            // punch the x5 peak
-        yield return Orbit(hero, 4.0f, 5.5f, 250f, 430f, 2.4f, 1.3f, 52f, true);
+        yield return Orbit(hero, 4.2f, 5.6f, 250f, 400f, 2.4f, 1.3f, 52f, true);
         showStack = false;
 
         // ===== BEAT 2b — the boss (big elite + low-angle slow-mo execution) =====
-        var boss = SpawnRing(1, 4f, 4f);
+        if (dnc != null) dnc.ForceWeather(WeatherState.Storm);
+        StartStorm();                                                        // storm back for the boss tension
+        var boss = SpawnRing(1, 4.5f, 4.5f);
         if (boss != null) { boss.transform.localScale *= 2.5f; var ba = boss.GetComponent<EnemyAI>(); if (ba != null) ba.maxHealth *= 2.5f; }
-        yield return Orbit(hero, 3.5f, 4.5f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // low, tense
+        yield return Orbit(hero, 3.8f, 4.6f, 0f, 150f, 1.6f, 1.7f, 42f, true);  // low, tense
         StartCoroutine(SlowMoPulse(0.2f, 1.2f));                                // execution slow-mo
-        yield return Orbit(hero, 1.6f, 3.5f, 150f, 200f, 1.3f, 1.6f, 40f, true);
+        yield return Orbit(hero, 1.8f, 3.6f, 150f, 205f, 1.3f, 1.6f, 40f, true);
+        StopStorm();                                                           // clear the sky for the victory reveal
 
         // ===== BEAT 3 — the curse lifts (victory reveal) + title over it =====
         // The victory cinematic OWNS Camera.main (bird-flight reveal, bloom) and
@@ -225,50 +242,106 @@ public class AutoTrailerDirector : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
     }
 
-    private float nextSwing, nextDash, nextReposition, runUntil;
-    private Vector3 combatAnchor, runTarget;
-    private bool anchorSet;
+    private float nextSwing, nextDash;
     private void DriveHero()
     {
         if (player == null || hero == null) return;
-        if (!anchorSet) { combatAnchor = hero.position; anchorSet = true; }
         float t = Time.unscaledTime;
 
-        // Run phase: sprint to a nearby point (clean facing — no attacking while
-        // running, so the hero doesn't twitch between run-dir and enemy-dir).
-        if (t < runUntil)
+        // Find the nearest LIVING enemy and the crowd's centre so every action
+        // is aimed at something real — the old code swung at empty air and
+        // dashed in random directions, which read as the hero flailing.
+        Transform nearest = NearestEnemy(out float nearDist);
+        Vector3 crowd = CrowdCentroid();
+
+        if (nearest == null)
         {
-            player.TrailerRun(runTarget - hero.position, 0.75f);
+            // Nothing to fight — drift toward where the crowd is forming instead
+            // of swinging at nothing.
+            if (crowd != Vector3.zero) player.TrailerRun(crowd - hero.position, 0.6f);
             return;
         }
 
-        // Fight phase: swing at the nearest enemy + occasional dash.
-        if (t >= nextSwing) { player.TrailerAutoAttack(); nextSwing = t + 0.4f; }
+        const float meleeReach = 3.2f;
+
+        if (nearDist > meleeReach + 0.6f)
+        {
+            // Close the gap: RUN at the nearest enemy (no air-swings while out of
+            // range). A periodic dash covers big gaps fast and reads as an
+            // aggressive gap-closer — always TOWARD the fight, never outward.
+            Vector3 toEnemy = nearest.position - hero.position; toEnemy.y = 0f;
+            if (t >= nextDash && nearDist > 6f)
+            {
+                player.TrailerDash(toEnemy);
+                nextDash = t + Random.Range(2.8f, 4.2f);
+            }
+            else
+            {
+                player.TrailerRun(toEnemy, 0.9f);
+            }
+            return;
+        }
+
+        // In range: swing at the nearest enemy (TrailerAutoAttack faces it and
+        // only lands on real targets). Occasionally dash THROUGH the crowd to a
+        // flanking angle so the hero weaves the fight instead of standing rooted.
+        if (t >= nextSwing) { player.TrailerAutoAttack(); nextSwing = t + 0.42f; }
         if (t >= nextDash)
         {
-            player.TrailerDash(Quaternion.Euler(0f, Random.Range(70f, 290f), 0f) * hero.forward);
-            nextDash = t + Random.Range(2.6f, 3.8f);
+            // Dash laterally around the crowd centre (perpendicular to the
+            // crowd direction) so we stay in the action and keep enemies framed.
+            Vector3 toCrowd = crowd - hero.position; toCrowd.y = 0f;
+            if (toCrowd.sqrMagnitude < 0.01f) toCrowd = hero.forward;
+            Vector3 lateral = Vector3.Cross(Vector3.up, toCrowd.normalized) * (Random.value < 0.5f ? 1f : -1f);
+            player.TrailerDash((toCrowd.normalized * 0.35f + lateral).normalized);
+            nextDash = t + Random.Range(3.2f, 4.5f);
         }
-        // Every few seconds, reposition with a short run to a fresh spot near the
-        // anchor so the hero weaves through the fight instead of standing rooted.
-        if (t >= nextReposition)
+    }
+
+    // ---------- enemy queries (for the hero AI) ----------
+    private void RefreshEnemies()
+    {
+        liveEnemies.Clear();
+        foreach (var e in FindObjectsByType<EnemyAI>(FindObjectsSortMode.None))
+            if (e != null && e.isActiveAndEnabled) liveEnemies.Add(e);
+    }
+
+    private Transform NearestEnemy(out float dist)
+    {
+        if (Time.unscaledTime >= nextEnemyScan) { RefreshEnemies(); nextEnemyScan = Time.unscaledTime + 0.25f; }
+        Transform best = null; dist = float.MaxValue;
+        if (hero == null) return null;
+        Vector3 hp = hero.position;
+        foreach (var e in liveEnemies)
         {
-            Vector2 c = Random.insideUnitCircle * 2.6f;
-            runTarget = combatAnchor + new Vector3(c.x, 0f, c.y);
-            runUntil = t + 0.8f;
-            nextReposition = t + Random.Range(3f, 4.5f);
+            if (e == null) continue;
+            float d = Vector3.Distance(hp, e.transform.position);
+            if (d < dist) { dist = d; best = e.transform; }
         }
+        return best;
+    }
+
+    private Vector3 CrowdCentroid()
+    {
+        if (liveEnemies.Count == 0) return Vector3.zero;
+        Vector3 sum = Vector3.zero; int n = 0;
+        foreach (var e in liveEnemies) { if (e == null) continue; sum += e.transform.position; n++; }
+        return n > 0 ? sum / n : Vector3.zero;
     }
 
     // ---------- meta scenes (one-button camp / shop showcase) ----------
     private IEnumerator CampTour()
     {
         SetHUD(false);
-        // 1. Reveal the whole base.
+        // 1. Reveal the whole base — a low sweep that RISES into a wide orbit,
+        // so it plays as a reveal instead of a flat turntable spin.
         if (CampBounds(out Vector3 c, out float r))
         {
             float rad = Mathf.Max(16f, r * 1.5f), h = Mathf.Max(12f, r * 0.85f);
-            yield return OrbitPoint(c, 9f, rad, 15f, 205f, h, 1.6f, 55f);
+            Vector3 lowStart = c + new Vector3(-rad * 0.7f, 2.5f, -rad * 0.7f); // near ground
+            Vector3 highMid  = c + new Vector3(rad * 0.25f, h, -rad);           // craned up
+            yield return Move(lowStart, highMid, c + Vector3.up * 2f, 40f, 52f, 4.5f, false);
+            yield return OrbitPoint(c, 7f, rad, 205f, 360f, h, 1.6f, 55f);
         }
         // 2. The Notice Board — dolly in and open the missions. Force a restock
         // first so fresh mission papers are actually on the board for the shot.
@@ -295,25 +368,56 @@ public class AutoTrailerDirector : MonoBehaviour
             if (!mapTable.IsMapOpen) mapTable.TrailerOpenMap();   // retry once if it didn't take
             yield return new WaitForSecondsRealtime(0.8f);
 
-            // Scroll the UI map itself to reveal the regions: whole map, then a
-            // cinematic pan+zoom across it (the viewer eases toward each view).
+            // Scroll the UI map to reveal the regions with a CONTINUOUS eased
+            // sweep — the first pass snapped between a few anchors, which read as
+            // jerky. Now the target glides frame-by-frame so the map dollies and
+            // zooms like a filmed move.
             var viewer = FindFirstObjectByType<MapInteractiveViewer>();
             if (viewer != null)
             {
-                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // all regions
-                yield return new WaitForSecondsRealtime(2.5f);
-                Vector2 vp = viewer.ViewportSize;
-                viewer.TrailerSetView(new Vector2(vp.x * 0.22f, vp.y * 0.12f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.45f));
-                yield return new WaitForSecondsRealtime(3f);
-                viewer.TrailerSetView(new Vector2(-vp.x * 0.22f, -vp.y * 0.10f), Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.5f));
-                yield return new WaitForSecondsRealtime(3f);
+                viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // establish: all regions
+                yield return new WaitForSecondsRealtime(1.6f);
+                yield return MapCinematicSweep(viewer);
                 viewer.TrailerSetView(Vector2.zero, viewer.MinZoom);            // pull back to all regions
-                yield return new WaitForSecondsRealtime(1.5f);
+                yield return new WaitForSecondsRealtime(1.4f);
             }
             else yield return new WaitForSecondsRealtime(6f);
 
             mapTable.TrailerCloseMap();
             yield return new WaitForSecondsRealtime(1f);
+        }
+    }
+
+    // Continuous eased pan+zoom across the world map. Drives the viewer's
+    // target every frame (the viewer smooths behind it) so the map glides
+    // instead of snapping between a handful of fixed views.
+    private IEnumerator MapCinematicSweep(MapInteractiveViewer viewer)
+    {
+        Vector2 vp = viewer.ViewportSize;
+        float zAll = viewer.MinZoom;
+        float zClose = Mathf.Lerp(viewer.MinZoom, viewer.MaxZoom, 0.5f);
+
+        // A gentle S across the map: dive into the newest front, drift to the
+        // far side, then ease back. Anchored-position offsets + matching zoom.
+        Vector2[] pts = {
+            Vector2.zero,
+            new Vector2(vp.x * 0.30f, vp.y * 0.16f),
+            new Vector2(-vp.x * 0.28f, -vp.y * 0.12f),
+            new Vector2(vp.x * 0.10f, -vp.y * 0.04f),
+        };
+        float[] zooms = { zAll, zClose, zClose, Mathf.Lerp(zAll, zClose, 0.5f) };
+
+        const float segDur = 2.8f;
+        for (int i = 0; i < pts.Length - 1; i++)
+        {
+            float t = 0f;
+            while (t < segDur)
+            {
+                t += Time.unscaledDeltaTime;
+                float e = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / segDur));
+                viewer.TrailerSetView(Vector2.Lerp(pts[i], pts[i + 1], e), Mathf.Lerp(zooms[i], zooms[i + 1], e));
+                yield return null;
+            }
         }
     }
 
@@ -399,6 +503,92 @@ public class AutoTrailerDirector : MonoBehaviour
         return last;
     }
 
+    // ---------- director-owned storm (region scene wires no rain/lightning) ----------
+    private Coroutine lightningLoop;
+
+    private void EnsureStormVFX()
+    {
+        if (trailerRain == null && cam != null)
+        {
+            var go = new GameObject("TrailerRain");
+            go.transform.SetParent(cam.transform);
+            go.transform.localPosition = new Vector3(0f, 18f, 6f); // above + slightly ahead of the lens
+            go.transform.localRotation = Quaternion.identity;
+
+            trailerRain = go.AddComponent<ParticleSystem>();
+            trailerRain.Stop();
+            var main = trailerRain.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World; // streaks stay put as the cam moves
+            main.startLifetime = 1.3f;
+            main.startSpeed = 0f;                 // fall by gravity so streaks are dead-vertical
+            main.gravityModifier = 3.6f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.08f);
+            main.startColor = new Color(0.78f, 0.85f, 0.98f, 0.55f);
+            main.maxParticles = 2600;
+            var em = trailerRain.emission; em.rateOverTime = 1300f;
+            var shape = trailerRain.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(46f, 1f, 46f);
+            var rend = trailerRain.GetComponent<ParticleSystemRenderer>();
+            rend.renderMode = ParticleSystemRenderMode.Stretch;
+            rend.velocityScale = 0.05f;
+            rend.lengthScale = 3.2f;
+            // Sprites/Default is always available in a build (unlike URP particle
+            // shaders that may be stripped) so the rain never renders magenta.
+            var sh = Shader.Find("Sprites/Default");
+            if (sh != null) rend.material = new Material(sh);
+        }
+        if (trailerLightning == null)
+        {
+            var lgo = new GameObject("TrailerLightning");
+            trailerLightning = lgo.AddComponent<Light>();
+            trailerLightning.type = LightType.Directional;
+            trailerLightning.color = new Color(0.85f, 0.9f, 1f);
+            trailerLightning.intensity = 0f;
+            trailerLightning.transform.rotation = Quaternion.Euler(60f, 30f, 0f);
+        }
+    }
+
+    private void StartStorm()
+    {
+        EnsureStormVFX();
+        if (trailerRain != null) trailerRain.Play();
+        if (lightningLoop == null) lightningLoop = StartCoroutine(LightningLoop());
+    }
+
+    private void StopStorm()
+    {
+        if (trailerRain != null) trailerRain.Stop();
+        if (lightningLoop != null) { StopCoroutine(lightningLoop); lightningLoop = null; }
+        if (trailerLightning != null) trailerLightning.intensity = 0f;
+    }
+
+    private IEnumerator LightningLoop()
+    {
+        // A brisk cadence so a short beat still gets a strike or two (the game's
+        // own lightning waits 5–15s and never fired inside the trailer window).
+        while (true)
+        {
+            yield return new WaitForSecondsRealtime(Random.Range(2.2f, 4.5f));
+            yield return StartCoroutine(LightningFlash());
+        }
+    }
+
+    private IEnumerator LightningFlash()
+    {
+        if (trailerLightning == null) yield break;
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Env_Thunder);
+        // Double-tap flicker — a hard flash, a dip, then a softer afterflash.
+        float[] peaks = { 2.4f, 0f, 1.3f, 0f };
+        float[] holds = { 0.05f, 0.04f, 0.06f, 0.05f };
+        for (int i = 0; i < peaks.Length; i++)
+        {
+            trailerLightning.intensity = peaks[i];
+            yield return new WaitForSecondsRealtime(holds[i]);
+        }
+        trailerLightning.intensity = 0f;
+    }
+
     // Spawn a frozen formation of enemies AHEAD of the hero (a grid of rows),
     // each facing back toward the hero — the "army before you" cold-open shot.
     // Uses the same enemy pool as SpawnRing so the horde reads as varied.
@@ -461,6 +651,9 @@ public class AutoTrailerDirector : MonoBehaviour
         if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = false; }
         if (cam != null) cam.fieldOfView = fov0;
         if (follow != null) follow.enabled = followWas;
+        StopStorm();
+        if (trailerRain != null) Destroy(trailerRain.gameObject);
+        if (trailerLightning != null) Destroy(trailerLightning.gameObject);
         IsPlaying = false;
         Destroy(gameObject);
     }
