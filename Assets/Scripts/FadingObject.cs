@@ -11,7 +11,7 @@ public class FadingObject : MonoBehaviour
 
     private Renderer[] renderers;
 
-    // Словники для збереження оригінальних та прозорих версій матеріалів
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
     private Dictionary<Renderer, Material[]> transparentMaterials = new Dictionary<Renderer, Material[]>();
 
@@ -28,7 +28,7 @@ public class FadingObject : MonoBehaviour
 
         foreach (Renderer r in renderers)
         {
-            // Ігноруємо ефекти часток
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             if (r is ParticleSystemRenderer) continue;
 
             originalMaterials[r] = r.sharedMaterials;
@@ -41,7 +41,7 @@ public class FadingObject : MonoBehaviour
 
                 Material transMat = new Material(orig);
 
-                // Змушуємо URP матеріал підтримувати прозорість
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ URP пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 transMat.SetFloat("_Surface", 1);
                 transMat.SetFloat("_Blend", 0);
                 transMat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
@@ -58,9 +58,17 @@ public class FadingObject : MonoBehaviour
         isInitialized = true;
     }
 
+    // Dormant = fully opaque and idle. We keep the component + its cloned
+    // transparent materials alive (instead of Destroy-ing on every fade-in)
+    // so walking back and forth through the same trees doesn't re-clone all
+    // their materials each time вЂ” that repeated AddComponent + material clone
+    // + Destroy churn was a steady GC / hitching source in wooded areas.
+    private bool isDormant = false;
+
     public void FadeOut()
     {
         isFadingOut = true;
+        isDormant = false;
     }
 
     public void FadeIn()
@@ -70,7 +78,7 @@ public class FadingObject : MonoBehaviour
 
     private void Update()
     {
-        if (!isInitialized) return;
+        if (!isInitialized || isDormant) return;
 
         float target = isFadingOut ? fadeTargetAlpha : 1f;
 
@@ -81,8 +89,12 @@ public class FadingObject : MonoBehaviour
         }
         else if (!isFadingOut)
         {
-            // Самовидалення для економії ресурсів, коли дерево знову повністю непрозоре
-            Destroy(this);
+            // Fully opaque again вЂ” snap to 1, restore the original (batchable)
+            // shared materials, and go dormant. We do NOT Destroy: the clones
+            // stay cached so the next FadeOut reuses them instantly.
+            currentAlpha = 1f;
+            RestoreOriginalMaterials();
+            isDormant = true;
         }
     }
 
@@ -92,7 +104,7 @@ public class FadingObject : MonoBehaviour
         {
             if (r == null || r is ParticleSystemRenderer) continue;
 
-            // БЕЗПЕЧНА ПЕРЕВІРКА: використовуємо TryGetValue, щоб уникнути KeyNotFoundException
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅВІпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TryGetValue, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ KeyNotFoundException
             if (transparentMaterials.TryGetValue(r, out Material[] transMats))
             {
                 if (r.sharedMaterials != transMats)
@@ -125,7 +137,7 @@ public class FadingObject : MonoBehaviour
     {
         foreach (Renderer r in renderers)
         {
-            // Оптимізована безпечна перевірка
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (r != null && originalMaterials.TryGetValue(r, out Material[] origMats))
             {
                 r.sharedMaterials = origMats;
@@ -133,11 +145,11 @@ public class FadingObject : MonoBehaviour
         }
     }
 
-    // --- МАГІЯ ДЛЯ МІНІМАПИ ---
+    // --- пїЅпїЅГІпїЅ пїЅпїЅпїЅ МІНІпїЅпїЅпїЅпїЅ ---
 
     private void OnEnable()
     {
-        // Підписуємося на події рендерингу камер URP
+        // ПіпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅдії пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ URP
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
     }
@@ -153,7 +165,7 @@ public class FadingObject : MonoBehaviour
     {
         RestoreOriginalMaterials();
 
-        // ВАЖЛИВО: Очищуємо створені клони матеріалів, щоб оперативна пам'ять не переповнювалась
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ'пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         foreach (var kvp in transparentMaterials)
         {
             foreach (Material mat in kvp.Value)
@@ -166,7 +178,7 @@ public class FadingObject : MonoBehaviour
 
     private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
     {
-        // ПЕРЕД тим як MinimapCamera почне малювати, повертаємо дереву оригінальні непрозорі матеріали
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ MinimapCamera пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (camera.name == "MinimapCamera" && currentAlpha < 1f)
         {
             RestoreOriginalMaterials();
@@ -175,12 +187,12 @@ public class FadingObject : MonoBehaviour
 
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
-        // ПІСЛЯ того як мапа намальована, повертаємо дереву напівпрозорий стан назад
+        // ПІпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (camera.name == "MinimapCamera" && currentAlpha < 1f && isInitialized)
         {
             foreach (Renderer r in renderers)
             {
-                // Оптимізована безпечна перевірка
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (r != null && transparentMaterials.TryGetValue(r, out Material[] transMats))
                 {
                     r.sharedMaterials = transMats;

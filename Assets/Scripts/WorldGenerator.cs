@@ -2766,18 +2766,25 @@ public class WorldGenerator : MonoBehaviour
             }
             if (isOverlap) continue;
 
-            // AREA VARIANCE SCAN: Перевіряємо перепад висот під радіусом конкретного префабу
+            // AREA VARIANCE SCAN: Перевіряємо перепад висот під радіусом конкретного префабу.
+            // DENSE FOOTPRINT SAMPLING: the old 5-probe cross (center + 4 cardinals
+            // at the rim) left big gaps — a large location straddling a lake in a
+            // corner or between the arms passed the test and spawned in the water.
+            // Sample two concentric rings of 8 (rim + mid) plus the center = 17
+            // probes so no lake pocket under the footprint goes unnoticed.
             float minH = float.MaxValue;
             float maxH = float.MinValue;
             bool touchesWater = false;
 
-            Vector3[] scanPts = new Vector3[] {
-                centerPos,
-                centerPos + new Vector3(settings.flattenRadius, 0, 0),
-                centerPos + new Vector3(-settings.flattenRadius, 0, 0),
-                centerPos + new Vector3(0, 0, settings.flattenRadius),
-                centerPos + new Vector3(0, 0, -settings.flattenRadius)
-            };
+            float r = settings.flattenRadius;
+            List<Vector3> scanPts = new List<Vector3>(17) { centerPos };
+            for (int a = 0; a < 8; a++)
+            {
+                float ang = a * (Mathf.PI * 2f / 8f);
+                Vector3 dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
+                scanPts.Add(centerPos + dir * r);          // outer rim
+                scanPts.Add(centerPos + dir * (r * 0.6f)); // mid ring
+            }
 
             foreach (var pt in scanPts)
             {
@@ -2851,27 +2858,44 @@ public class WorldGenerator : MonoBehaviour
             }
             else
             {
-                // Метод Б: Якщо колайдера немає — скануємо 3D-сітки (Meshes)
-                float lowestY = float.MaxValue;
-                bool hasRenderers = false;
-
+                // Метод Б: Якщо колайдера немає — скануємо 3D-сітки (Meshes).
+                // Збираємо ВСІ нижні краї рендерів, щоб відсіяти одиничний
+                // "занурений" виступ (напр. колесо водяної мельниці або паля,
+                // що навмисно йде нижче основи будівлі).
+                List<float> bottoms = new List<float>(16);
                 foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
                 {
                     if (rend == null || !rend.enabled) continue;
-                    lowestY = Mathf.Min(lowestY, rend.bounds.min.y);
-                    hasRenderers = true;
+                    bottoms.Add(rend.bounds.min.y);
                 }
                 foreach (var rend in instance.GetComponentsInChildren<SkinnedMeshRenderer>(false))
                 {
                     if (rend == null || !rend.enabled) continue;
-                    lowestY = Mathf.Min(lowestY, rend.bounds.min.y);
-                    hasRenderers = true;
+                    bottoms.Add(rend.bounds.min.y);
                 }
 
-                if (hasRenderers)
+                if (bottoms.Count > 0)
                 {
-                    // lowestY — це найнижча точка моделі (наприклад, дно паркану або намету).
-                    // Рахуємо різницю між нею та землею і притискаємо об'єкт!
+                    bottoms.Sort();
+                    float lowestY = bottoms[0];
+
+                    // OUTLIER REJECTION: if the single lowest renderer sits far
+                    // below the rest of the structure (a water-mill wheel / dock
+                    // pile / foundation that DIPS below grade), snapping IT to the
+                    // ground rockets the whole building into the sky — that was the
+                    // "location spawns very high" bug. When the lowest piece is
+                    // separated from the next by a big gap, treat it as intentional
+                    // below-grade geometry and snap to the next piece instead, so
+                    // the outlier stays tucked into the ground/water where it belongs.
+                    if (bottoms.Count >= 3)
+                    {
+                        float span = bottoms[bottoms.Count - 1] - bottoms[0];
+                        float gap = bottoms[1] - bottoms[0];
+                        if (span > 0.01f && gap > span * 0.5f && gap > 1.5f)
+                            lowestY = bottoms[1];
+                    }
+
+                    // Рахуємо різницю між базою моделі та землею і притискаємо об'єкт!
                     float delta = exactGroundY - lowestY;
                     instance.transform.position += new Vector3(0f, delta, 0f);
                 }
