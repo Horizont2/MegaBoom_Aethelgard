@@ -620,26 +620,29 @@ public class RegionManager : MonoBehaviour
         Color fog0Col = RenderSettings.fogColor;
         Color amb0 = RenderSettings.ambientLight;
 
-        // Healed targets: airy, warm, bright.
-        float fogTStart = fog0Start + mapScale * 0.6f;
-        float fogTEnd = fog0End + mapScale * 1.6f;
-        float fogTDens = fog0Dens * 0.4f;
-        Color fogTCol = new Color(0.82f, 0.87f, 0.93f);
-        Color ambT = new Color(Mathf.Min(1f, amb0.r + 0.35f), Mathf.Min(1f, amb0.g + 0.38f), Mathf.Min(1f, amb0.b + 0.30f));
+        // Healed targets — SUBTLE. The old values slammed ambient +0.35 and the
+        // sun to 1.6x, which (together with the instant green tree "bloom") read
+        // as a fake switch flipping. Now it's a gentle "the storm passes and light
+        // returns" — the fog thins and warms a touch, the sun lifts slightly.
+        float fogTStart = fog0Start + mapScale * 0.4f;
+        float fogTEnd = fog0End + mapScale * 1.1f;
+        float fogTDens = fog0Dens * 0.6f;
+        Color fogTCol = Color.Lerp(fog0Col, new Color(0.80f, 0.84f, 0.90f), 0.6f);
+        Color ambT = new Color(Mathf.Min(1f, amb0.r + 0.16f), Mathf.Min(1f, amb0.g + 0.18f), Mathf.Min(1f, amb0.b + 0.14f));
 
-        // Optional sun swell.
+        // Optional gentle sun warm.
         DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
         Light sun = dnc != null ? dnc.sunLight : null;
         float sun0 = sun != null ? sun.intensity : 1f;
         Color sunC0 = sun != null ? sun.color : Color.white;
-        Color sunCT = new Color(1f, 0.96f, 0.85f);
+        Color sunCT = Color.Lerp(sunC0, new Color(1f, 0.97f, 0.9f), 0.6f);
 
         const float healDur = 5f;
 
-        // Sweep the curse off the land: blighted trees bloom outward from the
-        // totem. Radius must reach the FARTHEST tree — 2.0x mapScale guarantees
-        // full coverage even for an off-centre totem.
-        CursedTree.BeginWorldBloom(totemPos, healDur, mapScale * 2.0f);
+        // NOTE: the green "cursed trees bloom outward" effect was REMOVED per
+        // feedback — it looked artificial. The land now heals purely through the
+        // sky/light clearing (the storm was already switched to Clear earlier in
+        // the sequence), which reads as natural rather than a plant-regrow switch.
 
         GameObject motes = CreateLifeMotes(cam.transform);
 
@@ -675,7 +678,6 @@ public class RegionManager : MonoBehaviour
             cam.transform.rotation = Quaternion.Slerp(punchRotStart,
                 Quaternion.LookRotation(totemPos + Vector3.up * 3f - cam.transform.position), pe);
             burstLight.intensity = Mathf.Sin(u * Mathf.PI) * 8f;      // spike then fall
-            CursedTree.BloomNear(totemPos, mapScale * 2.0f * u);      // shockwave bloom races out
             yield return null;
         }
         if (burstLightGO != null) Destroy(burstLightGO, 0.2f);
@@ -702,10 +704,8 @@ public class RegionManager : MonoBehaviour
                 Quaternion.LookRotation(totemPos + Vector3.up * 3f - cam.transform.position), s);
             cam.fieldOfView = Mathf.Lerp(fovStart, 62f, s);
 
-            // Bloom the trees near the totem as the wave spreads.
-            CursedTree.BloomNear(totemPos, mapScale * 2.0f * s);
-
-            // Heal the world proportionally.
+            // Heal the world naturally through the sky/light only — the fog thins
+            // and warms, the sun lifts a touch. No tree-color swap.
             RenderSettings.fogStartDistance = Mathf.Lerp(fog0Start, fogTStart, s);
             RenderSettings.fogEndDistance = Mathf.Lerp(fog0End, fogTEnd, s);
             RenderSettings.fogDensity = Mathf.Lerp(fog0Dens, fogTDens, s);
@@ -713,7 +713,7 @@ public class RegionManager : MonoBehaviour
             RenderSettings.ambientLight = Color.Lerp(amb0, ambT, s);
             if (sun != null)
             {
-                sun.intensity = Mathf.Lerp(sun0, sun0 * 1.6f, s);
+                sun.intensity = Mathf.Lerp(sun0, sun0 * 1.25f, s);
                 sun.color = Color.Lerp(sunC0, sunCT, s);
             }
             yield return null;
