@@ -1827,27 +1827,42 @@ public class WorldGenerator : MonoBehaviour
         // using renderers alone sank prefabs that have a mesh below their base.
         // The min of the two lands the true bottom on the ground for both.
         // Per-region fine-tuning is still available via RegionData.locationYOffset.
-        float lowestY = float.MaxValue;
+        // Track the STRUCTURE's base separately from everything, so geometry
+        // deliberately sunk below grade — water-mill wheels dipping into a river,
+        // trees/foliage planted deep in the soil — doesn't drag the snap point
+        // down and lift the whole location into the air (the region-24 castle bug).
+        float structuralLow = float.MaxValue;
+        float allLow = float.MaxValue;
         bool any = false;
 
         foreach (var col in go.GetComponentsInChildren<Collider>(false))
         {
             if (col == null || col.isTrigger) continue;      // triggers aren't footing
-            lowestY = Mathf.Min(lowestY, col.bounds.min.y);
+            float b = col.bounds.min.y;
+            allLow = Mathf.Min(allLow, b);
+            if (!IsBelowGradeDecor(col.transform, go.transform)) structuralLow = Mathf.Min(structuralLow, b);
             any = true;
         }
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
         {
             if (mr == null || !mr.enabled) continue;
-            lowestY = Mathf.Min(lowestY, mr.bounds.min.y);
+            float b = mr.bounds.min.y;
+            allLow = Mathf.Min(allLow, b);
+            if (!IsBelowGradeDecor(mr.transform, go.transform)) structuralLow = Mathf.Min(structuralLow, b);
             any = true;
         }
         foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>(false))
         {
             if (smr == null || !smr.enabled) continue;
-            lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
+            float b = smr.bounds.min.y;
+            allLow = Mathf.Min(allLow, b);
+            if (!IsBelowGradeDecor(smr.transform, go.transform)) structuralLow = Mathf.Min(structuralLow, b);
             any = true;
         }
+
+        // Prefer the structural base; fall back to the true lowest if a prefab is
+        // entirely decor-named (so we never leave it un-snapped).
+        float lowestY = structuralLow < float.MaxValue ? structuralLow : allLow;
 
         // Last-resort fallback to a root box (even a trigger one).
         if (!any)
@@ -2859,34 +2874,40 @@ public class WorldGenerator : MonoBehaviour
             else
             {
                 // Метод Б: Якщо колайдера немає — скануємо 3D-сітки (Meshes).
-                // Збираємо ВСІ нижні краї рендерів, щоб відсіяти одиничний
-                // "занурений" виступ (напр. колесо водяної мельниці або паля,
-                // що навмисно йде нижче основи будівлі).
-                List<float> bottoms = new List<float>(16);
+                // We snap the STRUCTURE's base to the ground — but decorative
+                // geometry that is DELIBERATELY sunk below grade (water-mill
+                // wheels dipping into a river, foliage/trees planted deep in the
+                // soil) must be EXCLUDED from that calc. Including them made the
+                // snap lift the whole location so those parts sat on top of the
+                // ground, floating the castle/building in the air.
+                List<float> structuralBottoms = new List<float>(16);
+                List<float> allBottoms = new List<float>(16);
                 foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
                 {
                     if (rend == null || !rend.enabled) continue;
-                    bottoms.Add(rend.bounds.min.y);
+                    float b = rend.bounds.min.y;
+                    allBottoms.Add(b);
+                    if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
                 }
                 foreach (var rend in instance.GetComponentsInChildren<SkinnedMeshRenderer>(false))
                 {
                     if (rend == null || !rend.enabled) continue;
-                    bottoms.Add(rend.bounds.min.y);
+                    float b = rend.bounds.min.y;
+                    allBottoms.Add(b);
+                    if (!IsBelowGradeDecor(rend.transform, instance.transform)) structuralBottoms.Add(b);
                 }
+
+                // Prefer the structural set; fall back to everything if a prefab
+                // is entirely made of "decor"-named parts (so we never skip snap).
+                List<float> bottoms = structuralBottoms.Count > 0 ? structuralBottoms : allBottoms;
 
                 if (bottoms.Count > 0)
                 {
                     bottoms.Sort();
                     float lowestY = bottoms[0];
 
-                    // OUTLIER REJECTION: if the single lowest renderer sits far
-                    // below the rest of the structure (a water-mill wheel / dock
-                    // pile / foundation that DIPS below grade), snapping IT to the
-                    // ground rockets the whole building into the sky — that was the
-                    // "location spawns very high" bug. When the lowest piece is
-                    // separated from the next by a big gap, treat it as intentional
-                    // below-grade geometry and snap to the next piece instead, so
-                    // the outlier stays tucked into the ground/water where it belongs.
+                    // Secondary safety: even among structural parts, reject a lone
+                    // deep outlier (a foundation pile) so it can't rocket the loc up.
                     if (bottoms.Count >= 3)
                     {
                         float span = bottoms[bottoms.Count - 1] - bottoms[0];
@@ -2907,6 +2928,29 @@ public class WorldGenerator : MonoBehaviour
         }
 
         GameLog.Info($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
+    }
+
+    // Names (on the renderer or any ancestor up to the loc root) that mark
+    // geometry meant to sit BELOW the ground line — water-mill wheels dipping
+    // into a river, or trees/foliage planted deep in the soil. These must be
+    // ignored when snapping the loc's base to the terrain, or the snap lifts the
+    // whole location so they rest on top of the ground and the building floats.
+    private static readonly string[] s_belowGradeDecorTerms =
+        { "wheel", "mill", "paddle", "waterwheel", "tree", "trunk", "leaf", "leav",
+          "foliage", "branch", "bush", "plant", "grass", "reed", "shrub" };
+
+    private bool IsBelowGradeDecor(Transform t, Transform root)
+    {
+        int guard = 0;
+        while (t != null && guard++ < 24)
+        {
+            string n = t.name.ToLowerInvariant();
+            for (int i = 0; i < s_belowGradeDecorTerms.Length; i++)
+                if (n.Contains(s_belowGradeDecorTerms[i])) return true;
+            if (t == root) break;
+            t = t.parent;
+        }
+        return false;
     }
 
     private float GetPOIClearanceRadius(GameObject prefab)
