@@ -38,7 +38,9 @@ public class TrailerToolkit : MonoBehaviour
     private bool freeCam;
     private bool hudHidden;
     private bool slowMo;
-    private bool showHelp = true;
+    // Hidden by default so the debug overlay never appears in a recording —
+    // press F12 to bring the key-hint panel up when you actually need it.
+    private bool showHelp = false;
 
     private Camera cam;
     private MonoBehaviour camFollow;         // CameraFollow, disabled while free-flying
