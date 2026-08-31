@@ -28,10 +28,11 @@ Material:
   - _EDGEBLENDING_NORMALBLENDING
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses:
   - MOTIONVECTORS
   m_LockedProperties: 
@@ -177,6 +178,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _AOIntensity: 1
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
     - _BUILTIN_AlphaClip: 0
     - _BUILTIN_Blend: 0
     - _BUILTIN_CullMode: 2
@@ -188,8 +191,11 @@ Material:
     - _BUILTIN_ZTest: 4
     - _BUILTIN_ZWrite: 1
     - _BUILTIN_ZWriteControl: 0
+    - _Blend: 0
+    - _BlendModePreserveSpecular: 0
     - _BlendnormalsON: 0
     - _BumpScale: 1
+    - _CastShadows: 1
     - _CoverageContrast: 0.25
     - _CoverageFade: 0.5058824
     - _CoverageLevel: 0
@@ -198,6 +204,7 @@ Material:
     - _CoverageRoughnessIntensity: 0
     - _CoverageSize: 0
     - _CoverageSmoothnessMultiplier: 1
+    - _Cull: 2
     - _Cutoff: 0.5
     - _DetailIntensity: 0
     - _DetailNormalIntensity: 0
@@ -206,6 +213,7 @@ Material:
     - _DetailTextureON: 0
     - _DetailTiling: 0
     - _DstBlend: 0
+    - _DstBlendAlpha: 0
     - _EDGEBLENDING: 0
     - _EmissiveIntensity: 0
     - _EmissiveIntensity_1: 0.5
@@ -225,6 +233,7 @@ Material:
     - _Parallax: 0.02
     - _QueueControl: 0
     - _QueueOffset: 0
+    - _ReceiveShadows: 1
     - _RoughnessIntensity: 1
     - _SloapContrast: 1
     - _SloapOffset: 0
@@ -232,9 +241,14 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
+    - _SrcBlendAlpha: 1
+    - _Surface: 0
     - _UVSec: 0
     - _UV_Size: 1
+    - _WorkflowMode: 1
+    - _ZTest: 4
     - _ZWrite: 1
+    - _ZWriteControl: 0
     - __dirty: 0
     m_Colors:
     - _AlbedoTint: {r: 0.8490566, g: 0.8490566, b: 0.8490566, a: 0}
