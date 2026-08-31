@@ -71,7 +71,16 @@ public class StorageWorkerAI : MonoBehaviour
         {
             agent.enabled = true;
             NPCGait.Configure(agent, stoppingDistance: 0.5f);
-            agent.Warp(transform.position);
+            // Snap onto the NEAREST navmesh point, not the exact spawn. If the
+            // NPC spawned a hair off the mesh (on a foundation, a slope, or just
+            // above the ground), Warp(transform.position) left isOnNavMesh false
+            // — and every movement path is gated on isOnNavMesh, so it just
+            // stood there forever doing nothing.
+            NavMeshHit navHit;
+            if (NavMesh.SamplePosition(transform.position, out navHit, 8f, NavMesh.AllAreas))
+                agent.Warp(navHit.position);
+            else
+                agent.Warp(transform.position);
         }
 
         FindBuildings();
@@ -90,6 +99,14 @@ public class StorageWorkerAI : MonoBehaviour
 
     private IEnumerator WanderAroundStorage()
     {
+        // Recover if the agent drifted off the navmesh — every branch below is
+        // gated on isOnNavMesh, so without this the worker would stand frozen.
+        if (agent != null && !agent.isOnNavMesh)
+        {
+            NavMeshHit rh;
+            if (NavMesh.SamplePosition(transform.position, out rh, 8f, NavMesh.AllAreas))
+                agent.Warp(rh.position);
+        }
         if (agent != null && agent.isOnNavMesh) agent.isStopped = false;
 
         if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
