@@ -233,7 +233,7 @@ public class TrailerToolkit : MonoBehaviour
             $"F8 freeze enemies: {(EnemyAI.GlobalFreeze ? "FROZEN" : "off")}\n" +
             "<b>Auto shots:</b> 1 hero · 2 encircle · 3 orbit · 4 crane\n" +
             "<b>Meta:</b> 5 camp flythrough · 6 level-up cards\n" +
-            "<b>0 = FULL AUTO TRAILER</b> (films the whole beat sheet)";
+            "<b>0 = FULL AUTO</b> (region=beat sheet · camp=tour · shop=gear)";
         GUI.Label(new Rect(12, 12, 380, 250), s, helpStyle);
     }
 }

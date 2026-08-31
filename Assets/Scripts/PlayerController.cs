@@ -1760,6 +1760,28 @@ public class PlayerController : MonoBehaviour, IDamageable
         LockAction("Attack", 0.6f);
     }
 
+    // Trailer/cinematic: one dash in a world direction (respects the cooldown).
+    public void TrailerDash(Vector3 worldDir)
+    {
+        if (isDashing || Time.unscaledTime < lastDashTime + dashCooldown) return;
+        Vector3 d = worldDir; d.y = 0f;
+        if (d.sqrMagnitude < 0.01f) d = transform.forward;
+        StartCoroutine(DashRoutine(d.normalized, false));
+    }
+
+    // Trailer/cinematic: hurl a grenade at the nearest enemy on demand.
+    public void TrailerThrowGrenade()
+    {
+        if (grenadePrefab == null || isCampMode) return;
+        Transform tgt = GetClosestEnemyForFocus(16f, 360f);
+        if (tgt != null)
+        {
+            Vector3 d = tgt.position - transform.position; d.y = 0f;
+            if (d.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(d.normalized);
+        }
+        ExecuteThrow();
+    }
+
     public void ExecuteAttack()
     {
         if (meleePoint == null || isCampMode) return;

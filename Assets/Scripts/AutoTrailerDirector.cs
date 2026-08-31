@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -45,15 +46,22 @@ public class AutoTrailerDirector : MonoBehaviour
     {
         IsPlaying = true;
         cam = Camera.main;
-        var pgo = GameObject.FindGameObjectWithTag("Player");
-        player = pgo != null ? pgo.GetComponent<PlayerController>() : null;
-        hero = pgo != null ? pgo.transform : null;
-        if (cam == null || hero == null) { Cleanup(); yield break; }
+        if (cam == null) { Cleanup(); yield break; }
 
         follow = cam.GetComponent("CameraFollow") as MonoBehaviour;
         followWas = follow != null && follow.enabled;
         if (follow != null) follow.enabled = false;
         fov0 = cam.fieldOfView;
+
+        // One key, scene-aware: camp tour, shop showcase, or the region beat sheet.
+        string scene = SceneManager.GetActiveScene().name;
+        if (scene == "CampScene") { yield return CampTour(); Cleanup(); yield break; }
+        if (scene == "ShopScene") { yield return ShopTour(); Cleanup(); yield break; }
+
+        var pgo = GameObject.FindGameObjectWithTag("Player");
+        player = pgo != null ? pgo.GetComponent<PlayerController>() : null;
+        hero = pgo != null ? pgo.transform : null;
+        if (hero == null) { Cleanup(); yield break; }
 
         SetHUD(false);
         // Silence what would interfere with the capture: tutorial hints, the
@@ -77,9 +85,11 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return Move(a, b, c + Vector3.up * 1.2f, 55f, 50f, 8.5f, false);
         }
 
-        // ===== BEAT 1 — the spark (first blows) =====
+        // ===== BEAT 1 — the spark (dash in, grenade, first blows) =====
         if (dnc != null) dnc.ForceWeather(WeatherState.Precipitation);
         EnemyAI.GlobalFreeze = false;
+        if (player != null) { player.TrailerThrowGrenade(); }        // open with a grenade
+        StartCoroutine(SlowMoPulse(0.4f, 0.5f));                     // brief impact beat
         yield return Orbit(hero, 4.2f, 5f, 20f, 120f, 2.3f, 1.3f, 46f, true);
 
         // ===== BEAT 2 — become the storm (STACK typhoon) =====
@@ -168,15 +178,113 @@ public class AutoTrailerDirector : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
     }
 
-    private float nextSwing;
+    private float nextSwing, nextDash;
     private void DriveHero()
     {
-        if (player == null) return;
-        if (Time.unscaledTime >= nextSwing)
+        if (player == null || hero == null) return;
+        float t = Time.unscaledTime;
+        if (t >= nextSwing) { player.TrailerAutoAttack(); nextSwing = t + 0.35f; }
+        // Periodic strafe-dash so the hero isn't rooted to one spot — reads as
+        // weaving through the crowd.
+        if (t >= nextDash)
         {
-            player.TrailerAutoAttack();
-            nextSwing = Time.unscaledTime + 0.35f;
+            Vector3 dir = Quaternion.Euler(0f, Random.Range(70f, 290f), 0f) * hero.forward;
+            player.TrailerDash(dir);
+            nextDash = t + Random.Range(2.4f, 3.6f);
         }
+    }
+
+    // ---------- meta scenes (one-button camp / shop showcase) ----------
+    private IEnumerator CampTour()
+    {
+        SetHUD(false);
+        // 1. Reveal the whole base.
+        if (CampBounds(out Vector3 c, out float r))
+        {
+            float rad = Mathf.Max(16f, r * 1.5f), h = Mathf.Max(12f, r * 0.85f);
+            yield return OrbitPoint(c, 9f, rad, 15f, 205f, h, 1.6f, 55f);
+        }
+        // 2. The Notice Board — dolly in and open the missions.
+        var board = FindFirstObjectByType<NoticeBoardManager>();
+        if (board != null)
+        {
+            yield return LookAt(board.transform.position, 3f, 4.5f, 2.2f, 42f);
+            SetHUD(true);                 // the board is UI
+            board.OpenBoard();
+            yield return new WaitForSecondsRealtime(4f);
+            SetHUD(false);
+        }
+        // 3. The region table — open the world map and hold on all the regions.
+        var mapTable = FindFirstObjectByType<MapTableInteract>();
+        if (mapTable != null)
+        {
+            yield return LookAt(mapTable.transform.position, 3f, 4f, 1.8f, 42f);
+            SetHUD(true);
+            mapTable.TrailerOpenMap();
+            yield return new WaitForSecondsRealtime(6.5f);   // linger on the map / regions
+            mapTable.TrailerCloseMap();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+    }
+
+    private IEnumerator ShopTour()
+    {
+        // The shop is gear UI + the hero model — keep the HUD and drift the
+        // camera gently around the centre so it isn't a dead static frame.
+        Vector3 c = cam.transform.position + cam.transform.forward * 4f;
+        yield return OrbitPoint(c, 9f, 4f, 200f, 250f, 1.6f, 1.4f, 46f);
+    }
+
+    // Orbit the camera around a WORLD POINT (no Transform needed).
+    private IEnumerator OrbitPoint(Vector3 center, float dur, float radius, float a0, float a1, float height, float lookH, float fov)
+    {
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
+            float ang = Mathf.Lerp(a0, a1, e) * Mathf.Deg2Rad;
+            Vector3 p = center + new Vector3(Mathf.Cos(ang) * radius, height, Mathf.Sin(ang) * radius);
+            cam.transform.position = p;
+            cam.transform.rotation = Quaternion.LookRotation((center + Vector3.up * lookH) - p, Vector3.up);
+            cam.fieldOfView = fov;
+            yield return null;
+        }
+    }
+
+    // Ease the camera to a framing of `target` and settle.
+    private IEnumerator LookAt(Vector3 target, float dur, float dist, float height, float fov)
+    {
+        Vector3 from = cam.transform.position;
+        Vector3 dir = (cam.transform.position - target); dir.y = 0f;
+        if (dir.sqrMagnitude < 0.01f) dir = Vector3.back;
+        Vector3 to = target + dir.normalized * dist + Vector3.up * height;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / dur); float e = k * k * (3f - 2f * k);
+            Vector3 p = Vector3.Lerp(from, to, e);
+            cam.transform.position = p;
+            cam.transform.rotation = Quaternion.LookRotation((target + Vector3.up * 0.8f) - p, Vector3.up);
+            cam.fieldOfView = fov;
+            yield return null;
+        }
+    }
+
+    private bool CampBounds(out Vector3 center, out float radius)
+    {
+        center = Vector3.zero; radius = 12f;
+        var buildings = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
+        if (buildings == null || buildings.Length == 0) return false;
+        Vector3 sum = Vector3.zero; int n = 0;
+        foreach (var b in buildings) { if (b == null) continue; sum += b.transform.position; n++; }
+        if (n == 0) return false;
+        center = sum / n;
+        float maxD = 0f;
+        foreach (var b in buildings) { if (b == null) continue; maxD = Mathf.Max(maxD, Vector3.Distance(center, b.transform.position)); }
+        radius = Mathf.Max(10f, maxD);
+        return true;
     }
 
     // ---------- staging ----------
