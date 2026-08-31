@@ -18,7 +18,7 @@ MonoBehaviour:
     combat awaits.
   regionIllustration: {fileID: 21300000, guid: 59c02f540a7aeb948b54edcd4d301f6f, type: 3}
   regionBiome: 2
-  currentState: 1
+  currentState: 2
   neighboringRegions:
   - {fileID: 11400000, guid: 02a9051dd575a0e40811c399e2386b7c, type: 2}
   - {fileID: 11400000, guid: 43e85531f99a7664ea73bb66096a801d, type: 2}
