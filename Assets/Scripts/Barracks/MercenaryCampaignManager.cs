@@ -56,15 +56,23 @@ public class MercenaryCampaignManager : MonoBehaviour
 
             if (!c.resolved && phase >= CampaignPhase.Fighting)
             {
-                ResolveCampaign(c);
+                try { ResolveCampaign(c); }
+                catch (Exception e) { Debug.LogWarning($"[MercenaryCampaignManager] ResolveCampaign failed for region {c.regionID}: {e.Message}"); c.resolved = true; }
                 SaveCampaigns();
             }
 
             if (phase == CampaignPhase.Done)
             {
-                CompleteCampaign(c);
+                // Remove FIRST, then award. If CompleteCampaign threw after
+                // AddDiamonds but before the removal (a null toast / map-progression
+                // path / neighbour entry), the campaign stayed in the list and
+                // re-completed every frame — re-awarding its diamonds endlessly
+                // (the "tens of thousands of diamonds" bug). Removing up front
+                // plus the try/catch guarantees the reward is paid exactly once.
                 active.RemoveAt(i);
                 SaveCampaigns();
+                try { CompleteCampaign(c); }
+                catch (Exception e) { Debug.LogWarning($"[MercenaryCampaignManager] CompleteCampaign failed for region {c.regionID}: {e.Message}"); }
             }
         }
     }
