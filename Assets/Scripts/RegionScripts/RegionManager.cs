@@ -373,21 +373,13 @@ public class RegionManager : MonoBehaviour
         }
         if (camFollow != null) camFollow.TriggerShake(0.4f, 0.15f);
 
-        // === PHASE 3: BIRD-FLIGHT REVEAL — the cleansed land blooms beneath ======
-        // A swooping, banking flight low over the landscape (skimming the canopy,
-        // dipping toward water) while the corruption visibly lifts: fog warms and
-        // thins, ambient + sun brighten, and golden life-motes drift up. This is
-        // the "look what you saved" beat that replaces the old flat orbit.
-        // Depth-of-field looks wrong on a fast flythrough (focus racks over the
-        // whole terrain) — turn it off for the flight and restore it for the
-        // static title beat. Also settle the handheld so it doesn't fight the
-        // scripted flight path.
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(false);
+        // === PHASE 3: the land heals (bird flight REMOVED per feedback) =========
+        // Keep the good part — the cursed trees blooming + fog/sun warming — but
+        // hold a calm crane on the totem instead of the disliked swooping flight.
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
         CinematicHandheld.End(mainCam);
 
-        yield return StartCoroutine(BirdFlightRevealRoutine(mainCam, camFollow, finalTotemPos, mapScale));
-
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.SetCinematicDoF(true);
+        yield return StartCoroutine(HealTheLandRoutine(mainCam, apexCamPos, finalTotemPos, mapScale));
 
         if (corruptionBeam != null) Destroy(corruptionBeam);
 
@@ -441,17 +433,12 @@ public class RegionManager : MonoBehaviour
         }
 
         if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-        yield return WaitOrSkip(1.5f);
-
-        // Reward summary card via GlobalHUD prompt (fast + readable)
-        if (currentRegion != null && GlobalHUD.Instance != null)
-        {
-            string summary = BuildRewardSummary(currentRegion);
-            GlobalHUD.Instance.ShowPrompt(summary);
-        }
-
-        if (CheckSkipRequested()) { yield return EarlyExitRoutine(); yield break; }
-        yield return WaitOrSkip(1.5f);
+        // Minimalist victory screen (per feedback): just the clean title card
+        // holds on screen — no dense multi-line reward-summary prompt block
+        // stacked on top of it. Earned resources are still granted below and
+        // surface through the small side reward toast, exactly like normal
+        // mission play, so the screen stays uncluttered and legible.
+        yield return WaitOrSkip(2.0f);
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideSkipPrompt();
         // AAA layer teardown — handheld off (restores its base transform),
@@ -501,6 +488,13 @@ public class RegionManager : MonoBehaviour
         {
             GlobalHUD.Instance.HidePrompt();
             GlobalHUD.Instance.FadeAndLoadScene("CampScene");
+        }
+        else
+        {
+            // Robustness: if the HUD singleton is somehow gone (was the cause of
+            // "victory never returns to camp"), load the scene directly so the
+            // player is never stranded on the cleansed region.
+            SceneLoader.LoadScene("CampScene");
         }
     }
 
@@ -607,7 +601,87 @@ public class RegionManager : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    //  HEAL THE LAND — bird flight REMOVED per feedback. Keep the good part
+    //  (cursed trees blooming + fog/sun warming) but hold a calm, slow crane
+    //  on the totem instead of the disliked swooping flythrough.
+    // ─────────────────────────────────────────────────────────────────────
+    private IEnumerator HealTheLandRoutine(Camera cam, Vector3 apexCamPos, Vector3 totemPos, float mapScale)
+    {
+        if (cam == null) yield break;
+
+        // Snapshot the corrupt render state we lerp AWAY from.
+        float fog0Start = RenderSettings.fogStartDistance;
+        float fog0End = RenderSettings.fogEndDistance;
+        float fog0Dens = RenderSettings.fogDensity;
+        Color fog0Col = RenderSettings.fogColor;
+        Color amb0 = RenderSettings.ambientLight;
+
+        // Healed targets: airy, warm, bright.
+        float fogTStart = fog0Start + mapScale * 0.6f;
+        float fogTEnd = fog0End + mapScale * 1.6f;
+        float fogTDens = fog0Dens * 0.4f;
+        Color fogTCol = new Color(0.82f, 0.87f, 0.93f);
+        Color ambT = new Color(Mathf.Min(1f, amb0.r + 0.35f), Mathf.Min(1f, amb0.g + 0.38f), Mathf.Min(1f, amb0.b + 0.30f));
+
+        // Optional sun swell.
+        DayNightCycle dnc = FindFirstObjectByType<DayNightCycle>();
+        Light sun = dnc != null ? dnc.sunLight : null;
+        float sun0 = sun != null ? sun.intensity : 1f;
+        Color sunC0 = sun != null ? sun.color : Color.white;
+        Color sunCT = new Color(1f, 0.96f, 0.85f);
+
+        const float healDur = 5f;
+
+        // Sweep the curse off the land: blighted trees bloom outward from the
+        // totem. Radius must reach the FARTHEST tree — 2.0x mapScale guarantees
+        // full coverage even for an off-centre totem.
+        CursedTree.BeginWorldBloom(totemPos, healDur, mapScale * 2.0f);
+
+        GameObject motes = CreateLifeMotes(cam.transform);
+
+        // Slow crane: hold roughly at the apex, drift gently up-and-back over
+        // the totem so the shot breathes while the land comes alive. No flight.
+        Vector3 craneStart = cam.transform.position;
+        Quaternion rotStart = cam.transform.rotation;
+        float fovStart = cam.fieldOfView;
+        Vector3 craneEnd = craneStart + Vector3.up * (mapScale * 0.05f + 6f) - (totemPos - craneStart).normalized * 4f;
+
+        float elapsed = 0f;
+        while (elapsed < healDur)
+        {
+            if (CheckSkipRequested()) { if (motes) Destroy(motes); yield return EarlyExitRoutine(); yield break; }
+            elapsed += Time.deltaTime;
+            float e = Mathf.Clamp01(elapsed / healDur);
+            float s = e * e * (3f - 2f * e); // ease in/out
+
+            cam.transform.position = Vector3.Lerp(craneStart, craneEnd, s);
+            cam.transform.rotation = Quaternion.Slerp(rotStart,
+                Quaternion.LookRotation(totemPos + Vector3.up * 3f - cam.transform.position), s);
+            cam.fieldOfView = Mathf.Lerp(fovStart, 62f, s);
+
+            // Bloom the trees near the totem as the wave spreads.
+            CursedTree.BloomNear(totemPos, mapScale * 2.0f * s);
+
+            // Heal the world proportionally.
+            RenderSettings.fogStartDistance = Mathf.Lerp(fog0Start, fogTStart, s);
+            RenderSettings.fogEndDistance = Mathf.Lerp(fog0End, fogTEnd, s);
+            RenderSettings.fogDensity = Mathf.Lerp(fog0Dens, fogTDens, s);
+            RenderSettings.fogColor = Color.Lerp(fog0Col, fogTCol, s);
+            RenderSettings.ambientLight = Color.Lerp(amb0, ambT, s);
+            if (sun != null)
+            {
+                sun.intensity = Mathf.Lerp(sun0, sun0 * 1.6f, s);
+                sun.color = Color.Lerp(sunC0, sunCT, s);
+            }
+            yield return null;
+        }
+
+        if (motes != null) Destroy(motes, 3f); // let the last motes drift out
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     //  BIRD-FLIGHT REVEAL — swooping flythrough while the world heals
+    //  (RETIRED — no longer called; superseded by HealTheLandRoutine)
     // ─────────────────────────────────────────────────────────────────────
     private IEnumerator BirdFlightRevealRoutine(Camera cam, CameraFollow camFollow, Vector3 totemPos, float mapScale)
     {

@@ -192,6 +192,14 @@ public class NoticeBoardManager : MonoBehaviour
             currentActiveMissions = MissionManager.Instance.GetActiveMissionCount();
         }
 
+        // This label alternates between two different state messages. Exclude
+        // it from the AutoLocalize walkers so the 0.5s scene repeater can't
+        // capture whichever message showed first as a loc key and keep forcing
+        // it back over the other one every half-second (the mission-status text
+        // "changing every second").
+        if (emptyBoardMessage != null && emptyBoardMessage.GetComponent<NoAutoLocalize>() == null)
+            emptyBoardMessage.gameObject.AddComponent<NoAutoLocalize>();
+
         if (currentActiveMissions >= MissionManager.MaxActiveMissions)
         {
             needsRestock = false;

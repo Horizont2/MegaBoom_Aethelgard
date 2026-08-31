@@ -737,6 +737,11 @@ public class AudioManager : MonoBehaviour
         { AudioID.Player_CoinPickup,  AudioID.Camp_CollectItem },
         { AudioID.Boss_Slam,          AudioID.Region_Shockwave },
         { AudioID.Boss_Enrage,        AudioID.Boss_Roar },
+        // The dedicated event:/Player/Explosion GUID doesn't resolve at
+        // runtime (stale/unauthored in the loaded bank) — that's why the
+        // grenade blast was silent while the throw SFX played fine. Fall
+        // back to the punchy shockwave so the explosion is always audible.
+        { AudioID.Explosion,          AudioID.Region_Shockwave },
     };
 
     // Play a sound EXACTLY once, guaranteed to stop after `maxSeconds`, even if
@@ -809,6 +814,16 @@ public class AudioManager : MonoBehaviour
                 FMOD.RESULT r = RuntimeManager.StudioSystem.getEventByID(group.fmodEvent.Guid, out FMOD.Studio.EventDescription desc);
                 if (r != FMOD.RESULT.OK || !desc.isValid())
                 {
+                    // The event reference is populated but its GUID doesn't
+                    // resolve (stale GUID / event missing from the loaded
+                    // bank). Before going silent, try the nearest wired
+                    // fallback — this is what kept the grenade explosion mute
+                    // even though its event field WAS assigned.
+                    if (allowFallback && s_sfxFallback.TryGetValue(soundName, out string rfb))
+                    {
+                        PlaySFX(rfb, allowFallback: false);
+                        return;
+                    }
                     WarnMissing(soundName, $"FMOD event GUID {group.fmodEvent.Guid} resolves with error {r} — bank not loaded, or GUID stale. Reimport banks from FMOD → Import Banks menu.");
                     return;
                 }

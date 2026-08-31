@@ -1272,6 +1272,14 @@ public class ShopManager : MonoBehaviour
             var btnLabel = upgradeButton.GetComponentInChildren<TextMeshProUGUI>(true);
             if (upgradePriceText == null) upgradePriceText = btnLabel;
 
+            // Exclude both the dedicated price label and the button's own text
+            // child from the AutoLocalize walkers. The 0.5s scene repeater had
+            // captured the baked "Upgrade" placeholder as a loc key and kept
+            // re-writing Tr("Upgrade") over our "Upgrade for 250" every half
+            // second — that's why the price never showed and the text flickered.
+            MarkNoAutoLocalize(upgradePriceText);
+            MarkNoAutoLocalize(btnLabel);
+
             string label;
             Color col;
             bool interactable;
@@ -1301,6 +1309,14 @@ public class ShopManager : MonoBehaviour
         if (affordabilityHintText == null) return;
         affordabilityHintText.text = text;
         affordabilityHintText.gameObject.SetActive(!string.IsNullOrEmpty(text));
+    }
+
+    // Tag a code-driven label so neither AutoLocalize walker re-captures its
+    // baked English placeholder as a loc key and overwrites the live value.
+    private static void MarkNoAutoLocalize(TextMeshProUGUI t)
+    {
+        if (t != null && t.GetComponent<NoAutoLocalize>() == null)
+            t.gameObject.AddComponent<NoAutoLocalize>();
     }
 
     private Coroutine[] statBarLerps = new Coroutine[4];

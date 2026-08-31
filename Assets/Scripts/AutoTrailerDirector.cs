@@ -23,9 +23,12 @@ public class AutoTrailerDirector : MonoBehaviour
     private Transform hero;
 
     private float titleAlpha;
-    private string titleMain = "AETHELGARD";
+    private string titleMain = "Hollow Siege";
     private string titleSub  = "Cleanse the cursed land";
-    private GUIStyle mainStyle, subStyle, stackStyle;
+    // Trailer end-card call-to-action. Shown under the title on the final
+    // beat so the reveal doubles as a Steam wishlist prompt.
+    private string titleWishlist = "WISHLIST NOW ON STEAM";
+    private GUIStyle mainStyle, subStyle, stackStyle, wishlistStyle;
     private Texture2D solid;
     private bool showStack;
     private int _hintsWere = 1;
@@ -125,7 +128,10 @@ public class AutoTrailerDirector : MonoBehaviour
 
             // Fly the reveal to its bloom peak, then bring up the game title.
             yield return new WaitForSecondsRealtime(10f);
-            titleMain = LocalizationManager.Tr("AETHELGARD");
+            // Brand name — the final game title. NOT localized (it's a proper
+            // noun / logo), and deliberately "Hollow Siege" rather than the
+            // in-world "Aethelgard" so the end card reads as the store title.
+            titleMain = "Hollow Siege";
             titleSub  = LocalizationManager.Tr("Cleanse the cursed land");
             float ft = 0f;
             while (ft < 1.5f) { ft += Time.unscaledDeltaTime; titleAlpha = Mathf.Clamp01(ft / 1.5f); yield return null; }
@@ -430,6 +436,9 @@ public class AutoTrailerDirector : MonoBehaviour
             mainStyle.normal.textColor = Color.white;
             subStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(Screen.height * 0.03f) };
             subStyle.normal.textColor = new Color(0.85f, 0.9f, 1f);
+            wishlistStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
+                fontSize = Mathf.RoundToInt(Screen.height * 0.032f) };
+            wishlistStyle.normal.textColor = new Color(0.32f, 0.75f, 1f); // Steam blue
         }
         // dim vignette behind the title
         GUI.color = new Color(0f, 0f, 0f, 0.55f * titleAlpha);
@@ -437,6 +446,14 @@ public class AutoTrailerDirector : MonoBehaviour
         GUI.color = new Color(1f, 1f, 1f, titleAlpha);
         GUI.Label(new Rect(0, Screen.height * 0.40f, Screen.width, Screen.height * 0.14f), titleMain, mainStyle);
         GUI.Label(new Rect(0, Screen.height * 0.54f, Screen.width, Screen.height * 0.06f), titleSub, subStyle);
+        // Wishlist CTA — pulses gently so it draws the eye on the end card.
+        if (!string.IsNullOrEmpty(titleWishlist))
+        {
+            float wl = 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 2f));
+            GUI.color = new Color(1f, 1f, 1f, titleAlpha * wl);
+            GUI.Label(new Rect(0, Screen.height * 0.66f, Screen.width, Screen.height * 0.06f),
+                "⭐ " + titleWishlist + " ⭐", wishlistStyle);
+        }
         GUI.color = Color.white;
     }
 }
