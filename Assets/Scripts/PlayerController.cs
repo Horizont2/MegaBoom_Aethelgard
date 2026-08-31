@@ -1725,6 +1725,30 @@ public class PlayerController : MonoBehaviour, IDamageable
         mainCameraCached.fieldOfView = originalFOV;
     }
 
+    // Trailer/cinematic hook: perform ONE full melee swing at the nearest enemy
+    // on demand (same as an LMB press — faces the target, plays the swing anim,
+    // and the animator's hit event drives ExecuteAttack for damage + trail).
+    // Used by AutoTrailerDirector to film combat beats without a human at the
+    // controls. Respects the normal attack cooldown so swings look natural.
+    public void TrailerAutoAttack()
+    {
+        if (isCampMode || Time.unscaledTime < lastAttackTime + attackCooldown) return;
+        lastAttackTime = Time.unscaledTime;
+
+        Transform tgt = GetClosestEnemyForFocus(10f, 360f);
+        if (tgt != null)
+        {
+            Vector3 d = tgt.position - transform.position; d.y = 0f;
+            if (d.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(d.normalized);
+        }
+
+        int randAnim = Random.Range(0, 3);
+        if (randAnim == lastAttackIndex) randAnim = (randAnim + 1) % 3;
+        lastAttackIndex = randAnim;
+        if (anim != null) anim.SetInteger("AttackIndex", randAnim);
+        LockAction("Attack", 0.6f);
+    }
+
     public void ExecuteAttack()
     {
         if (meleePoint == null || isCampMode) return;

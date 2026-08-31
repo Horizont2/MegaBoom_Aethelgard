@@ -70,6 +70,9 @@ public class TrailerToolkit : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3)) CinematicSequencer.Play("orbit");
         if (Input.GetKeyDown(KeyCode.Alpha4)) CinematicSequencer.Play("crane");
 
+        // Full self-filming trailer (runs the whole beat sheet automatically).
+        if (Input.GetKeyDown(KeyCode.Alpha0)) AutoTrailerDirector.Play();
+
         // Don't fight a running authored sequence for the camera.
         if (freeCam && !CinematicSequencer.IsPlaying) DriveFreeCam();
     }
@@ -222,8 +225,9 @@ public class TrailerToolkit : MonoBehaviour
             $"F6 weather: {(WeatherState)weatherIndex}\n" +
             "F7 victory cinematic\n" +
             $"F8 freeze enemies: {(EnemyAI.GlobalFreeze ? "FROZEN" : "off")}\n" +
-            "<b>Auto shots:</b> 1 hero · 2 encircle · 3 orbit · 4 crane";
-        GUI.Label(new Rect(12, 12, 380, 210), s, helpStyle);
+            "<b>Auto shots:</b> 1 hero · 2 encircle · 3 orbit · 4 crane\n" +
+            "<b>0 = FULL AUTO TRAILER</b> (films the whole beat sheet)";
+        GUI.Label(new Rect(12, 12, 380, 230), s, helpStyle);
     }
 }
 #endif
