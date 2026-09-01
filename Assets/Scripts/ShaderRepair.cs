@@ -34,8 +34,13 @@ public static class ShaderRepair
         }
     }
 
+    // ONLY genuine magenta counts as broken: a material whose shader is the
+    // InternalErrorShader (or null shader). A NULL material is NOT broken — it
+    // just renders nothing, and most particle systems legitimately have a null
+    // TRAIL material. Treating null as broken made the sweeper disable every
+    // trail-less particle system (all hit/death/blood VFX vanished).
     private static bool IsBroken(Material m) =>
-        m == null || m.shader == null || m.shader.name == ErrorShader;
+        m != null && (m.shader == null || m.shader.name == ErrorShader);
 
     public static void Fix(GameObject root)
     {
@@ -49,14 +54,14 @@ public static class ShaderRepair
             bool isParticle = r is ParticleSystemRenderer;
             Shader target = isParticle ? Particle : Lit;
 
+            if (target == null) continue;   // no shader to rehome onto — leave it (never disable)
+
             // Main material slot(s).
             var mats = r.materials;   // instanced copies — safe to reassign
             bool changed = false;
-            bool unfixable = false;
             for (int i = 0; i < mats.Length; i++)
             {
                 if (!IsBroken(mats[i])) continue;
-                if (target == null) { unfixable = true; continue; }
                 mats[i] = Rehome(mats[i], target);
                 changed = true;
             }
@@ -67,16 +72,10 @@ public static class ShaderRepair
             if (isParticle)
             {
                 var psr = (ParticleSystemRenderer)r;
-                if (IsBroken(psr.trailMaterial))
-                {
-                    if (target != null) psr.trailMaterial = Rehome(psr.trailMaterial, target);
-                    else unfixable = true;
-                }
+                if (IsBroken(psr.trailMaterial)) psr.trailMaterial = Rehome(psr.trailMaterial, target);
             }
-
-            // Last resort: a magenta particle we can't re-home is DISABLED so it
-            // never shows purple on screen (a trailer must be clean).
-            if (unfixable && isParticle) r.enabled = false;
+            // NOTE: we NEVER disable a renderer — that once nuked valid VFX. A rare
+            // un-rehomeable magenta particle is far better than a vanished effect.
         }
     }
 

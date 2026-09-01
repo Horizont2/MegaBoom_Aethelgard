@@ -1410,7 +1410,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // — its posed mesh is split by bone and each piece is launched outward.
         // A dust puff accompanies the break. Falls back to the fade for any
         // non-skinned enemy.
-        bool shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 2.2f);
+        // Guard the shatter: if it ever throws, the enemy must STILL die instead
+        // of being stranded at 0 HP (that was the "enemy won't die" bug).
+        bool shattered = false;
+        try { shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 2.2f); }
+        catch (System.Exception e) { Debug.LogWarning($"[EnemyAI] Shatter failed on {name}: {e.Message}"); shattered = false; }
+
         if (shattered)
         {
             DeathAshEffect.Spawn(transform);

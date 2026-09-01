@@ -232,6 +232,9 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseTreesAutumn;
     [Tooltip("Winter/snow tree prefabs — each with its OWN snow leaves material baked in. Painted in snow cells. Leave empty to reuse Base Trees.")]
     public GameObject[] baseTreesWinter;
+    [Range(0f, 1f)]
+    [Tooltip("Fraction of trees spawned as REAL objects (farmable — keep ResourceNode/collider) instead of terrain-painted. The rest are painted for FPS. ~0.18 keeps wood harvestable without killing performance.")]
+    public float treeFarmableFraction = 0.18f;
 
     [Header("Cursed → Bloomed Trees (story regions)")]
     [Tooltip("Blighted/dead tree prefabs spawned in cursed STORY regions. Their trunks are recoloured to the biome like normal trees, and they transform into living trees during the victory flythrough.")]
@@ -2669,18 +2672,24 @@ public class WorldGenerator : MonoBehaviour
                             // Wider, non-uniform size spread so trees aren't all clones.
                             Vector3 tScale = RandomDecorScale(0.7f, 1.45f);
 
+                            // A fraction of trees spawn as REAL objects so wood stays
+                            // FARMABLE — terrain-painted trees are batched for FPS but
+                            // can't carry the ResourceNode/collider needed to harvest.
+                            // Seed-deterministic (prng), so it's stable per region.
+                            bool asFarmable = GetRandomFloat() < treeFarmableFraction;
+
                             // Prefer PAINTING onto the terrain (batched, big FPS win). The
                             // biome PREFAB's own material gives the colour now, so only tint
                             // as a fallback when that biome has no dedicated prefab assigned.
                             Color treeTint = TreeBiomeHasPrefab(currentBaseTreeMat) ? Color.white : currentFoliageColor;
-                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, treeTint))
+                            if (!useDeadTree && !asFarmable && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, treeTint))
                             {
                                 currentTreeCount++;
                             }
                             else
                             {
-                                // Fallback: spawn as a GameObject (terrain painting
-                                // unavailable for this prefab / off-terrain).
+                                // Object tree: farmable (keeps ResourceNode + collider), or
+                                // the fallback when painting is unavailable / off-terrain.
                                 GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
                                 obj.transform.localScale = Vector3.Scale(obj.transform.localScale, tScale);
 
