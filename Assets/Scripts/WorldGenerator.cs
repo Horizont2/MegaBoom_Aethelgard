@@ -332,6 +332,16 @@ public class WorldGenerator : MonoBehaviour
         return new Vector3(s, s * yv, s);
     }
 
+    // PERF: small props spawn in the thousands; each casting real-time shadows is
+    // a large, barely-visible cost. Turn shadow CASTING off (they still receive).
+    private void DisableShadowCasting(GameObject go)
+    {
+        if (go == null) return;
+        foreach (var rnd in go.GetComponentsInChildren<Renderer>(true))
+            if (rnd != null && !(rnd is ParticleSystemRenderer))
+                rnd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
     private void Awake()
     {
         Time.timeScale = 1f;
@@ -2321,7 +2331,8 @@ public class WorldGenerator : MonoBehaviour
                     {
                         GameObject wpPrefab = GetRandomPrefab(waterPlantsPrefabs);
                         GameObject obj = Instantiate(wpPrefab, new Vector3(worldX, absWaterHeight, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), bushContainer);
-                        obj.transform.localScale *= GetRandomRange(0.8f, 1.4f);
+                        obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.75f, 1.45f));
+                        DisableShadowCasting(obj);
                     }
                     continue;
                 }
@@ -2522,6 +2533,7 @@ public class WorldGenerator : MonoBehaviour
                         {
                             GameObject lg = Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), logContainer);
                             lg.transform.localScale = Vector3.Scale(lg.transform.localScale, RandomDecorScale(0.7f, 1.3f));
+                            DisableShadowCasting(lg);
                             currentTreeCount++;
                         }
                     }
@@ -2663,6 +2675,8 @@ public class WorldGenerator : MonoBehaviour
 
             GameObject obj = Instantiate(prefab, new Vector3(centerPos.x + ox, cy, centerPos.z + oz), finalRot, container);
             obj.transform.localScale *= GetRandomRange(0.7f, 1.3f);
+
+            DisableShadowCasting(obj);   // small foliage: no shadow casting (perf)
 
             // Strip solid colliders from bushes/mushrooms/ground clutter —
             // these are visual props, not obstacles. Rocks & trees keep
