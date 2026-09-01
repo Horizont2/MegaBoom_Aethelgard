@@ -10,6 +10,11 @@ public class WorldGenerator : MonoBehaviour
 {
     public static bool IsGenerationDone = false;
     public static float CurrentProgress = 0f;
+    // Fired once the world (terrain + rivers + locations + roads) is fully
+    // built. Systems that must position themselves against the FINAL terrain —
+    // e.g. hand-authored location props that need to snap to the ground after
+    // it's been carved/flattened — subscribe to this instead of guessing a delay.
+    public static event System.Action OnWorldGenerationComplete;
 
     [Header("Mountain & Arena Settings")]
     public float depth = 50f;
@@ -718,6 +723,8 @@ public class WorldGenerator : MonoBehaviour
 
         CurrentProgress = 1f;
         IsGenerationDone = true;
+        try { OnWorldGenerationComplete?.Invoke(); }
+        catch (System.Exception e) { Debug.LogError("[WorldGenerator] OnWorldGenerationComplete handler threw: " + e); }
     }
 
     // Places a few looping crow-flock effects high over the land for ambient
@@ -1830,6 +1837,14 @@ public class WorldGenerator : MonoBehaviour
         Vector2 bestSpot = Vector2.zero;
         bool foundSpot = false;
         List<Vector2> validSpots = new List<Vector2>();
+        // Best DRY (non-water, reasonably flat) spot found even if it failed the
+        // stricter biome/near-river filters — used as the fallback so a big
+        // location that finds no "perfect" spot still lands on dry land instead
+        // of the blind map centre (which could be the carved lake). Tracks the
+        // highest such spot.
+        Vector2 driestFallback = Vector2.zero;
+        float driestFallbackH = float.MinValue;
+        bool haveDryFallback = false;
         float scanStep = 30f;
         // Keep the totem well clear of the map edge. Border mountains
         // spawn just outside the terrain and are scaled 3–6×, so they
@@ -1880,6 +1895,16 @@ public class WorldGenerator : MonoBehaviour
 
                 if (!touchesWater && (maxH - minH) <= 12f)
                 {
+                    // Remember the highest dry+flat spot regardless of biome /
+                    // near-river — the last-resort fallback if nothing "ideal"
+                    // qualifies (keeps the location out of the lake).
+                    if (minH > driestFallbackH)
+                    {
+                        driestFallbackH = minH;
+                        driestFallback = new Vector2(pX, pZ);
+                        haveDryFallback = true;
+                    }
+
                     if (IsSummerZone(normX, normZ, minH) && !IsNearRiver(new Vector3(pX, minH, pZ), flatRadius + 15f))
                         validSpots.Add(new Vector2(pX, pZ));
                 }
@@ -1891,13 +1916,24 @@ public class WorldGenerator : MonoBehaviour
             bestSpot = validSpots[UnityEngine.Random.Range(0, validSpots.Count)];
             foundSpot = true;
         }
+        else if (haveDryFallback)
+        {
+            // No ideal spot — use the highest dry spot we saw rather than the
+            // blind map centre, which was landing the final castle in the lake.
+            bestSpot = driestFallback;
+            foundSpot = true;
+        }
         else bestSpot = new Vector2(transform.position.x + w / 2, transform.position.z + l / 2);
 
         Vector3 centerPos = new Vector3(bestSpot.x, 0, bestSpot.y);
         float exactGroundY = terrain.SampleHeight(centerPos) + transform.position.y;
-        centerPos.y = exactGroundY;
+        // Hard safety net: never flatten the location pad below the water line.
+        // If we had to fall back to a low spot, raise the pad above the lake
+        // surface so the location can't end up submerged.
+        float padY = Mathf.Max(exactGroundY, absoluteWaterHeight + 4f);
+        centerPos.y = padY;
 
-        FlattenTerrainRobust(centerPos, flatRadius, 18f, exactGroundY);
+        FlattenTerrainRobust(centerPos, flatRadius, 18f, padY);
         terrain.Flush();
         TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
         if (tc != null) { tc.enabled = false; tc.enabled = true; }
