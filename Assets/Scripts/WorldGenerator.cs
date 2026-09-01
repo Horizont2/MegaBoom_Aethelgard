@@ -304,7 +304,13 @@ public class WorldGenerator : MonoBehaviour
     // (they need per-instance behaviour/VFX). NOTE: painted trees do NOT get the
     // per-tree semi-transparent occlusion fade — accepted tradeoff for the FPS gain.
     private readonly List<TreeInstance> pendingTreeInstances = new List<TreeInstance>(4096);
-    private readonly Dictionary<GameObject, int> treeProtoIndex = new Dictionary<GameObject, int>();
+    // Per base-tree prefab we register up to three terrain-tree prototypes so the
+    // painted trees still recolor per biome (forest = prefab default, desert =
+    // Autumn material, snow = Winter material). AddTerrainTree picks the variant
+    // matching the cell's biome material.
+    private class TreeVariants { public int forest = -1, autumn = -1, winter = -1; }
+    private readonly Dictionary<GameObject, TreeVariants> treeVariants = new Dictionary<GameObject, TreeVariants>();
+    private readonly List<GameObject> treeProtoHolders = new List<GameObject>();   // runtime material variants to clean up
     private bool terrainTreesReady;
 
     private class WaterfallData
@@ -352,28 +358,42 @@ public class WorldGenerator : MonoBehaviour
     }
 
     // ---- Terrain-tree painting ------------------------------------------------
-    // Register baseTrees/deadTrees as terrain tree prototypes and clear any old
-    // instances, so normal trees can be batch-painted instead of instantiated.
+    // Register baseTrees as terrain tree prototypes — one variant per biome look
+    // (forest default, desert=Autumn material, snow=Winter material) — so painted
+    // trees still recolor per biome. Dead trees stay on the object path (they get
+    // a rock-color tint the terrain system can't reproduce).
     private void PrepareTerrainTreePrototypes()
     {
         pendingTreeInstances.Clear();
-        treeProtoIndex.Clear();
+        treeVariants.Clear();
+        foreach (var h in treeProtoHolders) if (h != null) Destroy(h);
+        treeProtoHolders.Clear();
         terrainTreesReady = false;
-        if (terrain == null || terrain.terrainData == null) return;
+        if (terrain == null || terrain.terrainData == null || baseTrees == null) return;
 
         var protos = new List<TreePrototype>();
-        void AddProtos(GameObject[] arr)
+
+        GameObject MakeVariant(GameObject prefab, Material mat)
         {
-            if (arr == null) return;
-            foreach (var p in arr)
-            {
-                if (p == null || treeProtoIndex.ContainsKey(p)) continue;
-                treeProtoIndex[p] = protos.Count;
-                protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });
-            }
+            var copy = Instantiate(prefab);
+            copy.name = prefab.name + "_biome";
+            copy.SetActive(false);
+            copy.hideFlags = HideFlags.HideAndDontSave;
+            copy.transform.SetParent(this.transform);
+            ApplyBiomeSpecificMaterial(copy, mat);   // swap foliage material on the COPY
+            treeProtoHolders.Add(copy);
+            return copy;
         }
-        AddProtos(baseTrees);
-        AddProtos(deadTreesPrefabs);
+
+        foreach (var p in baseTrees)
+        {
+            if (p == null || treeVariants.ContainsKey(p)) continue;
+            var v = new TreeVariants();
+            v.forest = protos.Count; protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });          // default look
+            if (baseTreeAutumnMaterial != null) { v.autumn = protos.Count; protos.Add(new TreePrototype { prefab = MakeVariant(p, baseTreeAutumnMaterial), bendFactor = 0f }); }
+            if (baseTreeWinterMaterial != null) { v.winter = protos.Count; protos.Add(new TreePrototype { prefab = MakeVariant(p, baseTreeWinterMaterial), bendFactor = 0f }); }
+            treeVariants[p] = v;
+        }
         if (protos.Count == 0) return;
 
         try
@@ -398,12 +418,18 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // Queue a terrain-tree instance. Returns false if painting is unavailable for
-    // this prefab (caller then falls back to instantiating a GameObject tree).
-    private bool AddTerrainTree(GameObject prefab, float worldX, float worldZ, float widthScale, float heightScale)
+    // Queue a terrain-tree instance, choosing the prototype variant that matches
+    // the cell's biome material. Returns false if painting is unavailable for this
+    // prefab (caller then falls back to instantiating a GameObject tree).
+    private bool AddTerrainTree(GameObject prefab, float worldX, float worldZ, float widthScale, float heightScale, Material biomeMat)
     {
         if (!terrainTreesReady || prefab == null) return false;
-        if (!treeProtoIndex.TryGetValue(prefab, out int idx)) return false;
+        if (!treeVariants.TryGetValue(prefab, out TreeVariants v)) return false;
+
+        int idx = v.forest;
+        if (biomeMat != null && biomeMat == baseTreeAutumnMaterial && v.autumn >= 0) idx = v.autumn;
+        else if (biomeMat != null && biomeMat == baseTreeWinterMaterial && v.winter >= 0) idx = v.winter;
+        if (idx < 0) return false;
 
         Vector3 tp = terrain.transform.position;
         Vector3 size = terrain.terrainData.size;
@@ -2580,8 +2606,10 @@ public class WorldGenerator : MonoBehaviour
                             // Wider, non-uniform size spread so trees aren't all clones.
                             Vector3 tScale = RandomDecorScale(0.7f, 1.45f);
 
-                            // Prefer PAINTING onto the terrain (batched, big FPS win).
-                            if (AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y))
+                            // Prefer PAINTING base trees onto the terrain (batched, big FPS
+                            // win) with the biome-matched prototype variant. Dead trees keep
+                            // the object path (their rock-color tint can't be painted).
+                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, currentBaseTreeMat))
                             {
                                 currentTreeCount++;
                             }

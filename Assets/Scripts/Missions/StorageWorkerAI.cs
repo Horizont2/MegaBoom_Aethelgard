@@ -69,14 +69,19 @@ public class StorageWorkerAI : MonoBehaviour
         }
         if (agent != null)
         {
-            // Force the default (baked Humanoid) agent type. If the prefab's
-            // NavMeshAgent was left on a SECOND agent type that has no baked
-            // surface, the agent sits off-mesh forever and the worker just
-            // stands there — and that same extra agent type is what made
-            // NavMesh.CalculatePath ambiguous elsewhere. Pin it to index 0.
+            // Force the default (baked Humanoid) agent type — but ONLY while the
+            // agent is DISABLED. Changing agentTypeID on an ENABLED agent leaves it
+            // in a broken state where it reports velocity but never moves the
+            // transform ("walks in place"). Toggle disabled → set type → enable.
             int defType = NavMesh.GetSettingsByIndex(0).agentTypeID;
-            if (agent.agentTypeID != defType) agent.agentTypeID = defType;
+            if (agent.agentTypeID != defType)
+            {
+                agent.enabled = false;
+                agent.agentTypeID = defType;
+            }
             agent.enabled = true;
+            agent.updatePosition = true;   // guard: something may have parked it
+            agent.updateRotation = true;
             NPCGait.Configure(agent, stoppingDistance: 0.5f);
             // Snap onto the NEAREST navmesh point, not the exact spawn. If the
             // NPC spawned a hair off the mesh (on a foundation, a slope, or just
