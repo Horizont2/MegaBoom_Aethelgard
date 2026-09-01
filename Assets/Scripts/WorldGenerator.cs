@@ -3751,6 +3751,28 @@ public class WorldGenerator : MonoBehaviour
     {
         if (go == null) return;
 
+        // Re-sample the terrain DIRECTLY under the instance's own XZ. The caller
+        // passes a Y sampled at the road tip (before the +6m extension / any XZ
+        // shift), so where the road drops sharply that Y is the higher road-top
+        // level and the altar floated over the lower ground. Grounding to the
+        // terrain actually beneath the altar fixes the "totem in the air" bug.
+        if (terrain != null)
+        {
+            Vector3 p = go.transform.position;
+            float gCenter = terrain.SampleHeight(p) + transform.position.y;
+            // Also probe a small ring so a base straddling a sharp edge rests on
+            // the LOWER ground (never left hanging over the drop).
+            float gLow = gCenter;
+            for (int a = 0; a < 4; a++)
+            {
+                float ang = a * Mathf.PI * 0.5f;
+                Vector3 probe = p + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 2.5f;
+                float g = terrain.SampleHeight(probe) + transform.position.y;
+                if (g < gLow) gLow = g;
+            }
+            targetGroundY = gLow;
+        }
+
         float lowestY = float.MaxValue;
         bool any = false;
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
