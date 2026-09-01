@@ -542,6 +542,7 @@ GameObject:
   - component: {fileID: 1984190996392605882}
   - component: {fileID: 5985505105715764312}
   - component: {fileID: 736572555933919875}
+  - component: {fileID: 1156176213843328218}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -624,6 +625,31 @@ TerrainCollider:
   serializedVersion: 2
   m_TerrainData: {fileID: 15600000, guid: 9f2a8fc0d7a83a84abb3f2f0b2ec7220, type: 2}
   m_EnableTreeColliders: 1
+--- !u!114 &1156176213843328218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2834128643089006266}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a366235ed2502944a82181c3f86acaf1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocationTerrainDresser
+  matchLayers: 1
+  addGrass: 1
+  scatterTrees: 1
+  addLandform: 1
+  waterReference: {fileID: 6182401751888327366}
+  shoreBand: 2.5
+  coreCenterLocal: {x: 0, y: 0, z: 0}
+  keepClearRadius: 60
+  steepRockAngle: 32
+  snowHeightFrac: 0.72
+  treeCount: 120
+  landformAmplitude: 2
+  landformScale: 0.02
 --- !u!1 &2850133316123739063
 GameObject:
   m_ObjectHideFlags: 0
@@ -2886,7 +2912,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SelfContainedLocation
   footprintRadius: 0
   margin: 4
-  cutTerrainHole: 0
+  cutTerrainHole: 1
+  waterReference: {fileID: 6182401751888327366}
+  alignWaterToWorld: 1
 --- !u!1 &9178961981112231982
 GameObject:
   m_ObjectHideFlags: 0
