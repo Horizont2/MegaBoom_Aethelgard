@@ -10,6 +10,27 @@ using UnityEngine.Rendering;
 // pieces tumble, land on the terrain and then fade away.
 public static class SkeletonShatter
 {
+    // Layers the death-debris colliders must NOT collide with (player + enemies),
+    // so shattered remains never push or block living characters. Computed once —
+    // these layers are constant for the project.
+    private static int s_chunkExcludeCache = -1;
+    private static int s_chunkExcludeLayers
+    {
+        get
+        {
+            if (s_chunkExcludeCache >= 0) return s_chunkExcludeCache;
+            int m = 0;
+            var pl = GameObject.FindGameObjectWithTag("Player");
+            if (pl != null) m |= (1 << pl.layer);
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer >= 0) m |= (1 << enemyLayer);
+            int dmgLayer = LayerMask.NameToLayer("Damageable");
+            if (dmgLayer >= 0) m |= (1 << dmgLayer);
+            s_chunkExcludeCache = m;
+            return m;
+        }
+    }
+
     // Returns true if it shattered at least one skinned mesh.
     public static bool Shatter(GameObject root, Vector3 explosionCenter,
                                float force = 5f, float chunkLife = 3.5f, int maxChunks = 14)
@@ -126,6 +147,9 @@ public static class SkeletonShatter
             var box = go.AddComponent<BoxCollider>();
             box.center = m.bounds.center;
             box.size = Vector3.Max(m.bounds.size, Vector3.one * 0.05f);
+            // Death debris must not shove or block the player / other enemies —
+            // its collider is excluded from those layers (still lands on terrain).
+            box.excludeLayers = s_chunkExcludeLayers;
 
             var rb = go.AddComponent<Rigidbody>();
             rb.mass = 0.6f;

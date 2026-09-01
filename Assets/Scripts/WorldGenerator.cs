@@ -382,6 +382,17 @@ public class WorldGenerator : MonoBehaviour
         pendingTreeInstances.Clear();
         treeProtoIndex.Clear();
         terrainTreesReady = false;
+
+        // ALWAYS wipe any terrain trees baked into the terrainData — an earlier
+        // painting run (in the editor) polluted the asset, leaving stale
+        // NON-harvestable painted trees on the map. Clearing here guarantees only
+        // the real object trees (which ARE harvestable) exist.
+        if (terrain != null && terrain.terrainData != null)
+        {
+            try { terrain.terrainData.SetTreeInstances(new TreeInstance[0], true); }
+            catch { /* terrain has no trees — fine */ }
+        }
+
         if (!useTerrainTreePainting) return;   // OFF by default → all vegetation spawns as objects
         if (terrain == null || terrain.terrainData == null) return;
 
