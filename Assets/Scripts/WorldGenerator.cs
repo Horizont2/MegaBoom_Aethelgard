@@ -319,6 +319,11 @@ public class WorldGenerator : MonoBehaviour
     private int regionBiomeTypeCached;
 
     private List<Vector3> forbiddenZones = new List<Vector3>();
+    // Radius-aware no-vegetation discs around whole LOCATION footprints (xyz =
+    // centre, w = radius). forbiddenZones only clears a fixed 18m around a point,
+    // which left trees growing inside big castle/village footprints — these
+    // cover the entire location so nothing spawns inside it.
+    private readonly List<Vector4> locationExclusions = new List<Vector4>();
 
     // Terrain-tree painting: normal (baseTrees/deadTrees) trees are batched onto
     // the Unity terrain as TreeInstances instead of GameObjects — a big FPS win in
@@ -573,6 +578,7 @@ public class WorldGenerator : MonoBehaviour
         RegionManager.CinematicActive = false;   // nor a stuck victory-cinematic latch
         CursedTree.ResetWave(); // fresh region: don't let a stale bloom wave insta-bloom
         forbiddenZones.Clear();
+        locationExclusions.Clear();
         generatedRivers.Clear();
 
         // Очищаємо списки доріг
@@ -582,6 +588,10 @@ public class WorldGenerator : MonoBehaviour
 
         // 1. СПОЧАТКУ знаходимо Terrain
         terrain = GetComponent<Terrain>();
+
+        // Clear any terrain holes punched for a self-contained location in a
+        // previous generation (holes live on the shared TerrainData asset).
+        ResetTerrainHoles();
 
         // 2. ТІЛЬКИ ТЕПЕР створюємо маску (бо terrain більше не null!)
         roadBlendMap = new float[terrain.terrainData.alphamapWidth, terrain.terrainData.alphamapHeight];
@@ -1968,6 +1978,22 @@ public class WorldGenerator : MonoBehaviour
         forbiddenZones.Add(spawnedTotemPos);
         roadTargets.Add(spawnedTotemPos);
 
+        // Keep vegetation out of the WHOLE location footprint (not just the 18m
+        // point around the centre) — no trees/rocks/bushes inside a village/castle.
+        locationExclusions.Add(new Vector4(spawnedTotemPos.x, spawnedTotemPos.y, spawnedTotemPos.z, flatRadius + 6f));
+
+        // Self-contained locations (own terrain + water, e.g. the medieval
+        // market village) drop a hole in the procedural terrain under the
+        // footprint so the generated ground/collider don't poke through or
+        // fight the location's own ground+water. The prefab must carry a
+        // SelfContainedLocation component AND its own ground collider.
+        var selfContained = camp.GetComponent<SelfContainedLocation>();
+        if (selfContained != null && selfContained.cutTerrainHole)
+        {
+            float holeR = selfContained.footprintRadius > 0.1f ? selfContained.footprintRadius : flatRadius;
+            PunchTerrainHole(spawnedTotemPos, holeR + selfContained.margin);
+        }
+
         // Optional extra capture LOCATIONS: additional totems at spread-out
         // clearings so a region has several points to capture (bonus side
         // objectives). Default 0 → nothing extra spawns, behaviour unchanged.
@@ -2017,6 +2043,14 @@ public class WorldGenerator : MonoBehaviour
 
             forbiddenZones.Add(extraTotem.transform.position);
             roadTargets.Add(extraTotem.transform.position);
+            locationExclusions.Add(new Vector4(extraTotem.transform.position.x, extraTotem.transform.position.y, extraTotem.transform.position.z, flatRadius + 6f));
+
+            var esc = extraTotem.GetComponent<SelfContainedLocation>();
+            if (esc != null && esc.cutTerrainHole)
+            {
+                float holeR = esc.footprintRadius > 0.1f ? esc.footprintRadius : flatRadius;
+                PunchTerrainHole(extraTotem.transform.position, holeR + esc.margin);
+            }
             spawned++;
         }
     }
@@ -2141,6 +2175,61 @@ public class WorldGenerator : MonoBehaviour
         const float groundEmbed = 0.35f;
         float delta = targetGroundY - lowestY - groundEmbed;
         go.transform.position += new Vector3(0f, delta, 0f);
+    }
+
+    // Clear every terrain hole so holes punched for a self-contained location in
+    // a previous region don't persist into the next generated world (terrain
+    // holes live on the shared TerrainData asset).
+    private void ResetTerrainHoles()
+    {
+        if (terrain == null || terrain.terrainData == null) return;
+        TerrainData td = terrain.terrainData;
+        int res = td.holesResolution;
+        if (res <= 0) return;
+        bool[,] all = new bool[res, res];
+        for (int y = 0; y < res; y++)
+            for (int x = 0; x < res; x++)
+                all[y, x] = true;   // true = solid, false = hole
+        td.SetHoles(0, 0, all);
+    }
+
+    // Punch a circular hole in the procedural terrain (mesh + collider) so a
+    // self-contained location can drop in its OWN ground + water without the
+    // generated terrain poking through or fighting it.
+    private void PunchTerrainHole(Vector3 worldCenter, float radius)
+    {
+        if (terrain == null || terrain.terrainData == null || radius <= 0f) return;
+        TerrainData td = terrain.terrainData;
+        int res = td.holesResolution;
+        if (res <= 0) return;
+
+        float relX = (worldCenter.x - transform.position.x) / td.size.x;
+        float relZ = (worldCenter.z - transform.position.z) / td.size.z;
+        float radXcells = radius / td.size.x * res;
+        float radZcells = radius / td.size.z * res;
+        int cx = Mathf.RoundToInt(relX * res);
+        int cz = Mathf.RoundToInt(relZ * res);
+
+        int minX = Mathf.Clamp(cx - Mathf.CeilToInt(radXcells), 0, res - 1);
+        int maxX = Mathf.Clamp(cx + Mathf.CeilToInt(radXcells), 0, res - 1);
+        int minZ = Mathf.Clamp(cz - Mathf.CeilToInt(radZcells), 0, res - 1);
+        int maxZ = Mathf.Clamp(cz + Mathf.CeilToInt(radZcells), 0, res - 1);
+        int wCells = maxX - minX + 1;
+        int hCells = maxZ - minZ + 1;
+        if (wCells <= 0 || hCells <= 0) return;
+
+        bool[,] holes = td.GetHoles(minX, minZ, wCells, hCells);
+        for (int z = 0; z < hCells; z++)
+        {
+            for (int x = 0; x < wCells; x++)
+            {
+                float nx = (minX + x - cx) / Mathf.Max(0.001f, radXcells);
+                float nz = (minZ + z - cz) / Mathf.Max(0.001f, radZcells);
+                if (nx * nx + nz * nz <= 1f) holes[z, x] = false;   // carve hole
+            }
+        }
+        td.SetHoles(minX, minZ, holes);
+        terrain.Flush();
     }
 
     // Returns how far the prefab's pivot sits above the lowest point of its
@@ -2518,6 +2607,17 @@ public class WorldGenerator : MonoBehaviour
                 {
                     Vector3 d = currentPos - forbiddenZones[fzi];
                     if (d.x * d.x + d.y * d.y + d.z * d.z < FORBIDDEN_SQR) { inForbiddenZone = true; break; }
+                }
+                // Whole-location footprints — no trees/rocks/bushes inside a
+                // castle/village. XZ distance vs the disc radius.
+                if (!inForbiddenZone)
+                {
+                    for (int li = 0; li < locationExclusions.Count; li++)
+                    {
+                        Vector4 e = locationExclusions[li];
+                        float dx = worldX - e.x; float dz = worldZ - e.z;
+                        if (dx * dx + dz * dz < e.w * e.w) { inForbiddenZone = true; break; }
+                    }
                 }
                 if (inForbiddenZone) continue;
 
