@@ -82,10 +82,24 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     // when the button is created.
     [HideInInspector] public WeaponData boundWeapon;
     [HideInInspector] public ArmorData boundArmor;
+    // The item's icon sprite, kept so SetState can RE-ASSERT it every time — the
+    // icon was going blank/white for non-equipped items when a state refresh ran.
+    [HideInInspector] public Sprite boundIcon;
 
     public void SetState(OwnedState state, int currentLevel, int maxLevel, int price, int playerDiamonds)
     {
         CacheOriginalColors();
+
+        // RE-ASSERT the icon on every state change. The icon was rendering white
+        // for non-equipped items because a refresh could leave the Image without
+        // its sprite / with a stray material; restore all three here so the icon
+        // shows in every state (Owned / Equipped / Locked).
+        if (iconImage != null)
+        {
+            if (boundIcon != null && iconImage.sprite != boundIcon) iconImage.sprite = boundIcon;
+            iconImage.material = null;          // default UI material — never a broken override
+            if (iconImage.sprite != null) iconImage.enabled = true;
+        }
 
         if (lockedOverlay != null) lockedOverlay.SetActive(state == OwnedState.Locked);
         if (ownedCheckmark != null) ownedCheckmark.SetActive(state == OwnedState.Owned);

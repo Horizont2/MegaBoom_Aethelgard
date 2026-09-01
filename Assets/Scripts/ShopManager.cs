@@ -747,22 +747,14 @@ public class ShopManager : MonoBehaviour
         if (itemSlot != null)
         {
             if (itemSlot.nameText != null) itemSlot.nameText.text = LocalizationManager.Tr(name);
+            itemSlot.boundIcon = icon;   // SetState re-asserts this every state change
             if (itemSlot.iconImage != null)
             {
                 if (icon != null) itemSlot.iconImage.sprite = icon;
-                // The list icons use the SAME sprite as the description panel, yet
-                // rendered white while the description icon looked correct — so the
-                // difference is the Image MATERIAL, not the sprite. Mirror the
-                // description icon's (working) material onto every list icon so
-                // they render identically. Fall back to the default UI material.
-                if (descriptionItemIcon != null)
-                    itemSlot.iconImage.material = descriptionItemIcon.material;
-                else
-                    itemSlot.iconImage.material = null;
+                itemSlot.iconImage.material = null;   // default UI material
                 itemSlot.iconImage.color = Color.white;
-
-                if (icon == null)
-                    Debug.LogWarning($"[Shop] Item '{name}' has NO icon sprite assigned in its data asset — it will render blank.");
+                if (icon != null) itemSlot.iconImage.enabled = true;
+                else Debug.LogWarning($"[Shop] Item '{name}' has NO icon sprite assigned in its data asset — it will render blank.");
             }
             if (itemSlot.buttonComponent != null)
             {
