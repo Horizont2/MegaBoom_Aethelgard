@@ -298,6 +298,15 @@ public class WorldGenerator : MonoBehaviour
 
     private List<Vector3> forbiddenZones = new List<Vector3>();
 
+    // Terrain-tree painting: normal (baseTrees/deadTrees) trees are batched onto
+    // the Unity terrain as TreeInstances instead of GameObjects — a big FPS win in
+    // dense forests. Giant trees, cursed husks and everything else stay as objects
+    // (they need per-instance behaviour/VFX). NOTE: painted trees do NOT get the
+    // per-tree semi-transparent occlusion fade — accepted tradeoff for the FPS gain.
+    private readonly List<TreeInstance> pendingTreeInstances = new List<TreeInstance>(4096);
+    private readonly Dictionary<GameObject, int> treeProtoIndex = new Dictionary<GameObject, int>();
+    private bool terrainTreesReady;
+
     private class WaterfallData
     {
         public Vector3 topPos;
@@ -340,6 +349,96 @@ public class WorldGenerator : MonoBehaviour
         foreach (var rnd in go.GetComponentsInChildren<Renderer>(true))
             if (rnd != null && !(rnd is ParticleSystemRenderer))
                 rnd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
+    // ---- Terrain-tree painting ------------------------------------------------
+    // Register baseTrees/deadTrees as terrain tree prototypes and clear any old
+    // instances, so normal trees can be batch-painted instead of instantiated.
+    private void PrepareTerrainTreePrototypes()
+    {
+        pendingTreeInstances.Clear();
+        treeProtoIndex.Clear();
+        terrainTreesReady = false;
+        if (terrain == null || terrain.terrainData == null) return;
+
+        var protos = new List<TreePrototype>();
+        void AddProtos(GameObject[] arr)
+        {
+            if (arr == null) return;
+            foreach (var p in arr)
+            {
+                if (p == null || treeProtoIndex.ContainsKey(p)) continue;
+                treeProtoIndex[p] = protos.Count;
+                protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });
+            }
+        }
+        AddProtos(baseTrees);
+        AddProtos(deadTreesPrefabs);
+        if (protos.Count == 0) return;
+
+        try
+        {
+            terrain.terrainData.treePrototypes = protos.ToArray();
+            terrain.terrainData.RefreshPrototypes();
+            terrain.terrainData.SetTreeInstances(new TreeInstance[0], true);   // wipe stale trees
+
+            // Guarantee the terrain actually draws trees (a scene left with
+            // treeDistance = 0 would render none) and use billboards far away for FPS.
+            terrain.treeDistance = Mathf.Max(terrain.treeDistance, 2500f);
+            terrain.treeBillboardDistance = 120f;
+            terrain.treeCrossFadeLength = 25f;
+            terrain.treeMaximumFullLODCount = Mathf.Max(terrain.treeMaximumFullLODCount, 400);
+
+            terrainTreesReady = true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[Gen] Terrain tree prototypes failed ({e.Message}) — falling back to object trees.");
+            terrainTreesReady = false;
+        }
+    }
+
+    // Queue a terrain-tree instance. Returns false if painting is unavailable for
+    // this prefab (caller then falls back to instantiating a GameObject tree).
+    private bool AddTerrainTree(GameObject prefab, float worldX, float worldZ, float widthScale, float heightScale)
+    {
+        if (!terrainTreesReady || prefab == null) return false;
+        if (!treeProtoIndex.TryGetValue(prefab, out int idx)) return false;
+
+        Vector3 tp = terrain.transform.position;
+        Vector3 size = terrain.terrainData.size;
+        float nx = (worldX - tp.x) / Mathf.Max(0.001f, size.x);
+        float nz = (worldZ - tp.z) / Mathf.Max(0.001f, size.z);
+        if (nx < 0f || nx > 1f || nz < 0f || nz > 1f) return false;   // off-terrain → object path
+
+        pendingTreeInstances.Add(new TreeInstance
+        {
+            position = new Vector3(nx, 0f, nz),   // y snapped to heightmap on flush
+            prototypeIndex = idx,
+            widthScale = widthScale,
+            heightScale = heightScale,
+            rotation = GetRandomRange(0f, Mathf.PI * 2f),
+            color = Color.white,
+            lightmapColor = Color.white
+        });
+        return true;
+    }
+
+    // Commit all queued trees to the terrain at once (snapped to the final heightmap).
+    private void FlushTerrainTrees()
+    {
+        if (!terrainTreesReady || pendingTreeInstances.Count == 0) return;
+        try
+        {
+            terrain.terrainData.SetTreeInstances(pendingTreeInstances.ToArray(), true);
+            terrain.Flush();
+            GameLog.Info($"[Gen] Painted {pendingTreeInstances.Count} terrain trees.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[Gen] SetTreeInstances failed: {e.Message}");
+        }
+        pendingTreeInstances.Clear();
     }
 
     private void Awake()
@@ -2245,6 +2344,10 @@ public class WorldGenerator : MonoBehaviour
         Transform bushContainer = new GameObject("BushContainer").transform; bushContainer.SetParent(this.transform);
         Transform logContainer = new GameObject("LogsContainer").transform; logContainer.SetParent(this.transform);
 
+        // Register tree prototypes so normal trees get PAINTED onto the terrain
+        // (batched) instead of instantiated as GameObjects.
+        PrepareTerrainTreePrototypes();
+
         float startTime = Time.realtimeSinceStartup;
 
         for (int i = 0; i < spawnAttempts; i++)
@@ -2474,18 +2577,30 @@ public class WorldGenerator : MonoBehaviour
                             bool useDeadTree = (isSnow || isDesert) && GetRandomFloat() > 0.5f && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
                             GameObject treePrefab = useDeadTree ? GetRandomPrefab(deadTreesPrefabs) : GetRandomPrefab(baseTrees);
 
-                            GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
                             // Wider, non-uniform size spread so trees aren't all clones.
-                            obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.7f, 1.45f));
+                            Vector3 tScale = RandomDecorScale(0.7f, 1.45f);
 
-                            if (!useDeadTree)
+                            // Prefer PAINTING onto the terrain (batched, big FPS win).
+                            if (AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y))
                             {
-                                if (currentBaseTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentBaseTreeMat);
-                                else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
+                                currentTreeCount++;
                             }
-                            else { ApplyBiomeColor(obj, currentRockColor, true); }
+                            else
+                            {
+                                // Fallback: spawn as a GameObject (terrain painting
+                                // unavailable for this prefab / off-terrain).
+                                GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                                obj.transform.localScale = Vector3.Scale(obj.transform.localScale, tScale);
 
-                            currentTreeCount++;
+                                if (!useDeadTree)
+                                {
+                                    if (currentBaseTreeMat != null) ApplyBiomeSpecificMaterial(obj, currentBaseTreeMat);
+                                    else { ApplyBiomeTexture(obj, currentTreeTexture); ApplyBiomeColor(obj, currentFoliageColor, true); }
+                                }
+                                else { ApplyBiomeColor(obj, currentRockColor, true); }
+
+                                currentTreeCount++;
+                            }
                         }
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)
@@ -2548,6 +2663,10 @@ public class WorldGenerator : MonoBehaviour
             // here so a heavy iteration yields before the next one starts.
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
+
+        // Commit all painted trees to the terrain in one batch (snapped to the
+        // now-final heightmap).
+        FlushTerrainTrees();
     }
 
     private void ApplyBiomeColor(GameObject obj, Color baseColor, bool randomize = false)
