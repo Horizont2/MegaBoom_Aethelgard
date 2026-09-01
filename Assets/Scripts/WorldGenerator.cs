@@ -233,8 +233,10 @@ public class WorldGenerator : MonoBehaviour
     [Tooltip("Winter/snow tree prefabs — each with its OWN snow leaves material baked in. Painted in snow cells. Leave empty to reuse Base Trees.")]
     public GameObject[] baseTreesWinter;
     [Range(0f, 1f)]
-    [Tooltip("Fraction of trees spawned as REAL objects (farmable — keep ResourceNode/collider) instead of terrain-painted. The rest are painted for FPS. ~0.18 keeps wood harvestable without killing performance.")]
+    [Tooltip("Fraction of trees spawned as REAL objects (farmable — keep ResourceNode/collider) instead of terrain-painted. Only used when Use Terrain Tree Painting is ON.")]
     public float treeFarmableFraction = 0.18f;
+    [Tooltip("OFF (default): every tree/bush spawns as a real OBJECT — farmable, with a collider, exactly like the original generator. ON: paint most vegetation onto the terrain for FPS (loses per-tree farming/occlusion-fade). Left OFF because painting broke farming + combat.")]
+    public bool useTerrainTreePainting = false;
 
     [Header("Cursed → Bloomed Trees (story regions)")]
     [Tooltip("Blighted/dead tree prefabs spawned in cursed STORY regions. Their trunks are recoloured to the biome like normal trees, and they transform into living trees during the victory flythrough.")]
@@ -380,6 +382,7 @@ public class WorldGenerator : MonoBehaviour
         pendingTreeInstances.Clear();
         treeProtoIndex.Clear();
         terrainTreesReady = false;
+        if (!useTerrainTreePainting) return;   // OFF by default → all vegetation spawns as objects
         if (terrain == null || terrain.terrainData == null) return;
 
         var protos = new List<TreePrototype>();

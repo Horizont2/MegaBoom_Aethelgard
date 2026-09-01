@@ -1310,6 +1310,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        // ABSOLUTE BACKSTOP: no matter what any death effect (shatter / dissolve /
+        // VFX) does or throws below, the enemy is guaranteed to be removed. This
+        // fixes "enemy stays at 0 HP forever" when a death effect errored out.
+        Destroy(gameObject, 5f);
+
         // Миттєво ховаємо канвас після смерті
         if (healthCanvas != null)
         {
@@ -1450,7 +1455,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             transform.localScale = Vector3.Lerp(startScale, targetScale, t);
             transform.position = Vector3.Lerp(startPos, targetPos, t);
-            SetColor(Color.Lerp(originalColors[0], Color.black, t));
+            // Guard: skinned-mesh skeletons have no MeshRenderers, so originalColors
+            // is empty — indexing [0] threw and stranded the corpse. Fall back safely.
+            Color baseCol = (originalColors != null && originalColors.Length > 0) ? originalColors[0] : Color.white;
+            SetColor(Color.Lerp(baseCol, Color.black, t));
 
             yield return null;
         }
