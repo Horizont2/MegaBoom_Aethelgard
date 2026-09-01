@@ -233,8 +233,8 @@ public class RegionManager : MonoBehaviour
         nextTotem.PlayCorruptionFlare();
     }
 
-    // Trailer/debug hook: fire the full victory purification cinematic on
-    // demand (used by TrailerToolkit) without having to clear every totem.
+    // Debug hook: fire the full victory purification cinematic on demand
+    // without having to clear every totem.
     public void DebugTriggerVictoryCinematic()
     {
         if (_finalPurificationStarted) return;

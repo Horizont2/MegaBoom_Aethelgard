@@ -492,51 +492,6 @@ public class ShopManager : MonoBehaviour
         btnTransform.localScale = originalScale;
     }
 
-    // Trailer/showcase: drive the shop UI so the trailer SHOWS the player
-    // selecting items, their stats/prices, and the Buy/Upgrade buttons —
-    // instead of just orbiting the scene. Lives here so it can reach the
-    // private item list + category logic directly.
-    public System.Collections.IEnumerator TrailerShowcaseRoutine()
-    {
-        ItemCategory[] weaponCats = { ItemCategory.Sword, ItemCategory.Axe, ItemCategory.Bow };
-        foreach (var cat in weaponCats)
-        {
-            OpenWeaponCategory(cat);
-            yield return new WaitForSecondsRealtime(0.9f);
-            yield return TrailerBrowseCurrentCategory(3);
-        }
-
-        // Finish on armour so the trailer shows gear too.
-        OpenArmorCategory(ArmorCategory.Chest);
-        yield return new WaitForSecondsRealtime(0.9f);
-        yield return TrailerBrowseCurrentCategory(3);
-    }
-
-    // Select up to `max` items in the open category, pausing on each so the
-    // stats panel, price, and the live Buy/Upgrade button are all readable.
-    private System.Collections.IEnumerator TrailerBrowseCurrentCategory(int max)
-    {
-        if (itemListContent == null) yield break;
-        int shown = 0;
-        for (int i = 0; i < itemListContent.childCount && shown < max; i++)
-        {
-            var slot = itemListContent.GetChild(i).GetComponent<ShopItemButton>();
-            if (slot == null || slot.buttonComponent == null || !slot.gameObject.activeInHierarchy) continue;
-
-            slot.buttonComponent.onClick.Invoke();   // select -> shows stats + price
-            shown++;
-
-            // Draw the eye to whichever action button is live for this item.
-            if (upgradeButton != null && upgradeButton.gameObject.activeInHierarchy)
-                PlayButtonAnim(upgradeButton.transform);
-            else if (buyButton != null && buyButton.gameObject.activeInHierarchy)
-                PlayButtonAnim(buyButton.transform);
-
-            yield return new WaitForSecondsRealtime(1.5f);
-        }
-        yield return new WaitForSecondsRealtime(0.3f);
-    }
-
     public void OpenWeaponCategory(ItemCategory cat)
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);

@@ -25,17 +25,7 @@ public class MapInteractiveViewer : MonoBehaviour, IDragHandler, IScrollHandler
     public RectTransform parallaxLayer;
     public float parallaxStrength = 0.12f;
 
-    // Trailer/showcase: drive a smooth pan + zoom programmatically (the existing
-    // Update eases mapRect toward these). Lets the director scroll the world map
-    // to reveal the regions.
-    public void TrailerSetView(Vector2 anchoredPos, float zoom)
-    {
-        targetPosition = anchoredPos;
-        targetZoom = Mathf.Clamp(zoom, minZoom, maxZoom);
-    }
     public Vector2 ViewportSize => parentViewport != null ? parentViewport.rect.size : new Vector2(900f, 600f);
-    public float MinZoom => minZoom;
-    public float MaxZoom => maxZoom;
 
     private void Awake()
     {

@@ -37,7 +37,19 @@ public static class SubtitleAutoRegister
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (f == null || f.FieldType != typeof(TextMeshProUGUI)) continue;
             var label = f.GetValue(mb) as TextMeshProUGUI;
-            if (label != null) SubtitleSettings.Register(label);
+            if (label != null)
+            {
+                SubtitleSettings.Register(label);
+                // Subtitle text is code-driven: the typewriter routines already
+                // run each line through LocalizationManager.Tr() before typing.
+                // Mark the label NoAutoLocalize so the scene walker /
+                // AutoLocalizeRepeater (which re-stamps Tr(capturedText) over
+                // every known-key label twice a second) can't overwrite a line
+                // that's mid-typewriter with a *different* (earlier-captured)
+                // subtitle line — that was the "text changes while typing" bug.
+                if (label.GetComponent<NoAutoLocalize>() == null)
+                    label.gameObject.AddComponent<NoAutoLocalize>();
+            }
         }
     }
 }

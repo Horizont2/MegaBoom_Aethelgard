@@ -23,19 +23,6 @@ public class MapTableInteract : MonoBehaviour
     private bool isTransitioning = false;
 
     public bool IsMapOpen => isMapOpen;
-    // Trailer/showcase hooks: open/close the world map without a key press.
-    public void TrailerOpenMap()
-    {
-        if (isMapOpen) return;
-        if (activeSequence != null) StopCoroutine(activeSequence);
-        activeSequence = StartCoroutine(OpenMapSequence());
-    }
-    public void TrailerCloseMap()
-    {
-        if (!isMapOpen) return;
-        if (activeSequence != null) StopCoroutine(activeSequence);
-        activeSequence = StartCoroutine(CloseMapSequence());
-    }
 
     private PlayerController playerController;
     private CameraFollow cameraFollow;

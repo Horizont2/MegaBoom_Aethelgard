@@ -121,9 +121,6 @@ public class LevelUpManager : MonoBehaviour
 
     public void ShowMenu()
     {
-        // Don't pop the upgrade cards mid-capture — the trailer director drives
-        // the hero and doesn't want a modal interrupting the shot.
-        if (AutoTrailerDirector.IsPlaying) return;
         // Already choosing? Queue this level-up and show its own card screen
         // after the current pick, so the player gets one upgrade per level.
         if (IsMenuOpen) { pendingExtraMenus++; return; }
