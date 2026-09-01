@@ -1817,6 +1817,15 @@ public class WorldGenerator : MonoBehaviour
             yield break;
         }
 
+        // Self-contained locations (own ground + water) are grounded by their
+        // MANUAL root BoxCollider only — the designer sets the box so its bottom
+        // is exactly the location's floor. We must NOT measure the mesh footprint
+        // for these: it would include the location's own terrain/props and lift
+        // the whole thing into the air (the "spawns in the air with its terrain"
+        // bug). It also skips the later mesh-based SnapInstanceToGround.
+        SelfContainedLocation selfContainedDef = totemPrefab.GetComponent<SelfContainedLocation>();
+        bool isSelfContained = selfContainedDef != null;
+
         BoxCollider rootBox = totemPrefab.GetComponent<BoxCollider>();
         float flatRadius = 40f;
         float bottomOfCollider = 0f;
@@ -1831,14 +1840,23 @@ public class WorldGenerator : MonoBehaviour
             bottomOfCollider = cy - (sy / 2f);
         }
 
+        if (isSelfContained)
+        {
+            // Radius comes from the component override (or the manual box above);
+            // never from the mesh. Fall back to the box-derived radius.
+            if (selfContainedDef.footprintRadius > 0.1f)
+                flatRadius = selfContainedDef.footprintRadius;
+            if (rootBox == null)
+                Debug.LogWarning($"[WorldGenerator] SelfContainedLocation '{totemPrefab.name}' has NO root BoxCollider — add one and size it to the location's floor, or it can't be grounded correctly.");
+        }
         // The root box is often a small trigger (an activation zone), so the box
         // math above gave a tiny flatten radius — the terrain was leveled only in
         // a ~20m circle while a whole TOWN location extends much further, leaving
         // it perched on ungraded bumps. Measure the prefab's real mesh footprint
         // and flatten at least that far so the entire location sits on level
         // ground. Bottom of the mesh footprint also gives a better base Y than a
-        // mis-sized trigger box.
-        if (MeasurePrefabFootprint(totemPrefab, out float meshRadius, out float meshBottomY))
+        // mis-sized trigger box. (Skipped for self-contained — see above.)
+        else if (MeasurePrefabFootprint(totemPrefab, out float meshRadius, out float meshBottomY))
         {
             if (meshRadius + 8f > flatRadius) flatRadius = meshRadius + 8f;
             bottomOfCollider = meshBottomY;
@@ -1972,7 +1990,12 @@ public class WorldGenerator : MonoBehaviour
         // about a root BoxCollider; a totem whose collider/mesh is nested
         // under a child still floated. Measuring the live instance's
         // bounds grounds it regardless of hierarchy.
-        SnapInstanceToGround(camp, groundYAfterFlatten + locationYOffset);
+        // EXCEPT self-contained locations: those are grounded purely by their
+        // manual root BoxCollider (finalY above), so measuring the live mesh
+        // bounds would drag their own terrain/props into the calc and lift the
+        // whole thing off the ground.
+        if (!isSelfContained)
+            SnapInstanceToGround(camp, groundYAfterFlatten + locationYOffset);
 
         spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
