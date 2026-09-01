@@ -320,6 +320,18 @@ public class WorldGenerator : MonoBehaviour
     private float GetRandomRange(float min, float max) => Mathf.Lerp(min, max, (float)prng.NextDouble());
     private int GetRandomRangeInt(int min, int max) => prng.Next(min, max);
 
+    // Varied scale for decorations so props don't all spawn identical. Returns a
+    // MULTIPLIER vector: a uniform base pick in [min,max] plus a small independent
+    // height wobble (some trees taller/thinner, some short/squat) — much more
+    // natural than one uniform size. Multiply componentwise onto the prefab's
+    // own localScale (Vector3.Scale) so the prefab's authored proportions survive.
+    private Vector3 RandomDecorScale(float min, float max, float heightWobble = 0.14f)
+    {
+        float s = GetRandomRange(min, max);
+        float yv = 1f + GetRandomRange(-heightWobble, heightWobble);
+        return new Vector3(s, s * yv, s);
+    }
+
     private void Awake()
     {
         Time.timeScale = 1f;
@@ -2364,7 +2376,7 @@ public class WorldGenerator : MonoBehaviour
                     {
                         GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
                         GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
-                        obj.transform.localScale *= GetRandomRange(1.0f, 1.4f);
+                        obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.95f, 1.6f, 0.1f));
 
                         // Bias the prefab's LODGroup so it drops to the cheaper LODs
                         // sooner — the full-detail canopy (LOD0) is the overdraw hog
@@ -2428,7 +2440,7 @@ public class WorldGenerator : MonoBehaviour
                             {
                                 Quaternion huskRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0) * Quaternion.Euler(cursedTreeRotationOffset);
                                 GameObject husk = Instantiate(deadPrefab, new Vector3(worldX, worldY, worldZ), huskRot, treeContainer);
-                                husk.transform.localScale *= GetRandomRange(0.8f, 1.1f);
+                                husk.transform.localScale = Vector3.Scale(husk.transform.localScale, RandomDecorScale(0.7f, 1.4f));
 
                                 // Recolour the withered trunk to the biome.
                                 bool appliedMat = false;
@@ -2452,7 +2464,8 @@ public class WorldGenerator : MonoBehaviour
                             GameObject treePrefab = useDeadTree ? GetRandomPrefab(deadTreesPrefabs) : GetRandomPrefab(baseTrees);
 
                             GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
-                            obj.transform.localScale *= GetRandomRange(0.8f, 1.1f);
+                            // Wider, non-uniform size spread so trees aren't all clones.
+                            obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.7f, 1.45f));
 
                             if (!useDeadTree)
                             {
@@ -2493,6 +2506,9 @@ public class WorldGenerator : MonoBehaviour
                         bool isRuin = ruinPrefabs != null && ruinPrefabs.Length > 0 && GetRandomFloat() > 0.8f;
                         GameObject targetPrefab = isRuin ? GetRandomPrefab(ruinPrefabs) : GetRandomPrefab(baseRocks);
                         GameObject obj = Instantiate(targetPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
+                        // Ruins/rocks were spawning at a fixed size — vary them.
+                        obj.transform.localScale = Vector3.Scale(obj.transform.localScale,
+                            isRuin ? RandomDecorScale(0.85f, 1.25f, 0.08f) : RandomDecorScale(0.5f, 1.3f));
                         if (!isRuin) ApplyBiomeColor(obj, currentRockColor, true);
                         currentRockCount++;
                     }
@@ -2502,7 +2518,12 @@ public class WorldGenerator : MonoBehaviour
                     if (currentTreeCount < maxTrees && randomSpawn > 0.95f)
                     {
                         GameObject log = GetRandomPrefab(logPrefabs);
-                        if (log != null) { Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), logContainer); currentTreeCount++; }
+                        if (log != null)
+                        {
+                            GameObject lg = Instantiate(log, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), logContainer);
+                            lg.transform.localScale = Vector3.Scale(lg.transform.localScale, RandomDecorScale(0.7f, 1.3f));
+                            currentTreeCount++;
+                        }
                     }
                 }
             }
