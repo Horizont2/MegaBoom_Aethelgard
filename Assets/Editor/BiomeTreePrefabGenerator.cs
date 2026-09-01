@@ -25,37 +25,53 @@ public static class BiomeTreePrefabGenerator
         var wg = Object.FindFirstObjectByType<WorldGenerator>();
         if (wg == null)
         {
-            EditorUtility.DisplayDialog("Biome Tree Prefabs",
+            EditorUtility.DisplayDialog("Biome Vegetation Prefabs",
                 "No WorldGenerator found in the open scene. Open the region generation scene (GameScene) and try again.", "OK");
             return;
         }
-        if (wg.baseTrees == null || wg.baseTrees.Length == 0)
+
+        // Trees and bushes are handled independently — you can generate biome
+        // BUSH variants even if trees aren't set up for painting (and vice versa).
+        bool canTrees = wg.baseTrees != null && wg.baseTrees.Length > 0
+                        && (wg.baseTreeAutumnMaterial != null || wg.baseTreeWinterMaterial != null);
+        bool canBushes = wg.baseBushes != null && wg.baseBushes.Length > 0
+                         && (wg.bushAutumnMaterial != null || wg.bushWinterMaterial != null);
+
+        if (!canTrees && !canBushes)
         {
-            EditorUtility.DisplayDialog("Biome Tree Prefabs", "WorldGenerator has no Base Trees assigned.", "OK");
-            return;
-        }
-        if (wg.baseTreeAutumnMaterial == null && wg.baseTreeWinterMaterial == null)
-        {
-            EditorUtility.DisplayDialog("Biome Tree Prefabs",
-                "Assign Base Tree Autumn / Winter materials on the WorldGenerator first.", "OK");
+            EditorUtility.DisplayDialog("Biome Vegetation Prefabs",
+                "Nothing to generate. Assign, on the WorldGenerator:\n" +
+                "  • Base Trees + Base Tree Autumn/Winter materials (for tree variants), and/or\n" +
+                "  • Base Bushes + Bush Autumn/Winter materials (for bush variants).", "OK");
             return;
         }
 
         if (!AssetDatabase.IsValidFolder(OutFolder))
             AssetDatabase.CreateFolder("Assets", "GeneratedBiomeTrees");
 
-        // Trees.
-        var tAutumn = BuildVariants(wg.baseTrees, wg.baseTreeAutumnMaterial, "_Autumn");
-        var tWinter = BuildVariants(wg.baseTrees, wg.baseTreeWinterMaterial, "_Winter");
-        // Bushes (all vegetation painted too).
-        var bAutumn = BuildVariants(wg.baseBushes, wg.bushAutumnMaterial, "_Autumn");
-        var bWinter = BuildVariants(wg.baseBushes, wg.bushWinterMaterial, "_Winter");
+        var tAutumn = new List<GameObject>();
+        var tWinter = new List<GameObject>();
+        var bAutumn = new List<GameObject>();
+        var bWinter = new List<GameObject>();
 
         Undo.RecordObject(wg, "Assign Biome Vegetation Prefabs");
-        if (tAutumn.Count > 0) wg.baseTreesAutumn = tAutumn.ToArray();
-        if (tWinter.Count > 0) wg.baseTreesWinter = tWinter.ToArray();
-        if (bAutumn.Count > 0) wg.baseBushesAutumn = bAutumn.ToArray();
-        if (bWinter.Count > 0) wg.baseBushesWinter = bWinter.ToArray();
+
+        if (canTrees)
+        {
+            tAutumn = BuildVariants(wg.baseTrees, wg.baseTreeAutumnMaterial, "_Autumn");
+            tWinter = BuildVariants(wg.baseTrees, wg.baseTreeWinterMaterial, "_Winter");
+            if (tAutumn.Count > 0) wg.baseTreesAutumn = tAutumn.ToArray();
+            if (tWinter.Count > 0) wg.baseTreesWinter = tWinter.ToArray();
+        }
+
+        if (canBushes)
+        {
+            bAutumn = BuildVariants(wg.baseBushes, wg.bushAutumnMaterial, "_Autumn");
+            bWinter = BuildVariants(wg.baseBushes, wg.bushWinterMaterial, "_Winter");
+            if (bAutumn.Count > 0) wg.baseBushesAutumn = bAutumn.ToArray();
+            if (bWinter.Count > 0) wg.baseBushesWinter = bWinter.ToArray();
+        }
+
         EditorUtility.SetDirty(wg);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
