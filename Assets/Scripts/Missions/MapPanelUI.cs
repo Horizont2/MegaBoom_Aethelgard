@@ -523,7 +523,14 @@ public class MapPanelUI : MonoBehaviour
                 fullScreenCloudOverlay.color = new Color(1, 1, 1, 1f);
         }
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene("GameScene");
+        // A region can point at a dedicated hand-authored scene (e.g. the final
+        // castle/village with its own terrain + water) instead of the procedural
+        // GameScene. Empty customSceneName → normal procedural generation.
+        string sceneToLoad = (currentRegion != null && !string.IsNullOrEmpty(currentRegion.customSceneName))
+            ? currentRegion.customSceneName
+            : "GameScene";
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.FadeAndLoadScene(sceneToLoad);
+        else SceneLoader.LoadScene(sceneToLoad);
     }
 
     private IEnumerator AnimatePanel(Vector2 targetPos, float targetAlpha, bool state)

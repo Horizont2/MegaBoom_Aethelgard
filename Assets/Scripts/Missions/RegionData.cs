@@ -37,6 +37,8 @@ public class RegionData : ScriptableObject
 
     [Header("Generation Settings")]
     public RegionBiome regionBiome = RegionBiome.Forest;
+    [Tooltip("Optional: name of a dedicated, HAND-AUTHORED scene to load for this region instead of the procedurally-generated GameScene. Use for special regions that don't fit procedural generation — e.g. the final castle/village with its own terrain + water. Leave EMPTY for normal procedural regions. The scene must be added to Build Settings and contain its own player spawn, RegionTotem, boss spawn and the usual managers (GameManager / GlobalHUD / EnemySpawner).")]
+    public string customSceneName = "";
 
     [Header("Map Logic")]
     public RegionState currentState = RegionState.Locked;
