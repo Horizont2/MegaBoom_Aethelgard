@@ -98,6 +98,12 @@ public static class AudioID
     public const string Env_StoneBreak = "ENV/StoneBreak";
     public const string Region_AnchorDestroy = "UI/AnchorDestroy";
     public const string Region_PurifyComplete = "UI/PurifyComplete";
+
+    // Horse / mount (Lvl_1 evacuation + lore trailer). Wire the FMOD events
+    // in the Inspector; HorseAudioController plays these while the horse moves.
+    public const string Horse_Gallop = "Animals/Horse_Gallop";   // looping hoofbeats
+    public const string Horse_Breath = "Animals/Horse_Breath";   // looping breathing
+    public const string Horse_Snort  = "Animals/Horse_Snort";    // occasional one-shot
 }
 
 [System.Serializable]
@@ -203,6 +209,11 @@ public class AudioManager : MonoBehaviour
     public SoundGroup envStoneBreak;
     public SoundGroup regionAnchorDestroy;
     public SoundGroup regionPurifyComplete;
+
+    [Header("=== HORSE / MOUNT (wire FMOD events) ===")]
+    public SoundGroup horseGallop;   // looping hoofbeats while moving
+    public SoundGroup horseBreath;   // looping breathing
+    public SoundGroup horseSnort;    // occasional one-shot
 
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp;
@@ -706,6 +717,10 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Env_StoneBreak, envStoneBreak);
         sfxDictionary.Add(AudioID.Region_AnchorDestroy, regionAnchorDestroy);
         sfxDictionary.Add(AudioID.Region_PurifyComplete, regionPurifyComplete);
+
+        sfxDictionary.Add(AudioID.Horse_Gallop, horseGallop);
+        sfxDictionary.Add(AudioID.Horse_Breath, horseBreath);
+        sfxDictionary.Add(AudioID.Horse_Snort, horseSnort);
 
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp);
         sfxDictionary.Add(AudioID.Music_Battle, musicBattle);

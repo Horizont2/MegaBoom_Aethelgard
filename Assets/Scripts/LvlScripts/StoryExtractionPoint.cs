@@ -37,6 +37,14 @@ public class StoryExtractionPoint : MonoBehaviour
     private void Start()
     {
         CreateCinematicUI();
+
+        // Auto-wire hoof/breathing audio onto the horse so it plays during the
+        // evacuation ride (and the lore trailer) with no manual scene setup.
+        // The FMOD events themselves are wired on the AudioManager inspector
+        // (horseGallop / horseBreath / horseSnort); this only adds the driver.
+        if (horseTransform != null && horseTransform.GetComponent<HorseAudioController>() == null)
+            horseTransform.gameObject.AddComponent<HorseAudioController>();
+
         if (forcePlayOnStart) StartCoroutine(DebugStartRoutine());
     }
 
