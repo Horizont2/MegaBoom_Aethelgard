@@ -562,6 +562,10 @@ public class AutoTrailerDirector : MonoBehaviour
                 float perHit = 25f;
                 if (player != null) perHit = Mathf.Max(1f, player.meleeDamage * player.globalDamageMultiplier);
                 ba.SetHealthDirect(perHit * 5f);
+                // Use ONLY the on-screen boss HP bar — hide the floating world-space
+                // health slider above the boss.
+                ba.suppressWorldHealthBar = true;
+                if (ba.healthCanvas != null) ba.healthCanvas.SetActive(false);
             }
         }
 

@@ -93,6 +93,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     [Header("UI Settings")]
     public GameObject healthCanvas; // Об'єкт Канвасу (має бути вимкнений за замовчуванням)
+    // When true this enemy never shows its floating world-space health bar (the
+    // trailer boss uses the on-screen GlobalHUD boss bar instead).
+    [HideInInspector] public bool suppressWorldHealthBar = false;
     public Image healthFill;        // Зображення смужки ХП (Image Type = Filled)
     private float targetHealthRatio = 1f;
 
@@ -1213,7 +1216,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (currentHealth < 0) currentHealth = 0;
 
         // --- Показуємо ХП та передаємо нове значення для анімації ---
-        if (healthCanvas != null && !healthCanvas.activeSelf)
+        if (!suppressWorldHealthBar && healthCanvas != null && !healthCanvas.activeSelf)
         {
             healthCanvas.SetActive(true);
         }

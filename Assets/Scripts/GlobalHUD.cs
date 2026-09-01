@@ -471,6 +471,8 @@ public class GlobalHUD : MonoBehaviour
 
         if (bossUIFadeRoutine != null) { StopCoroutine(bossUIFadeRoutine); bossUIFadeRoutine = null; }
 
+        NudgeTimerForBoss(true);   // lift the run timer so the boss bar doesn't overlap it
+
         if (bossNameText != null) bossNameText.text = bossName;
         targetBossHpRatio = Mathf.Clamp01(maxHp > 0f ? currentHp / maxHp : 1f);
         if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
@@ -481,9 +483,35 @@ public class GlobalHUD : MonoBehaviour
 
     public void HideBossUI()
     {
+        NudgeTimerForBoss(false);
         if (bossUIGroup == null) return;
         if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
         bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(0f));
+    }
+
+    // The run timer sits where the boss HP bar appears, so lift it a touch while
+    // the boss bar is up and drop it back afterwards.
+    [SerializeField] private float bossTimerLift = 70f;
+    private RectTransform timerRectForBoss;
+    private Vector2 timerBasePosForBoss;
+    private bool timerLiftedForBoss;
+    private void NudgeTimerForBoss(bool up)
+    {
+        if (GameManager.Instance == null || GameManager.Instance.timerText == null) return;
+        var rt = GameManager.Instance.timerText.rectTransform;
+        if (rt == null) return;
+        if (timerRectForBoss != rt) { timerRectForBoss = rt; timerBasePosForBoss = rt.anchoredPosition; timerLiftedForBoss = false; }
+        if (up && !timerLiftedForBoss)
+        {
+            timerBasePosForBoss = rt.anchoredPosition;   // capture current rest pos
+            rt.anchoredPosition = timerBasePosForBoss + new Vector2(0f, bossTimerLift);
+            timerLiftedForBoss = true;
+        }
+        else if (!up && timerLiftedForBoss)
+        {
+            rt.anchoredPosition = timerBasePosForBoss;
+            timerLiftedForBoss = false;
+        }
     }
 
     private IEnumerator FadeBossUIRoutine(float targetAlpha)
