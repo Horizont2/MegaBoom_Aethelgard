@@ -44,33 +44,37 @@ public static class BiomeTreePrefabGenerator
         if (!AssetDatabase.IsValidFolder(OutFolder))
             AssetDatabase.CreateFolder("Assets", "GeneratedBiomeTrees");
 
-        var autumn = new List<GameObject>();
-        var winter = new List<GameObject>();
+        // Trees.
+        var tAutumn = BuildVariants(wg.baseTrees, wg.baseTreeAutumnMaterial, "_Autumn");
+        var tWinter = BuildVariants(wg.baseTrees, wg.baseTreeWinterMaterial, "_Winter");
+        // Bushes (all vegetation painted too).
+        var bAutumn = BuildVariants(wg.baseBushes, wg.bushAutumnMaterial, "_Autumn");
+        var bWinter = BuildVariants(wg.baseBushes, wg.bushWinterMaterial, "_Winter");
 
-        foreach (var src in wg.baseTrees)
-        {
-            if (src == null) continue;
-            if (wg.baseTreeAutumnMaterial != null)
-            {
-                var v = MakeVariant(src, wg.baseTreeAutumnMaterial, "_Autumn");
-                if (v != null) autumn.Add(v);
-            }
-            if (wg.baseTreeWinterMaterial != null)
-            {
-                var v = MakeVariant(src, wg.baseTreeWinterMaterial, "_Winter");
-                if (v != null) winter.Add(v);
-            }
-        }
-
-        Undo.RecordObject(wg, "Assign Biome Tree Prefabs");
-        if (autumn.Count > 0) wg.baseTreesAutumn = autumn.ToArray();
-        if (winter.Count > 0) wg.baseTreesWinter = winter.ToArray();
+        Undo.RecordObject(wg, "Assign Biome Vegetation Prefabs");
+        if (tAutumn.Count > 0) wg.baseTreesAutumn = tAutumn.ToArray();
+        if (tWinter.Count > 0) wg.baseTreesWinter = tWinter.ToArray();
+        if (bAutumn.Count > 0) wg.baseBushesAutumn = bAutumn.ToArray();
+        if (bWinter.Count > 0) wg.baseBushesWinter = bWinter.ToArray();
         EditorUtility.SetDirty(wg);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        EditorUtility.DisplayDialog("Biome Tree Prefabs",
-            $"Done.\nAutumn variants: {autumn.Count}\nWinter variants: {winter.Count}\n\nSaved to {OutFolder} and assigned to the WorldGenerator.\nSave the scene to keep the assignment.", "OK");
+        EditorUtility.DisplayDialog("Biome Vegetation Prefabs",
+            $"Done.\nTrees  — Autumn: {tAutumn.Count}, Winter: {tWinter.Count}\nBushes — Autumn: {bAutumn.Count}, Winter: {bWinter.Count}\n\nSaved to {OutFolder} and assigned to the WorldGenerator.\nSAVE THE SCENE to keep the assignment.", "OK");
+    }
+
+    private static List<GameObject> BuildVariants(GameObject[] sources, Material biomeMat, string suffix)
+    {
+        var list = new List<GameObject>();
+        if (sources == null || biomeMat == null) return list;
+        foreach (var src in sources)
+        {
+            if (src == null) continue;
+            var v = MakeVariant(src, biomeMat, suffix);
+            if (v != null) list.Add(v);
+        }
+        return list;
     }
 
     private static GameObject MakeVariant(GameObject src, Material foliageMat, string suffix)

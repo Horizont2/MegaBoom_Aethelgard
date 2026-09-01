@@ -253,6 +253,12 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] baseMushrooms;
     public GameObject[] logPrefabs;
 
+    [Header("Per-Biome Bush Prefabs (terrain-painted, real assets)")]
+    [Tooltip("Autumn/desert bush prefabs — own material baked in. Painted in autumn/desert cells. Empty = reuse Base Bushes. Generate with Tools ▸ Generate Biome Tree Prefabs.")]
+    public GameObject[] baseBushesAutumn;
+    [Tooltip("Winter/snow bush prefabs — own material baked in. Painted in snow cells. Empty = reuse Base Bushes.")]
+    public GameObject[] baseBushesWinter;
+
     [Header("Storytelling & Detail Prefabs")]
     public GameObject[] ruinPrefabs;
     public GameObject[] groundClutterPrefabs;
@@ -388,6 +394,11 @@ public class WorldGenerator : MonoBehaviour
         AddProtos(baseTreesAutumn);
         AddProtos(baseTreesWinter);
         AddProtos(deadTreesPrefabs);
+        // Bushes + mushrooms are painted too (all vegetation on the terrain for FPS).
+        AddProtos(baseBushes);
+        AddProtos(baseBushesAutumn);
+        AddProtos(baseBushesWinter);
+        AddProtos(baseMushrooms);
         if (protos.Count == 0) return;
 
         try
@@ -422,6 +433,51 @@ public class WorldGenerator : MonoBehaviour
         if (biomeMat != null && biomeMat == baseTreeWinterMaterial && baseTreesWinter != null && baseTreesWinter.Length > 0)
             return GetRandomPrefab(baseTreesWinter);
         return GetRandomPrefab(baseTrees);
+    }
+
+    // True when this biome has a dedicated tree prefab set (its material carries
+    // the colour), so we skip the fallback vertex tint. Forest always counts
+    // (baseTrees ARE its dedicated look).
+    private bool TreeBiomeHasPrefab(Material biomeMat)
+    {
+        if (biomeMat == baseTreeAutumnMaterial) return baseTreesAutumn != null && baseTreesAutumn.Length > 0;
+        if (biomeMat == baseTreeWinterMaterial) return baseTreesWinter != null && baseTreesWinter.Length > 0;
+        return true;   // forest → baseTrees
+    }
+
+    // Pick the biome-appropriate BUSH prefab (dedicated biome bushes if assigned).
+    private GameObject PickBushPrefabForBiome(Material bushMat)
+    {
+        if (bushMat != null && bushMat == bushAutumnMaterial && baseBushesAutumn != null && baseBushesAutumn.Length > 0)
+            return GetRandomPrefab(baseBushesAutumn);
+        if (bushMat != null && bushMat == bushWinterMaterial && baseBushesWinter != null && baseBushesWinter.Length > 0)
+            return GetRandomPrefab(baseBushesWinter);
+        return GetRandomPrefab(baseBushes);
+    }
+
+    private bool BushBiomeHasPrefab(Material bushMat)
+    {
+        if (bushMat == bushAutumnMaterial) return baseBushesAutumn != null && baseBushesAutumn.Length > 0;
+        if (bushMat == bushWinterMaterial) return baseBushesWinter != null && baseBushesWinter.Length > 0;
+        return true;   // forest → baseBushes
+    }
+
+    // Paint a small CLUSTER of vegetation instances (bushes/mushrooms) onto the
+    // terrain around a point. Returns how many were placed, or -1 if painting is
+    // unavailable (caller then falls back to SpawnNatureCluster objects).
+    private int PaintVegetationCluster(GameObject prefab, float worldX, float worldZ, int minCount, int maxCount, float radius, Color tint)
+    {
+        if (!terrainTreesReady || prefab == null || !treeProtoIndex.ContainsKey(prefab)) return -1;
+        int count = GetRandomRangeInt(minCount, maxCount + 1);
+        int placed = 0;
+        for (int i = 0; i < count; i++)
+        {
+            float ox = GetRandomRange(-radius, radius);
+            float oz = GetRandomRange(-radius, radius);
+            Vector3 s = RandomDecorScale(0.7f, 1.3f);
+            if (AddTerrainTree(prefab, worldX + ox, worldZ + oz, s.x, s.y, tint)) placed++;
+        }
+        return placed;
     }
 
     // Queue a terrain-tree instance. `tint` gives a mild per-biome hue when no
@@ -2614,9 +2670,10 @@ public class WorldGenerator : MonoBehaviour
                             Vector3 tScale = RandomDecorScale(0.7f, 1.45f);
 
                             // Prefer PAINTING onto the terrain (batched, big FPS win). The
-                            // prefab's own material gives the biome look; the tint is a mild
-                            // fallback hue when no dedicated biome prefab is assigned.
-                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, currentFoliageColor))
+                            // biome PREFAB's own material gives the colour now, so only tint
+                            // as a fallback when that biome has no dedicated prefab assigned.
+                            Color treeTint = TreeBiomeHasPrefab(currentBaseTreeMat) ? Color.white : currentFoliageColor;
+                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, treeTint))
                             {
                                 currentTreeCount++;
                             }
@@ -2640,11 +2697,18 @@ public class WorldGenerator : MonoBehaviour
                     }
                     else if (currentBushCount < maxBushesAndMushroom && randomSpawn > 0.10f)
                     {
-                        GameObject naturePrefab = (isDesert) ?
-                            (GetRandomFloat() > 0.5f ? GetRandomPrefab(baseMushrooms) : GetRandomPrefab(baseBushes)) :
-                            GetRandomPrefab(baseBushes);
+                        // Desert sometimes uses mushrooms; otherwise biome bushes.
+                        bool asMushroom = isDesert && GetRandomFloat() > 0.5f && baseMushrooms != null && baseMushrooms.Length > 0;
+                        GameObject naturePrefab = asMushroom ? GetRandomPrefab(baseMushrooms) : PickBushPrefabForBiome(currentBushMat);
 
-                        currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
+                        // PAINT the cluster onto the terrain (batched) — the biome
+                        // prefab's material colours it; tint only as a fallback.
+                        Color bushTint = (asMushroom || BushBiomeHasPrefab(currentBushMat)) ? Color.white : currentFoliageColor;
+                        int painted = PaintVegetationCluster(naturePrefab, worldX, worldZ, 2, 6, 4f, bushTint);
+                        if (painted >= 0)
+                            currentBushCount += painted;
+                        else
+                            currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
                     }
                 }
                 else if (density < 0.3f || isMeadow)
