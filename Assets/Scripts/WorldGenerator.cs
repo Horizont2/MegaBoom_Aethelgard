@@ -243,6 +243,9 @@ public class WorldGenerator : MonoBehaviour
     [Tooltip("OFF (default): every tree/bush spawns as a real OBJECT — farmable, with a collider, exactly like the original generator. ON: paint most vegetation onto the terrain for FPS (loses per-tree farming/occlusion-fade). Left OFF because painting broke farming + combat.")]
     public bool useTerrainTreePainting = false;
 
+    [Tooltip("ON: paint BUSHES + MUSHROOMS onto the terrain (batched, GPU-instanced) instead of spawning up to Max Bushes And Mushroom (~2500) GameObjects — big load-time + FPS win. Safe because bushes/mushrooms are decorative (non-farmable). Trees are unaffected (still object trees / their own tree-painting flag). Needs biome bush/mushroom prefabs assigned; if none are, it falls back to objects automatically. Strip colliders from the bush/mushroom prefabs so painted decor doesn't block movement.")]
+    public bool useTerrainVegetationPainting = true;
+
     [Header("Cursed → Bloomed Trees (story regions)")]
     [Tooltip("Blighted/dead tree prefabs spawned in cursed STORY regions. Their trunks are recoloured to the biome like normal trees, and they transform into living trees during the victory flythrough.")]
     public GameObject[] cursedDeadTrees;
@@ -403,7 +406,10 @@ public class WorldGenerator : MonoBehaviour
             catch { /* terrain has no trees — fine */ }
         }
 
-        if (!useTerrainTreePainting) return;   // OFF by default → all vegetation spawns as objects
+        // Proceed if EITHER painting mode is on. Trees and bushes/mushrooms are
+        // registered independently so bushes can be painted (cheap decor) while
+        // trees stay as farmable objects.
+        if (!useTerrainTreePainting && !useTerrainVegetationPainting) return;
         if (terrain == null || terrain.terrainData == null) return;
 
         var protos = new List<TreePrototype>();
@@ -417,15 +423,24 @@ public class WorldGenerator : MonoBehaviour
                 protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });
             }
         }
-        AddProtos(baseTrees);
-        AddProtos(baseTreesAutumn);
-        AddProtos(baseTreesWinter);
-        AddProtos(deadTreesPrefabs);
-        // Bushes + mushrooms are painted too (all vegetation on the terrain for FPS).
-        AddProtos(baseBushes);
-        AddProtos(baseBushesAutumn);
-        AddProtos(baseBushesWinter);
-        AddProtos(baseMushrooms);
+        // Trees only when tree-painting is explicitly on (they need to stay
+        // farmable objects by default, so their prototypes aren't registered →
+        // AddTerrainTree falls back to object trees).
+        if (useTerrainTreePainting)
+        {
+            AddProtos(baseTrees);
+            AddProtos(baseTreesAutumn);
+            AddProtos(baseTreesWinter);
+            AddProtos(deadTreesPrefabs);
+        }
+        // Bushes + mushrooms — decorative, safe to paint (batched → huge win).
+        if (useTerrainVegetationPainting)
+        {
+            AddProtos(baseBushes);
+            AddProtos(baseBushesAutumn);
+            AddProtos(baseBushesWinter);
+            AddProtos(baseMushrooms);
+        }
         if (protos.Count == 0) return;
 
         try
