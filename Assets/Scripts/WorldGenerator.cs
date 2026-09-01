@@ -227,6 +227,12 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] giantTrees;
     public GameObject[] baseTrees;
 
+    [Header("Per-Biome Tree Prefabs (terrain-painted, real assets)")]
+    [Tooltip("Autumn/desert tree prefabs — each with its OWN leaves material baked in. Painted onto the terrain in autumn/desert cells. Leave empty to reuse Base Trees. Generate with Tools ▸ Generate Biome Tree Prefabs.")]
+    public GameObject[] baseTreesAutumn;
+    [Tooltip("Winter/snow tree prefabs — each with its OWN snow leaves material baked in. Painted in snow cells. Leave empty to reuse Base Trees.")]
+    public GameObject[] baseTreesWinter;
+
     [Header("Cursed → Bloomed Trees (story regions)")]
     [Tooltip("Blighted/dead tree prefabs spawned in cursed STORY regions. Their trunks are recoloured to the biome like normal trees, and they transform into living trees during the victory flythrough.")]
     public GameObject[] cursedDeadTrees;
@@ -304,13 +310,12 @@ public class WorldGenerator : MonoBehaviour
     // (they need per-instance behaviour/VFX). NOTE: painted trees do NOT get the
     // per-tree semi-transparent occlusion fade — accepted tradeoff for the FPS gain.
     private readonly List<TreeInstance> pendingTreeInstances = new List<TreeInstance>(4096);
-    // Per base-tree prefab we register up to three terrain-tree prototypes so the
-    // painted trees still recolor per biome (forest = prefab default, desert =
-    // Autumn material, snow = Winter material). AddTerrainTree picks the variant
-    // matching the cell's biome material.
-    private class TreeVariants { public int forest = -1, autumn = -1, winter = -1; }
-    private readonly Dictionary<GameObject, TreeVariants> treeVariants = new Dictionary<GameObject, TreeVariants>();
-    private readonly List<GameObject> treeProtoHolders = new List<GameObject>();   // runtime material variants to clean up
+    // Every REAL tree prefab (forest + per-biome variants + dead) gets one terrain
+    // prototype. Terrain trees must be real prefab ASSETS — a runtime scene copy
+    // does NOT render as a tree, which is why the earlier per-biome-copy approach
+    // made winter/autumn trees vanish. Biome look now comes from dedicated biome
+    // prefabs (below) whose own material is baked into the asset.
+    private readonly Dictionary<GameObject, int> treeProtoIndex = new Dictionary<GameObject, int>();
     private bool terrainTreesReady;
 
     private class WaterfallData
@@ -358,42 +363,31 @@ public class WorldGenerator : MonoBehaviour
     }
 
     // ---- Terrain-tree painting ------------------------------------------------
-    // Register baseTrees as terrain tree prototypes — one variant per biome look
-    // (forest default, desert=Autumn material, snow=Winter material) — so painted
-    // trees still recolor per biome. Dead trees stay on the object path (they get
-    // a rock-color tint the terrain system can't reproduce).
+    // Register every REAL tree prefab (forest + per-biome + dead) as a terrain
+    // prototype. Real prefab assets render correctly as terrain trees; the biome
+    // LOOK comes from dedicated biome prefabs (each carries its own material).
     private void PrepareTerrainTreePrototypes()
     {
         pendingTreeInstances.Clear();
-        treeVariants.Clear();
-        foreach (var h in treeProtoHolders) if (h != null) Destroy(h);
-        treeProtoHolders.Clear();
+        treeProtoIndex.Clear();
         terrainTreesReady = false;
-        if (terrain == null || terrain.terrainData == null || baseTrees == null) return;
+        if (terrain == null || terrain.terrainData == null) return;
 
         var protos = new List<TreePrototype>();
-
-        GameObject MakeVariant(GameObject prefab, Material mat)
+        void AddProtos(GameObject[] arr)
         {
-            var copy = Instantiate(prefab);
-            copy.name = prefab.name + "_biome";
-            copy.SetActive(false);
-            copy.hideFlags = HideFlags.HideAndDontSave;
-            copy.transform.SetParent(this.transform);
-            ApplyBiomeSpecificMaterial(copy, mat);   // swap foliage material on the COPY
-            treeProtoHolders.Add(copy);
-            return copy;
+            if (arr == null) return;
+            foreach (var p in arr)
+            {
+                if (p == null || treeProtoIndex.ContainsKey(p)) continue;
+                treeProtoIndex[p] = protos.Count;
+                protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });
+            }
         }
-
-        foreach (var p in baseTrees)
-        {
-            if (p == null || treeVariants.ContainsKey(p)) continue;
-            var v = new TreeVariants();
-            v.forest = protos.Count; protos.Add(new TreePrototype { prefab = p, bendFactor = 0f });          // default look
-            if (baseTreeAutumnMaterial != null) { v.autumn = protos.Count; protos.Add(new TreePrototype { prefab = MakeVariant(p, baseTreeAutumnMaterial), bendFactor = 0f }); }
-            if (baseTreeWinterMaterial != null) { v.winter = protos.Count; protos.Add(new TreePrototype { prefab = MakeVariant(p, baseTreeWinterMaterial), bendFactor = 0f }); }
-            treeVariants[p] = v;
-        }
+        AddProtos(baseTrees);
+        AddProtos(baseTreesAutumn);
+        AddProtos(baseTreesWinter);
+        AddProtos(deadTreesPrefabs);
         if (protos.Count == 0) return;
 
         try
@@ -402,12 +396,12 @@ public class WorldGenerator : MonoBehaviour
             terrain.terrainData.RefreshPrototypes();
             terrain.terrainData.SetTreeInstances(new TreeInstance[0], true);   // wipe stale trees
 
-            // Guarantee the terrain actually draws trees (a scene left with
-            // treeDistance = 0 would render none) and use billboards far away for FPS.
-            terrain.treeDistance = Mathf.Max(terrain.treeDistance, 2500f);
-            terrain.treeBillboardDistance = 120f;
-            terrain.treeCrossFadeLength = 25f;
-            terrain.treeMaximumFullLODCount = Mathf.Max(terrain.treeMaximumFullLODCount, 400);
+            // Keep close trees FULL-MESH (nice LOD) and push billboards far so they
+            // don't pop/"disappear". High full-LOD count keeps a dense forest solid.
+            terrain.treeDistance = 5000f;
+            terrain.treeBillboardDistance = 220f;
+            terrain.treeCrossFadeLength = 40f;
+            terrain.treeMaximumFullLODCount = Mathf.Max(terrain.treeMaximumFullLODCount, 1000);
 
             terrainTreesReady = true;
         }
@@ -418,24 +412,35 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    // Queue a terrain-tree instance, choosing the prototype variant that matches
-    // the cell's biome material. Returns false if painting is unavailable for this
-    // prefab (caller then falls back to instantiating a GameObject tree).
-    private bool AddTerrainTree(GameObject prefab, float worldX, float worldZ, float widthScale, float heightScale, Material biomeMat)
+    // Pick the biome-appropriate tree prefab: dedicated biome prefabs if assigned,
+    // else the forest set. `biomeMat` tells us which biome the cell is.
+    private GameObject PickTreePrefabForBiome(Material biomeMat, bool useDeadTree)
+    {
+        if (useDeadTree) return GetRandomPrefab(deadTreesPrefabs);
+        if (biomeMat != null && biomeMat == baseTreeAutumnMaterial && baseTreesAutumn != null && baseTreesAutumn.Length > 0)
+            return GetRandomPrefab(baseTreesAutumn);
+        if (biomeMat != null && biomeMat == baseTreeWinterMaterial && baseTreesWinter != null && baseTreesWinter.Length > 0)
+            return GetRandomPrefab(baseTreesWinter);
+        return GetRandomPrefab(baseTrees);
+    }
+
+    // Queue a terrain-tree instance. `tint` gives a mild per-biome hue when no
+    // dedicated biome prefab exists. Returns false if painting is unavailable
+    // (caller then falls back to a GameObject tree).
+    private bool AddTerrainTree(GameObject prefab, float worldX, float worldZ, float widthScale, float heightScale, Color tint)
     {
         if (!terrainTreesReady || prefab == null) return false;
-        if (!treeVariants.TryGetValue(prefab, out TreeVariants v)) return false;
-
-        int idx = v.forest;
-        if (biomeMat != null && biomeMat == baseTreeAutumnMaterial && v.autumn >= 0) idx = v.autumn;
-        else if (biomeMat != null && biomeMat == baseTreeWinterMaterial && v.winter >= 0) idx = v.winter;
-        if (idx < 0) return false;
+        if (!treeProtoIndex.TryGetValue(prefab, out int idx)) return false;
 
         Vector3 tp = terrain.transform.position;
         Vector3 size = terrain.terrainData.size;
         float nx = (worldX - tp.x) / Mathf.Max(0.001f, size.x);
         float nz = (worldZ - tp.z) / Mathf.Max(0.001f, size.z);
         if (nx < 0f || nx > 1f || nz < 0f || nz > 1f) return false;   // off-terrain → object path
+
+        // Mild tint toward the biome colour (best-effort; the dedicated biome
+        // prefab's material does the heavy lifting when one is assigned).
+        Color c = Color.Lerp(Color.white, tint, 0.35f);
 
         pendingTreeInstances.Add(new TreeInstance
         {
@@ -444,7 +449,7 @@ public class WorldGenerator : MonoBehaviour
             widthScale = widthScale,
             heightScale = heightScale,
             rotation = GetRandomRange(0f, Mathf.PI * 2f),
-            color = Color.white,
+            color = c,
             lightmapColor = Color.white
         });
         return true;
@@ -2601,15 +2606,17 @@ public class WorldGenerator : MonoBehaviour
                         else
                         {
                             bool useDeadTree = (isSnow || isDesert) && GetRandomFloat() > 0.5f && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
-                            GameObject treePrefab = useDeadTree ? GetRandomPrefab(deadTreesPrefabs) : GetRandomPrefab(baseTrees);
+                            // Pick the biome-appropriate REAL prefab (dedicated biome trees
+                            // if assigned, else the forest set).
+                            GameObject treePrefab = PickTreePrefabForBiome(currentBaseTreeMat, useDeadTree);
 
                             // Wider, non-uniform size spread so trees aren't all clones.
                             Vector3 tScale = RandomDecorScale(0.7f, 1.45f);
 
-                            // Prefer PAINTING base trees onto the terrain (batched, big FPS
-                            // win) with the biome-matched prototype variant. Dead trees keep
-                            // the object path (their rock-color tint can't be painted).
-                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, currentBaseTreeMat))
+                            // Prefer PAINTING onto the terrain (batched, big FPS win). The
+                            // prefab's own material gives the biome look; the tint is a mild
+                            // fallback hue when no dedicated biome prefab is assigned.
+                            if (!useDeadTree && AddTerrainTree(treePrefab, worldX, worldZ, tScale.x, tScale.y, currentFoliageColor))
                             {
                                 currentTreeCount++;
                             }
