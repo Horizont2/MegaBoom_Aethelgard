@@ -58,6 +58,30 @@ public class LocationGroundSnapper : MonoBehaviour
         _done = true;
         WorldGenerator.OnWorldGenerationComplete -= Run;
 
+        // PHASE 1 — descend the WHOLE location until the root BoxCollider bottom
+        // rests on the terrain (highest ground point under its footprint, so it
+        // never sinks into a rise). Requires a BoxCollider on this root.
+        BoxCollider box = GetComponent<BoxCollider>();
+        if (box != null)
+        {
+            Bounds b = box.bounds;
+            float boxBottom = b.min.y;
+            float highestGround = float.NegativeInfinity;
+            for (int ix = 0; ix <= 4; ix++)
+            {
+                for (int iz = 0; iz <= 4; iz++)
+                {
+                    Vector3 p = new Vector3(Mathf.Lerp(b.min.x, b.max.x, ix / 4f), b.max.y + 1f,
+                                            Mathf.Lerp(b.min.z, b.max.z, iz / 4f));
+                    if (TryGround(p, out float g) && g > highestGround) highestGround = g;
+                }
+            }
+            if (highestGround > float.NegativeInfinity)
+                transform.position += new Vector3(0f, highestGround - boxBottom, 0f);
+        }
+
+        // PHASE 2 — per direct child: lower ONLY the pieces left floating in the
+        // air; leave anything that ended up BELOW ground exactly as it is.
         int moved = 0;
         for (int i = 0; i < transform.childCount; i++)
         {
@@ -70,15 +94,15 @@ public class LocationGroundSnapper : MonoBehaviour
             if (!TryGround(footXZ, out float groundY)) continue;
 
             float gap = lowestY - groundY;                 // >0 floating, <0 sunk
-            if (Mathf.Abs(gap) <= tolerance) continue;
-            if (Mathf.Abs(gap) > maxSnapDistance) continue; // too far off → assume intentional
+            if (gap <= tolerance) continue;                // sunk or already grounded → leave as-is
+            if (gap > maxSnapDistance) continue;           // too far up → assume intentional
 
-            child.position -= new Vector3(0f, gap, 0f);
+            child.position -= new Vector3(0f, gap, 0f);    // drop floater onto the ground
             moved++;
         }
 
         if (moved > 0)
-            Debug.Log($"[LocationGroundSnapper] '{name}': snapped {moved} floating/sunk piece(s) to the ground.");
+            Debug.Log($"[LocationGroundSnapper] '{name}': lowered {moved} floating piece(s) to the ground.");
     }
 
     private bool NameExcluded(string n)

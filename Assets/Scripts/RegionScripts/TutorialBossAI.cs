@@ -145,6 +145,29 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
     {
         maxHealth *= hpMultiplier;
         damage *= dmgMultiplier;
+        ApplyDifficultyTuning();
+        currentHealth = maxHealth;
+    }
+
+    private bool _difficultyTuned;
+
+    // Runtime difficulty pass so bosses stop feeling like a pushover that
+    // "attacks forever" — applied in code (not prefab defaults, which existing
+    // boss prefabs override) and only once, whichever entry point runs first.
+    //   * tankier so they're not deleted in a few hits,
+    //   * snappier + more frequent attacks so the fight has real pressure,
+    //   * a bit more bite per hit.
+    // Mathf.Min keeps any deliberately-faster designer value.
+    private void ApplyDifficultyTuning()
+    {
+        if (_difficultyTuned) return;
+        _difficultyTuned = true;
+
+        maxHealth *= 1.6f;
+        damage *= 1.15f;
+        attackCooldown = Mathf.Min(attackCooldown, 1.9f);
+        attackTelegraphTime = Mathf.Min(attackTelegraphTime, 0.75f);
+        moveSpeed *= 1.15f;                 // close distance instead of plodding
         currentHealth = maxHealth;
     }
 
@@ -174,7 +197,12 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         lastAttackTime = Time.time;
 
-        // ФІКС ЗАПОБІЖНИК: Якщо боса просто поставили на сцену (без тотему), 
+        // Ensure difficulty tuning applies even to bosses placed directly in the
+        // scene (InitializeBoss is only called by the totem path). Guarded, so a
+        // totem-spawned boss that already tuned won't double-apply.
+        ApplyDifficultyTuning();
+
+        // ФІКС ЗАПОБІЖНИК: Якщо боса просто поставили на сцену (без тотему),
         // він сам ініціалізує свій HUD при старті
         if (!hasShownBossUI)
         {
