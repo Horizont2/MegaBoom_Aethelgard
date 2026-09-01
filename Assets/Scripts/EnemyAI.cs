@@ -103,6 +103,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool isSpawning = false;
 
     private float currentHealth;
+
+    // Read-only accessors + a direct health setter for cinematics/trailer (the
+    // boss-duel scales HP to a fixed number of player hits and drives the HP bar).
+    public float CurrentHealth => currentHealth;
+    public bool IsDead => isDead;
+    public void SetHealthDirect(float hp)
+    {
+        maxHealth = Mathf.Max(1f, hp);
+        currentHealth = maxHealth;
+        targetHealthRatio = 1f;
+    }
+
     private float actualMoveSpeed;
     private float randomOffset;
     private float strafeDir;

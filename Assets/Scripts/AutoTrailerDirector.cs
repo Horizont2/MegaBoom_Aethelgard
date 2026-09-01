@@ -143,40 +143,8 @@ public class AutoTrailerDirector : MonoBehaviour
         yield return Orbit(hero, 4.2f, 5.6f, 250f, 400f, 2.4f, 1.3f, 52f, true);
         showStack = false;
 
-        // ===== BEAT 2c — YOU take over: clear the archers by hand =====
-        // Per request: when only ranged foes are left, control is handed to the
-        // player so they finish the archers themselves.
-        yield return PlayerClearsArchers();
-
-        // ===== BEAT 2b — the boss (big elite + low-angle slow-mo EXECUTION) =====
-        var boss = SpawnRing(1, 4.5f, 4.5f);
-        EnemyAI ba = boss != null ? boss.GetComponent<EnemyAI>() : null;
-        if (boss != null)
-        {
-            boss.transform.localScale *= 2.5f;
-            // UNKILLABLE during the wail — otherwise a maxed save one-shots it and
-            // the boss beat + its finisher never play. Executed explicitly below.
-            if (ba != null) { ba.maxHealth *= 30f; ba.isInvincible = true; }
-        }
-        yield return Orbit(hero, 3.8f, 7.5f, 0f, 150f, 2.6f, 1.9f, 45f, true);  // the hero wails on it (pulled back — boss is 2.5x)
-
-        // FINISHER: slow-mo, push over the shoulder onto the boss, then the blow.
-        StartCoroutine(SlowMoPulse(0.12f, 1.8f));
-        if (boss != null)
-        {
-            Vector3 bp = boss.transform.position + Vector3.up * 1.6f;
-            Vector3 from = cam.transform.position;
-            // Keep a respectful distance — 3.2m filled the frame with boss torso.
-            Vector3 to = bp - (bp - hero.position).normalized * 6f + Vector3.up * 1.4f;
-            yield return Move(from, to, bp, 42f, 36f, 1.1f, true);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
-            if (ba != null)
-            {
-                ba.isInvincible = false;
-                ba.TakeDamage(new DamageInfo { Amount = 999999f, PushDirection = (boss.transform.position - hero.position).normalized, KnockbackForce = 14f });
-            }
-            yield return new WaitForSecondsRealtime(1.2f);   // hold on the shatter
-        }
+        // ===== BEAT 2b — THE BOSS DUEL (you fight it, with an HP bar) =====
+        yield return BossDuel();
 
         // ===== BEAT 3 — the curse lifts (victory reveal) + title over it =====
         // The victory cinematic OWNS Camera.main (bird-flight reveal, bloom) and
@@ -573,36 +541,82 @@ public class AutoTrailerDirector : MonoBehaviour
         return last;
     }
 
-    // Hand the fight to the PLAYER to clear the archers themselves (per request).
-    // Spawns a few archers, SMOOTHLY blends the camera to the gameplay follow-cam,
-    // returns control + shows the HUD, waits until they're down (or a timeout),
-    // then reclaims control for the finale.
-    private IEnumerator PlayerClearsArchers()
+    // THE BOSS DUEL — a real 1v1 the PLAYER fights, with the game's boss HP bar.
+    // Clears the arena, spawns the boss, scales its HP to ~5 player hits (crit off
+    // so it's deterministic regardless of weapon), a dramatic entrance, then hands
+    // control to the player and drives the HP bar until they win — capped by a
+    // finisher flourish on the kill.
+    private IEnumerator BossDuel()
     {
-        SpawnArchers(4);
-        RefreshEnemies();
+        KillLeftoverEnemies();   // clean 1v1 — no skeleton soup around the boss
 
-        // Give control first, then ease the camera over — feels like the game
-        // handing back to you, not a hard cut.
-        if (player != null) { player.isControlBlocked = false; player.isCinematicInvincible = true; } // can't die mid-record
+        var boss = SpawnRing(1, 8f, 8f);
+        EnemyAI ba = boss != null ? boss.GetComponent<EnemyAI>() : null;
+        if (boss != null)
+        {
+            boss.transform.localScale *= 2.5f;
+            if (ba != null)
+            {
+                // HP = 5 × the player's NORMAL per-hit melee damage, so it always
+                // takes ~5 swings no matter which weapon is equipped.
+                float perHit = 25f;
+                if (player != null) perHit = Mathf.Max(1f, player.meleeDamage * player.globalDamageMultiplier);
+                ba.SetHealthDirect(perHit * 5f);
+            }
+        }
+
+        // Entrance: roar + a low sweeping shot onto the boss.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
+        if (boss != null)
+        {
+            Vector3 bp = boss.transform.position + Vector3.up * 2f;
+            Vector3 from = cam.transform.position;
+            Vector3 to = bp - (bp - hero.position).normalized * 9f + Vector3.up * 2.5f;
+            yield return Move(from, to, bp, 50f, 44f, 1.6f, false);
+        }
+
+        // Hand control to the PLAYER. Crit off → a clean, deterministic 5-hit kill.
+        float savedCrit = 0.05f;
+        if (player != null)
+        {
+            savedCrit = player.globalCritChance;
+            player.globalCritChance = 0f;
+            player.isControlBlocked = false;
+            player.isCinematicInvincible = true;   // can't die mid-record
+        }
         yield return SmoothHandToPlayer(1.2f);
-        SetHUD(true);   // HUD appears only now that YOU are in control
+        SetHUD(true);
+        if (ba != null && GlobalHUD.Instance != null)
+            GlobalHUD.Instance.ShowBossUI(LocalizationManager.Tr("The Cursed Champion"), ba.CurrentHealth, ba.maxHealth);
 
+        // Duel: wait for the player to defeat the boss, driving the HP bar.
         float t = 0f;
-        while (t < 14f)
+        while (t < 30f)
         {
             t += Time.unscaledDeltaTime;
-            RefreshEnemies();
-            bool anyArcher = false;
-            foreach (var e in liveEnemies) if (e != null && e.isRanged) { anyArcher = true; break; }
-            if (!anyArcher && t > 1.5f) break;   // player cleared them
+            if (ba == null || ba.IsDead) break;
+            if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(ba.CurrentHealth, ba.maxHealth);
             yield return null;
         }
 
-        // Take control back for the finale — hide the HUD again.
+        // Kill flourish.
+        if (player != null) player.globalCritChance = savedCrit;
+        if (GlobalHUD.Instance != null) { GlobalHUD.Instance.UpdateBossHealth(0f, 1f); GlobalHUD.Instance.HideBossUI(); }
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Execute);
+        StartCoroutine(SlowMoPulse(0.2f, 1.1f));
+        yield return new WaitForSecondsRealtime(1.2f);   // hold on the shatter
+
+        // Reclaim control for the victory reveal.
         if (player != null) { player.isControlBlocked = true; player.isCinematicInvincible = true; }
         if (follow != null) follow.enabled = false;
         SetHUD(false);
+    }
+
+    private void KillLeftoverEnemies()
+    {
+        RefreshEnemies();
+        foreach (var e in liveEnemies) if (e != null) Destroy(e.gameObject);
+        liveEnemies.Clear();
     }
 
     // Smoothly blend the camera from wherever it is to a standard 3rd-person
@@ -634,31 +648,6 @@ public class AutoTrailerDirector : MonoBehaviour
             yield return null;
         }
         if (follow != null) follow.enabled = true;   // gameplay cam takes over from a matching pose
-    }
-
-    // Spawn `count` ARCHERS specifically (ranged prefabs from the pool) in a ring
-    // ahead of the hero — used for the player-controlled archer beat.
-    private void SpawnArchers(int count)
-    {
-        var spawner = FindFirstObjectByType<EnemySpawner>();
-        if (hero == null || spawner == null || spawner.enemyPool == null) return;
-        var archers = new List<GameObject>();
-        foreach (var e in spawner.enemyPool)
-        {
-            if (e == null || e.enemyPrefab == null) continue;
-            var ai = e.enemyPrefab.GetComponent<EnemyAI>();
-            if (ai != null && ai.isRanged) archers.Add(e.enemyPrefab);
-        }
-        if (archers.Count == 0) return;
-        for (int i = 0; i < count; i++)
-        {
-            float ang = (360f / Mathf.Max(1, count)) * i + Random.Range(-10f, 10f);
-            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
-            Vector3 p = hero.position + dir * Random.Range(9f, 14f);
-            if (Physics.Raycast(p + Vector3.up * 14f, Vector3.down, out var hit, 40f)) p.y = hit.point.y;
-            else if (Terrain.activeTerrain != null) p.y = Terrain.activeTerrain.SampleHeight(p) + Terrain.activeTerrain.transform.position.y;
-            Instantiate(archers[i % archers.Count], p, Quaternion.LookRotation((hero.position - p).normalized));
-        }
     }
 
     // Spawn a frozen formation of enemies AHEAD of the hero (a grid of rows),
