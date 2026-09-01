@@ -1997,6 +1997,17 @@ public class WorldGenerator : MonoBehaviour
         if (!isSelfContained)
             SnapInstanceToGround(camp, groundYAfterFlatten + locationYOffset);
 
+        // Water alignment: shift the whole location so its own water sits on the
+        // world water plane, merging the two into one continuous level (used when
+        // the location brings its own water). Supersedes the box-collider grounding.
+        var scInstance = camp.GetComponent<SelfContainedLocation>();
+        if (isSelfContained && scInstance != null && scInstance.alignWaterToWorld && scInstance.waterReference != null)
+        {
+            float worldWaterY = absoluteWaterHeight;
+            float locWaterY = scInstance.waterReference.position.y;
+            camp.transform.position += new Vector3(0f, worldWaterY - locWaterY, 0f);
+        }
+
         spawnedTotemPos = camp.transform.position;
         forbiddenZones.Add(spawnedTotemPos);
         roadTargets.Add(spawnedTotemPos);

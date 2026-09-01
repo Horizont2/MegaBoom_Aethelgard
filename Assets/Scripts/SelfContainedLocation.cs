@@ -28,4 +28,11 @@ public class SelfContainedLocation : MonoBehaviour
 
     [Tooltip("Punch a hole in the procedural terrain under this location. Turn off if you'd rather keep the generated ground (e.g. the location has a transparent/no floor of its own).")]
     public bool cutTerrainHole = true;
+
+    [Header("Water alignment")]
+    [Tooltip("Drag the location's WATER object here. If set and 'alignWaterToWorld' is on, the whole location is shifted vertically so its water sits exactly on the world's water plane — so the generated world water and the location's water are one continuous level.")]
+    public Transform waterReference;
+
+    [Tooltip("Shift the whole location so its waterReference lands on the world water plane (instead of grounding by the root BoxCollider). Use this when the location brings its own water and you want it to merge with the generated water level.")]
+    public bool alignWaterToWorld = false;
 }
