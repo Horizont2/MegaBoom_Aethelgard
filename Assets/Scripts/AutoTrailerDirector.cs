@@ -388,14 +388,18 @@ public class AutoTrailerDirector : MonoBehaviour
             else yield return new WaitForSecondsRealtime(6f);
 
             mapTable.TrailerCloseMap();
-            yield return new WaitForSecondsRealtime(1f);
+            // Wait for the map close to FULLY finish (its UI fade ~0.5s + a ~1.5s
+            // camera flight back to the table) before touching the camera again.
+            // Otherwise CloseMapSequence and the handover both drove the camera each
+            // frame → the player↔table↔player jitter at the end.
+            yield return new WaitForSecondsRealtime(2.4f);
         }
 
         // FINALE: smoothly hand the camera to the player so YOU can run around the
         // camp and show off building a house. The blend is gradual (not a hard
         // cut), the HUD comes up, and control stays with you for a window.
         SetHUD(false);
-        yield return SmoothHandToPlayer(1.4f);
+        yield return SmoothHandToPlayer(1.6f);
         SetHUD(true);
         // Player is free to move/build for this window; the trailer keeps rolling.
         yield return new WaitForSecondsRealtime(22f);
