@@ -1880,7 +1880,11 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (isDead || currentHealth <= 0) return;
         if (isCinematicInvincible) return; // untouchable during the victory flythrough
-        if (isCampMode || isDashing || isBulletTime) return;
+        if (isCampMode || isBulletTime) return;
+        // Dash grants i-frames vs normal hits, but NOT vs hits flagged
+        // IgnoresIFrames (the player's own grenade), so you can't dash to
+        // negate your own blast for free.
+        if (isDashing && !info.IgnoresIFrames) return;
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(); // getting hit = combat
 
         // Feed the death recap's "Slain by ___" line. Overwrites on

@@ -389,16 +389,27 @@ public class DayNightCycle : MonoBehaviour
         if (currentWeather == WeatherState.Clear)
         {
             if (roll < 0.4f) currentWeather = WeatherState.Precipitation;
-            else if (roll < 0.6f) currentWeather = WeatherState.Storm;
+            else if (roll < 0.65f) currentWeather = WeatherState.Storm;
             else currentWeather = WeatherState.Clear;
         }
-        else
+        else if (currentWeather == WeatherState.Storm)
         {
-            if (roll < 0.7f) currentWeather = WeatherState.Clear;
-            else currentWeather = WeatherState.Precipitation;
+            // Storms linger and can renew instead of always ending after one
+            // interval — otherwise lightning never had time to strike.
+            if (roll < 0.5f) currentWeather = WeatherState.Storm;
+            else if (roll < 0.8f) currentWeather = WeatherState.Precipitation;
+            else currentWeather = WeatherState.Clear;
+        }
+        else // Precipitation
+        {
+            if (roll < 0.55f) currentWeather = WeatherState.Clear;
+            else if (roll < 0.85f) currentWeather = WeatherState.Precipitation;
+            else currentWeather = WeatherState.Storm;
         }
 
-        if (currentWeather == WeatherState.Storm && currentBiome == 0)
+        // Lightning in ANY biome now (was gated to biome 0, so deserts/winter
+        // never got storms with lightning).
+        if (currentWeather == WeatherState.Storm)
         {
             if (lightningCoroutine == null) lightningCoroutine = StartCoroutine(LightningRoutine());
         }
@@ -423,7 +434,7 @@ public class DayNightCycle : MonoBehaviour
         currentWeather = state;
         CheckAndUpdateSkybox();
 
-        if (currentWeather == WeatherState.Storm && currentBiome == 0)
+        if (currentWeather == WeatherState.Storm)
         {
             if (lightningCoroutine == null) lightningCoroutine = StartCoroutine(LightningRoutine());
         }
@@ -436,7 +447,9 @@ public class DayNightCycle : MonoBehaviour
     {
         while (currentWeather == WeatherState.Storm)
         {
-            yield return new WaitForSeconds(Random.Range(5f, 15f));
+            // Shorter gap so a strike actually lands within a storm's lifetime
+            // (was 5–15s, which usually outlived the storm → no visible bolts).
+            yield return new WaitForSeconds(Random.Range(2f, 6f));
 
             // Decide strike position first so the local flash light can be
             // co-located with the VFX. Old code pumped the GLOBAL directional

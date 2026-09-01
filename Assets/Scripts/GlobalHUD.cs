@@ -504,7 +504,10 @@ public class GlobalHUD : MonoBehaviour
         if (up && !timerLiftedForBoss)
         {
             timerBasePosForBoss = rt.anchoredPosition;   // capture current rest pos
-            rt.anchoredPosition = timerBasePosForBoss + new Vector2(0f, bossTimerLift);
+            // Clamp the lift — 70px read as the timer "flying up" when the boss
+            // bar appeared. A small nudge is enough to clear the bar.
+            float lift = Mathf.Min(bossTimerLift, 32f);
+            rt.anchoredPosition = timerBasePosForBoss + new Vector2(0f, lift);
             timerLiftedForBoss = true;
         }
         else if (!up && timerLiftedForBoss)

@@ -12,6 +12,10 @@ public struct DamageInfo
     // "Slain by ___" line. Optional: null / empty is fine and the
     // recap falls back to "Fell in battle".
     public string SourceName;
+    // When true, this hit lands even if the player is mid-dash (dash i-frames
+    // are ignored). Used for the player's own grenade blast so it can't be
+    // negated for free by dashing in place.
+    public bool IgnoresIFrames;
     // � ����������� ���� ����� ������: public DamageType Type; (������, ˳�, Գ�����)
 }
 

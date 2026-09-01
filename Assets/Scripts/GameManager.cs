@@ -251,6 +251,16 @@ public class GameManager : MonoBehaviour
 
     public void StartLevelTimer()
     {
+        if (isTimerActive) return;
+        // Zero the clock at the moment gameplay actually begins (loading +
+        // generation done), so it can't show the seconds that elapsed behind
+        // the loading screen. A Continue resumes its saved time instead.
+        if (PlayerPrefs.GetInt("IsContinuing", 0) != 1)
+        {
+            survivalTime = 0f;
+            nextSurvivalTick = 1f;
+            lastTimerSecond = -1;
+        }
         isTimerActive = true;
     }
 

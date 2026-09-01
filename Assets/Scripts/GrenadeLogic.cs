@@ -155,7 +155,10 @@ public class GrenadeLogic : MonoBehaviour
                     PushDirection = pushDir,
                     KnockbackForce = isPlayer ? 5f : 15f,
                     StunDuration = isPlayer ? 0.2f : 1.5f,
-                    HitPoint = nearbyObject.ClosestPoint(transform.position)
+                    HitPoint = nearbyObject.ClosestPoint(transform.position),
+                    // Your own grenade blast can't be shrugged off by dashing in
+                    // place — it lands through dash i-frames.
+                    IgnoresIFrames = isPlayer
                 };
 
                 damageable.TakeDamage(info);
