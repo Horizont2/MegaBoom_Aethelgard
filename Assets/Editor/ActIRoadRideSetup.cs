@@ -309,9 +309,9 @@ public static class ActIRoadRideSetup
             // cameras (CM_01 gallop-past, CM_03 low chase) get a little tension
             // shake to sell the speed/danger; the wider CM_02/CM_04 stay steady.
             if (n.Contains("CM_02")) { MakeFollowCam(cam, horse, Cam02Offset, 38f, new Vector3(0.7f, 0.7f, 1.0f)); count++; }
-            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); AddTensionNoise(cam.gameObject, 0.5f, 0.4f); count++; }
+            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); AddTensionNoise(cam.gameObject, 0.3f, 0.35f); count++; }
             else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset, 46f, new Vector3(1.6f, 1.4f, 2.0f)); AddCraneReveal(cam, Cam04Offset); count++; }
-            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); AddTensionNoise(cam.gameObject, 0.6f, 0.5f); count++; }
+            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); AddTensionNoise(cam.gameObject, 0.35f, 0.4f); count++; }
         }
         return count;
     }

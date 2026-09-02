@@ -79,29 +79,29 @@ public static class TrailerCinematicPostFX
         tone.mode.overrideState = true; tone.mode.value = TonemappingMode.Neutral;
 
         var bloom = GetOrAdd<Bloom>(profile);
-        bloom.intensity.overrideState = true; bloom.intensity.value = 0.55f;
-        bloom.threshold.overrideState = true; bloom.threshold.value = 1.1f;
-        bloom.scatter.overrideState = true; bloom.scatter.value = 0.62f;
+        bloom.intensity.overrideState = true; bloom.intensity.value = 0.35f;
+        bloom.threshold.overrideState = true; bloom.threshold.value = 1.15f;
+        bloom.scatter.overrideState = true; bloom.scatter.value = 0.6f;
 
         var vig = GetOrAdd<Vignette>(profile);
-        vig.intensity.overrideState = true; vig.intensity.value = 0.24f;
-        vig.smoothness.overrideState = true; vig.smoothness.value = 0.6f;
+        vig.intensity.overrideState = true; vig.intensity.value = 0.14f;
+        vig.smoothness.overrideState = true; vig.smoothness.value = 0.65f;
 
         // Grain + chromatic aberration kept VERY subtle — the earlier heavy grain
         // + desaturation is what made it read like a black-and-white TV.
         var grain = GetOrAdd<FilmGrain>(profile);
         grain.type.overrideState = true; grain.type.value = FilmGrainLookup.Thin1;
-        grain.intensity.overrideState = true; grain.intensity.value = 0.06f;
+        grain.intensity.overrideState = true; grain.intensity.value = 0.05f;
         grain.response.overrideState = true; grain.response.value = 0.7f;
 
         var ca = GetOrAdd<ChromaticAberration>(profile);
-        ca.intensity.overrideState = true; ca.intensity.value = 0.04f;
+        ca.intensity.overrideState = true; ca.intensity.value = 0.02f;
 
         var mb = GetOrAdd<MotionBlur>(profile);
         mb.mode.overrideState = true; mb.mode.value = MotionBlurMode.CameraOnly;
         mb.quality.overrideState = true; mb.quality.value = MotionBlurQuality.High;
-        mb.intensity.overrideState = true; mb.intensity.value = 0.4f;
-        mb.clamp.overrideState = true; mb.clamp.value = 0.06f;
+        mb.intensity.overrideState = true; mb.intensity.value = 0.25f;   // was harsh on close cams
+        mb.clamp.overrideState = true; mb.clamp.value = 0.05f;
 
         // Per-preset color grade
         var col = GetOrAdd<ColorAdjustments>(profile);
@@ -116,7 +116,7 @@ public static class TrailerCinematicPostFX
         // exposure, contrast, saturation, colorFilter
         switch (preset)
         {
-            case Preset.RoadMoody:   Grade(col, -0.05f, 8f, 6f, new Color(0.95f, 0.98f, 1.03f)); break;  // cool but colourful
+            case Preset.RoadMoody:   Grade(col, 0.0f, 4f, 6f, new Color(0.97f, 0.99f, 1.02f)); break;    // gentle, cool but natural
             case Preset.CampWarm:    Grade(col, 0.05f, 8f, 10f, new Color(1.00f, 0.94f, 0.84f)); break;  // golden hearth
             case Preset.Summer:      Grade(col, 0.08f, 6f, 14f, new Color(1.00f, 0.99f, 0.92f)); break;  // lush warm
             case Preset.Autumn:      Grade(col, 0.02f, 9f, 10f, new Color(1.00f, 0.90f, 0.74f)); break;  // amber
