@@ -55,12 +55,16 @@ public static class ActIRoadRideSetup
         if (ride == null) ride = Undo.AddComponent<TrailerHorseRide>(horse.gameObject);
         Undo.RecordObject(ride, "config ride");
         ride.path = road;
-        ride.autoFitSeconds = 18f;
+        ride.autoFitSeconds = 24f;   // a touch slower + keeps the horse on-road through the crane
         ride.playOnStart = true;
         ride.driveFromTimeline = false;
         ride.faceAlongPath = true;
         ride.loop = false;
+        ride.groundSnapOverrun = true;
         if (horse.GetComponent<HorseAudioController>() == null) Undo.AddComponent<HorseAudioController>(horse.gameObject);
+
+        // Hoof dust from the pack (Hovl Studio) — kicked up behind the gallop.
+        AddHoofDust(horse);
 
         // 3) Park the player on the horse so it stops flying off.
         bool riderOk = ParkPlayerOnHorse(horse);
@@ -92,7 +96,7 @@ public static class ActIRoadRideSetup
             $"  • Horse '{horse.name}' auto-rides '{road.name}' over {ride.autoFitSeconds:0}s.\n" +
             $"  • Rider on horse: {(riderOk ? "yes" : "NO player found — place one manually")}.\n" +
             $"  • Configured {cams} camera(s): CM_01 gallop-past + CM_03 low chase have tension shake; CM_02 steady alongside; CM_04 cranes UP over the valley at the end.\n" +
-            $"  • Rider set to the seated on-horse pose; horse rides OFF into the distance at the end (no running in place).\n" +
+            $"  • Rider set to the seated on-horse pose; hoof dust added; horse rides OFF into the distance at the end (ground-snapped, no running in place / no clipping through hills).\n" +
             $"  • Trailer rig live + auto-play: {(rigLive ? "YES" : "NOT FOUND — run 'Build Camera Rig' first")}.\n\n" +
             "PRESS PLAY to preview — the Timeline now starts itself, in sync with the horse.\n" +
             "If the horse runs the wrong way → TrailerHorseRide: tick Reverse / set Model Yaw Offset 180 (then rotate CM_01 180° too).\n" +
@@ -224,6 +228,28 @@ public static class ActIRoadRideSetup
                                      + horse.right * RiderSaddleOffset.x;
         playerGo.transform.rotation = horse.rotation;
         return true;
+    }
+
+    // Add hoof dust behind the gallop, using a dust prefab from the pack.
+    private static readonly string[] DustPrefabPaths =
+    {
+        "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Dust loop.prefab",
+        "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Dust ground.prefab",
+    };
+    private static void AddHoofDust(Transform horse)
+    {
+        var dust = horse.GetComponent<HorseDustController>();
+        if (dust == null) dust = Undo.AddComponent<HorseDustController>(horse.gameObject);
+        Undo.RecordObject(dust, "config hoof dust");
+        if (dust.dustPrefab == null)
+        {
+            foreach (var path in DustPrefabPaths)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab != null) { dust.dustPrefab = prefab; break; }
+            }
+        }
+        EditorUtility.SetDirty(dust);
     }
 
     // Give the rider the game's on-horse (crouch-idle) pose and disable its root

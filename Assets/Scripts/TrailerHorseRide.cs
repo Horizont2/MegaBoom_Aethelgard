@@ -37,6 +37,8 @@ public class TrailerHorseRide : MonoBehaviour
     public float speed = 12f;
     public bool playOnStart = true;
     public bool loop = false;
+    [Tooltip("When galloping past the end of the spline, keep the horse ON the ground (raycast to terrain) so it doesn't ride straight through hills/textures during the final crane.")]
+    public bool groundSnapOverrun = true;
 
     [Header("Timeline (optional, advanced)")]
     [Tooltip("Don't auto-advance — a Timeline animates Progress 01 instead.")]
@@ -126,10 +128,44 @@ public class TrailerHorseRide : MonoBehaviour
 
         Vector3 pos = new Vector3(p.x, p.y, p.z);
         if (_overrun > 0f && dir.sqrMagnitude > 0.0001f)
+        {
             pos += dir.normalized * _overrun;              // keep riding past the last knot
+            // Follow the terrain past the spline so the horse rides OVER the
+            // ground, not straight through hills/textures during the reveal.
+            if (groundSnapOverrun && TryGroundY(pos, out float gy)) pos.y = gy;
+        }
         transform.position = pos;
 
         if (faceAlongPath && dir.sqrMagnitude > 0.0001f)
             transform.rotation = Quaternion.LookRotation(dir.normalized) * Quaternion.Euler(0f, modelYawOffset, 0f);
+    }
+
+    private static readonly string[] GroundNames = { "terrain", "floor", "ground", "road", "path", "plane" };
+
+    // Height of the real ground under 'pos' — accepts only terrain / ground-named
+    // colliders (never the horse itself, trees, etc.), so the overrun rides the
+    // surface instead of clipping through it.
+    private bool TryGroundY(Vector3 pos, out float y)
+    {
+        y = pos.y;
+        RaycastHit[] hits = Physics.RaycastAll(pos + Vector3.up * 12f, Vector3.down, 60f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NegativeInfinity;
+        bool found = false;
+        foreach (var h in hits)
+        {
+            var col = h.collider;
+            if (col == null) continue;
+            if (col.transform.IsChildOf(transform)) continue;          // not the horse/rider
+            bool isGround = col.GetComponentInParent<Terrain>() != null;
+            if (!isGround)
+            {
+                string n = col.name.ToLowerInvariant();
+                foreach (var g in GroundNames) if (n.Contains(g)) { isGround = true; break; }
+            }
+            if (!isGround) continue;
+            if (h.point.y > best) { best = h.point.y; found = true; }
+        }
+        if (found) { y = best; return true; }
+        return false;
     }
 }
