@@ -271,10 +271,12 @@ public static class ActIRoadRideSetup
         var follow = cam.GetComponent<CinemachineFollow>();
         if (follow == null) follow = Undo.AddComponent<CinemachineFollow>(cam.gameObject);
         follow.FollowOffset = offset;
+        // Leave BindingMode at its default (LockToTargetWithWorldUp) — a steady
+        // chase relative to the horse's heading — and just add damping so the
+        // camera glides instead of snapping. (Both damping fields are Vector3.)
         var ts = follow.TrackerSettings;
-        ts.BindingMode = TargetTracking.BindingMode.LockToTargetWithWorldUp;
         ts.PositionDamping = posDamping;      // smooth glide instead of a rigid lock
-        ts.RotationDamping = 0.6f;
+        ts.RotationDamping = new Vector3(0.6f, 0.6f, 0.6f);
         follow.TrackerSettings = ts;
 
         var composer = cam.GetComponent<CinemachineRotationComposer>();
