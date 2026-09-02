@@ -146,6 +146,7 @@ public static class ActIRoadRideSetup
         if (dir != null)
         {
             Undo.RecordObject(dir, "director play on awake");
+            dir.enabled = true;          // a previous Act II version disabled this — a disabled director never plays the shot Timeline (that's the missing opening shot / broken cuts)
             dir.playOnAwake = true;
             dir.timeUpdateMode = DirectorUpdateMode.GameTime;
             EditorUtility.SetDirty(dir);
