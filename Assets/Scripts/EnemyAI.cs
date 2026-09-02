@@ -659,7 +659,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             bool isAttackReady = Time.time >= lastAttackTime + attackCooldown;
 
-            if (isAttackReady && distanceToPlayer <= attackRange)
+            // Commit to the swing slightly before fully closing — the wind-up
+            // lunge (in AttackRoutine) covers the remaining gap, so the attack
+            // starts while still advancing instead of only after stopping.
+            if (isAttackReady && distanceToPlayer <= attackRange * 1.15f)
             {
                 if (animator != null) animator.SetBool("isMoving", false);
                 StartCoroutine(AttackRoutine());
@@ -1136,11 +1139,32 @@ public class EnemyAI : MonoBehaviour, IDamageable
             elapsed += Time.deltaTime;
             float pulse = Mathf.PingPong(elapsed * 8f, 1f);
             SetColor(Color.Lerp(baseTele, flashTele, pulse));
+
+            // Press the attack IN MOTION instead of freezing: keep facing and
+            // lunging toward the player through the wind-up, so the strike lands
+            // even if the player edges away and enemies read as aggressive
+            // rather than stopping dead to swing.
+            if (!isDead && target != null && stunTimer <= 0f)
+            {
+                Vector3 to = target.position - transform.position; to.y = 0f;
+                if (to.sqrMagnitude > 0.0001f)
+                {
+                    Vector3 dir = to.normalized;
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
+                    // Only close the gap — don't overshoot into/through the player.
+                    if (to.magnitude > attackRange * 0.7f)
+                    {
+                        Vector3 nextPos = transform.position + dir * (actualMoveSpeed * 0.55f) * Time.deltaTime;
+                        nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+                        SetPositionSafe(nextPos);
+                    }
+                }
+            }
             yield return null;
         }
         ResetColor();
 
-        if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.5f)
+        if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.8f)
         {
             lastAttackTime = Time.time;
             if (animator != null) animator.SetTrigger("Attack");

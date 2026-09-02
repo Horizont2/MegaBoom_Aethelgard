@@ -108,6 +108,20 @@ public class EnemySpawner : MonoBehaviour
         _isRegionMission = PlayerPrefs.GetInt("IsRegionMission", 0) == 1
             || (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
             || MissionInitializer.PendingMissionRegion != null;
+
+        // Regions felt empty — the guards who "defend" it were rarely seen. On a
+        // region mission, push the density up at runtime (overrides the serialized
+        // pacing so it works regardless of the prefab values). Max/Min keep any
+        // deliberately-higher designer setting.
+        if (_isRegionMission)
+        {
+            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 55);
+            startCap        = Mathf.Max(startCap, 18);
+            capRampMinutes  = Mathf.Min(capRampMinutes, 5f);   // fills up faster
+            gracePeriod     = Mathf.Min(gracePeriod, 18f);     // shorter empty opening
+            relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.6f); // RELAX still populated
+            relaxIntervalMult = Mathf.Min(relaxIntervalMult, 3f); // relax not a ghost town
+        }
     }
 
     // Recheck every 2 s whether the "blocked" state is still legitimate.

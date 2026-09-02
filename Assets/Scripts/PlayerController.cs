@@ -1711,7 +1711,13 @@ public class PlayerController : MonoBehaviour, IDamageable
             float normalizedTime = (Time.realtimeSinceStartup - startTime) / dashDuration;
             float curve = Mathf.Sin(normalizedTime * Mathf.PI);
 
-            characterController.Move(direction * currentDashSpeed * curve * Time.unscaledDeltaTime);
+            // Ease a downward glide into the BACK HALF of the dash so it arcs
+            // into a soft landing instead of flying dead-flat and then dropping
+            // like a column the instant the dash ends. A small constant pull
+            // keeps it hugging the ground/slopes during the flight.
+            float fall = 2f + Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f, 1f, normalizedTime)) * 12f;
+            Vector3 dashMove = direction * currentDashSpeed * curve + Vector3.down * fall;
+            characterController.Move(dashMove * Time.unscaledDeltaTime);
             mainCameraCached.fieldOfView = Mathf.Lerp(mainCameraCached.fieldOfView, targetFOV, normalizedTime);
 
             yield return null;

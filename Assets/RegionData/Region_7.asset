@@ -32,7 +32,7 @@ MonoBehaviour:
   regionTotemPrefab: {fileID: 0}
   locationYOffset: 0
   regionBossPrefabs: []
-  extraCaptureLocations: 1
+  extraCaptureLocations: 0
   woodReward: 120
   stoneReward: 180
   foodReward: 60
