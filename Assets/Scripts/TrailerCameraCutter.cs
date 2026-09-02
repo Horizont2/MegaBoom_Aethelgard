@@ -1,0 +1,40 @@
+using UnityEngine;
+using Unity.Cinemachine;
+
+// Cuts between a set of Cinemachine cameras on a timeline of cut times (its own
+// scaled clock, matching the horse ride). It just raises the chosen camera's
+// Priority so the CinemachineBrain blends to it — no PlayableDirector needed.
+// Used for the Act II season journey so several follow angles cover the ride.
+public class TrailerCameraCutter : MonoBehaviour
+{
+    public CinemachineCamera[] cameras;
+    [Tooltip("Seconds (from start) at which to cut to cameras[i]. Same length as cameras.")]
+    public float[] cutTimes;
+
+    private float _clock;
+    private int _idx = -1;
+
+    private void OnEnable() { _clock = 0f; _idx = -1; Cut(0); }
+
+    private void Update()
+    {
+        _clock += Time.deltaTime;
+        int want = 0;
+        int n = Mathf.Min(cutTimes != null ? cutTimes.Length : 0, cameras != null ? cameras.Length : 0);
+        for (int i = 0; i < n; i++) if (_clock >= cutTimes[i]) want = i;
+        if (want != _idx) Cut(want);
+    }
+
+    private void Cut(int i)
+    {
+        if (cameras == null) return;
+        _idx = i;
+        for (int c = 0; c < cameras.Length; c++)
+        {
+            if (cameras[c] == null) continue;
+            var p = cameras[c].Priority;
+            p.Value = (c == i) ? 100 : 0;
+            cameras[c].Priority = p;
+        }
+    }
+}
