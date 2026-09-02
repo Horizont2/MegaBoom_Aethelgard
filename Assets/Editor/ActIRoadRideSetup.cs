@@ -96,6 +96,10 @@ public static class ActIRoadRideSetup
         // 10) Moody storm + rain + fog for atmosphere.
         bool weatherOk = TrailerWeatherSetup.Setup(WeatherState.Storm, false);
 
+        // 11) Trailer soundscape: wind + rain beds, raven cry, distant thunder
+        //     (horse hooves/breath/snort come from HorseAudioController above).
+        AddTrailerAmbience();
+
         EditorSceneMarkDirty();
 
         EditorUtility.DisplayDialog("Act I Road Ride",
@@ -387,6 +391,16 @@ public static class ActIRoadRideSetup
         crane.endOffset = new Vector3(0f, 26f, -42f);
         if (GetShotTiming("CM_04", out float start, out float dur)) { crane.startDelay = start; crane.duration = dur; }
         EditorUtility.SetDirty(crane);
+    }
+
+    // Add the trailer soundscape (wind/rain beds, raven, distant thunder) on the rig.
+    private static void AddTrailerAmbience()
+    {
+        var rig = GameObject.Find(RigName) ??
+                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        if (rig == null) return;
+        if (rig.GetComponent<TrailerAmbience>() == null) Undo.AddComponent<TrailerAmbience>(rig);
     }
 
     // Add a Timeline-synced slow-mo punch on the hoof-strike shot (CM_03).
