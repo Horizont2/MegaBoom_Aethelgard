@@ -69,7 +69,7 @@ public static class TrailerRoadsideDresser
         float len = road.CalculateLength();
         if (len < 1f) { EditorUtility.DisplayDialog("Roadside Dressing", "Route spline is too short.", "OK"); return; }
 
-        Random.InitState(20260902);
+        UnityEngine.Random.InitState(20260902);
         int torches = 0, mobs = 0, burning = 0;
 
         // Torches — alternating sides, evenly along the whole road.
@@ -95,18 +95,18 @@ public static class TrailerRoadsideDresser
             for (int i = 0; i <= n; i++)
             {
                 float t = (float)i / n;
-                int cluster = Random.Range(1, 4);
+                int cluster = UnityEngine.Random.Range(1, 4);
                 for (int c = 0; c < cluster; c++)
                 {
-                    float sideMag = Random.Range(UndeadSideMin, UndeadSideMax);
-                    float side = (Random.value > 0.5f ? 1f : -1f) * sideMag;
-                    float tt = Mathf.Clamp01(t + Random.Range(-0.01f, 0.01f));
+                    float sideMag = UnityEngine.Random.Range(UndeadSideMin, UndeadSideMax);
+                    float side = (UnityEngine.Random.value > 0.5f ? 1f : -1f) * sideMag;
+                    float tt = Mathf.Clamp01(t + UnityEngine.Random.Range(-0.01f, 0.01f));
                     if (PlaceAlong(road, tt, side, out Vector3 p, out Vector3 fwd))
                     {
                         // Face the road (perpendicular toward centre).
                         Vector3 toRoad = (side > 0 ? -1f : 1f) * Vector3.Cross(Vector3.up, fwd).normalized;
-                        var rot = Quaternion.LookRotation(new Vector3(toRoad.x, 0, toRoad.z)) * Quaternion.Euler(0, Random.Range(-35f, 35f), 0);
-                        var go = Place(undead[Random.Range(0, undead.Length)], root.transform, p, rot, Random.Range(0.9f, 1.1f), 0f);
+                        var rot = Quaternion.LookRotation(new Vector3(toRoad.x, 0, toRoad.z)) * Quaternion.Euler(0, UnityEngine.Random.Range(-35f, 35f), 0);
+                        var go = Place(undead[UnityEngine.Random.Range(0, undead.Length)], root.transform, p, rot, UnityEngine.Random.Range(0.9f, 1.1f), 0f);
                         MakeScenery(go);
                         mobs++;
                     }
@@ -120,11 +120,11 @@ public static class TrailerRoadsideDresser
             for (int i = 0; i < HouseCount; i++)
             {
                 float t = (i + 0.5f) / HouseCount;
-                float side = (Random.value > 0.5f ? 1f : -1f) * Random.Range(HouseSideMin, HouseSideMax);
+                float side = (UnityEngine.Random.value > 0.5f ? 1f : -1f) * UnityEngine.Random.Range(HouseSideMin, HouseSideMax);
                 if (PlaceAlong(road, t, side, out Vector3 p, out Vector3 fwd))
                 {
-                    var house = Place(houses[Random.Range(0, houses.Length)], root.transform, p,
-                        Quaternion.Euler(0, Random.Range(0f, 360f), 0), Random.Range(1f, 1.4f), 0f);
+                    var house = Place(houses[UnityEngine.Random.Range(0, houses.Length)], root.transform, p,
+                        Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0), UnityEngine.Random.Range(1f, 1.4f), 0f);
                     if (fire != null)
                     {
                         // A couple of fire plumes + an orange glow on the house.
