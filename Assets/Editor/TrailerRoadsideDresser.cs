@@ -28,21 +28,11 @@ public static class TrailerRoadsideDresser
         "Assets/Prefabs/Skeleton_Rogue.prefab",
         "Assets/Prefabs/Skeleton_Mage.prefab",
     };
-    private static readonly string[] HousePaths =
-    {
-        "Assets/Scenes/Low_Poly_Survival/Prefabs/House_Stone.prefab",
-        "Assets/Scenes/Low_Poly_Survival/Prefabs/Wood_House.prefab",
-    };
-    private const string FirePath = "Assets/FullOpaqueFire/Prefabs/VFX/VFX_FullOpaqueFire.prefab";
-    private const string FireFallback = "Assets/Scenes/Low_Poly_Survival/VFX/Fire.prefab";
-
     // Tunables
     private const float TorchSpacing = 13f;   // metres between torches (alternating sides)
     private const float TorchSide = 3.2f;     // offset from road centre
     private const float UndeadSpacing = 16f;  // metres between undead clusters
     private const float UndeadSideMin = 3.5f, UndeadSideMax = 8f;
-    private const int HouseCount = 3;
-    private const float HouseSideMin = 16f, HouseSideMax = 30f;
 
     [MenuItem("Tools/Lore Trailer/Dress Roadside (torches / undead / fires)")]
     public static void Dress()
@@ -62,17 +52,17 @@ public static class TrailerRoadsideDresser
         Undo.RegisterCreatedObjectUndo(root, "road dressing");
 
         var torch = AssetDatabase.LoadAssetAtPath<GameObject>(TorchPath);
-        var fire = AssetDatabase.LoadAssetAtPath<GameObject>(FirePath) ?? AssetDatabase.LoadAssetAtPath<GameObject>(FireFallback);
         var undead = UndeadPaths.Select(p => AssetDatabase.LoadAssetAtPath<GameObject>(p)).Where(g => g != null).ToArray();
-        var houses = HousePaths.Select(p => AssetDatabase.LoadAssetAtPath<GameObject>(p)).Where(g => g != null).ToArray();
 
         float len = road.CalculateLength();
         if (len < 1f) { EditorUtility.DisplayDialog("Roadside Dressing", "Route spline is too short.", "OK"); return; }
 
         UnityEngine.Random.InitState(20260902);
-        int torches = 0, mobs = 0, burning = 0;
+        int torches = 0, mobs = 0;
 
-        // Torches — alternating sides, evenly along the whole road.
+        // Torches — alternating sides, evenly along the whole road. Kept UPRIGHT
+        // (preserve the prefab's standing pose; only add yaw) — LookRotation laid
+        // them on their side.
         if (torch != null)
         {
             int n = Mathf.Max(2, Mathf.FloorToInt(len / TorchSpacing));
@@ -82,7 +72,7 @@ public static class TrailerRoadsideDresser
                 float side = (i % 2 == 0) ? TorchSide : -TorchSide;
                 if (PlaceAlong(road, t, side, out Vector3 p, out Vector3 fwd))
                 {
-                    var go = Place(torch, root.transform, p, Quaternion.LookRotation(fwd), 1f, 0f);
+                    PlaceUpright(torch, root.transform, p, UnityEngine.Random.Range(0f, 360f), 1f);
                     torches++;
                 }
             }
@@ -114,44 +104,16 @@ public static class TrailerRoadsideDresser
             }
         }
 
-        // Burning villages — a few off to the sides.
-        if (houses.Length > 0)
-        {
-            for (int i = 0; i < HouseCount; i++)
-            {
-                float t = (i + 0.5f) / HouseCount;
-                float side = (UnityEngine.Random.value > 0.5f ? 1f : -1f) * UnityEngine.Random.Range(HouseSideMin, HouseSideMax);
-                if (PlaceAlong(road, t, side, out Vector3 p, out Vector3 fwd))
-                {
-                    var house = Place(houses[UnityEngine.Random.Range(0, houses.Length)], root.transform, p,
-                        Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0), UnityEngine.Random.Range(1f, 1.4f), 0f);
-                    if (fire != null)
-                    {
-                        // A couple of fire plumes + an orange glow on the house.
-                        Place(fire, house.transform, p + Vector3.up * 1.5f, Quaternion.identity, 1.6f, 0f);
-                        Place(fire, house.transform, p + Vector3.up * 3.2f, Quaternion.identity, 1.1f, 0f);
-                        var glow = new GameObject("BurnGlow");
-                        glow.transform.SetParent(house.transform, false);
-                        glow.transform.position = p + Vector3.up * 2.5f;
-                        var l = glow.AddComponent<Light>();
-                        l.type = LightType.Point; l.color = new Color(1f, 0.55f, 0.2f);
-                        l.range = 22f; l.intensity = 6f; l.shadows = LightShadows.None;
-                    }
-                    burning++;
-                }
-            }
-        }
+        // (Houses / burning villages left OUT — the user places those manually.)
 
         EditorSceneMarkDirty();
         EditorUtility.DisplayDialog("Roadside Dressing",
             $"Dressed '{road.name}':\n" +
-            $"  • {torches} torches lighting the road\n" +
-            $"  • {mobs} undead lining the route (AI stripped — pure scenery)\n" +
-            $"  • {burning} burning houses\n\n" +
+            $"  • {torches} torches lighting the road (upright)\n" +
+            $"  • {mobs} undead lining the route (AI + HP bars + colliders stripped — pure scenery)\n\n" +
             "All under '" + Root + "' — delete that object to clear, or re-run to regenerate.\n" +
             (torch == null ? "⚠ Torch prefab missing.\n" : "") +
-            (undead.Length == 0 ? "⚠ No undead prefabs found.\n" : "") +
-            (houses.Length == 0 ? "⚠ No house prefabs found.\n" : ""), "OK");
+            (undead.Length == 0 ? "⚠ No undead prefabs found.\n" : ""), "OK");
     }
 
     // Turn a full enemy prefab into inert cinematic scenery.
@@ -166,6 +128,20 @@ public static class TrailerRoadsideDresser
         foreach (var agent in go.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true)) Undo.DestroyObjectImmediate(agent);
         foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) { rb.isKinematic = true; rb.useGravity = false; }
         foreach (var col in go.GetComponentsInChildren<Collider>(true)) col.enabled = false;   // horse rides through
+
+        // Strip world-space HP bars / any floating UI so the undead read as
+        // scenery, not gameplay mobs.
+        var kill = new List<GameObject>();
+        foreach (var c in go.GetComponentsInChildren<Canvas>(true)) if (c != null) kill.Add(c.gameObject);
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t == go.transform) continue;
+            string n = t.name.ToLowerInvariant();
+            if (n.Contains("health") || n.Contains("hpbar") || n.Contains("hp_bar") ||
+                n.Contains("healthbar") || n.Contains("hpcanvas") || n.Contains("hp bar"))
+                kill.Add(t.gameObject);
+        }
+        foreach (var k in kill) if (k != null) Undo.DestroyObjectImmediate(k);
     }
 
     // --- placement helpers ---
@@ -177,6 +153,19 @@ public static class TrailerRoadsideDresser
         Undo.RegisterCreatedObjectUndo(go, "place " + prefab.name);
         go.transform.SetParent(parent, true);
         go.transform.SetPositionAndRotation(pos, rot);
+        if (!Mathf.Approximately(scale, 1f)) go.transform.localScale *= scale;
+        return go;
+    }
+
+    // Keep the prefab's authored UPRIGHT pose, apply only a yaw around world up.
+    private static GameObject PlaceUpright(GameObject prefab, Transform parent, Vector3 pos, float yaw, float scale)
+    {
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        if (go == null) go = Object.Instantiate(prefab);
+        Undo.RegisterCreatedObjectUndo(go, "place " + prefab.name);
+        go.transform.SetParent(parent, true);
+        go.transform.position = pos;
+        go.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * go.transform.rotation;   // preserve upright
         if (!Mathf.Approximately(scale, 1f)) go.transform.localScale *= scale;
         return go;
     }
