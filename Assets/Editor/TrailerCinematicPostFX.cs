@@ -25,7 +25,7 @@ public static class TrailerCinematicPostFX
     [MenuItem("Tools/Lore Trailer/Apply Cinematic Post FX (Act I - Road)")]
     public static void ApplyActIMenu() { Apply(Preset.RoadMoody); }
 
-    public static void Apply(Preset preset)
+    public static void Apply(Preset preset, bool showDialog = true)
     {
         if (!AssetDatabase.IsValidFolder(Dir)) AssetDatabase.CreateFolder("Assets", "LoreTrailer");
 
@@ -61,6 +61,7 @@ public static class TrailerCinematicPostFX
         var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
 
+        if (!showDialog) return;
         EditorUtility.DisplayDialog("Cinematic Post FX",
             $"Applied '{preset}' grade:\n" +
             "  • Filmic tonemap + color grade\n" +
@@ -83,16 +84,18 @@ public static class TrailerCinematicPostFX
         bloom.scatter.overrideState = true; bloom.scatter.value = 0.62f;
 
         var vig = GetOrAdd<Vignette>(profile);
-        vig.intensity.overrideState = true; vig.intensity.value = 0.34f;
-        vig.smoothness.overrideState = true; vig.smoothness.value = 0.55f;
+        vig.intensity.overrideState = true; vig.intensity.value = 0.24f;
+        vig.smoothness.overrideState = true; vig.smoothness.value = 0.6f;
 
+        // Grain + chromatic aberration kept VERY subtle — the earlier heavy grain
+        // + desaturation is what made it read like a black-and-white TV.
         var grain = GetOrAdd<FilmGrain>(profile);
-        grain.type.overrideState = true; grain.type.value = FilmGrainLookup.Medium1;
-        grain.intensity.overrideState = true; grain.intensity.value = 0.25f;
-        grain.response.overrideState = true; grain.response.value = 0.8f;
+        grain.type.overrideState = true; grain.type.value = FilmGrainLookup.Thin1;
+        grain.intensity.overrideState = true; grain.intensity.value = 0.06f;
+        grain.response.overrideState = true; grain.response.value = 0.7f;
 
         var ca = GetOrAdd<ChromaticAberration>(profile);
-        ca.intensity.overrideState = true; ca.intensity.value = 0.12f;
+        ca.intensity.overrideState = true; ca.intensity.value = 0.04f;
 
         var mb = GetOrAdd<MotionBlur>(profile);
         mb.mode.overrideState = true; mb.mode.value = MotionBlurMode.CameraOnly;
@@ -109,15 +112,17 @@ public static class TrailerCinematicPostFX
         col.hueShift.overrideState = true;
         col.hueShift.value = 0f;
 
+        // NOTE: saturation stays >= 0 — a moody grade should be RICH, not grey.
+        // exposure, contrast, saturation, colorFilter
         switch (preset)
         {
-            case Preset.RoadMoody:   Grade(col, -0.3f, 14f, -16f, new Color(0.83f, 0.90f, 1.00f)); break; // cold, bleak
-            case Preset.CampWarm:    Grade(col, 0.05f, 8f, 6f, new Color(1.00f, 0.92f, 0.80f)); break;    // golden hearth
-            case Preset.Summer:      Grade(col, 0.10f, 6f, 12f, new Color(1.00f, 0.98f, 0.90f)); break;   // lush warm
-            case Preset.Autumn:      Grade(col, 0.00f, 10f, 4f, new Color(1.00f, 0.86f, 0.68f)); break;   // amber
-            case Preset.Winter:      Grade(col, 0.05f, 12f, -22f, new Color(0.85f, 0.93f, 1.05f)); break; // pale cold
-            case Preset.Corruption:  Grade(col, -0.2f, 16f, -6f, new Color(0.92f, 0.80f, 1.05f)); break;  // sickly purple
-            case Preset.Throne:      Grade(col, -0.35f, 18f, -12f, new Color(0.80f, 0.86f, 1.05f)); break;// cold dread
+            case Preset.RoadMoody:   Grade(col, -0.05f, 8f, 6f, new Color(0.95f, 0.98f, 1.03f)); break;  // cool but colourful
+            case Preset.CampWarm:    Grade(col, 0.05f, 8f, 10f, new Color(1.00f, 0.94f, 0.84f)); break;  // golden hearth
+            case Preset.Summer:      Grade(col, 0.08f, 6f, 14f, new Color(1.00f, 0.99f, 0.92f)); break;  // lush warm
+            case Preset.Autumn:      Grade(col, 0.02f, 9f, 10f, new Color(1.00f, 0.90f, 0.74f)); break;  // amber
+            case Preset.Winter:      Grade(col, 0.05f, 10f, -6f, new Color(0.90f, 0.95f, 1.05f)); break; // pale cold
+            case Preset.Corruption:  Grade(col, -0.1f, 12f, 4f, new Color(0.94f, 0.86f, 1.05f)); break;  // sickly purple
+            case Preset.Throne:      Grade(col, -0.15f, 12f, 0f, new Color(0.86f, 0.90f, 1.05f)); break; // cold dread
         }
     }
 

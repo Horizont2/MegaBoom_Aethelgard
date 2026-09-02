@@ -18,8 +18,20 @@ public class HorseDustController : MonoBehaviour
     public float groundLift = 0.05f;
     [Tooltip("Only emit above this speed (m/s) so it doesn't puff while idle.")]
     public float minSpeed = 2.0f;
-    [Tooltip("Scale multiplier for the spawned dust (the horse pack is small).")]
-    public float dustScale = 1.5f;
+
+    [Header("Tame the pack effect into HOOF dust (it's authored as a big cloud)")]
+    [Tooltip("Overall size of the spawned dust.")]
+    public float dustScale = 0.5f;
+    [Tooltip("Multiplier on particle START SIZE (pack dust starts 2-4m — way too big).")]
+    public float sizeMultiplier = 0.28f;
+    [Tooltip("Multiplier on particle START SPEED (pack dust shoots up at 7-8 m/s).")]
+    public float speedMultiplier = 0.15f;
+    [Tooltip("Multiplier on particle LIFETIME (shorter = dies low, doesn't drift to the sky).")]
+    public float lifetimeMultiplier = 0.5f;
+    [Tooltip("Downward pull so the dust settles instead of rising.")]
+    public float gravity = 1.0f;
+    [Tooltip("Multiplier on emission rate (thinner puff).")]
+    public float emissionMultiplier = 0.6f;
 
     private ParticleSystem[] _systems;
     private Transform _dust;
@@ -36,12 +48,21 @@ public class HorseDustController : MonoBehaviour
         _dust = go.transform;
         _systems = go.GetComponentsInChildren<ParticleSystem>(true);
 
-        // World simulation so the emitter can move and leave a trail behind.
+        // World simulation so the emitter can move and leave a trail behind, and
+        // TAME the pack cloud into low, small, short-lived hoof dust.
         foreach (var ps in _systems)
         {
             var main = ps.main;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;   // let dustScale shrink sizes too
             main.playOnAwake = true;
+            main.startSizeMultiplier *= sizeMultiplier;
+            main.startSpeedMultiplier *= speedMultiplier;
+            main.startLifetimeMultiplier *= lifetimeMultiplier;
+            main.gravityModifier = gravity;                            // pull it back down
+            var em = ps.emission;
+            em.rateOverTimeMultiplier *= emissionMultiplier;
+            ps.Clear();
             if (!ps.isPlaying) ps.Play();
         }
         PlaceDust();

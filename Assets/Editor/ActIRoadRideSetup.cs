@@ -91,7 +91,10 @@ public static class ActIRoadRideSetup
         AddSlowMoBeats();
 
         // 9) Cinematic grade + motion blur (the biggest visual lift).
-        TrailerCinematicPostFX.Apply(TrailerCinematicPostFX.Preset.RoadMoody);
+        TrailerCinematicPostFX.Apply(TrailerCinematicPostFX.Preset.RoadMoody, false);
+
+        // 10) Moody storm + rain + fog for atmosphere.
+        bool weatherOk = TrailerWeatherSetup.Setup(WeatherState.Storm, false);
 
         EditorSceneMarkDirty();
 
@@ -103,6 +106,7 @@ public static class ActIRoadRideSetup
             $"  • Rider on horse: {(riderOk ? "yes" : "NO player found — place one manually")}.\n" +
             $"  • Configured {cams} camera(s): CM_01 gallop-past + CM_03 low chase have tension shake; CM_02 steady alongside; CM_04 cranes UP over the valley at the end.\n" +
             $"  • Rider set to the seated on-horse pose; hoof dust added; horse rides OFF into the distance at the end (ground-snapped, no running in place / no clipping through hills).\n" +
+            $"  • Cinematic grade + motion blur applied; weather: {(weatherOk ? "storm + rain + fog" : "NO DayNightCycle — run 'Setup Weather' after adding one")}.\n" +
             $"  • Trailer rig live + auto-play: {(rigLive ? "YES" : "NOT FOUND — run 'Build Camera Rig' first")}.\n\n" +
             "PRESS PLAY to preview — the Timeline now starts itself, in sync with the horse.\n" +
             "If the horse runs the wrong way → TrailerHorseRide: tick Reverse / set Model Yaw Offset 180 (then rotate CM_01 180° too).\n" +
