@@ -33,17 +33,27 @@ public class TrailerAmbience : MonoBehaviour
     private float _t;
     private bool _ravenA, _ravenB;
     private float _nextThunder;
+    private bool _bedsStarted;
 
     private void OnEnable()
     {
         _t = 0f; _ravenA = false; _ravenB = false;
-        var am = AudioManager.Instance;
-        if (am != null)
-        {
-            if (wind) am.PlaySFX(AudioID.Ambient_Wind);
-            if (rain) am.PlaySFX(AudioID.Ambient_Rain);
-        }
+        _bedsStarted = false;
+        TryStartBeds();   // start immediately if the AudioManager is already up…
         _nextThunder = Random.Range(thunderIntervalMin, thunderIntervalMax);
+    }
+
+    // …otherwise keep retrying each frame until it's ready, so the wind/rain
+    // beds come on at the very start instead of "somewhere in the middle" when
+    // the AudioManager happened to be initialised a few frames late.
+    private void TryStartBeds()
+    {
+        if (_bedsStarted) return;
+        var am = AudioManager.Instance;
+        if (am == null) return;
+        if (wind) am.PlaySFX(AudioID.Ambient_Wind);
+        if (rain) am.PlaySFX(AudioID.Ambient_Rain);
+        _bedsStarted = true;
     }
 
     private void OnDisable()
@@ -58,6 +68,8 @@ public class TrailerAmbience : MonoBehaviour
     {
         var am = AudioManager.Instance;
         if (am == null) return;
+
+        TryStartBeds();   // no-op once the wind/rain beds are running
 
         // Real-time clock so slow-mo doesn't drag the ambience timing.
         _t += Time.unscaledDeltaTime;
