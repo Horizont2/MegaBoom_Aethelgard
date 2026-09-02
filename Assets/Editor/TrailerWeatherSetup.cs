@@ -38,7 +38,13 @@ public static class TrailerWeatherSetup
         dnc.enabled = true;
         dnc.currentWeather = state;
         dnc.isWeatherLocked = true;                 // don't let the timer drift it back to Clear
-        dnc.enableGodRays = true;                   // shafts of light through the storm
+        // God rays only if a sunshaft object is actually assigned (else it no-ops).
+        if (dnc.godRaysObject != null) dnc.enableGodRays = true;
+
+        // Fill in the DayNightCycle data that's blank/default in the trailer scene
+        // (empty intensity curves make the sun go black; white fog gradients wash
+        // everything out).
+        ConfigureDayNightData(dnc);
 
         // Wind so the vegetation (terrain trees / grass) moves in the storm.
         EnsureWindZone();
@@ -72,9 +78,69 @@ public static class TrailerWeatherSetup
             $"Weather locked to {state}.\n" +
             $"  • Rain VFX: {(dnc.rainVFX != null ? (spawnedRain ? "spawned camera-following rain" : "using the scene's rain") : "NONE — assign DayNightCycle.rainVFX")}.\n" +
             "  • Biome forced to 0 so rain renders; fog on.\n" +
-            "  • Storm skybox / lightning / darker ambient come from DayNightCycle.\n\n" +
+            "  • DayNightCycle data filled in: sun/moon intensity curves (empty = black scene) + fog/sun colour gradients (were white).\n" +
+            "  • Wind zone added; storm skybox / lightning / darker ambient come from DayNightCycle.\n\n" +
             "Press Play to see it. If the storm skybox is missing, assign DayNightCycle ▸ stormSkybox.", "OK");
         return true;
+    }
+
+    // Author the DayNightCycle's curves + gradients if they're blank/default.
+    private static void ConfigureDayNightData(DayNightCycle dnc)
+    {
+        // Sun intensity across the day (0..1 = midnight..midnight). Empty curve
+        // evaluates to 0 -> pitch black; this is the main "nothing is visible" fix.
+        if (dnc.sunIntensity == null || dnc.sunIntensity.length == 0)
+            dnc.sunIntensity = Smooth(new[]
+            {
+                new Keyframe(0f, 0.05f), new Keyframe(0.25f, 0.7f),
+                new Keyframe(0.5f, 1.15f), new Keyframe(0.75f, 0.7f), new Keyframe(1f, 0.05f),
+            });
+
+        if (dnc.moonIntensity == null || dnc.moonIntensity.length == 0)
+            dnc.moonIntensity = Smooth(new[]
+            {
+                new Keyframe(0f, 0.5f), new Keyframe(0.25f, 0.1f),
+                new Keyframe(0.5f, 0f), new Keyframe(0.75f, 0.1f), new Keyframe(1f, 0.5f),
+            });
+
+        // Fog / sun colours (default is white -> washed out).
+        if (IsBlankGradient(dnc.fogColorClear))
+            dnc.fogColorClear = Flat(new Color(0.62f, 0.68f, 0.74f));   // soft cool haze
+        if (IsBlankGradient(dnc.fogColorStorm))
+            dnc.fogColorStorm = Flat(new Color(0.30f, 0.34f, 0.40f));   // dark blue-grey, still readable
+        if (IsBlankGradient(dnc.sunColor))
+            dnc.sunColor = Flat(new Color(1.0f, 0.96f, 0.9f));          // warm daylight
+
+        // Sensible fog range for atmosphere without hiding the valley.
+        dnc.fogStartDistance = 15f;
+        dnc.fogEndDistance = 400f;
+    }
+
+    private static AnimationCurve Smooth(Keyframe[] keys)
+    {
+        var c = new AnimationCurve(keys);
+        for (int i = 0; i < c.length; i++) c.SmoothTangents(i, 0f);
+        return c;
+    }
+
+    private static Gradient Flat(Color c)
+    {
+        var g = new Gradient();
+        g.SetKeys(
+            new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) },
+            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+        return g;
+    }
+
+    // A default/unconfigured Gradient is null or plain white — treat those as blank.
+    private static bool IsBlankGradient(Gradient g)
+    {
+        if (g == null) return true;
+        var keys = g.colorKeys;
+        if (keys == null || keys.Length == 0) return true;
+        foreach (var k in keys)
+            if (k.color.r < 0.97f || k.color.g < 0.97f || k.color.b < 0.97f) return false;
+        return true;   // all keys ~white => default
     }
 
     private static void EnsureWindZone()
