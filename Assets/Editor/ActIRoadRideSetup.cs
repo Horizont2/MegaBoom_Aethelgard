@@ -244,32 +244,52 @@ public static class ActIRoadRideSetup
             if (cam == null) continue;
             string n = cam.name;
 
-            if (n.Contains("CM_02")) { MakeFollowCam(cam, horse, Cam02Offset); count++; }
-            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset); count++; }
-            else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset); count++; }
+            // Slightly longer lenses (lower FOV) = compression = more cinematic.
+            // Heavier damping on the wide crane so it drifts, not darts.
+            if (n.Contains("CM_02")) { MakeFollowCam(cam, horse, Cam02Offset, 38f, new Vector3(0.7f, 0.7f, 1.0f)); count++; }
+            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); count++; }
+            else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset, 46f, new Vector3(1.6f, 1.4f, 2.0f)); count++; }
             else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); count++; }
         }
         return count;
     }
 
-    // Follow the horse at a fixed offset + aim at it. Removes any spline-dolly /
-    // orbital body so the camera can't dive through the ground on a floor spline.
-    private static void MakeFollowCam(CinemachineCamera cam, Transform horse, Vector3 offset)
+    // Follow the horse at a fixed offset + aim at it, KCD2-style: the camera is
+    // LOCKED to the horse's heading (so it stays a steady chase, not a swinging
+    // orbit) with smooth position + aim DAMPING so it glides instead of snapping,
+    // and NO handheld noise (that "disco" shake is what made it feel frantic).
+    private static void MakeFollowCam(CinemachineCamera cam, Transform horse, Vector3 offset,
+                                      float fov, Vector3 posDamping)
     {
         Undo.RecordObject(cam, "make follow cam");
         var t = cam.Target; t.TrackingTarget = horse; cam.Target = t;
 
         RemoveIfPresent<CinemachineSplineDolly>(cam.gameObject);
         RemoveIfPresent<CinemachineOrbitalFollow>(cam.gameObject);
+        KillHandheldNoise(cam.gameObject);   // steady, realistic — no shake
 
         var follow = cam.GetComponent<CinemachineFollow>();
         if (follow == null) follow = Undo.AddComponent<CinemachineFollow>(cam.gameObject);
         follow.FollowOffset = offset;
+        var ts = follow.TrackerSettings;
+        ts.BindingMode = TargetTracking.BindingMode.LockToTargetWithWorldUp;
+        ts.PositionDamping = posDamping;      // smooth glide instead of a rigid lock
+        ts.RotationDamping = 0.6f;
+        follow.TrackerSettings = ts;
 
-        if (cam.GetComponent<CinemachineRotationComposer>() == null)
-            Undo.AddComponent<CinemachineRotationComposer>(cam.gameObject);
+        var composer = cam.GetComponent<CinemachineRotationComposer>();
+        if (composer == null) composer = Undo.AddComponent<CinemachineRotationComposer>(cam.gameObject);
+        composer.Damping = new Vector2(0.55f, 0.55f);   // aim lags gently, no whip
 
+        cam.Lens.FieldOfView = fov;
         EditorUtility.SetDirty(cam);
+        if (follow != null) EditorUtility.SetDirty(follow);
+        if (composer != null) EditorUtility.SetDirty(composer);
+    }
+
+    private static void KillHandheldNoise(GameObject go)
+    {
+        RemoveIfPresent<CinemachineBasicMultiChannelPerlin>(go);
     }
 
     // Static camera sitting low ON the road early along the spline, facing the
@@ -282,6 +302,7 @@ public static class ActIRoadRideSetup
         RemoveIfPresent<CinemachineOrbitalFollow>(cam.gameObject);
         RemoveIfPresent<CinemachineFollow>(cam.gameObject);
         RemoveIfPresent<CinemachineRotationComposer>(cam.gameObject);   // static aim
+        KillHandheldNoise(cam.gameObject);                             // rock-steady
         var tt = cam.Target; tt.TrackingTarget = null; cam.Target = tt;
 
         float3 p = road.EvaluatePosition(0.14f);

@@ -70,7 +70,18 @@ public class TrailerHorseRide : MonoBehaviour
         ApplyProgress(progress01);
     }
 
-    private void Update()
+    // Discard the gallop clip's root motion entirely. The horse clips are
+    // authored WITH root motion (Rig_Gallop_*_RootMotion); if that motion is
+    // applied it fights our spline transform and the horse stutters backwards.
+    // An empty OnAnimatorMove consumes the root-motion delta so it never touches
+    // the transform (belt-and-suspenders with applyRootMotion=false + the clips
+    // now being baked in-place).
+    private void OnAnimatorMove() { }
+
+    // Drive the transform in LateUpdate — AFTER the Animator has evaluated for
+    // the frame — so the spline position is always the final word and the
+    // gallop can never nudge the horse off the path.
+    private void LateUpdate()
     {
         if (path == null) return;
 
