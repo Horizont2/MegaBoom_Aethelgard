@@ -1499,7 +1499,9 @@ public class ShopManager : MonoBehaviour
         {
             currentWeaponModel = Instantiate(w.shopPrefab, socket);
             currentWeaponModel.transform.localPosition = Vector3.zero;
-            currentWeaponModel.transform.localRotation = Quaternion.identity;
+            // Per-weapon offset lets a crooked prefab (e.g. the default sword)
+            // sit right without touching prefabs that are fine at identity.
+            currentWeaponModel.transform.localRotation = Quaternion.Euler(w.shopRotationEuler);
 
             foreach (var s in currentWeaponModel.GetComponents<MonoBehaviour>())
             {

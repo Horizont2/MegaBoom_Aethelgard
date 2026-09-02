@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum ItemCategory { Sword, Axe, Bow, Helmet, Armor, Gloves } // НОВЕ: Категорії
+public enum ItemCategory { Sword, Axe, Bow, Helmet, Armor, Gloves } // пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
 [CreateAssetMenu(fileName = "NewWeapon", menuName = "Game/Weapon Data")]
 public class WeaponData : ScriptableObject
@@ -8,7 +8,7 @@ public class WeaponData : ScriptableObject
     [Header("Basic Info")]
     public int weaponID;
     public string weaponName;
-    public ItemCategory category; // НОВЕ: Вибір категорії в Інспекторі
+    public ItemCategory category; // пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     public Sprite icon;
 
@@ -19,6 +19,8 @@ public class WeaponData : ScriptableObject
     [Header("Models")]
     public GameObject shopPrefab;
     public GameObject inGamePrefab;
+    [Tooltip("Extra local rotation (Euler В°) for the shop-preview weapon. Leave 0 for prefabs authored upright; use it to fix a prefab whose mesh sits crooked at identity (e.g. the default sword).")]
+    public Vector3 shopRotationEuler = Vector3.zero;
 
     [Header("Power System")]
     public int basePower = 20;

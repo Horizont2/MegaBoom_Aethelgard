@@ -101,9 +101,13 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             if (iconImage.sprite != null) iconImage.enabled = true;
         }
 
-        if (lockedOverlay != null) lockedOverlay.SetActive(state == OwnedState.Locked);
-        if (ownedCheckmark != null) ownedCheckmark.SetActive(state == OwnedState.Owned);
-        if (equippedRibbon != null) equippedRibbon.SetActive(state == OwnedState.Equipped);
+        // Only show a state overlay if it actually has something to draw — an
+        // overlay Image with no sprite renders as a solid WHITE SQUARE, which is
+        // the "non-equipped items show a white box" bug (the owned-checkmark
+        // overlay was spriteless and covered the icon).
+        if (lockedOverlay != null) lockedOverlay.SetActive(state == OwnedState.Locked && OverlayHasVisual(lockedOverlay));
+        if (ownedCheckmark != null) ownedCheckmark.SetActive(state == OwnedState.Owned && OverlayHasVisual(ownedCheckmark));
+        if (equippedRibbon != null) equippedRibbon.SetActive(state == OwnedState.Equipped && OverlayHasVisual(equippedRibbon));
 
         // Silhouette / dim look for locked items — desaturates icon + darkens
         // the card so at-a-glance the eye sees "unlocked = colourful, locked
@@ -161,6 +165,21 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         // is also the same colour the title would fade into the background
         // and become unreadable. Only the frame carries the rarity tint.
         if (tierFrame != null) tierFrame.color = c;
+    }
+
+    // A state overlay is worth showing only if it draws something — a sprite
+    // (on itself or a child) or a text label. A bare spriteless Image renders
+    // as a white square, so we keep such an overlay hidden.
+    private static bool OverlayHasVisual(GameObject go)
+    {
+        if (go == null) return false;
+        var imgs = go.GetComponentsInChildren<Image>(true);
+        for (int i = 0; i < imgs.Length; i++)
+            if (imgs[i] != null && imgs[i].sprite != null) return true;
+        var txts = go.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+        for (int i = 0; i < txts.Length; i++)
+            if (txts[i] != null && !string.IsNullOrEmpty(txts[i].text)) return true;
+        return false;
     }
 
     private static Color Grayscale(Color c)
