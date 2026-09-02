@@ -87,6 +87,12 @@ public static class ActIRoadRideSetup
         //    Cinemachine brain for the Main Camera.
         DisableGameplayCameraFollow();
 
+        // 8) Slow-mo punch on the hoof-strike shot (CM_03), synced to the Timeline.
+        AddSlowMoBeats();
+
+        // 9) Cinematic grade + motion blur (the biggest visual lift).
+        TrailerCinematicPostFX.Apply(TrailerCinematicPostFX.Preset.RoadMoody);
+
         EditorSceneMarkDirty();
 
         EditorUtility.DisplayDialog("Act I Road Ride",
@@ -377,6 +383,30 @@ public static class ActIRoadRideSetup
         crane.endOffset = new Vector3(0f, 26f, -42f);
         if (GetShotTiming("CM_04", out float start, out float dur)) { crane.startDelay = start; crane.duration = dur; }
         EditorUtility.SetDirty(crane);
+    }
+
+    // Add a Timeline-synced slow-mo punch on the hoof-strike shot (CM_03).
+    private static void AddSlowMoBeats()
+    {
+        var rig = GameObject.Find(RigName) ??
+                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
+        if (dir == null) return;
+
+        var ramp = rig.GetComponent<TrailerTimeRamp>();
+        if (ramp == null) ramp = Undo.AddComponent<TrailerTimeRamp>(rig);
+        Undo.RecordObject(ramp, "config slow-mo");
+        ramp.director = dir;
+
+        // Punch just after the hoof shot cuts in.
+        float at = 15f;
+        if (GetShotTiming("CM_03", out float s, out float d)) at = s + Mathf.Min(0.6f, d * 0.25f);
+        ramp.pulses = new[]
+        {
+            new TrailerTimeRamp.Pulse { atTime = at, rampIn = 0.25f, hold = 0.35f, rampOut = 0.6f, minScale = 0.45f },
+        };
+        EditorUtility.SetDirty(ramp);
     }
 
     // Read a shot's start time + duration off the Timeline by its clip name, so
