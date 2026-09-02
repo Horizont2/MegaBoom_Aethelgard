@@ -2002,17 +2002,20 @@ MonoBehaviour:
   - {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
   - {fileID: 5194611686949037208, guid: 61bdbc13522514f4e9095e7fec63a76e, type: 3}
   baseTreesAutumn:
-  - {fileID: 6196003273407822956, guid: 60d84e7921256f541bf42feebf058562, type: 3}
-  - {fileID: 4115280657826750749, guid: 09dfa3c76a49f9d44ac54e8113b09ae1, type: 3}
-  - {fileID: 8987711326338416616, guid: ad23158ccd041944695c5590f7650e78, type: 3}
-  - {fileID: 8134860652516548836, guid: f60c00847524bef4e9d91251e9f9bb05, type: 3}
-  - {fileID: 5122031538600029118, guid: 27c16ecad2a0d4a4d8736b81e2702ca4, type: 3}
+  - {fileID: 2624358010938724709, guid: 4347c0268e8f6a44a9111dad2c3d6ac8, type: 3}
+  - {fileID: 7320448660994413086, guid: 74ba860beed967e4c96b09ea28db7929, type: 3}
+  - {fileID: 5763307693633063330, guid: 090aba5a34e26f442a9655b9decca72b, type: 3}
+  - {fileID: 2726436560267086209, guid: c8d4ae600ac4189439bb73f6650c190a, type: 3}
+  - {fileID: 1897019845509740156, guid: 7920f10bb12ed5f4894a0da1577d1aae, type: 3}
   baseTreesWinter:
-  - {fileID: 4320755542629687756, guid: 48eeb5863f7add44497e8c110063c7ad, type: 3}
-  - {fileID: 1011182559500215386, guid: e65357cd9c8bb4348bbf85b6ab816ce7, type: 3}
-  - {fileID: 3929723316542833296, guid: b40f028edf3bf5a4588796e9d30d588c, type: 3}
-  - {fileID: 4579548638794128761, guid: 5d973fe61d807d74d91e50f6f1bfe72b, type: 3}
-  - {fileID: 6763941048309601917, guid: 1dd6e81b27c500044bbd759ee7007261, type: 3}
+  - {fileID: 3184047742441100848, guid: d7891076417962e48bc8562a60d627da, type: 3}
+  - {fileID: 8078681530952827276, guid: 4cec7102db4fd1e4fabbb8609d62b6c1, type: 3}
+  - {fileID: 7811915801742912196, guid: 690b83bd5ef256d44a4f597151c07c31, type: 3}
+  - {fileID: 6961004875479241134, guid: 08d7f756890d41547a34cee47729d827, type: 3}
+  - {fileID: 2077865613590963579, guid: b18886be5f7fd8344ad7a64f4656398c, type: 3}
+  treeFarmableFraction: 0.18
+  useTerrainTreePainting: 0
+  useTerrainVegetationPainting: 1
   cursedDeadTrees:
   - {fileID: 2809105836309699613, guid: 152257b5c99f8cd4b9c6b925e5ab2f36, type: 3}
   - {fileID: 7006040512898528087, guid: 50c6b75a59436424ebe4d0fae94c29d6, type: 3}
@@ -2052,27 +2055,27 @@ MonoBehaviour:
   - {fileID: 100000, guid: 5affa7e903710d24b94e5df319d5c1a1, type: 3}
   - {fileID: 100000, guid: 76a4663a496d6584ab5fb3442baf5ef5, type: 3}
   baseBushesAutumn:
-  - {fileID: 7107110649894186434, guid: c12224686c82baa4db13edd05d743565, type: 3}
-  - {fileID: 4433436041733900816, guid: a98c39b6ebe5c6f439210e964ad51fd3, type: 3}
-  - {fileID: 1690244909803463366, guid: cbd039639cd0eaa498930d4198eb737e, type: 3}
-  - {fileID: 3151418114247126354, guid: 31bf99de8a917464ba4c43ecbf0caebb, type: 3}
-  - {fileID: 1181275314140722858, guid: 2626cfa5798004d42a1784a2f0032962, type: 3}
-  - {fileID: 243341026586075253, guid: c1e4b90c4c71fbf4e8a89976d09e75e4, type: 3}
-  - {fileID: 195510019635236044, guid: cc52b174af313a04e9ef63b28b54986d, type: 3}
-  - {fileID: 1636197294238825109, guid: ce65c2f69ce276542909c227dac2522a, type: 3}
-  - {fileID: 2626089788521859362, guid: cbc0e9316cf8b7c4898ca44a9c1502b9, type: 3}
-  - {fileID: 8048688927159181073, guid: 9b9faab2de37c8b44bb6b9a3cd61ad1c, type: 3}
+  - {fileID: 1770535549123720826, guid: b693763b6aa3e7d45ab420ce00369473, type: 3}
+  - {fileID: 6340684515592398063, guid: 9c373fa637ce60a4591c9a4068adc35a, type: 3}
+  - {fileID: 5070296958454152977, guid: 5c660fafd041da74e8c51eeb1262142a, type: 3}
+  - {fileID: 6689636636823639954, guid: 2560f2e86d9a09244a71c8182ca43a7d, type: 3}
+  - {fileID: 1639610541488737373, guid: 6e344f957e7bc264681a67f6e9fa5286, type: 3}
+  - {fileID: 5070462372428061730, guid: 9450b5befa637dd4eb7d99c18dc3920e, type: 3}
+  - {fileID: 2103751805132134683, guid: 90640ed74f888e24aaea35667d46dc36, type: 3}
+  - {fileID: 4580650642985722021, guid: f00aea9e719255d4cb1f9f38840c04a1, type: 3}
+  - {fileID: 1373742910649051198, guid: 7d335e8c1952b584caef8461027eecb0, type: 3}
+  - {fileID: 5884749371693820182, guid: 4b36c4da142fd0044a013914926cf27c, type: 3}
   baseBushesWinter:
-  - {fileID: 2896740250777419614, guid: 215a7a2b64c13a142a7469c53adebae1, type: 3}
-  - {fileID: 3205560506833125532, guid: 6d597ba18525bec4f83817bc53df3a39, type: 3}
-  - {fileID: 4239641699764733328, guid: 38d580d4e92956a4fabb8bacdadf1f02, type: 3}
-  - {fileID: 22424472451248626, guid: a27305c088659724fb73475e76128766, type: 3}
-  - {fileID: 2914106373954750030, guid: 10be3969d84b4364f92e5748e2961b77, type: 3}
-  - {fileID: 5016599704186174158, guid: de41ee7f4c6d6cf4fa6927abbee43be8, type: 3}
-  - {fileID: 6799094074125185793, guid: d722225d14afd8c4580971eb5703383e, type: 3}
-  - {fileID: 5188019671807536003, guid: 1725c3cf796e97648baed648fd7195c7, type: 3}
-  - {fileID: 1743992261601475992, guid: fcb74fe54298a224ea7a627ed652c145, type: 3}
-  - {fileID: 8155331773788501774, guid: 161098bb745a8c944811acd3c9351f81, type: 3}
+  - {fileID: 6272058426886270617, guid: f44fa027520ff30499c54d107b7d01c8, type: 3}
+  - {fileID: 506853566085569395, guid: 5653a4d8d5fffc64fb64b0ae331a4656, type: 3}
+  - {fileID: 6630105265874055090, guid: 957587f9698c08f4a9314cc6b7364178, type: 3}
+  - {fileID: 879055343219561549, guid: 03bbf876d9d03ca49ac0f43c828ceaff, type: 3}
+  - {fileID: 7038162592830811555, guid: c209c335fc014cf4c9566cec195f5800, type: 3}
+  - {fileID: 3993496210900216735, guid: f6dc3623e4c89434890f9a08ee9984cc, type: 3}
+  - {fileID: 670624138225625064, guid: c7e119f900ed5554aa6bbdcc235339a7, type: 3}
+  - {fileID: 6991665302544270959, guid: df23b9fd512c4bb4d85ac724d2fc3b27, type: 3}
+  - {fileID: 6310305199660489239, guid: 24fe89b75313a9543b206678fb1aac80, type: 3}
+  - {fileID: 6275887495030995592, guid: dad84275082ef8a4ba07ebc1c4ce9e05, type: 3}
   ruinPrefabs:
   - {fileID: 3414317473238138344, guid: a758c9966af9e45ab9f4f272a35a2e08, type: 3}
   - {fileID: 6368552768545127503, guid: 871c34634d3fd4159ac7d149e826b61a, type: 3}
@@ -8196,6 +8199,30 @@ MonoBehaviour:
         Data3: -1399672903
         Data4: -207979194
       Path: event:/Raid/Purify_Complete
+  horseGallop:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseBreath:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseSnort:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
     fmodEvent:
       Guid:
