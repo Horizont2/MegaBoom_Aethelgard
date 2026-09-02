@@ -16,6 +16,8 @@ public class TrailerSeasonRide : MonoBehaviour
     public bool driveByRideProgress = true;
     [Tooltip("The horse ride to read progress from (auto-filled by the setup tool).")]
     public TrailerHorseRide ride;
+    [Tooltip("Progress along the ride at which the season + day/night time-lapse BEGINS. Before this, Part 1 stays normal (summer, day). Set ~0.6 so it kicks in as the end-crane rises.")]
+    [Range(0f, 1f)] public float startProgress = 0.6f;
     [Tooltip("Fallback only, when not driving by progress: seconds for Summer->Autumn->Winter.")]
     public float seasonDuration = 34f;
     [Tooltip("Optional — kept for inspector reference.")]
@@ -101,19 +103,20 @@ public class TrailerSeasonRide : MonoBehaviour
     // disable the day/night system; we just override it during the trailer.
     private void LateUpdate()
     {
-        float u;
+        float raw;
         if (driveByRideProgress && ride != null)
         {
-            // Seasons follow the route: 0 at the first knot, 1 at the last — so
-            // the path the user draws IS the passage of time.
-            u = Mathf.Clamp01(ride.progress01);
+            // Seasons follow the route: 0 at the first knot, 1 at the last.
+            raw = Mathf.Clamp01(ride.progress01);
         }
         else
         {
             _clock += Time.deltaTime;
-            u = seasonDuration > 0.01f ? Mathf.Clamp01(_clock / seasonDuration) : 0f;
+            raw = seasonDuration > 0.01f ? Mathf.Clamp01(_clock / seasonDuration) : 0f;
         }
-        Apply(u);
+        // Hold summer/day until startProgress, then race through the time-lapse to
+        // winter — so Part 1 is stable and this plays out at the end-crane.
+        Apply(Mathf.InverseLerp(startProgress, 1f, raw));
     }
 
     // u = 0..1 across the ride. Summer -> Autumn -> Winter, holding each a beat.

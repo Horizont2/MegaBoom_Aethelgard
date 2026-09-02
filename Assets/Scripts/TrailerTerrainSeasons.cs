@@ -12,10 +12,14 @@ public class TrailerTerrainSeasons : MonoBehaviour
     public bool driveByRideProgress = true;
     public TrailerHorseRide ride;
     public float seasonDuration = 34f;
+    [Tooltip("Progress along the ride at which the season change BEGINS (before this it stays summer). Set to ~0.6 so the change happens at the end-crane time-lapse.")]
+    [Range(0f, 1f)] public float startProgress = 0.6f;
 
     [Header("Terrain")]
     public Terrain terrain;
-    [Tooltip("Ground textures for the terrain's first layer (optional).")]
+    [Tooltip("OFF by default: the terrain's own layers aren't these textures, so swapping them repaints the ground with the wrong (default) texture. Leave off unless you assign the terrain's ACTUAL season splat textures.")]
+    public bool swapGroundTexture = false;
+    [Tooltip("Ground textures for the terrain's first layer (only used if swapGroundTexture is on).")]
     public Texture2D summerGround, autumnGround, winterGround;
 
     [Header("Grass (detail) tint")]
@@ -69,9 +73,11 @@ public class TrailerTerrainSeasons : MonoBehaviour
     private void Update()
     {
         if (!_ready) return;
-        float u = (driveByRideProgress && ride != null)
+        float raw = (driveByRideProgress && ride != null)
             ? Mathf.Clamp01(ride.progress01)
             : (seasonDuration > 0.01f ? Mathf.Clamp01((_clock += Time.deltaTime) / seasonDuration) : 0f);
+        // Remap so the change only happens from startProgress -> 1 (summer until then).
+        float u = Mathf.InverseLerp(startProgress, 1f, raw);
         ApplyProgress(u);
     }
 
@@ -101,24 +107,28 @@ public class TrailerTerrainSeasons : MonoBehaviour
                 det[i].dryColor = Color.Lerp(_baseDry[i], tint, blend);
             }
             _workTD.detailPrototypes = det;
+            if (terrain != null) terrain.Flush();   // force the detail layer to re-render with new colours
             _lastBlend = blend;
         }
 
-        // Ground texture swap at season midpoints.
-        int want = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
-        if (want != _texState)
+        // Ground texture swap — OFF by default (the terrain's real layers aren't
+        // these textures, so swapping repaints the ground wrong).
+        if (swapGroundTexture)
         {
-            var tex = want == 0 ? summerGround : (want == 1 ? autumnGround : winterGround);
-            var layers = _workTD.terrainLayers;
-            if (tex != null && layers != null && layers.Length > 0 && layers[0] != null)
+            int want = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
+            if (want != _texState)
             {
-                // Clone the layer so we never edit the shared TerrainLayer asset.
-                var clone = Instantiate(layers[0]);
-                clone.diffuseTexture = tex;
-                layers[0] = clone;
-                _workTD.terrainLayers = layers;
+                var tex = want == 0 ? summerGround : (want == 1 ? autumnGround : winterGround);
+                var layers = _workTD.terrainLayers;
+                if (tex != null && layers != null && layers.Length > 0 && layers[0] != null)
+                {
+                    var clone = Instantiate(layers[0]);
+                    clone.diffuseTexture = tex;
+                    layers[0] = clone;
+                    _workTD.terrainLayers = layers;
+                }
+                _texState = want;
             }
-            _texState = want;
         }
     }
 

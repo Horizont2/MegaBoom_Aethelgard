@@ -165,7 +165,9 @@ public static class TrailerRoadsideDresser
         Undo.RegisterCreatedObjectUndo(go, "place " + prefab.name);
         go.transform.SetParent(parent, true);
         go.transform.position = pos;
-        go.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * go.transform.rotation;   // preserve upright
+        // The torch prefab stands at identity, so force absolute upright + yaw
+        // (the old LookRotation/relative rotation was laying it on its side).
+        go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
         if (!Mathf.Approximately(scale, 1f)) go.transform.localScale *= scale;
         return go;
     }

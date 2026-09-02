@@ -59,6 +59,7 @@ public static class ActIISeasonsRideSetup
         Undo.RecordObject(season, "config seasons");
         season.driveByRideProgress = true;
         season.ride = ride;
+        season.startProgress = 0.6f;   // time-lapse begins as the end-crane rises
         season.terrainMaterial = AssetDatabase.LoadAssetAtPath<Material>(TerrainMat);
         season.summerTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexSummer);
         season.autumnTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexAutumn);
@@ -80,9 +81,8 @@ public static class ActIISeasonsRideSetup
             ts.driveByRideProgress = true;
             ts.ride = ride;
             ts.terrain = terrain;
-            ts.summerGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexSummer);
-            ts.autumnGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexAutumn);
-            ts.winterGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexWinter);
+            ts.startProgress = 0.6f;
+            ts.swapGroundTexture = false;   // don't repaint the terrain with wrong textures
             EditorUtility.SetDirty(ts);
             terrainOk = true;
         }
