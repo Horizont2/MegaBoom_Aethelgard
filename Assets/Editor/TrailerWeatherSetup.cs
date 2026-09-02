@@ -38,6 +38,10 @@ public static class TrailerWeatherSetup
         dnc.enabled = true;
         dnc.currentWeather = state;
         dnc.isWeatherLocked = true;                 // don't let the timer drift it back to Clear
+        dnc.enableGodRays = true;                   // shafts of light through the storm
+
+        // Wind so the vegetation (terrain trees / grass) moves in the storm.
+        EnsureWindZone();
 
         // Rain only renders for biome 0 in DayNightCycle.
         PlayerPrefs.SetInt("RegionBiomeType", 0);
@@ -71,6 +75,20 @@ public static class TrailerWeatherSetup
             "  • Storm skybox / lightning / darker ambient come from DayNightCycle.\n\n" +
             "Press Play to see it. If the storm skybox is missing, assign DayNightCycle ▸ stormSkybox.", "OK");
         return true;
+    }
+
+    private static void EnsureWindZone()
+    {
+        if (Object.FindObjectsByType<WindZone>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length > 0) return;
+        var go = new GameObject("Trailer_Wind");
+        Undo.RegisterCreatedObjectUndo(go, "trailer wind");
+        go.transform.rotation = Quaternion.Euler(15f, 40f, 0f);
+        var wz = go.AddComponent<WindZone>();
+        wz.mode = WindZoneMode.Directional;
+        wz.windMain = 1.4f;
+        wz.windTurbulence = 1.0f;
+        wz.windPulseMagnitude = 0.6f;
+        wz.windPulseFrequency = 0.2f;
     }
 
     private static ParticleSystem SpawnCameraRain()

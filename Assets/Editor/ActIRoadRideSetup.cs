@@ -100,6 +100,10 @@ public static class ActIRoadRideSetup
         //     (horse hooves/breath/snort come from HorseAudioController above).
         AddTrailerAmbience();
 
+        // 12) DoF on the close shots (auto-focus the horse; wide reveal stays
+        //     sharp) + lightning flashes/thunder on beats.
+        AddCinematicFocusAndLightning(horse);
+
         EditorSceneMarkDirty();
 
         EditorUtility.DisplayDialog("Act I Road Ride",
@@ -311,7 +315,7 @@ public static class ActIRoadRideSetup
             if (n.Contains("CM_02")) { MakeFollowCam(cam, horse, Cam02Offset, 38f, new Vector3(0.7f, 0.7f, 1.0f)); count++; }
             else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); AddTensionNoise(cam.gameObject, 0.3f, 0.35f); count++; }
             else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset, 46f, new Vector3(1.6f, 1.4f, 2.0f)); AddCraneReveal(cam, Cam04Offset); count++; }
-            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); AddTensionNoise(cam.gameObject, 0.35f, 0.4f); count++; }
+            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); AddTensionNoise(cam.gameObject, 0.35f, 0.4f); AddFovPush(cam); count++; }
         }
         return count;
     }
@@ -356,6 +360,24 @@ public static class ActIRoadRideSetup
         RemoveIfPresent<CinemachineBasicMultiChannelPerlin>(go);
     }
 
+    // Slow push-in on the opening static shot so it breathes.
+    private static void AddFovPush(CinemachineCamera cam)
+    {
+        var rig = GameObject.Find(RigName) ??
+                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
+
+        var push = cam.GetComponent<TrailerFovPush>();
+        if (push == null) push = Undo.AddComponent<TrailerFovPush>(cam.gameObject);
+        Undo.RecordObject(push, "config push-in");
+        push.director = dir;
+        push.startFov = 42f;
+        push.endFov = 36f;
+        if (GetShotTiming("CM_01", out float s, out float d)) { push.startTime = s; push.duration = d; }
+        EditorUtility.SetDirty(push);
+    }
+
     // A little handheld tension shake for the CLOSE shots — enough to convey the
     // speed and danger of the ride without the frantic "disco" wobble. Idempotent
     // (removes any existing noise first so re-running doesn't stack it).
@@ -391,6 +413,43 @@ public static class ActIRoadRideSetup
         crane.endOffset = new Vector3(0f, 26f, -42f);
         if (GetShotTiming("CM_04", out float start, out float dur)) { crane.startDelay = start; crane.duration = dur; }
         EditorUtility.SetDirty(crane);
+    }
+
+    // DoF (auto-focus horse, close shots only) + lightning beats on the rig.
+    private static void AddCinematicFocusAndLightning(Transform horse)
+    {
+        var rig = GameObject.Find(RigName) ??
+                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
+        if (rig == null) return;
+
+        // Depth of field on the two close shots (CM_02, CM_03) only.
+        var ranges = new System.Collections.Generic.List<Vector2>();
+        if (GetShotTiming("CM_02", out float s2, out float d2)) ranges.Add(new Vector2(s2, s2 + d2));
+        if (GetShotTiming("CM_03", out float s3, out float d3)) ranges.Add(new Vector2(s3, s3 + d3));
+
+        var dof = rig.GetComponent<TrailerDoFFocus>();
+        if (dof == null) dof = Undo.AddComponent<TrailerDoFFocus>(rig);
+        Undo.RecordObject(dof, "config dof");
+        dof.director = dir;
+        dof.focusTarget = horse;
+        dof.cam = Camera.main;
+        dof.activeRanges = ranges.ToArray();
+        EditorUtility.SetDirty(dof);
+
+        // Lightning flashes: one on the hoof beat, one at the reveal.
+        var flashes = new System.Collections.Generic.List<float>();
+        if (GetShotTiming("CM_03", out float hs, out float hd)) flashes.Add(hs + Mathf.Min(0.5f, hd * 0.25f));
+        if (GetShotTiming("CM_04", out float cs, out float cd)) flashes.Add(cs + 0.3f);
+        if (flashes.Count == 0) flashes.Add(12f);
+
+        var bolt = rig.GetComponent<TrailerLightningBeat>();
+        if (bolt == null) bolt = Undo.AddComponent<TrailerLightningBeat>(rig);
+        Undo.RecordObject(bolt, "config lightning");
+        bolt.director = dir;
+        bolt.flashTimes = flashes.ToArray();
+        EditorUtility.SetDirty(bolt);
     }
 
     // Add the trailer soundscape (wind/rain beds, raven, distant thunder) on the rig.

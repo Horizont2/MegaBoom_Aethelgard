@@ -103,6 +103,17 @@ public static class TrailerCinematicPostFX
         mb.intensity.overrideState = true; mb.intensity.value = 0.25f;   // was harsh on close cams
         mb.clamp.overrideState = true; mb.clamp.value = 0.05f;
 
+        // Depth of field is added but OFF by default — TrailerDoFFocus turns it on
+        // ONLY during the close shots and auto-focuses on the horse, so the wide
+        // reveal stays fully sharp (everything visible). Moderate aperture keeps
+        // the background softened, not obliterated.
+        var dof = GetOrAdd<DepthOfField>(profile);
+        dof.active = false;
+        dof.mode.overrideState = true; dof.mode.value = DepthOfFieldMode.Bokeh;
+        dof.focusDistance.overrideState = true; dof.focusDistance.value = 8f;
+        dof.focalLength.overrideState = true; dof.focalLength.value = 50f;
+        dof.aperture.overrideState = true; dof.aperture.value = 5.6f;
+
         // Per-preset color grade
         var col = GetOrAdd<ColorAdjustments>(profile);
         col.postExposure.overrideState = true;
