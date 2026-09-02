@@ -580,6 +580,13 @@ public class WorldGenerator : MonoBehaviour
     {
         IsGenerationDone = false;
         CurrentProgress = 0f;
+
+        // Denser world: more bushes/mushrooms and more roads than the serialized
+        // defaults. Vegetation painting makes the extra bushes/mushrooms cheap,
+        // and extra dead-end roads give the map more to explore. Max() respects a
+        // higher value set in the inspector.
+        maxBushesAndMushroom = Mathf.Max(maxBushesAndMushroom, 4500);
+        extraDeadEndRoads = Mathf.Max(extraDeadEndRoads, 12);
         // Reset statics that survive a scene reload — otherwise a "Try again"
         // after dying MID-RAID inherits a stuck state: AnyActivatingRightNow
         // left true makes every totem's Update early-return (no anchors spawn →

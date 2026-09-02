@@ -1157,7 +1157,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
                         Vector3 nextPos = transform.position + dir * (actualMoveSpeed * 0.55f) * Time.deltaTime;
                         nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                         SetPositionSafe(nextPos);
+                        // Run the LEGS while lunging so the enemy doesn't slide with
+                        // motionless feet during the approach-attack.
+                        if (animator != null) animator.SetBool("isMoving", true);
                     }
+                    else if (animator != null) animator.SetBool("isMoving", false);
                 }
             }
             yield return null;
@@ -1167,6 +1171,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (!isDead && Vector3.Distance(transform.position, target.position) <= attackRange + 0.8f)
         {
             lastAttackTime = Time.time;
+            // Stop the run legs at the moment of the strike so the attack anim
+            // plays cleanly (the lunge above kept the legs moving on approach).
+            if (animator != null) animator.SetBool("isMoving", false);
             if (animator != null) animator.SetTrigger("Attack");
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
