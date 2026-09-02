@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.Splines;
 using Unity.Mathematics;
 using Unity.Cinemachine;
@@ -28,9 +29,10 @@ public static class ActIRoadRideSetup
 {
     // Tunables (sensible defaults; tweak in the scene afterwards).
     private static readonly Vector3 RiderSaddleOffset = new Vector3(0f, 1.15f, 0.05f);
-    private static readonly Vector3 Cam02Offset = new Vector3(4.5f, 2.3f, -1.5f);  // alongside
-    private static readonly Vector3 Cam03Offset = new Vector3(1.8f, 0.6f, -3.2f);  // low, behind-ish
+    private static readonly Vector3 Cam02Offset = new Vector3(4.5f, 2.6f, -2.0f);  // alongside
+    private static readonly Vector3 Cam03Offset = new Vector3(2.0f, 1.2f, -3.5f);  // low, behind-ish
     private static readonly Vector3 Cam04Offset = new Vector3(0f, 6.5f, -9f);       // crane behind+high
+    private const string RigName = "LoreTrailer_Rig";
 
     [MenuItem("Tools/Lore Trailer/Setup Act I Road Ride")]
     public static void Setup()
@@ -65,17 +67,99 @@ public static class ActIRoadRideSetup
         // 4) Cameras: follow-with-offset (no spline), + a static shot-1 on the road.
         int cams = ConfigureCameras(horse, road);
 
+        // 5) Make the trailer cameras ACTUALLY LIVE. Without this you see the
+        //    gameplay Main Camera (which sits low / in the ground) because the
+        //    rig is built disabled and its director doesn't auto-play — the #1
+        //    reason "the camera just sits in the ground".
+        bool rigLive = ActivateRigAndDirector();
+
+        // 6) Stop every OTHER PlayableDirector (the level's intro director) from
+        //    auto-playing — it repositions the horse and is what "teleports the
+        //    horse back the moment it starts running".
+        int killedDirectors = NeutralizeRivalDirectors();
+
+        // 7) Take the gameplay camera driver out of the way so it can't fight the
+        //    Cinemachine brain for the Main Camera.
+        DisableGameplayCameraFollow();
+
         EditorSceneMarkDirty();
 
         EditorUtility.DisplayDialog("Act I Road Ride",
             $"Wired up:\n" +
             $"  • Disabled {disabled} interfering component(s) (quest/extraction/spawner).\n" +
+            $"  • Neutralized {killedDirectors} rival PlayableDirector(s) (intro timeline that snapped the horse back).\n" +
             $"  • Horse '{horse.name}' auto-rides '{road.name}' over {ride.autoFitSeconds:0}s.\n" +
             $"  • Rider on horse: {(riderOk ? "yes" : "NO player found — place one manually")}.\n" +
-            $"  • Configured {cams} camera(s): CM_01 static gallop-past, CM_02/03/04 follow the horse (no spline).\n\n" +
-            "PRESS PLAY to preview.\n" +
+            $"  • Configured {cams} camera(s): CM_01 static gallop-past, CM_02/03/04 follow the horse (no spline).\n" +
+            $"  • Trailer rig live + auto-play: {(rigLive ? "YES" : "NOT FOUND — run 'Build Camera Rig' first")}.\n\n" +
+            "PRESS PLAY to preview — the Timeline now starts itself, in sync with the horse.\n" +
             "If the horse runs the wrong way → TrailerHorseRide: tick Reverse / set Model Yaw Offset 180 (then rotate CM_01 180° too).\n" +
             "Nudge camera FollowOffset + rider saddle height to taste.", "OK");
+    }
+
+    // Enable the LoreTrailer_Rig and switch its PlayableDirector to Play-On-Awake
+    // so the cameras go live the instant you press Play (and stay in sync with the
+    // horse, which also starts at frame 0).
+    private static bool ActivateRigAndDirector()
+    {
+        var rig = GameObject.Find(RigName);
+        if (rig == null)
+        {
+            // Find-by-name misses inactive roots; scan inactive too.
+            rig = Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        }
+        if (rig == null) return false;
+
+        if (!rig.activeSelf) { Undo.RecordObject(rig, "enable rig"); rig.SetActive(true); }
+
+        var dir = rig.GetComponent<PlayableDirector>();
+        if (dir != null)
+        {
+            Undo.RecordObject(dir, "director play on awake");
+            dir.playOnAwake = true;
+            dir.timeUpdateMode = DirectorUpdateMode.GameTime;
+            EditorUtility.SetDirty(dir);
+        }
+
+        // Make sure the Brain that the track is bound to is actually enabled.
+        var brain = Object.FindFirstObjectByType<CinemachineBrain>(FindObjectsInactive.Include);
+        if (brain != null && !brain.enabled) { Undo.RecordObject(brain, "enable brain"); brain.enabled = true; }
+        return true;
+    }
+
+    // Any PlayableDirector that is NOT our trailer rig (the level intro director)
+    // will auto-play on Awake and drive/reposition the horse or camera. Stop them.
+    private static int NeutralizeRivalDirectors()
+    {
+        int n = 0;
+        foreach (var dir in Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (dir == null || dir.gameObject.name == RigName) continue;
+            Undo.RecordObject(dir, "neutralize director");
+            dir.playOnAwake = false;
+            dir.Stop();
+            dir.enabled = false;
+            EditorUtility.SetDirty(dir);
+            n++;
+        }
+        return n;
+    }
+
+    // Turn off the gameplay CameraFollow so it doesn't keep steering the Main
+    // Camera underground while the Cinemachine brain is trying to drive it.
+    private static void DisableGameplayCameraFollow()
+    {
+        foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (mb == null || !mb.enabled) continue;
+            if (mb.GetType().Name == "CameraFollow")
+            {
+                Undo.RecordObject(mb, "disable gameplay camera");
+                mb.enabled = false;
+                EditorUtility.SetDirty(mb);
+            }
+        }
     }
 
     // --- horse / scene ---
@@ -99,9 +183,15 @@ public static class ActIRoadRideSetup
 
     private static bool ParkPlayerOnHorse(Transform horse)
     {
-        var playerGo = GameObject.FindGameObjectWithTag("Player");
+        // Prefer a rider the user already placed UNDER the horse (e.g.
+        // "Player(OnHorse)") — respect their hand-tuned seat position.
+        Transform existingRider = FindExistingRider(horse);
+        var playerGo = existingRider != null ? existingRider.gameObject
+                                             : GameObject.FindGameObjectWithTag("Player");
         if (playerGo == null) return false;
         Undo.RegisterFullObjectHierarchyUndo(playerGo, "park rider");
+
+        if (!playerGo.activeSelf) playerGo.SetActive(true);
 
         // Kill physics / control so it can't fly off.
         var pc = playerGo.GetComponent("PlayerController") as MonoBehaviour;
@@ -111,10 +201,37 @@ public static class ActIRoadRideSetup
         var rb = playerGo.GetComponent<Rigidbody>();
         if (rb != null) { rb.isKinematic = true; rb.linearVelocity = Vector3.zero; }
 
-        playerGo.transform.SetParent(horse, false);
-        playerGo.transform.localPosition = RiderSaddleOffset;
-        playerGo.transform.localRotation = Quaternion.identity;
+        // Already seated on the horse (by the user or a previous run): leave the
+        // transform EXACTLY where it is. The horse is scaled 0.5, so re-writing a
+        // local offset here would shrink the rider and sink it into the saddle —
+        // which is the "rider still not on the horse properly" bug.
+        if (playerGo.transform.IsChildOf(horse)) return true;
+
+        // Not on the horse yet: parent keeping WORLD transform (so the 0.5 horse
+        // scale doesn't halve the rider) and seat it with a WORLD-space offset
+        // (unaffected by the horse's scale), facing the horse's forward.
+        playerGo.transform.SetParent(horse, true);
+        playerGo.transform.position = horse.position
+                                     + Vector3.up * RiderSaddleOffset.y
+                                     + horse.forward * RiderSaddleOffset.z
+                                     + horse.right * RiderSaddleOffset.x;
+        playerGo.transform.rotation = horse.rotation;
         return true;
+    }
+
+    // Look for a rider already parented under the horse — a Player-tagged child,
+    // or an object whose name hints it's the seated rider/dummy.
+    private static Transform FindExistingRider(Transform horse)
+    {
+        foreach (Transform t in horse.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == horse) continue;
+            if (t.CompareTag("Player")) return t;
+            string n = t.name.ToLowerInvariant();
+            if (n.Contains("onhorse") || n.Contains("rider") || n.Contains("player"))
+                return t;
+        }
+        return null;
     }
 
     // --- cameras ---
@@ -170,8 +287,12 @@ public static class ActIRoadRideSetup
         float3 p = road.EvaluatePosition(0.14f);
         float3 tan = road.EvaluateTangent(0.14f);
         Vector3 dir = new Vector3(tan.x, 0f, tan.z);
-        cam.transform.position = new Vector3(p.x, p.y + 0.6f, p.z);
-        if (dir.sqrMagnitude > 0.0001f) cam.transform.rotation = Quaternion.LookRotation(dir.normalized);
+        // Sit ~1.3 m up (a low, dramatic angle that still clears the road surface;
+        // +0.6 was effectively buried) and aim slightly up the road toward chest
+        // height so the horse gallops into frame and over the lens.
+        cam.transform.position = new Vector3(p.x, p.y + 1.3f, p.z);
+        if (dir.sqrMagnitude > 0.0001f)
+            cam.transform.rotation = Quaternion.LookRotation((dir.normalized + Vector3.up * 0.08f).normalized);
         cam.Lens.FieldOfView = 38f;
         EditorUtility.SetDirty(cam);
     }
