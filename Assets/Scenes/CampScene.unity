@@ -64325,7 +64325,7 @@ Animator:
   m_GameObject: {fileID: 597675405}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: de1721aae56b70f4dba3015794373bf4, type: 2}
+  m_Controller: {fileID: 9100000, guid: 388ea8f51a7025f4e8f0d433b1fad438, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -95958,6 +95958,30 @@ MonoBehaviour:
         Data3: -1399672903
         Data4: -207979194
       Path: event:/Raid/Purify_Complete
+  horseGallop:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseBreath:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseSnort:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
     fmodEvent:
       Guid:
@@ -201743,9 +201767,13 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4816917703726208619, guid: 8664fd1c4925e8e4580e309c13b7af52, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 8e22be801e6ab8f47a8a52b27e5d8d8d, type: 2}
     - target: {fileID: 6161951103838371831, guid: 8664fd1c4925e8e4580e309c13b7af52, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
