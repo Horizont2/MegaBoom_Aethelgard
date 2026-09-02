@@ -60,7 +60,13 @@ public class TrailerHorseRide : MonoBehaviour
     public void BeginRide()
     {
         _started = true;
-        if (_anim != null && !string.IsNullOrEmpty(runTrigger)) _anim.SetTrigger(runTrigger);
+        if (_anim != null)
+        {
+            // Root motion would fight our spline-driven transform (in-place
+            // gallop is what we want), so switch it off.
+            _anim.applyRootMotion = false;
+            if (!string.IsNullOrEmpty(runTrigger)) _anim.SetTrigger(runTrigger);
+        }
         ApplyProgress(progress01);
     }
 
