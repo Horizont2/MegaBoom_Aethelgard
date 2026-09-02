@@ -41,6 +41,16 @@ public class TrailerSeasonRide : MonoBehaviour
     public Color tintAutumn = new Color(0.85f, 0.5f, 0.2f);
     public Color tintWinter = new Color(0.9f, 0.92f, 1f);
 
+    [Header("Day / Night (sun races on its orbit as he rides)")]
+    public bool driveDayNight = true;
+    [Tooltip("How many full day->night cycles across the whole ride.")]
+    public float dayNightCycles = 2f;
+    [Tooltip("Sun brightness at midday and at night.")]
+    public float dayIntensity = 1.15f;
+    public float nightIntensity = 0.05f;
+    [Tooltip("Phase offset (degrees) so the reveal ends on a dramatic low sun/dawn.")]
+    public float dayNightStartDeg = 20f;
+
     [Header("Falling VFX (follow the camera)")]
     public GameObject leavesPrefab;
     public GameObject snowPrefab;
@@ -53,12 +63,22 @@ public class TrailerSeasonRide : MonoBehaviour
     private GameObject _leaves, _snow;
     private int _terrainTexState = -1;   // 0 summer,1 autumn,2 winter
     private float _clock;
+    private Quaternion _sunRot0;
+    private float _sunIntensity0, _sunYaw;
+    private bool _sunCached;
 
     private void OnEnable()
     {
         if (cam == null) cam = Camera.main;
         _clock = 0f;
         _terrainTexState = -1;
+        if (sun != null && !_sunCached)
+        {
+            _sunRot0 = sun.transform.rotation;
+            _sunIntensity0 = sun.intensity;
+            _sunYaw = sun.transform.eulerAngles.y;   // orbit around the sun's own compass heading
+            _sunCached = true;
+        }
         _leaves = SpawnFollower(leavesPrefab, "Trailer_Leaves");
         _snow = SpawnFollower(snowPrefab, "Trailer_Snow");
         if (_leaves) _leaves.SetActive(false);
@@ -72,11 +92,14 @@ public class TrailerSeasonRide : MonoBehaviour
         Shader.SetGlobalColor(SeasonColorID, Color.white);
         Shader.SetGlobalFloat(SeasonIndexID, 0f);
         if (terrainMaterial != null && summerTexture != null) terrainMaterial.SetTexture(BaseMapID, summerTexture);
+        if (sun != null && _sunCached) { sun.transform.rotation = _sunRot0; sun.intensity = _sunIntensity0; }
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
     }
 
-    private void Update()
+    // LateUpdate so our sun/fog wins over DayNightCycle's own Update — no need to
+    // disable the day/night system; we just override it during the trailer.
+    private void LateUpdate()
     {
         float u;
         if (driveByRideProgress && ride != null)
@@ -115,8 +138,20 @@ public class TrailerSeasonRide : MonoBehaviour
         Shader.SetGlobalColor(SeasonColorID, tint);
         Shader.SetGlobalFloat(SeasonIndexID, u < 0.4f ? 0f : (u < 0.72f ? 1f : 2f));
 
+        float dayFactor = 1f;
+        if (driveDayNight && sun != null && _sunCached)
+        {
+            // Sun races on its orbit across the ride.
+            float pitch = dayNightStartDeg + u * dayNightCycles * 360f;
+            sun.transform.rotation = Quaternion.Euler(pitch, _sunYaw, 0f);
+            // Day when the sun is above the horizon, night when below.
+            dayFactor = Mathf.Clamp01(Mathf.Sin(pitch * Mathf.Deg2Rad));
+            sun.intensity = Mathf.Lerp(nightIntensity, dayIntensity, dayFactor);
+        }
+
         if (sun != null) sun.color = sunC;
-        RenderSettings.fogColor = fogC;
+        // Darken fog + ambient at night so the day/night reads.
+        RenderSettings.fogColor = fogC * Mathf.Lerp(0.35f, 1f, dayFactor);
 
         // Terrain ground texture switches at the season midpoints.
         int wantTex = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);

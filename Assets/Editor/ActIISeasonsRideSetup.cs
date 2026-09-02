@@ -69,15 +69,35 @@ public static class ActIISeasonsRideSetup
         season.cam = Camera.main;
         EditorUtility.SetDirty(season);
 
+        // Terrain + painted grass recolour (safe: works on a runtime clone).
+        var terrain = Terrain.activeTerrain;
+        bool terrainOk = false;
+        if (terrain != null)
+        {
+            var ts = rig.GetComponent<TrailerTerrainSeasons>();
+            if (ts == null) ts = Undo.AddComponent<TrailerTerrainSeasons>(rig);
+            Undo.RecordObject(ts, "config terrain seasons");
+            ts.driveByRideProgress = true;
+            ts.ride = ride;
+            ts.terrain = terrain;
+            ts.summerGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexSummer);
+            ts.autumnGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexAutumn);
+            ts.winterGround = AssetDatabase.LoadAssetAtPath<Texture2D>(TexWinter);
+            EditorUtility.SetDirty(ts);
+            terrainOk = true;
+        }
+
         MarkDirty();
 
         EditorUtility.DisplayDialog("Act II Seasons",
-            "Added seasons to the Act I ride (Act I cameras untouched):\n" +
-            "  • Summer → Autumn → Winter follow the ROUTE (summer at the start of the spline, winter at the end).\n" +
-            "  • Falling leaves (autumn) then snow (winter), sun + fog shift; terrain/veg tint where a shader supports it.\n" +
-            "  • The Act I end-crane (CM_04) rises over the now-changed world — that's the reveal.\n\n" +
-            $"  • Terrain material {(season.terrainMaterial != null ? "OK" : "MISSING")}, sun {(season.sun != null ? "OK" : "NOT FOUND")}.\n" +
-            "⚠ Unity-Terrain ground + painted grass need the dedicated terrain-season pass to recolour (coming next).", "OK");
+            "Added to the Act I ride (Act I cameras untouched):\n" +
+            "  • Seasons Summer → Autumn → Winter follow the ROUTE progress.\n" +
+            "  • DAY/NIGHT: the sun races on its orbit as he rides (driveDayNight).\n" +
+            $"  • TERRAIN + painted grass recolour per season: {(terrainOk ? "ON (runtime clone — asset safe)" : "NO active Terrain found")}.\n" +
+            "  • Falling leaves (autumn) then snow (winter); sun + fog shift.\n" +
+            "  • The Act I end-crane (CM_04) rises over the changed world while the horse is STILL galloping (overrun) — no standing still.\n\n" +
+            $"  • Sun {(season.sun != null ? "OK" : "NOT FOUND")}.\n" +
+            "Everything is driven by route progress, so it all stays in sync with the ride.", "OK");
     }
 
     private static GameObject FindRig()
