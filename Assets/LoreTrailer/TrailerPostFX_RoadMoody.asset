@@ -21,10 +21,10 @@ MonoBehaviour:
     m_Value: {x: 0.5, y: 0.5}
   intensity:
     m_OverrideState: 1
-    m_Value: 0.24
+    m_Value: 0.14
   smoothness:
     m_OverrideState: 1
-    m_Value: 0.6
+    m_Value: 0.65
   rounded:
     m_OverrideState: 0
     m_Value: 0
@@ -43,7 +43,53 @@ MonoBehaviour:
   active: 1
   intensity:
     m_OverrideState: 1
-    m_Value: 0.04
+    m_Value: 0.02
+--- !u!114 &-4247803113581791761
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c01700fd266d6914ababb731e09af2eb, type: 3}
+  m_Name: DepthOfField
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DepthOfField
+  active: 0
+  mode:
+    m_OverrideState: 1
+    m_Value: 2
+  gaussianStart:
+    m_OverrideState: 0
+    m_Value: 10
+  gaussianEnd:
+    m_OverrideState: 0
+    m_Value: 30
+  gaussianMaxRadius:
+    m_OverrideState: 0
+    m_Value: 1
+  highQualitySampling:
+    m_OverrideState: 0
+    m_Value: 0
+  focusDistance:
+    m_OverrideState: 1
+    m_Value: 8
+  aperture:
+    m_OverrideState: 1
+    m_Value: 5.6
+  focalLength:
+    m_OverrideState: 1
+    m_Value: 50
+  bladeCount:
+    m_OverrideState: 0
+    m_Value: 5
+  bladeCurvature:
+    m_OverrideState: 0
+    m_Value: 1
+  bladeRotation:
+    m_OverrideState: 0
+    m_Value: 0
 --- !u!114 &-3820683706596268695
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -62,7 +108,7 @@ MonoBehaviour:
     m_Value: 0
   intensity:
     m_OverrideState: 1
-    m_Value: 0.06
+    m_Value: 0.05
   response:
     m_OverrideState: 1
     m_Value: 0.7
@@ -90,10 +136,10 @@ MonoBehaviour:
     m_Value: 2
   intensity:
     m_OverrideState: 1
-    m_Value: 0.4
+    m_Value: 0.25
   clamp:
     m_OverrideState: 1
-    m_Value: 0.06
+    m_Value: 0.05
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114,6 +160,7 @@ MonoBehaviour:
   - {fileID: -4551431459721803125}
   - {fileID: -2854167807829488511}
   - {fileID: 4084337776947041315}
+  - {fileID: -4247803113581791761}
 --- !u!114 &4084337776947041315
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -129,13 +176,13 @@ MonoBehaviour:
   active: 1
   postExposure:
     m_OverrideState: 1
-    m_Value: -0.05
+    m_Value: 0
   contrast:
     m_OverrideState: 1
-    m_Value: 8
+    m_Value: 4
   colorFilter:
     m_OverrideState: 1
-    m_Value: {r: 0.95, g: 0.98, b: 1.03, a: 1}
+    m_Value: {r: 0.97, g: 0.99, b: 1.02, a: 1}
   hueShift:
     m_OverrideState: 1
     m_Value: 0
@@ -200,13 +247,13 @@ MonoBehaviour:
     m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 1.1
+    m_Value: 1.15
   intensity:
     m_OverrideState: 1
-    m_Value: 0.55
+    m_Value: 0.35
   scatter:
     m_OverrideState: 1
-    m_Value: 0.62
+    m_Value: 0.6
   clamp:
     m_OverrideState: 0
     m_Value: 65472
