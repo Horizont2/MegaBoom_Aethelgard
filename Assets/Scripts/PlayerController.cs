@@ -17,6 +17,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     [Header("Weapon Spawning")]
     public GameObject[] weaponPrefabs;
+    [Tooltip("Optional per-weapon local rotation (Euler °) for the weapon in the hand, indexed the same as Weapon Prefabs. Fixes prefabs that sit crooked at identity. Empty/short → identity (the default sword, index 0, is corrected in code).")]
+    public Vector3[] weaponHandRotations;
     private GameObject currentWeapon;
 
     [Header("Debug")]
@@ -388,7 +390,14 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             currentWeapon = Instantiate(weaponPrefabs[selectedWeaponID], socket);
             currentWeapon.transform.localPosition = Vector3.zero;
-            currentWeapon.transform.localRotation = Quaternion.identity;
+            // Per-weapon hand rotation. Most prefabs are upright at identity; the
+            // default sword (index 0) sits crooked in the hand, so correct it.
+            Vector3 handRot = Vector3.zero;
+            if (weaponHandRotations != null && weaponHandRotations.Length > selectedWeaponID)
+                handRot = weaponHandRotations[selectedWeaponID];
+            else if (selectedWeaponID == 0)
+                handRot = new Vector3(90f, -540f, -535f);
+            currentWeapon.transform.localRotation = Quaternion.Euler(handRot);
             // Disable any trail the prefab ships — several read as huge/curled.
             // We always build our own consistent one so EVERY weapon matches the
             // clean look of the default sword.
