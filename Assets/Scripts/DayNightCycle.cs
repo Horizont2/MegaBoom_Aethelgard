@@ -140,6 +140,19 @@ public class DayNightCycle : MonoBehaviour
         if (ps == null) return;
         var main = ps.main;
         main.simulationSpace = ParticleSystemSimulationSpace.World; // don't rotate with the camera
+        main.loop = true;                                           // never one-shot → keeps falling
+
+        // Size the particle budget to the emission so the system never hits the
+        // Max Particles cap and "pulses" (falls a few seconds → stops → falls
+        // again). Max Particles was 300 — far too low for the wide rain box, so
+        // it capped out and paused until old drops died. Budget for the storm
+        // rate (~2x) plus headroom so even the heaviest downpour stays steady.
+        var em = ps.emission;
+        float rate = em.rateOverTime.constant;
+        float life = main.startLifetime.constant;
+        int need = (rate > 0f && life > 0f) ? Mathf.CeilToInt(rate * life * 3f) : 1500;
+        main.maxParticles = Mathf.Clamp(Mathf.Max(main.maxParticles, need), 1500, 6000);
+
         var shape = ps.shape;
         shape.enabled = true;
         shape.shapeType = ParticleSystemShapeType.Box;
