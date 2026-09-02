@@ -2,6 +2,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Playables;
+using UnityEngine.Timeline;
 using UnityEngine.Splines;
 using Unity.Mathematics;
 using Unity.Cinemachine;
@@ -90,7 +91,8 @@ public static class ActIRoadRideSetup
             $"  • Neutralized {killedDirectors} rival PlayableDirector(s) (intro timeline that snapped the horse back).\n" +
             $"  • Horse '{horse.name}' auto-rides '{road.name}' over {ride.autoFitSeconds:0}s.\n" +
             $"  • Rider on horse: {(riderOk ? "yes" : "NO player found — place one manually")}.\n" +
-            $"  • Configured {cams} camera(s): CM_01 static gallop-past, CM_02/03/04 follow the horse (no spline).\n" +
+            $"  • Configured {cams} camera(s): CM_01 gallop-past + CM_03 low chase have tension shake; CM_02 steady alongside; CM_04 cranes UP over the valley at the end.\n" +
+            $"  • Rider set to the seated on-horse pose; horse rides OFF into the distance at the end (no running in place).\n" +
             $"  • Trailer rig live + auto-play: {(rigLive ? "YES" : "NOT FOUND — run 'Build Camera Rig' first")}.\n\n" +
             "PRESS PLAY to preview — the Timeline now starts itself, in sync with the horse.\n" +
             "If the horse runs the wrong way → TrailerHorseRide: tick Reverse / set Model Yaw Offset 180 (then rotate CM_01 180° too).\n" +
@@ -201,6 +203,11 @@ public static class ActIRoadRideSetup
         var rb = playerGo.GetComponent<Rigidbody>();
         if (rb != null) { rb.isKinematic = true; rb.linearVelocity = Vector3.zero; }
 
+        // Put the rider into the seated riding pose so it looks like it's really
+        // on the horse (not standing/idle), and kill its root motion so it can't
+        // drift off the saddle.
+        ApplyRiderPose(playerGo);
+
         // Already seated on the horse (by the user or a previous run): leave the
         // transform EXACTLY where it is. The horse is scaled 0.5, so re-writing a
         // local offset here would shrink the rider and sink it into the saddle —
@@ -217,6 +224,19 @@ public static class ActIRoadRideSetup
                                      + horse.right * RiderSaddleOffset.x;
         playerGo.transform.rotation = horse.rotation;
         return true;
+    }
+
+    // Give the rider the game's on-horse (crouch-idle) pose and disable its root
+    // motion so it stays glued to the saddle while the horse moves.
+    private static void ApplyRiderPose(GameObject rider)
+    {
+        var anim = rider.GetComponentInChildren<Animator>();
+        if (anim == null) return;
+        Undo.RecordObject(anim, "rider pose");
+        var ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Animators/OnHorseAnimator.controller");
+        if (ctrl != null) anim.runtimeAnimatorController = ctrl;
+        anim.applyRootMotion = false;
+        EditorUtility.SetDirty(anim);
     }
 
     // Look for a rider already parented under the horse — a Player-tagged child,
@@ -245,11 +265,13 @@ public static class ActIRoadRideSetup
             string n = cam.name;
 
             // Slightly longer lenses (lower FOV) = compression = more cinematic.
-            // Heavier damping on the wide crane so it drifts, not darts.
+            // Heavier damping on the wide crane so it drifts, not darts. CLOSE
+            // cameras (CM_01 gallop-past, CM_03 low chase) get a little tension
+            // shake to sell the speed/danger; the wider CM_02/CM_04 stay steady.
             if (n.Contains("CM_02")) { MakeFollowCam(cam, horse, Cam02Offset, 38f, new Vector3(0.7f, 0.7f, 1.0f)); count++; }
-            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); count++; }
-            else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset, 46f, new Vector3(1.6f, 1.4f, 2.0f)); count++; }
-            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); count++; }
+            else if (n.Contains("CM_03")) { MakeFollowCam(cam, horse, Cam03Offset, 40f, new Vector3(0.6f, 0.5f, 0.9f)); AddTensionNoise(cam.gameObject, 0.5f, 0.4f); count++; }
+            else if (n.Contains("CM_04")) { MakeFollowCam(cam, horse, Cam04Offset, 46f, new Vector3(1.6f, 1.4f, 2.0f)); AddCraneReveal(cam, Cam04Offset); count++; }
+            else if (n.Contains("CM_01")) { MakeStaticGallopPast(cam, road); AddTensionNoise(cam.gameObject, 0.6f, 0.5f); count++; }
         }
         return count;
     }
@@ -292,6 +314,66 @@ public static class ActIRoadRideSetup
     private static void KillHandheldNoise(GameObject go)
     {
         RemoveIfPresent<CinemachineBasicMultiChannelPerlin>(go);
+    }
+
+    // A little handheld tension shake for the CLOSE shots — enough to convey the
+    // speed and danger of the ride without the frantic "disco" wobble. Idempotent
+    // (removes any existing noise first so re-running doesn't stack it).
+    private static void AddTensionNoise(GameObject go, float amp, float freq)
+    {
+        RemoveIfPresent<CinemachineBasicMultiChannelPerlin>(go);
+        var noise = Undo.AddComponent<CinemachineBasicMultiChannelPerlin>(go);
+        noise.AmplitudeGain = amp;
+        noise.FrequencyGain = freq;
+        var prof = FindNoiseProfile();
+        if (prof != null) noise.NoiseProfile = prof;
+        EditorUtility.SetDirty(noise);
+    }
+
+    private static NoiseSettings FindNoiseProfile()
+    {
+        string[] guids = AssetDatabase.FindAssets("t:NoiseSettings Handheld");
+        if (guids == null || guids.Length == 0) guids = AssetDatabase.FindAssets("t:NoiseSettings");
+        if (guids != null && guids.Length > 0)
+            return AssetDatabase.LoadAssetAtPath<NoiseSettings>(AssetDatabase.GUIDToAssetPath(guids[0]));
+        return null;
+    }
+
+    // Attach the "rise over the valley" crane to the final follow cam. It lerps
+    // the follow offset from the chase pose up to a high wide vista, timed to the
+    // real CM_04 clip on the Timeline so it fires exactly when the shot cuts in.
+    private static void AddCraneReveal(CinemachineCamera cam, Vector3 startOffset)
+    {
+        var crane = cam.GetComponent<TrailerCraneReveal>();
+        if (crane == null) crane = Undo.AddComponent<TrailerCraneReveal>(cam.gameObject);
+        Undo.RecordObject(crane, "config crane");
+        crane.startOffset = startOffset;
+        crane.endOffset = new Vector3(0f, 26f, -42f);
+        if (GetShotTiming("CM_04", out float start, out float dur)) { crane.startDelay = start; crane.duration = dur; }
+        EditorUtility.SetDirty(crane);
+    }
+
+    // Read a shot's start time + duration off the Timeline by its clip name, so
+    // the crane fires in sync with the Cinemachine cut (the director plays on
+    // awake at t=0, same as the horse ride).
+    private static bool GetShotTiming(string camFragment, out float start, out float duration)
+    {
+        start = 15f; duration = 5f;   // sensible fallback if the clip isn't found
+        var rig = GameObject.Find(RigName) ??
+                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
+        var ta = dir != null ? dir.playableAsset as TimelineAsset : null;
+        if (ta == null) return false;
+        foreach (var track in ta.GetOutputTracks())
+            foreach (var clip in track.GetClips())
+                if (!string.IsNullOrEmpty(clip.displayName) && clip.displayName.Contains(camFragment))
+                {
+                    start = (float)clip.start;
+                    duration = (float)clip.duration;
+                    return true;
+                }
+        return false;
     }
 
     // Static camera sitting low ON the road early along the spline, facing the

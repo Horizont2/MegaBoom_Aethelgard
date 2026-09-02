@@ -48,6 +48,10 @@ public class TrailerHorseRide : MonoBehaviour
 
     private Animator _anim;
     private bool _started;
+    // Metres travelled straight ahead PAST the end of the spline. Instead of
+    // freezing at the last knot and galloping in place, the horse keeps riding
+    // off into the distance — which reads naturally under the final crane shot.
+    private float _overrun;
 
     private void OnEnable()
     {
@@ -60,6 +64,7 @@ public class TrailerHorseRide : MonoBehaviour
     public void BeginRide()
     {
         _started = true;
+        _overrun = 0f;
         if (_anim != null)
         {
             // Root motion would fight our spline-driven transform (in-place
@@ -91,8 +96,18 @@ public class TrailerHorseRide : MonoBehaviour
             float len = path.CalculateLength();
             if (len < 0.01f) return;
             float mps = autoFitSeconds > 0.01f ? (len / autoFitSeconds) : speed;
-            progress01 += (mps / len) * Time.deltaTime;
-            if (progress01 >= 1f) progress01 = loop ? progress01 - 1f : 1f;
+
+            if (progress01 < 1f)
+            {
+                progress01 += (mps / len) * Time.deltaTime;
+                if (progress01 >= 1f) progress01 = loop ? progress01 - 1f : 1f;
+            }
+            else if (!loop)
+            {
+                // Reached the end of the path: keep galloping straight ahead so
+                // the horse rides off into the valley instead of running in place.
+                _overrun += mps * Time.deltaTime;
+            }
         }
 
         ApplyProgress(progress01);
@@ -105,15 +120,16 @@ public class TrailerHorseRide : MonoBehaviour
         float eval = reverse ? 1f - t : t;
 
         float3 p = path.EvaluatePosition(eval);
-        transform.position = new Vector3(p.x, p.y, p.z);
+        float3 tan = path.EvaluateTangent(eval);
+        Vector3 dir = new Vector3(tan.x, 0f, tan.z);
+        if (reverse) dir = -dir;                           // tangent points along +t; flip when reversed
 
-        if (faceAlongPath)
-        {
-            float3 tan = path.EvaluateTangent(eval);
-            Vector3 dir = new Vector3(tan.x, 0f, tan.z);
-            if (reverse) dir = -dir;                       // tangent points along +t; flip when reversed
-            if (dir.sqrMagnitude > 0.0001f)
-                transform.rotation = Quaternion.LookRotation(dir.normalized) * Quaternion.Euler(0f, modelYawOffset, 0f);
-        }
+        Vector3 pos = new Vector3(p.x, p.y, p.z);
+        if (_overrun > 0f && dir.sqrMagnitude > 0.0001f)
+            pos += dir.normalized * _overrun;              // keep riding past the last knot
+        transform.position = pos;
+
+        if (faceAlongPath && dir.sqrMagnitude > 0.0001f)
+            transform.rotation = Quaternion.LookRotation(dir.normalized) * Quaternion.Euler(0f, modelYawOffset, 0f);
     }
 }
