@@ -16,7 +16,8 @@ using Unity.Cinemachine;
 // gallop-past shots; Act II no longer depends on it.)
 public static class ActIISeasonsRideSetup
 {
-    private const string RigName = "LoreTrailer_Rig";
+    private const string RigName = "LoreTrailer_ActII_Rig";   // Act II's OWN rig (leaves Act I intact)
+    private const string ActIRigName = "LoreTrailer_Rig";
     private const string TerrainMat = "Assets/RPGPP_LT/Materials/rpgpp_lt_mat_a.mat";
     private const string TexSummer = "Assets/RPGPP_LT/Textures/rpgpp_lt_tex_a.tga";
     private const string TexAutumn = "Assets/RPGPP_LT/Textures/rpgpp_lt_tex_a.tga_3_Autumn.png";
@@ -54,7 +55,10 @@ public static class ActIISeasonsRideSetup
         }
         Undo.RecordObject(ride, "config ride");
         ride.path = road;
-        ride.autoFitSeconds = RideSeconds;   // the long journey
+        // Constant, sensible gallop speed so the horse rides the WHOLE route you
+        // draw at a good pace (no more "too slow", no straight-line overrun).
+        ride.autoFitSeconds = 0f;
+        ride.speed = 14f;
         ride.playOnStart = true;
         ride.driveFromTimeline = false;
         ride.faceAlongPath = true;
@@ -62,7 +66,11 @@ public static class ActIISeasonsRideSetup
         ride.groundSnapOverrun = true;
         EditorUtility.SetDirty(ride);
 
-        // 2) RIG — reuse or create, keep it active.
+        // 2) RIG — Act II gets its OWN rig so it never breaks Act I. Disable the
+        //    Act I rig while Act II is set up (re-run Setup Act I to switch back).
+        var actI = GameObject.Find(ActIRigName);
+        if (actI != null && actI.activeSelf) { Undo.RecordObject(actI, "disable Act I rig"); actI.SetActive(false); }
+
         var rig = FindRig();
         if (rig == null)
         {
@@ -70,11 +78,6 @@ public static class ActIISeasonsRideSetup
             Undo.RegisterCreatedObjectUndo(rig, "create rig");
         }
         if (!rig.activeSelf) { Undo.RecordObject(rig, "enable rig"); rig.SetActive(true); }
-
-        // Act II drives cameras by PRIORITY (the cutter), so silence the Act I
-        // timeline director if present — otherwise it would fight for the brain.
-        var dir = rig.GetComponent<PlayableDirector>();
-        if (dir != null) { Undo.RecordObject(dir, "stop director"); dir.playOnAwake = false; dir.enabled = false; }
 
         // 3) FOLLOW CAMERAS — three angles that track the rider.
         var camFront = MakeFollowCam(rig, "CM_ActII_Front", horse, CamFrontOffset, 40f);
@@ -86,13 +89,17 @@ public static class ActIISeasonsRideSetup
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
         Undo.RecordObject(cutter, "config cuts");
         cutter.cameras = new[] { camSide, camFront, camCrane };
-        cutter.cutTimes = new[] { 0f, RideSeconds * 0.38f, RideSeconds * 0.72f };
+        cutter.useProgress = true;
+        cutter.ride = ride;
+        cutter.cutProgress = new[] { 0f, 0.4f, 0.72f };   // cut along the route
         EditorUtility.SetDirty(cutter);
 
         // 5) SEASON change across the ride.
         var season = rig.GetComponent<TrailerSeasonRide>();
         if (season == null) season = Undo.AddComponent<TrailerSeasonRide>(rig);
         Undo.RecordObject(season, "config seasons");
+        season.driveByRideProgress = true;   // seasons follow the route you drew
+        season.ride = ride;
         season.seasonDuration = RideSeconds;
         season.terrainMaterial = AssetDatabase.LoadAssetAtPath<Material>(TerrainMat);
         season.summerTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexSummer);
@@ -107,13 +114,13 @@ public static class ActIISeasonsRideSetup
         MarkDirty();
 
         EditorUtility.DisplayDialog("Act II Seasons Ride",
-            "Wired up (self-contained):\n" +
-            $"  • Route: horse rides '{road.name}' over {RideSeconds:0}s.\n" +
-            "  • 3 follow cameras track the rider (side → front → crane), cutting across the journey.\n" +
-            $"  • Season change: vegetation tint, terrain texture (summer/autumn/winter), sun + fog, falling leaves then snow.\n" +
-            $"  • Terrain material {(season.terrainMaterial != null ? "OK" : "MISSING")}; sun {(season.sun != null ? "OK" : "NOT FOUND — assign TrailerSeasonRide.sun")}.\n\n" +
-            "PRESS PLAY: the rider gallops on while the world turns Summer→Autumn→Winter; leaves blow past, then snow.\n" +
-            "Tune offsets on CM_ActII_*, cut timing on TrailerCameraCutter, season timing on TrailerSeasonRide.", "OK");
+            "Wired up (self-contained, Act I left intact on its own rig):\n" +
+            $"  • Route: horse rides the WHOLE spline '{road.name}' at a steady gallop (draw a longer spline for a longer journey).\n" +
+            "  • 3 follow cameras track the rider (side → front → crane), cutting along the ROUTE progress.\n" +
+            "  • Seasons follow the ROUTE: summer at the start of the spline → winter at the end; leaves then snow.\n" +
+            $"  • Terrain material {(season.terrainMaterial != null ? "OK" : "MISSING")}; sun {(season.sun != null ? "OK" : "NOT FOUND")}.\n\n" +
+            "NOTE: draw/extend the road Spline to shape the journey. To switch back to Act I, run 'Setup Act I Road Ride'.\n" +
+            "⚠ Unity-Terrain ground + painted grass won't recolour yet (no shader reads the season tint) — that needs a dedicated terrain-season pass; see chat.", "OK");
     }
 
     private static CinemachineCamera MakeFollowCam(GameObject rig, string name, Transform horse, Vector3 offset, float fov)

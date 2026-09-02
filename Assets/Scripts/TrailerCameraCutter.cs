@@ -8,7 +8,15 @@ using Unity.Cinemachine;
 public class TrailerCameraCutter : MonoBehaviour
 {
     public CinemachineCamera[] cameras;
-    [Tooltip("Seconds (from start) at which to cut to cameras[i]. Same length as cameras.")]
+
+    [Header("Cut by ROUTE progress (recommended — works for any route length)")]
+    public bool useProgress = true;
+    public TrailerHorseRide ride;
+    [Tooltip("0..1 progress at which to cut to cameras[i]. Same length as cameras.")]
+    public float[] cutProgress;
+
+    [Header("Or cut by time")]
+    [Tooltip("Seconds (from start) at which to cut to cameras[i]. Used when useProgress is off.")]
     public float[] cutTimes;
 
     private float _clock;
@@ -18,10 +26,19 @@ public class TrailerCameraCutter : MonoBehaviour
 
     private void Update()
     {
-        _clock += Time.deltaTime;
         int want = 0;
-        int n = Mathf.Min(cutTimes != null ? cutTimes.Length : 0, cameras != null ? cameras.Length : 0);
-        for (int i = 0; i < n; i++) if (_clock >= cutTimes[i]) want = i;
+        if (useProgress && ride != null && cutProgress != null)
+        {
+            float p = Mathf.Clamp01(ride.progress01);
+            int n = Mathf.Min(cutProgress.Length, cameras != null ? cameras.Length : 0);
+            for (int i = 0; i < n; i++) if (p >= cutProgress[i]) want = i;
+        }
+        else
+        {
+            _clock += Time.deltaTime;
+            int n = Mathf.Min(cutTimes != null ? cutTimes.Length : 0, cameras != null ? cameras.Length : 0);
+            for (int i = 0; i < n; i++) if (_clock >= cutTimes[i]) want = i;
+        }
         if (want != _idx) Cut(want);
     }
 

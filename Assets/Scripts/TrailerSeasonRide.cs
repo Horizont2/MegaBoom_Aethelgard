@@ -12,9 +12,13 @@ using UnityEngine.Playables;
 public class TrailerSeasonRide : MonoBehaviour
 {
     [Header("Sync")]
-    [Tooltip("Seconds over which Summer->Autumn->Winter plays (match the ride length). Uses its own clock from enable, so it spans the whole ride even past the Act I timeline.")]
+    [Tooltip("Tie the seasons to the horse's PROGRESS along the route (recommended): summer at the start of the spline, winter at the end — so the route you draw is exactly the journey.")]
+    public bool driveByRideProgress = true;
+    [Tooltip("The horse ride to read progress from (auto-filled by the setup tool).")]
+    public TrailerHorseRide ride;
+    [Tooltip("Fallback only, when not driving by progress: seconds for Summer->Autumn->Winter.")]
     public float seasonDuration = 34f;
-    [Tooltip("Optional — kept for inspector reference; the driver uses its own scaled clock.")]
+    [Tooltip("Optional — kept for inspector reference.")]
     public PlayableDirector director;
 
     [Header("Terrain ground texture (rpgpp_lt_mat_a)")]
@@ -74,11 +78,19 @@ public class TrailerSeasonRide : MonoBehaviour
 
     private void Update()
     {
-        // Own scaled clock — matches the horse ride (which also starts at t=0),
-        // and keeps advancing after the Act I timeline ends so seasons cover the
-        // whole journey.
-        _clock += Time.deltaTime;
-        Apply(seasonDuration > 0.01f ? Mathf.Clamp01(_clock / seasonDuration) : 0f);
+        float u;
+        if (driveByRideProgress && ride != null)
+        {
+            // Seasons follow the route: 0 at the first knot, 1 at the last — so
+            // the path the user draws IS the passage of time.
+            u = Mathf.Clamp01(ride.progress01);
+        }
+        else
+        {
+            _clock += Time.deltaTime;
+            u = seasonDuration > 0.01f ? Mathf.Clamp01(_clock / seasonDuration) : 0f;
+        }
+        Apply(u);
     }
 
     // u = 0..1 across the ride. Summer -> Autumn -> Winter, holding each a beat.
