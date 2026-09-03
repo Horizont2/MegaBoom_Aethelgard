@@ -64,10 +64,11 @@ public static class ActPartTwoSetup
 
         // Cinematic Part-2 coverage with cuts: fleeing (fear) -> side -> a
         // front angle for the look-back -> a tight close-up for the strike.
-        var camFlee = MakeFollowCam(rig, "CM_Part2_Flee", ride.transform, new Vector3(0f, 2.2f, -5f), 52f);
-        var camSide = MakeFollowCam(rig, "CM_Part2_Side", ride.transform, new Vector3(5f, 2.4f, -0.5f), 42f);
-        var camFront = MakeFollowCam(rig, "CM_Part2_Front", ride.transform, new Vector3(1.6f, 2.0f, 6.5f), 40f);
-        var camStrike = MakeFollowCam(rig, "CM_Part2_StrikeCU", ride.transform, new Vector3(2.6f, 1.7f, -2.2f), 34f);
+        // Low, grounded, dramatic angles for fear (not a floaty overhead follow).
+        var camFlee = MakeFollowCam(rig, "CM_Part2_Flee", ride.transform, new Vector3(0f, 1.3f, -4.2f), 55f);   // low behind, urgent
+        var camSide = MakeFollowCam(rig, "CM_Part2_Side", ride.transform, new Vector3(4.6f, 1.5f, 0.5f), 40f);  // ground-level track alongside
+        var camFront = MakeFollowCam(rig, "CM_Part2_Front", ride.transform, new Vector3(0.6f, 1.4f, 7f), 38f);  // low front — his face + chasers behind
+        var camStrike = MakeFollowCam(rig, "CM_Part2_StrikeCU", ride.transform, new Vector3(2.0f, 1.4f, -2.6f), 32f); // tight close-up
 
         var cutter = rig.GetComponent<TrailerCameraCutter>();
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);

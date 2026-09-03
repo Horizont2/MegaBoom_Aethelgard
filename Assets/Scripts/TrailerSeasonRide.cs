@@ -43,10 +43,10 @@ public class TrailerSeasonRide : MonoBehaviour
     public Color tintAutumn = new Color(0.85f, 0.5f, 0.2f);
     public Color tintWinter = new Color(0.9f, 0.92f, 1f);
 
-    [Header("Tree recolour (direct material tint on tree renderers)")]
+    [Header("Tree recolour (material SWAP per season — the game's foliage system)")]
     public bool tintTrees = true;
-    [Tooltip("Objects whose name (or a parent's) contains any of these are treated as trees.")]
-    public string[] treeNameHints = { "tree", "pine", "birch", "oak", "trunk", "foliage", "bush" };
+    [Tooltip("Season foliage materials. Left empty, they're read from the scene's WorldGenerator (which already has them assigned).")]
+    public Material birchAutumn, birchWinter, largeAutumn, largeWinter, bushAutumn, bushWinter;
 
     [Header("Day / Night (sun races on its orbit as he rides)")]
     public bool driveDayNight = true;
@@ -71,10 +71,10 @@ public class TrailerSeasonRide : MonoBehaviour
     private int _terrainTexState = -1;   // 0 summer,1 autumn,2 winter
     private float _clock;
     private Renderer[] _trees;
-    private MaterialPropertyBlock _mpb;
-    private int _treeTintStep = -99;
-    private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
-    private static readonly int ColorID = Shader.PropertyToID("_Color");
+    private int[] _treeSlot;           // which material slot to swap
+    private Material[] _treeOrigMat;   // original material in that slot
+    private int[] _treeType;           // 0 birch, 1 giant/large, 2 bush
+    private int _treeSeason = -1;      // 0 summer,1 autumn,2 winter currently applied
     private Quaternion _sunRot0;
     private float _sunIntensity0, _sunYaw;
     private bool _sunCached;
@@ -96,8 +96,7 @@ public class TrailerSeasonRide : MonoBehaviour
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
         if (tintTrees) GatherTrees();
-        _mpb = new MaterialPropertyBlock();
-        _treeTintStep = -99;
+        _treeSeason = -1;
         Apply(0f);
     }
 
@@ -110,35 +109,67 @@ public class TrailerSeasonRide : MonoBehaviour
         if (sun != null && _sunCached) { sun.transform.rotation = _sunRot0; sun.intensity = _sunIntensity0; }
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
-        TintTrees(Color.white);   // restore trees
+        SwapTreeSeason(0);   // restore trees to summer materials
     }
 
+    // Find every renderer slot whose material is a base tree/bush leaves material,
+    // and remember it so we can swap it to the season variant.
     private void GatherTrees()
     {
-        var all = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
-        var list = new System.Collections.Generic.List<Renderer>();
-        foreach (var r in all)
+        // Pull the season materials from the scene's WorldGenerator if not set.
+        var wg = Object.FindFirstObjectByType<WorldGenerator>();
+        if (wg != null)
+        {
+            if (birchAutumn == null) birchAutumn = wg.baseTreeAutumnMaterial;
+            if (birchWinter == null) birchWinter = wg.baseTreeWinterMaterial;
+            if (largeAutumn == null) largeAutumn = wg.giantTreeAutumnMaterial;
+            if (largeWinter == null) largeWinter = wg.giantTreeWinterMaterial;
+            if (bushAutumn == null) bushAutumn = wg.bushAutumnMaterial;
+            if (bushWinter == null) bushWinter = wg.bushWinterMaterial;
+        }
+
+        var rends = new System.Collections.Generic.List<Renderer>();
+        var slots = new System.Collections.Generic.List<int>();
+        var orig = new System.Collections.Generic.List<Material>();
+        var types = new System.Collections.Generic.List<int>();
+
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (r == null || r is ParticleSystemRenderer) continue;
-            string path = (r.transform.name + " " + (r.transform.parent ? r.transform.parent.name : "") +
-                           " " + (r.transform.parent && r.transform.parent.parent ? r.transform.parent.parent.name : "")).ToLowerInvariant();
-            foreach (var h in treeNameHints) if (path.Contains(h)) { list.Add(r); break; }
+            var mats = r.sharedMaterials;
+            for (int s = 0; s < mats.Length; s++)
+            {
+                var m = mats[s]; if (m == null) continue;
+                string n = m.name.ToLowerInvariant();
+                int type = -1;
+                if (n.Contains("birch")) type = 0;
+                else if (n.Contains("treelarge") || n.Contains("giant") || n.Contains("large")) type = 1;
+                else if (n.Contains("bush")) type = 2;
+                if (type < 0) continue;
+                rends.Add(r); slots.Add(s); orig.Add(m); types.Add(type);
+            }
         }
-        _trees = list.ToArray();
+        _trees = rends.ToArray(); _treeSlot = slots.ToArray();
+        _treeOrigMat = orig.ToArray(); _treeType = types.ToArray();
     }
 
-    // Tint every tree renderer's base colour (MaterialPropertyBlock, so materials
-    // aren't permanently modified).
-    private void TintTrees(Color c)
+    // Swap tree/bush leaves materials to the given season (0 summer,1 autumn,2 winter).
+    private void SwapTreeSeason(int season)
     {
-        if (_trees == null || _mpb == null) return;
-        foreach (var r in _trees)
+        if (_trees == null) return;
+        for (int i = 0; i < _trees.Length; i++)
         {
-            if (r == null) continue;
-            r.GetPropertyBlock(_mpb);
-            _mpb.SetColor(BaseColorID, c);
-            _mpb.SetColor(ColorID, c);
-            r.SetPropertyBlock(_mpb);
+            var r = _trees[i]; if (r == null) continue;
+            Material target = _treeOrigMat[i];   // summer = original
+            if (season == 1) target = _treeType[i] == 0 ? birchAutumn : _treeType[i] == 1 ? largeAutumn : bushAutumn;
+            else if (season == 2) target = _treeType[i] == 0 ? birchWinter : _treeType[i] == 1 ? largeWinter : bushWinter;
+            if (target == null) target = _treeOrigMat[i];
+            var mats = r.sharedMaterials;
+            if (_treeSlot[i] < mats.Length && mats[_treeSlot[i]] != target)
+            {
+                mats[_treeSlot[i]] = target;
+                r.sharedMaterials = mats;
+            }
         }
     }
 
@@ -196,8 +227,8 @@ public class TrailerSeasonRide : MonoBehaviour
         // shader reads it; this actually changes their look).
         if (tintTrees && _trees != null)
         {
-            int step = Mathf.RoundToInt(u * 12f);
-            if (step != _treeTintStep) { TintTrees(tint); _treeTintStep = step; }
+            int season = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
+            if (season != _treeSeason) { SwapTreeSeason(season); _treeSeason = season; }
         }
 
         float dayFactor = 1f;

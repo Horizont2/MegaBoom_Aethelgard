@@ -25,6 +25,7 @@ public class TrailerRideEvent : MonoBehaviour
 
     private TrailerLightningStrike _bolt;
     private Animator[] _anims;
+    private Transform _riderGO;
     private bool _struck, _lookedBack;
     private float _rearT = -1f;
     private Quaternion _rearBase;
@@ -36,6 +37,16 @@ public class TrailerRideEvent : MonoBehaviour
         // has that parameter — no dependence on tags/hierarchy (that's why the
         // look-back/fall weren't firing).
         _anims = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        // The rider = the animator with the "Fall" trigger that sits under the horse.
+        if (ride != null)
+            foreach (var a in _anims)
+            {
+                if (a == null || a.runtimeAnimatorController == null) continue;
+                if (a.transform == ride.transform || !a.transform.IsChildOf(ride.transform)) continue;
+                bool hasFall = false;
+                foreach (var p in a.parameters) if (p.name == "Fall") { hasFall = true; break; }
+                if (hasFall) { _riderGO = TopUnder(a.transform, ride.transform); break; }
+            }
         if (_bolt == null)
         {
             var go = new GameObject("Trailer_LightningBolt");
@@ -73,6 +84,17 @@ public class TrailerRideEvent : MonoBehaviour
             // on), then rear (horse) + throw the rider (fall).
             ride.enabled = false;
             FireTrigger("Rear");
+
+            // Throw the rider OFF the horse: unparent + drop beside it (otherwise
+            // the fall plays at the saddle and clips under the horse).
+            if (_riderGO != null)
+            {
+                _riderGO.SetParent(null, true);
+                Vector3 land = ride.transform.position - ride.transform.forward * 1.2f + ride.transform.right * 1.0f;
+                if (TryGround(land, out float ly)) land.y = ly;
+                _riderGO.position = land;
+                _riderGO.rotation = Quaternion.LookRotation(-ride.transform.forward);   // facing back the way he came
+            }
             FireTrigger("Fall");
 
             if (fakeRear)
@@ -106,6 +128,14 @@ public class TrailerRideEvent : MonoBehaviour
         }
         if (hits == 0)
             Debug.LogWarning($"[Trailer] No animator has trigger '{param}'. Run Tools ▸ Lore Trailer ▸ Setup Cutscene Animations.");
+    }
+
+    // Walk up from 't' to the child that sits directly under 'root'.
+    private static Transform TopUnder(Transform t, Transform root)
+    {
+        var cur = t;
+        while (cur != null && cur.parent != null && cur.parent != root) cur = cur.parent;
+        return cur;
     }
 
     private static readonly string[] GroundNames = { "terrain", "ground", "floor", "road", "path" };

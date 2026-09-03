@@ -14,6 +14,8 @@ public class TrailerUndeadPursuit : MonoBehaviour
     public float riseTime = 0.7f;
     public float chaseSpeed = 4.5f;
     public float turnSpeed = 6f;
+    [Tooltip("Stop chasing this close so they don't run INTO the horse.")]
+    public float stopDistance = 2.5f;
 
     private enum State { Buried, Rising, Chasing }
     private State _state = State.Buried;
@@ -60,11 +62,13 @@ public class TrailerUndeadPursuit : MonoBehaviour
 
             case State.Chasing:
                 Vector3 to = target.position - transform.position; to.y = 0f;
-                if (to.sqrMagnitude > 0.6f)
+                // Stop short so they don't run INTO the horse.
+                if (to.magnitude > stopDistance)
                 {
                     transform.position += to.normalized * chaseSpeed * Time.deltaTime;
                     Face();
                 }
+                else Face();
                 if (TryGround(transform.position, out float gy)) { var p = transform.position; p.y = gy; transform.position = p; }
                 break;
         }

@@ -101,7 +101,9 @@ public static class TrailerRoadsideDresser
                         // Face the road (perpendicular toward centre).
                         Vector3 toRoad = (side > 0 ? -1f : 1f) * Vector3.Cross(Vector3.up, fwd).normalized;
                         var rot = Quaternion.LookRotation(new Vector3(toRoad.x, 0, toRoad.z)) * Quaternion.Euler(0, UnityEngine.Random.Range(-35f, 35f), 0);
-                        var go = Place(undead[UnityEngine.Random.Range(0, undead.Length)], root.transform, p, rot, UnityEngine.Random.Range(0.9f, 1.1f), 0f);
+                        // The horse is scaled 0.5, so match the undead to it (they
+                        // were twice the horse's size at scale 1 = "huge").
+                        var go = Place(undead[UnityEngine.Random.Range(0, undead.Length)], root.transform, p, rot, UnityEngine.Random.Range(0.48f, 0.58f), 0f);
                         MakeScenery(go);
                         // Erupt-and-chase behaviour: buried until the rider passes, then rises + runs.
                         var pursue = Undo.AddComponent<TrailerUndeadPursuit>(go);

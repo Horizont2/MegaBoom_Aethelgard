@@ -102,6 +102,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         _phase = Phase.Timelapse; _tlT = 0f;
         ride.enabled = false;                                   // horse holds (ride basically done)
         StopActIDirector();                                     // let the crane own the brain
+        LowerActICams();                                        // stop a leftover Act I cam from staying live in the textures
         if (_crane != null) { var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr; }
         if (season != null)
         {
@@ -140,14 +141,17 @@ public class TrailerSequenceDirector : MonoBehaviour
         // Hold winter.
         if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
 
-        // Move horse + rider (parented) to spline_p3 and ride on.
+        // Move horse + rider (parented) to spline_p3 and ride on at a good pace.
         if (part2Spline != null)
         {
             ride.path = part2Spline;
+            ride.autoFitSeconds = 0f;
+            ride.speed = 12f;
             ride.progress01 = 0f;
             ride.enabled = true;
             ride.BeginRide();
         }
+        LowerActICams();
 
         // Hand cameras to the Part 2 rig.
         if (_crane != null) { var pr = _crane.Priority; pr.Value = 0; _crane.Priority = pr; }
@@ -169,5 +173,16 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (actIRig == null) return;
         var dir = actIRig.GetComponent<PlayableDirector>();
         if (dir != null) { dir.Stop(); dir.enabled = false; }
+    }
+
+    // Drop every Act I virtual camera to priority 0 so none stays live at its old
+    // spot over spline 1 (the "camera hanging in the textures at the map edge").
+    private void LowerActICams()
+    {
+        if (actIRig == null) return;
+        foreach (var cam in actIRig.GetComponentsInChildren<CinemachineCamera>(true))
+        {
+            var pr = cam.Priority; pr.Value = -100; cam.Priority = pr;
+        }
     }
 }
