@@ -18,10 +18,12 @@ public class TrailerSequenceDirector : MonoBehaviour
 {
     [Header("Auto-found if left empty")]
     public TrailerHorseRide ride;
+    public SplineContainer part1Spline;      // the road (Part 1)
     public SplineContainer part2Spline;      // spline_p3
     public GameObject actIRig;               // LoreTrailer_Rig
     public GameObject part2Rig;              // LoreTrailer_Part2_Rig
     public TrailerSeasonRide season;
+    public float part1Speed = 12f;
 
     [Header("Timing")]
     [Range(0f, 1f)] public float part1EndProgress = 0.9f;
@@ -29,8 +31,8 @@ public class TrailerSequenceDirector : MonoBehaviour
     public float dayNightCyclesInTimelapse = 4f;
 
     [Header("Crane hold")]
-    public Vector3 craneStartOffset = new Vector3(0f, 8f, -10f);
-    public Vector3 craneEndOffset = new Vector3(0f, 30f, -26f);
+    public Vector3 craneStartOffset = new Vector3(0f, 7f, -9f);
+    public Vector3 craneEndOffset = new Vector3(0f, 34f, -8f);   // high overhead, not far behind (avoids map-edge textures)
 
     private enum Phase { Part1, Timelapse, Part2 }
     private Phase _phase = Phase.Part1;
@@ -42,8 +44,20 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void Start()
     {
         AutoFind();
+        // Force the PART 1 starting state (Part 2 setup left the horse on spline_p3
+        // and the Act I rig disabled — that's why it "started at Part 2").
+        if (actIRig != null) actIRig.SetActive(true);
         if (part2Rig != null) part2Rig.SetActive(false);
         if (season != null) season.manual = false;
+        if (ride != null && part1Spline != null)
+        {
+            ride.path = part1Spline;
+            ride.autoFitSeconds = 0f;
+            ride.speed = part1Speed;
+            ride.progress01 = 0f;
+            ride.enabled = true;
+            ride.BeginRide();
+        }
         BuildCrane();
     }
 
@@ -54,9 +68,12 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (part2Rig == null) part2Rig = GameObject.Find("LoreTrailer_Part2_Rig");
         if (season == null && actIRig != null) season = actIRig.GetComponent<TrailerSeasonRide>();
         if (season == null) season = Object.FindFirstObjectByType<TrailerSeasonRide>();
+        var splines = Object.FindObjectsByType<SplineContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (part2Spline == null)
-            part2Spline = Object.FindObjectsByType<SplineContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .FirstOrDefault(s => { var n = s.name.ToLowerInvariant(); return n.Contains("p3") || n.Contains("part2") || n.Contains("actii"); });
+            part2Spline = splines.FirstOrDefault(s => { var n = s.name.ToLowerInvariant(); return n.Contains("p3") || n.Contains("part2") || n.Contains("actii"); });
+        if (part1Spline == null)
+            part1Spline = splines.FirstOrDefault(s => { var n = s.name.ToLowerInvariant(); return n.Contains("road") && s != part2Spline; })
+                       ?? splines.FirstOrDefault(s => s != part2Spline);
     }
 
     private void BuildCrane()

@@ -1,59 +1,56 @@
 using UnityEngine;
 
-// Fires the Part-2 climax beats at a point along the ride: a LIGHTNING flash
-// (a bright directional burst — reads as a strike) + a thunder crack + the horse
-// NEIGH. Progress-driven so it lands at the same spot on the route every time.
+// Fires the Part-2 climax beats along the ride:
+//   * lookBackProgress — the rider glances back over the shoulder (upper body).
+//   * strikeProgress   — a visible LIGHTNING bolt beside the horse + thunder +
+//                        neigh, the horse REARS and stands, and the rider is
+//                        thrown OFF and FALLS to the ground.
 //
-// NOTE: the horse REAR-UP, the rider LOOK-BACK / FALL and the battle need real
-// animations (see the animation list) — this component covers the strike, sound
-// and (optionally) a stylised transform-based rear as a placeholder.
+// Animations are played DIRECTLY on the animators via TrailerCutsceneAnim
+// (PlayableGraph) — no controller states/triggers needed, so they can't silently
+// fail. Clips + mask are assigned by 'Setup Cutscene Animations'.
 public class TrailerRideEvent : MonoBehaviour
 {
     public TrailerHorseRide ride;
-    [Range(0f, 1f)] public float lookBackProgress = 0.45f;   // rider glances back (fear)
-    [Range(0f, 1f)] public float strikeProgress = 0.9f;      // lightning + rear + fall
+    [Range(0f, 1f)] public float lookBackProgress = 0.45f;
+    [Range(0f, 1f)] public float strikeProgress = 0.9f;
 
-    [Header("Sound (routes through AudioManager)")]
-    public string thunderId = "AMB/AMB_Thunder";
-    public string neighId = "Animals/Horse_Snort";   // placeholder until a real neigh event exists
+    [Header("Clips (assigned by Setup Cutscene Animations)")]
+    public AnimationClip lookBehindClip;
+    public AnimationClip fallingBackClip;
+    public AnimationClip horseRearClip;
+    public AvatarMask upperBodyMask;
 
-    [Header("Placeholder rear (only if the horse rear anim isn't wired)")]
-    public bool fakeRear = false;
-    public Transform horseModel;
-    public float rearAngle = 45f;
-    public float rearTime = 0.6f;
+    [Header("Sound")]
+    public string neighId = "Animals/Horse_Snort";
 
     private TrailerLightningStrike _bolt;
-    private Animator[] _anims;
     private Transform _riderGO;
+    private TrailerCutsceneAnim _riderAnim, _horseAnim;
     private bool _struck, _lookedBack;
-    private float _rearT = -1f;
-    private Quaternion _rearBase;
 
     private void OnEnable()
     {
-        _struck = false; _lookedBack = false; _rearT = -1f;
-        // Grab EVERY animator so we can fire a trigger on whichever one actually
-        // has that parameter — no dependence on tags/hierarchy (that's why the
-        // look-back/fall weren't firing).
-        _anims = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        // The rider = the animator with the "Fall" trigger that sits under the horse.
+        _struck = false; _lookedBack = false;
+
         if (ride != null)
-            foreach (var a in _anims)
+        {
+            // Rider = an animator that sits UNDER the horse (parented), not the horse itself.
+            foreach (var a in Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (a == null || a.runtimeAnimatorController == null) continue;
-                if (a.transform == ride.transform || !a.transform.IsChildOf(ride.transform)) continue;
-                bool hasFall = false;
-                foreach (var p in a.parameters) if (p.name == "Fall") { hasFall = true; break; }
-                if (hasFall) { _riderGO = TopUnder(a.transform, ride.transform); break; }
+                if (a == null || a.transform == ride.transform) continue;
+                if (a.transform.IsChildOf(ride.transform)) { _riderGO = TopUnder(a.transform, ride.transform); break; }
             }
+            _horseAnim = GetOrAdd(ride.gameObject);
+            if (_riderGO != null) _riderAnim = GetOrAdd(_riderGO.gameObject);
+        }
+
         if (_bolt == null)
         {
             var go = new GameObject("Trailer_LightningBolt");
             go.transform.SetParent(transform, false);
             go.AddComponent<LineRenderer>();
             _bolt = go.AddComponent<TrailerLightningStrike>();
-            _bolt.thunderId = thunderId;
         }
     }
 
@@ -61,76 +58,43 @@ public class TrailerRideEvent : MonoBehaviour
     {
         if (ride == null) return;
 
-        // Rider glances back over the shoulder (upper body only) — dread.
         if (!_lookedBack && ride.progress01 >= lookBackProgress)
         {
             _lookedBack = true;
-            FireTrigger("LookBack");
+            if (_riderAnim != null) _riderAnim.Play(lookBehindClip, upperBodyMask, hold: false);   // upper body only
         }
 
         if (!_struck && ride.progress01 >= strikeProgress)
         {
             _struck = true;
-            // Strike the ground a few metres BESIDE the horse.
-            Vector3 side = ride.transform.right * 3.5f;
-            Vector3 gp = ride.transform.position + side;
+
+            Vector3 gp = ride.transform.position + ride.transform.right * 3.5f;
             if (TryGround(gp, out float gy)) gp.y = gy;
             if (_bolt != null) _bolt.Strike(gp);
 
-            var am = AudioManager.Instance;
-            if (am != null && !string.IsNullOrEmpty(neighId)) am.PlaySFX(neighId);
+            if (AudioManager.Instance != null && !string.IsNullOrEmpty(neighId)) AudioManager.Instance.PlaySFX(neighId);
 
-            // Stop the gallop so the horse rears and STANDS (instead of running
-            // on), then rear (horse) + throw the rider (fall).
-            ride.enabled = false;
-            FireTrigger("Rear");
+            ride.enabled = false;                                   // stop the gallop
+            if (_horseAnim != null) _horseAnim.Play(horseRearClip, null, hold: true);   // rear + stand
 
-            // Throw the rider OFF the horse: unparent + drop beside it (otherwise
-            // the fall plays at the saddle and clips under the horse).
+            // Throw the rider off + drop beside the horse, then play the fall.
             if (_riderGO != null)
             {
                 _riderGO.SetParent(null, true);
                 Vector3 land = ride.transform.position - ride.transform.forward * 1.2f + ride.transform.right * 1.0f;
                 if (TryGround(land, out float ly)) land.y = ly;
                 _riderGO.position = land;
-                _riderGO.rotation = Quaternion.LookRotation(-ride.transform.forward);   // facing back the way he came
+                _riderGO.rotation = Quaternion.LookRotation(-ride.transform.forward);
+                if (_riderAnim != null) _riderAnim.Play(fallingBackClip, null, hold: true);
             }
-            FireTrigger("Fall");
-
-            if (fakeRear)
-            {
-                if (horseModel == null) horseModel = ride.transform;
-                if (horseModel != null) { _rearBase = horseModel.localRotation; _rearT = 0f; }
-            }
-        }
-
-        if (_rearT >= 0f && horseModel != null)
-        {
-            _rearT += Time.deltaTime;
-            float t = Mathf.Clamp01(_rearT / Mathf.Max(0.01f, rearTime));
-            float pitch = Mathf.Sin(t * Mathf.PI) * rearAngle;      // up then down
-            horseModel.localRotation = _rearBase * Quaternion.Euler(-pitch, 0f, 0f);
-            if (_rearT >= rearTime) { _rearT = -1f; horseModel.localRotation = _rearBase; }
         }
     }
 
-    // Fire a trigger on every animator that actually declares that parameter.
-    private void FireTrigger(string param)
+    private static TrailerCutsceneAnim GetOrAdd(GameObject go)
     {
-        if (_anims == null) return;
-        int hits = 0;
-        foreach (var a in _anims)
-        {
-            if (a == null || a.runtimeAnimatorController == null) continue;
-            foreach (var p in a.parameters)
-                if (p.type == AnimatorControllerParameterType.Trigger && p.name == param)
-                { a.SetTrigger(param); hits++; break; }
-        }
-        if (hits == 0)
-            Debug.LogWarning($"[Trailer] No animator has trigger '{param}'. Run Tools ▸ Lore Trailer ▸ Setup Cutscene Animations.");
+        return go.GetComponent<TrailerCutsceneAnim>() ?? go.AddComponent<TrailerCutsceneAnim>();
     }
 
-    // Walk up from 't' to the child that sits directly under 'root'.
     private static Transform TopUnder(Transform t, Transform root)
     {
         var cur = t;
