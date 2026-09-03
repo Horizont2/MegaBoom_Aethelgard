@@ -55,7 +55,7 @@ MonoBehaviour:
   - {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   minLootItems: 1
   maxLootItems: 8
-  delayForLoot: 1.5
+  delayForLoot: 1.2
   destroyDelay: 8
 --- !u!65 &7926171736806676778
 BoxCollider:
@@ -256,7 +256,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df3b1c2358d72e24a91b256b00568a78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CampfireInteract
-  healPerSecond: 1
+  healPerSecond: 2
   healRadius: 3
   healEffect: {fileID: 220558438331549659}
 --- !u!1001 &4309066601017187518
