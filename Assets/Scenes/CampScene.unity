@@ -194969,6 +194969,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1287287260}
     - target: {fileID: 4125908860802607141, guid: 052435080ac8f67489ae7ba3dd0d0917, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4125908860802607141, guid: 052435080ac8f67489ae7ba3dd0d0917, type: 3}
       propertyPath: buildingIconImage
       value: 
       objectReference: {fileID: 1253399077}
@@ -195631,6 +195635,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 9282840}
     - target: {fileID: 4535662467316613587, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4535662467316613587, guid: 538b691f2331070469b9d93a2b47ef15, type: 3}
       propertyPath: buildingIconImage
       value: 
       objectReference: {fileID: 1987465657}
@@ -196044,6 +196052,10 @@ PrefabInstance:
       propertyPath: upgradeGlimmer
       value: 
       objectReference: {fileID: 1365771626}
+    - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
     - target: {fileID: 6710890771247641744, guid: e4168555748928a40ad7fdd29a997f7b, type: 3}
       propertyPath: levels.Array.size
       value: 5
@@ -196732,6 +196744,10 @@ PrefabInstance:
       propertyPath: upgradeGlimmer
       value: 
       objectReference: {fileID: 68637203}
+    - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
     - target: {fileID: 4485025835746586562, guid: 827fd1ff327bbf54fb7dcb8f2217add3, type: 3}
       propertyPath: buildingIconImage
       value: 
@@ -199101,6 +199117,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 162712805}
     - target: {fileID: 8934681957702479887, guid: f95226031ce0a98488bdfc125bbcbead, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8934681957702479887, guid: f95226031ce0a98488bdfc125bbcbead, type: 3}
       propertyPath: buildingIconImage
       value: 
       objectReference: {fileID: 229024644}
@@ -199926,6 +199946,10 @@ PrefabInstance:
       propertyPath: upgradeGlimmer
       value: 
       objectReference: {fileID: 597675405}
+    - target: {fileID: 2702655121897894353, guid: f9ec4c9d33e4e8043bd9752c4185eabd, type: 3}
+      propertyPath: holdTimeRequired
+      value: 2.5
+      objectReference: {fileID: 0}
     - target: {fileID: 2717625628476024575, guid: f9ec4c9d33e4e8043bd9752c4185eabd, type: 3}
       propertyPath: m_Name
       value: Building_Barracks
