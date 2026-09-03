@@ -2602,7 +2602,7 @@ MonoBehaviour:
   godRayMaxScale: 1
   snowVFX: {fileID: 316599055}
   dustVFX: {fileID: 0}
-  lightningVFXPrefab: {fileID: 5627696518775099638, guid: 6839a8d6998e86d4282063ffdacb0c15, type: 3}
+  lightningVFXPrefab: {fileID: 8974203713140315807, guid: 709b0bd6b0b625249a98409dd7a87343, type: 3}
   lightningSpawnRadius: 60
   weatherBoxSize: 75
   weatherBoxHeight: 28
