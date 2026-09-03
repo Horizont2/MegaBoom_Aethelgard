@@ -60,6 +60,10 @@ public static class TrailerRoadsideDresser
         UnityEngine.Random.InitState(20260902);
         int torches = 0, mobs = 0;
 
+        // The rider the undead will erupt behind and chase.
+        var rideComp = Object.FindObjectsByType<TrailerHorseRide>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault();
+        Transform rider = rideComp != null ? rideComp.transform : null;
+
         // Torches — alternating sides, evenly along the whole road. Kept UPRIGHT
         // (preserve the prefab's standing pose; only add yaw) — LookRotation laid
         // them on their side.
@@ -100,6 +104,9 @@ public static class TrailerRoadsideDresser
                         var rot = Quaternion.LookRotation(new Vector3(toRoad.x, 0, toRoad.z)) * Quaternion.Euler(0, UnityEngine.Random.Range(-35f, 35f), 0);
                         var go = Place(undead[UnityEngine.Random.Range(0, undead.Length)], root.transform, p, rot, UnityEngine.Random.Range(0.9f, 1.1f), 0f);
                         MakeScenery(go);
+                        // Erupt-and-chase behaviour: buried until the rider passes, then rises + runs.
+                        var pursue = Undo.AddComponent<TrailerUndeadPursuit>(go);
+                        pursue.target = rider;
                         mobs++;
                     }
                 }

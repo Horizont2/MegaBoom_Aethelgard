@@ -18,7 +18,6 @@ using Unity.Cinemachine;
 public static class ActPartTwoSetup
 {
     private const string RigName = "LoreTrailer_Part2_Rig";
-    private static readonly Vector3 ChaseOffset = new Vector3(2.2f, 3.6f, -7.5f);
 
     [MenuItem("Tools/Lore Trailer/Setup Part 2 (spline_p3, winter + strike)")]
     public static void Setup()
@@ -63,7 +62,21 @@ public static class ActPartTwoSetup
         if (rig == null) { rig = new GameObject(RigName); Undo.RegisterCreatedObjectUndo(rig, "part2 rig"); }
         if (!rig.activeSelf) { Undo.RecordObject(rig, "enable"); rig.SetActive(true); }
 
-        MakeChaseCam(rig, ride.transform);
+        // Cinematic Part-2 coverage with cuts: fleeing (fear) -> side -> a
+        // front angle for the look-back -> a tight close-up for the strike.
+        var camFlee = MakeFollowCam(rig, "CM_Part2_Flee", ride.transform, new Vector3(0f, 2.2f, -5f), 52f);
+        var camSide = MakeFollowCam(rig, "CM_Part2_Side", ride.transform, new Vector3(5f, 2.4f, -0.5f), 42f);
+        var camFront = MakeFollowCam(rig, "CM_Part2_Front", ride.transform, new Vector3(1.6f, 2.0f, 6.5f), 40f);
+        var camStrike = MakeFollowCam(rig, "CM_Part2_StrikeCU", ride.transform, new Vector3(2.6f, 1.7f, -2.2f), 34f);
+
+        var cutter = rig.GetComponent<TrailerCameraCutter>();
+        if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
+        Undo.RecordObject(cutter, "part2 cuts");
+        cutter.cameras = new[] { camFlee, camSide, camFront, camStrike };
+        cutter.useProgress = true;
+        cutter.ride = ride;
+        cutter.cutProgress = new[] { 0f, 0.35f, 0.62f, 0.85f };   // strike close-up lands on the ~0.9 strike
+        EditorUtility.SetDirty(cutter);
 
         var evt = rig.GetComponent<TrailerRideEvent>();
         if (evt == null) evt = Undo.AddComponent<TrailerRideEvent>(rig);
@@ -88,26 +101,28 @@ public static class ActPartTwoSetup
             "⚠ STILL NEEDS ANIMATIONS (see the list): rider look-back, horse rear-up, rider fall, and the battle.", "OK");
     }
 
-    private static void MakeChaseCam(GameObject rig, Transform horse)
+    private static CinemachineCamera MakeFollowCam(GameObject rig, string name, Transform horse, Vector3 offset, float fov)
     {
-        var existing = rig.GetComponentsInChildren<CinemachineCamera>(true).FirstOrDefault(c => c.name == "CM_Part2_Chase");
-        GameObject go = existing != null ? existing.gameObject : new GameObject("CM_Part2_Chase");
-        if (existing == null) { Undo.RegisterCreatedObjectUndo(go, "chase"); go.transform.SetParent(rig.transform, false); }
+        var existing = rig.GetComponentsInChildren<CinemachineCamera>(true).FirstOrDefault(c => c.name == name);
+        GameObject go = existing != null ? existing.gameObject : new GameObject(name);
+        if (existing == null) { Undo.RegisterCreatedObjectUndo(go, "cam"); go.transform.SetParent(rig.transform, false); }
 
         var cam = go.GetComponent<CinemachineCamera>() ?? go.AddComponent<CinemachineCamera>();
-        cam.Lens.FieldOfView = 44f;
+        cam.Lens.FieldOfView = fov;
         var tgt = cam.Target; tgt.TrackingTarget = horse; cam.Target = tgt;
-        var pr = cam.Priority; pr.Value = 100; cam.Priority = pr;
+        var pr = cam.Priority; pr.Value = 0; cam.Priority = pr;   // the cutter raises the live one
 
         var follow = go.GetComponent<CinemachineFollow>() ?? go.AddComponent<CinemachineFollow>();
-        follow.FollowOffset = ChaseOffset;
+        follow.FollowOffset = offset;
         var ts = follow.TrackerSettings;
-        ts.PositionDamping = new Vector3(0.9f, 0.9f, 1.2f);
-        ts.RotationDamping = new Vector3(0.7f, 0.7f, 0.7f);
+        // Tighter damping on the close-up so cuts feel crisp; smoother on the wide flee.
+        ts.PositionDamping = new Vector3(0.7f, 0.7f, 0.9f);
+        ts.RotationDamping = new Vector3(0.6f, 0.6f, 0.6f);
         follow.TrackerSettings = ts;
 
         var comp = go.GetComponent<CinemachineRotationComposer>() ?? go.AddComponent<CinemachineRotationComposer>();
-        comp.Damping = new Vector2(0.55f, 0.55f);
+        comp.Damping = new Vector2(0.45f, 0.45f);
+        return cam;
     }
 
     private static SplineContainer FindSpline(string needle)
