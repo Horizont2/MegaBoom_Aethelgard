@@ -24,7 +24,7 @@ public class TrailerRideEvent : MonoBehaviour
     public float rearTime = 0.6f;
 
     private TrailerLightningStrike _bolt;
-    private Animator _horseAnim, _riderAnim;
+    private Animator[] _anims;
     private bool _struck, _lookedBack;
     private float _rearT = -1f;
     private Quaternion _rearBase;
@@ -32,9 +32,10 @@ public class TrailerRideEvent : MonoBehaviour
     private void OnEnable()
     {
         _struck = false; _lookedBack = false; _rearT = -1f;
-        if (ride != null) _horseAnim = ride.GetComponent<Animator>() ?? ride.GetComponentInChildren<Animator>();
-        var rider = GameObject.FindGameObjectWithTag("Player");
-        if (rider != null) _riderAnim = rider.GetComponentInChildren<Animator>();
+        // Grab EVERY animator so we can fire a trigger on whichever one actually
+        // has that parameter — no dependence on tags/hierarchy (that's why the
+        // look-back/fall weren't firing).
+        _anims = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (_bolt == null)
         {
             var go = new GameObject("Trailer_LightningBolt");
@@ -53,7 +54,7 @@ public class TrailerRideEvent : MonoBehaviour
         if (!_lookedBack && ride.progress01 >= lookBackProgress)
         {
             _lookedBack = true;
-            if (_riderAnim != null) _riderAnim.SetTrigger("LookBack");
+            FireTrigger("LookBack");
         }
 
         if (!_struck && ride.progress01 >= strikeProgress)
@@ -71,8 +72,8 @@ public class TrailerRideEvent : MonoBehaviour
             // Stop the gallop so the horse rears and STANDS (instead of running
             // on), then rear (horse) + throw the rider (fall).
             ride.enabled = false;
-            if (_horseAnim != null) _horseAnim.SetTrigger("Rear");
-            if (_riderAnim != null) _riderAnim.SetTrigger("Fall");
+            FireTrigger("Rear");
+            FireTrigger("Fall");
 
             if (fakeRear)
             {
@@ -89,6 +90,22 @@ public class TrailerRideEvent : MonoBehaviour
             horseModel.localRotation = _rearBase * Quaternion.Euler(-pitch, 0f, 0f);
             if (_rearT >= rearTime) { _rearT = -1f; horseModel.localRotation = _rearBase; }
         }
+    }
+
+    // Fire a trigger on every animator that actually declares that parameter.
+    private void FireTrigger(string param)
+    {
+        if (_anims == null) return;
+        int hits = 0;
+        foreach (var a in _anims)
+        {
+            if (a == null || a.runtimeAnimatorController == null) continue;
+            foreach (var p in a.parameters)
+                if (p.type == AnimatorControllerParameterType.Trigger && p.name == param)
+                { a.SetTrigger(param); hits++; break; }
+        }
+        if (hits == 0)
+            Debug.LogWarning($"[Trailer] No animator has trigger '{param}'. Run Tools ▸ Lore Trailer ▸ Setup Cutscene Animations.");
     }
 
     private static readonly string[] GroundNames = { "terrain", "ground", "floor", "road", "path" };

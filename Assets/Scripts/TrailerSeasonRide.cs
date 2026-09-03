@@ -142,10 +142,18 @@ public class TrailerSeasonRide : MonoBehaviour
         }
     }
 
+    // When true, the sequence director drives the look via ApplyU() and this
+    // component stops advancing on its own.
+    [HideInInspector] public bool manual = false;
+
+    // Public hook so the sequence director can drive the time-lapse / hold winter.
+    public void ApplyU(float u) { Apply(Mathf.Clamp01(u)); }
+
     // LateUpdate so our sun/fog wins over DayNightCycle's own Update — no need to
     // disable the day/night system; we just override it during the trailer.
     private void LateUpdate()
     {
+        if (manual) return;
         float raw;
         if (driveByRideProgress && ride != null)
         {
