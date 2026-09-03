@@ -43,11 +43,13 @@ public static class TrailerAnimationSetup
 
         var sm = ac.layers[0].stateMachine;
 
-        // Find/​create the Rear state and find Run.
+        // Use the rear state the user already added (name contains "rear"); only
+        // create one if none exists. Find Run for the return transition.
         AnimatorState rear = null, run = null;
         foreach (var cs in sm.states)
         {
-            if (cs.state.name == "Rear") rear = cs.state;
+            string n = cs.state.name.ToLowerInvariant();
+            if (rear == null && n.Contains("rear")) rear = cs.state;
             if (cs.state.name == "Run") run = cs.state;
         }
         if (rear == null) { rear = sm.AddState("Rear"); rear.motion = clip; changes++; }
