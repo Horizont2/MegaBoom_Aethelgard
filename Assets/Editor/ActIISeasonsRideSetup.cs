@@ -64,7 +64,7 @@ public static class ActIISeasonsRideSetup
         season.summerTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexSummer);
         season.autumnTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexAutumn);
         season.winterTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexWinter);
-        season.leavesPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LeavesPrefab);
+        season.leavesPrefab = null;   // user asked to remove the green falling leaves
         season.snowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SnowPrefab);
         season.sun = FindSun();
         season.cam = Camera.main;

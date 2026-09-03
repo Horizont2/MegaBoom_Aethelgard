@@ -72,7 +72,9 @@ public static class TrailerRoadsideDresser
                 float side = (i % 2 == 0) ? TorchSide : -TorchSide;
                 if (PlaceAlong(road, t, side, out Vector3 p, out Vector3 fwd))
                 {
-                    PlaceUpright(torch, root.transform, p, UnityEngine.Random.Range(0f, 360f), 1f);
+                    // This torch prefab's mesh is authored lying — it needs X=-90 to
+                    // stand (verified from a correctly-placed instance in the project).
+                    PlaceUpright(torch, root.transform, p, UnityEngine.Random.Range(0f, 360f), 1f, -90f);
                     torches++;
                 }
             }
@@ -157,17 +159,16 @@ public static class TrailerRoadsideDresser
         return go;
     }
 
-    // Keep the prefab's authored UPRIGHT pose, apply only a yaw around world up.
-    private static GameObject PlaceUpright(GameObject prefab, Transform parent, Vector3 pos, float yaw, float scale)
+    // Stand the prop upright with an explicit pitch (some low-poly meshes are
+    // authored lying and need a -90 X to stand) plus a random yaw.
+    private static GameObject PlaceUpright(GameObject prefab, Transform parent, Vector3 pos, float yaw, float scale, float pitch)
     {
         var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
         if (go == null) go = Object.Instantiate(prefab);
         Undo.RegisterCreatedObjectUndo(go, "place " + prefab.name);
         go.transform.SetParent(parent, true);
         go.transform.position = pos;
-        // The torch prefab stands at identity, so force absolute upright + yaw
-        // (the old LookRotation/relative rotation was laying it on its side).
-        go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        go.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
         if (!Mathf.Approximately(scale, 1f)) go.transform.localScale *= scale;
         return go;
     }
