@@ -356,6 +356,7 @@ GameObject:
   - component: {fileID: 1155456533375444152}
   - component: {fileID: 3189647685470779105}
   - component: {fileID: -8393903843483212411}
+  - component: {fileID: -4127491537273634452}
   m_Layer: 0
   m_Name: Arena_Region_04
   m_TagString: Untagged
@@ -606,6 +607,31 @@ MonoBehaviour:
   flattenRadius: 30
   yOffset: -0.5
   maxAllowedSlope: 6
+--- !u!114 &-4127491537273634452
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 551460717933574289}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e9490fc75baf284589fadf69d0f791f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocationGroundSnapper
+  maxSnapDistance: 8
+  tolerance: 0.05
+  excludeNameContains:
+  - tree
+  - "\u0434\u0435\u0440\u0435\u0432"
+  - bush
+  - "\u043A\u0443\u0449"
+  - mill
+  - "\u043C\u043B\u0438\u043D"
+  - wheel
+  - "\u043A\u043E\u043B\u0435\u0441"
+  - water
+  - "\u0432\u043E\u0434\u044F\u043D"
 --- !u!1 &569042821557284962
 GameObject:
   m_ObjectHideFlags: 0
