@@ -5,13 +5,14 @@ using UnityEngine.Playables;
 using Unity.Cinemachine;
 
 // Master director that plays the whole trailer in ONE Play:
-//   PHASE 1  — the Act I ride (spline 1), Act I cameras.
-//   TIMELAPSE — when the ride nears its end, the camera cranes UP and holds while
-//               the sun races through several days and the world turns autumn →
-//               winter (recolour).
-//   PHASE 2  — the horse + rider are moved to spline_p3 and gallop on through the
-//               winter world; the Part 2 rig (cuts, lightning, rear, fall,
-//               pursuing skeletons) takes over.
+//   PHASE 1   — the Act I ride on spline 1, filmed by the Act I Timeline shots.
+//               The world stays SUMMER here (no season change on camera).
+//   TIMELAPSE — near the end of the ride the camera cranes UP and looks out over
+//               the REGION (it does not follow the horse) while the sun races
+//               through several days and the world turns autumn -> winter. The
+//               horse keeps galloping away, so it never "runs on the spot".
+//   PHASE 2   — hard CUT to spline_p3: the horse is already running and the
+//               Part 2 rig (low, fearful angles / lightning / rear / fall) plays.
 //
 // Put it on its OWN GameObject (not a rig it toggles). It auto-finds everything.
 public class TrailerSequenceDirector : MonoBehaviour
@@ -24,37 +25,47 @@ public class TrailerSequenceDirector : MonoBehaviour
     public GameObject part2Rig;              // LoreTrailer_Part2_Rig
     public TrailerSeasonRide season;
     public TrailerTerrainSeasons terrainSeason;
-    public float part1Speed = 12f;
 
     [Header("Timing")]
+    [Tooltip("Seconds for the horse to ride the WHOLE Part 1 spline. Must match what the Act I Timeline shots were cut for (24s) — a fixed m/s broke the shot timing.")]
+    public float part1RideSeconds = 24f;
+    [Tooltip("Seconds to ride the whole Part 2 spline.")]
+    public float part2RideSeconds = 22f;
     [Range(0f, 1f)] public float part1EndProgress = 0.9f;
     public float timelapseSeconds = 7f;
     public float dayNightCyclesInTimelapse = 4f;
 
-    [Header("Crane hold")]
-    public Vector3 craneStartOffset = new Vector3(0f, 7f, -9f);
-    public Vector3 craneEndOffset = new Vector3(0f, 34f, -8f);   // high overhead, not far behind (avoids map-edge textures)
+    [Header("Crane (region reveal — does NOT follow the horse)")]
+    public float craneStartHeight = 10f;
+    public float craneEndHeight = 48f;
+    public float craneStartPitch = 25f;
+    public float craneEndPitch = 55f;
 
     private enum Phase { Part1, Timelapse, Part2 }
     private Phase _phase = Phase.Part1;
     private float _tlT;
     private CinemachineCamera _crane;
-    private CinemachineFollow _craneFollow;
-    private float _sunYaw;
+    private Vector3 _craneAnchor;
+    private float _craneYaw, _sunYaw;
 
     private void Start()
     {
         AutoFind();
-        // Force the PART 1 starting state (Part 2 setup left the horse on spline_p3
-        // and the Act I rig disabled — that's why it "started at Part 2").
+
+        // Force the PART 1 starting state (Part 2 setup leaves the horse on
+        // spline_p3 and the Act I rig disabled — that's why it "started at Part 2").
         if (actIRig != null) actIRig.SetActive(true);
         if (part2Rig != null) part2Rig.SetActive(false);
-        if (season != null) season.manual = false;
+
+        // Seasons are OURS from the start and HELD at summer, so the world never
+        // changes while the Part 1 cameras are still filming the ride.
+        if (season != null) { season.manual = true; season.ApplyU(0f); }
+        if (terrainSeason != null) { terrainSeason.manual = true; terrainSeason.ApplyU(0f); }
+
         if (ride != null && part1Spline != null)
         {
             ride.path = part1Spline;
-            ride.autoFitSeconds = 0f;
-            ride.speed = part1Speed;
+            ride.autoFitSeconds = part1RideSeconds;   // time-based, matches the shot timing
             ride.progress01 = 0f;
             ride.enabled = true;
             ride.BeginRide();
@@ -70,6 +81,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (season == null && actIRig != null) season = actIRig.GetComponent<TrailerSeasonRide>();
         if (season == null) season = Object.FindFirstObjectByType<TrailerSeasonRide>();
         if (terrainSeason == null) terrainSeason = Object.FindFirstObjectByType<TrailerTerrainSeasons>();
+
         var splines = Object.FindObjectsByType<SplineContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (part2Spline == null)
             part2Spline = splines.FirstOrDefault(s => { var n = s.name.ToLowerInvariant(); return n.Contains("p3") || n.Contains("part2") || n.Contains("actii"); });
@@ -78,18 +90,15 @@ public class TrailerSequenceDirector : MonoBehaviour
                        ?? splines.FirstOrDefault(s => s != part2Spline);
     }
 
+    // A bare camera we drive by transform — no follow/aim, so it frames the REGION
+    // instead of chasing the horse.
     private void BuildCrane()
     {
         var go = new GameObject("CM_TimelapseCrane");
         go.transform.SetParent(transform, false);
         _crane = go.AddComponent<CinemachineCamera>();
-        _crane.Lens.FieldOfView = 46f;
-        var pr = _crane.Priority; pr.Value = 0; _crane.Priority = pr;   // off until the timelapse
-        if (ride != null) { var t = _crane.Target; t.TrackingTarget = ride.transform; _crane.Target = t; }
-        _craneFollow = go.AddComponent<CinemachineFollow>();
-        _craneFollow.FollowOffset = craneStartOffset;
-        var ts = _craneFollow.TrackerSettings; ts.PositionDamping = new Vector3(1.5f, 1.5f, 1.8f); _craneFollow.TrackerSettings = ts;
-        go.AddComponent<CinemachineRotationComposer>();
+        _crane.Lens.FieldOfView = 55f;
+        var pr = _crane.Priority; pr.Value = 0; _crane.Priority = pr;
     }
 
     private void Update()
@@ -110,7 +119,6 @@ public class TrailerSequenceDirector : MonoBehaviour
                 break;
 
             case Phase.Part2:
-                // Hold winter (manual season would otherwise let DayNightCycle back in).
                 if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
                 if (terrainSeason != null) terrainSeason.ApplyU(1f);
                 break;
@@ -120,14 +128,22 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void BeginTimelapse()
     {
         _phase = Phase.Timelapse; _tlT = 0f;
-        ride.enabled = false;                                   // horse holds (ride basically done)
-        StopActIDirector();                                     // let the crane own the brain
-        LowerActICams();                                        // stop a leftover Act I cam from staying live in the textures
-        if (_crane != null) { var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr; }
+
+        // NOTE: the ride is deliberately NOT stopped — the horse keeps galloping
+        // away (overrun) so it never stands still running on the spot.
+        StopActIDirector();
+        LowerActICams();
+
+        _craneAnchor = ride.transform.position;
+        _craneYaw = ride.transform.eulerAngles.y;
+        if (_crane != null)
+        {
+            var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr;
+            PlaceCrane(0f);
+        }
+
         if (season != null)
         {
-            season.manual = true;
-            if (terrainSeason != null) terrainSeason.manual = true;
             season.driveDayNight = false;                       // we spin the sun ourselves
             if (season.sun != null) _sunYaw = season.sun.transform.eulerAngles.y;
         }
@@ -135,12 +151,11 @@ public class TrailerSequenceDirector : MonoBehaviour
 
     private void DriveTimelapse(float f)
     {
-        // Autumn -> deep winter recolour.
-        float su = Mathf.Lerp(0.55f, 1f, f);
+        float su = Mathf.Lerp(0f, 1f, f);                       // summer -> winter across the timelapse
         if (season != null) season.ApplyU(su);
         if (terrainSeason != null) terrainSeason.ApplyU(su);
 
-        // Several days race by: spin the sun fast.
+        // Several days race by.
         if (season != null && season.sun != null)
         {
             float pitch = 20f + f * dayNightCyclesInTimelapse * 360f;
@@ -149,45 +164,47 @@ public class TrailerSequenceDirector : MonoBehaviour
             season.sun.intensity = Mathf.Lerp(0.05f, 1.1f, day);
         }
 
-        // Crane rises as time passes.
-        if (_craneFollow != null)
-        {
-            float k = f * f * (3f - 2f * f);
-            _craneFollow.FollowOffset = Vector3.Lerp(craneStartOffset, craneEndOffset, k);
-        }
+        PlaceCrane(f);
+    }
+
+    // Rise and tilt down over the landscape.
+    private void PlaceCrane(float f)
+    {
+        if (_crane == null) return;
+        float k = f * f * (3f - 2f * f);
+        float h = Mathf.Lerp(craneStartHeight, craneEndHeight, k);
+        float pitch = Mathf.Lerp(craneStartPitch, craneEndPitch, k);
+        _crane.transform.position = _craneAnchor + Vector3.up * h;
+        _crane.transform.rotation = Quaternion.Euler(pitch, _craneYaw, 0f);
     }
 
     private void BeginPart2()
     {
         _phase = Phase.Part2;
 
-        // Hold winter.
         if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
-                if (terrainSeason != null) terrainSeason.ApplyU(1f);
+        if (terrainSeason != null) terrainSeason.ApplyU(1f);
 
-        // Move horse + rider (parented) to spline_p3 and ride on at a good pace.
+        // Move horse + rider (parented) onto spline_p3, already running.
         if (part2Spline != null)
         {
             ride.path = part2Spline;
-            ride.autoFitSeconds = 0f;
-            ride.speed = 12f;
+            ride.autoFitSeconds = part2RideSeconds;
             ride.progress01 = 0f;
             ride.enabled = true;
             ride.BeginRide();
         }
-        LowerActICams();
 
-        // Hand cameras to the Part 2 rig.
-        if (_crane != null) { var pr = _crane.Priority; pr.Value = 0; _crane.Priority = pr; }
+        LowerActICams();
+        // HARD CUT: switching off the live crane makes the brain snap to the Part 2
+        // camera instead of flying across the map to it.
+        if (_crane != null) _crane.gameObject.SetActive(false);
         if (part2Rig != null) part2Rig.SetActive(true);
-        // Keep actIRig active so the season driver stays alive, but its director is
-        // stopped and its cams are low priority — the Part 2 rig (priority 100) wins.
     }
 
     private void HoldWinterSun()
     {
         if (season == null || season.sun == null) return;
-        // A low, cold winter sun.
         season.sun.transform.rotation = Quaternion.Euler(18f, _sunYaw, 0f);
         season.sun.intensity = 0.8f;
     }
@@ -199,8 +216,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (dir != null) { dir.Stop(); dir.enabled = false; }
     }
 
-    // Drop every Act I virtual camera to priority 0 so none stays live at its old
-    // spot over spline 1 (the "camera hanging in the textures at the map edge").
+    // Drop every Act I virtual camera's priority so none stays live at its old spot.
     private void LowerActICams()
     {
         if (actIRig == null) return;
