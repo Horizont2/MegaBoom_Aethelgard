@@ -43,6 +43,11 @@ public class TrailerSeasonRide : MonoBehaviour
     public Color tintAutumn = new Color(0.85f, 0.5f, 0.2f);
     public Color tintWinter = new Color(0.9f, 0.92f, 1f);
 
+    [Header("Tree recolour (direct material tint on tree renderers)")]
+    public bool tintTrees = true;
+    [Tooltip("Objects whose name (or a parent's) contains any of these are treated as trees.")]
+    public string[] treeNameHints = { "tree", "pine", "birch", "oak", "trunk", "foliage", "bush" };
+
     [Header("Day / Night (sun races on its orbit as he rides)")]
     public bool driveDayNight = true;
     [Tooltip("How many full day->night cycles across the whole ride.")]
@@ -65,6 +70,11 @@ public class TrailerSeasonRide : MonoBehaviour
     private GameObject _leaves, _snow;
     private int _terrainTexState = -1;   // 0 summer,1 autumn,2 winter
     private float _clock;
+    private Renderer[] _trees;
+    private MaterialPropertyBlock _mpb;
+    private int _treeTintStep = -99;
+    private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorID = Shader.PropertyToID("_Color");
     private Quaternion _sunRot0;
     private float _sunIntensity0, _sunYaw;
     private bool _sunCached;
@@ -85,6 +95,9 @@ public class TrailerSeasonRide : MonoBehaviour
         _snow = SpawnFollower(snowPrefab, "Trailer_Snow");
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
+        if (tintTrees) GatherTrees();
+        _mpb = new MaterialPropertyBlock();
+        _treeTintStep = -99;
         Apply(0f);
     }
 
@@ -97,6 +110,36 @@ public class TrailerSeasonRide : MonoBehaviour
         if (sun != null && _sunCached) { sun.transform.rotation = _sunRot0; sun.intensity = _sunIntensity0; }
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
+        TintTrees(Color.white);   // restore trees
+    }
+
+    private void GatherTrees()
+    {
+        var all = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        var list = new System.Collections.Generic.List<Renderer>();
+        foreach (var r in all)
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            string path = (r.transform.name + " " + (r.transform.parent ? r.transform.parent.name : "") +
+                           " " + (r.transform.parent && r.transform.parent.parent ? r.transform.parent.parent.name : "")).ToLowerInvariant();
+            foreach (var h in treeNameHints) if (path.Contains(h)) { list.Add(r); break; }
+        }
+        _trees = list.ToArray();
+    }
+
+    // Tint every tree renderer's base colour (MaterialPropertyBlock, so materials
+    // aren't permanently modified).
+    private void TintTrees(Color c)
+    {
+        if (_trees == null || _mpb == null) return;
+        foreach (var r in _trees)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(_mpb);
+            _mpb.SetColor(BaseColorID, c);
+            _mpb.SetColor(ColorID, c);
+            r.SetPropertyBlock(_mpb);
+        }
     }
 
     // LateUpdate so our sun/fog wins over DayNightCycle's own Update — no need to
@@ -140,6 +183,14 @@ public class TrailerSeasonRide : MonoBehaviour
 
         Shader.SetGlobalColor(SeasonColorID, tint);
         Shader.SetGlobalFloat(SeasonIndexID, u < 0.4f ? 0f : (u < 0.72f ? 1f : 2f));
+
+        // Recolour the trees directly (the global tint above is a no-op unless a
+        // shader reads it; this actually changes their look).
+        if (tintTrees && _trees != null)
+        {
+            int step = Mathf.RoundToInt(u * 12f);
+            if (step != _treeTintStep) { TintTrees(tint); _treeTintStep = step; }
+        }
 
         float dayFactor = 1f;
         if (driveDayNight && sun != null && _sunCached)

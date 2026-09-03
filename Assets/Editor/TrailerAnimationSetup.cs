@@ -165,14 +165,16 @@ public static class TrailerAnimationSetup
         var sm = ac.layers[0].stateMachine;
 
         // Use the rear state the user already added (name contains "rear"); only
-        // create one if none exists. Find Run for the return transition.
+        // create one if none exists. Return to Idle (the horse STANDS after
+        // rearing, not gallops on).
         AnimatorState rear = null, run = null;
         foreach (var cs in sm.states)
         {
             string n = cs.state.name.ToLowerInvariant();
             if (rear == null && n.Contains("rear")) rear = cs.state;
-            if (cs.state.name == "Run") run = cs.state;
+            if (cs.state.name == "Idle") run = cs.state;          // return target = Idle (stand)
         }
+        if (run == null) foreach (var cs in sm.states) if (cs.state.name == "Run") run = cs.state;
         if (rear == null) { rear = sm.AddState("Rear"); rear.motion = clip; changes++; }
         else if (rear.motion == null) { rear.motion = clip; changes++; }
 

@@ -68,8 +68,9 @@ public class TrailerRideEvent : MonoBehaviour
             var am = AudioManager.Instance;
             if (am != null && !string.IsNullOrEmpty(neighId)) am.PlaySFX(neighId);
 
-            // Real rear-up (horse) + the rider is thrown (fall) — wired by
-            // 'Setup Cutscene Animations'.
+            // Stop the gallop so the horse rears and STANDS (instead of running
+            // on), then rear (horse) + throw the rider (fall).
+            ride.enabled = false;
             if (_horseAnim != null) _horseAnim.SetTrigger("Rear");
             if (_riderAnim != null) _riderAnim.SetTrigger("Fall");
 
