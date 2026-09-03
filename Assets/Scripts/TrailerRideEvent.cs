@@ -10,26 +10,31 @@ using UnityEngine;
 public class TrailerRideEvent : MonoBehaviour
 {
     public TrailerHorseRide ride;
-    [Range(0f, 1f)] public float strikeProgress = 0.9f;
+    [Range(0f, 1f)] public float lookBackProgress = 0.45f;   // rider glances back (fear)
+    [Range(0f, 1f)] public float strikeProgress = 0.9f;      // lightning + rear + fall
 
     [Header("Sound (routes through AudioManager)")]
     public string thunderId = "AMB/AMB_Thunder";
     public string neighId = "Animals/Horse_Snort";   // placeholder until a real neigh event exists
 
-    [Header("Placeholder rear (until a real rear-up animation is added)")]
+    [Header("Placeholder rear (only if the horse rear anim isn't wired)")]
     public bool fakeRear = false;
-    public Transform horseModel;      // what to tilt; defaults to the ride's transform
+    public Transform horseModel;
     public float rearAngle = 45f;
     public float rearTime = 0.6f;
 
     private TrailerLightningStrike _bolt;
-    private bool _struck;
+    private Animator _horseAnim, _riderAnim;
+    private bool _struck, _lookedBack;
     private float _rearT = -1f;
     private Quaternion _rearBase;
 
     private void OnEnable()
     {
-        _struck = false; _rearT = -1f;
+        _struck = false; _lookedBack = false; _rearT = -1f;
+        if (ride != null) _horseAnim = ride.GetComponent<Animator>() ?? ride.GetComponentInChildren<Animator>();
+        var rider = GameObject.FindGameObjectWithTag("Player");
+        if (rider != null) _riderAnim = rider.GetComponentInChildren<Animator>();
         if (_bolt == null)
         {
             var go = new GameObject("Trailer_LightningBolt");
@@ -42,7 +47,16 @@ public class TrailerRideEvent : MonoBehaviour
 
     private void Update()
     {
-        if (!_struck && ride != null && ride.progress01 >= strikeProgress)
+        if (ride == null) return;
+
+        // Rider glances back over the shoulder (upper body only) — dread.
+        if (!_lookedBack && ride.progress01 >= lookBackProgress)
+        {
+            _lookedBack = true;
+            if (_riderAnim != null) _riderAnim.SetTrigger("LookBack");
+        }
+
+        if (!_struck && ride.progress01 >= strikeProgress)
         {
             _struck = true;
             // Strike the ground a few metres BESIDE the horse.
@@ -52,16 +66,16 @@ public class TrailerRideEvent : MonoBehaviour
             if (_bolt != null) _bolt.Strike(gp);
 
             var am = AudioManager.Instance;
-            if (am != null)
-            {
-                if (!string.IsNullOrEmpty(neighId)) am.PlaySFX(neighId);
-            }
-            // Real rear-up (wired by Setup Cutscene Animations).
-            var horseAnim = ride.GetComponentInChildren<Animator>();
-            if (horseAnim != null) horseAnim.SetTrigger("Rear");
+            if (am != null && !string.IsNullOrEmpty(neighId)) am.PlaySFX(neighId);
+
+            // Real rear-up (horse) + the rider is thrown (fall) — wired by
+            // 'Setup Cutscene Animations'.
+            if (_horseAnim != null) _horseAnim.SetTrigger("Rear");
+            if (_riderAnim != null) _riderAnim.SetTrigger("Fall");
+
             if (fakeRear)
             {
-                if (horseModel == null && ride != null) horseModel = ride.transform;
+                if (horseModel == null) horseModel = ride.transform;
                 if (horseModel != null) { _rearBase = horseModel.localRotation; _rearT = 0f; }
             }
         }

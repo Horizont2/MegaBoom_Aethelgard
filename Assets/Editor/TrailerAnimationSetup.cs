@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -6,25 +7,145 @@ using UnityEngine;
 //
 //   Tools ▸ Lore Trailer ▸ Setup Cutscene Animations
 //
-// Horse: adds a "Rear" state (rear-up clip) + a "Rear" trigger to Horse_Animator,
-// with AnyState -> Rear -> back to Run, so the horse can rear on cue (the
-// lightning strike). TrailerRideEvent fires the trigger.
+// Horse: adds a "Rear" trigger onto the rear-up state in Horse_Animator.
+// Rider (OnHorseAnimator): adds an UPPER-BODY-masked "Look behind" layer (legs
+// keep the riding pose — the requested "remove lower body on look-back"), plus
+// Fall / GetUp / Attack states with triggers. TrailerRideEvent fires them.
 public static class TrailerAnimationSetup
 {
     private const string HorseController = "Assets/Animators/Horse_Animator.controller";
     private const string RearClip = "Assets/LPHorse_Version_2_9/Version_2_9/Animations/Primary_Actions/Rig_RearUp_Full_Right.anim";
 
+    private const string RiderController = "Assets/Animators/OnHorseAnimator.controller";
+    private const string MaskPath = "Assets/LoreTrailer/TrailerUpperBody.mask";
+    private const string LookBehind = "Assets/HeroAnimations/Animations/Look behind.anim";
+    private const string FallingBack = "Assets/HeroAnimations/Animations/Falling back.anim";
+    private const string GettingUp = "Assets/HeroAnimations/Animations/Getting up.anim";
+    private const string AttackClip = "Assets/HeroAnimations/Animations/Melee_1H_Attack_Slice_Horizontal.anim";
+
     [MenuItem("Tools/Lore Trailer/Setup Cutscene Animations")]
     public static void Setup()
     {
         int changes = SetupHorseRear();
+        changes += SetupHeroAnims();
         AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
         EditorUtility.DisplayDialog("Cutscene Animations",
-            changes > 0
-                ? "Horse rear-up wired: 'Rear' trigger + state added to Horse_Animator (AnyState → Rear → Run).\n" +
-                  "TrailerRideEvent will fire it at the lightning strike.\n\n" +
-                  "Hero clips (look-back / fall / combat) live in Assets/HeroAnimations as FBX sub-clips — tell me which hero prefab is the trailer rider and I'll wire those with an upper-body mask on the look-back."
-                : "Horse rear already set up (no changes).", "OK");
+            "Wired the cutscene animations:\n" +
+            "  • Horse: 'Rear' trigger on the rear-up state (AnyState → Rear → Run).\n" +
+            "  • Rider: an UPPER-BODY-masked 'Look behind' layer (legs keep riding), plus Fall / GetUp / Attack states.\n" +
+            "  • Triggers: LookBack, Fall, GetUp, Attack, Rear — fired by TrailerRideEvent.\n\n" +
+            (changes == 0 ? "(No changes — already set up.)" : $"({changes} change(s) applied.)"), "OK");
+    }
+
+    // --- Rider (hero) ---
+
+    private static int SetupHeroAnims()
+    {
+        var ac = AssetDatabase.LoadAssetAtPath<AnimatorController>(RiderController);
+        if (ac == null) { Debug.LogWarning("[Trailer] OnHorseAnimator not found."); return 0; }
+
+        var lookBehind = AssetDatabase.LoadAssetAtPath<AnimationClip>(LookBehind);
+        var fall = AssetDatabase.LoadAssetAtPath<AnimationClip>(FallingBack);
+        var getUp = AssetDatabase.LoadAssetAtPath<AnimationClip>(GettingUp);
+        var attack = AssetDatabase.LoadAssetAtPath<AnimationClip>(AttackClip);
+
+        int changes = 0;
+
+        // Base-layer one-shot states (full body): Fall (stays down), GetUp, Attack.
+        var baseSm = ac.layers[0].stateMachine;
+        changes += AddTriggeredState(ac, baseSm, "Fall", fall, returnTo: null);
+        changes += AddTriggeredState(ac, baseSm, "GetUp", getUp, returnTo: baseSm.defaultState);
+        changes += AddTriggeredState(ac, baseSm, "Attack", attack, returnTo: baseSm.defaultState);
+
+        // Upper-body masked look-back layer.
+        changes += EnsureLookBackLayer(ac, lookBehind);
+
+        if (changes > 0) EditorUtility.SetDirty(ac);
+        return changes;
+    }
+
+    private static int EnsureLookBackLayer(AnimatorController ac, AnimationClip lookBehind)
+    {
+        if (lookBehind == null) return 0;
+        if (ac.layers.Any(l => l.name == "TrailerLookBack")) return 0;
+
+        if (!ac.parameters.Any(p => p.name == "LookBack"))
+            ac.AddParameter("LookBack", AnimatorControllerParameterType.Trigger);
+
+        var mask = LoadOrCreateUpperBodyMask();
+
+        var sm = new AnimatorStateMachine { name = "TrailerLookBack", hideFlags = HideFlags.HideInHierarchy };
+        AssetDatabase.AddObjectToAsset(sm, ac);
+        var empty = sm.AddState("Empty");
+        var look = sm.AddState("LookBack");
+        look.motion = lookBehind;
+        sm.defaultState = empty;
+
+        var toLook = sm.AddAnyStateTransition(look);
+        toLook.AddCondition(AnimatorConditionMode.If, 0f, "LookBack");
+        toLook.duration = 0.2f; toLook.hasExitTime = false; toLook.canTransitionToSelf = false;
+
+        var back = look.AddTransition(empty);
+        back.hasExitTime = true; back.exitTime = 0.8f; back.duration = 0.3f;
+
+        ac.AddLayer(new AnimatorControllerLayer
+        {
+            name = "TrailerLookBack",
+            defaultWeight = 1f,
+            avatarMask = mask,
+            blendingMode = AnimatorLayerBlendingMode.Override,
+            stateMachine = sm,
+        });
+        return 1;
+    }
+
+    private static AvatarMask LoadOrCreateUpperBodyMask()
+    {
+        var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(MaskPath);
+        if (mask == null)
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/LoreTrailer")) AssetDatabase.CreateFolder("Assets", "LoreTrailer");
+            mask = new AvatarMask();
+            AssetDatabase.CreateAsset(mask, MaskPath);
+        }
+        // Upper body ON, lower body OFF — so the look-back never touches the legs.
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.Root, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.Body, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.Head, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftArm, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightArm, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftLeg, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightLeg, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFootIK, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFootIK, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftHandIK, false);
+        mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightHandIK, false);
+        EditorUtility.SetDirty(mask);
+        return mask;
+    }
+
+    // AnyState -> state (on a trigger of the same name); optional return transition.
+    private static int AddTriggeredState(AnimatorController ac, AnimatorStateMachine sm, string name, AnimationClip clip, AnimatorState returnTo)
+    {
+        if (clip == null) return 0;
+        if (sm.states.Any(s => s.state.name == name)) return 0;
+        if (!ac.parameters.Any(p => p.name == name))
+            ac.AddParameter(name, AnimatorControllerParameterType.Trigger);
+
+        var st = sm.AddState(name);
+        st.motion = clip;
+        var t = sm.AddAnyStateTransition(st);
+        t.AddCondition(AnimatorConditionMode.If, 0f, name);
+        t.duration = 0.15f; t.hasExitTime = false; t.canTransitionToSelf = false;
+        if (returnTo != null)
+        {
+            var b = st.AddTransition(returnTo);
+            b.hasExitTime = true; b.exitTime = 0.9f; b.duration = 0.25f;
+        }
+        return 1;
     }
 
     private static int SetupHorseRear()
