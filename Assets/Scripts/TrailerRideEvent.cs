@@ -56,6 +56,9 @@ public class TrailerRideEvent : MonoBehaviour
             {
                 if (!string.IsNullOrEmpty(neighId)) am.PlaySFX(neighId);
             }
+            // Real rear-up (wired by Setup Cutscene Animations).
+            var horseAnim = ride.GetComponentInChildren<Animator>();
+            if (horseAnim != null) horseAnim.SetTrigger("Rear");
             if (fakeRear)
             {
                 if (horseModel == null && ride != null) horseModel = ride.transform;
