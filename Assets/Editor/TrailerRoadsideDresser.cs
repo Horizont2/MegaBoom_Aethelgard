@@ -21,12 +21,10 @@ public static class TrailerRoadsideDresser
     private const string Root = "Trailer_RoadDressing";
 
     private const string TorchPath = "Assets/Scenes/Low_Poly_Survival/Prefabs/Torch.prefab";
+    // Part 1 uses only the WEAKEST undead (minions) that chase the rider.
     private static readonly string[] UndeadPaths =
     {
-        "Assets/Prefabs/Skeleton_Warrior.prefab",
         "Assets/Prefabs/Skeleton_Minion.prefab",
-        "Assets/Prefabs/Skeleton_Rogue.prefab",
-        "Assets/Prefabs/Skeleton_Mage.prefab",
     };
     // Tunables
     private const float TorchSpacing = 13f;   // metres between torches (alternating sides)
@@ -78,7 +76,8 @@ public static class TrailerRoadsideDresser
                 {
                     // This torch prefab's mesh is authored lying — it needs X=-90 to
                     // stand (verified from a correctly-placed instance in the project).
-                    PlaceUpright(torch, root.transform, p, UnityEngine.Random.Range(0f, 360f), 1f, -90f);
+                    // Lift slightly so the base sits ON the ground, not sunk into it.
+                    PlaceUpright(torch, root.transform, p + Vector3.up * 0.35f, UnityEngine.Random.Range(0f, 360f), 1f, -90f);
                     torches++;
                 }
             }
