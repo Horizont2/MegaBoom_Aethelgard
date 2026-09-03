@@ -23,6 +23,7 @@ public class TrailerSequenceDirector : MonoBehaviour
     public GameObject actIRig;               // LoreTrailer_Rig
     public GameObject part2Rig;              // LoreTrailer_Part2_Rig
     public TrailerSeasonRide season;
+    public TrailerTerrainSeasons terrainSeason;
     public float part1Speed = 12f;
 
     [Header("Timing")]
@@ -68,6 +69,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (part2Rig == null) part2Rig = GameObject.Find("LoreTrailer_Part2_Rig");
         if (season == null && actIRig != null) season = actIRig.GetComponent<TrailerSeasonRide>();
         if (season == null) season = Object.FindFirstObjectByType<TrailerSeasonRide>();
+        if (terrainSeason == null) terrainSeason = Object.FindFirstObjectByType<TrailerTerrainSeasons>();
         var splines = Object.FindObjectsByType<SplineContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (part2Spline == null)
             part2Spline = splines.FirstOrDefault(s => { var n = s.name.ToLowerInvariant(); return n.Contains("p3") || n.Contains("part2") || n.Contains("actii"); });
@@ -110,6 +112,7 @@ public class TrailerSequenceDirector : MonoBehaviour
             case Phase.Part2:
                 // Hold winter (manual season would otherwise let DayNightCycle back in).
                 if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
+                if (terrainSeason != null) terrainSeason.ApplyU(1f);
                 break;
         }
     }
@@ -124,6 +127,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (season != null)
         {
             season.manual = true;
+            if (terrainSeason != null) terrainSeason.manual = true;
             season.driveDayNight = false;                       // we spin the sun ourselves
             if (season.sun != null) _sunYaw = season.sun.transform.eulerAngles.y;
         }
@@ -132,7 +136,9 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void DriveTimelapse(float f)
     {
         // Autumn -> deep winter recolour.
-        if (season != null) season.ApplyU(Mathf.Lerp(0.55f, 1f, f));
+        float su = Mathf.Lerp(0.55f, 1f, f);
+        if (season != null) season.ApplyU(su);
+        if (terrainSeason != null) terrainSeason.ApplyU(su);
 
         // Several days race by: spin the sun fast.
         if (season != null && season.sun != null)
@@ -157,6 +163,7 @@ public class TrailerSequenceDirector : MonoBehaviour
 
         // Hold winter.
         if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
+                if (terrainSeason != null) terrainSeason.ApplyU(1f);
 
         // Move horse + rider (parented) to spline_p3 and ride on at a good pace.
         if (part2Spline != null)

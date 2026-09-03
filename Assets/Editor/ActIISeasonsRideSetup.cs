@@ -83,6 +83,46 @@ public static class ActIISeasonsRideSetup
             ts.terrain = terrain;
             ts.startProgress = 0.6f;
             ts.swapGroundTexture = false;   // don't repaint the terrain with wrong textures
+
+            // TREES: match each terrain tree prototype to its _Autumn / _Winter
+            // variant in Assets/GeneratedBiomeTrees so they can be swapped per season.
+            var protos = terrain.terrainData.treePrototypes;
+            var aut = new GameObject[protos.Length];
+            var win = new GameObject[protos.Length];
+            var variants = AssetDatabase.FindAssets("t:GameObject", new[] { "Assets/GeneratedBiomeTrees" })
+                .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
+                .Where(g => g != null).ToArray();
+            int matched = 0;
+            for (int i = 0; i < protos.Length; i++)
+            {
+                var basePrefab = protos[i].prefab;
+                if (basePrefab == null) continue;
+                string bn = basePrefab.name;
+                aut[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("autumn"));
+                win[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("winter"));
+                if (aut[i] != null || win[i] != null) matched++;
+            }
+            ts.autumnTreePrefabs = aut;
+            ts.winterTreePrefabs = win;
+
+            // GRASS: same matching for the painted detail prototypes (mesh grass/bushes).
+            var dets = terrain.terrainData.detailPrototypes;
+            var dAut = new GameObject[dets.Length];
+            var dWin = new GameObject[dets.Length];
+            int dMatched = 0;
+            for (int i = 0; i < dets.Length; i++)
+            {
+                var bp = dets[i].prototype;
+                if (bp == null) continue;      // texture grass → handled by the colour tint
+                string bn = bp.name;
+                dAut[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("autumn"));
+                dWin[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("winter"));
+                if (dAut[i] != null || dWin[i] != null) dMatched++;
+            }
+            ts.autumnDetailPrefabs = dAut;
+            ts.winterDetailPrefabs = dWin;
+
+            Debug.Log($"[Trailer] Tree prototypes {protos.Length} (variants matched {matched}); detail/grass prototypes {dets.Length} (variants matched {dMatched}).");
             EditorUtility.SetDirty(ts);
             terrainOk = true;
         }

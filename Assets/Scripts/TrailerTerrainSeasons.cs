@@ -28,9 +28,27 @@ public class TrailerTerrainSeasons : MonoBehaviour
     [Range(0f, 1f)] public float autumnBlend = 0.7f;
     [Range(0f, 1f)] public float winterBlend = 0.9f;
 
+    [Header("TREES (terrain tree prototypes) — season prefab per prototype index")]
+    [Tooltip("Assigned by 'Setup Act II Seasons' by matching each terrain tree prototype to its _Autumn / _Winter variant in Assets/GeneratedBiomeTrees.")]
+    public GameObject[] autumnTreePrefabs;
+    public GameObject[] winterTreePrefabs;
+
+    [Header("GRASS (painted detail prototypes) — season prefab per detail index")]
+    [Tooltip("For MESH-based painted grass/bushes the colour tint is ignored, so we swap the detail prototype's prefab instead. Assigned by 'Setup Act II Seasons'.")]
+    public GameObject[] autumnDetailPrefabs;
+    public GameObject[] winterDetailPrefabs;
+
+    // When true the sequence director drives the look via ApplyU().
+    [HideInInspector] public bool manual = false;
+    public void ApplyU(float u) { if (_ready) ApplyProgress(Mathf.Clamp01(u)); }
+
     private TerrainData _origTD, _workTD;
     private TerrainCollider _collider;
     private Color[] _baseHealthy, _baseDry;
+    private GameObject[] _origTreePrefabs;
+    private GameObject[] _origDetailPrefabs;
+    private int _treeState = -1;
+    private int _detailState = -1;
     private int _texState = -1;
     private float _lastBlend = -1f;
     private float _clock;
@@ -52,9 +70,22 @@ public class TrailerTerrainSeasons : MonoBehaviour
         var det = _workTD.detailPrototypes;
         _baseHealthy = new Color[det.Length];
         _baseDry = new Color[det.Length];
-        for (int i = 0; i < det.Length; i++) { _baseHealthy[i] = det[i].healthyColor; _baseDry[i] = det[i].dryColor; }
+        _origDetailPrefabs = new GameObject[det.Length];
+        for (int i = 0; i < det.Length; i++)
+        {
+            _baseHealthy[i] = det[i].healthyColor;
+            _baseDry[i] = det[i].dryColor;
+            _origDetailPrefabs[i] = det[i].prototype;
+        }
 
-        _texState = -1; _lastBlend = -1f; _clock = 0f;
+        // Cache the terrain's original tree prototype prefabs so we can swap them
+        // to the season variants (this is how Terrain trees recolour — they're
+        // TreeInstances, not renderers).
+        var tp = _workTD.treePrototypes;
+        _origTreePrefabs = new GameObject[tp.Length];
+        for (int i = 0; i < tp.Length; i++) _origTreePrefabs[i] = tp[i].prefab;
+
+        _texState = -1; _treeState = -1; _lastBlend = -1f; _clock = 0f;
         _ready = true;
         ApplyProgress(0f);
     }
@@ -72,7 +103,7 @@ public class TrailerTerrainSeasons : MonoBehaviour
 
     private void Update()
     {
-        if (!_ready) return;
+        if (!_ready || manual) return;
         float raw = (driveByRideProgress && ride != null)
             ? Mathf.Clamp01(ride.progress01)
             : (seasonDuration > 0.01f ? Mathf.Clamp01((_clock += Time.deltaTime) / seasonDuration) : 0f);
@@ -83,6 +114,11 @@ public class TrailerTerrainSeasons : MonoBehaviour
 
     private void ApplyProgress(float u)
     {
+        // TREES + painted GRASS: swap prototypes to the season variants.
+        int season = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
+        if (season != _treeState) { SwapTreePrototypes(season); _treeState = season; }
+        if (season != _detailState) { SwapDetailPrototypes(season); _detailState = season; }
+
         // Grass tint: summer (none) -> autumn -> winter.
         Color tint; float blend;
         if (u < 0.5f)
@@ -130,6 +166,52 @@ public class TrailerTerrainSeasons : MonoBehaviour
                 _texState = want;
             }
         }
+    }
+
+    // Terrain trees are TreeInstances drawn from the terrain's tree PROTOTYPES —
+    // recolouring them means pointing each prototype at its season-variant prefab
+    // (done on the CLONE, so the real terrain asset is untouched).
+    private void SwapTreePrototypes(int season)
+    {
+        if (_workTD == null || _origTreePrefabs == null) return;
+        var tp = _workTD.treePrototypes;
+        bool changed = false;
+        for (int i = 0; i < tp.Length && i < _origTreePrefabs.Length; i++)
+        {
+            GameObject want = _origTreePrefabs[i];
+            if (season == 1 && autumnTreePrefabs != null && i < autumnTreePrefabs.Length && autumnTreePrefabs[i] != null)
+                want = autumnTreePrefabs[i];
+            else if (season == 2 && winterTreePrefabs != null && i < winterTreePrefabs.Length && winterTreePrefabs[i] != null)
+                want = winterTreePrefabs[i];
+            if (tp[i].prefab != want) { tp[i].prefab = want; changed = true; }
+        }
+        if (!changed) return;
+        _workTD.treePrototypes = tp;
+        _workTD.RefreshPrototypes();
+        if (terrain != null) terrain.Flush();
+    }
+
+    // Painted grass/bushes: for MESH detail prototypes the healthy/dry colours are
+    // ignored, so point the prototype at its season-variant prefab instead.
+    private void SwapDetailPrototypes(int season)
+    {
+        if (_workTD == null || _origDetailPrefabs == null) return;
+        var det = _workTD.detailPrototypes;
+        bool changed = false;
+        for (int i = 0; i < det.Length && i < _origDetailPrefabs.Length; i++)
+        {
+            if (_origDetailPrefabs[i] == null) continue;      // texture-based grass → colour tint handles it
+            GameObject want = _origDetailPrefabs[i];
+            if (season == 1 && autumnDetailPrefabs != null && i < autumnDetailPrefabs.Length && autumnDetailPrefabs[i] != null)
+                want = autumnDetailPrefabs[i];
+            else if (season == 2 && winterDetailPrefabs != null && i < winterDetailPrefabs.Length && winterDetailPrefabs[i] != null)
+                want = winterDetailPrefabs[i];
+            if (det[i].prototype != want) { det[i].prototype = want; changed = true; }
+        }
+        if (!changed) return;
+        _workTD.detailPrototypes = det;
+        _workTD.RefreshPrototypes();
+        if (terrain != null) terrain.Flush();
     }
 
     private static float Smooth(float x) { x = Mathf.Clamp01(x); return x * x * (3f - 2f * x); }
