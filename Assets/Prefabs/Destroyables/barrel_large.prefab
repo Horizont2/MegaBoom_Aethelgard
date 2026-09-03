@@ -78,9 +78,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6613292276122166}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1519442510775349370}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       insertIndex: -1
@@ -88,6 +85,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
       insertIndex: -1
       addedObject: {fileID: -1484115480546254251}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2707744577060116362}
   m_SourcePrefab: {fileID: 100100000, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
 --- !u!23 &7782055782969714086 stripped
 MeshRenderer:
@@ -99,27 +99,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
   m_PrefabInstance: {fileID: 8952873627339831586}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &6613292276122166
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8142392612343546995}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.018, y: 0.017999995, z: 0.019999996}
-  m_Center: {x: 4.656613e-10, y: -0.0000000041909507, z: 0.010000007}
 --- !u!114 &1519442510775349370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -175,3 +154,25 @@ MonoBehaviour:
   flattenRadius: 1
   yOffset: 0
   maxAllowedSlope: 12
+--- !u!64 &2707744577060116362
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8142392612343546995}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -4131521360128221038, guid: 233b54ecd262fae4dac842813de97b4e, type: 3}
