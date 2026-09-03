@@ -126,10 +126,13 @@ public static class ActIRoadRideSetup
     // horse, which also starts at frame 0).
     private static bool ActivateRigAndDirector()
     {
-        // Switching back to Act I: park the Act II rig so its priority cameras
-        // don't fight Act I's timeline cameras.
-        var actII = GameObject.Find("LoreTrailer_ActII_Rig");
-        if (actII != null && actII.activeSelf) { Undo.RecordObject(actII, "disable Act II rig"); actII.SetActive(false); }
+        // Switching back to Act I: park the Act II / Part 2 rigs so their priority
+        // cameras don't fight Act I's timeline cameras.
+        foreach (var n in new[] { "LoreTrailer_ActII_Rig", "LoreTrailer_Part2_Rig" })
+        {
+            var g = GameObject.Find(n);
+            if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
+        }
 
         var rig = GameObject.Find(RigName);
         if (rig == null)
