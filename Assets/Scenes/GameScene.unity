@@ -2115,8 +2115,10 @@ MonoBehaviour:
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
   extractionCartsAmount: 10
   cartClearanceRadius: 8
+  generationBudgetMs: 33
   maxGiantTrees: 40
   giantTreeMinSpacing: 30
+  tagDecorationAsNature: 1
 --- !u!154 &240858630
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -8221,6 +8223,94 @@ MonoBehaviour:
         Data4: 0
       Path: 
   horseSnort:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerMusic:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerRiser:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerThunderClose:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerImpact:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWhoosh:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBodyFall:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerSwordDraw:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBoneRise:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerHordeGrowl:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWindHigh:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerCastleReveal:
     fmodEvent:
       Guid:
         Data1: 0
@@ -14524,6 +14614,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 2561
   positionSmoothTime: 0.08
+  cameraRadius: 0.34
+  groundClearance: 0.5
   mouseSensitivity: 2
   minYAngle: -30
   maxYAngle: 60
@@ -22397,34 +22489,94 @@ MonoBehaviour:
     description: Increases maximum health capacity. Allows you to withstand more
       hits.
     statDisplay: +10 Max HP
-    icon: {fileID: -2083558660, guid: 5391839032266b54e9c16b27ae769162, type: 3}
+    icon: {fileID: -795878880, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
     type: 0
     amount: 10
   - upgradeName: Vanguard March
     description: Increases movement speed and tactical maneuverability on the battlefield.
     statDisplay: +5% Speed
-    icon: {fileID: 1454097815, guid: 5391839032266b54e9c16b27ae769162, type: 3}
+    icon: {fileID: -1149393003, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
     type: 1
     amount: 0.5
   - upgradeName: Siege Might
     description: Increases the kinetic force of your weapon, allowing you to break
       through enemy lines faster.
     statDisplay: +5 Damage
-    icon: {fileID: 1611294930, guid: 5391839032266b54e9c16b27ae769162, type: 3}
+    icon: {fileID: 1406753341, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
     type: 2
     amount: 5
-  - upgradeName: Tactical Supply
+  - upgradeName: Crystal Lure
     description: Expands the magnetic radius for collecting experience crystals.
     statDisplay: +3% Radius
-    icon: {fileID: 717873048, guid: 5391839032266b54e9c16b27ae769162, type: 3}
+    icon: {fileID: 1627666369, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
     type: 3
     amount: 0.3
   - upgradeName: Field Medicine
     description: You slowly regenerate health over time during combat.
     statDisplay: +0.3 HP / Sec
-    icon: {fileID: 347226840, guid: 5391839032266b54e9c16b27ae769162, type: 3}
+    icon: {fileID: -1100367610, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
     type: 6
     amount: 0.3
+  - upgradeName: Whetstone Rhythm
+    description: The swing-arc tightens. More strikes per breath.
+    statDisplay: +15 Atk Speed
+    icon: {fileID: -1483687446, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 4
+    amount: 15
+  - upgradeName: Aethelgard Plate
+    description: Damp the next blow with old steel and older oaths.
+    statDisplay: +5% Damage Resist
+    icon: {fileID: -1593554562, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 5
+    amount: 0.05
+  - upgradeName: Keen Eye
+    description: You read where bone is brittle. Strikes find the weak point oftener.
+    statDisplay: +5% Crit Chance
+    icon: {fileID: -1911670187, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 7
+    amount: 0.05
+  - upgradeName: Executioner's Edge
+    description: When the blade bites true, it bites deeper.
+    statDisplay: +25% Crit Damage
+    icon: {fileID: 1396650548, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 8
+    amount: 0.25
+  - upgradeName: Bloodbound Pact
+    description: Every wound you deliver feeds you back a sip.
+    statDisplay: +5% Lifesteal
+    icon: {fileID: -1069780385, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 9
+    amount: 0.05
+  - upgradeName: Wind-Touched
+    description: The air parts before you. Some blows pass through nothing.
+    statDisplay: +5% Dodge
+    icon: {fileID: -949723855, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 10
+    amount: 0.05
+  - upgradeName: Reaver's Reward
+    description: Each kill stitches another scar shut.
+    statDisplay: +3 HP per Kill
+    icon: {fileID: -1533437401, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 11
+    amount: 3
+  - upgradeName: Wardbreaker Sigil
+    description: Those who strike you bleed for the privilege.
+    statDisplay: +15% Thorns
+    icon: {fileID: -590818615, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 12
+    amount: 0.15
+  - upgradeName: Soulreader
+    description: You hear the song each fallen soul carries. Learn faster.
+    statDisplay: +15% XP Gain
+    icon: {fileID: 451607089, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 13
+    amount: 0.15
+  - upgradeName: Hoarder's Gaze
+    description: Aether shards spill heavier where you walk.
+    statDisplay: +20% Diamond Gain
+    icon: {fileID: -477807953, guid: 3de0f14dedf69f5459a2d1b22a8e2b4d, type: 3}
+    type: 14
+    amount: 0.2
   playerUpgradeVFXPrefab: {fileID: 7155335147208632822, guid: 97c43495f80a3244fad1301dfafbe252, type: 3}
 --- !u!4 &1164294900
 Transform:

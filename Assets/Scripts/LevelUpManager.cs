@@ -67,6 +67,8 @@ public class LevelUpManager : MonoBehaviour
     // Populates allPossibleUpgrades at runtime so every UpgradeType has at least
     // one entry — keeps the LvlUp menu varied without forcing a scene re-wire each
     // time a new upgrade type is added.
+
+    [ContextMenu("Populate Upgrades")]
     private void EnsureFullUpgradeCatalog()
     {
         if (allPossibleUpgrades == null) allPossibleUpgrades = new List<UpgradeData>();
