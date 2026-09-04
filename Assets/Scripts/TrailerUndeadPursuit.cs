@@ -80,6 +80,12 @@ public class TrailerUndeadPursuit : MonoBehaviour
                     _state = State.Chasing;
                     if (_anim != null) { _anim.SetBool("isMoving", true); _anim.SetFloat("Speed", chaseSpeed); }
                 }
+                else if (_riseT <= Time.deltaTime && AudioManager.Instance != null)
+                {
+                    // One burst as it breaks the surface — silent skeletons
+                    // erupting from the ground was the biggest missing sound.
+                    AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Spawn, _ground);
+                }
                 break;
 
             case State.Chasing:

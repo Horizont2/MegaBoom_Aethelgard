@@ -39,6 +39,10 @@ public class TrailerRideEvent : MonoBehaviour
     public float getUpSeconds = 2.2f;
     [Tooltip("The rider's normal controller, swapped in once he is back on his feet. Assigned by 'Setup Cutscene Animations'.")]
     public RuntimeAnimatorController heroAnimator;
+    [Tooltip("Resting state to enter after the swap, first match wins. HeroAnimator's DEFAULT state is 'Empty', which has no motion — landing there is what showed the bind pose (the T-pose).")]
+    public string[] riderIdleStates = { "Locomotion", "Idle" };
+    [Tooltip("Resting state for the horse after the rear.")]
+    public string[] horseIdleStates = { "Idle" };
 
     [Header("Fall physics")]
     [Tooltip("Sideways shove off the saddle.")]
@@ -70,6 +74,12 @@ public class TrailerRideEvent : MonoBehaviour
 
     [Header("Sound")]
     public string neighId = "Animals/Horse_Snort";
+    [Tooltip("Thunder crack layered over the bolt. The bolt's own thunder is distant; this is the close hit.")]
+    public string thunderId = "AMB/AMB_Thunder";
+    [Tooltip("Played as the rider hits the ground.")]
+    public string landId = "Player/Land";
+    [Tooltip("Played under the look-back, as the horde is noticed.")]
+    public string dreadId = "AMB/AMB_Crow";
 
     private TrailerLightningStrike _bolt;
     private Transform _riderGO;
@@ -83,15 +93,37 @@ public class TrailerRideEvent : MonoBehaviour
 
         if (ride != null)
         {
-            _horseAnimator = ride.GetComponent<Animator>();
+            // Find the RIDER first, then take the horse from what is left. The
+            // old fallback was GetComponentInChildren, which walks depth-first
+            // and happily returned the RIDER's animator as the horse — so the
+            // rear trigger was fired at a controller that has no such parameter
+            // and the horse just kept galloping.
             foreach (var a in ride.GetComponentsInChildren<Animator>(true))
             {
-                if (a == null) continue;
-                if (a == _horseAnimator) continue;
-                if (a.transform == ride.transform) { _horseAnimator ??= a; continue; }
-                if (_riderAnimator == null) { _riderAnimator = a; _riderGO = TopUnder(a.transform, ride.transform); }
+                if (a == null || a.transform == ride.transform) continue;
+                if (HasParam(a, lookBackTrigger) || HasParam(a, getUpTrigger))
+                {
+                    _riderAnimator = a; _riderGO = TopUnder(a.transform, ride.transform); break;
+                }
             }
-            _horseAnimator ??= ride.GetComponentInChildren<Animator>(true);
+
+            _horseAnimator = ride.GetComponent<Animator>();
+            if (_horseAnimator == null || _horseAnimator == _riderAnimator)
+            {
+                _horseAnimator = null;
+                foreach (var a in ride.GetComponentsInChildren<Animator>(true))
+                {
+                    if (a == null || a == _riderAnimator) continue;
+                    if (_riderGO != null && a.transform.IsChildOf(_riderGO)) continue;
+                    if (HasParam(a, horseRearTrigger)) { _horseAnimator = a; break; }
+                    _horseAnimator ??= a;
+                }
+            }
+
+            // Last resort: any animator that is not the rider's.
+            if (_riderAnimator == null)
+                foreach (var a in ride.GetComponentsInChildren<Animator>(true))
+                    if (a != null && a != _horseAnimator) { _riderAnimator = a; _riderGO = TopUnder(a.transform, ride.transform); break; }
 
             _horseAnim = GetOrAdd(ride.gameObject, _horseAnimator);
             if (_riderGO != null) _riderAnim = GetOrAdd(_riderGO.gameObject, _riderAnimator);
@@ -99,7 +131,8 @@ public class TrailerRideEvent : MonoBehaviour
 
         Debug.Log($"[Trailer] RideEvent ready — rider='{(_riderGO ? _riderGO.name : "NOT FOUND")}' " +
                   $"riderCtrl='{(_riderAnimator != null && _riderAnimator.runtimeAnimatorController != null ? _riderAnimator.runtimeAnimatorController.name : "none")}' " +
-                  $"triggers: look={HasParam(_riderAnimator, lookBackTrigger)} fall={HasParam(_riderAnimator, fallTrigger)} getUp={HasParam(_riderAnimator, getUpTrigger)}");
+                  $"triggers: look={HasParam(_riderAnimator, lookBackTrigger)} fall={HasParam(_riderAnimator, fallTrigger)} getUp={HasParam(_riderAnimator, getUpTrigger)} | " +
+                  $"horse='{(_horseAnimator != null ? _horseAnimator.name : "NOT FOUND")}' ctrl='{(_horseAnimator != null && _horseAnimator.runtimeAnimatorController != null ? _horseAnimator.runtimeAnimatorController.name : "none")}' rear={HasParam(_horseAnimator, horseRearTrigger)}");
 
         if (_bolt == null)
         {
@@ -129,6 +162,9 @@ public class TrailerRideEvent : MonoBehaviour
                 played = true;
             }
             if (!played) Fire(_riderAnimator, lookBackTrigger);
+            // A cry behind him sells WHY he looks back.
+            if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadId))
+                AudioManager.Instance.PlaySFX(dreadId);
             Debug.Log($"[Trailer] BEAT look-back — {(played ? "masked overlay" : "controller trigger")} (clip={(lookBehindClip != null ? lookBehindClip.name : "NONE")}, mask={(upperBodyMask != null ? upperBodyMask.name : "NONE")})");
         }
 
@@ -158,6 +194,8 @@ public class TrailerRideEvent : MonoBehaviour
         // the cut, then cut with the flash still burning.
         if (_bolt != null) _bolt.Strike(gp);
         else Debug.LogWarning("[Trailer] No lightning bolt component — strike has no visual.");
+        if (AudioManager.Instance != null && !string.IsNullOrEmpty(thunderId))
+            AudioManager.Instance.PlaySFX3D(thunderId, gp);
         CameraShakeUtil.TryShake(0.45f, 0.25f);
         Debug.Log($"[Trailer] BEAT strike — bolt at {gp}, horse at {t.position}.");
 
@@ -202,6 +240,8 @@ public class TrailerRideEvent : MonoBehaviour
         Vector3 away = _riderGO.position - t.position; away.y = 0f;
         if (away.sqrMagnitude > 0.01f) _riderGO.rotation = Quaternion.LookRotation(away.normalized);
         CameraShakeUtil.TryShake(0.25f, 0.12f);
+        if (AudioManager.Instance != null && !string.IsNullOrEmpty(landId))
+            AudioManager.Instance.PlaySFX3D(landId, _riderGO.position);
 
         yield return new WaitForSeconds(getUpDelay);
         if (!Fire(_riderAnimator, getUpTrigger) && _riderAnim != null && fallingBackClip != null)
@@ -211,7 +251,7 @@ public class TrailerRideEvent : MonoBehaviour
         // of standing frozen on the last frame.
         yield return new WaitForSeconds(Mathf.Max(0f, rearHoldSeconds - getUpDelay));
         if (_horseAnim != null) _horseAnim.Release();
-        GoToIdle(_horseAnimator);
+        GoToIdle(_horseAnimator, horseIdleStates);
 
         // Once he is on his feet the cutscene is over, so hand the rider back to
         // his normal gameplay controller.
@@ -219,14 +259,28 @@ public class TrailerRideEvent : MonoBehaviour
         SwapToHeroAnimator();
     }
 
-    // CrossFade by state name rather than trusting a transition to exist — the
-    // horse's rear state has no exit of its own.
-    private static void GoToIdle(Animator a)
+    // Enter a resting state by name, trying the bare name AND the full path.
+    // Animator.StringToHash("Idle") only matches a state sitting directly in the
+    // root state machine; anything nested needs "Base Layer.Idle", which is why
+    // the first attempt reported HeroAnimator as having no Idle when it plainly
+    // does.
+    private static bool GoToIdle(Animator a, string[] candidates, float fade = 0.3f)
     {
-        if (a == null || a.runtimeAnimatorController == null) return;
-        int idle = Animator.StringToHash("Idle");
-        if (a.HasState(0, idle)) a.CrossFade(idle, 0.3f, 0);
-        else Debug.LogWarning($"[Trailer] '{a.name}' has no 'Idle' state on layer 0 — it will hold its last pose.");
+        if (a == null || a.runtimeAnimatorController == null || candidates == null) return false;
+        foreach (var name in candidates)
+        {
+            if (string.IsNullOrEmpty(name)) continue;
+            foreach (var path in new[] { name, "Base Layer." + name })
+            {
+                int h = Animator.StringToHash(path);
+                if (!a.HasState(0, h)) continue;
+                if (fade > 0f) a.CrossFade(h, fade, 0);
+                else a.Play(h, 0, 0f);
+                return true;
+            }
+        }
+        Debug.LogWarning($"[Trailer] '{a.name}' has none of [{string.Join(", ", candidates)}] on layer 0 — it will hold its last pose.");
+        return false;
     }
 
     private void SwapToHeroAnimator()
@@ -248,9 +302,7 @@ public class TrailerRideEvent : MonoBehaviour
         // that state has no motion the rig shows its bind pose — the T-pose.
         // Enter Idle explicitly, then evaluate a frame so the pose is applied
         // before anything is rendered.
-        int idle = Animator.StringToHash("Idle");
-        if (_riderAnimator.HasState(0, idle)) _riderAnimator.Play(idle, 0, 0f);
-        else Debug.LogWarning($"[Trailer] '{heroAnimator.name}' has no 'Idle' state on layer 0 — the rider will show his bind pose. Rename the default state to Idle or set riderIdleState.");
+        GoToIdle(_riderAnimator, riderIdleStates, 0f);
         _riderAnimator.Update(0f);
         Debug.Log($"[Trailer] Rider handed back to '{heroAnimator.name}'.");
     }

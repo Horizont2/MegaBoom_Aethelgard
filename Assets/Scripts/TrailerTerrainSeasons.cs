@@ -56,9 +56,11 @@ public class TrailerTerrainSeasons : MonoBehaviour
         // Runtime clones of the detail prototype prefabs, and the material
         // instances on them we tint (instanced grass draws the prefab's
         // material and ignores healthyColor/dryColor entirely).
-        public GameObject[] detailClones;
-        public List<Material> tintMats;
-        public List<Color> tintMatBase;
+        // THREE pre-tinted clones per detail prototype, one per season. Mutating
+        // one clone's material did not take: the terrain snapshots a prototype
+        // when it is registered, and even RefreshPrototypes did not pick the new
+        // colour up. Swapping the prototype OBJECT is a change it cannot miss.
+        public GameObject[][] seasonClones;   // [season][prototypeIndex]
     }
 
     private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
@@ -138,75 +140,69 @@ public class TrailerTerrainSeasons : MonoBehaviour
     private void BuildDetailTintClones(TState s)
     {
         var det = s.work.detailPrototypes;
-        s.detailClones = new GameObject[det.Length];
-        s.tintMats = new List<Material>();
-        s.tintMatBase = new List<Color>();
-        bool changed = false;
+        s.seasonClones = new GameObject[3][];
+        for (int season = 0; season < 3; season++) s.seasonClones[season] = new GameObject[det.Length];
 
         for (int i = 0; i < det.Length; i++)
         {
             var src = det[i].prototype;
             if (src == null) continue;                       // texture grass → healthy/dry tint works
 
-            var clone = Instantiate(src);
-            clone.name = src.name + " (TrailerTint)";
-            clone.hideFlags = HideFlags.HideAndDontSave;
-            clone.SetActive(false);
-            clone.transform.SetParent(transform, false);
-
-            foreach (var r in clone.GetComponentsInChildren<Renderer>(true))
+            for (int season = 0; season < 3; season++)
             {
-                var mats = r.sharedMaterials;
-                for (int m = 0; m < mats.Length; m++)
-                {
-                    if (mats[m] == null) continue;
-                    var inst = new Material(mats[m]);
-                    inst.hideFlags = HideFlags.HideAndDontSave;
-                    mats[m] = inst;
-                    s.tintMats.Add(inst);
-                    s.tintMatBase.Add(inst.HasProperty(BaseColorID) ? inst.GetColor(BaseColorID)
-                                    : inst.HasProperty(ColorID) ? inst.GetColor(ColorID) : Color.white);
-                }
-                r.sharedMaterials = mats;
-            }
+                var clone = Instantiate(src);
+                clone.name = $"{src.name} (Trailer{(season == 0 ? "Summer" : season == 1 ? "Autumn" : "Winter")})";
+                clone.hideFlags = HideFlags.HideAndDontSave;
+                clone.SetActive(false);
+                clone.transform.SetParent(transform, false);
 
-            s.detailClones[i] = clone;
-            det[i].prototype = clone;
+                if (season > 0)
+                {
+                    Color tint = season == 1 ? grassAutumn : grassWinter;
+                    float blend = season == 1 ? autumnBlend : winterBlend;
+                    foreach (var r in clone.GetComponentsInChildren<Renderer>(true))
+                    {
+                        var mats = r.sharedMaterials;
+                        for (int m = 0; m < mats.Length; m++)
+                        {
+                            if (mats[m] == null) continue;
+                            var inst = new Material(mats[m]) { hideFlags = HideFlags.HideAndDontSave };
+                            Color bc = inst.HasProperty(BaseColorID) ? inst.GetColor(BaseColorID)
+                                     : inst.HasProperty(ColorID) ? inst.GetColor(ColorID) : Color.white;
+                            Color c = Color.Lerp(bc, tint, blend); c.a = bc.a;
+                            if (inst.HasProperty(BaseColorID)) inst.SetColor(BaseColorID, c);
+                            if (inst.HasProperty(ColorID)) inst.SetColor(ColorID, c);
+                            mats[m] = inst;
+                        }
+                        r.sharedMaterials = mats;
+                    }
+                }
+                s.seasonClones[season][i] = clone;
+            }
+        }
+        ApplySeasonClones(s, 0);
+    }
+
+    // Point every mesh detail prototype at that season's pre-tinted clone.
+    private void ApplySeasonClones(TState s, int season)
+    {
+        if (s.seasonClones == null) return;
+        var det = s.work.detailPrototypes;
+        bool changed = false;
+        for (int i = 0; i < det.Length && i < s.seasonClones[season].Length; i++)
+        {
+            var want = s.seasonClones[season][i];
+            if (want == null || det[i].prototype == want) continue;
+            det[i].prototype = want;
             changed = true;
         }
-
-        if (changed)
-        {
-            s.work.detailPrototypes = det;
-            s.work.RefreshPrototypes();
-            if (s.terrain != null) s.terrain.Flush();
-        }
+        if (!changed) return;
+        s.work.detailPrototypes = det;
+        s.work.RefreshPrototypes();
+        if (s.terrain != null) s.terrain.Flush();
     }
 
-    private void TintDetailMaterials(TState s, Color tint, float blend)
-    {
-        if (s.tintMats == null || s.tintMats.Count == 0) return;
 
-        bool changed = false;
-        for (int i = 0; i < s.tintMats.Count; i++)
-        {
-            var m = s.tintMats[i]; if (m == null) continue;
-            Color c = Color.Lerp(s.tintMatBase[i], tint, blend);
-            c.a = s.tintMatBase[i].a;
-            if (m.HasProperty(BaseColorID)) { m.SetColor(BaseColorID, c); changed = true; }
-            if (m.HasProperty(ColorID)) { m.SetColor(ColorID, c); changed = true; }
-        }
-
-        // Writing the colour is not enough on its own: the terrain snapshots a
-        // detail prototype when it is registered, so a later change to that
-        // material is not picked up until the prototypes are refreshed. This is
-        // why the grass stayed summer-green all the way into winter.
-        if (changed)
-        {
-            s.work.RefreshPrototypes();
-            if (s.terrain != null) s.terrain.Flush();
-        }
-    }
 
     private void Restore()
     {
@@ -215,8 +211,9 @@ public class TrailerTerrainSeasons : MonoBehaviour
             if (s.terrain != null && s.orig != null) s.terrain.terrainData = s.orig;
             if (s.collider != null && s.orig != null) s.collider.terrainData = s.orig;
             if (s.work != null) Destroy(s.work);
-            if (s.tintMats != null) foreach (var m in s.tintMats) if (m != null) Destroy(m);
-            if (s.detailClones != null) foreach (var g in s.detailClones) if (g != null) Destroy(g);
+            if (s.seasonClones != null)
+                foreach (var arr in s.seasonClones)
+                    if (arr != null) foreach (var g in arr) if (g != null) Destroy(g);
         }
         _states.Clear();
         _ready = false;
@@ -234,7 +231,12 @@ public class TrailerTerrainSeasons : MonoBehaviour
     private void ApplyProgress(float u)
     {
         int season = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
-        if (season != _protoState) { SwapPrototypes(season); _protoState = season; }
+        if (season != _protoState)
+        {
+            SwapPrototypes(season);
+            foreach (var st in _states) ApplySeasonClones(st, season);
+            _protoState = season;
+        }
 
         Color tint; float blend;
         if (u < 0.5f)
@@ -254,9 +256,6 @@ public class TrailerTerrainSeasons : MonoBehaviour
         {
             foreach (var s in _states)
             {
-                // Instanced grass: tint the cloned prototype's material.
-                TintDetailMaterials(s, tint, blend);
-
                 // Texture / vertex-lit grass: the healthy/dry colours DO apply.
                 // Only touch prototypes we did NOT clone, so instanced ones keep
                 // their untouched (white, unused) values instead of turning the
@@ -265,7 +264,8 @@ public class TrailerTerrainSeasons : MonoBehaviour
                 bool wrote = false;
                 for (int i = 0; i < det.Length && i < s.baseHealthy.Length; i++)
                 {
-                    bool cloned = s.detailClones != null && i < s.detailClones.Length && s.detailClones[i] != null;
+                    bool cloned = s.seasonClones != null && s.seasonClones[0] != null
+                               && i < s.seasonClones[0].Length && s.seasonClones[0][i] != null;
                     if (cloned) continue;
                     det[i].healthyColor = Color.Lerp(s.baseHealthy[i], tint, blend);
                     det[i].dryColor = Color.Lerp(s.baseDry[i], tint, blend);
@@ -325,7 +325,8 @@ public class TrailerTerrainSeasons : MonoBehaviour
                 if (s.origDetail[i] == null) continue;   // texture grass → the tint handles it
                 // Cloned prototypes are season-driven by their material tint —
                 // swapping them back to the source prefab would undo it.
-                if (s.detailClones != null && i < s.detailClones.Length && s.detailClones[i] != null) continue;
+                if (s.seasonClones != null && s.seasonClones[0] != null
+                    && i < s.seasonClones[0].Length && s.seasonClones[0][i] != null) continue;
                 var want = Variant(s.origDetail[i], season);
                 if (det[i].prototype != want) { det[i].prototype = want; dChanged = true; }
             }

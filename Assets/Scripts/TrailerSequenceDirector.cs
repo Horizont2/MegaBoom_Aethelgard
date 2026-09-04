@@ -56,6 +56,11 @@ public class TrailerSequenceDirector : MonoBehaviour
     private float _craneYaw, _sunYaw;
     private bool _horseParked;
 
+    [Header("Diagnostics")]
+    [Tooltip("Log which camera the brain is actually LIVE on during the hand-off. Deleting cameras by guesswork has not found the one sitting in the terrain; this names it.")]
+    public bool logLiveCamera = true;
+    private string _lastLiveCam;
+
     private void Start()
     {
         AutoFind();
@@ -157,6 +162,7 @@ public class TrailerSequenceDirector : MonoBehaviour
 
             case Phase.Timelapse:
                 _tlT += Time.deltaTime;
+                ReportLiveCamera();
                 // Once he has galloped away, hide him and move him onto spline_p3
                 // OFF CAMERA, so he never pops across the map mid-shot.
                 if (!_horseParked && _tlT >= hideHorseAfter) ParkHorseForPart2();
@@ -170,6 +176,22 @@ public class TrailerSequenceDirector : MonoBehaviour
                 if (terrainSeason != null) terrainSeason.ApplyU(1f);
                 break;
         }
+    }
+
+    // Names the camera the brain is live on, each time it changes. Whatever is
+    // sitting in the terrain will identify itself here.
+    private void ReportLiveCamera()
+    {
+        if (!logLiveCamera) return;
+        var brain = Object.FindFirstObjectByType<CinemachineBrain>();
+        var live = brain != null ? brain.ActiveVirtualCamera : null;
+        string n = live != null ? live.Name : "<none>";
+        if (n == _lastLiveCam) return;
+        _lastLiveCam = n;
+
+        var go = (live as MonoBehaviour) != null ? (live as MonoBehaviour).gameObject : null;
+        string parent = go != null && go.transform.parent != null ? go.transform.parent.name : "<root>";
+        Debug.Log($"[Trailer] LIVE camera is now '{n}' (parent '{parent}') at {(go != null ? go.transform.position.ToString() : "?")}");
     }
 
     private void BeginTimelapse()
