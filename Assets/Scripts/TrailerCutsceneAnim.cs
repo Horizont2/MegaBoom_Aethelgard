@@ -42,7 +42,11 @@ public class TrailerCutsceneAnim : MonoBehaviour
     {
         if (clip == null) return;
         Build();
-        if (!_built) return;
+        if (!_built)
+        {
+            Debug.LogWarning($"[Trailer] Cannot play '{clip.name}' on '{name}': animator={(animator != null)} controller={(animator != null && animator.runtimeAnimatorController != null)}");
+            return;
+        }
         if (_overlay.IsValid()) { _graph.Disconnect(_mixer, 1); _overlay.Destroy(); }
         _overlay = AnimationClipPlayable.Create(_graph, clip);
         _overlay.SetApplyFootIK(false);

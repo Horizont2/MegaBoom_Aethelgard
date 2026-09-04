@@ -1,25 +1,29 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-// Recolours the Unity Terrain + its painted detail GRASS as the ride progresses
-// (summer green -> autumn browns -> winter white), plus swaps the terrain's
-// ground texture per season.
+// Recolours the Unity Terrains + their painted detail GRASS as the trailer runs
+// (summer green -> autumn browns -> winter white).
 //
-// SAFETY: it works on a runtime CLONE of the TerrainData (never the real asset),
-// and restores the original on disable — so it can NEVER corrupt your terrain.
+// Works on EVERY terrain in the scene (Part 1 and Part 2 have one each), and on a
+// runtime CLONE of each TerrainData — the real assets are never touched and are
+// restored on disable.
 public class TrailerTerrainSeasons : MonoBehaviour
 {
     [Header("Sync")]
     public bool driveByRideProgress = true;
     public TrailerHorseRide ride;
     public float seasonDuration = 34f;
-    [Tooltip("Progress along the ride at which the season change BEGINS (before this it stays summer). Set to ~0.6 so the change happens at the end-crane time-lapse.")]
+    [Tooltip("Progress along the ride at which the season change BEGINS (before this it stays summer).")]
     [Range(0f, 1f)] public float startProgress = 0.6f;
 
-    [Header("Terrain")]
+    [Header("Terrains")]
+    [Tooltip("Every terrain to recolour. Left empty, ALL terrains in the scene are used.")]
+    public Terrain[] terrains;
+    [Tooltip("Legacy single-terrain field — folded into 'terrains'.")]
     public Terrain terrain;
-    [Tooltip("OFF by default: the terrain's own layers aren't these textures, so swapping them repaints the ground with the wrong (default) texture. Leave off unless you assign the terrain's ACTUAL season splat textures.")]
+
+    [Tooltip("OFF by default: the terrain's own layers aren't these textures, so swapping them repaints the ground with the wrong texture.")]
     public bool swapGroundTexture = false;
-    [Tooltip("Ground textures for the terrain's first layer (only used if swapGroundTexture is on).")]
     public Texture2D summerGround, autumnGround, winterGround;
 
     [Header("Grass (detail) tint")]
@@ -27,28 +31,30 @@ public class TrailerTerrainSeasons : MonoBehaviour
     public Color grassWinter = new Color(0.92f, 0.95f, 1.0f);
     [Range(0f, 1f)] public float autumnBlend = 0.7f;
     [Range(0f, 1f)] public float winterBlend = 0.9f;
+    [Tooltip("GPU-instanced detail prototypes IGNORE healthyColor/dryColor, which is why painted grass never recoloured. On the runtime clone we turn instancing off so the tint actually applies.")]
+    public bool forceTintableDetails = true;
 
-    [Header("TREES (terrain tree prototypes) — season prefab per prototype index")]
-    [Tooltip("Assigned by 'Setup Act II Seasons' by matching each terrain tree prototype to its _Autumn / _Winter variant in Assets/GeneratedBiomeTrees.")]
-    public GameObject[] autumnTreePrefabs;
-    public GameObject[] winterTreePrefabs;
-
-    [Header("GRASS (painted detail prototypes) — season prefab per detail index")]
-    [Tooltip("For MESH-based painted grass/bushes the colour tint is ignored, so we swap the detail prototype's prefab instead. Assigned by 'Setup Act II Seasons'.")]
-    public GameObject[] autumnDetailPrefabs;
-    public GameObject[] winterDetailPrefabs;
+    [Header("Season prefab variants (matched by 'Setup Act II Seasons')")]
+    [Tooltip("Original prototype prefab (tree or detail) — the key.")]
+    public GameObject[] variantBase;
+    public GameObject[] variantAutumn;
+    public GameObject[] variantWinter;
 
     // When true the sequence director drives the look via ApplyU().
     [HideInInspector] public bool manual = false;
     public void ApplyU(float u) { if (_ready) ApplyProgress(Mathf.Clamp01(u)); }
 
-    private TerrainData _origTD, _workTD;
-    private TerrainCollider _collider;
-    private Color[] _baseHealthy, _baseDry;
-    private GameObject[] _origTreePrefabs;
-    private GameObject[] _origDetailPrefabs;
-    private int _treeState = -1;
-    private int _detailState = -1;
+    private class TState
+    {
+        public Terrain terrain;
+        public TerrainData orig, work;
+        public TerrainCollider collider;
+        public Color[] baseHealthy, baseDry;
+        public GameObject[] origDetail, origTree;
+    }
+
+    private readonly List<TState> _states = new List<TState>();
+    private int _protoState = -1;
     private int _texState = -1;
     private float _lastBlend = -1f;
     private float _clock;
@@ -56,48 +62,70 @@ public class TrailerTerrainSeasons : MonoBehaviour
 
     private void OnEnable()
     {
-        if (terrain == null) terrain = Terrain.activeTerrain;
-        if (terrain == null || terrain.terrainData == null) return;
+        _states.Clear();
 
-        // Swap in a CLONE so the source asset is never touched.
-        _origTD = terrain.terrainData;
-        _workTD = Instantiate(_origTD);
-        _workTD.name = _origTD.name + " (TrailerClone)";
-        terrain.terrainData = _workTD;
-        _collider = terrain.GetComponent<TerrainCollider>();
-        if (_collider != null) _collider.terrainData = _workTD;
+        var list = new List<Terrain>();
+        if (terrains != null) foreach (var t in terrains) if (t != null && !list.Contains(t)) list.Add(t);
+        if (terrain != null && !list.Contains(terrain)) list.Add(terrain);
+        if (list.Count == 0)
+            foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (t != null && !list.Contains(t)) list.Add(t);
 
-        var det = _workTD.detailPrototypes;
-        _baseHealthy = new Color[det.Length];
-        _baseDry = new Color[det.Length];
-        _origDetailPrefabs = new GameObject[det.Length];
-        for (int i = 0; i < det.Length; i++)
+        foreach (var t in list)
         {
-            _baseHealthy[i] = det[i].healthyColor;
-            _baseDry[i] = det[i].dryColor;
-            _origDetailPrefabs[i] = det[i].prototype;
+            if (t == null || t.terrainData == null) continue;
+            var s = new TState { terrain = t, orig = t.terrainData };
+            s.work = Instantiate(s.orig);
+            s.work.name = s.orig.name + " (TrailerClone)";
+            t.terrainData = s.work;
+            s.collider = t.GetComponent<TerrainCollider>();
+            if (s.collider != null) s.collider.terrainData = s.work;
+
+            var det = s.work.detailPrototypes;
+            s.baseHealthy = new Color[det.Length];
+            s.baseDry = new Color[det.Length];
+            s.origDetail = new GameObject[det.Length];
+            bool touched = false;
+            for (int i = 0; i < det.Length; i++)
+            {
+                s.baseHealthy[i] = det[i].healthyColor;
+                s.baseDry[i] = det[i].dryColor;
+                s.origDetail[i] = det[i].prototype;
+                if (forceTintableDetails && det[i].useInstancing)
+                {
+                    // Instanced details sample the prefab's material and ignore the
+                    // healthy/dry colours — that's why the painted grass stayed green.
+                    det[i].useInstancing = false;
+                    if (det[i].usePrototypeMesh) det[i].renderMode = DetailRenderMode.VertexLit;
+                    touched = true;
+                }
+            }
+            if (touched) s.work.detailPrototypes = det;
+
+            var tp = s.work.treePrototypes;
+            s.origTree = new GameObject[tp.Length];
+            for (int i = 0; i < tp.Length; i++) s.origTree[i] = tp[i].prefab;
+
+            _states.Add(s);
         }
 
-        // Cache the terrain's original tree prototype prefabs so we can swap them
-        // to the season variants (this is how Terrain trees recolour — they're
-        // TreeInstances, not renderers).
-        var tp = _workTD.treePrototypes;
-        _origTreePrefabs = new GameObject[tp.Length];
-        for (int i = 0; i < tp.Length; i++) _origTreePrefabs[i] = tp[i].prefab;
-
-        _texState = -1; _treeState = -1; _lastBlend = -1f; _clock = 0f;
-        _ready = true;
-        ApplyProgress(0f);
+        _texState = -1; _protoState = -1; _lastBlend = -1f; _clock = 0f;
+        _ready = _states.Count > 0;
+        if (_ready) ApplyProgress(0f);
     }
 
-    private void OnDisable() { RestoreTerrain(); }
-    private void OnDestroy() { RestoreTerrain(); }
+    private void OnDisable() { Restore(); }
+    private void OnDestroy() { Restore(); }
 
-    private void RestoreTerrain()
+    private void Restore()
     {
-        if (terrain != null && _origTD != null) terrain.terrainData = _origTD;
-        if (_collider != null && _origTD != null) _collider.terrainData = _origTD;
-        if (_workTD != null) { Destroy(_workTD); _workTD = null; }
+        foreach (var s in _states)
+        {
+            if (s.terrain != null && s.orig != null) s.terrain.terrainData = s.orig;
+            if (s.collider != null && s.orig != null) s.collider.terrainData = s.orig;
+            if (s.work != null) Destroy(s.work);
+        }
+        _states.Clear();
         _ready = false;
     }
 
@@ -107,19 +135,14 @@ public class TrailerTerrainSeasons : MonoBehaviour
         float raw = (driveByRideProgress && ride != null)
             ? Mathf.Clamp01(ride.progress01)
             : (seasonDuration > 0.01f ? Mathf.Clamp01((_clock += Time.deltaTime) / seasonDuration) : 0f);
-        // Remap so the change only happens from startProgress -> 1 (summer until then).
-        float u = Mathf.InverseLerp(startProgress, 1f, raw);
-        ApplyProgress(u);
+        ApplyProgress(Mathf.InverseLerp(startProgress, 1f, raw));
     }
 
     private void ApplyProgress(float u)
     {
-        // TREES + painted GRASS: swap prototypes to the season variants.
         int season = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
-        if (season != _treeState) { SwapTreePrototypes(season); _treeState = season; }
-        if (season != _detailState) { SwapDetailPrototypes(season); _detailState = season; }
+        if (season != _protoState) { SwapPrototypes(season); _protoState = season; }
 
-        // Grass tint: summer (none) -> autumn -> winter.
         Color tint; float blend;
         if (u < 0.5f)
         {
@@ -133,85 +156,91 @@ public class TrailerTerrainSeasons : MonoBehaviour
             blend = Mathf.Lerp(autumnBlend, winterBlend, k);
         }
 
-        // Only push to the terrain when it changed enough (detail refresh is heavy).
-        if (Mathf.Abs(blend - _lastBlend) > 0.03f && _baseHealthy != null)
+        // Detail refresh is heavy — only push when it changed enough.
+        if (Mathf.Abs(blend - _lastBlend) > 0.03f)
         {
-            var det = _workTD.detailPrototypes;
-            for (int i = 0; i < det.Length && i < _baseHealthy.Length; i++)
+            foreach (var s in _states)
             {
-                det[i].healthyColor = Color.Lerp(_baseHealthy[i], tint, blend);
-                det[i].dryColor = Color.Lerp(_baseDry[i], tint, blend);
+                var det = s.work.detailPrototypes;
+                for (int i = 0; i < det.Length && i < s.baseHealthy.Length; i++)
+                {
+                    det[i].healthyColor = Color.Lerp(s.baseHealthy[i], tint, blend);
+                    det[i].dryColor = Color.Lerp(s.baseDry[i], tint, blend);
+                }
+                s.work.detailPrototypes = det;
+                if (s.terrain != null) s.terrain.Flush();
             }
-            _workTD.detailPrototypes = det;
-            if (terrain != null) terrain.Flush();   // force the detail layer to re-render with new colours
             _lastBlend = blend;
         }
 
-        // Ground texture swap — OFF by default (the terrain's real layers aren't
-        // these textures, so swapping repaints the ground wrong).
         if (swapGroundTexture)
         {
-            int want = u < 0.4f ? 0 : (u < 0.72f ? 1 : 2);
+            int want = season;
             if (want != _texState)
             {
                 var tex = want == 0 ? summerGround : (want == 1 ? autumnGround : winterGround);
-                var layers = _workTD.terrainLayers;
-                if (tex != null && layers != null && layers.Length > 0 && layers[0] != null)
+                if (tex != null)
                 {
-                    var clone = Instantiate(layers[0]);
-                    clone.diffuseTexture = tex;
-                    layers[0] = clone;
-                    _workTD.terrainLayers = layers;
+                    foreach (var s in _states)
+                    {
+                        var layers = s.work.terrainLayers;
+                        if (layers == null || layers.Length == 0 || layers[0] == null) continue;
+                        var clone = Instantiate(layers[0]);
+                        clone.diffuseTexture = tex;
+                        layers[0] = clone;
+                        s.work.terrainLayers = layers;
+                    }
                 }
                 _texState = want;
             }
         }
     }
 
-    // Terrain trees are TreeInstances drawn from the terrain's tree PROTOTYPES —
-    // recolouring them means pointing each prototype at its season-variant prefab
-    // (done on the CLONE, so the real terrain asset is untouched).
-    private void SwapTreePrototypes(int season)
+    // Terrain trees and painted mesh grass are drawn from PROTOTYPES — recolouring
+    // them means pointing each prototype at its season-variant prefab.
+    private void SwapPrototypes(int season)
     {
-        if (_workTD == null || _origTreePrefabs == null) return;
-        var tp = _workTD.treePrototypes;
-        bool changed = false;
-        for (int i = 0; i < tp.Length && i < _origTreePrefabs.Length; i++)
+        foreach (var s in _states)
         {
-            GameObject want = _origTreePrefabs[i];
-            if (season == 1 && autumnTreePrefabs != null && i < autumnTreePrefabs.Length && autumnTreePrefabs[i] != null)
-                want = autumnTreePrefabs[i];
-            else if (season == 2 && winterTreePrefabs != null && i < winterTreePrefabs.Length && winterTreePrefabs[i] != null)
-                want = winterTreePrefabs[i];
-            if (tp[i].prefab != want) { tp[i].prefab = want; changed = true; }
+            var tp = s.work.treePrototypes;
+            bool changed = false;
+            for (int i = 0; i < tp.Length && i < s.origTree.Length; i++)
+            {
+                var want = Variant(s.origTree[i], season);
+                if (tp[i].prefab != want) { tp[i].prefab = want; changed = true; }
+            }
+            if (changed) s.work.treePrototypes = tp;
+
+            var det = s.work.detailPrototypes;
+            bool dChanged = false;
+            for (int i = 0; i < det.Length && i < s.origDetail.Length; i++)
+            {
+                if (s.origDetail[i] == null) continue;   // texture grass → the tint handles it
+                var want = Variant(s.origDetail[i], season);
+                if (det[i].prototype != want) { det[i].prototype = want; dChanged = true; }
+            }
+            if (dChanged) s.work.detailPrototypes = det;
+
+            if (changed || dChanged)
+            {
+                s.work.RefreshPrototypes();
+                if (s.terrain != null) s.terrain.Flush();
+            }
         }
-        if (!changed) return;
-        _workTD.treePrototypes = tp;
-        _workTD.RefreshPrototypes();
-        if (terrain != null) terrain.Flush();
     }
 
-    // Painted grass/bushes: for MESH detail prototypes the healthy/dry colours are
-    // ignored, so point the prototype at its season-variant prefab instead.
-    private void SwapDetailPrototypes(int season)
+    private GameObject Variant(GameObject basePrefab, int season)
     {
-        if (_workTD == null || _origDetailPrefabs == null) return;
-        var det = _workTD.detailPrototypes;
-        bool changed = false;
-        for (int i = 0; i < det.Length && i < _origDetailPrefabs.Length; i++)
+        if (basePrefab == null || season == 0 || variantBase == null) return basePrefab;
+        for (int i = 0; i < variantBase.Length; i++)
         {
-            if (_origDetailPrefabs[i] == null) continue;      // texture-based grass → colour tint handles it
-            GameObject want = _origDetailPrefabs[i];
-            if (season == 1 && autumnDetailPrefabs != null && i < autumnDetailPrefabs.Length && autumnDetailPrefabs[i] != null)
-                want = autumnDetailPrefabs[i];
-            else if (season == 2 && winterDetailPrefabs != null && i < winterDetailPrefabs.Length && winterDetailPrefabs[i] != null)
-                want = winterDetailPrefabs[i];
-            if (det[i].prototype != want) { det[i].prototype = want; changed = true; }
+            if (variantBase[i] != basePrefab) continue;
+            var v = season == 1
+                ? (variantAutumn != null && i < variantAutumn.Length ? variantAutumn[i] : null)
+                : (variantWinter != null && i < variantWinter.Length ? variantWinter[i] : null);
+            return v != null ? v : basePrefab;
         }
-        if (!changed) return;
-        _workTD.detailPrototypes = det;
-        _workTD.RefreshPrototypes();
-        if (terrain != null) terrain.Flush();
+        return basePrefab;
     }
 
     private static float Smooth(float x) { x = Mathf.Clamp01(x); return x * x * (3f - 2f * x); }

@@ -45,8 +45,14 @@ public class TrailerSeasonRide : MonoBehaviour
 
     [Header("Tree recolour (material SWAP per season — the game's foliage system)")]
     public bool tintTrees = true;
-    [Tooltip("Season foliage materials. Left empty, they're read from the scene's WorldGenerator (which already has them assigned).")]
+    [Tooltip("Season foliage materials. Left empty, they're read from the scene's WorldGenerator (which is NOT in the trailer scene — so the setup tool fills the table below instead).")]
     public Material birchAutumn, birchWinter, largeAutumn, largeWinter, bushAutumn, bushWinter;
+
+    [Header("Foliage material table (filled by 'Setup Act II Seasons')")]
+    [Tooltip("Every summer foliage material found in the scene, paired with its _Autumn / _Snow(_Winter) variant on disk. This is what actually recolours the trees, since they are scene GameObjects — not terrain trees.")]
+    public Material[] foliageBase;
+    public Material[] foliageAutumn;
+    public Material[] foliageWinter;
 
     [Header("Day / Night (sun races on its orbit as he rides)")]
     public bool driveDayNight = true;
@@ -72,8 +78,9 @@ public class TrailerSeasonRide : MonoBehaviour
     private float _clock;
     private Renderer[] _trees;
     private int[] _treeSlot;           // which material slot to swap
-    private Material[] _treeOrigMat;   // original material in that slot
-    private int[] _treeType;           // 0 birch, 1 giant/large, 2 bush
+    private Material[] _treeOrigMat;   // original (summer) material in that slot
+    private Material[] _treeAutumnMat; // resolved autumn material for that slot
+    private Material[] _treeWinterMat; // resolved winter material for that slot
     private int _treeSeason = -1;      // 0 summer,1 autumn,2 winter currently applied
     private Quaternion _sunRot0;
     private float _sunIntensity0, _sunYaw;
@@ -112,11 +119,15 @@ public class TrailerSeasonRide : MonoBehaviour
         SwapTreeSeason(0);   // restore trees to summer materials
     }
 
-    // Find every renderer slot whose material is a base tree/bush leaves material,
-    // and remember it so we can swap it to the season variant.
+    // The trees in this scene are ordinary GameObjects (NOT terrain trees — the
+    // terrain reports 0 tree prototypes), so recolouring them means swapping the
+    // MATERIAL in each renderer slot. Every summer material is paired with its
+    // autumn / winter variant either from the table the setup tool filled, or by
+    // the name heuristic below.
     private void GatherTrees()
     {
-        // Pull the season materials from the scene's WorldGenerator if not set.
+        // Pull the season materials from the scene's WorldGenerator if it exists
+        // (it doesn't in the trailer scene — hence the foliage table).
         var wg = Object.FindFirstObjectByType<WorldGenerator>();
         if (wg != null)
         {
@@ -131,7 +142,8 @@ public class TrailerSeasonRide : MonoBehaviour
         var rends = new System.Collections.Generic.List<Renderer>();
         var slots = new System.Collections.Generic.List<int>();
         var orig = new System.Collections.Generic.List<Material>();
-        var types = new System.Collections.Generic.List<int>();
+        var aut = new System.Collections.Generic.List<Material>();
+        var win = new System.Collections.Generic.List<Material>();
 
         foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
@@ -140,17 +152,30 @@ public class TrailerSeasonRide : MonoBehaviour
             for (int s = 0; s < mats.Length; s++)
             {
                 var m = mats[s]; if (m == null) continue;
-                string n = m.name.ToLowerInvariant();
-                int type = -1;
-                if (n.Contains("birch")) type = 0;
-                else if (n.Contains("treelarge") || n.Contains("giant") || n.Contains("large")) type = 1;
-                else if (n.Contains("bush")) type = 2;
-                if (type < 0) continue;
-                rends.Add(r); slots.Add(s); orig.Add(m); types.Add(type);
+                Material a = LookUp(m, foliageAutumn), w = LookUp(m, foliageWinter);
+                if (a == null && w == null)
+                {
+                    // Fallback: the old birch/large/bush heuristic.
+                    string n = m.name.ToLowerInvariant();
+                    if (n.Contains("birch")) { a = birchAutumn; w = birchWinter; }
+                    else if (n.Contains("treelarge") || n.Contains("giant") || n.Contains("large")) { a = largeAutumn; w = largeWinter; }
+                    else if (n.Contains("bush")) { a = bushAutumn; w = bushWinter; }
+                }
+                if (a == null && w == null) continue;
+                rends.Add(r); slots.Add(s); orig.Add(m); aut.Add(a); win.Add(w);
             }
         }
         _trees = rends.ToArray(); _treeSlot = slots.ToArray();
-        _treeOrigMat = orig.ToArray(); _treeType = types.ToArray();
+        _treeOrigMat = orig.ToArray(); _treeAutumnMat = aut.ToArray(); _treeWinterMat = win.ToArray();
+        Debug.Log($"[Trailer] Foliage recolour: {_trees.Length} renderer slots matched (table entries: {(foliageBase != null ? foliageBase.Length : 0)}).");
+    }
+
+    private Material LookUp(Material m, Material[] table)
+    {
+        if (foliageBase == null || table == null) return null;
+        for (int i = 0; i < foliageBase.Length && i < table.Length; i++)
+            if (foliageBase[i] == m) return table[i];
+        return null;
     }
 
     // Swap tree/bush leaves materials to the given season (0 summer,1 autumn,2 winter).
@@ -161,9 +186,8 @@ public class TrailerSeasonRide : MonoBehaviour
         {
             var r = _trees[i]; if (r == null) continue;
             Material target = _treeOrigMat[i];   // summer = original
-            if (season == 1) target = _treeType[i] == 0 ? birchAutumn : _treeType[i] == 1 ? largeAutumn : bushAutumn;
-            else if (season == 2) target = _treeType[i] == 0 ? birchWinter : _treeType[i] == 1 ? largeWinter : bushWinter;
-            if (target == null) target = _treeOrigMat[i];
+            if (season == 1 && _treeAutumnMat[i] != null) target = _treeAutumnMat[i];
+            else if (season == 2 && _treeWinterMat[i] != null) target = _treeWinterMat[i];
             var mats = r.sharedMaterials;
             if (_treeSlot[i] < mats.Length && mats[_treeSlot[i]] != target)
             {

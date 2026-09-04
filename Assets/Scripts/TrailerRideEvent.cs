@@ -45,6 +45,8 @@ public class TrailerRideEvent : MonoBehaviour
             if (_riderGO != null) _riderAnim = GetOrAdd(_riderGO.gameObject);
         }
 
+        Debug.Log($"[Trailer] RideEvent ready — rider='{(_riderGO ? _riderGO.name : "NOT FOUND")}' riderAnim={_riderAnim != null} horseAnim={_horseAnim != null} | clips: look={lookBehindClip != null} fall={fallingBackClip != null} rear={horseRearClip != null} mask={upperBodyMask != null}");
+
         if (_bolt == null)
         {
             var go = new GameObject("Trailer_LightningBolt");
@@ -61,6 +63,7 @@ public class TrailerRideEvent : MonoBehaviour
         if (!_lookedBack && ride.progress01 >= lookBackProgress)
         {
             _lookedBack = true;
+            Debug.Log($"[Trailer] BEAT look-back (riderAnim={_riderAnim != null}, clip={lookBehindClip != null})");
             if (_riderAnim != null) _riderAnim.Play(lookBehindClip, upperBodyMask, hold: false);   // upper body only
         }
 
@@ -74,6 +77,7 @@ public class TrailerRideEvent : MonoBehaviour
 
             if (AudioManager.Instance != null && !string.IsNullOrEmpty(neighId)) AudioManager.Instance.PlaySFX(neighId);
 
+            Debug.Log($"[Trailer] BEAT strike (horseAnim={_horseAnim != null}, rear={horseRearClip != null}, fall={fallingBackClip != null})");
             ride.enabled = false;                                   // stop the gallop
             if (_horseAnim != null) _horseAnim.Play(horseRearClip, null, hold: true);   // rear + stand
 

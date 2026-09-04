@@ -68,65 +68,73 @@ public static class ActIISeasonsRideSetup
         season.snowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SnowPrefab);
         season.sun = FindSun();
         season.cam = Camera.main;
+
+        // FOLIAGE: the trees here are ordinary scene GameObjects (the terrains
+        // report 0 tree prototypes), so build a material table — every summer
+        // foliage material in the scene paired with its _Autumn / _Snow variant.
+        int foliageMatched = BuildFoliageTable(season);
         EditorUtility.SetDirty(season);
 
-        // Terrain + painted grass recolour (safe: works on a runtime clone).
-        var terrain = Terrain.activeTerrain;
-        bool terrainOk = false;
-        if (terrain != null)
+        // Terrain + painted grass recolour on EVERY terrain (Part 1 + Part 2),
+        // safe: works on runtime clones.
+        var terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                             .Where(t => t != null && t.terrainData != null).ToArray();
+        bool terrainOk = terrains.Length > 0;
+        if (terrainOk)
         {
             var ts = rig.GetComponent<TrailerTerrainSeasons>();
             if (ts == null) ts = Undo.AddComponent<TrailerTerrainSeasons>(rig);
             Undo.RecordObject(ts, "config terrain seasons");
             ts.driveByRideProgress = true;
             ts.ride = ride;
-            ts.terrain = terrain;
+            ts.terrains = terrains;
+            ts.terrain = null;
             ts.startProgress = 0.6f;
-            ts.swapGroundTexture = false;   // don't repaint the terrain with wrong textures
+            ts.swapGroundTexture = false;      // don't repaint the terrain with wrong textures
+            ts.forceTintableDetails = true;    // instanced details ignore the tint — turn instancing off on the clone
 
-            // TREES: match each terrain tree prototype to its _Autumn / _Winter
-            // variant in Assets/GeneratedBiomeTrees so they can be swapped per season.
-            var protos = terrain.terrainData.treePrototypes;
-            var aut = new GameObject[protos.Length];
-            var win = new GameObject[protos.Length];
+            // Season prefab variants, keyed by the ORIGINAL prototype prefab so one
+            // table covers every terrain.
             var variants = AssetDatabase.FindAssets("t:GameObject", new[] { "Assets/GeneratedBiomeTrees" })
                 .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
                 .Where(g => g != null).ToArray();
-            int matched = 0;
-            for (int i = 0; i < protos.Length; i++)
-            {
-                var basePrefab = protos[i].prefab;
-                if (basePrefab == null) continue;
-                string bn = basePrefab.name;
-                aut[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("autumn"));
-                win[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("winter"));
-                if (aut[i] != null || win[i] != null) matched++;
-            }
-            ts.autumnTreePrefabs = aut;
-            ts.winterTreePrefabs = win;
 
-            // GRASS: same matching for the painted detail prototypes (mesh grass/bushes).
-            var dets = terrain.terrainData.detailPrototypes;
-            var dAut = new GameObject[dets.Length];
-            var dWin = new GameObject[dets.Length];
-            int dMatched = 0;
-            for (int i = 0; i < dets.Length; i++)
-            {
-                var bp = dets[i].prototype;
-                if (bp == null) continue;      // texture grass → handled by the colour tint
-                string bn = bp.name;
-                dAut[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("autumn"));
-                dWin[i] = variants.FirstOrDefault(v => v.name.StartsWith(bn) && v.name.ToLowerInvariant().Contains("winter"));
-                if (dAut[i] != null || dWin[i] != null) dMatched++;
-            }
-            ts.autumnDetailPrefabs = dAut;
-            ts.winterDetailPrefabs = dWin;
+            var vBase = new System.Collections.Generic.List<GameObject>();
+            var vAut = new System.Collections.Generic.List<GameObject>();
+            var vWin = new System.Collections.Generic.List<GameObject>();
+            int trees = 0, dets = 0, matched = 0;
+            var names = new System.Collections.Generic.List<string>();
 
-            Debug.Log($"[Trailer] Tree prototypes {protos.Length} (variants matched {matched}); detail/grass prototypes {dets.Length} (variants matched {dMatched}).");
+            foreach (var t in terrains)
+            {
+                foreach (var p in t.terrainData.treePrototypes) { trees++; Register(p.prefab); }
+                foreach (var d in t.terrainData.detailPrototypes)
+                {
+                    dets++;
+                    names.Add($"{(d.prototype != null ? d.prototype.name : "<texture:" + (d.prototypeTexture != null ? d.prototypeTexture.name : "none") + ">")}(instanced={d.useInstancing})");
+                    Register(d.prototype);
+                }
+            }
+
+            void Register(GameObject prefab)
+            {
+                if (prefab == null || vBase.Contains(prefab)) return;
+                string bn = prefab.name;
+                var a = FindVariant(variants, bn, "autumn");
+                var w = FindVariant(variants, bn, "winter") ?? FindVariant(variants, bn, "snow");
+                if (a == null && w == null) return;
+                vBase.Add(prefab); vAut.Add(a); vWin.Add(w); matched++;
+            }
+
+            ts.variantBase = vBase.ToArray();
+            ts.variantAutumn = vAut.ToArray();
+            ts.variantWinter = vWin.ToArray();
+
+            Debug.Log($"[Trailer] Terrains {terrains.Length} | tree prototypes {trees}, detail/grass prototypes {dets} (prefab variants matched {matched}). Details: {string.Join(", ", names)}");
             EditorUtility.SetDirty(ts);
-            terrainOk = true;
         }
 
+        Debug.Log($"[Trailer] Foliage material table: {foliageMatched} scene materials paired with season variants.");
         MarkDirty();
 
         EditorUtility.DisplayDialog("Act II Seasons",
@@ -138,6 +146,56 @@ public static class ActIISeasonsRideSetup
             "  • The Act I end-crane (CM_04) rises over the changed world while the horse is STILL galloping (overrun) — no standing still.\n\n" +
             $"  • Sun {(season.sun != null ? "OK" : "NOT FOUND")}.\n" +
             "Everything is driven by route progress, so it all stays in sync with the ride.", "OK");
+    }
+
+    private static GameObject FindVariant(GameObject[] pool, string baseName, string season)
+    {
+        return pool.FirstOrDefault(v => v.name.StartsWith(baseName) && v.name.ToLowerInvariant().Contains(season));
+    }
+
+    // Scene trees/bushes are GameObjects, so the recolour is a MATERIAL swap.
+    // Pair every foliage material used in the scene with its _Autumn / _Snow
+    // (or _Winter) sibling on disk.
+    private static int BuildFoliageTable(TrailerSeasonRide season)
+    {
+        var allMats = AssetDatabase.FindAssets("t:Material")
+            .Select(g => AssetDatabase.GUIDToAssetPath(g))
+            .Where(p => p.StartsWith("Assets/"))
+            .Select(p => AssetDatabase.LoadAssetAtPath<Material>(p))
+            .Where(m => m != null)
+            .ToArray();
+
+        string[] suffixes = { "_Autumn", "_autumn" };
+        string[] winterSuffixes = { "_Snow", "_snow", "_Winter", "_winter" };
+
+        var bases = new System.Collections.Generic.List<Material>();
+        var auts = new System.Collections.Generic.List<Material>();
+        var wins = new System.Collections.Generic.List<Material>();
+        var seen = new System.Collections.Generic.HashSet<Material>();
+
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            foreach (var m in r.sharedMaterials)
+            {
+                if (m == null || !seen.Add(m)) continue;
+                string n = m.name;
+                // Skip materials that ARE season variants already.
+                string ln = n.ToLowerInvariant();
+                if (ln.EndsWith("_autumn") || ln.EndsWith("_snow") || ln.EndsWith("_winter")) continue;
+
+                Material a = null, w = null;
+                foreach (var s in suffixes) { a = allMats.FirstOrDefault(x => x.name == n + s); if (a != null) break; }
+                foreach (var s in winterSuffixes) { w = allMats.FirstOrDefault(x => x.name == n + s); if (w != null) break; }
+                if (a == null && w == null) continue;
+                bases.Add(m); auts.Add(a); wins.Add(w);
+            }
+        }
+
+        season.foliageBase = bases.ToArray();
+        season.foliageAutumn = auts.ToArray();
+        season.foliageWinter = wins.ToArray();
+        return bases.Count;
     }
 
     private static GameObject FindRig()

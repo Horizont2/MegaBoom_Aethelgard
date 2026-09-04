@@ -65,18 +65,25 @@ public static class ActPartTwoSetup
         // Cinematic Part-2 coverage with cuts: fleeing (fear) -> side -> a
         // front angle for the look-back -> a tight close-up for the strike.
         // Low, grounded, dramatic angles for fear (not a floaty overhead follow).
-        var camFlee = MakeFollowCam(rig, "CM_Part2_Flee", ride.transform, new Vector3(0f, 1.3f, -4.2f), 55f);   // low behind, urgent
-        var camSide = MakeFollowCam(rig, "CM_Part2_Side", ride.transform, new Vector3(4.6f, 1.5f, 0.5f), 40f);  // ground-level track alongside
-        var camFront = MakeFollowCam(rig, "CM_Part2_Front", ride.transform, new Vector3(0.6f, 1.4f, 7f), 38f);  // low front — his face + chasers behind
-        var camStrike = MakeFollowCam(rig, "CM_Part2_StrikeCU", ride.transform, new Vector3(2.0f, 1.4f, -2.6f), 32f); // tight close-up
+        // Find the RIDER so the cameras frame HIM (face/fear), not the horse's belly.
+        Transform riderT = null;
+        foreach (var a in ride.GetComponentsInChildren<Animator>(true))
+            if (a != null && a.transform != ride.transform) { riderT = a.transform; break; }
+        Transform aim = riderT != null ? riderT : ride.transform;
+
+        // Direction: low along the GROUND beside him, then a shot into his FACE
+        // (lands on the look-back), then the lightning + fall.
+        var camSide = MakeFollowCam(rig, "CM_Part2_LowSide", ride.transform, aim, new Vector3(3.2f, 1.0f, 0.2f), 38f);
+        var camFace = MakeFollowCam(rig, "CM_Part2_Face", ride.transform, aim, new Vector3(0.9f, 1.9f, 5.8f), 34f);
+        var camStrike = MakeFollowCam(rig, "CM_Part2_Strike", ride.transform, aim, new Vector3(2.6f, 1.6f, -3.0f), 34f);
 
         var cutter = rig.GetComponent<TrailerCameraCutter>();
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
         Undo.RecordObject(cutter, "part2 cuts");
-        cutter.cameras = new[] { camFlee, camSide, camFront, camStrike };
+        cutter.cameras = new[] { camSide, camFace, camStrike };
         cutter.useProgress = true;
         cutter.ride = ride;
-        cutter.cutProgress = new[] { 0f, 0.35f, 0.62f, 0.85f };   // strike close-up lands on the ~0.9 strike
+        cutter.cutProgress = new[] { 0f, 0.45f, 0.82f };   // face cut lands on the look-back; strike shot before the ~0.9 bolt
         EditorUtility.SetDirty(cutter);
 
         var evt = rig.GetComponent<TrailerRideEvent>();
@@ -102,7 +109,7 @@ public static class ActPartTwoSetup
             "⚠ STILL NEEDS ANIMATIONS (see the list): rider look-back, horse rear-up, rider fall, and the battle.", "OK");
     }
 
-    private static CinemachineCamera MakeFollowCam(GameObject rig, string name, Transform horse, Vector3 offset, float fov)
+    private static CinemachineCamera MakeFollowCam(GameObject rig, string name, Transform horse, Transform lookAt, Vector3 offset, float fov)
     {
         var existing = rig.GetComponentsInChildren<CinemachineCamera>(true).FirstOrDefault(c => c.name == name);
         GameObject go = existing != null ? existing.gameObject : new GameObject(name);
@@ -110,7 +117,7 @@ public static class ActPartTwoSetup
 
         var cam = go.GetComponent<CinemachineCamera>() ?? go.AddComponent<CinemachineCamera>();
         cam.Lens.FieldOfView = fov;
-        var tgt = cam.Target; tgt.TrackingTarget = horse; cam.Target = tgt;
+        var tgt = cam.Target; tgt.TrackingTarget = horse; tgt.LookAtTarget = lookAt; cam.Target = tgt;
         var pr = cam.Priority; pr.Value = 0; cam.Priority = pr;   // the cutter raises the live one
 
         var follow = go.GetComponent<CinemachineFollow>() ?? go.AddComponent<CinemachineFollow>();
