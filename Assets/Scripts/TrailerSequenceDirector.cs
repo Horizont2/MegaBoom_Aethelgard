@@ -97,6 +97,11 @@ public class TrailerSequenceDirector : MonoBehaviour
             ride.BeginRide();
         }
         BuildCrane();
+
+        // Open on black behind letterbox bars, then fade up into the ride. A
+        // trailer that simply cuts to gameplay reads as a preview; a trailer that
+        // opens reads as a film, and this costs nothing structurally.
+        TrailerCinematicPolish.GetOrCreate().OpenTrailer();
     }
 
     [Header("Act I cameras")]
@@ -302,6 +307,11 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void BeginPart2()
     {
         _phase = Phase.Part2;
+
+        // A breath of black over the hand-off. The cut is already hard; a single
+        // dark frame under it turns a jump between two places into an edit.
+        var polish = TrailerCinematicPolish.Instance;
+        if (polish != null) { polish.FadeToBlack(0.12f); polish.FadeFromBlack(0.35f); }
 
         if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
         if (terrainSeason != null) terrainSeason.ApplyU(1f);

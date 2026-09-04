@@ -164,9 +164,13 @@ public class TrailerRideEvent : MonoBehaviour
                 played = true;
             }
             if (!played) Fire(_riderAnimator, lookBackTrigger);
-            // A cry behind him sells WHY he looks back.
+            // A cry behind him sells WHY he looks back — and a brief dip in time
+            // gives the glance weight, which reads even if the clip itself is
+            // still not playing.
             if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadId))
                 AudioManager.Instance.PlaySFX(dreadId);
+            if (TrailerCinematicPolish.Instance != null)
+                TrailerCinematicPolish.Instance.TimeRamp(0.65f, 0.35f, 0.15f, 0.4f);
             Debug.Log($"[Trailer] BEAT look-back — {(played ? "masked overlay" : "controller trigger")} (clip={(lookBehindClip != null ? lookBehindClip.name : "NONE")}, mask={(upperBodyMask != null ? upperBodyMask.name : "NONE")})");
         }
 
@@ -199,6 +203,16 @@ public class TrailerRideEvent : MonoBehaviour
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(thunderId))
             AudioManager.Instance.PlaySFX3D(thunderId, gp);
         CameraShakeUtil.TryShake(0.45f, 0.25f);
+
+        // The climax of the whole piece: drop into slow motion on the flash and
+        // punch the lens. Held through the rear so the horse rises in slow
+        // motion, then released as the rider is thrown.
+        var polish = TrailerCinematicPolish.Instance;
+        if (polish != null)
+        {
+            polish.TimeRamp(0.35f, rearDelay + throwDelay, 0.06f, 0.45f);
+            polish.ImpactPunch(1f, 0.5f);
+        }
         Debug.Log($"[Trailer] BEAT strike — bolt at {gp}, horse at {t.position}.");
 
         yield return new WaitForSeconds(0.12f);
@@ -258,6 +272,9 @@ public class TrailerRideEvent : MonoBehaviour
         CameraShakeUtil.TryShake(0.25f, 0.12f);
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(landId))
             AudioManager.Instance.PlaySFX3D(landId, _riderGO.position);
+        // A shorter, harder hit than the strike — the body meeting the ground.
+        if (TrailerCinematicPolish.Instance != null)
+            TrailerCinematicPolish.Instance.ImpactPunch(0.7f, 0.3f);
 
         yield return new WaitForSeconds(getUpDelay);
         if (!Fire(_riderAnimator, getUpTrigger) && _riderAnim != null && fallingBackClip != null)
