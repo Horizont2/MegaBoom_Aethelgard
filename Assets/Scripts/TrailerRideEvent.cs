@@ -83,6 +83,14 @@ public class TrailerRideEvent : MonoBehaviour
     [Tooltip("Played under the look-back, as the horde is noticed.")]
     public string dreadId = "AMB/AMB_Crow";
 
+    [Header("Ending")]
+    [Tooltip("Hold on him lying there before the picture goes out. The pause is the point — cutting straight from impact to black throws the moment away.")]
+    public float endHold = 2.6f;
+    [Tooltip("Seconds to fade to black at the end, handing off to Part 3.")]
+    public float endFade = 1.6f;
+    [Tooltip("Fade out after the get-up. Turn off while iterating on the beats.")]
+    public bool fadeOutAtEnd = true;
+
     private TrailerLightningStrike _bolt;
     private Transform _riderGO;
     private Animator _riderAnimator, _horseAnimator;
@@ -168,7 +176,13 @@ public class TrailerRideEvent : MonoBehaviour
             // gives the glance weight, which reads even if the clip itself is
             // still not playing.
             if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadId))
+            {
                 AudioManager.Instance.PlaySFX(dreadId);
+                // Start the music swelling here, not at the strike — tension has
+                // to be rising BEFORE the payoff or the payoff has nothing to
+                // release.
+                AudioManager.Instance.NotifyCombat(14f);
+            }
             if (TrailerCinematicPolish.Instance != null)
                 TrailerCinematicPolish.Instance.TimeRamp(0.65f, 0.35f, 0.15f, 0.4f);
             Debug.Log($"[Trailer] BEAT look-back — {(played ? "masked overlay" : "controller trigger")} (clip={(lookBehindClip != null ? lookBehindClip.name : "NONE")}, mask={(upperBodyMask != null ? upperBodyMask.name : "NONE")})");
@@ -201,7 +215,10 @@ public class TrailerRideEvent : MonoBehaviour
         if (_bolt != null) _bolt.Strike(gp);
         else Debug.LogWarning("[Trailer] No lightning bolt component — strike has no visual.");
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(thunderId))
+        {
             AudioManager.Instance.PlaySFX3D(thunderId, gp);
+            AudioManager.Instance.NotifyCombat(25f);
+        }
         CameraShakeUtil.TryShake(0.45f, 0.25f);
 
         // The climax of the whole piece: drop into slow motion on the flash and
@@ -290,6 +307,17 @@ public class TrailerRideEvent : MonoBehaviour
         // his normal gameplay controller.
         yield return new WaitForSeconds(getUpSeconds);
         SwapToHeroAnimator();
+
+        // Hold on him, then go out on black. The hold is the beat that lets the
+        // moment land; cutting from impact straight to the next thing spends it
+        // for nothing.
+        if (fadeOutAtEnd)
+        {
+            yield return new WaitForSeconds(endHold);
+            if (TrailerCinematicPolish.Instance != null)
+                TrailerCinematicPolish.Instance.FadeToBlack(endFade);
+            Debug.Log("[Trailer] Part 2 complete — faded out. Part 3 (the battle) picks up from here.");
+        }
     }
 
     // Enter a resting state by name, trying the bare name AND the full path.

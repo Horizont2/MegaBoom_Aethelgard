@@ -91,17 +91,27 @@ public static class ActPartTwoSetup
         //   3. a wider rear-quarter shot that holds horse + horde for the strike.
         var camSide = MakeFollowCam(rig, "CM_Part2_LowSide", ride.transform, aim, new Vector3(6.0f, 1.4f, -1.5f), 40f);
         var camFace = MakeFollowCam(rig, "CM_Part2_Face", ride.transform, aim, new Vector3(2.2f, 2.1f, 8.5f), 38f);
+        // Over his shoulder, back down the road at what is chasing him. This is
+        // the shot the whole sequence is about — without it the horde is only
+        // ever implied, and the fear has nothing to point at.
+        var camChase = MakeFollowCam(rig, "CM_Part2_OverShoulder", ride.transform, aim, new Vector3(1.1f, 2.3f, -4.2f), 46f);
         var camStrike = MakeFollowCam(rig, "CM_Part2_Strike", ride.transform, aim, new Vector3(5.0f, 2.4f, -7.5f), 36f);
 
         var cutter = rig.GetComponent<TrailerCameraCutter>();
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
         Undo.RecordObject(cutter, "part2 cuts");
-        cutter.cameras = new[] { camSide, camFace, camStrike };
+        cutter.cameras = new[] { camSide, camFace, camChase, camStrike };
         cutter.useProgress = true;
         cutter.ride = ride;
-        // The face shot lands ON the look-back (0.35) and holds through it; the
-        // wide comes back before the bolt at 0.88.
-        cutter.cutProgress = new[] { 0f, 0.32f, 0.62f };
+        // ACCELERATING rhythm. Evenly spaced cuts read as a slideshow no matter
+        // how good the angles are; shots that shorten as the strike approaches
+        // are what build pressure. Spans here run 32%, 20%, 16%, then the last
+        // shot holds into the bolt at 0.88.
+        //   0.00  wide low side  — establish the flight
+        //   0.32  into his face  — lands on the look-back
+        //   0.52  over shoulder  — the horde, finally seen
+        //   0.68  wide rear      — room for the lightning to arrive
+        cutter.cutProgress = new[] { 0f, 0.32f, 0.52f, 0.68f };
         EditorUtility.SetDirty(cutter);
 
         var evt = rig.GetComponent<TrailerRideEvent>();

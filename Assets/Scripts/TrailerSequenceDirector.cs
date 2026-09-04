@@ -44,6 +44,13 @@ public class TrailerSequenceDirector : MonoBehaviour
     [Tooltip("Metres BEHIND the horse's last position to anchor the crane, so it looks out over the region the rider is heading into rather than straight down at him.")]
     public float craneSetBack = 22f;
 
+    [Header("Crane feel")]
+    [Tooltip("Field of view at the start and end of the rise. Widening as it climbs makes the land seem to open out; a fixed lens makes the same move read as a lift.")]
+    public float craneStartFov = 42f;
+    public float craneEndFov = 62f;
+    [Tooltip("Slow drift in yaw across the reveal, in degrees. A crane that only goes straight up looks mechanical; a few degrees of turn makes it feel operated.")]
+    public float craneYawDrift = 7f;
+
     [Header("Horse hand-off")]
     [Tooltip("Seconds into the time-lapse after which the horse is hidden and moved to spline_p3. Without this he visibly pops across the map while the crane is watching.")]
     public float hideHorseAfter = 2.2f;
@@ -259,6 +266,9 @@ public class TrailerSequenceDirector : MonoBehaviour
         {
             var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr;
             PlaceCrane(0f);
+            // The reveal is the quiet beat between two chases: let the score
+            // settle rather than carrying the gallop's intensity into it.
+            if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(0f);
             // CUT to the crane. Blending would sweep the live camera across the
             // landscape to reach it, straight through whatever is in the way.
             var brain = Object.FindFirstObjectByType<CinemachineBrain>();
@@ -297,11 +307,23 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void PlaceCrane(float f)
     {
         if (_crane == null) return;
+
+        // Ease in AND out. A linear rise starts and stops abruptly, which is the
+        // difference between a camera move and a lift.
         float k = f * f * (3f - 2f * f);
+
         float h = Mathf.Lerp(craneStartHeight, craneEndHeight, k);
         float pitch = Mathf.Lerp(craneStartPitch, craneEndPitch, k);
+        float yaw = _craneYaw + Mathf.Lerp(0f, craneYawDrift, k);
+
         _crane.transform.position = _craneAnchor + Vector3.up * h;
-        _crane.transform.rotation = Quaternion.Euler(pitch, _craneYaw, 0f);
+        _crane.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+
+        // Widening as it climbs makes the land open out under the camera rather
+        // than simply receding.
+        var lens = _crane.Lens;
+        lens.FieldOfView = Mathf.Lerp(craneStartFov, craneEndFov, k);
+        _crane.Lens = lens;
     }
 
     private void BeginPart2()
