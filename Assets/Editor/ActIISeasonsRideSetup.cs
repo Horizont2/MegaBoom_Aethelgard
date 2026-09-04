@@ -75,6 +75,7 @@ public static class ActIISeasonsRideSetup
         season.winterTexture = AssetDatabase.LoadAssetAtPath<Texture>(TexWinter);
         season.leavesPrefab = null;   // user asked to remove the green falling leaves
         season.snowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SnowPrefab);
+        season.snowMaterial = BuildSnowMaterial();
         season.sun = FindSun();
         season.cam = Camera.main;
 
@@ -155,6 +156,65 @@ public static class ActIISeasonsRideSetup
             "  • The Act I end-crane (CM_04) rises over the changed world while the horse is STILL galloping (overrun) — no standing still.\n\n" +
             $"  • Sun {(season.sun != null ? "OK" : "NOT FOUND")}.\n" +
             "Everything is driven by route progress, so it all stays in sync with the ride.", "OK");
+    }
+
+    private const string SnowMatPath = "Assets/LoreTrailer/VFX/M_TrailerSnow.mat";
+    private const string SnowTexPath = "Assets/LoreTrailer/VFX/T_Snowflake.png";
+
+    // The Snowfall prefab references Unity's built-in Default-Particle material
+    // (legacy shader, unlit by URP) — that's the grey smear. Build a real URP
+    // particle material instead. The shader is resolved by NAME so we never
+    // hard-code a package GUID.
+    private static Material BuildSnowMaterial()
+    {
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                  ?? Shader.Find("Universal Render Pipeline/Particles/Simple Lit")
+                  ?? Shader.Find("Universal Render Pipeline/Unlit")
+                  ?? Shader.Find("Sprites/Default");
+        if (shader == null) { Debug.LogWarning("[Trailer] No usable particle shader found for the snow material."); return null; }
+
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(SnowMatPath);
+        if (mat == null)
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/LoreTrailer")) AssetDatabase.CreateFolder("Assets", "LoreTrailer");
+            if (!AssetDatabase.IsValidFolder("Assets/LoreTrailer/VFX")) AssetDatabase.CreateFolder("Assets/LoreTrailer", "VFX");
+            mat = new Material(shader);
+            AssetDatabase.CreateAsset(mat, SnowMatPath);
+        }
+        else if (mat.shader != shader) mat.shader = shader;
+
+        var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(SnowTexPath);
+        if (tex != null)
+        {
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
+        }
+
+        Color tint = new Color(1f, 1f, 1f, 0.92f);
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+
+        // Transparent, alpha-blended, no depth write, no culling — the standard
+        // setup for soft falling particles.
+        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);     // Transparent
+        if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0f);         // Alpha
+        if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+        if (mat.HasProperty("_SrcBlend")) mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (mat.HasProperty("_DstBlend")) mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (mat.HasProperty("_SoftParticlesEnabled")) mat.SetFloat("_SoftParticlesEnabled", 1f);
+        if (mat.HasProperty("_SoftParticleFadeParams")) mat.SetVector("_SoftParticleFadeParams", new Vector4(0f, 1f, 0f, 0f));
+
+        mat.SetOverrideTag("RenderType", "Transparent");
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.DisableKeyword("_ALPHATEST_ON");
+
+        EditorUtility.SetDirty(mat);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"[Trailer] Snow material '{mat.name}' using shader '{shader.name}', texture {(tex != null ? "OK" : "MISSING — reimport Assets/LoreTrailer/VFX/T_Snowflake.png")}.");
+        return mat;
     }
 
     private static GameObject FindVariant(GameObject[] pool, string baseName, string season)

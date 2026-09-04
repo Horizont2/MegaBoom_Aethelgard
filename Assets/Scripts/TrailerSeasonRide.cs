@@ -69,6 +69,19 @@ public class TrailerSeasonRide : MonoBehaviour
     public GameObject snowPrefab;
     public Camera cam;
 
+    [Header("Snow look (the source prefab ships Unity's Default-Particle material)")]
+    [Tooltip("Material used for the snow. The stock Snowfall prefab references Unity's built-in Default-Particle, which is a legacy shader and renders as a grey smear under URP. Assigned by 'Setup Act II Seasons'.")]
+    public Material snowMaterial;
+    [Tooltip("Flake size range in metres.")]
+    public Vector2 snowSize = new Vector2(0.05f, 0.16f);
+    [Tooltip("Flakes emitted per second.")]
+    public float snowRate = 700f;
+    [Tooltip("Fall speed range.")]
+    public Vector2 snowFallSpeed = new Vector2(1.1f, 2.4f);
+    [Tooltip("How much the flakes wander sideways as they fall.")]
+    public float snowDrift = 0.55f;
+    public Color snowTint = new Color(0.95f, 0.97f, 1f, 0.9f);
+
     private static readonly int SeasonColorID = Shader.PropertyToID("_SeasonColor");
     private static readonly int SeasonIndexID = Shader.PropertyToID("_SeasonIndex");
     private static readonly int BaseMapID = Shader.PropertyToID("_BaseMap");
@@ -100,6 +113,7 @@ public class TrailerSeasonRide : MonoBehaviour
         }
         _leaves = SpawnFollower(leavesPrefab, "Trailer_Leaves");
         _snow = SpawnFollower(snowPrefab, "Trailer_Snow");
+        if (_snow != null) PolishSnow(_snow);
         if (_leaves) _leaves.SetActive(false);
         if (_snow) _snow.SetActive(false);
         if (tintTrees) GatherTrees();
@@ -289,6 +303,66 @@ public class TrailerSeasonRide : MonoBehaviour
     private static void SetActiveSafe(GameObject go, bool active)
     {
         if (go != null && go.activeSelf != active) go.SetActive(active);
+    }
+
+    // The stock Snowfall prefab is a grey smear: it uses Unity's built-in
+    // Default-Particle material (a legacy shader URP does not light) with flakes
+    // far too large and no drift. Re-dress the spawned INSTANCE — the shared
+    // prefab asset is never touched.
+    private void PolishSnow(GameObject go)
+    {
+        foreach (var r in go.GetComponentsInChildren<ParticleSystemRenderer>(true))
+        {
+            if (snowMaterial != null) r.sharedMaterial = snowMaterial;
+            r.renderMode = ParticleSystemRenderMode.Billboard;
+            r.alignment = ParticleSystemRenderSpace.View;
+            r.minParticleSize = 0f;
+            r.maxParticleSize = 0.06f;      // stops near flakes filling the screen
+            r.sortMode = ParticleSystemSortMode.Distance;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+        }
+
+        foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;   // flakes stay put as the camera flies
+            main.startSize = new ParticleSystem.MinMaxCurve(snowSize.x, snowSize.y);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(snowFallSpeed.x, snowFallSpeed.y);
+            main.startColor = snowTint;
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.gravityModifier = 0.02f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(4.5f, 7f);
+
+            var emission = ps.emission;
+            emission.rateOverTime = snowRate;
+
+            // Sideways wander so the fall isn't a straight vertical rain of dots.
+            var noise = ps.noise;
+            noise.enabled = true;
+            noise.strength = snowDrift;
+            noise.frequency = 0.25f;
+            noise.scrollSpeed = 0.35f;
+            noise.damping = true;
+            noise.quality = ParticleSystemNoiseQuality.Medium;
+
+            // Fade in and out instead of popping into and out of existence.
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.12f),
+                        new GradientAlphaKey(1f, 0.8f), new GradientAlphaKey(0f, 1f) });
+            col.color = new ParticleSystem.MinMaxGradient(grad);
+
+            var rot = ps.rotationOverLifetime;
+            rot.enabled = true;
+            rot.z = new ParticleSystem.MinMaxCurve(-1.2f, 1.2f);
+
+            ps.Clear(true);
+            ps.Play(true);
+        }
     }
 
     private GameObject SpawnFollower(GameObject prefab, string name)
