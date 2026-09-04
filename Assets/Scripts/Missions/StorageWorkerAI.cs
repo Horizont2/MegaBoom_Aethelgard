@@ -54,7 +54,9 @@ public class StorageWorkerAI : MonoBehaviour
             anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
     }
 
-    private void LateUpdate() => NPCGait.GroundSnap(transform);
+    // Agent-aware: never fight the NavMeshAgent for the transform (that was the
+    // "turns on the spot instead of walking" bug).
+    private void LateUpdate() => NPCGait.GroundSnap(transform, agent);
 
     private IEnumerator InitAndStartRoutine()
     {
@@ -99,13 +101,16 @@ public class StorageWorkerAI : MonoBehaviour
         StartCoroutine(LogisticsRoutine());
     }
 
+    // Rescanned every loop, not just once at Start: buildings raised or upgraded
+    // after the worker spawned were never added to the list, so he had nothing to
+    // haul for the rest of the session and just idled by the storage.
     void FindBuildings()
     {
         productionBuildings.Clear();
         CampBuilding[] all = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
         foreach (var b in all)
         {
-            if (!b.isStorageVault) productionBuildings.Add(b);
+            if (b != null && !b.isStorageVault) productionBuildings.Add(b);
         }
     }
 
@@ -123,10 +128,17 @@ public class StorageWorkerAI : MonoBehaviour
 
         if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
         {
-            Vector3 randomDirection = Random.insideUnitSphere * 6f;
-            randomDirection += storageDropPoint != null ? storageDropPoint.position : transform.position;
+            // Pick a point a REAL distance away. The old insideUnitSphere pick
+            // often landed within the stopping distance, so the worker never
+            // actually walked — he just kept turning in place by the storage.
+            Vector3 anchor = storageDropPoint != null ? storageDropPoint.position : transform.position;
+            Vector2 dir2 = Random.insideUnitCircle.normalized;
+            if (dir2 == Vector2.zero) dir2 = Vector2.right;
+            Vector3 target = anchor + new Vector3(dir2.x, 0f, dir2.y) * Random.Range(3.5f, 7f);
+
             NavMeshHit hit;
-            if (NavMesh.SamplePosition(randomDirection, out hit, 6f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(target, out hit, 6f, NavMesh.AllAreas) &&
+                Vector3.Distance(hit.position, transform.position) > agent.stoppingDistance + 1.5f)
             {
                 agent.SetDestination(hit.position);
             }
@@ -178,6 +190,7 @@ public class StorageWorkerAI : MonoBehaviour
                 continue;
             }
 
+            FindBuildings();   // pick up anything built or upgraded since the last pass
             bool collectedAnything = false;
 
             foreach (var building in productionBuildings)
@@ -201,7 +214,12 @@ public class StorageWorkerAI : MonoBehaviour
                     yield return StartCoroutine(WaitArrival());
 
                     agent.isStopped = true;
-                    transform.LookAt(targetPos);
+                    // Face the crate on the XZ plane. transform.LookAt on a point
+                    // he is already standing on gives a degenerate direction and
+                    // reads as a random spin.
+                    Vector3 faceDir = targetPos - transform.position; faceDir.y = 0f;
+                    if (faceDir.sqrMagnitude > 0.01f)
+                        transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
 
                     // 2. ϳ�������
                     if (anim != null) anim.SetTrigger("Pickup");

@@ -114,6 +114,18 @@ public static class NPCGait
     // edges and small NavMesh height variations aren't clobbered.
     private static readonly RaycastHit[] s_groundHits = new RaycastHit[8];
 
+    // Agent-aware overload. Writing transform.position every frame while a
+    // NavMeshAgent is driving that same transform desyncs the agent from its
+    // internal position: the agent corrects, the snap fights back, and the NPC
+    // ends up jittering/turning on the spot instead of walking its path. While
+    // the agent is live the NavMesh already supplies a correct Y, so only step
+    // in on a REAL drift (fell through the floor, spawned above it).
+    public static void GroundSnap(Transform t, NavMeshAgent agent, float driftThreshold = 0.2f)
+    {
+        bool agentDriving = agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh && agent.updatePosition;
+        GroundSnap(t, agentDriving ? Mathf.Max(driftThreshold, 1.5f) : driftThreshold);
+    }
+
     public static void GroundSnap(Transform t, float driftThreshold = 0.2f)
     {
         if (t == null) return;
