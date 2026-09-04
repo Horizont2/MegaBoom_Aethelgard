@@ -41,8 +41,8 @@ public static class ActPartTwoSetup
         // Separate take: park Act I / Act II rigs.
         foreach (var n in new[] { "LoreTrailer_Rig", "LoreTrailer_ActII_Rig" })
         {
-            var g = GameObject.Find(n);
-            if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
+            foreach (var g in TrailerFind.AllByName(n))
+                if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
         }
 
         // Ride the new route.
@@ -58,7 +58,16 @@ public static class ActPartTwoSetup
         EditorUtility.SetDirty(ride);
 
         // Part-2 rig with a chase cam + the strike event.
-        var rig = GameObject.Find(RigName);
+        // Reuse the rig that is already in the scene even when it is DISABLED
+        // (GameObject.Find skips disabled objects, which is how the scene ended up
+        // with six of these), and delete any duplicates a previous run left.
+        var existingRigs = TrailerFind.AllByName(RigName);
+        GameObject rig = existingRigs.Count > 0 ? existingRigs[0] : null;
+        for (int i = existingRigs.Count - 1; i >= 1; i--)
+            Undo.DestroyObjectImmediate(existingRigs[i]);
+        if (existingRigs.Count > 1)
+            Debug.Log($"[Trailer] Removed {existingRigs.Count - 1} duplicate '{RigName}' object(s) left by earlier runs.");
+
         if (rig == null) { rig = new GameObject(RigName); Undo.RegisterCreatedObjectUndo(rig, "part2 rig"); }
         if (!rig.activeSelf) { Undo.RecordObject(rig, "enable"); rig.SetActive(true); }
 

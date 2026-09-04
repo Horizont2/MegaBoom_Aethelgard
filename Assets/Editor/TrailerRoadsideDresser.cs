@@ -44,8 +44,8 @@ public static class TrailerRoadsideDresser
         }
 
         // Fresh root each run (delete the previous dressing so it doesn't stack).
-        var old = GameObject.Find(Root);
-        if (old != null) Undo.DestroyObjectImmediate(old);
+        foreach (var old in TrailerFind.AllByName(Root))
+            if (old != null) Undo.DestroyObjectImmediate(old);
         var root = new GameObject(Root);
         Undo.RegisterCreatedObjectUndo(root, "road dressing");
 

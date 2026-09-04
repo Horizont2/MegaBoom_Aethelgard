@@ -42,7 +42,7 @@ public static class TrailerCinematicPostFX
         AssetDatabase.SaveAssets();
 
         // Scene volume (global, high priority so it wins over the gameplay one).
-        var go = GameObject.Find("Trailer_PostFX");
+        var go = TrailerFind.ByName("Trailer_PostFX");
         if (go == null)
         {
             go = new GameObject("Trailer_PostFX");

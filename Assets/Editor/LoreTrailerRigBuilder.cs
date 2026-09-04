@@ -96,7 +96,9 @@ public static class LoreTrailerRigBuilder
     [MenuItem("Tools/Lore Trailer/Build Camera Rig")]
     public static void BuildRig()
     {
-        if (GameObject.Find(RigName) != null &&
+        // TrailerFind, so a PARKED rig still counts as "already exists" — with
+        // GameObject.Find this guard never fired and rigs piled up.
+        if (TrailerFind.ByName(RigName) != null &&
             !EditorUtility.DisplayDialog("Lore Trailer Rig",
                 "A \"" + RigName + "\" already exists in the scene. Build another one?",
                 "Build anyway", "Cancel"))

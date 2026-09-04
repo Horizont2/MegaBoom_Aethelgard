@@ -130,17 +130,23 @@ public static class ActIRoadRideSetup
         // cameras don't fight Act I's timeline cameras.
         foreach (var n in new[] { "LoreTrailer_ActII_Rig", "LoreTrailer_Part2_Rig" })
         {
-            var g = GameObject.Find(n);
-            if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
+            foreach (var g in TrailerFind.AllByName(n))
+                if (g != null && g.activeSelf) { Undo.RecordObject(g, "park rig"); g.SetActive(false); }
         }
 
-        var rig = GameObject.Find(RigName);
-        if (rig == null)
+        // Earlier tool runs looked rigs up with GameObject.Find, which skips
+        // DISABLED objects — so every run created another rig. Collapse any
+        // duplicates the scene picked up that way.
+        foreach (var dupName in new[] { RigName, "LoreTrailer_Part2_Rig", "LoreTrailer_ActII_Rig" })
         {
-            // Find-by-name misses inactive roots; scan inactive too.
-            rig = Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+            var all = TrailerFind.AllByName(dupName);
+            for (int i = all.Count - 1; i >= 1; i--) Undo.DestroyObjectImmediate(all[i]);
+            if (all.Count > 1) Debug.Log($"[Trailer] Removed {all.Count - 1} duplicate '{dupName}' object(s) left by earlier runs.");
         }
+
+        // Includes DISABLED rigs — the rigs spend most of their life parked, and
+        // GameObject.Find never returns those.
+        var rig = TrailerFind.ByName(RigName);
         if (rig == null) return false;
 
         if (!rig.activeSelf) { Undo.RecordObject(rig, "enable rig"); rig.SetActive(true); }
@@ -372,9 +378,7 @@ public static class ActIRoadRideSetup
     // Slow push-in on the opening static shot so it breathes.
     private static void AddFovPush(CinemachineCamera cam)
     {
-        var rig = GameObject.Find(RigName) ??
-                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var rig = TrailerFind.ByName(RigName);
         var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
 
         var push = cam.GetComponent<TrailerFovPush>();
@@ -427,9 +431,7 @@ public static class ActIRoadRideSetup
     // DoF (auto-focus horse, close shots only) + lightning beats on the rig.
     private static void AddCinematicFocusAndLightning(Transform horse)
     {
-        var rig = GameObject.Find(RigName) ??
-                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var rig = TrailerFind.ByName(RigName);
         var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
         if (rig == null) return;
 
@@ -464,9 +466,7 @@ public static class ActIRoadRideSetup
     // Add the trailer soundscape (wind/rain beds, raven, distant thunder) on the rig.
     private static void AddTrailerAmbience()
     {
-        var rig = GameObject.Find(RigName) ??
-                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var rig = TrailerFind.ByName(RigName);
         if (rig == null) return;
         if (rig.GetComponent<TrailerAmbience>() == null) Undo.AddComponent<TrailerAmbience>(rig);
     }
@@ -474,9 +474,7 @@ public static class ActIRoadRideSetup
     // Add a Timeline-synced slow-mo punch on the hoof-strike shot (CM_03).
     private static void AddSlowMoBeats()
     {
-        var rig = GameObject.Find(RigName) ??
-                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var rig = TrailerFind.ByName(RigName);
         var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
         if (dir == null) return;
 
@@ -501,9 +499,7 @@ public static class ActIRoadRideSetup
     private static bool GetShotTiming(string camFragment, out float start, out float duration)
     {
         start = 15f; duration = 5f;   // sensible fallback if the clip isn't found
-        var rig = GameObject.Find(RigName) ??
-                  Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                        .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        var rig = TrailerFind.ByName(RigName);
         var dir = rig != null ? rig.GetComponent<PlayableDirector>() : null;
         var ta = dir != null ? dir.playableAsset as TimelineAsset : null;
         if (ta == null) return false;

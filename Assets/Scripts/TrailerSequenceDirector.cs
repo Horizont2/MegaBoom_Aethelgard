@@ -54,7 +54,18 @@ public class TrailerSequenceDirector : MonoBehaviour
 
         // Force the PART 1 starting state (Part 2 setup leaves the horse on
         // spline_p3 and the Act I rig disabled — that's why it "started at Part 2").
-        if (actIRig != null) actIRig.SetActive(true);
+        if (actIRig != null)
+        {
+            actIRig.SetActive(true);
+            // The rig is saved parked, so its Timeline is not running when we
+            // switch it on — start it explicitly or Act I has no shots at all.
+            var dir = actIRig.GetComponent<PlayableDirector>();
+            if (dir != null) { dir.enabled = true; dir.time = 0d; dir.Play(); }
+        }
+        else Debug.LogWarning("[Trailer] No 'LoreTrailer_Rig' in the scene — run 'Setup Act I Road Ride'.");
+
+        // Park EVERY Part 2 rig (earlier tool runs could leave duplicates behind).
+        foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig")) g.SetActive(false);
         if (part2Rig != null) part2Rig.SetActive(false);
 
         // Seasons are OURS from the start and HELD at summer, so the world never
@@ -76,8 +87,11 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void AutoFind()
     {
         if (ride == null) ride = Object.FindFirstObjectByType<TrailerHorseRide>();
-        if (actIRig == null) actIRig = GameObject.Find("LoreTrailer_Rig");
-        if (part2Rig == null) part2Rig = GameObject.Find("LoreTrailer_Part2_Rig");
+        // TrailerFind, not GameObject.Find: the rigs are parked (disabled) between
+        // phases and Find never returns disabled objects, so both came back null
+        // and nothing was ever switched on.
+        if (actIRig == null) actIRig = TrailerFind.ByName("LoreTrailer_Rig");
+        if (part2Rig == null) part2Rig = TrailerFind.ByName("LoreTrailer_Part2_Rig");
         if (season == null && actIRig != null) season = actIRig.GetComponent<TrailerSeasonRide>();
         if (season == null) season = Object.FindFirstObjectByType<TrailerSeasonRide>();
         if (terrainSeason == null) terrainSeason = Object.FindFirstObjectByType<TrailerTerrainSeasons>();

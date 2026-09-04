@@ -36,8 +36,17 @@ public static class ActIISeasonsRideSetup
         Undo.SetCurrentGroupName("Setup Act II Seasons");
 
         // Clean up any rig/cameras a PREVIOUS (broken) Act II version created.
-        var oldRig = GameObject.Find("LoreTrailer_ActII_Rig");
-        if (oldRig != null) Undo.DestroyObjectImmediate(oldRig);
+        foreach (var oldRig in TrailerFind.AllByName("LoreTrailer_ActII_Rig"))
+            if (oldRig != null) Undo.DestroyObjectImmediate(oldRig);
+
+        // Earlier runs couldn't see DISABLED rigs, so every run made another one.
+        // Collapse any duplicates down to the first.
+        foreach (var dupName in new[] { RigName, "LoreTrailer_Part2_Rig" })
+        {
+            var all = TrailerFind.AllByName(dupName);
+            for (int i = all.Count - 1; i >= 1; i--) Undo.DestroyObjectImmediate(all[i]);
+            if (all.Count > 1) Debug.Log($"[Trailer] Removed {all.Count - 1} duplicate '{dupName}' object(s).");
+        }
 
         // Keep Act I's ride speed (don't fight it) — just make sure it isn't the
         // leftover fast/slow value from the old Act II. 24s = the Act I default.
@@ -184,10 +193,21 @@ public static class ActIISeasonsRideSetup
                 string ln = n.ToLowerInvariant();
                 if (ln.EndsWith("_autumn") || ln.EndsWith("_snow") || ln.EndsWith("_winter")) continue;
 
+                // Two naming conventions in this project:
+                //   M_TreeBirch_Leaves -> M_TreeBirch_Leaves_Autumn / _Snow
+                //   M_TreeLarge_Leaves -> M_TreeLarge_Autumn        / _Snow  (no _Leaves)
+                var stems = new System.Collections.Generic.List<string> { n };
+                foreach (var drop in new[] { "_Leaves", "_leaves", "_Leaf" })
+                    if (n.EndsWith(drop)) stems.Add(n.Substring(0, n.Length - drop.Length));
+
                 Material a = null, w = null;
-                foreach (var s in suffixes) { a = allMats.FirstOrDefault(x => x.name == n + s); if (a != null) break; }
-                foreach (var s in winterSuffixes) { w = allMats.FirstOrDefault(x => x.name == n + s); if (w != null) break; }
+                foreach (var stem in stems)
+                {
+                    if (a == null) foreach (var s in suffixes) { a = allMats.FirstOrDefault(x => x.name == stem + s); if (a != null) break; }
+                    if (w == null) foreach (var s in winterSuffixes) { w = allMats.FirstOrDefault(x => x.name == stem + s); if (w != null) break; }
+                }
                 if (a == null && w == null) continue;
+                Debug.Log($"[Trailer] Foliage pair: {n} -> autumn={(a != null ? a.name : "-")}, winter={(w != null ? w.name : "-")}");
                 bases.Add(m); auts.Add(a); wins.Add(w);
             }
         }
@@ -200,9 +220,7 @@ public static class ActIISeasonsRideSetup
 
     private static GameObject FindRig()
     {
-        return GameObject.Find(RigName) ??
-               Object.FindObjectsByType<PlayableDirector>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                     .Select(d => d.gameObject).FirstOrDefault(g => g.name == RigName);
+        return TrailerFind.ByName(RigName);
     }
 
     private static Light FindSun()

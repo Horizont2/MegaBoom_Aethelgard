@@ -14,7 +14,7 @@ public static class TrailerSequenceSetup
     [MenuItem("Tools/Lore Trailer/Setup Full Trailer Sequence")]
     public static void Setup()
     {
-        var go = GameObject.Find("TrailerSequencer");
+        var go = TrailerFind.ByName("TrailerSequencer");
         if (go == null)
         {
             go = new GameObject("TrailerSequencer");
