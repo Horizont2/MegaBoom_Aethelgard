@@ -100,7 +100,11 @@ public class TrailerUndeadPursuit : MonoBehaviour
                 // down, which is the whole point of the sequence.
                 float p01 = _ride != null ? Mathf.Clamp01(_ride.progress01) : 0f;
                 float gap = Mathf.Lerp(trailDistance, trailDistanceAtEnd, p01);
-                Vector3 anchor = target.position - target.forward * gap + target.right * _lane;
+                // Once charging they surround him rather than trailing him, so
+                // the anchor is a point on a ring instead of a point behind.
+                Vector3 anchor = _charging
+                    ? target.position + (Quaternion.Euler(0f, _lane * 40f, 0f) * (transform.position - target.position).normalized) * gap
+                    : target.position - target.forward * gap + target.right * _lane;
                 Vector3 to = anchor - transform.position; to.y = 0f;
                 float dToRider = Vector3.Distance(
                     new Vector3(target.position.x, 0f, target.position.z),
@@ -108,7 +112,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
 
                 // Never faster than the horse: measured from his real movement, so
                 // it holds whatever the spline length works out to.
-                float cap = _targetSpeed > 0.2f ? _targetSpeed * maxSpeedFactor : chaseSpeed;
+                float cap = (!_charging && _targetSpeed > 0.2f) ? _targetSpeed * maxSpeedFactor : chaseSpeed;
                 float speed = Mathf.Min(chaseSpeed, cap);
                 // Ease off completely once we are at the trailing distance.
                 if (dToRider < stopDistance) speed = 0f;
@@ -123,6 +127,22 @@ public class TrailerUndeadPursuit : MonoBehaviour
                 break;
         }
     }
+
+    // The chase is over — close in and kill. Called by TrailerBattleDirector once
+    // the rider is on his feet: until then they are deliberately held BACK, and
+    // without releasing them the battle would never actually start.
+    public void Charge(float ringRadius)
+    {
+        trailDistance = ringRadius;
+        trailDistanceAtEnd = ringRadius;
+        stopDistance = Mathf.Max(1.4f, ringRadius * 0.55f);
+        maxSpeedFactor = 1f;          // nothing left to outrun
+        _charging = true;
+        // Aim at the rider himself now, not at a point trailing behind him.
+        _lane *= 0.4f;
+    }
+
+    private bool _charging;
 
     private void Face()
     {

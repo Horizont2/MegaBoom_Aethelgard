@@ -91,6 +91,10 @@ public class TrailerRideEvent : MonoBehaviour
     [Tooltip("Fade out after the get-up. Turn off while iterating on the beats.")]
     public bool fadeOutAtEnd = true;
 
+    [Header("Part 3 — the battle")]
+    [Tooltip("Hand off to the fight once he is on his feet, instead of ending on black. The skeletons that chased him down close the ring.")]
+    public bool startBattle = true;
+
     private TrailerLightningStrike _bolt;
     private Transform _riderGO;
     private Animator _riderAnimator, _horseAnimator;
@@ -308,15 +312,23 @@ public class TrailerRideEvent : MonoBehaviour
         yield return new WaitForSeconds(getUpSeconds);
         SwapToHeroAnimator();
 
-        // Hold on him, then go out on black. The hold is the beat that lets the
-        // moment land; cutting from impact straight to the next thing spends it
-        // for nothing.
+        // The chase has to PAY OFF. He is up, and what ran him down arrives —
+        // Part 3 takes over from here and ends the piece on its own fade.
+        if (startBattle)
+        {
+            TrailerBattleDirector.Begin(_riderGO != null ? _riderGO : ride.transform);
+            yield break;
+        }
+
+        // Or, with the battle off, hold on him and go out on black. The hold is
+        // the beat that lets the moment land; cutting from impact straight to the
+        // next thing spends it for nothing.
         if (fadeOutAtEnd)
         {
             yield return new WaitForSeconds(endHold);
             if (TrailerCinematicPolish.Instance != null)
                 TrailerCinematicPolish.Instance.FadeToBlack(endFade);
-            Debug.Log("[Trailer] Part 2 complete — faded out. Part 3 (the battle) picks up from here.");
+            Debug.Log("[Trailer] Part 2 complete — faded out.");
         }
     }
 
