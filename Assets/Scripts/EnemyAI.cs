@@ -249,6 +249,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
             s_groundLayerMask = m == 0 ? ~0 : m;
         }
 
+        // Fast path. This is called for every enemy every frame, and a 150m
+        // physics raycast per enemy is one of the heaviest things a horde does.
+        // Terrain.SampleHeight is a heightmap lookup with no physics at all, so
+        // take it whenever the answer is plausible — i.e. the enemy is standing
+        // near the terrain rather than on a bridge, a location's floor mesh or a
+        // prop. The raycast still runs in those cases.
+        Terrain fast = Terrain.activeTerrain;
+        if (fast != null)
+        {
+            float th = fast.SampleHeight(worldPos) + fast.transform.position.y;
+            if (Mathf.Abs(worldPos.y - th) < 2.5f) return th;
+        }
+
         Vector3 origin = new Vector3(worldPos.x, worldPos.y + 50f, worldPos.z);
         int count = Physics.RaycastNonAlloc(origin, Vector3.down, s_terrainHitBuffer, 150f,
                                             s_groundLayerMask, QueryTriggerInteraction.Ignore);
@@ -374,6 +387,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         randomOffset = Random.Range(0f, 100f);
+        // Spread the first avoidance solve so a whole wave doesn't probe on the
+        // same frame — that spike is what a crowd would otherwise cost.
+        _nextAvoidSolve = Time.time + Random.value / Mathf.Max(1f, avoidSolvesPerSecond);
         strafeDir = Random.value > 0.5f ? 1f : -1f;
     }
 
@@ -1608,6 +1624,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private static readonly RaycastHit[] s_avoidBuffer = new RaycastHit[8];
 
+    // Probing costs up to nine spherecasts, and with a horde on screen that is
+    // tens of thousands of casts a second if done every frame for every enemy.
+    // The deflection is re-solved a few times a second instead and reused in
+    // between; the phase is seeded per enemy so a crowd never all solves on the
+    // same frame. Movement stays smooth because the deflection is a heading, not
+    // a position.
+    [Tooltip("How many times a second the obstacle heading is re-solved. 8-12 is indistinguishable from every frame and costs a fraction as much.")]
+    public float avoidSolvesPerSecond = 10f;
+    private float _nextAvoidSolve;
+    private Quaternion _avoidDeflection = Quaternion.identity;
+
     private int ResolvedObstacleMask()
     {
         if (obstacleMask.value != 0) return obstacleMask.value;
@@ -1624,8 +1651,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (dir.sqrMagnitude < 0.0001f) return dir;
         dir.Normalize();
 
+        if (Time.time >= _nextAvoidSolve)
+        {
+            _nextAvoidSolve = Time.time + 1f / Mathf.Max(1f, avoidSolvesPerSecond);
+            _avoidDeflection = SolveDeflection(pos, dir);
+        }
+        return _avoidDeflection * dir;
+    }
+
+    // Returns the rotation to apply to the desired heading to get a clear one.
+    // Storing a ROTATION rather than a direction means the cached answer stays
+    // correct as the enemy turns between solves.
+    private Quaternion SolveDeflection(Vector3 pos, Vector3 dir)
+    {
         Vector3 origin = pos + Vector3.up * avoidProbeHeight;
-        if (!ProbeBlocked(origin, dir)) return dir;
+        if (!ProbeBlocked(origin, dir)) return Quaternion.identity;
 
         // Fan out to either side until a clear heading is found. Alternating
         // left/right keeps the deflection minimal, so they hug the wall and
@@ -1633,13 +1673,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
         for (int step = 1; step <= 4; step++)
         {
             float a = step * 25f;
-            Vector3 l = Quaternion.Euler(0f, -a, 0f) * dir;
-            if (!ProbeBlocked(origin, l)) return l;
-            Vector3 r = Quaternion.Euler(0f, a, 0f) * dir;
-            if (!ProbeBlocked(origin, r)) return r;
+            var lq = Quaternion.Euler(0f, -a, 0f);
+            if (!ProbeBlocked(origin, lq * dir)) return lq;
+            var rq = Quaternion.Euler(0f, a, 0f);
+            if (!ProbeBlocked(origin, rq * dir)) return rq;
         }
         // Boxed in — slide sideways rather than grinding into the wall.
-        return Quaternion.Euler(0f, 90f, 0f) * dir;
+        return Quaternion.Euler(0f, 90f, 0f);
     }
 
     private bool ProbeBlocked(Vector3 origin, Vector3 dir)

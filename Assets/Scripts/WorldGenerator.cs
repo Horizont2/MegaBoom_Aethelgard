@@ -302,7 +302,13 @@ public class WorldGenerator : MonoBehaviour
 
     private Terrain terrain;
     private MaterialPropertyBlock propBlock;
-    private const float MAX_FRAME_TIME = 0.015f;
+    // Work budget per frame while generating. This used to be a fixed 15ms,
+    // which on a static loading screen throws away half the machine: nothing is
+    // being rendered that needs the other 85% of a frame. Raising it roughly
+    // halves the number of frames generation takes.
+    [Tooltip("Milliseconds of generation work per frame. Higher = faster loading, at the cost of the loading screen's own frame rate. 33ms still leaves the progress bar animating at ~30fps.")]
+    [Range(8f, 100f)] public float generationBudgetMs = 33f;
+    private float MAX_FRAME_TIME => generationBudgetMs * 0.001f;
 
     private int currentTreeCount = 0;
     private int currentBushCount = 0;
@@ -668,8 +674,45 @@ public class WorldGenerator : MonoBehaviour
         StartCoroutine(GenerateWorldRoutine());
     }
 
+    private int _vsyncBeforeGen;
+    private int _targetFpsBeforeGen;
+    private float _genStartTime;
+
+    // VSync makes every `yield return null` in these routines wait for the
+    // display's refresh, so a 15ms slice of work still costs a full 16.7ms
+    // frame — generation spent about half its time idle. Nothing on a loading
+    // screen needs to be synced to the display, so unlock it for the duration
+    // and restore whatever the player had afterwards.
+    private void BeginGenerationPerfMode()
+    {
+        _vsyncBeforeGen = QualitySettings.vSyncCount;
+        _targetFpsBeforeGen = Application.targetFrameRate;
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = -1;
+        _genStartTime = Time.realtimeSinceStartup;
+    }
+
+    private void EndGenerationPerfMode()
+    {
+        QualitySettings.vSyncCount = _vsyncBeforeGen;
+        Application.targetFrameRate = _targetFpsBeforeGen;
+        Debug.Log($"[WorldGenerator] Generation finished in {Time.realtimeSinceStartup - _genStartTime:0.00}s.");
+    }
+
+    // Restore even if the scene is torn down mid-generation, or the player would
+    // be left with vsync off for the rest of the session.
+    private void OnDisable()
+    {
+        if (!IsGenerationDone && _genStartTime > 0f)
+        {
+            QualitySettings.vSyncCount = _vsyncBeforeGen;
+            Application.targetFrameRate = _targetFpsBeforeGen;
+        }
+    }
+
     private IEnumerator GenerateWorldRoutine()
     {
+        BeginGenerationPerfMode();
         yield return StartCoroutine(GenerateHeightsRoutine(terrain.terrainData));
         CurrentProgress = 0.10f;
 
@@ -756,6 +799,7 @@ public class WorldGenerator : MonoBehaviour
 
         CurrentProgress = 1f;
         IsGenerationDone = true;
+        EndGenerationPerfMode();
         try { OnWorldGenerationComplete?.Invoke(); }
         catch (System.Exception e) { Debug.LogError("[WorldGenerator] OnWorldGenerationComplete handler threw: " + e); }
     }
