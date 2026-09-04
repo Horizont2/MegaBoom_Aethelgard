@@ -1886,7 +1886,12 @@ MonoBehaviour:
   cagedAllyPrefab: {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
   cagedAllyChance: 0.85
   maxCagedAllies: 4
-  ambientCrowPrefabs: []
+  ambientCrowPrefabs:
+  - {fileID: 4292170788808701894, guid: db6e49a961a101a4fae060afa788aeaa, type: 3}
+  - {fileID: 7342274343093376088, guid: da2e831cd086a3f48a59131034b8b1cf, type: 3}
+  - {fileID: 6477737816420383978, guid: 32cb7d04aa4a9d9449e65f9f5b2e51eb, type: 3}
+  - {fileID: 8810605454442767333, guid: e8434d75d5b7ba14683177bdf1b6cbf9, type: 3}
+  - {fileID: 9143115200420249582, guid: 5232bada72e1b514683da03d14bd102e, type: 3}
   ambientCrowCount: 0
   ambientCrowMinHeight: 14
   ambientCrowMaxHeight: 32
