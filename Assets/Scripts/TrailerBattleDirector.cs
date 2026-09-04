@@ -152,7 +152,11 @@ public class TrailerBattleDirector : MonoBehaviour
             var go = Instantiate(prefab, pos, Quaternion.LookRotation((_hero.position - pos).normalized));
 
             var ai = go.GetComponent<EnemyAI>();
-            if (ai != null) _enemies.Add(ai);
+            if (ai != null)
+            {
+                ai.suppressDrops = true;    // no XP crystals arcing out of a trailer shot
+                _enemies.Add(ai);
+            }
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Spawn, pos);
         }
@@ -200,19 +204,24 @@ public class TrailerBattleDirector : MonoBehaviour
                 if (d < best) { best = d; nearest = e; }
             }
 
+            int before = _enemies.Count;
+
             if (nearest != null)
             {
-                Vector3 look = nearest.transform.position - _hero.position; look.y = 0f;
-                if (look.sqrMagnitude > 0.01f)
-                    _hero.rotation = Quaternion.Slerp(_hero.rotation, Quaternion.LookRotation(look.normalized), Time.deltaTime * 8f);
-
-                if (Mathf.Sqrt(best) <= swingRange) Swing();
+                // WALK IN, then strike. Standing still and hitting whatever
+                // wandered into reach is what made him look inert.
+                if (Mathf.Sqrt(best) > swingRange * 0.85f)
+                {
+                    yield return StartCoroutine(StepToward(nearest.transform, 1.6f));
+                    t += 1.6f;
+                }
+                yield return StartCoroutine(Swing());
+                t += swingImpactDelay;
             }
 
             // CUT ON THE KILLS. A melee cut to a stopwatch drifts out of sync
             // with what is happening in it within a couple of shots; cutting when
             // something dies keeps every change of angle on a beat.
-            int before = _enemies.Count;
             yield return new WaitForSeconds(swingInterval);
             t += swingInterval;
 
@@ -228,12 +237,18 @@ public class TrailerBattleDirector : MonoBehaviour
         Debug.LogWarning($"[Trailer] Battle ran to its {maxFightSeconds}s limit with {_enemies.Count} still standing — cutting anyway so the take cannot hang.");
     }
 
-    private void Swing()
+    [Tooltip("Delay between starting the swing animation and the damage landing. Without it they died the instant the swing began — before the blade had moved — which is what made the kills look unearned.")]
+    public float swingImpactDelay = 0.28f;
+
+    private IEnumerator Swing()
     {
         if (_heroAnim != null && _heroAnim.runtimeAnimatorController != null)
             foreach (var p in _heroAnim.parameters)
                 if (p.type == AnimatorControllerParameterType.Trigger && p.name == "Attack")
                 { _heroAnim.ResetTrigger("Attack"); _heroAnim.SetTrigger("Attack"); break; }
+
+        // Let the blade actually travel before anything dies.
+        yield return new WaitForSeconds(swingImpactDelay);
 
         for (int i = _enemies.Count - 1; i >= 0; i--)
         {
@@ -267,6 +282,45 @@ public class TrailerBattleDirector : MonoBehaviour
             });
         }
         CameraShakeUtil.TryShake(0.18f, 0.09f);
+    }
+
+    // He does not stand still and let them come. Between swings he closes on the
+    // next one — a hero rooted to a spot while a ring shuffles around him reads
+    // as a placeholder, not a fight.
+    private IEnumerator StepToward(Transform foe, float seconds)
+    {
+        if (foe == null) yield break;
+        var cc = _hero.GetComponent<CharacterController>();
+        float t = 0f;
+        while (t < seconds && foe != null)
+        {
+            t += Time.deltaTime;
+            Vector3 to = Flat(foe.position - _hero.position);
+            float d = to.magnitude;
+            if (d <= swingRange * 0.85f) break;          // close enough to strike
+
+            Vector3 step = to.normalized * 2.6f * Time.deltaTime;
+            if (cc != null && cc.enabled) cc.Move(step);
+            else _hero.position += step;
+
+            _hero.rotation = Quaternion.Slerp(_hero.rotation, Quaternion.LookRotation(to.normalized), Time.deltaTime * 9f);
+            SetHeroSpeed(2.6f);
+            yield return null;
+        }
+        SetHeroSpeed(0f);
+    }
+
+    // Drives the same locomotion parameters PlayerController would, so his own
+    // run/idle blend plays instead of him sliding in an idle pose.
+    private void SetHeroSpeed(float v)
+    {
+        if (_heroAnim == null || _heroAnim.runtimeAnimatorController == null) return;
+        foreach (var p in _heroAnim.parameters)
+        {
+            if (p.type != AnimatorControllerParameterType.Float) continue;
+            if (p.name == "Speed") _heroAnim.SetFloat("Speed", v);
+            else if (p.name == "MoveZ") _heroAnim.SetFloat("MoveZ", v > 0.1f ? 1f : 0f);
+        }
     }
 
     // Shots are STAGED FRESH each time one goes live, around where the fight

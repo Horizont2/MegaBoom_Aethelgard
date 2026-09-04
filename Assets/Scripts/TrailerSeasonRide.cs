@@ -166,6 +166,12 @@ public class TrailerSeasonRide : MonoBehaviour
             for (int s = 0; s < mats.Length; s++)
             {
                 var m = mats[s]; if (m == null) continue;
+
+                // LEAVES ONLY. Matching on "birch" or "large" also catches
+                // M_TreeBirch_Bark and M_TreeLarge_Bark, so the trunks were being
+                // repainted with a leaf material — which is what broke them.
+                if (IsBark(m.name) || IsBark(r.gameObject.name)) continue;
+
                 Material a = LookUp(m, foliageAutumn), w = LookUp(m, foliageWinter);
                 if (a == null && w == null)
                 {
@@ -182,6 +188,16 @@ public class TrailerSeasonRide : MonoBehaviour
         _trees = rends.ToArray(); _treeSlot = slots.ToArray();
         _treeOrigMat = orig.ToArray(); _treeAutumnMat = aut.ToArray(); _treeWinterMat = win.ToArray();
         Debug.Log($"[Trailer] Foliage recolour: {_trees.Length} renderer slots matched (table entries: {(foliageBase != null ? foliageBase.Length : 0)}).");
+    }
+
+    private static readonly string[] BarkWords = { "bark", "trunk", "wood", "stump", "branch", "log", "root" };
+
+    private static bool IsBark(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        string n = name.ToLowerInvariant();
+        foreach (var w in BarkWords) if (n.Contains(w)) return true;
+        return false;
     }
 
     private Material LookUp(Material m, Material[] table)

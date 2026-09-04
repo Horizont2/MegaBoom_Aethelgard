@@ -258,6 +258,11 @@ public static class ActIISeasonsRideSetup
                 // Skip materials that ARE season variants already.
                 string ln = n.ToLowerInvariant();
                 if (ln.EndsWith("_autumn") || ln.EndsWith("_snow") || ln.EndsWith("_winter")) continue;
+                // Never pair a BARK material. M_TreeBirch_Bark sits next to
+                // M_TreeBirch_Leaves and would otherwise be handed a leaf
+                // variant, repainting the trunk.
+                if (ln.Contains("bark") || ln.Contains("trunk") || ln.Contains("wood")
+                    || ln.Contains("stump") || ln.Contains("branch") || ln.Contains("log")) continue;
 
                 // Two naming conventions in this project:
                 //   M_TreeBirch_Leaves -> M_TreeBirch_Leaves_Autumn / _Snow

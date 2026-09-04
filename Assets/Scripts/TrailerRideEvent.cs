@@ -328,7 +328,10 @@ public class TrailerRideEvent : MonoBehaviour
         // The horse has held the rear long enough — drop it back to Idle instead
         // of standing frozen on the last frame.
         yield return new WaitForSeconds(Mathf.Max(0f, rearHoldSeconds - getUpDelay));
-        if (_horseAnim != null) _horseAnim.Release();
+        // The ride component is what re-fires 'Run'. Take it out of the picture
+        // before asking the horse to stand.
+        if (ride != null) ride.enabled = false;
+        if (_horseAnim != null) _horseAnim.Detach();
         GoToIdle(_horseAnimator, horseIdleStates);
 
         // Once he is on his feet the cutscene is over, so hand the rider back to
@@ -365,6 +368,14 @@ public class TrailerRideEvent : MonoBehaviour
     private static bool GoToIdle(Animator a, string[] candidates, float fade = 0.3f)
     {
         if (a == null || a.runtimeAnimatorController == null || candidates == null) return false;
+
+        // CLEAR EVERY TRIGGER FIRST. TrailerHorseRide fires 'Run' when the ride
+        // begins, and an unconsumed trigger sits in the animator until something
+        // takes it — so the moment we cross-faded to Idle, the controller's
+        // Any State -> Run transition fired again and the horse went back to
+        // galloping on the spot.
+        foreach (var p in a.parameters)
+            if (p.type == AnimatorControllerParameterType.Trigger) a.ResetTrigger(p.name);
         foreach (var name in candidates)
         {
             if (string.IsNullOrEmpty(name)) continue;

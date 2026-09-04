@@ -7,6 +7,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Header("Archetype & Poise")]
     public bool isElite = false;
 
+    [Tooltip("Suppress XP crystals and diamond drops on death. Set by the trailer's battle director: pickups spilling out of every kill read as gameplay, not cinema.")]
+    public bool suppressDrops = false;
+
     [Tooltip("Region bosses run on this same AI, but had no way to say so — which is why they fought in silence: every sound they made was the generic skeleton set, and the shared vocal cooldown let the swarm around them win it every time. Tick this on a boss prefab for its own roar, slam, enrage and death audio, and for vocals that ignore the crowd's cooldown.")]
     public bool isBoss = false;
     public float maxPoise = 100f;
@@ -1518,7 +1521,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = false;
         ResetColor();
 
-        if (xpCrystalPrefab != null)
+        // Cinematic kills drop nothing: XP crystals and diamonds arcing out of
+        // every skeleton read as a gameplay HUD moment in the middle of a
+        // trailer shot.
+        if (xpCrystalPrefab != null && !suppressDrops)
         {
             GameObject xc = Instantiate(xpCrystalPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
             // Scale the XP payout by this enemy's reward multiplier (region
@@ -1530,7 +1536,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 xcData.xpAmount *= xpRewardMultiplier;
         }
 
-        if (diamondPrefab != null && Random.value <= diamondDropChance)
+        if (diamondPrefab != null && !suppressDrops && Random.value <= diamondDropChance)
         {
             int dropCount = isElite ? Random.Range(2, 4) : 1;
             for (int d = 0; d < dropCount; d++)
