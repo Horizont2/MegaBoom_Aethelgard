@@ -544,8 +544,8 @@ public class RegionTotem : MonoBehaviour
         GameObject entity = Instantiate(prefab, spawnPos, Quaternion.identity);
         if (s_markNextAsBoss)
         {
-            var bossAI = entity.GetComponent<EnemyAI>();
-            if (bossAI != null) bossAI.isBoss = true;
+            var spawnedBoss = entity.GetComponent<EnemyAI>();
+            if (spawnedBoss != null) spawnedBoss.isBoss = true;
         }
         activeEnemies.Add(entity);
 
