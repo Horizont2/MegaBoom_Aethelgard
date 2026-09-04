@@ -64,6 +64,12 @@ public class WorldMapArmyMarker : MonoBehaviour
     [Range(0f, 1f)] public float positionSmoothTime = 0.10f;
     [Range(0f, 20f)] public float rotationSlerpSpeed = 10f;
 
+    [Tooltip("Turn the marker to face its direction of travel. Right for a figurine that has a front; wrong for a map PIN, which should stay upright — leave off for pin-style art.")]
+    public bool rotateToHeading = false;
+
+    [Tooltip("Keep the countdown text upright even when the marker rotates. Without this the timer tips over with the icon and stops being readable.")]
+    public bool keepTimerUpright = true;
+
     [Header("Visible Route Line")]
     // Optional — assign a small UI dash prefab (RectTransform + Image, ~4×2px)
     // to draw a dotted route from origin along the polyline to the target.
@@ -148,31 +154,50 @@ public class WorldMapArmyMarker : MonoBehaviour
         if (rt == null) rt = go.AddComponent<RectTransform>();
         markers[c.campaignID] = rt;
 
-        // Pick a figurine sprite from the first alive unit in the army.
-        var img = go.GetComponent<Image>();
-        if (img != null && MercenaryRoster.Instance != null)
-        {
-            foreach (var uid in c.armyUIDs)
-            {
-                var all = MercenaryRoster.Instance.GetAllUnits();
-                foreach (var u in all)
-                {
-                    if (u.uid == uid)
-                    {
-                        var data = MercenaryRoster.Instance.GetData(u.unitID);
-                        if (data != null && data.mapFigurineSprite != null) img.sprite = data.mapFigurineSprite;
-                        break;
-                    }
-                }
-                if (img.sprite != null) break;
-            }
-        }
+        ApplyArmySprite(go, c);
 
         // Cache the countdown TMP once per marker — looked up per frame before.
         markerTimers[c.campaignID] = go.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
 
         BuildPath(c);
         UpdateMarker(rt, c);
+    }
+
+    // The figurine used to take the sprite of the FIRST unit it happened to
+    // find, and its loop then broke on `img.sprite != null` — which is true from
+    // the prefab's own sprite before anything is assigned, so for a mixed army
+    // the icon was effectively arbitrary. It now picks the sprite of the most
+    // numerous unit type, which is what the army actually reads as.
+    //
+    // It also no longer silently clobbers the prefab's sprite: if no unit type
+    // supplies one, whatever the artist put on the prefab stays.
+    private void ApplyArmySprite(GameObject go, MercenaryCampaign c)
+    {
+        var img = go.GetComponent<Image>();
+        if (img == null || MercenaryRoster.Instance == null || c.armyUIDs == null) return;
+
+        var counts = new Dictionary<Sprite, int>();
+        var all = MercenaryRoster.Instance.GetAllUnits();
+        foreach (var uid in c.armyUIDs)
+        {
+            foreach (var u in all)
+            {
+                if (u.uid != uid) continue;
+                var data = MercenaryRoster.Instance.GetData(u.unitID);
+                if (data != null && data.mapFigurineSprite != null)
+                {
+                    counts.TryGetValue(data.mapFigurineSprite, out int n);
+                    counts[data.mapFigurineSprite] = n + 1;
+                }
+                break;
+            }
+        }
+
+        Sprite best = null; int bestCount = 0;
+        foreach (var kv in counts)
+            if (kv.Value > bestCount) { best = kv.Key; bestCount = kv.Value; }
+
+        if (best != null) img.sprite = best;
     }
 
     private void RemoveMarker(MercenaryCampaign c)
@@ -449,10 +474,13 @@ public class WorldMapArmyMarker : MonoBehaviour
         }
         else if (phase == CampaignPhase.Fighting)
         {
-            // Frenetic tiny shake — signals clash. Random per-frame is fine
-            // at this scale; the eye reads it as motion, not noise.
-            motion.x = (Random.value - 0.5f) * fightShake * 2f;
-            motion.y = (Random.value - 0.5f) * fightShake * 2f;
+            // Clash rattle. Per-frame Random re-rolled every frame, which reads
+            // as static and is partly eaten by the SmoothDamp below; driving it
+            // from time gives a shake that survives smoothing and stays legible
+            // at any frame rate.
+            float ft = Time.time * 26f + c.campaignID * 3.1f;
+            motion.x = (Mathf.PerlinNoise(ft, 0.3f) - 0.5f) * fightShake * 2f;
+            motion.y = (Mathf.PerlinNoise(0.7f, ft) - 0.5f) * fightShake * 2f;
         }
 
         // Smooth position between frames so the marker doesn't jitter when
@@ -467,7 +495,7 @@ public class WorldMapArmyMarker : MonoBehaviour
         marker.anchoredPosition = next;
 
         // Smooth rotation so 90° polyline corners aren't a snap.
-        if (dirTangent.sqrMagnitude > 0.0001f)
+        if (rotateToHeading && dirTangent.sqrMagnitude > 0.0001f)
         {
             float ang = Mathf.Atan2(dirTangent.y, dirTangent.x) * Mathf.Rad2Deg - 90f;
             Quaternion targetRot = Quaternion.Euler(0f, 0f, ang);
@@ -475,6 +503,10 @@ public class WorldMapArmyMarker : MonoBehaviour
             Quaternion slerped = Quaternion.Slerp(currentRot, targetRot, 1f - Mathf.Exp(-rotationSlerpSpeed * Time.deltaTime));
             smoothedRot[c.campaignID] = slerped;
             marker.localRotation = slerped;
+        }
+        else if (!rotateToHeading)
+        {
+            marker.localRotation = Quaternion.identity;
         }
 
         // Route-dash pass — recolour to match phase + fade behind marker.
@@ -509,6 +541,11 @@ public class WorldMapArmyMarker : MonoBehaviour
         {
             float remain = Mathf.Max(0f, c.TotalPhaseDuration - c.SecondsSinceStart());
             int totalSeconds = Mathf.FloorToInt(remain);
+            // Counter-rotate so the countdown stays readable even when the icon
+            // is turned to face its heading.
+            if (keepTimerUpright && rotateToHeading)
+                timer.transform.rotation = Quaternion.identity;
+
             if (!lastTimerSecond.TryGetValue(c.campaignID, out int prevSec) || prevSec != totalSeconds)
             {
                 lastTimerSecond[c.campaignID] = totalSeconds;

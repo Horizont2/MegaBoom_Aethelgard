@@ -18,7 +18,7 @@ MonoBehaviour:
     to fall, but a full line of them turns a hopeless assault into an even one.
   icon: {fileID: 21300000, guid: ccb6bdd530047994da9f7e5193ee05e4, type: 3}
   portrait: {fileID: 21300000, guid: ccb6bdd530047994da9f7e5193ee05e4, type: 3}
-  mapFigurineSprite: {fileID: 21300000, guid: 717568f6e802fb3468d15b26307b23aa, type: 3}
+  mapFigurineSprite: {fileID: 21300000, guid: b1fe92f4cf7e54c49a845a613641225c, type: 3}
   campPrefab: {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
   baseHireCost: 25
   baseAttack: 15
