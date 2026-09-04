@@ -186,6 +186,33 @@ public class TrailerSequenceDirector : MonoBehaviour
 
     // Names the camera the brain is live on, each time it changes. Whatever is
     // sitting in the terrain will identify itself here.
+    // Blunt, and deliberately so. Naming the stray camera has failed three times
+    // (CM_04, then CM_05_TabirOzhyvaye, then whatever was next), because the rig
+    // carries a whole row of later-act cameras whose Spline Dolly has no spline
+    // and which therefore sit at the world origin, inside the ground. Rather than
+    // keep guessing which one wins, everything that is not the camera this phase
+    // is supposed to be on gets switched off.
+    private void SoloCameras(params GameObject[] keepRoots)
+    {
+        int off = 0;
+        foreach (var cam in Object.FindObjectsByType<CinemachineCamera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (cam == null) continue;
+
+            bool keep = false;
+            foreach (var root in keepRoots)
+            {
+                if (root == null) continue;
+                if (cam.gameObject == root || cam.transform.IsChildOf(root.transform)) { keep = true; break; }
+            }
+            if (keep) continue;
+
+            cam.gameObject.SetActive(false);
+            off++;
+        }
+        if (off > 0) Debug.Log($"[Trailer] Solo: switched off {off} camera(s) that are not part of this shot.");
+    }
+
     private void ReportLiveCamera()
     {
         if (!logLiveCamera) return;
@@ -211,6 +238,9 @@ public class TrailerSequenceDirector : MonoBehaviour
 
         // Sit BEHIND the rider and look the way he was heading — the shot is the
         // REGION, not the horse.
+        // Nothing but the crane films the reveal.
+        SoloCameras(_crane != null ? _crane.gameObject : null);
+
         _craneYaw = ride.transform.eulerAngles.y;
         _craneAnchor = ride.transform.position - ride.transform.forward * craneSetBack;
         // Heights are measured from the ground UNDER THE CRANE, not from the
@@ -294,6 +324,8 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (part2Rig != null)
         {
             part2Rig.SetActive(true);
+            // Only Part 2's own cameras exist from here on.
+            SoloCameras(part2Rig);
             SnapPart2Cameras();
         }
     }

@@ -182,7 +182,20 @@ public class TrailerTerrainSeasons : MonoBehaviour
         }
         int built = 0;
         foreach (var arr in s.seasonClones) if (arr != null) foreach (var g in arr) if (g != null) built++;
-        Debug.Log($"[Trailer] Grass clones built on '{s.terrain.name}': {built} (3 per mesh detail prototype). If this is 0 the prototypes are TEXTURE-based, and the healthy/dry tint is what recolours them.");
+        // A WARNING, not a log: three attempts have been spent recolouring the
+        // wrong thing, and this line is what says which mechanism actually
+        // applies. It has to be impossible to miss in a filtered console.
+        var names = new List<string>();
+        foreach (var d in det)
+            names.Add(d.usePrototypeMesh
+                ? $"MESH:{(d.prototype != null ? d.prototype.name : "null")}"
+                : $"TEXTURE:{(d.prototypeTexture != null ? d.prototypeTexture.name : "null")}");
+        var layers = new List<string>();
+        foreach (var l in s.work.terrainLayers) layers.Add(l != null ? l.name : "null");
+
+        Debug.LogWarning($"[Trailer] GRASS on '{s.terrain.name}': {det.Length} detail prototype(s) [{string.Join(", ", names)}], " +
+                         $"{built} season clone(s) built. Terrain LAYERS (the painted ground texture): [{string.Join(", ", layers)}]. " +
+                         "MESH prototypes recolour by clone swap; TEXTURE prototypes by healthy/dry tint; the painted ground itself is a terrain LAYER and neither touches it.");
         ApplySeasonClones(s, 0);
     }
 

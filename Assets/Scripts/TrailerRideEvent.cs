@@ -302,6 +302,14 @@ public class TrailerRideEvent : MonoBehaviour
         // that state has no motion the rig shows its bind pose — the T-pose.
         // Enter Idle explicitly, then evaluate a frame so the pose is applied
         // before anything is rendered.
+        // Locomotion is gated on IsGrounded / Speed / MoveX / MoveZ, which
+        // PlayerController normally drives — and the trailer's rider has no
+        // PlayerController. Without them the controller never leaves its default
+        // 'Empty' state, which has no motion, so the rig shows its bind pose.
+        var hold = _riderGO != null ? _riderGO.gameObject : _riderAnimator.gameObject;
+        var holder = hold.GetComponent<TrailerAnimatorHold>() ?? hold.AddComponent<TrailerAnimatorHold>();
+        holder.animator = _riderAnimator;
+
         GoToIdle(_riderAnimator, riderIdleStates, 0f);
         _riderAnimator.Update(0f);
         Debug.Log($"[Trailer] Rider handed back to '{heroAnimator.name}'.");
