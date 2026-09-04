@@ -22,8 +22,15 @@ public class CameraFollow : MonoBehaviour
     public float fovTransitionSpeed = 2.5f;
 
     [Header("Collision & Smoothing")]
+    [Tooltip("Layers the camera boom collides with. Leave as Nothing to use everything except the player, enemies and Ignore Raycast — safer than an inspector mask that happens to omit the layer a location's houses sit on.")]
     public LayerMask collisionLayers;
     public float positionSmoothTime = 0.1f;
+
+    [Header("Camera body")]
+    [Tooltip("Radius of the camera's collision probe. Must be big enough to cover the near-clip plane's corners, or walls and floors show through even though the camera's centre is outside them.")]
+    public float cameraRadius = 0.34f;
+    [Tooltip("Clearance kept above ANY ground — terrain, a location's own floor mesh, a road. Measured with a real raycast, so it works where Terrain.SampleHeight cannot: over a punched terrain hole, on a location's own ground, and outside the terrain bounds entirely.")]
+    public float groundClearance = 0.5f;
 
     [Header("Mouse Control")]
     public float mouseSensitivity = 3f;
@@ -127,15 +134,26 @@ public class CameraFollow : MonoBehaviour
         Vector3 direction = -(rotation * Vector3.forward);
 
         float hitDistance = currentDistance;
-        if (Physics.SphereCast(lookAtPos, 0.1f, direction, out RaycastHit hit, currentDistance, collisionLayers))
+        // A fat probe, sized to the camera body, and ALL hits rather than the
+        // first: the old 0.1 probe let the near-clip plane sit inside walls, and
+        // taking only the first hit meant a trigger volume or the player's own
+        // collider could shadow the wall behind it.
+        int n = Physics.SphereCastNonAlloc(lookAtPos, cameraRadius, direction, s_boomHits,
+                                           currentDistance, ResolvedCollisionMask(), QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
         {
-            // IGNORE the ground/terrain for the boom — the terrain Y-clamp below
+            var c = s_boomHits[i].collider;
+            if (c == null || IsSelfCollider(c)) continue;
+            // IGNORE the ground/terrain for the boom — the ground clamp below
             // keeps the camera above the floor. Letting the ground pull the boom
             // in made the camera bob/jitter when tilted down (pull in -> rise ->
             // miss -> extend -> hit again). REAL obstacles (walls) still pull in
             // instantly so the camera never clips through them.
-            if (!IsGroundCollider(hit.collider))
-                hitDistance = Mathf.Clamp(hit.distance, minDistance, currentDistance);
+            if (IsGroundCollider(c)) continue;
+            // distance 0 means the probe STARTED inside this collider — the sweep
+            // gives no usable distance, so fall back to the minimum boom.
+            float d = s_boomHits[i].distance <= 0.0001f ? minDistance : s_boomHits[i].distance;
+            hitDistance = Mathf.Min(hitDistance, Mathf.Clamp(d, minDistance, currentDistance));
         }
 
         // Instant pull-in (never clip a wall), slow push-out (no popping).
@@ -165,25 +183,108 @@ public class CameraFollow : MonoBehaviour
         transform.position = finalPosition;
         transform.rotation = finalRotation;
 
-        // Виправлено баг з Terrain: тепер захищає тільки якщо ми реально над терейном
-        Terrain relevant = GetTerrainAt(transform.position);
-        if (relevant != null)
-        {
-            float terrainHeight = relevant.SampleHeight(transform.position) + relevant.transform.position.y;
+        ClampAboveGround(dt);
+        PushOutOfGeometry(lookAtPos);
+    }
 
-            float minY = terrainHeight + 0.35f;
-            if (transform.position.y < minY)
-            {
-                Vector3 safePos = transform.position;
-                // Ease the camera up to the floor instead of hard-snapping every
-                // frame (frame-rate independent). The hard snap fought the boom
-                // and made the camera shake near the ground.
-                safePos.y = Mathf.Lerp(transform.position.y, minY, 1f - Mathf.Exp(-14f * dt));
-                // Absolute floor so it can still never clip under the ground.
-                if (safePos.y < terrainHeight + 0.2f) safePos.y = terrainHeight + 0.2f;
-                transform.position = safePos;
-            }
+    // Keep the camera above whatever the ground actually IS at this spot.
+    //
+    // The old version only used Terrain.SampleHeight, which meant no protection
+    // at all wherever there is no terrain under the camera: outside the terrain
+    // bounds, over a punched terrain hole, and on any location standing on its
+    // own floor mesh — exactly where tilting down put the camera underground.
+    // A real downward raycast covers all of those, and the terrain sample stays
+    // as a backstop for when the ray finds nothing.
+    private void ClampAboveGround(float dt)
+    {
+        float groundY = float.NegativeInfinity;
+
+        int n = Physics.RaycastNonAlloc(transform.position + Vector3.up * 6f, Vector3.down, s_groundHits,
+                                        14f, ResolvedCollisionMask(), QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = s_groundHits[i].collider;
+            if (c == null || IsSelfCollider(c)) continue;
+            if (!IsGroundCollider(c)) continue;
+            if (s_groundHits[i].point.y > groundY) groundY = s_groundHits[i].point.y;
         }
+
+        if (float.IsNegativeInfinity(groundY))
+        {
+            Terrain relevant = GetTerrainAt(transform.position);
+            if (relevant == null) return;
+            groundY = relevant.SampleHeight(transform.position) + relevant.transform.position.y;
+        }
+
+        // Clear the near-clip plane too, or the camera body is above the floor
+        // while the plane it renders through is below it — which is how you end
+        // up seeing what is under the ground.
+        float clearance = groundClearance + (camComponent != null ? camComponent.nearClipPlane : 0.3f);
+        float minY = groundY + clearance;
+        if (transform.position.y >= minY) return;
+
+        Vector3 safePos = transform.position;
+        // Ease up to the floor rather than hard-snapping every frame — the hard
+        // snap fought the boom and made the camera shake near the ground.
+        safePos.y = Mathf.Lerp(transform.position.y, minY, 1f - Mathf.Exp(-14f * dt));
+        // Absolute floor, so it can never be under the ground even mid-ease.
+        float hard = groundY + groundClearance * 0.5f;
+        if (safePos.y < hard) safePos.y = hard;
+        transform.position = safePos;
+    }
+
+    // Last line of defence against ending up INSIDE a house. The boom sweep can
+    // miss when it starts inside geometry or when the clamp above has just
+    // pushed the camera up through a floor, so if the camera body is overlapping
+    // anything solid, walk it back along the boom until it is clear.
+    private void PushOutOfGeometry(Vector3 lookAtPos)
+    {
+        Vector3 toCam = transform.position - lookAtPos;
+        float dist = toCam.magnitude;
+        if (dist < 0.01f) return;
+        Vector3 dir = toCam / dist;
+
+        for (int step = 0; step < 6; step++)
+        {
+            int n = Physics.OverlapSphereNonAlloc(transform.position, cameraRadius, s_overlap,
+                                                  ResolvedCollisionMask(), QueryTriggerInteraction.Ignore);
+            bool blocked = false;
+            for (int i = 0; i < n; i++)
+            {
+                var c = s_overlap[i];
+                if (c == null || IsSelfCollider(c) || IsGroundCollider(c)) continue;
+                blocked = true; break;
+            }
+            if (!blocked) return;
+
+            dist = Mathf.Max(minDistance, dist - cameraRadius);
+            transform.position = lookAtPos + dir * dist;
+            if (dist <= minDistance) return;
+        }
+    }
+
+    private static readonly RaycastHit[] s_boomHits = new RaycastHit[12];
+    private static readonly RaycastHit[] s_groundHits = new RaycastHit[12];
+    private static readonly Collider[] s_overlap = new Collider[12];
+
+    private bool IsSelfCollider(Collider c)
+    {
+        if (c == null) return true;
+        if (target != null && (c.transform == target || c.transform.IsChildOf(target))) return true;
+        return c.transform == transform || c.transform.IsChildOf(transform);
+    }
+
+    // An inspector LayerMask that happens to omit the layer a location's houses
+    // sit on is why the camera could walk straight into them. Nothing = probe
+    // everything except the player, enemies and Ignore Raycast.
+    private int ResolvedCollisionMask()
+    {
+        if (collisionLayers.value != 0) return collisionLayers.value;
+        int m = ~0;
+        m &= ~(1 << 2);   // Ignore Raycast
+        m &= ~(1 << 9);   // enemies
+        if (target != null) m &= ~(1 << target.gameObject.layer);
+        return m;
     }
 
     private void UpdateCameraState()

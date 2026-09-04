@@ -6,6 +6,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
 {
     [Header("Archetype & Poise")]
     public bool isElite = false;
+
+    [Tooltip("Region bosses run on this same AI, but had no way to say so — which is why they fought in silence: every sound they made was the generic skeleton set, and the shared vocal cooldown let the swarm around them win it every time. Tick this on a boss prefab for its own roar, slam, enrage and death audio, and for vocals that ignore the crowd's cooldown.")]
+    public bool isBoss = false;
     public float maxPoise = 100f;
     private float currentPoise;
 
@@ -824,7 +827,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // space. If the FMOD event has no spatializer authored, add a
         // "3D Panner" preset in FMOD Studio; the position we pass will
         // then attenuate distance and pan by direction.
-        PlayVocal(AudioID.Enemy_Agro);
+        PlayVocal(isBoss ? AudioID.Boss_Roar : AudioID.Enemy_Agro);
+        if (isBoss)
+        {
+            SetAnimTriggerSafe("Roar");
+            if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(20f);
+        }
     }
 
     // Plays a tracked 3D vocal on the enemy, stopping whatever vocal was
@@ -842,9 +850,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private static float s_lastVocalTime = -10f;
     private const float GLOBAL_VOCAL_INTERVAL = 0.22f;
 
+    // Bosses get their own line. The 0.22s gate is STATIC — shared by every
+    // enemy alive — so in a boss fight the swarm of adds claimed it almost every
+    // frame and the boss's own roars and telegraphs were dropped. A boss has its
+    // own, much shorter cooldown and never competes with the crowd.
+    private static float s_lastBossVocalTime = -10f;
+    private const float BOSS_VOCAL_INTERVAL = 0.05f;
+
     private void PlayVocal(string audioId)
     {
         if (AudioManager.Instance == null || SuppressCombatVocals) return;
+        if (isBoss)
+        {
+            if (Time.time - s_lastBossVocalTime < BOSS_VOCAL_INTERVAL) return;
+            s_lastBossVocalTime = Time.time;
+            StopVocal(0.05f);
+            vocalSfxHandle = AudioManager.Instance.PlayLoopingSFX3D(audioId, transform);
+            if (vocalSfxHandle == -1) AudioManager.Instance.PlaySFX3D(audioId, transform.position);
+            return;
+        }
         if (Time.time - s_lastVocalTime < GLOBAL_VOCAL_INTERVAL) return;
         s_lastVocalTime = Time.time;
         StopVocal(0.05f);
@@ -978,6 +1002,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (!isDead && target != null)
         {
             lastAttackTime = Time.time;
+            // Vary the swing when the rig offers alternates, so a long boss
+            // fight isn't the same animation on loop.
+            SetAnimIntSafe("AttackIndex", UnityEngine.Random.Range(0, 3));
             if (animator != null) animator.SetTrigger("Attack");
             FireProjectile();
             if (AudioManager.Instance != null && Time.time - lastAttackSfxTime > ATTACK_SFX_COOLDOWN)
@@ -994,6 +1021,34 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     // Sets an Animator bool only if the controller actually has that parameter,
     // so a shared controller without the archer-specific params logs no warnings.
+    // Fire an animator trigger only if the controller actually declares it, so a
+    // boss can be given Roar / Enrage / Stagger / attack-variation states without
+    // any code change, and rigs that lack them are unaffected.
+    private bool SetAnimTriggerSafe(string param)
+    {
+        if (animator == null) return false;
+        foreach (var p in animator.parameters)
+            if (p.type == AnimatorControllerParameterType.Trigger && p.name == param)
+            {
+                animator.ResetTrigger(param);
+                animator.SetTrigger(param);
+                return true;
+            }
+        return false;
+    }
+
+    private bool SetAnimIntSafe(string param, int value)
+    {
+        if (animator == null) return false;
+        foreach (var p in animator.parameters)
+            if (p.type == AnimatorControllerParameterType.Int && p.name == param)
+            {
+                animator.SetInteger(param, value);
+                return true;
+            }
+        return false;
+    }
+
     private void SetAnimBoolSafe(string param, bool value)
     {
         if (animator == null) return;
@@ -1116,7 +1171,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // continue off a corpse — route it through the tracked vocal so
         // Die()/OnDisable can cut it. Stops any lingering aggro roar too,
         // so the two never overlap into a "double" sound.
-        PlayVocal(AudioID.Enemy_Telegraph);
+        PlayVocal(isBoss ? AudioID.Boss_Roar : AudioID.Enemy_Telegraph);
+        // A boss wind-up gets a second, non-vocal layer so it reads through the
+        // crowd — the roar alone was being lost under the adds.
+        if (isBoss && AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
 
@@ -1175,6 +1234,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Stop the run legs at the moment of the strike so the attack anim
             // plays cleanly (the lunge above kept the legs moving on approach).
             if (animator != null) animator.SetBool("isMoving", false);
+            // Vary the swing when the rig offers alternates, so a long boss
+            // fight isn't the same animation on loop.
+            SetAnimIntSafe("AttackIndex", UnityEngine.Random.Range(0, 3));
             if (animator != null) animator.SetTrigger("Attack");
             // Swing / lunge SFX at the moment the animator commits — the
             // telegraph beeps as the wind-up, this reads as the strike.
@@ -1186,6 +1248,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 lastAttackSfxTime = Time.time;
                 AudioManager.Instance.PlaySFX3DAttached(AudioID.Enemy_Attack, transform);
+                // The weight of a boss swing comes from the slam layered under
+                // the generic attack, not from the attack sound alone.
+                if (isBoss) AudioManager.Instance.PlaySFX3D(AudioID.Boss_Slam, transform.position);
             }
         }
         yield return new WaitForSeconds(0.2f);
@@ -1282,7 +1347,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
                     isPreparingAttack = false;
                     currentPoise = maxPoise;
                     ResetColor();
-                    if (animator != null) animator.SetTrigger("Hit");
+                    // A broken-poise boss reads as a real beat, not a flinch.
+                    if (isBoss)
+                    {
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlaySFX3D(AudioID.Boss_Stagger, transform.position);
+                        if (!SetAnimTriggerSafe("Stagger") && animator != null) animator.SetTrigger("Hit");
+                        CameraShakeUtil.TryShake(0.25f, 0.12f);
+                    }
+                    else if (animator != null) animator.SetTrigger("Hit");
                 }
             }
         }
@@ -1291,6 +1364,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public void MakeInvincibleAndFurious()
     {
         isInvincible = true; isEnraged = true; actualMoveSpeed = moveSpeed * 1.8f;
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX3D(AudioID.Boss_Enrage, transform.position);
+            AudioManager.Instance.NotifyCombat(20f);
+        }
+        SetAnimTriggerSafe("Enrage");
+        CameraShakeUtil.TryShake(0.35f, 0.18f);
         for (int i = 0; i < originalColors.Length; i++) originalColors[i] = new Color(0.2f, 0f, 0f);
         ResetColor();
     }
@@ -1399,6 +1479,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // snap. Covers BOTH sounds now, not just aggro.
             StopVocal(0.25f);
             AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Die, transform.position);
+            if (isBoss)
+            {
+                // A boss death needs to land: the execute hit, then the victory
+                // stinger over it.
+                AudioManager.Instance.PlaySFX3D(AudioID.Boss_Execute, transform.position);
+                AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
+                CameraShakeUtil.TryShake(0.5f, 0.25f);
+            }
         }
 
         if (deathVFXPrefab != null)
@@ -1444,7 +1532,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // isElite reads directly off the SO; boss-tier kills are handled
         // separately by boss AIs which increment RunSession.AddKill(...,
         // isBoss:true).
-        RunSession.AddKill(isElite: isElite, isBoss: false);
+        RunSession.AddKill(isElite: isElite, isBoss: isBoss);
 
         // Physically SHATTER the skeleton into flying chunks the instant it dies
         // — its posed mesh is split by bone and each piece is launched outward.

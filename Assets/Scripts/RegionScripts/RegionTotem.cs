@@ -332,7 +332,7 @@ public class RegionTotem : MonoBehaviour
             {
                 for (int i = 0; i < standaloneBossPrefabs.Length; i++)
                 {
-                    SpawnEntity(standaloneBossPrefabs[i], finalHpMult, finalDmgMult);
+                    SpawnBoss(standaloneBossPrefabs[i], finalHpMult, finalDmgMult);
                     yield return new WaitForSeconds(0.8f);
                 }
             }
@@ -347,7 +347,7 @@ public class RegionTotem : MonoBehaviour
 
                 for (int i = 0; i < manager.currentRegion.regionBossPrefabs.Length; i++)
                 {
-                    SpawnEntity(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult);
+                    SpawnBoss(manager.currentRegion.regionBossPrefabs[i], finalHpMult, finalDmgMult);
                     yield return new WaitForSeconds(0.8f);
                 }
             }
@@ -525,10 +525,28 @@ public class RegionTotem : MonoBehaviour
         SpawnEntityAt(prefab, spawnPos, hpMult, dmgMult);
     }
 
+    // Region bosses run on the same EnemyAI as the fodder, so nothing told them
+    // they were a boss and they fought with the generic skeleton audio. Flag the
+    // ones we spawn FROM a boss pool, so no prefab has to be ticked by hand.
+    private void SpawnBoss(GameObject prefab, float hpMult, float dmgMult)
+    {
+        if (prefab == null) return;
+        s_markNextAsBoss = true;
+        SpawnEntity(prefab, hpMult, dmgMult);
+        s_markNextAsBoss = false;
+    }
+
+    private static bool s_markNextAsBoss;
+
     private void SpawnEntityAt(GameObject prefab, Vector3 spawnPos, float hpMult, float dmgMult)
     {
         if (prefab == null) return;
         GameObject entity = Instantiate(prefab, spawnPos, Quaternion.identity);
+        if (s_markNextAsBoss)
+        {
+            var bossAI = entity.GetComponent<EnemyAI>();
+            if (bossAI != null) bossAI.isBoss = true;
+        }
         activeEnemies.Add(entity);
 
         // ФІКС: Більше ніяких isBoss прапорців. Перевіряємо напряму, чи це бос!
@@ -647,7 +665,7 @@ public class RegionTotem : MonoBehaviour
         if (bossPool != null && bossPool.Length > 0)
             for (int i = 0; i < bossPool.Length; i++)
             {
-                SpawnEntity(bossPool[i], hpMult, dmgMult);
+                SpawnBoss(bossPool[i], hpMult, dmgMult);
                 yield return new WaitForSeconds(0.6f);
             }
 
