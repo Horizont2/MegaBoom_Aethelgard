@@ -22,6 +22,11 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PlayerFoliageSilhouette : MonoBehaviour
 {
+    [Tooltip("OFF until the depth direction below is confirmed. Two attempts drew the silhouette over the WHOLE character instead of only through occluders, which is worse than the problem it solves, so it stays off by default rather than shipping another guess.")]
+    public bool enableSilhouette = false;
+
+    [Tooltip("Which comparison counts as 'something is already in front of the player'. Greater is the textbook answer; if the character comes out solid everywhere, it is Less in this setup. Flip it in Play mode to find out in one go.")]
+    public UnityEngine.Rendering.CompareFunction depthTest = UnityEngine.Rendering.CompareFunction.Greater;
 
     [Tooltip("Silhouette material. Left empty, one is created from Hollow/PlayerSilhouette.")]
     public Material silhouetteMaterial;
@@ -38,8 +43,16 @@ public class PlayerFoliageSilhouette : MonoBehaviour
 
     private void Start()
     {
+        if (!enableSilhouette) return;
         Build();
         WarnIfFeatureMissing();
+    }
+
+    // Live-editable so the depth direction can be settled without a rebuild.
+    private void OnValidate()
+    {
+        if (silhouetteMaterial != null && silhouetteMaterial.HasProperty("_ZTest"))
+            silhouetteMaterial.SetFloat("_ZTest", (float)depthTest);
     }
 
     // The mirrors are invisible without the render feature, which would look like
@@ -82,6 +95,8 @@ public class PlayerFoliageSilhouette : MonoBehaviour
         }
         if (silhouetteMaterial.HasProperty("_SilhouetteColor"))
             silhouetteMaterial.SetColor("_SilhouetteColor", silhouetteColor);
+        if (silhouetteMaterial.HasProperty("_ZTest"))
+            silhouetteMaterial.SetFloat("_ZTest", (float)depthTest);
 
         foreach (var r in GetComponentsInChildren<Renderer>(true))
         {

@@ -12,6 +12,11 @@ Shader "Hollow/PlayerSilhouette"
     {
         _SilhouetteColor ("Silhouette Color", Color) = (0.55, 0.85, 1.0, 0.85)
         _Fresnel ("Rim Boost", Range(0,4)) = 1.2
+        // Which side of the depth test draws. Exposed rather than hard-coded
+        // because the two attempts so far disagreed about which direction means
+        // "occluded" in this pipeline setup, and guessing costs a whole round
+        // trip. 5 = Greater, 2 = Less.
+        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("Depth Test", Float) = 5
     }
 
     SubShader
@@ -35,7 +40,7 @@ Shader "Hollow/PlayerSilhouette"
             // the way a UniversalForward pass did.
             Tags { "LightMode" = "PlayerSilhouette" }
 
-            ZTest Greater      // only where geometry is already in front
+            ZTest [_ZTest]     // set from PlayerFoliageSilhouette.depthTest
             ZWrite Off
             Cull Back
             Blend SrcAlpha OneMinusSrcAlpha
@@ -65,6 +70,7 @@ Shader "Hollow/PlayerSilhouette"
             CBUFFER_START(UnityPerMaterial)
                 float4 _SilhouetteColor;
                 float  _Fresnel;
+                float  _ZTest;
             CBUFFER_END
 
             Varyings vert (Attributes IN)
