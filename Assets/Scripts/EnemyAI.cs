@@ -25,6 +25,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     [Header("Cinematic Settings")]
     public bool isCinematicFrozen = false;
+    [Tooltip("With this AND isCinematicFrozen set, the AI stops touching the animator entirely so a director can pose and move this enemy itself. Without it, the freeze forces isMoving true every frame for the victory flythrough.")]
+    public bool cinematicDrivesAnimator = false;
 
     [Header("Spawn Settings")]
     public GameObject spawnVFXPrefab;
@@ -625,7 +627,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isCinematicFrozen || isSpawning)
         {
-            if (animator != null && isCinematicFrozen) animator.SetBool("isMoving", true);
+            // isMoving is forced TRUE for the victory flythrough, where the
+            // enemies are meant to keep running on the spot. A choreographed
+            // scene drives the animator itself, and having this overwrite it
+            // every frame is what left skeletons running in place while standing
+            // still — so it now respects cinematicDrivesAnimator.
+            if (animator != null && isCinematicFrozen && !cinematicDrivesAnimator)
+                animator.SetBool("isMoving", true);
             return;
         }
 
