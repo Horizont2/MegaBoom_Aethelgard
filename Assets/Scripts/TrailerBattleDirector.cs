@@ -50,6 +50,7 @@ public class TrailerBattleDirector : MonoBehaviour
     private Animator _heroAnim;
     private readonly List<CinemachineCamera> _cams = new List<CinemachineCamera>();
     private readonly List<EnemyAI> _enemies = new List<EnemyAI>();
+    private bool _firstBlood;
 
     public static TrailerBattleDirector Begin(Transform hero)
     {
@@ -221,6 +222,18 @@ public class TrailerBattleDirector : MonoBehaviour
             Vector3 to = e.transform.position - _hero.position;
             if (to.magnitude > swingRange) continue;
             if (Vector3.Dot(_hero.forward, to.normalized) < 0.1f) continue;   // in front only
+
+            // FIRST KILL ONLY. A slow beat used once is an accent; used on every
+            // swing it becomes the tempo and stops meaning anything.
+            if (!_firstBlood)
+            {
+                _firstBlood = true;
+                if (TrailerCinematicPolish.Instance != null)
+                {
+                    TrailerCinematicPolish.Instance.TimeRamp(0.28f, 0.45f, 0.04f, 0.55f);
+                    TrailerCinematicPolish.Instance.ImpactPunch(1f, 0.45f);
+                }
+            }
 
             e.TakeDamage(new DamageInfo
             {

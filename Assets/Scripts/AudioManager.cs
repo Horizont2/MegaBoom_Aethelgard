@@ -104,6 +104,23 @@ public static class AudioID
     public const string Horse_Gallop = "Animals/Horse_Gallop";   // looping hoofbeats
     public const string Horse_Breath = "Animals/Horse_Breath";   // looping breathing
     public const string Horse_Snort  = "Animals/Horse_Snort";    // occasional one-shot
+
+    // ── LORE TRAILER ────────────────────────────────────────────────────
+    // The trailer currently borrows gameplay events (AMB_Thunder for the bolt,
+    // AMB_Crow for the dread beat, Player/Land for the impact). They work, but
+    // they were mixed for gameplay: quieter, drier and shorter than a trailer
+    // wants. These are the events it should have of its own.
+    public const string Trailer_Music = "Trailer/Music";                 // the score bed, one long event
+    public const string Trailer_RiserToStrike = "Trailer/Riser";         // builds under the flight, ends AT the bolt
+    public const string Trailer_ThunderClose = "Trailer/Thunder_Close";  // the strike itself, full-range
+    public const string Trailer_Impact = "Trailer/Impact";               // the cinematic BRAAM on the cut
+    public const string Trailer_Whoosh = "Trailer/Whoosh";               // transitions between shots
+    public const string Trailer_BodyFall = "Trailer/Body_Fall";          // rider hitting the frozen ground
+    public const string Trailer_SwordDraw = "Trailer/Sword_Draw";        // he gets up and draws
+    public const string Trailer_BoneRise = "Trailer/Bone_Rise";          // skeletons breaking the crust
+    public const string Trailer_HordeGrowl = "Trailer/Horde_Growl";      // the mass behind him
+    public const string Trailer_WindHigh = "Trailer/Wind_High";          // exposed ridge wind for the crane + reveal
+    public const string Trailer_CastleReveal = "Trailer/Castle_Reveal";  // the sting on the castle
 }
 
 [System.Serializable]
@@ -214,6 +231,30 @@ public class AudioManager : MonoBehaviour
     public SoundGroup horseGallop;   // looping hoofbeats while moving
     public SoundGroup horseBreath;   // looping breathing
     public SoundGroup horseSnort;    // occasional one-shot
+
+    [Header("=== LORE TRAILER ===")]
+    [Tooltip("One long event under the whole piece. Author it in FMOD with the parameter automation you want rather than trying to cut music from script.")]
+    public SoundGroup trailerMusic;
+    [Tooltip("Rises under the winter flight and RESOLVES on the lightning. Its whole job is to make the bolt feel inevitable.")]
+    public SoundGroup trailerRiser;
+    [Tooltip("The strike. Needs far more low end than the ambient AMB_Thunder the trailer currently borrows.")]
+    public SoundGroup trailerThunderClose;
+    [Tooltip("The low cinematic hit on a hard cut.")]
+    public SoundGroup trailerImpact;
+    [Tooltip("Air movement across a shot change.")]
+    public SoundGroup trailerWhoosh;
+    [Tooltip("Body hitting frozen ground — heavier and duller than the gameplay land sound.")]
+    public SoundGroup trailerBodyFall;
+    [Tooltip("Steel leaving a scabbard as he stands.")]
+    public SoundGroup trailerSwordDraw;
+    [Tooltip("Bone and frozen earth breaking as the horde rises.")]
+    public SoundGroup trailerBoneRise;
+    [Tooltip("The mass of them behind him — a bed, not a one-shot.")]
+    public SoundGroup trailerHordeGrowl;
+    [Tooltip("Thin, exposed wind for the crane reveal and the ridge.")]
+    public SoundGroup trailerWindHigh;
+    [Tooltip("The sting as the castle opens up.")]
+    public SoundGroup trailerCastleReveal;
 
     [Header("=== MUSIC ===")]
     public SoundGroup musicCamp;
@@ -722,6 +763,18 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add(AudioID.Horse_Breath, horseBreath);
         sfxDictionary.Add(AudioID.Horse_Snort, horseSnort);
 
+        sfxDictionary.Add(AudioID.Trailer_Music, trailerMusic);
+        sfxDictionary.Add(AudioID.Trailer_RiserToStrike, trailerRiser);
+        sfxDictionary.Add(AudioID.Trailer_ThunderClose, trailerThunderClose);
+        sfxDictionary.Add(AudioID.Trailer_Impact, trailerImpact);
+        sfxDictionary.Add(AudioID.Trailer_Whoosh, trailerWhoosh);
+        sfxDictionary.Add(AudioID.Trailer_BodyFall, trailerBodyFall);
+        sfxDictionary.Add(AudioID.Trailer_SwordDraw, trailerSwordDraw);
+        sfxDictionary.Add(AudioID.Trailer_BoneRise, trailerBoneRise);
+        sfxDictionary.Add(AudioID.Trailer_HordeGrowl, trailerHordeGrowl);
+        sfxDictionary.Add(AudioID.Trailer_WindHigh, trailerWindHigh);
+        sfxDictionary.Add(AudioID.Trailer_CastleReveal, trailerCastleReveal);
+
         sfxDictionary.Add(AudioID.Music_Camp, musicCamp);
         sfxDictionary.Add(AudioID.Music_Battle, musicBattle);
         sfxDictionary.Add(AudioID.Music_Level1, musicLevel1);
@@ -806,6 +859,15 @@ public class AudioManager : MonoBehaviour
     // the FMOD event was null — that made "no enemy sounds" impossible
     // to diagnose from console alone.
     private HashSet<string> warnedMissingSounds;
+
+    // Is this id actually wired to an FMOD event? Lets a caller fall back to
+    // another sound rather than firing at nothing — the trailer's own events are
+    // authored separately from the gameplay ones it currently borrows.
+    public bool HasEvent(string soundName)
+    {
+        if (string.IsNullOrEmpty(soundName) || sfxDictionary == null) return false;
+        return sfxDictionary.TryGetValue(soundName, out SoundGroup g) && g != null && !g.fmodEvent.IsNull;
+    }
 
     public void PlaySFX(string soundName)
     {

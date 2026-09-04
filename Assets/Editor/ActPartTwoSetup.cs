@@ -130,6 +130,11 @@ public static class ActPartTwoSetup
         cutter.cutProgress = new[] { 0f, 0.32f, 0.52f, 0.68f };
         EditorUtility.SetDirty(cutter);
 
+        // Winter you can SEE on the characters, not just on the ground.
+        AddBreath(ride.gameObject, 0.95f);
+        foreach (var a in ride.GetComponentsInChildren<Animator>(true))
+            if (a != null && a.transform != ride.transform) { AddBreath(a.gameObject, 1.3f); break; }
+
         var evt = rig.GetComponent<TrailerRideEvent>();
         if (evt == null) evt = Undo.AddComponent<TrailerRideEvent>(rig);
         Undo.RecordObject(evt, "config strike");
@@ -152,6 +157,21 @@ public static class ActPartTwoSetup
             "Run 'Dress Roadside' to line spline_p3 with torches + undead (it uses the horse's current route).\n" +
             "PRESS PLAY to preview. To go back to Act I, run 'Setup Act I Road Ride'.\n\n" +
             "⚠ STILL NEEDS ANIMATIONS (see the list): rider look-back, horse rear-up, rider fall, and the battle.", "OK");
+    }
+
+    private static void AddBreath(GameObject go, float interval)
+    {
+        if (go == null) return;
+        var b = go.GetComponent<TrailerBreathVapor>() ?? Undo.AddComponent<TrailerBreathVapor>(go);
+        b.interval = interval;
+        // Aim it from the head if the rig names one; the root would breathe from
+        // the chest, or from the hooves on the horse.
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+        {
+            string n = t.name.ToLowerInvariant();
+            if (n.Contains("head") || n.Contains("nose") || n.Contains("muzzle")) { b.mouth = t; break; }
+        }
+        EditorUtility.SetDirty(b);
     }
 
     private static void AddHandheld(GameObject go, float amp, float freq)

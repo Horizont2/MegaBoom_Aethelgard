@@ -76,8 +76,13 @@ public class TrailerRideEvent : MonoBehaviour
 
     [Header("Sound")]
     public string neighId = "Animals/Horse_Snort";
-    [Tooltip("Thunder crack layered over the bolt. The bolt's own thunder is distant; this is the close hit.")]
-    public string thunderId = "AMB/AMB_Thunder";
+    [Tooltip("Thunder crack layered over the bolt. Prefers the trailer's own close thunder and falls back to the ambient one, which is mixed for gameplay and far too polite for this.")]
+    public string thunderId = "Trailer/Thunder_Close";
+    public string thunderFallbackId = "AMB/AMB_Thunder";
+    [Tooltip("Low cinematic hit on the cut to the fall camera.")]
+    public string impactStingId = "Trailer/Impact";
+    [Tooltip("Seconds of TOTAL silence before the strike. The single most effective thing in the piece: the ear reads the gap, and the thunder that follows lands far harder than its own level would suggest.")]
+    public float silenceBeforeStrike = 0.4f;
     [Tooltip("Played as the rider hits the ground.")]
     public string landId = "Player/Land";
     [Tooltip("Played under the look-back, as the horde is noticed.")]
@@ -214,13 +219,25 @@ public class TrailerRideEvent : MonoBehaviour
         Vector3 gp = t.position + t.forward * strikeForwardOffset + t.right * side;
         if (TryGround(gp, out float gy)) gp.y = gy;
 
+        // DROP OUT THE SOUND first. A held gap before the strike is worth more
+        // than any amount of level on the thunder itself — the ear notices the
+        // absence, and the crack that follows fills a hole it just made.
+        if (silenceBeforeStrike > 0.01f)
+        {
+            float restore = AudioListener.volume;
+            AudioListener.volume = 0f;
+            yield return new WaitForSecondsRealtime(silenceBeforeStrike);
+            AudioListener.volume = restore;
+        }
+
         // Fire it while the WIDE shot is still live, so it is seen even before
         // the cut, then cut with the flash still burning.
         if (_bolt != null) _bolt.Strike(gp);
         else Debug.LogWarning("[Trailer] No lightning bolt component — strike has no visual.");
-        if (AudioManager.Instance != null && !string.IsNullOrEmpty(thunderId))
+        if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX3D(thunderId, gp);
+            if (!TryPlay3D(thunderId, gp)) TryPlay3D(thunderFallbackId, gp);
+            TryPlay(impactStingId);
             AudioManager.Instance.NotifyCombat(25f);
         }
         CameraShakeUtil.TryShake(0.45f, 0.25f);
@@ -291,8 +308,8 @@ public class TrailerRideEvent : MonoBehaviour
         Vector3 away = _riderGO.position - t.position; away.y = 0f;
         if (away.sqrMagnitude > 0.01f) _riderGO.rotation = Quaternion.LookRotation(away.normalized);
         CameraShakeUtil.TryShake(0.25f, 0.12f);
-        if (AudioManager.Instance != null && !string.IsNullOrEmpty(landId))
-            AudioManager.Instance.PlaySFX3D(landId, _riderGO.position);
+        if (!TryPlay3D("Trailer/Body_Fall", _riderGO.position))
+            TryPlay3D(landId, _riderGO.position);
         // A shorter, harder hit than the strike — the body meeting the ground.
         if (TrailerCinematicPolish.Instance != null)
             TrailerCinematicPolish.Instance.ImpactPunch(0.7f, 0.3f);
@@ -420,6 +437,22 @@ public class TrailerRideEvent : MonoBehaviour
     }
 
     // ── Animator helpers ─────────────────────────────────────────────────
+    // Play if the event is actually wired; report whether it was, so a beat can
+    // fall back to the gameplay event it was borrowing before.
+    private static bool TryPlay(string id)
+    {
+        if (AudioManager.Instance == null || !AudioManager.Instance.HasEvent(id)) return false;
+        AudioManager.Instance.PlaySFX(id);
+        return true;
+    }
+
+    private static bool TryPlay3D(string id, Vector3 at)
+    {
+        if (AudioManager.Instance == null || !AudioManager.Instance.HasEvent(id)) return false;
+        AudioManager.Instance.PlaySFX3D(id, at);
+        return true;
+    }
+
     private static bool HasParam(Animator a, string param)
     {
         if (a == null || string.IsNullOrEmpty(param) || a.runtimeAnimatorController == null) return false;
