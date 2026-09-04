@@ -391,6 +391,30 @@ public class WorldGenerator : MonoBehaviour
         foreach (var rnd in go.GetComponentsInChildren<Renderer>(true))
             if (rnd != null && !(rnd is ParticleSystemRenderer))
                 rnd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        TagAsNature(go);
+    }
+
+    [Tooltip("Put spawned decoration on the Nature layer so CameraCulling's per-layer distance actually applies to it. Nothing was ever assigned that layer, so the culling distance was doing nothing and every rock, bush and prop rendered out to the camera's far plane.")]
+    public bool tagDecorationAsNature = true;
+
+    private static int s_natureLayer = -2;
+
+    // Only GameObjects WITHOUT a collider are moved. A GameObject with no
+    // collider has no physics behaviour and cannot be hit by a raycast, so its
+    // layer affects nothing but rendering — which keeps this free of any
+    // collision-matrix or raycast-mask surprises.
+    private void TagAsNature(GameObject go)
+    {
+        if (!tagDecorationAsNature || go == null) return;
+        if (s_natureLayer == -2) s_natureLayer = LayerMask.NameToLayer("Nature");
+        if (s_natureLayer < 0) return;
+
+        foreach (var rnd in go.GetComponentsInChildren<Renderer>(true))
+        {
+            if (rnd == null || rnd is ParticleSystemRenderer) continue;
+            if (rnd.GetComponent<Collider>() != null) continue;   // leave anything physical alone
+            rnd.gameObject.layer = s_natureLayer;
+        }
     }
 
     // ---- Terrain-tree painting ------------------------------------------------
