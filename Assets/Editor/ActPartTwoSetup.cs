@@ -82,9 +82,16 @@ public static class ActPartTwoSetup
 
         // Direction: low along the GROUND beside him, then a shot into his FACE
         // (lands on the look-back), then the lightning + fall.
-        var camSide = MakeFollowCam(rig, "CM_Part2_LowSide", ride.transform, aim, new Vector3(3.2f, 1.0f, 0.2f), 38f);
-        var camFace = MakeFollowCam(rig, "CM_Part2_Face", ride.transform, aim, new Vector3(0.9f, 1.9f, 5.8f), 34f);
-        var camStrike = MakeFollowCam(rig, "CM_Part2_Strike", ride.transform, aim, new Vector3(2.6f, 1.6f, -3.0f), 34f);
+        // Distances are deliberately wider than a gameplay camera: the earlier
+        // set sat so close that neither the rider nor the pursuers behind him
+        // were readable.
+        //   1. wide low tracking shot along the ground beside him — the horde
+        //      is visible behind, which is where the fear comes from,
+        //   2. a front three-quarter shot into his FACE for the look-back,
+        //   3. a wider rear-quarter shot that holds horse + horde for the strike.
+        var camSide = MakeFollowCam(rig, "CM_Part2_LowSide", ride.transform, aim, new Vector3(6.0f, 1.4f, -1.5f), 40f);
+        var camFace = MakeFollowCam(rig, "CM_Part2_Face", ride.transform, aim, new Vector3(2.2f, 2.1f, 8.5f), 38f);
+        var camStrike = MakeFollowCam(rig, "CM_Part2_Strike", ride.transform, aim, new Vector3(5.0f, 2.4f, -7.5f), 36f);
 
         var cutter = rig.GetComponent<TrailerCameraCutter>();
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
@@ -92,14 +99,17 @@ public static class ActPartTwoSetup
         cutter.cameras = new[] { camSide, camFace, camStrike };
         cutter.useProgress = true;
         cutter.ride = ride;
-        cutter.cutProgress = new[] { 0f, 0.45f, 0.82f };   // face cut lands on the look-back; strike shot before the ~0.9 bolt
+        // The face shot lands ON the look-back (0.35) and holds through it; the
+        // wide comes back before the bolt at 0.88.
+        cutter.cutProgress = new[] { 0f, 0.32f, 0.62f };
         EditorUtility.SetDirty(cutter);
 
         var evt = rig.GetComponent<TrailerRideEvent>();
         if (evt == null) evt = Undo.AddComponent<TrailerRideEvent>(rig);
         Undo.RecordObject(evt, "config strike");
         evt.ride = ride;
-        evt.strikeProgress = 0.9f;
+        evt.lookBackProgress = 0.35f;   // lands just after the face camera cuts in
+        evt.strikeProgress = 0.88f;
         EditorUtility.SetDirty(evt);
 
         // Winter grade for the whole part.

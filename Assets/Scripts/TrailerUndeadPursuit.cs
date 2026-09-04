@@ -17,11 +17,22 @@ public class TrailerUndeadPursuit : MonoBehaviour
     [Tooltip("Stop chasing this close so they don't run INTO the horse.")]
     public float stopDistance = 2.5f;
 
+    [Header("Chase feel")]
+    [Tooltip("They must never outrun the horse — the chase is a threat behind him, not a swarm around him. Their speed is capped at this fraction of the horse's ACTUAL speed.")]
+    [Range(0.3f, 1f)] public float maxSpeedFactor = 0.88f;
+    [Tooltip("Distance they settle at behind the rider. Closer than this and they ease off, so they read as a pursuing horde rather than NPCs glued to the horse.")]
+    public float trailDistance = 9f;
+    [Tooltip("Sideways spread so a group doesn't collapse into one file.")]
+    public float lateralSpread = 3.5f;
+
     private enum State { Buried, Rising, Chasing }
     private State _state = State.Buried;
     private Animator _anim;
     private Vector3 _ground;
     private float _riseT;
+    private float _lane;                 // this skeleton's sideways slot in the horde
+    private Vector3 _targetLastPos;
+    private float _targetSpeed;
 
     private void Start()
     {
@@ -29,6 +40,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
         _ground = transform.position;
         transform.position = _ground - Vector3.up * riseDepth;   // sink underground
         if (_anim != null) _anim.SetBool("isMoving", false);
+        _lane = Random.Range(-lateralSpread, lateralSpread);
     }
 
     private void Update()
@@ -36,7 +48,17 @@ public class TrailerUndeadPursuit : MonoBehaviour
         if (target == null)
         {
             var p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null) target = p.transform; else return;
+            if (p != null) { target = p.transform; _targetLastPos = target.position; }
+            else return;
+        }
+
+        // Measure how fast the rider is ACTUALLY moving, so the pursuit can be
+        // capped below it whatever the spline length turns out to be.
+        if (Time.deltaTime > 0.0001f)
+        {
+            Vector3 d = target.position - _targetLastPos; d.y = 0f;
+            _targetSpeed = Mathf.Lerp(_targetSpeed, d.magnitude / Time.deltaTime, 0.2f);
+            _targetLastPos = target.position;
         }
 
         switch (_state)
@@ -61,14 +83,27 @@ public class TrailerUndeadPursuit : MonoBehaviour
                 break;
 
             case State.Chasing:
-                Vector3 to = target.position - transform.position; to.y = 0f;
-                // Stop short so they don't run INTO the horse.
-                if (to.magnitude > stopDistance)
-                {
-                    transform.position += to.normalized * chaseSpeed * Time.deltaTime;
-                    Face();
-                }
-                else Face();
+                // Aim at a point BEHIND the rider, offset sideways per skeleton,
+                // so the horde trails him in a spread instead of piling onto him.
+                Vector3 anchor = target.position - target.forward * trailDistance + target.right * _lane;
+                Vector3 to = anchor - transform.position; to.y = 0f;
+                float dToRider = Vector3.Distance(
+                    new Vector3(target.position.x, 0f, target.position.z),
+                    new Vector3(transform.position.x, 0f, transform.position.z));
+
+                // Never faster than the horse: measured from his real movement, so
+                // it holds whatever the spline length works out to.
+                float cap = _targetSpeed > 0.2f ? _targetSpeed * maxSpeedFactor : chaseSpeed;
+                float speed = Mathf.Min(chaseSpeed, cap);
+                // Ease off completely once we are at the trailing distance.
+                if (dToRider < stopDistance) speed = 0f;
+                else if (to.magnitude < 0.6f) speed *= to.magnitude / 0.6f;
+
+                if (speed > 0.01f && to.sqrMagnitude > 0.0001f)
+                    transform.position += to.normalized * speed * Time.deltaTime;
+
+                if (_anim != null) _anim.SetFloat("Speed", speed);
+                Face();
                 if (TryGround(transform.position, out float gy)) { var p = transform.position; p.y = gy; transform.position = p; }
                 break;
         }

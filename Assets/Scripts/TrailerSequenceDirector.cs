@@ -31,7 +31,8 @@ public class TrailerSequenceDirector : MonoBehaviour
     public float part1RideSeconds = 24f;
     [Tooltip("Seconds to ride the whole Part 2 spline.")]
     public float part2RideSeconds = 22f;
-    [Range(0f, 1f)] public float part1EndProgress = 0.9f;
+    [Tooltip("Where Part 1 hands over to the crane. Act I's own CM_04 crane shot starts around 0.8, so we take over BEFORE it — otherwise there are two cranes and CM_04 sits in the ground aiming at the horse.")]
+    [Range(0f, 1f)] public float part1EndProgress = 0.78f;
     public float timelapseSeconds = 7f;
     public float dayNightCyclesInTimelapse = 4f;
 
@@ -40,6 +41,12 @@ public class TrailerSequenceDirector : MonoBehaviour
     public float craneEndHeight = 48f;
     public float craneStartPitch = 25f;
     public float craneEndPitch = 55f;
+    [Tooltip("Metres BEHIND the horse's last position to anchor the crane, so it looks out over the region the rider is heading into rather than straight down at him.")]
+    public float craneSetBack = 22f;
+
+    [Header("Horse hand-off")]
+    [Tooltip("Seconds into the time-lapse after which the horse is hidden and moved to spline_p3. Without this he visibly pops across the map while the crane is watching.")]
+    public float hideHorseAfter = 2.2f;
 
     private enum Phase { Part1, Timelapse, Part2 }
     private Phase _phase = Phase.Part1;
@@ -47,6 +54,7 @@ public class TrailerSequenceDirector : MonoBehaviour
     private CinemachineCamera _crane;
     private Vector3 _craneAnchor;
     private float _craneYaw, _sunYaw;
+    private bool _horseParked;
 
     private void Start()
     {
@@ -127,6 +135,9 @@ public class TrailerSequenceDirector : MonoBehaviour
 
             case Phase.Timelapse:
                 _tlT += Time.deltaTime;
+                // Once he has galloped away, hide him and move him onto spline_p3
+                // OFF CAMERA, so he never pops across the map mid-shot.
+                if (!_horseParked && _tlT >= hideHorseAfter) ParkHorseForPart2();
                 float f = timelapseSeconds > 0.01f ? Mathf.Clamp01(_tlT / timelapseSeconds) : 1f;
                 DriveTimelapse(f);
                 if (f >= 1f) BeginPart2();
@@ -148,8 +159,10 @@ public class TrailerSequenceDirector : MonoBehaviour
         StopActIDirector();
         LowerActICams();
 
-        _craneAnchor = ride.transform.position;
+        // Sit BEHIND the rider and look the way he was heading — the shot is the
+        // REGION, not the horse.
         _craneYaw = ride.transform.eulerAngles.y;
+        _craneAnchor = ride.transform.position - ride.transform.forward * craneSetBack;
         if (_crane != null)
         {
             var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr;
@@ -199,15 +212,8 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
         if (terrainSeason != null) terrainSeason.ApplyU(1f);
 
-        // Move horse + rider (parented) onto spline_p3, already running.
-        if (part2Spline != null)
-        {
-            ride.path = part2Spline;
-            ride.autoFitSeconds = part2RideSeconds;
-            ride.progress01 = 0f;
-            ride.enabled = true;
-            ride.BeginRide();
-        }
+        ParkHorseForPart2();      // no-op if the time-lapse already did it
+        ShowHorse(true);
 
         LowerActICams();
         // HARD CUT. Three things are needed or the brain still glides in from the
@@ -237,6 +243,31 @@ public class TrailerSequenceDirector : MonoBehaviour
             cam.PreviousStateIsValid = false;
             cam.InternalUpdateCameraState(Vector3.up, -1f);
         }
+    }
+
+    // Hide the horse+rider and place them at the start of spline_p3, already
+    // running. Called mid-time-lapse so the move is never on screen.
+    private void ParkHorseForPart2()
+    {
+        if (_horseParked) return;
+        _horseParked = true;
+
+        ShowHorse(false);
+        if (part2Spline != null)
+        {
+            ride.path = part2Spline;
+            ride.autoFitSeconds = part2RideSeconds;
+            ride.progress01 = 0f;
+            ride.enabled = true;
+            ride.BeginRide();
+        }
+    }
+
+    private void ShowHorse(bool visible)
+    {
+        if (ride == null) return;
+        foreach (var r in ride.GetComponentsInChildren<Renderer>(true))
+            r.enabled = visible;
     }
 
     private void HoldWinterSun()

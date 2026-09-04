@@ -31,8 +31,10 @@ public class TrailerTerrainSeasons : MonoBehaviour
     public Color grassWinter = new Color(0.92f, 0.95f, 1.0f);
     [Range(0f, 1f)] public float autumnBlend = 0.7f;
     [Range(0f, 1f)] public float winterBlend = 0.9f;
-    [Tooltip("GPU-instanced detail prototypes IGNORE healthyColor/dryColor, which is why painted grass never recoloured. On the runtime clone we turn instancing off so the tint actually applies.")]
-    public bool forceTintableDetails = true;
+    [Tooltip("DO NOT enable. Turning instancing off makes the terrain apply healthyColor/dryColor — but instanced prototypes leave those at WHITE because they are unused, so the grass turns white in summer. Kept only as an escape hatch.")]
+    public bool forceTintableDetails = false;
+    [Tooltip("How instanced grass is actually recoloured: each detail prototype prefab is cloned at runtime and ITS material is tinted. The prefab asset is never touched.")]
+    public bool tintDetailMaterials = true;
 
     [Header("Season prefab variants (matched by 'Setup Act II Seasons')")]
     [Tooltip("Original prototype prefab (tree or detail) — the key.")]
@@ -51,7 +53,16 @@ public class TrailerTerrainSeasons : MonoBehaviour
         public TerrainCollider collider;
         public Color[] baseHealthy, baseDry;
         public GameObject[] origDetail, origTree;
+        // Runtime clones of the detail prototype prefabs, and the material
+        // instances on them we tint (instanced grass draws the prefab's
+        // material and ignores healthyColor/dryColor entirely).
+        public GameObject[] detailClones;
+        public List<Material> tintMats;
+        public List<Color> tintMatBase;
     }
+
+    private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorID = Shader.PropertyToID("_Color");
 
     private readonly List<TState> _states = new List<TState>();
     private int _protoState = -1;
@@ -102,6 +113,8 @@ public class TrailerTerrainSeasons : MonoBehaviour
             }
             if (touched) s.work.detailPrototypes = det;
 
+            if (tintDetailMaterials) BuildDetailTintClones(s);
+
             var tp = s.work.treePrototypes;
             s.origTree = new GameObject[tp.Length];
             for (int i = 0; i < tp.Length; i++) s.origTree[i] = tp[i].prefab;
@@ -117,6 +130,72 @@ public class TrailerTerrainSeasons : MonoBehaviour
     private void OnDisable() { Restore(); }
     private void OnDestroy() { Restore(); }
 
+    // Instanced painted grass draws the PREFAB's material, so healthyColor /
+    // dryColor do nothing (that is why the grass never changed). Clone each
+    // prototype prefab, give the clone its own material instances, and point the
+    // terrain at the clone — then the season tint is just a colour write. The
+    // prefab assets and their shared materials are never touched.
+    private void BuildDetailTintClones(TState s)
+    {
+        var det = s.work.detailPrototypes;
+        s.detailClones = new GameObject[det.Length];
+        s.tintMats = new List<Material>();
+        s.tintMatBase = new List<Color>();
+        bool changed = false;
+
+        for (int i = 0; i < det.Length; i++)
+        {
+            var src = det[i].prototype;
+            if (src == null) continue;                       // texture grass → healthy/dry tint works
+
+            var clone = Instantiate(src);
+            clone.name = src.name + " (TrailerTint)";
+            clone.hideFlags = HideFlags.HideAndDontSave;
+            clone.SetActive(false);
+            clone.transform.SetParent(transform, false);
+
+            foreach (var r in clone.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int m = 0; m < mats.Length; m++)
+                {
+                    if (mats[m] == null) continue;
+                    var inst = new Material(mats[m]);
+                    inst.hideFlags = HideFlags.HideAndDontSave;
+                    mats[m] = inst;
+                    s.tintMats.Add(inst);
+                    s.tintMatBase.Add(inst.HasProperty(BaseColorID) ? inst.GetColor(BaseColorID)
+                                    : inst.HasProperty(ColorID) ? inst.GetColor(ColorID) : Color.white);
+                }
+                r.sharedMaterials = mats;
+            }
+
+            s.detailClones[i] = clone;
+            det[i].prototype = clone;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            s.work.detailPrototypes = det;
+            s.work.RefreshPrototypes();
+            if (s.terrain != null) s.terrain.Flush();
+        }
+    }
+
+    private void TintDetailMaterials(TState s, Color tint, float blend)
+    {
+        if (s.tintMats == null) return;
+        for (int i = 0; i < s.tintMats.Count; i++)
+        {
+            var m = s.tintMats[i]; if (m == null) continue;
+            Color c = Color.Lerp(s.tintMatBase[i], tint, blend);
+            c.a = s.tintMatBase[i].a;
+            if (m.HasProperty(BaseColorID)) m.SetColor(BaseColorID, c);
+            if (m.HasProperty(ColorID)) m.SetColor(ColorID, c);
+        }
+    }
+
     private void Restore()
     {
         foreach (var s in _states)
@@ -124,6 +203,8 @@ public class TrailerTerrainSeasons : MonoBehaviour
             if (s.terrain != null && s.orig != null) s.terrain.terrainData = s.orig;
             if (s.collider != null && s.orig != null) s.collider.terrainData = s.orig;
             if (s.work != null) Destroy(s.work);
+            if (s.tintMats != null) foreach (var m in s.tintMats) if (m != null) Destroy(m);
+            if (s.detailClones != null) foreach (var g in s.detailClones) if (g != null) Destroy(g);
         }
         _states.Clear();
         _ready = false;
@@ -161,14 +242,28 @@ public class TrailerTerrainSeasons : MonoBehaviour
         {
             foreach (var s in _states)
             {
+                // Instanced grass: tint the cloned prototype's material.
+                TintDetailMaterials(s, tint, blend);
+
+                // Texture / vertex-lit grass: the healthy/dry colours DO apply.
+                // Only touch prototypes we did NOT clone, so instanced ones keep
+                // their untouched (white, unused) values instead of turning the
+                // summer grass white.
                 var det = s.work.detailPrototypes;
+                bool wrote = false;
                 for (int i = 0; i < det.Length && i < s.baseHealthy.Length; i++)
                 {
+                    bool cloned = s.detailClones != null && i < s.detailClones.Length && s.detailClones[i] != null;
+                    if (cloned) continue;
                     det[i].healthyColor = Color.Lerp(s.baseHealthy[i], tint, blend);
                     det[i].dryColor = Color.Lerp(s.baseDry[i], tint, blend);
+                    wrote = true;
                 }
-                s.work.detailPrototypes = det;
-                if (s.terrain != null) s.terrain.Flush();
+                if (wrote)
+                {
+                    s.work.detailPrototypes = det;
+                    if (s.terrain != null) s.terrain.Flush();
+                }
             }
             _lastBlend = blend;
         }
@@ -216,6 +311,9 @@ public class TrailerTerrainSeasons : MonoBehaviour
             for (int i = 0; i < det.Length && i < s.origDetail.Length; i++)
             {
                 if (s.origDetail[i] == null) continue;   // texture grass → the tint handles it
+                // Cloned prototypes are season-driven by their material tint —
+                // swapping them back to the source prefab would undo it.
+                if (s.detailClones != null && i < s.detailClones.Length && s.detailClones[i] != null) continue;
                 var want = Variant(s.origDetail[i], season);
                 if (det[i].prototype != want) { det[i].prototype = want; dChanged = true; }
             }
