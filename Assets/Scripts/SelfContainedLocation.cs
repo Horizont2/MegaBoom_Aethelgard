@@ -23,11 +23,24 @@ public class SelfContainedLocation : MonoBehaviour
     [Tooltip("Footprint radius (m) used for the terrain hole + vegetation exclusion. 0 = auto (uses the flattened pad radius WorldGenerator computed from the prefab bounds).")]
     public float footprintRadius = 0f;
 
-    [Tooltip("Extra margin (m) added around the footprint for the hole + exclusion, so the seam sits just outside the visible ground.")]
+    [Tooltip("Extra margin (m) around the footprint, used for the vegetation exclusion only.")]
     public float margin = 4f;
 
     [Tooltip("Punch a hole in the procedural terrain under this location. Turn off if you'd rather keep the generated ground (e.g. the location has a transparent/no floor of its own).")]
     public bool cutTerrainHole = true;
+
+    [Tooltip("Metres the hole is pulled IN from the footprint edge. The hole used to be cut at footprint + margin — always LARGER than the location — so a ring of terrain vanished around it and the world water showed through as a pit. Cutting it smaller lets the location's own ground overlap the seam. Only lower this if you can see procedural ground poking through the floor.")]
+    public float holeInset = 6f;
+
+    [Header("Plateau (raise the land under the location)")]
+    [Tooltip("Raise the terrain into a hill with a flat top under this location, instead of dropping it on the flat. The generated roads climb the slope to reach it, so a castle reads as commanding the valley.")]
+    public bool raiseHill = false;
+
+    [Tooltip("How high above the surrounding land the plateau top sits (m).")]
+    public float hillHeight = 22f;
+
+    [Tooltip("How far the slope runs out from the footprint edge (m). Longer = gentler climb; keep it well above hillHeight or the sides become cliffs the horse and enemies can't walk up.")]
+    public float hillSlopeLength = 90f;
 
     [Header("Water alignment")]
     [Tooltip("Drag the location's WATER object here. If set and 'alignWaterToWorld' is on, the whole location is shifted vertically so its water sits exactly on the world's water plane — so the generated world water and the location's water are one continuous level.")]

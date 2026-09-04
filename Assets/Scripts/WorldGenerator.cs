@@ -1979,9 +1979,27 @@ public class WorldGenerator : MonoBehaviour
         // If we had to fall back to a low spot, raise the pad above the lake
         // surface so the location can't end up submerged.
         float padY = Mathf.Max(exactGroundY, absoluteWaterHeight + 4f);
+
+        // PLATEAU: for a location authored to sit on high ground (the castle),
+        // raise the land into a hill with a flat top instead of dropping it on
+        // the flat. The pad is the hill top and the falloff IS the slope, so the
+        // generated roads — which path over the terrain — climb it to the gate.
+        float padFalloff = 18f;
+        if (selfContainedDef != null && selfContainedDef.raiseHill)
+        {
+            // Never push the top past the terrain's height range — SetHeights
+            // would clamp it and the "hill" would come out as a flat mesa at max
+            // altitude with vertical sides.
+            float ceilingY = transform.position.y + terrain.terrainData.size.y * 0.92f;
+            padY = Mathf.Min(padY + selfContainedDef.hillHeight, ceilingY);
+            // Keep the slope long relative to the rise, or the sides become
+            // cliffs nothing can walk up and the road dead-ends at the base.
+            padFalloff = Mathf.Max(selfContainedDef.hillSlopeLength, selfContainedDef.hillHeight * 2.5f);
+            Debug.Log($"[WorldGenerator] Plateau for '{totemPrefab.name}': +{selfContainedDef.hillHeight}m over a {padFalloff}m slope.");
+        }
         centerPos.y = padY;
 
-        FlattenTerrainRobust(centerPos, flatRadius, 18f, padY);
+        FlattenTerrainRobust(centerPos, flatRadius, padFalloff, padY);
         terrain.Flush();
         TerrainCollider tc = terrain.GetComponent<TerrainCollider>();
         if (tc != null) { tc.enabled = false; tc.enabled = true; }
@@ -2045,7 +2063,12 @@ public class WorldGenerator : MonoBehaviour
         if (selfContained != null && selfContained.cutTerrainHole)
         {
             float holeR = selfContained.footprintRadius > 0.1f ? selfContained.footprintRadius : flatRadius;
-            PunchTerrainHole(spawnedTotemPos, holeR + selfContained.margin);
+            // INSET, not margin. The hole was cut at footprint + margin, i.e.
+            // always wider than the location's own ground, so a ring of terrain
+            // was removed that nothing covered and the world water plane showed
+            // through it as a pit. Cutting it smaller lets the location's floor
+            // overlap the seam.
+            PunchTerrainHole(spawnedTotemPos, Mathf.Max(holeR * 0.35f, holeR - selfContained.holeInset));
         }
 
         // Optional extra capture LOCATIONS: additional totems at spread-out
@@ -2103,7 +2126,7 @@ public class WorldGenerator : MonoBehaviour
             if (esc != null && esc.cutTerrainHole)
             {
                 float holeR = esc.footprintRadius > 0.1f ? esc.footprintRadius : flatRadius;
-                PunchTerrainHole(extraTotem.transform.position, holeR + esc.margin);
+                PunchTerrainHole(extraTotem.transform.position, Mathf.Max(holeR * 0.35f, holeR - esc.holeInset));
             }
             spawned++;
         }
