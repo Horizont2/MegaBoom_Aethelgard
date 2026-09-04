@@ -114,6 +114,34 @@ public static class TrailerRoadsideDresser
             }
         }
 
+        // Birds along the route. The forest reads as scenery until something in
+        // it reacts to him — one flock breaking cover as he comes past does more
+        // for that than any amount of extra vegetation.
+        var birdPrefabs = AssetDatabase.FindAssets("t:GameObject", new[] { "Assets/Zacxophone/Birds/URP/Prefabs" })
+            .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
+            .Where(g => g != null).ToArray();
+        if (birdPrefabs.Length > 0)
+        {
+            int flocks = 0;
+            for (float u = 0.12f; u < 0.95f; u += 0.17f)
+            {
+                var pos = (Vector3)road.EvaluatePosition(u);
+                pos += new Vector3(UnityEngine.Random.Range(-14f, 14f), 0f, UnityEngine.Random.Range(-14f, 14f));
+                if (Terrain.activeTerrain != null)
+                    pos.y = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
+
+                var go = new GameObject("BirdFlush_" + flocks);
+                Undo.RegisterCreatedObjectUndo(go, "bird flush");
+                go.transform.SetParent(root.transform);
+                go.transform.position = pos;
+                var bf = go.AddComponent<TrailerBirdFlush>();
+                bf.flockPrefab = birdPrefabs[UnityEngine.Random.Range(0, birdPrefabs.Length)];
+                flocks++;
+            }
+            Debug.Log($"[Trailer] Placed {flocks} bird flush point(s) along the route.");
+        }
+        else Debug.LogWarning("[Trailer] No bird prefabs under Assets/Zacxophone/Birds/URP/Prefabs — no flocks placed.");
+
         // (Houses / burning villages left OUT — the user places those manually.)
 
         EditorSceneMarkDirty();
@@ -224,34 +252,6 @@ public static class TrailerRoadsideDresser
 
     private static void EditorSceneMarkDirty()
     {
-        // Birds along the route. The forest reads as scenery until something in
-        // it reacts to him — one flock breaking cover as he comes past does more
-        // for that than any amount of extra vegetation.
-        var birdPrefabs = AssetDatabase.FindAssets("t:GameObject", new[] { "Assets/Zacxophone/Birds/URP/Prefabs" })
-            .Select(g => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g)))
-            .Where(g => g != null).ToArray();
-        if (birdPrefabs.Length > 0)
-        {
-            int flocks = 0;
-            for (float u = 0.12f; u < 0.95f; u += 0.17f)
-            {
-                var pos = (Vector3)road.EvaluatePosition(u);
-                pos += new Vector3(UnityEngine.Random.Range(-14f, 14f), 0f, UnityEngine.Random.Range(-14f, 14f));
-                if (Terrain.activeTerrain != null)
-                    pos.y = Terrain.activeTerrain.SampleHeight(pos) + Terrain.activeTerrain.transform.position.y;
-
-                var go = new GameObject("BirdFlush_" + flocks);
-                Undo.RegisterCreatedObjectUndo(go, "bird flush");
-                go.transform.SetParent(root.transform);
-                go.transform.position = pos;
-                var bf = go.AddComponent<TrailerBirdFlush>();
-                bf.flockPrefab = birdPrefabs[UnityEngine.Random.Range(0, birdPrefabs.Length)];
-                flocks++;
-            }
-            Debug.Log($"[Trailer] Placed {flocks} bird flush point(s) along the route.");
-        }
-        else Debug.LogWarning("[Trailer] No bird prefabs under Assets/Zacxophone/Birds/URP/Prefabs — no flocks placed.");
-
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene());
     }
