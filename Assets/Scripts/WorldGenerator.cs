@@ -2107,6 +2107,10 @@ public class WorldGenerator : MonoBehaviour
         // world water plane, merging the two into one continuous level (used when
         // the location brings its own water). Supersedes the box-collider grounding.
         var scInstance = camp.GetComponent<SelfContainedLocation>();
+        // A location's own lakes are water too — register them so wading in the
+        // castle's moat behaves like wading in the world sea.
+        if (scInstance != null && scInstance.waterReference != null)
+            WaterBody.Attach(scInstance.waterReference.gameObject);
         if (isSelfContained && scInstance != null && scInstance.alignWaterToWorld && scInstance.waterReference != null
             && !scInstance.raiseHill)
         {
@@ -2671,6 +2675,9 @@ public class WorldGenerator : MonoBehaviour
         waterObj.transform.localScale = new Vector3(w / 10f, 1f, l / 10f);
         MeshRenderer mr = waterObj.GetComponent<MeshRenderer>(); mr.material = waterMaterial; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         Destroy(waterObj.GetComponent<Collider>());
+        // No collider means nothing can detect this by physics, so register the
+        // surface for gameplay (PlayerWaterState) to query.
+        WaterBody.Attach(waterObj);
     }
 
     private IEnumerator GenerateRoadsRoutine()

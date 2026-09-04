@@ -174,6 +174,23 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private float dodgeWindowTimer = 0f;
     [HideInInspector] public bool isNextAttackGuaranteedCrit = false;
+
+    // Set by PlayerWaterState once the body is submerged past the waist. Drives
+    // the arms-out airborne pose and blocks attacking while in the water.
+    [HideInInspector] public bool isSwimming = false;
+
+    // Optional: if the animator declares an "InWater" bool, drive it too, so a
+    // dedicated swim state can be authored later without another code change.
+    private void SetAnimBoolIfPresent(string param, bool value)
+    {
+        if (anim == null) return;
+        foreach (var p in anim.parameters)
+            if (p.type == AnimatorControllerParameterType.Bool && p.name == param)
+            {
+                anim.SetBool(param, value);
+                return;
+            }
+    }
     private bool isBulletTime = false;
 
     private CameraFollow cameraFollow;
@@ -1012,7 +1029,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (anim != null)
         {
             anim.SetFloat("Speed", currentVelocityMove.magnitude);
-            anim.SetBool("IsGrounded", isVisuallyGrounded);
+            // Submerged past the waist, the airborne pose (arms out to the
+            // sides) reads as treading water — so report "not grounded" to the
+            // animator while swimming, without touching the real ground state
+            // the movement code uses.
+            anim.SetBool("IsGrounded", isVisuallyGrounded && !isSwimming);
+            if (isSwimming) SetAnimBoolIfPresent("InWater", true);
+            else SetAnimBoolIfPresent("InWater", false);
 
             Vector3 localVelocity = transform.InverseTransformDirection(currentVelocityMove);
             anim.SetFloat("MoveX", Mathf.Clamp(localVelocity.x / moveSpeed, -1f, 1f));
@@ -1022,7 +1045,8 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 if (!isCampMode)
                 {
-                    if (Input.GetMouseButtonDown(0))
+                    // No swinging a weapon while treading water.
+                    if (Input.GetMouseButtonDown(0) && !isSwimming)
                     {
                         if (!isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
                         {
