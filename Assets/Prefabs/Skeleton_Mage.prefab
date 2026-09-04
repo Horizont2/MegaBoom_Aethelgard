@@ -960,7 +960,7 @@ Animator:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5831695762426202601}
   m_Enabled: 1
-  m_Avatar: {fileID: 0}
+  m_Avatar: {fileID: 9000000, guid: 8d1e6796dac368c4fb092fb699ac3cb9, type: 3}
   m_Controller: {fileID: 9100000, guid: 7e48ee291c5fb8b43aa066119b1dd8e6, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
@@ -986,12 +986,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
   isElite: 1
+  suppressDrops: 0
+  isBoss: 0
   maxPoise: 100
   maxHealth: 35
   moveSpeed: 4.5
   damage: 19
   nightMultiplier: 1.2
   isCinematicFrozen: 0
+  cinematicDrivesAnimator: 0
   spawnVFXPrefab: {fileID: 8013526150281694156}
   spawnDuration: 2.5
   attackRange: 1
@@ -1006,6 +1009,8 @@ MonoBehaviour:
   rangedLeadFactor: 0.7
   rangedHealthFactor: 0.6
   projectileSpawnPoint: {fileID: 0}
+  magicCaster: 0
+  magicOrbColor: {r: 0.55, g: 0.35, b: 1, a: 1}
   canSummon: 1
   summonMinionPrefabs:
   - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
@@ -1031,6 +1036,7 @@ MonoBehaviour:
   deathVFXPrefab: {fileID: 0}
   dissolveAshVFX: {fileID: 0}
   healthCanvas: {fileID: 7614700032141696800}
+  suppressWorldHealthBar: 0
   healthFill: {fileID: 8562493061539664882}
   xpRewardMultiplier: 1
   isInvincible: 0
@@ -1042,6 +1048,14 @@ MonoBehaviour:
   parentGroup: {fileID: 0}
   roamWhilePassive: 1
   faceAnchorWhenIdle: 0
+  avoidObstacles: 1
+  avoidLookAhead: 2.4
+  avoidProbeRadius: 0.45
+  avoidProbeHeight: 0.9
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 0
+  avoidSolvesPerSecond: 10
 --- !u!136 &7503167764954456786
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1078,7 +1092,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OptimizedObject
   renderers: []
-  animator: {fileID: 0}
+  animator: {fileID: 5647101718090156141}
   lights: []
   particles: []
   colliders:

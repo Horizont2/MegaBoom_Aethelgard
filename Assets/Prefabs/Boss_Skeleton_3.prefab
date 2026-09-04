@@ -265,7 +265,7 @@ MonoBehaviour:
   attackRange: 2.8
   attackCooldown: 3
   attackTelegraphTime: 1.2
-  bossWeapon: {fileID: 0}
+  bossWeapon: {fileID: 6661615821503722250}
   useSlamAttack: 1
   slamIndicatorPrefab: {fileID: 0}
   slamRadius: 4.5
@@ -290,6 +290,7 @@ MonoBehaviour:
   - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
   summonCount: 4
   summonCooldown: 15
+  maxActiveAdds: 12
   summonAnimTrigger: Attack
   summonSpawnVFX: {fileID: 6126188424833946103, guid: a58aa9a78f2b45b45bb0f3e2e1e3ad3c, type: 3}
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
@@ -380,6 +381,11 @@ PrefabInstance:
 --- !u!4 &6285055750941813168 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1cae88cf56ac10f448fb3f163b750a8b, type: 3}
+  m_PrefabInstance: {fileID: 5815195617539182171}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &6661615821503722250 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 1cae88cf56ac10f448fb3f163b750a8b, type: 3}
   m_PrefabInstance: {fileID: 5815195617539182171}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &8567958792871651578
