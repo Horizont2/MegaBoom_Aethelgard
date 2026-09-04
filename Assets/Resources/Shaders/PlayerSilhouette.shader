@@ -27,7 +27,13 @@ Shader "Hollow/PlayerSilhouette"
         Pass
         {
             Name "Silhouette"
-            Tags { "LightMode" = "UniversalForward" }
+            // A CUSTOM LightMode, deliberately. None of URP's built-in passes
+            // know this tag, so nothing draws it except PlayerSilhouetteFeature.
+            // That is the safety property that matters here: if the feature is
+            // missing from the renderer, the silhouette simply does not render —
+            // it can never come back as a solid figure over the whole character
+            // the way a UniversalForward pass did.
+            Tags { "LightMode" = "PlayerSilhouette" }
 
             ZTest Greater      // only where geometry is already in front
             ZWrite Off

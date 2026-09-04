@@ -14,17 +14,14 @@ using UnityEngine;
 // the open. Foliage, rocks, walls — anything that writes depth — all work, with
 // no per-frame line-of-sight test.
 //
-// STATUS: OFF by default. The ZTest Greater pass draws over the whole character
-// in this project's URP setup instead of only where it is occluded, so the player
-// renders as a solid blue figure everywhere. Doing this properly in URP needs a
-// ScriptableRendererFeature that draws the pass after opaques against the real
-// depth target, not a queue-ordered material — leaving the component here, inert,
-// until that exists.
+// Needs PlayerSilhouetteFeature on the active URP renderer. The mirror meshes
+// carry a shader whose only pass is tagged LightMode = "PlayerSilhouette", which
+// no built-in URP pass knows — so without the feature they draw nothing at all,
+// and the old failure where the whole character turned into a solid blue figure
+// cannot come back.
 [DisallowMultipleComponent]
 public class PlayerFoliageSilhouette : MonoBehaviour
 {
-    [Tooltip("Off: the depth-test trick renders over the whole character in this pipeline setup rather than only through occluders. Needs a proper URP renderer feature before it can be turned on.")]
-    public bool enabled_ = false;
 
     [Tooltip("Silhouette material. Left empty, one is created from Hollow/PlayerSilhouette.")]
     public Material silhouetteMaterial;
@@ -39,7 +36,22 @@ public class PlayerFoliageSilhouette : MonoBehaviour
 
     private readonly List<GameObject> _mirrors = new List<GameObject>();
 
-    private void Start() { if (enabled_) Build(); }
+    private void Start()
+    {
+        Build();
+        WarnIfFeatureMissing();
+    }
+
+    // The mirrors are invisible without the render feature, which would look like
+    // the component silently doing nothing — say so instead.
+    private void WarnIfFeatureMissing()
+    {
+        if (_mirrors.Count == 0) return;
+        var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+        if (urp == null) return;
+        if (Object.FindObjectsByType<PlayerSilhouetteFeature>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length > 0) return;
+        Debug.Log("[PlayerFoliageSilhouette] Silhouette meshes built. They render only via PlayerSilhouetteFeature — add it to the renderer in use (Assets/Settings/PC_Renderer.asset ▸ Add Renderer Feature ▸ Player Silhouette) if the player still disappears in bushes.");
+    }
 
     private void OnDestroy()
     {
