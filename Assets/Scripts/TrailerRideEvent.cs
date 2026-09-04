@@ -69,8 +69,8 @@ public class TrailerRideEvent : MonoBehaviour
     public float strikeSideOffset = 4.5f;
     [Tooltip("Metres AHEAD of the horse — the bolt cuts him off, which is what makes the horse rear.")]
     public float strikeForwardOffset = 3f;
-    [Tooltip("Beat between the flash and the horse rearing, so cause reads before effect.")]
-    public float rearDelay = 0.18f;
+    [Tooltip("Beat between the flash and the horse rearing. Keep it tiny: the two are cause and effect, and any real gap reads as the horse stopping first and the lightning arriving afterwards.")]
+    public float rearDelay = 0.04f;
     [Tooltip("Beat between the rear and the rider losing his seat.")]
     public float throwDelay = 0.45f;
 
@@ -222,7 +222,13 @@ public class TrailerRideEvent : MonoBehaviour
         Vector3 gp = t.position + t.forward * strikeForwardOffset + t.right * side;
         if (TryGround(gp, out float gy)) gp.y = gy;
 
-        // DROP OUT THE SOUND first. A held gap before the strike is worth more
+        // CUT FIRST. The bolt used to fire while the previous shot was still
+        // live and the camera only cut 0.12s later — so on screen the horse
+        // stopped, and the lightning appeared afterwards. The frame has to be
+        // right BEFORE the flash, not after it.
+        CutToFallCamera();
+
+        // Then drop the sound out. A held gap before the strike is worth more
         // than any amount of level on the thunder itself — the ear notices the
         // absence, and the crack that follows fills a hole it just made.
         if (silenceBeforeStrike > 0.01f)
@@ -233,8 +239,6 @@ public class TrailerRideEvent : MonoBehaviour
             AudioListener.volume = restore;
         }
 
-        // Fire it while the WIDE shot is still live, so it is seen even before
-        // the cut, then cut with the flash still burning.
         if (_bolt != null) _bolt.Strike(gp);
         else Debug.LogWarning("[Trailer] No lightning bolt component — strike has no visual.");
         if (AudioManager.Instance != null)
@@ -256,10 +260,10 @@ public class TrailerRideEvent : MonoBehaviour
         }
         Debug.Log($"[Trailer] BEAT strike — bolt at {gp}, horse at {t.position}.");
 
-        yield return new WaitForSeconds(0.12f);
-        CutToFallCamera();
-
-        yield return new WaitForSeconds(rearDelay);
+        // The horse rears ON the flash. Cause and effect have to be the same
+        // moment here: a gap between them reads as the horse stopping for its own
+        // reasons and the lightning arriving late.
+        if (rearDelay > 0.001f) yield return new WaitForSeconds(rearDelay);
 
         // Horse rears and holds.
         ride.enabled = false;

@@ -48,9 +48,9 @@ public class TrailerBattleDirector : MonoBehaviour
 
     private Transform _hero;
     private Animator _heroAnim;
-    private readonly List<CinemachineCamera> _cams = new List<CinemachineCamera>();
     private readonly List<EnemyAI> _enemies = new List<EnemyAI>();
     private bool _firstBlood;
+    private int _kills;
 
     public static TrailerBattleDirector Begin(Transform hero, GameObject[] prefabs = null, int count = 0)
     {
@@ -70,24 +70,22 @@ public class TrailerBattleDirector : MonoBehaviour
         RestorePlayerForCombat();
         DismissScenerySkeletons();
         SpawnRealEnemies();
-        BuildCameras();
 
         var polish = TrailerCinematicPolish.Instance;
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(35f);
 
-        Live(0);                                    // low angle: he is on his feet
+        Stage(Shot.Hero);                           // low angle: he is on his feet
         yield return new WaitForSeconds(ringShotTime);
 
-        Live(1);                                    // wide enough to count them
+        Stage(Shot.Ring);                           // wide enough to count them
         yield return new WaitForSeconds(clashShotTime - ringShotTime);
 
-        Live(2);                                    // tight, first exchange
-        if (polish != null) { polish.TimeRamp(0.4f, 0.5f, 0.05f, 0.4f); polish.ImpactPunch(0.9f, 0.4f); }
+        Stage(Shot.Clash);                          // tight, first exchange
         CameraShakeUtil.TryShake(0.4f, 0.2f);
 
         yield return StartCoroutine(FightRoutine());
 
-        Live(3);                                    // one man, the field cleared
+        Stage(Shot.Wide);                           // one man, the field cleared
         yield return new WaitForSeconds(2.4f);
 
         if (polish != null) polish.FadeToBlack(1.8f);
@@ -211,8 +209,21 @@ public class TrailerBattleDirector : MonoBehaviour
                 if (Mathf.Sqrt(best) <= swingRange) Swing();
             }
 
+            // CUT ON THE KILLS. A melee cut to a stopwatch drifts out of sync
+            // with what is happening in it within a couple of shots; cutting when
+            // something dies keeps every change of angle on a beat.
+            int before = _enemies.Count;
             yield return new WaitForSeconds(swingInterval);
             t += swingInterval;
+
+            _enemies.RemoveAll(e => e == null || !e.gameObject.activeInHierarchy);
+            if (_enemies.Count < before)
+            {
+                _kills += before - _enemies.Count;
+                // Alternate between the two fighting angles so consecutive kills
+                // never repeat the same frame.
+                Stage((_kills % 2 == 0) ? Shot.Clash : Shot.Kill);
+            }
         }
         Debug.LogWarning($"[Trailer] Battle ran to its {maxFightSeconds}s limit with {_enemies.Count} still standing — cutting anyway so the take cannot hang.");
     }
@@ -258,7 +269,13 @@ public class TrailerBattleDirector : MonoBehaviour
         CameraShakeUtil.TryShake(0.18f, 0.09f);
     }
 
-    private void BuildCameras()
+    // Shots are STAGED FRESH each time one goes live, around where the fight
+    // actually is at that moment. Cameras fixed at the start of the fight end up
+    // pointing at ground the action has already left — a static coverage plan
+    // cannot follow a melee that moves.
+    private enum Shot { Hero, Ring, Clash, Wide, Kill }
+
+    private void Stage(Shot shot)
     {
         Vector3 fwd = _hero.forward; fwd.y = 0f;
         if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
@@ -266,53 +283,81 @@ public class TrailerBattleDirector : MonoBehaviour
         Vector3 right = Vector3.Cross(Vector3.up, fwd);
         Vector3 c = _hero.position;
 
-        Add("CM_Part3_Hero", c + fwd * 3.4f + right * 0.8f + Vector3.up * 0.55f, c + Vector3.up * 1.5f, heroFov);
-        Add("CM_Part3_Ring", c - fwd * 5.5f + right * 5.0f + Vector3.up * 3.4f, c + Vector3.up * 1.1f, ringFov);
-        Add("CM_Part3_Clash", c - fwd * 2.1f - right * 1.9f + Vector3.up * 1.8f, c + fwd * 2.5f + Vector3.up * 1.3f, clashFov);
-        Add("CM_Part3_Wide", c - fwd * 9f + Vector3.up * 7.5f, c + Vector3.up * 1f, wideFov);
+        // Frame relative to the nearest attacker where it matters, so the enemy
+        // is inside the shot rather than off the edge of it.
+        Transform foe = NearestEnemy();
+        Vector3 toFoe = foe != null ? Flat(foe.position - c).normalized : fwd;
+        Vector3 foeRight = Vector3.Cross(Vector3.up, toFoe);
+
+        switch (shot)
+        {
+            case Shot.Hero:   // low, looking up: he has decided to fight
+                Place(c + fwd * 3.6f + right * 0.9f + Vector3.up * 0.5f, c + Vector3.up * 1.5f, heroFov);
+                break;
+            case Shot.Ring:   // raised three-quarter, wide enough to count them
+                Place(c - fwd * 6f + right * 5.5f + Vector3.up * 3.6f, c + Vector3.up * 1.1f, ringFov);
+                break;
+            case Shot.Clash:  // over his shoulder INTO the nearest attacker
+                Place(c - toFoe * 2.3f - foeRight * 1.8f + Vector3.up * 1.85f,
+                      (foe != null ? foe.position : c + toFoe * 3f) + Vector3.up * 1.2f, clashFov);
+                break;
+            case Shot.Kill:   // side-on and low, so the blow crosses the frame
+                Place(c + foeRight * 3.6f + Vector3.up * 1.1f,
+                      Vector3.Lerp(c, foe != null ? foe.position : c + toFoe * 3f, 0.5f) + Vector3.up * 1.2f,
+                      clashFov + 6f);
+                break;
+            case Shot.Wide:   // one man, the field cleared
+                Place(c - fwd * 9.5f + Vector3.up * 7.5f, c + Vector3.up * 1f, wideFov);
+                break;
+        }
     }
 
-    private void Add(string name, Vector3 pos, Vector3 lookAt, float fov)
+    private Transform NearestEnemy()
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(transform, false);
+        Transform best = null; float bd = float.MaxValue;
+        foreach (var e in _enemies)
+        {
+            if (e == null) continue;
+            float d = Vector3.SqrMagnitude(e.transform.position - _hero.position);
+            if (d < bd) { bd = d; best = e.transform; }
+        }
+        return best;
+    }
+
+    private static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+
+    private CinemachineCamera _cam;
+
+    private void Place(Vector3 pos, Vector3 lookAt, float fov)
+    {
+        if (_cam == null)
+        {
+            var go = new GameObject("CM_Part3_Fight");
+            go.transform.SetParent(transform, false);
+            _cam = go.AddComponent<CinemachineCamera>();
+            var pr = _cam.Priority; pr.Value = 400; _cam.Priority = pr;   // above the Part 2 rig and the fall camera
+
+            // The hero moves during the fight, so every shot tracks him — but
+            // loosely, so the framing drifts rather than locking on like a turret.
+            var tgt = _cam.Target; tgt.LookAtTarget = _hero; _cam.Target = tgt;
+            var comp = go.AddComponent<CinemachineRotationComposer>();
+            comp.Damping = new Vector2(0.5f, 0.5f);
+        }
 
         // Never leave a camera underground: the fall can end on a slope, and a
         // shot from inside the hill is how earlier acts lost their cameras.
         if (TrailerGroundClamp.TryTerrainY(pos, out float gy) && pos.y < gy + 0.4f) pos.y = gy + 0.4f;
 
-        go.transform.position = pos;
-        go.transform.rotation = Quaternion.LookRotation((lookAt - pos).normalized);
+        _cam.transform.position = pos;
+        _cam.transform.rotation = Quaternion.LookRotation((lookAt - pos).normalized);
+        var lens = _cam.Lens; lens.FieldOfView = fov; _cam.Lens = lens;
 
-        var cam = go.AddComponent<CinemachineCamera>();
-        cam.Lens.FieldOfView = fov;
-        var pr = cam.Priority; pr.Value = 0; cam.Priority = pr;
-
-        // The fight cameras are static; the hero moves, so aim them at him.
-        var tgt = cam.Target; tgt.LookAtTarget = _hero; cam.Target = tgt;
-        var comp = go.AddComponent<CinemachineRotationComposer>();
-        comp.Damping = new Vector2(0.6f, 0.6f);
-
-        _cams.Add(cam);
-    }
-
-    private void Live(int index)
-    {
-        for (int i = 0; i < _cams.Count; i++)
-        {
-            if (_cams[i] == null) continue;
-            var pr = _cams[i].Priority;
-            pr.Value = (i == index) ? 400 : 0;      // above the Part 2 rig and the fall camera
-            _cams[i].Priority = pr;
-        }
-        if (index < 0 || index >= _cams.Count || _cams[index] == null) return;
-
-        // Cut, don't glide: these shots are metres apart and a blend would sweep
-        // the camera straight through the fight.
+        // Cut, don't glide: consecutive shots are metres apart and a blend would
+        // sweep the camera straight through the fight.
         var brain = Object.FindFirstObjectByType<CinemachineBrain>();
         if (brain != null)
             brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut, 0f);
-        _cams[index].PreviousStateIsValid = false;
-        _cams[index].InternalUpdateCameraState(Vector3.up, -1f);
+        _cam.PreviousStateIsValid = false;
+        _cam.InternalUpdateCameraState(Vector3.up, -1f);
     }
 }
