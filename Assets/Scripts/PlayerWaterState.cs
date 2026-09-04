@@ -15,6 +15,14 @@ public class PlayerWaterState : MonoBehaviour
     [Tooltip("Fraction it must drop back below to leave the state. Kept lower than the entry threshold so standing exactly at waist depth doesn't flicker in and out.")]
     [Range(0.05f, 1f)] public float surfaceThreshold = 0.42f;
 
+    [Header("Float")]
+    [Tooltip("Where the waterline settles on the body once floating, as a fraction of height. 0.62 puts it around the chest. Must stay above the exit threshold, or floating would drop him back out of the swim state.")]
+    [Range(0.3f, 0.95f)] public float floatLine = 0.62f;
+    [Tooltip("How hard he is pushed toward the float line. Higher = pops to the surface faster.")]
+    public float buoyancy = 4f;
+    [Tooltip("Cap on rise/sink speed, so surfacing from deep water isn't a launch.")]
+    public float maxFloatSpeed = 3.5f;
+
     [Header("Bob")]
     [Tooltip("How far the body rides up and down with the water, in metres.")]
     public float bobAmplitude = 0.09f;
@@ -50,7 +58,11 @@ public class PlayerWaterState : MonoBehaviour
         }
     }
 
-    private void OnDisable() { ResetVisual(); if (_player != null) _player.isSwimming = false; }
+    private void OnDisable()
+    {
+        ResetVisual();
+        if (_player != null) { _player.isSwimming = false; _player.swimVerticalVelocity = 0f; }
+    }
 
     private void Update()
     {
@@ -58,15 +70,28 @@ public class PlayerWaterState : MonoBehaviour
         float feetY = transform.position.y + (_cc.center.y * transform.lossyScale.y) - bodyHeight * 0.5f;
 
         submersion = 0f;
-        if (WaterBody.TrySurfaceAt(transform.position, out float surfaceY))
-            submersion = Mathf.Clamp01((surfaceY - feetY) / bodyHeight);
+        bool overWater = WaterBody.TrySurfaceAt(transform.position, out float surfaceY);
+        if (overWater) submersion = Mathf.Clamp01((surfaceY - feetY) / bodyHeight);
 
         // Separate enter and exit thresholds, so wading at exactly waist depth
         // doesn't strobe between the two states.
-        bool want = isSubmerged ? submersion > surfaceThreshold : submersion >= submergeThreshold;
+        bool want = overWater && (isSubmerged ? submersion > surfaceThreshold : submersion >= submergeThreshold);
         isSubmerged = want;
 
-        if (_player != null) _player.isSwimming = isSubmerged;
+        if (_player != null)
+        {
+            _player.isSwimming = isSubmerged;
+
+            // Ride the SURFACE rather than the bottom: aim for the depth at which
+            // the waterline sits on the chest, and hand PlayerController a
+            // vertical speed to use in place of gravity.
+            if (isSubmerged)
+            {
+                float targetFeetY = surfaceY - bodyHeight * floatLine;
+                _player.swimVerticalVelocity = Mathf.Clamp((targetFeetY - feetY) * buoyancy, -maxFloatSpeed, maxFloatSpeed);
+            }
+            else _player.swimVerticalVelocity = 0f;
+        }
 
         if (isSubmerged) ApplyBob();
         else ResetVisual();

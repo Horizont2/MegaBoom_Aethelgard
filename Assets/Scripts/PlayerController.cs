@@ -179,6 +179,11 @@ public class PlayerController : MonoBehaviour, IDamageable
     // the arms-out airborne pose and blocks attacking while in the water.
     [HideInInspector] public bool isSwimming = false;
 
+    // Vertical speed PlayerWaterState wants while swimming, in m/s. Replaces
+    // gravity for the duration, so the body rides the surface instead of sinking
+    // to the bottom and walking there.
+    [HideInInspector] public float swimVerticalVelocity = 0f;
+
     // Optional: if the animator declares an "InWater" bool, drive it too, so a
     // dedicated swim state can be authored later without another code change.
     private void SetAnimBoolIfPresent(string param, bool value)
@@ -944,7 +949,14 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         float yVelocityBeforeMove = velocity.y;
-        velocity.y += gravity * safeDeltaTime;
+        if (isSwimming)
+        {
+            // Buoyancy instead of gravity: ease toward the rise/sink speed the
+            // water state asks for, so he settles at the surface rather than
+            // accelerating downward forever.
+            velocity.y = Mathf.Lerp(velocity.y, swimVerticalVelocity, 1f - Mathf.Exp(-8f * safeDeltaTime));
+        }
+        else velocity.y += gravity * safeDeltaTime;
 
         if (characterController.enabled)
         {
@@ -1086,7 +1098,10 @@ public class PlayerController : MonoBehaviour, IDamageable
                     // — the key was repurposed; relabel its toggle text to
                     // "Hold to Aim" in the settings prefab).
                     bool aimHold = GameplaySettings.GrenadeAimHold;
-                    if (Input.GetMouseButtonDown(1) && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
+                    // No grenades while swimming — both hands are busy.
+                    if (isSwimming && isAimingGrenade) CancelGrenadeAim();
+
+                    if (Input.GetMouseButtonDown(1) && !isSwimming && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lvl_1")
                     {
                         if (!isAimingGrenade)
                         {
