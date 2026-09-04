@@ -59,6 +59,28 @@ public class TrailerCutsceneAnim : MonoBehaviour
         _hold = hold; _len = Mathf.Max(0.05f, clip.length); _t = 0f; _active = true;
     }
 
+    // Let go of a held pose and hand control back to the controller. Needed
+    // because hold:true freezes the last frame forever — fine for a beat, wrong
+    // once the shot has to continue.
+    public void Release(float fade = 0.25f)
+    {
+        if (!_built || !_overlay.IsValid()) { _active = false; return; }
+        _overlay.SetSpeed(1);
+        _hold = false;
+        _len = 0f;
+        _t = Mathf.Max(0f, fade <= 0f ? 1f : 0f);
+        _active = true;
+    }
+
+    // Tear the graph down entirely so the Animator goes back to being driven by
+    // its own controller — required before swapping that controller, since the
+    // graph holds an AnimatorControllerPlayable built from the OLD one.
+    public void Detach()
+    {
+        if (_graph.IsValid()) _graph.Destroy();
+        _built = false; _active = false;
+    }
+
     private void Update()
     {
         if (!_active || !_built || !_overlay.IsValid()) return;

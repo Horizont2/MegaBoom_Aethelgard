@@ -14,10 +14,18 @@ using UnityEngine;
 // the open. Foliage, rocks, walls — anything that writes depth — all work, with
 // no per-frame line-of-sight test.
 //
-// Put it on the player root. It builds itself at Start.
+// STATUS: OFF by default. The ZTest Greater pass draws over the whole character
+// in this project's URP setup instead of only where it is occluded, so the player
+// renders as a solid blue figure everywhere. Doing this properly in URP needs a
+// ScriptableRendererFeature that draws the pass after opaques against the real
+// depth target, not a queue-ordered material — leaving the component here, inert,
+// until that exists.
 [DisallowMultipleComponent]
 public class PlayerFoliageSilhouette : MonoBehaviour
 {
+    [Tooltip("Off: the depth-test trick renders over the whole character in this pipeline setup rather than only through occluders. Needs a proper URP renderer feature before it can be turned on.")]
+    public bool enabled_ = false;
+
     [Tooltip("Silhouette material. Left empty, one is created from Hollow/PlayerSilhouette.")]
     public Material silhouetteMaterial;
 
@@ -31,7 +39,7 @@ public class PlayerFoliageSilhouette : MonoBehaviour
 
     private readonly List<GameObject> _mirrors = new List<GameObject>();
 
-    private void Start() { Build(); }
+    private void Start() { if (enabled_) Build(); }
 
     private void OnDestroy()
     {

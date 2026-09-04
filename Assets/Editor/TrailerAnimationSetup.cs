@@ -20,6 +20,7 @@ public static class TrailerAnimationSetup
 
     private const string HeroAnimFolder = "Assets/HeroAnimations";
     private const string HorseAnimFolder = "Assets/LPHorse_Version_2_9";
+    private const string HeroController = "Assets/MainCharacters/Animations/fbx/HeroAnimator.controller";
 
     [MenuItem("Tools/Lore Trailer/Setup Cutscene Animations")]
     public static void Setup()
@@ -46,6 +47,7 @@ public static class TrailerAnimationSetup
         var fall = Resolve("Falling back", riderAnimator, HeroAnimFolder, "falling", "back");
         var rear = Resolve("RearUp", horseAnimator, HorseAnimFolder, "rear");
 
+        var hero = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(HeroController);
         var upper = BuildMask(UpperBodyMaskPath, upperBodyOnly: true);
         var full = BuildMask(FullBodyMaskPath, upperBodyOnly: false);
 
@@ -59,6 +61,7 @@ public static class TrailerAnimationSetup
             e.fallMask = full;         // fall: whole body leaves the saddle
             e.horseMask = null;        // horse rear: no mask (generic rig)
             e.lookBackWeight = 0.85f;
+            e.heroAnimator = hero;      // restored once he is back on his feet
             EditorUtility.SetDirty(e);
         }
         AssetDatabase.SaveAssets();
@@ -67,7 +70,8 @@ public static class TrailerAnimationSetup
             $"Assigned clips to {events.Length} TrailerRideEvent(s):\n" +
             $"  • Look behind: {Describe(look)}\n" +
             $"  • Falling back: {Describe(fall)}\n" +
-            $"  • Horse rear: {Describe(rear)}\n\n" +
+            $"  • Horse rear: {Describe(rear)}\n" +
+            $"  • Hero controller (restored after the get-up): {(hero != null ? hero.name : "MISSING")}\n\n" +
             "Rig per clip:\n" +
             "  • Look behind — UPPER BODY only (root + legs + foot IK off), blended\n" +
             "    at 85% over the riding pose, so he stays seated and only glances back.\n" +

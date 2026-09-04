@@ -32,6 +32,14 @@ public class TrailerRideEvent : MonoBehaviour
     public AvatarMask fallMask;
     public AvatarMask horseMask;
 
+    [Header("After the beat")]
+    [Tooltip("Seconds the horse holds the reared pose before dropping back to Idle. Its controller has an Idle state, so it is cross-faded explicitly — a rear state with no exit transition would otherwise stand frozen forever.")]
+    public float rearHoldSeconds = 1.6f;
+    [Tooltip("Seconds the get-up takes before the rider is handed back to his normal gameplay controller.")]
+    public float getUpSeconds = 2.2f;
+    [Tooltip("The rider's normal controller, swapped in once he is back on his feet. Assigned by 'Setup Cutscene Animations'.")]
+    public RuntimeAnimatorController heroAnimator;
+
     [Header("Fall physics")]
     [Tooltip("Sideways shove off the saddle.")]
     public float throwSideways = 2.0f;
@@ -198,6 +206,44 @@ public class TrailerRideEvent : MonoBehaviour
         yield return new WaitForSeconds(getUpDelay);
         if (!Fire(_riderAnimator, getUpTrigger) && _riderAnim != null && fallingBackClip != null)
             _riderAnim.Play(fallingBackClip, fallMask, hold: true);
+
+        // The horse has held the rear long enough — drop it back to Idle instead
+        // of standing frozen on the last frame.
+        yield return new WaitForSeconds(Mathf.Max(0f, rearHoldSeconds - getUpDelay));
+        if (_horseAnim != null) _horseAnim.Release();
+        GoToIdle(_horseAnimator);
+
+        // Once he is on his feet the cutscene is over, so hand the rider back to
+        // his normal gameplay controller.
+        yield return new WaitForSeconds(getUpSeconds);
+        SwapToHeroAnimator();
+    }
+
+    // CrossFade by state name rather than trusting a transition to exist — the
+    // horse's rear state has no exit of its own.
+    private static void GoToIdle(Animator a)
+    {
+        if (a == null || a.runtimeAnimatorController == null) return;
+        int idle = Animator.StringToHash("Idle");
+        if (a.HasState(0, idle)) a.CrossFade(idle, 0.3f, 0);
+        else Debug.LogWarning($"[Trailer] '{a.name}' has no 'Idle' state on layer 0 — it will hold its last pose.");
+    }
+
+    private void SwapToHeroAnimator()
+    {
+        if (_riderAnimator == null || heroAnimator == null)
+        {
+            Debug.LogWarning($"[Trailer] Cannot restore the rider's controller — animator={(_riderAnimator != null)}, heroAnimator={(heroAnimator != null)}.");
+            return;
+        }
+        // The overlay graph holds an AnimatorControllerPlayable built from the
+        // OLD controller, so it has to come down before the swap or it keeps
+        // driving the animator with the cutscene rig.
+        if (_riderAnim != null) _riderAnim.Detach();
+        _riderAnimator.runtimeAnimatorController = heroAnimator;
+        _riderAnimator.Rebind();
+        _riderAnimator.Update(0f);
+        Debug.Log($"[Trailer] Rider handed back to '{heroAnimator.name}'.");
     }
 
     // Cut to a low camera set off to the side so BOTH the rearing horse and the
