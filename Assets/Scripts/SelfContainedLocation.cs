@@ -42,6 +42,10 @@ public class SelfContainedLocation : MonoBehaviour
     [Tooltip("How far the slope runs out from the footprint edge (m). Longer = gentler climb; keep it well above hillHeight or the sides become cliffs the horse and enemies can't walk up.")]
     public float hillSlopeLength = 90f;
 
+    [Header("Own ground")]
+    [Tooltip("Drag the location's OWN ground mesh here (its 'Terrain' child). The terrain hole is cut to match ITS real bounds, so the procedural ground is removed exactly where this covers it and nowhere else. Left empty, a child named terrain/ground is used, then the root BoxCollider.")]
+    public Transform groundReference;
+
     [Header("Water alignment")]
     [Tooltip("Drag the location's WATER object here. If set and 'alignWaterToWorld' is on, the whole location is shifted vertically so its water sits exactly on the world's water plane — so the generated world water and the location's water are one continuous level.")]
     public Transform waterReference;

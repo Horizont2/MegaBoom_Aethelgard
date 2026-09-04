@@ -2039,11 +2039,31 @@ public class WorldGenerator : MonoBehaviour
         // world water plane, merging the two into one continuous level (used when
         // the location brings its own water). Supersedes the box-collider grounding.
         var scInstance = camp.GetComponent<SelfContainedLocation>();
-        if (isSelfContained && scInstance != null && scInstance.alignWaterToWorld && scInstance.waterReference != null)
+        if (isSelfContained && scInstance != null && scInstance.alignWaterToWorld && scInstance.waterReference != null
+            && !scInstance.raiseHill)
         {
+            // This DROPS the whole location so its own water meets the world
+            // water plane. The pad, meanwhile, was flattened at least 4m ABOVE
+            // the water line — so the location ended up metres below the ground
+            // around it, which is the trench the world water was filling.
+            // Re-level the pad to wherever the location actually landed.
             float worldWaterY = absoluteWaterHeight;
             float locWaterY = scInstance.waterReference.position.y;
-            camp.transform.position += new Vector3(0f, worldWaterY - locWaterY, 0f);
+            float shift = worldWaterY - locWaterY;
+            camp.transform.position += new Vector3(0f, shift, 0f);
+
+            float alignedGroundY = padY + shift;
+            FlattenTerrainRobust(centerPos, flatRadius, padFalloff, alignedGroundY);
+            terrain.Flush();
+            if (tc != null) { tc.enabled = false; tc.enabled = true; }
+            Debug.Log($"[WorldGenerator] '{totemPrefab.name}' water-aligned by {shift:0.0}m; pad re-levelled to {alignedGroundY:0.0} so the terrain still meets it.");
+        }
+        else if (isSelfContained && scInstance != null && scInstance.alignWaterToWorld && scInstance.raiseHill)
+        {
+            // A perched location can't merge its lakes with the world sea. Its
+            // own water rides up with it and keeps its authored level relative
+            // to its own ground, which is what the look depends on.
+            Debug.Log($"[WorldGenerator] '{totemPrefab.name}' sits on a plateau, so its water keeps its own level instead of merging with the world water.");
         }
 
         spawnedTotemPos = camp.transform.position;
@@ -2061,15 +2081,7 @@ public class WorldGenerator : MonoBehaviour
         // SelfContainedLocation component AND its own ground collider.
         var selfContained = camp.GetComponent<SelfContainedLocation>();
         if (selfContained != null && selfContained.cutTerrainHole)
-        {
-            float holeR = selfContained.footprintRadius > 0.1f ? selfContained.footprintRadius : flatRadius;
-            // INSET, not margin. The hole was cut at footprint + margin, i.e.
-            // always wider than the location's own ground, so a ring of terrain
-            // was removed that nothing covered and the world water plane showed
-            // through it as a pit. Cutting it smaller lets the location's floor
-            // overlap the seam.
-            PunchTerrainHole(spawnedTotemPos, Mathf.Max(holeR * 0.35f, holeR - selfContained.holeInset));
-        }
+            CutHoleForLocation(camp, selfContained, rootBox, flatRadius);
 
         // Optional extra capture LOCATIONS: additional totems at spread-out
         // clearings so a region has several points to capture (bonus side
@@ -2124,10 +2136,7 @@ public class WorldGenerator : MonoBehaviour
 
             var esc = extraTotem.GetComponent<SelfContainedLocation>();
             if (esc != null && esc.cutTerrainHole)
-            {
-                float holeR = esc.footprintRadius > 0.1f ? esc.footprintRadius : flatRadius;
-                PunchTerrainHole(extraTotem.transform.position, Mathf.Max(holeR * 0.35f, holeR - esc.holeInset));
-            }
+                CutHoleForLocation(extraTotem, esc, totemPrefab.GetComponent<BoxCollider>(), flatRadius);
             spawned++;
         }
     }
@@ -2273,6 +2282,170 @@ public class WorldGenerator : MonoBehaviour
     // Punch a circular hole in the procedural terrain (mesh + collider) so a
     // self-contained location can drop in its OWN ground + water without the
     // generated terrain poking through or fighting it.
+    // Cut the terrain out from under a self-contained location, matching the
+    // shape of its own ground rather than a circle around it.
+    private void CutHoleForLocation(GameObject instance, SelfContainedLocation sc, BoxCollider rootBox, float flatRadius)
+    {
+        float inset = Mathf.Max(0f, sc.holeInset);
+
+        // Preferred: the location's OWN ground mesh. Measured in the location's
+        // own axes so a rotated instance still gets a correctly oriented cut.
+        Transform ground = sc.groundReference != null ? sc.groundReference : FindGroundChild(instance.transform);
+        if (ground != null && MeasureLocalXZ(instance.transform, ground, out Vector3 gCentre, out float gHalfX, out float gHalfZ))
+        {
+            // A water plane wider than the ground would spill over the procedural
+            // terrain (or over nothing) whatever we cut — worth saying out loud.
+            if (sc.waterReference != null &&
+                MeasureLocalXZ(instance.transform, sc.waterReference, out _, out float wHalfX, out float wHalfZ) &&
+                (wHalfX > gHalfX + 1f || wHalfZ > gHalfZ + 1f))
+            {
+                Debug.LogWarning($"[WorldGenerator] '{instance.name}': its water plane ({wHalfX * 2f:0}x{wHalfZ * 2f:0}m) is bigger than its own ground ({gHalfX * 2f:0}x{gHalfZ * 2f:0}m), so it overhangs the location. Scale the water down to the ground, or it renders as a sheet lying on the surrounding terrain.");
+            }
+
+            float hx = gHalfX - inset, hz = gHalfZ - inset;
+            if (hx > 1f && hz > 1f)
+            {
+                PunchTerrainHoleRect(gCentre, hx, hz, instance.transform.eulerAngles.y);
+                Debug.Log($"[WorldGenerator] Hole for '{instance.name}': cut to its own ground, {hx * 2f:0}x{hz * 2f:0}m (the old circle was ~{(flatRadius + sc.margin) * 2f:0}m across).");
+                return;
+            }
+        }
+
+        if (rootBox != null)
+        {
+            Vector3 ls = instance.transform.lossyScale;
+            float halfX = Mathf.Abs(rootBox.size.x * ls.x) * 0.5f - inset;
+            float halfZ = Mathf.Abs(rootBox.size.z * ls.z) * 0.5f - inset;
+            if (halfX > 1f && halfZ > 1f)
+            {
+                // The box's centre is offset from the pivot on this prefab, so
+                // cut around the box, not around the transform.
+                Vector3 boxCentre = instance.transform.TransformPoint(rootBox.center);
+                PunchTerrainHoleRect(boxCentre, halfX, halfZ, instance.transform.eulerAngles.y);
+                Debug.Log($"[WorldGenerator] Hole for '{instance.name}': rect {halfX * 2f:0}x{halfZ * 2f:0}m (was a circle of ~{(flatRadius + sc.margin) * 2f:0}m across).");
+                return;
+            }
+        }
+
+        // No usable box: fall back to a circle, but use the INSET radius so it
+        // still can't be cut wider than the location's own ground.
+        float holeR = sc.footprintRadius > 0.1f ? sc.footprintRadius : flatRadius;
+        PunchTerrainHole(instance.transform.position, Mathf.Max(holeR * 0.35f, holeR - inset));
+    }
+
+    private static readonly string[] GroundChildNames = { "terrain", "ground", "landscape" };
+
+    private static Transform FindGroundChild(Transform root)
+    {
+        foreach (Transform c in root)
+        {
+            string n = c.name.ToLowerInvariant();
+            foreach (var g in GroundChildNames) if (n.Contains(g)) return c;
+        }
+        return null;
+    }
+
+    // XZ extents of `part` expressed in `root`'s OWN axes, so a rotated location
+    // still yields the true rectangle rather than an inflated world AABB.
+    // Returns the world-space centre of that rectangle.
+    private static bool MeasureLocalXZ(Transform root, Transform part, out Vector3 worldCentre, out float halfX, out float halfZ)
+    {
+        worldCentre = Vector3.zero; halfX = halfZ = 0f;
+        if (root == null || part == null) return false;
+
+        float minX = float.MaxValue, maxX = float.MinValue;
+        float minZ = float.MaxValue, maxZ = float.MinValue;
+        bool any = false;
+
+        foreach (var r in part.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            var mf = r.GetComponent<MeshFilter>();
+            Mesh mesh = mf != null ? mf.sharedMesh : null;
+            Bounds lb = mesh != null ? mesh.bounds : new Bounds(Vector3.zero, Vector3.zero);
+            if (mesh == null && r is SkinnedMeshRenderer smr && smr.sharedMesh != null) lb = smr.sharedMesh.bounds;
+            if (lb.size == Vector3.zero) continue;
+
+            Vector3 c = lb.center, e = lb.extents;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = c + new Vector3(
+                    (i & 1) == 0 ? -e.x : e.x,
+                    (i & 2) == 0 ? -e.y : e.y,
+                    (i & 4) == 0 ? -e.z : e.z);
+                Vector3 local = root.InverseTransformPoint(r.transform.TransformPoint(corner));
+                if (local.x < minX) minX = local.x; if (local.x > maxX) maxX = local.x;
+                if (local.z < minZ) minZ = local.z; if (local.z > maxZ) maxZ = local.z;
+                any = true;
+            }
+        }
+        if (!any) return false;
+
+        halfX = (maxX - minX) * 0.5f;
+        halfZ = (maxZ - minZ) * 0.5f;
+        worldCentre = root.TransformPoint(new Vector3((minX + maxX) * 0.5f, 0f, (minZ + maxZ) * 0.5f));
+        return halfX > 0.5f && halfZ > 0.5f;
+    }
+
+    // RECTANGULAR hole, rotated to match the location.
+    //
+    // A location's own ground is a rectangle; a circular hole sized off its
+    // half-DIAGONAL removes a huge crescent of terrain along the short axis that
+    // nothing covers, and the world water plane shows through it as a pit. The
+    // castle is 361 x 456 m, so the old circle (radius ~300 m) was deleting some
+    // 120 m of terrain past each long edge. Cutting the actual rectangle, inset
+    // slightly so the location's floor overlaps the seam, is the fix.
+    private void PunchTerrainHoleRect(Vector3 worldCenter, float halfX, float halfZ, float yawDeg)
+    {
+        if (terrain == null || terrain.terrainData == null || halfX <= 0f || halfZ <= 0f) return;
+        TerrainData td = terrain.terrainData;
+        int res = td.holesResolution;
+        if (res <= 0) return;
+
+        float cosY = Mathf.Cos(-yawDeg * Mathf.Deg2Rad);
+        float sinY = Mathf.Sin(-yawDeg * Mathf.Deg2Rad);
+
+        // Axis-aligned bounds of the rotated rectangle, in cells.
+        float reachX = Mathf.Abs(halfX * cosY) + Mathf.Abs(halfZ * sinY);
+        float reachZ = Mathf.Abs(halfX * sinY) + Mathf.Abs(halfZ * cosY);
+
+        float relX = (worldCenter.x - transform.position.x) / td.size.x;
+        float relZ = (worldCenter.z - transform.position.z) / td.size.z;
+        int cx = Mathf.RoundToInt(relX * res);
+        int cz = Mathf.RoundToInt(relZ * res);
+
+        int spanX = Mathf.CeilToInt(reachX / td.size.x * res);
+        int spanZ = Mathf.CeilToInt(reachZ / td.size.z * res);
+
+        int minX = Mathf.Clamp(cx - spanX, 0, res - 1);
+        int maxX = Mathf.Clamp(cx + spanX, 0, res - 1);
+        int minZ = Mathf.Clamp(cz - spanZ, 0, res - 1);
+        int maxZ = Mathf.Clamp(cz + spanZ, 0, res - 1);
+        int wCells = maxX - minX + 1;
+        int hCells = maxZ - minZ + 1;
+        if (wCells <= 0 || hCells <= 0) return;
+
+        float mPerCellX = td.size.x / res;
+        float mPerCellZ = td.size.z / res;
+
+        bool[,] holes = td.GetHoles(minX, minZ, wCells, hCells);
+        for (int z = 0; z < hCells; z++)
+        {
+            for (int x = 0; x < wCells; x++)
+            {
+                // Cell offset from the centre, in metres, rotated into the
+                // location's own axes.
+                float dx = (minX + x - cx) * mPerCellX;
+                float dz = (minZ + z - cz) * mPerCellZ;
+                float lx = dx * cosY - dz * sinY;
+                float lz = dx * sinY + dz * cosY;
+                if (Mathf.Abs(lx) <= halfX && Mathf.Abs(lz) <= halfZ) holes[z, x] = false;
+            }
+        }
+        td.SetHoles(minX, minZ, holes);
+        terrain.Flush();
+    }
+
     private void PunchTerrainHole(Vector3 worldCenter, float radius)
     {
         if (terrain == null || terrain.terrainData == null || radius <= 0f) return;
