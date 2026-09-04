@@ -11,7 +11,7 @@ public class TrailerLightningStrike : MonoBehaviour
     public int segments = 14;
     public float jaggedness = 2.6f;      // sideways wander of the bolt
     public float boltWidth = 0.9f;       // thick so it reads on screen
-    public float visibleTime = 0.32f;    // how long the bolt is on screen
+    public float visibleTime = 0.75f;    // long enough to survive a cut and still be seen
     public float flashIntensity = 9f;
     public float flashRange = 90f;
     public string thunderId = "AMB/AMB_Thunder";

@@ -163,10 +163,24 @@ public class TrailerSequenceDirector : MonoBehaviour
         // REGION, not the horse.
         _craneYaw = ride.transform.eulerAngles.y;
         _craneAnchor = ride.transform.position - ride.transform.forward * craneSetBack;
+        // Heights are measured from the ground UNDER THE CRANE, not from the
+        // horse. Setting back 22m can easily land on higher ground — if the
+        // horse has just come down a slope, "10m above the horse" is inside the
+        // hill behind him, which is the camera that kept appearing in the
+        // textures at the hand-off.
+        if (TryGroundY(_craneAnchor, out float craneGroundY)) _craneAnchor.y = craneGroundY;
+        else _craneAnchor.y = ride.transform.position.y;
         if (_crane != null)
         {
             var pr = _crane.Priority; pr.Value = 200; _crane.Priority = pr;
             PlaceCrane(0f);
+            // CUT to the crane. Blending would sweep the live camera across the
+            // landscape to reach it, straight through whatever is in the way.
+            var brain = Object.FindFirstObjectByType<CinemachineBrain>();
+            if (brain != null)
+                brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut, 0f);
+            _crane.PreviousStateIsValid = false;
+            _crane.InternalUpdateCameraState(Vector3.up, -1f);
         }
 
         if (season != null)
@@ -268,6 +282,25 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (ride == null) return;
         foreach (var r in ride.GetComponentsInChildren<Renderer>(true))
             r.enabled = visible;
+    }
+
+    private static readonly string[] GroundNames = { "terrain", "ground", "floor", "road", "path" };
+
+    private static bool TryGroundY(Vector3 pos, out float y)
+    {
+        y = pos.y;
+        var hits = Physics.RaycastAll(pos + Vector3.up * 200f, Vector3.down, 400f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NegativeInfinity; bool found = false;
+        foreach (var h in hits)
+        {
+            var col = h.collider; if (col == null) continue;
+            bool g = col.GetComponentInParent<Terrain>() != null;
+            if (!g) { string n = col.name.ToLowerInvariant(); foreach (var s in GroundNames) if (n.Contains(s)) { g = true; break; } }
+            if (!g) continue;
+            if (h.point.y > best) { best = h.point.y; found = true; }
+        }
+        if (found) { y = best; return true; }
+        return false;
     }
 
     private void HoldWinterSun()

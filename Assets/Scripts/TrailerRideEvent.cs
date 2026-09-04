@@ -54,7 +54,7 @@ public class TrailerRideEvent : MonoBehaviour
     [Tooltip("How far to the side of the horse the bolt lands.")]
     public float strikeSideOffset = 4.5f;
     [Tooltip("Metres AHEAD of the horse — the bolt cuts him off, which is what makes the horse rear.")]
-    public float strikeForwardOffset = 6f;
+    public float strikeForwardOffset = 3f;
     [Tooltip("Beat between the flash and the horse rearing, so cause reads before effect.")]
     public float rearDelay = 0.18f;
     [Tooltip("Beat between the rear and the rider losing his seat.")]
@@ -109,8 +109,19 @@ public class TrailerRideEvent : MonoBehaviour
         if (!_lookedBack && ride.progress01 >= lookBackProgress)
         {
             _lookedBack = true;
-            if (!Fire(_riderAnimator, lookBackTrigger) && _riderAnim != null)
+            // MASKED OVERLAY FIRST. Firing the controller's LookBack trigger runs
+            // the clip full-body on the base layer, which stands the rider up out
+            // of the saddle — the legs stop riding. Playing it as an upper-body
+            // overlay keeps the riding pose underneath and only turns the torso
+            // and head. The trigger is the fallback for a rig with no clip wired.
+            bool played = false;
+            if (_riderAnim != null && lookBehindClip != null)
+            {
                 _riderAnim.Play(lookBehindClip, upperBodyMask, hold: false, weight: lookBackWeight);
+                played = true;
+            }
+            if (!played) Fire(_riderAnimator, lookBackTrigger);
+            Debug.Log($"[Trailer] BEAT look-back — {(played ? "masked overlay" : "controller trigger")} (clip={(lookBehindClip != null ? lookBehindClip.name : "NONE")}, mask={(upperBodyMask != null ? upperBodyMask.name : "NONE")})");
         }
 
         if (!_struck && ride.progress01 >= strikeProgress)
@@ -126,13 +137,23 @@ public class TrailerRideEvent : MonoBehaviour
     {
         var t = ride.transform;
 
-        // The bolt lands AHEAD and to the side: it cuts the horse off, which is
-        // the reason he rears. Landing it beside/behind him read as unrelated.
-        Vector3 gp = t.position + t.forward * strikeForwardOffset + t.right * strikeSideOffset;
+        // The fall camera sits AHEAD of the horse looking back at him, so a bolt
+        // placed further ahead than the camera lands BEHIND it and is never on
+        // screen — which is why the strike was invisible. Put it on the far side
+        // of the horse from the camera and only slightly ahead, so it is between
+        // the two and squarely in frame.
+        float side = fallCamSide >= 0f ? strikeSideOffset : -strikeSideOffset;
+        Vector3 gp = t.position + t.forward * strikeForwardOffset + t.right * side;
         if (TryGround(gp, out float gy)) gp.y = gy;
-        if (_bolt != null) _bolt.Strike(gp);
-        CameraShakeUtil.TryShake(0.45f, 0.25f);
 
+        // Fire it while the WIDE shot is still live, so it is seen even before
+        // the cut, then cut with the flash still burning.
+        if (_bolt != null) _bolt.Strike(gp);
+        else Debug.LogWarning("[Trailer] No lightning bolt component — strike has no visual.");
+        CameraShakeUtil.TryShake(0.45f, 0.25f);
+        Debug.Log($"[Trailer] BEAT strike — bolt at {gp}, horse at {t.position}.");
+
+        yield return new WaitForSeconds(0.12f);
         CutToFallCamera();
 
         yield return new WaitForSeconds(rearDelay);

@@ -101,7 +101,13 @@ public static class ActIISeasonsRideSetup
             ts.terrain = null;
             ts.startProgress = 0.6f;
             ts.swapGroundTexture = false;      // don't repaint the terrain with wrong textures
-            ts.forceTintableDetails = true;    // instanced details ignore the tint — turn instancing off on the clone
+            // Turning instancing OFF makes the terrain apply healthyColor/dryColor,
+            // and instanced prototypes leave those at WHITE because they are
+            // unused — which is exactly why the summer grass came out white.
+            // Instancing stays on; the prototype prefab is cloned and ITS
+            // material is tinted instead.
+            ts.forceTintableDetails = false;
+            ts.tintDetailMaterials = true;
 
             // Season prefab variants, keyed by the ORIGINAL prototype prefab so one
             // table covers every terrain.
