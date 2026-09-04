@@ -1,17 +1,42 @@
 using UnityEngine;
 
+// Per-layer cull distances. Small clutter (fallen logs, water plants, ground
+// foliage) is tagged onto the Nature layer by WorldGenerator and stops being
+// drawn well before the camera's far plane; everything that gives the landscape
+// its silhouette вЂ” trees, rocks, cliffs, buildings вЂ” is deliberately NOT on that
+// layer and keeps rendering to the far plane, so the distance never reads as a
+// bare field.
 public class CameraCulling : MonoBehaviour
 {
-    public float natureRenderDistance = 150f; // Відстань, на якій зникають дерева/кущі
+    [Tooltip("Distance at which small ground clutter stops drawing. Only tiny props are on the Nature layer, so this can be generous вЂ” trees and rocks are unaffected and always render to the camera's far plane.")]
+    public float natureRenderDistance = 260f;
 
-    void Start()
+    [Tooltip("Cull by true radial distance instead of distance along the camera's forward axis. Without this, an object at the edge of the screen disappears sooner than the same object in the centre, which is what makes clutter look like it pops in as you turn.")]
+    public bool sphericalCulling = true;
+
+    private Camera cam;
+
+    private void Start() { Apply(); }
+
+    // Public so a settings change can re-apply it without a scene reload.
+    public void Apply()
     {
-        Camera cam = GetComponent<Camera>();
-        float[] distances = new float[32];
+        if (cam == null) cam = GetComponent<Camera>();
+        if (cam == null) return;
 
-        // Встановлюємо дистанцію тільки для шару "Nature" (переконайся, що це шар номер 8 або заміни індекс)
-        distances[LayerMask.NameToLayer("Nature")] = natureRenderDistance;
+        int nature = LayerMask.NameToLayer("Nature");
+        if (nature < 0)
+        {
+            Debug.LogWarning("[CameraCulling] No 'Nature' layer in the project вЂ” per-layer culling is inactive.");
+            return;
+        }
+
+        // 0 means "use the camera's far plane", which is what every other layer
+        // should keep. Only Nature gets a shorter leash.
+        float[] distances = new float[32];
+        distances[nature] = Mathf.Min(natureRenderDistance, cam.farClipPlane);
 
         cam.layerCullDistances = distances;
+        cam.layerCullSpherical = sphericalCulling;
     }
 }

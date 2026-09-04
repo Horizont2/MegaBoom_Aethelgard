@@ -29,6 +29,17 @@ public class XpCrystal : MonoBehaviour
     private bool canBeMagnetized = false;
 
     private static float lastPlayTime = -1f;
+    private static Material s_trailMaterial;
+
+    private static Material SharedTrailMaterial()
+    {
+        if (s_trailMaterial != null) return s_trailMaterial;
+        var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+              ?? Shader.Find("Universal Render Pipeline/Unlit")
+              ?? Shader.Find("Sprites/Default");
+        s_trailMaterial = new Material(sh) { name = "M_XpCrystalTrail (shared)" };
+        return s_trailMaterial;
+    }
 
     private Collider col;
     private Renderer[] renderers;
@@ -49,7 +60,10 @@ public class XpCrystal : MonoBehaviour
         trail.startWidth = 0.15f;
         trail.endWidth = 0f;
         trail.emitting = false;
-        trail.material = new Material(Shader.Find("Sprites/Default"));
+        // One SHARED material for every crystal. This used to allocate a new
+        // Material (and run Shader.Find) per crystal, so a run left hundreds of
+        // identical material instances alive, each breaking batching.
+        trail.sharedMaterial = SharedTrailMaterial();
         trail.startColor = new Color(0f, 0.8f, 1f, 0.6f);
         trail.endColor = new Color(0f, 0.8f, 1f, 0f);
     }
@@ -74,7 +88,13 @@ public class XpCrystal : MonoBehaviour
         player = s_cachedPlayer;
         playerController = s_cachedPlayerController;
 
+        XpCrystalManager.GetOrCreate().Register(this);
         StartCoroutine(PopSpawnRoutine());
+    }
+
+    private void OnDisable()
+    {
+        if (XpCrystalManager.Instance != null) XpCrystalManager.Instance.Unregister(this);
     }
 
     private IEnumerator PopSpawnRoutine()
@@ -119,25 +139,24 @@ public class XpCrystal : MonoBehaviour
         return pos.y;
     }
 
-    private void Update()
+    // Driven by XpCrystalManager's single Update — see that class for why.
+    public void Tick(float dt, float time, Vector3 playerPos, float pickupSqr, Vector3 camPos, float visualSqr)
     {
-        if (!isMagnetized && canBeMagnetized)
+        if (!canBeMagnetized || isMagnetized) return;
+
+        Vector3 pos = transform.position;
+
+        // Hover and spin are decoration: skip them out of sight. The pickup test
+        // below still runs, so nothing is ever missed.
+        if ((pos - camPos).sqrMagnitude <= visualSqr)
         {
-            float newY = hoverStartY + Mathf.Sin(Time.time * hoverSpeed) * hoverAmplitude;
-            transform.position = new Vector3(transform.position.x, newY, transform.position.z);
-            transform.Rotate(Vector3.up * 90f * Time.deltaTime, Space.World);
+            transform.position = new Vector3(pos.x, hoverStartY + Mathf.Sin(time * hoverSpeed) * hoverAmplitude, pos.z);
+            transform.Rotate(Vector3.up * 90f * dt, Space.World);
         }
 
-        if (player == null || playerController == null || !canBeMagnetized) return;
-
-        if (!isMagnetized)
-        {
-            float distSqr = (transform.position - player.position).sqrMagnitude;
-            if (distSqr <= playerController.pickupRadius * playerController.pickupRadius)
-            {
-                StartCoroutine(FlyToPlayerRoutine());
-            }
-        }
+        if (player == null || playerController == null) return;
+        if ((transform.position - playerPos).sqrMagnitude <= pickupSqr)
+            StartCoroutine(FlyToPlayerRoutine());
     }
 
     private IEnumerator FlyToPlayerRoutine()
