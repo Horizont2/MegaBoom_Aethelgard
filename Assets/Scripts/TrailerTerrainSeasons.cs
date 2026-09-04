@@ -180,6 +180,9 @@ public class TrailerTerrainSeasons : MonoBehaviour
                 s.seasonClones[season][i] = clone;
             }
         }
+        int built = 0;
+        foreach (var arr in s.seasonClones) if (arr != null) foreach (var g in arr) if (g != null) built++;
+        Debug.Log($"[Trailer] Grass clones built on '{s.terrain.name}': {built} (3 per mesh detail prototype). If this is 0 the prototypes are TEXTURE-based, and the healthy/dry tint is what recolours them.");
         ApplySeasonClones(s, 0);
     }
 
@@ -200,6 +203,7 @@ public class TrailerTerrainSeasons : MonoBehaviour
         s.work.detailPrototypes = det;
         s.work.RefreshPrototypes();
         if (s.terrain != null) s.terrain.Flush();
+        Debug.Log($"[Trailer] Grass season {season} applied on '{s.terrain.name}' ({det.Length} detail prototype(s)).");
     }
 
 

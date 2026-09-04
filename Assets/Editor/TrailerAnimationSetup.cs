@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 // Assigns the cutscene clips + per-clip rig masks to the trailer's
@@ -39,13 +40,28 @@ public static class TrailerAnimationSetup
         Animator horseAnimator = null, riderAnimator = null;
         if (ride != null)
         {
-            horseAnimator = ride.GetComponent<Animator>() ?? ride.GetComponentsInChildren<Animator>(true).FirstOrDefault();
-            riderAnimator = ride.GetComponentsInChildren<Animator>(true).FirstOrDefault(a => a != horseAnimator);
+            // Identify the RIDER by the triggers his controller declares, not by
+            // hierarchy order — GetComponentInChildren walks depth-first and
+            // returned the rider as the horse.
+            var all = ride.GetComponentsInChildren<Animator>(true).Where(a => a != null).ToArray();
+            riderAnimator = all.FirstOrDefault(a => HasParam(a, "LookBack") || HasParam(a, "GetUp"));
+            horseAnimator = all.FirstOrDefault(a => a != riderAnimator && HasParam(a, "Rear"))
+                         ?? all.FirstOrDefault(a => a != riderAnimator);
+            riderAnimator ??= all.FirstOrDefault(a => a != horseAnimator);
         }
 
-        var look = Resolve("Look behind", riderAnimator, HeroAnimFolder, "look", "behind");
-        var fall = Resolve("Falling back", riderAnimator, HeroAnimFolder, "falling", "back");
-        var rear = Resolve("RearUp", horseAnimator, HorseAnimFolder, "rear");
+        // STATE name first, clip name second. The controller's Look_behind state
+        // holds a clip called "mixamo.com", so matching on the clip's own name
+        // could never find it — and the standalone "Look behind.anim" it fell
+        // back to is authored against mixamorig bones this rig does not have,
+        // which is the (Missing!) in the Animation window and why the glance
+        // never appeared.
+        var look = FromState(riderAnimator, "Look_behind", "LookBack", "Look behind")
+                ?? Resolve("Look behind", riderAnimator, HeroAnimFolder, "look", "behind");
+        var fall = FromState(riderAnimator, "Fall", "Falling back")
+                ?? Resolve("Falling back", riderAnimator, HeroAnimFolder, "falling", "back");
+        var rear = FromState(horseAnimator, "Rig_Rear_Up_Light_Left", "Rear")
+                ?? Resolve("RearUp", horseAnimator, HorseAnimFolder, "rear");
 
         var hero = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(HeroController);
         var upper = BuildMask(UpperBodyMaskPath, upperBodyOnly: true);
@@ -77,6 +93,49 @@ public static class TrailerAnimationSetup
             "    at 85% over the riding pose, so he stays seated and only glances back.\n" +
             "  • Falling back — FULL body, held on the last frame.\n" +
             "  • Horse rear — full body on the horse, held so it stands reared.", "OK");
+    }
+
+    // Pull the clip straight out of a named STATE on the animator's controller,
+    // across every layer. This is the only source that is guaranteed to be the
+    // clip the rig is actually rigged for.
+    private static AnimationClip FromState(Animator rig, params string[] stateNames)
+    {
+        var ac = rig != null ? rig.runtimeAnimatorController as AnimatorController : null;
+        if (ac == null) return null;
+
+        foreach (var layer in ac.layers)
+        {
+            var sm = layer != null ? layer.stateMachine : null;
+            if (sm == null) continue;
+            var clip = FindInStateMachine(sm, stateNames);
+            if (clip != null) return clip;
+        }
+        return null;
+    }
+
+    private static AnimationClip FindInStateMachine(AnimatorStateMachine sm, string[] stateNames)
+    {
+        foreach (var cs in sm.states)
+        {
+            foreach (var want in stateNames)
+            {
+                if (!string.Equals(cs.state.name, want, System.StringComparison.OrdinalIgnoreCase)) continue;
+                if (cs.state.motion is AnimationClip c) return c;
+            }
+        }
+        foreach (var child in sm.stateMachines)
+        {
+            var c = FindInStateMachine(child.stateMachine, stateNames);
+            if (c != null) return c;
+        }
+        return null;
+    }
+
+    private static bool HasParam(Animator a, string param)
+    {
+        if (a == null || a.runtimeAnimatorController == null) return false;
+        foreach (var p in a.parameters) if (p.name == param) return true;
+        return false;
     }
 
     private static string Describe(AnimationClip c)

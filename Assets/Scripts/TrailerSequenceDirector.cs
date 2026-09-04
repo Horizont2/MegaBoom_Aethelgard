@@ -77,7 +77,7 @@ public class TrailerSequenceDirector : MonoBehaviour
         }
         else Debug.LogWarning("[Trailer] No 'LoreTrailer_Rig' in the scene — run 'Setup Act I Road Ride'.");
 
-        RemoveRivalCranes();
+        ParkUnusedActICameras();
 
         // Park EVERY Part 2 rig (earlier tool runs could leave duplicates behind).
         foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig")) g.SetActive(false);
@@ -99,24 +99,30 @@ public class TrailerSequenceDirector : MonoBehaviour
         BuildCrane();
     }
 
-    [Header("Act I cameras to delete")]
-    [Tooltip("Act I owns a second crane (CM_04) whose Timeline shot runs before this director takes over, and it sits in the terrain aiming at the rider. There can only be one crane, and it is this director's — so the rival is destroyed outright rather than merely out-prioritised, because a Timeline track drives the brain directly and ignores priority.")]
-    public string[] deleteActICameras = { "CM_04" };
+    [Header("Act I cameras")]
+    [Tooltip("The ONLY Act I cameras this trailer uses. Everything else on the rig is parked.\n\nThe rig also carries CM_05..CM_13, staged for later acts. Those have Spline Dolly components with no spline assigned, so they sit at the world origin — inside the terrain — and any of them going live is the camera that kept appearing in the ground. CM_04 is excluded too: it is Act I's own crane, and this director owns the end crane.")]
+    public string[] keepActICameras = { "CM_01", "CM_02", "CM_03" };
 
-    private void RemoveRivalCranes()
+    private void ParkUnusedActICameras()
     {
-        if (actIRig == null || deleteActICameras == null) return;
+        if (actIRig == null || keepActICameras == null) return;
+        int parked = 0;
         foreach (var cam in actIRig.GetComponentsInChildren<CinemachineCamera>(true))
         {
             if (cam == null) continue;
-            foreach (var n in deleteActICameras)
-            {
-                if (string.IsNullOrEmpty(n) || !cam.name.Contains(n)) continue;
-                Debug.Log($"[Trailer] Removed rival Act I camera '{cam.name}' — this director owns the end crane.");
-                Destroy(cam.gameObject);
-                break;
-            }
+
+            bool keep = false;
+            foreach (var n in keepActICameras)
+                if (!string.IsNullOrEmpty(n) && cam.name.Contains(n)) { keep = true; break; }
+            if (keep) continue;
+
+            // Disabled, not destroyed: these are staged for later acts and the
+            // scene should keep them. A disabled camera cannot be made live by a
+            // Timeline track either, which priority alone could not prevent.
+            cam.gameObject.SetActive(false);
+            parked++;
         }
+        if (parked > 0) Debug.Log($"[Trailer] Parked {parked} unused Act I camera(s) — only [{string.Join(", ", keepActICameras)}] film Part 1.");
     }
 
     private void AutoFind()
