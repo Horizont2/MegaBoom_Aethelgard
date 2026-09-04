@@ -48,10 +48,14 @@ public class PlayerFoliageSilhouette : MonoBehaviour
     {
         if (silhouetteMaterial == null)
         {
-            var sh = Shader.Find("Hollow/PlayerSilhouette");
+            // Loaded from Resources, not Shader.Find alone: a shader that no
+            // material in any scene references is stripped from a player build,
+            // and this material is created at runtime. Anything under Resources
+            // is always included, so no Graphics-settings entry is needed.
+            var sh = Resources.Load<Shader>("Shaders/PlayerSilhouette") ?? Shader.Find("Hollow/PlayerSilhouette");
             if (sh == null)
             {
-                Debug.LogWarning("[PlayerFoliageSilhouette] Shader 'Hollow/PlayerSilhouette' not found — no silhouette. Make sure the shader is in the build (it is referenced by name, so it may need to be in Always Included Shaders for a player build).");
+                Debug.LogWarning("[PlayerFoliageSilhouette] Shader 'Hollow/PlayerSilhouette' not found at Assets/Resources/Shaders — no silhouette.");
                 return;
             }
             silhouetteMaterial = new Material(sh) { name = "M_PlayerSilhouette (runtime)" };

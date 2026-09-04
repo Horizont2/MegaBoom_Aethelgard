@@ -2913,6 +2913,11 @@ MonoBehaviour:
   footprintRadius: 0
   margin: 4
   cutTerrainHole: 1
+  holeInset: 6
+  groundReference: {fileID: 1984190996392605882}
+  raiseHill: 1
+  hillHeight: 22
+  hillSlopeLength: 90
   waterReference: {fileID: 6182401751888327366}
   alignWaterToWorld: 1
 --- !u!1 &9178961981112231982

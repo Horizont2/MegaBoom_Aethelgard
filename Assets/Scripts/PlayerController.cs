@@ -261,6 +261,12 @@ public class PlayerController : MonoBehaviour, IDamageable
         gameObject.layer = 8;
         Physics.IgnoreLayerCollision(8, 9, true);
 
+        // Self-wiring. These two belong on every player and carry no per-scene
+        // configuration, so attaching them here means they can never be missing
+        // from a prefab variant, a test scene or a level someone builds later.
+        if (GetComponent<PlayerFoliageSilhouette>() == null) gameObject.AddComponent<PlayerFoliageSilhouette>();
+        if (GetComponent<PlayerWaterState>() == null) gameObject.AddComponent<PlayerWaterState>();
+
         characterController = GetComponent<CharacterController>();
         if (characterController != null)
         {
