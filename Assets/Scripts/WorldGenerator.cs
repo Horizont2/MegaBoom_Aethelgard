@@ -54,7 +54,8 @@ public class WorldGenerator : MonoBehaviour
     [Header("Ambient Crows (distant flock atmosphere)")]
     [Tooltip("Looping crow-flock effects, e.g. P_Crows_Random / P_Crows_Orbit. A few are placed circling high over the map for atmosphere. Leave empty to skip.")]
     public GameObject[] ambientCrowPrefabs;
-    public int ambientCrowCount = 0;   // 0 = off (crows rendered as untextured planes; disabled)
+    [Tooltip("Flocks placed high over the land for atmosphere. Was pinned at 0 while the only crow prefab drew an untextured plane; the Zacxophone bird prefabs render properly, so it is on again.")]
+    public int ambientCrowCount = 7;
     public float ambientCrowMinHeight = 14f;
     public float ambientCrowMaxHeight = 32f;
 
@@ -763,9 +764,6 @@ public class WorldGenerator : MonoBehaviour
     // "distant crows" atmosphere. Purely visual — no colliders, over land only.
     private void SpawnAmbientCrows()
     {
-        // Disabled: the crow prefabs draw an untextured plane mesh (M_Crow has
-        // no _MainTex), so they read as gray floating squares in the sky rather
-        // than birds. Count 0 keeps them off until the material is fixed.
         if (ambientCrowCount <= 0) return;
         if (ambientCrowPrefabs == null || ambientCrowPrefabs.Length == 0 || terrain == null) return;
 
