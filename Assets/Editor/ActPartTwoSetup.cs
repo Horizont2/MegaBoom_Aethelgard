@@ -55,6 +55,13 @@ public static class ActPartTwoSetup
         ride.faceAlongPath = true;
         ride.loop = false;
         ride.groundSnapOverrun = true;
+        // Part 2 ACCELERATES. He starts at a hard gallop and is flat out by the
+        // time the bolt lands — a constant pace reads as travelling, not fleeing.
+        ride.paceCurve = new AnimationCurve(
+            new Keyframe(0f, 0.85f),
+            new Keyframe(0.55f, 1.0f),
+            new Keyframe(0.88f, 1.35f),
+            new Keyframe(1f, 1.4f));
         EditorUtility.SetDirty(ride);
 
         // Part-2 rig with a chase cam + the strike event.
@@ -97,6 +104,15 @@ public static class ActPartTwoSetup
         var camChase = MakeFollowCam(rig, "CM_Part2_OverShoulder", ride.transform, aim, new Vector3(1.1f, 2.3f, -4.2f), 46f);
         var camStrike = MakeFollowCam(rig, "CM_Part2_Strike", ride.transform, aim, new Vector3(5.0f, 2.4f, -7.5f), 36f);
 
+        // Handheld, ESCALATING. Part 2's cameras were perfectly steady, which
+        // reads as a vehicle shot, not a chase — and a locked-off camera is the
+        // fastest way to drain tension out of one. The amount rises shot by shot
+        // so the framing itself gets less composed as the horde closes.
+        AddHandheld(camSide.gameObject, 0.25f, 0.4f);
+        AddHandheld(camFace.gameObject, 0.45f, 0.7f);
+        AddHandheld(camChase.gameObject, 0.70f, 0.9f);
+        AddHandheld(camStrike.gameObject, 0.95f, 1.1f);
+
         var cutter = rig.GetComponent<TrailerCameraCutter>();
         if (cutter == null) cutter = Undo.AddComponent<TrailerCameraCutter>(rig);
         Undo.RecordObject(cutter, "part2 cuts");
@@ -136,6 +152,21 @@ public static class ActPartTwoSetup
             "Run 'Dress Roadside' to line spline_p3 with torches + undead (it uses the horse's current route).\n" +
             "PRESS PLAY to preview. To go back to Act I, run 'Setup Act I Road Ride'.\n\n" +
             "⚠ STILL NEEDS ANIMATIONS (see the list): rider look-back, horse rear-up, rider fall, and the battle.", "OK");
+    }
+
+    private static void AddHandheld(GameObject go, float amp, float freq)
+    {
+        var existing = go.GetComponent<CinemachineBasicMultiChannelPerlin>();
+        var noise = existing != null ? existing : Undo.AddComponent<CinemachineBasicMultiChannelPerlin>(go);
+        noise.AmplitudeGain = amp;
+        noise.FrequencyGain = freq;
+
+        string[] guids = AssetDatabase.FindAssets("t:NoiseSettings Handheld");
+        if (guids == null || guids.Length == 0) guids = AssetDatabase.FindAssets("t:NoiseSettings");
+        if (guids != null && guids.Length > 0)
+            noise.NoiseProfile = AssetDatabase.LoadAssetAtPath<NoiseSettings>(AssetDatabase.GUIDToAssetPath(guids[0]));
+
+        EditorUtility.SetDirty(noise);
     }
 
     private static CinemachineCamera MakeFollowCam(GameObject rig, string name, Transform horse, Transform lookAt, Vector3 offset, float fov)

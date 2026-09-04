@@ -22,6 +22,8 @@ public class TrailerUndeadPursuit : MonoBehaviour
     [Range(0.3f, 1f)] public float maxSpeedFactor = 0.88f;
     [Tooltip("Distance they settle at behind the rider. Closer than this and they ease off, so they read as a pursuing horde rather than NPCs glued to the horse.")]
     public float trailDistance = 9f;
+    [Tooltip("Distance they close to by the end of the route. Starting far and ending near is what makes the chase feel like it is being LOST — a fixed gap reads as an escort.")]
+    public float trailDistanceAtEnd = 5f;
     [Tooltip("Sideways spread so a group doesn't collapse into one file.")]
     public float lateralSpread = 3.5f;
 
@@ -33,6 +35,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
     private float _lane;                 // this skeleton's sideways slot in the horde
     private Vector3 _targetLastPos;
     private float _targetSpeed;
+    private TrailerHorseRide _ride;
 
     private void Start()
     {
@@ -41,6 +44,7 @@ public class TrailerUndeadPursuit : MonoBehaviour
         transform.position = _ground - Vector3.up * riseDepth;   // sink underground
         if (_anim != null) _anim.SetBool("isMoving", false);
         _lane = Random.Range(-lateralSpread, lateralSpread);
+        _ride = Object.FindFirstObjectByType<TrailerHorseRide>();
     }
 
     private void Update()
@@ -91,7 +95,12 @@ public class TrailerUndeadPursuit : MonoBehaviour
             case State.Chasing:
                 // Aim at a point BEHIND the rider, offset sideways per skeleton,
                 // so the horde trails him in a spread instead of piling onto him.
-                Vector3 anchor = target.position - target.forward * trailDistance + target.right * _lane;
+                // The gap CLOSES as the route runs out. A constant distance reads
+                // as an escort keeping pace; a shrinking one reads as being run
+                // down, which is the whole point of the sequence.
+                float p01 = _ride != null ? Mathf.Clamp01(_ride.progress01) : 0f;
+                float gap = Mathf.Lerp(trailDistance, trailDistanceAtEnd, p01);
+                Vector3 anchor = target.position - target.forward * gap + target.right * _lane;
                 Vector3 to = anchor - transform.position; to.y = 0f;
                 float dToRider = Vector3.Distance(
                     new Vector3(target.position.x, 0f, target.position.z),

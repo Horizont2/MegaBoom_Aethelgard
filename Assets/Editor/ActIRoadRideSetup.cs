@@ -61,6 +61,9 @@ public static class ActIRoadRideSetup
         ride.faceAlongPath = true;
         ride.loop = false;
         ride.groundSnapOverrun = true;
+        // FLAT for Act I: its Timeline shots are cut for a constant traversal, and
+        // a pace curve here would slide every cut off its mark.
+        ride.paceCurve = AnimationCurve.Constant(0f, 1f, 1f);
         if (horse.GetComponent<HorseAudioController>() == null) Undo.AddComponent<HorseAudioController>(horse.gameObject);
 
         // Hoof dust from the pack (Hovl Studio) — kicked up behind the gallop.

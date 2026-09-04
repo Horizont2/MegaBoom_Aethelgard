@@ -40,6 +40,10 @@ public class TrailerHorseRide : MonoBehaviour
     [Tooltip("When galloping past the end of the spline, keep the horse ON the ground (raycast to terrain) so it doesn't ride straight through hills/textures during the final crane.")]
     public bool groundSnapOverrun = true;
 
+    [Header("Pace")]
+    [Tooltip("Speed multiplier across the route (X = progress 0..1, Y = multiplier). A flat curve is the old constant pace. Rising toward the end makes a chase ACCELERATE, which is what a chase does — a constant gallop reads as travel, not flight. Auto Fit Seconds still sets the average, so the run takes the same time overall.")]
+    public AnimationCurve paceCurve = AnimationCurve.Constant(0f, 1f, 1f);
+
     [Header("Timeline (optional, advanced)")]
     [Tooltip("Don't auto-advance — a Timeline animates Progress 01 instead.")]
     public bool driveFromTimeline = false;
@@ -98,6 +102,8 @@ public class TrailerHorseRide : MonoBehaviour
             float len = path.CalculateLength();
             if (len < 0.01f) return;
             float mps = autoFitSeconds > 0.01f ? (len / autoFitSeconds) : speed;
+            if (paceCurve != null && paceCurve.length > 0)
+                mps *= Mathf.Max(0.05f, paceCurve.Evaluate(progress01));
 
             if (progress01 < 1f)
             {
