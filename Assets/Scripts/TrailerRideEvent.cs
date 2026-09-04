@@ -19,7 +19,24 @@ public class TrailerRideEvent : MonoBehaviour
     public AnimationClip lookBehindClip;
     public AnimationClip fallingBackClip;
     public AnimationClip horseRearClip;
+
+    [Header("Per-clip rig — how each animation is allowed to drive the body")]
+    [Tooltip("Look-back: upper body only, so the legs keep riding and the rider stays in the saddle.")]
     public AvatarMask upperBodyMask;
+    [Tooltip("Blend weight of the glance over the riding pose. Below 1 keeps him seated; 1 fully replaces the upper body.")]
+    [Range(0f, 1f)] public float lookBackWeight = 0.85f;
+    [Tooltip("Fall: full body, nothing masked — he leaves the saddle entirely.")]
+    public AvatarMask fallMask;
+    [Tooltip("Rear-up: full body on the horse.")]
+    public AvatarMask horseMask;
+
+    [Header("Fall camera (cuts in at the strike)")]
+    [Tooltip("The ride stops at the strike so the progress cutter goes quiet. This plants a low ground-level camera ahead of the horse for the rear-up and the fall.")]
+    public bool useFallCamera = true;
+    public float fallCamDistance = 5.5f;
+    public float fallCamSide = 2.2f;
+    public float fallCamHeight = 0.9f;
+    public float fallCamFov = 40f;
 
     [Header("Sound")]
     public string neighId = "Animals/Horse_Snort";
@@ -64,7 +81,7 @@ public class TrailerRideEvent : MonoBehaviour
         {
             _lookedBack = true;
             Debug.Log($"[Trailer] BEAT look-back (riderAnim={_riderAnim != null}, clip={lookBehindClip != null})");
-            if (_riderAnim != null) _riderAnim.Play(lookBehindClip, upperBodyMask, hold: false);   // upper body only
+            if (_riderAnim != null) _riderAnim.Play(lookBehindClip, upperBodyMask, hold: false, weight: lookBackWeight);
         }
 
         if (!_struck && ride.progress01 >= strikeProgress)
@@ -79,7 +96,8 @@ public class TrailerRideEvent : MonoBehaviour
 
             Debug.Log($"[Trailer] BEAT strike (horseAnim={_horseAnim != null}, rear={horseRearClip != null}, fall={fallingBackClip != null})");
             ride.enabled = false;                                   // stop the gallop
-            if (_horseAnim != null) _horseAnim.Play(horseRearClip, null, hold: true);   // rear + stand
+            CutToFallCamera();
+            if (_horseAnim != null) _horseAnim.Play(horseRearClip, horseMask, hold: true);   // rear + stand
 
             // Throw the rider off + drop beside the horse, then play the fall.
             if (_riderGO != null)
@@ -89,9 +107,41 @@ public class TrailerRideEvent : MonoBehaviour
                 if (TryGround(land, out float ly)) land.y = ly;
                 _riderGO.position = land;
                 _riderGO.rotation = Quaternion.LookRotation(-ride.transform.forward);
-                if (_riderAnim != null) _riderAnim.Play(fallingBackClip, null, hold: true);
+                if (_riderAnim != null) _riderAnim.Play(fallingBackClip, fallMask, hold: true);
             }
         }
+    }
+
+    // The ride stops at the strike, so the progress-driven cutter can't fire any
+    // more shots. Plant a low camera on the ground ahead of the horse, looking
+    // back at it, and CUT to it — the rear-up and the fall play into frame.
+    private void CutToFallCamera()
+    {
+        if (!useFallCamera) return;
+
+        var t = ride.transform;
+        Vector3 pos = t.position + t.forward * fallCamDistance + t.right * fallCamSide;
+        if (TryGround(pos, out float gy)) pos.y = gy;
+        pos.y += fallCamHeight;
+
+        var go = new GameObject("CM_Part2_Fall");
+        go.transform.SetParent(transform, false);
+        go.transform.position = pos;
+
+        Vector3 look = t.position + Vector3.up * 1.2f;
+        go.transform.rotation = Quaternion.LookRotation((look - pos).normalized);
+
+        var cam = go.AddComponent<Unity.Cinemachine.CinemachineCamera>();
+        cam.Lens.FieldOfView = fallCamFov;
+        var pr = cam.Priority; pr.Value = 300; cam.Priority = pr;   // beats the cutter's 100
+
+        var brain = Object.FindFirstObjectByType<Unity.Cinemachine.CinemachineBrain>();
+        if (brain != null)
+            brain.DefaultBlend = new Unity.Cinemachine.CinemachineBlendDefinition(
+                Unity.Cinemachine.CinemachineBlendDefinition.Styles.Cut, 0f);
+
+        cam.PreviousStateIsValid = false;
+        cam.InternalUpdateCameraState(Vector3.up, -1f);
     }
 
     private static TrailerCutsceneAnim GetOrAdd(GameObject go)

@@ -196,10 +196,33 @@ public class TrailerSequenceDirector : MonoBehaviour
         }
 
         LowerActICams();
-        // HARD CUT: switching off the live crane makes the brain snap to the Part 2
-        // camera instead of flying across the map to it.
+        // HARD CUT. Three things are needed or the brain still glides in from the
+        // old crane position across the map:
+        //   1. the brain's default blend must be a CUT for this transition,
+        //   2. the live crane must stop being a candidate,
+        //   3. each Part 2 camera must be evaluated ONCE with damping disabled so
+        //      it is already at its final spot on the very first frame.
+        var brain = Object.FindFirstObjectByType<CinemachineBrain>();
+        if (brain != null)
+            brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut, 0f);
+
         if (_crane != null) _crane.gameObject.SetActive(false);
-        if (part2Rig != null) part2Rig.SetActive(true);
+        if (part2Rig != null)
+        {
+            part2Rig.SetActive(true);
+            SnapPart2Cameras();
+        }
+    }
+
+    // Place every Part 2 camera at its final framing before the first frame is
+    // rendered (deltaTime < 0 tells Cinemachine to skip all damping).
+    private void SnapPart2Cameras()
+    {
+        foreach (var cam in part2Rig.GetComponentsInChildren<CinemachineCamera>(true))
+        {
+            cam.PreviousStateIsValid = false;
+            cam.InternalUpdateCameraState(Vector3.up, -1f);
+        }
     }
 
     private void HoldWinterSun()

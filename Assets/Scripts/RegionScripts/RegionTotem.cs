@@ -202,6 +202,13 @@ public class RegionTotem : MonoBehaviour
         {
             SpawnPreGateAnchors();
         }
+        // Every OTHER totem (standalone altars, raid-capture off) used to stand
+        // completely unguarded until the player pressed F. They now keep a small
+        // standing garrison that wakes when the player draws near.
+        else if (spawnIdleGarrison && !_preGateSpawned && !_garrisonSpawned && dist <= preGateApproachRadius)
+        {
+            SpawnIdleGarrison();
+        }
 
         // While anchors still stand, the totem is shielded — show a "destroy the
         // anchors" prompt instead of the purify prompt and refuse activation.
@@ -347,9 +354,9 @@ public class RegionTotem : MonoBehaviour
         }
         else
         {
-            yield return StartCoroutine(SpawnSwarmRoutine(weakPrefabs, weakCount, finalHpMult * 0.8f, finalDmgMult * 0.8f));
-            yield return StartCoroutine(SpawnSwarmRoutine(mediumPrefabs, mediumCount, finalHpMult, finalDmgMult));
-            yield return StartCoroutine(SpawnSwarmRoutine(elitePrefabs, eliteCount, finalHpMult * 1.5f, finalDmgMult * 1.2f));
+            yield return StartCoroutine(SpawnSwarmRoutine(ResolvePool(weakPrefabs), weakCount, finalHpMult * 0.8f, finalDmgMult * 0.8f));
+            yield return StartCoroutine(SpawnSwarmRoutine(ResolvePool(mediumPrefabs, weakPrefabs), mediumCount, finalHpMult, finalDmgMult));
+            yield return StartCoroutine(SpawnSwarmRoutine(ResolvePool(elitePrefabs, mediumPrefabs), eliteCount, finalHpMult * 1.5f, finalDmgMult * 1.2f));
         }
 
         StartCoroutine(MonitorCombatRoutine());
@@ -425,6 +432,38 @@ public class RegionTotem : MonoBehaviour
         if (a != null) list.AddRange(a);
         if (b != null) list.AddRange(b);
         return list.ToArray();
+    }
+
+    // ── Pool fallback ────────────────────────────────────────────────────
+    // Totems placed by world-gen often have EMPTY weak/medium/elite pools
+    // (nothing wires them per instance). Every "this totem has no guards" and
+    // "nothing spawns during the channel" case came from a silently empty pool,
+    // so fall back to whatever the scene's EnemySpawner is allowed to spawn.
+    private static GameObject[] _fallbackPool;
+
+    private static GameObject[] SceneEnemyPool()
+    {
+        if (_fallbackPool != null) return _fallbackPool;
+        var list = new List<GameObject>();
+        foreach (var sp in Object.FindObjectsByType<EnemySpawner>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (sp == null || sp.enemyPool == null) continue;
+            foreach (var se in sp.enemyPool)
+                if (se != null && se.enemyPrefab != null && !list.Contains(se.enemyPrefab)) list.Add(se.enemyPrefab);
+        }
+        _fallbackPool = list.ToArray();
+        return _fallbackPool;
+    }
+
+    // Returns the first non-empty pool, falling back to the scene spawner's.
+    private static GameObject[] ResolvePool(params GameObject[][] candidates)
+    {
+        foreach (var c in candidates)
+            if (c != null && c.Length > 0)
+            {
+                foreach (var g in c) if (g != null) return c;
+            }
+        return SceneEnemyPool();
     }
 
     // Weighted-random pick among this totem's encounter templates.
@@ -524,6 +563,14 @@ public class RegionTotem : MonoBehaviour
     [Header("Raid pre-gate")]
     [Tooltip("Distance at which approaching the totem spawns its corruption anchors (should exceed interactionRadius).")]
     public float preGateApproachRadius = 32f;
+    [Header("Idle garrison (totems without the raid pre-gate)")]
+    [Tooltip("Standalone altars and totems with raid capture OFF used to stand completely unguarded. With this on, a small garrison wakes around the totem when the player approaches.")]
+    public bool spawnIdleGarrison = true;
+    [Tooltip("How many guards stand watch. Uses the totem's weak/medium pools, falling back to the scene EnemySpawner's pool.")]
+    public int idleGarrisonCount = 4;
+    public float idleGarrisonRadius = 9f;
+    private bool _garrisonSpawned;
+
     private bool _preGateSpawned;   // anchors have been placed
     private bool _preGateActive;    // anchors placed AND not all destroyed yet → totem locked
     private float _preGateHpMult = 1f;
@@ -547,10 +594,13 @@ public class RegionTotem : MonoBehaviour
         CameraShakeUtil.TryShake(0.3f, 0.12f);
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, transform.position);
 
-        GameObject[] reinforcePool = (reinforcementPrefabs != null && reinforcementPrefabs.Length > 0)
-            ? reinforcementPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
+        GameObject[] reinforcePool = ResolvePool(reinforcementPrefabs, CombinePools(mediumPrefabs, weakPrefabs));
 
-        float elapsed = 0f, nextWave = 1.5f;
+        // The channel used to start with a 1.5s wait and then wait a further
+        // reinforceInterval between waves, so with the pre-gate already cleared
+        // the player stood alone for the whole purifyDuration (20-30s+) before
+        // anything appeared. The first wave now lands IMMEDIATELY.
+        float elapsed = 0f, nextWave = 0f;
         while (elapsed < purifyDuration)
         {
             elapsed += Time.deltaTime;
@@ -613,8 +663,9 @@ public class RegionTotem : MonoBehaviour
         _anchorsRemaining = _anchorsTotal;
         UpdateAnchorObjective();
 
-        GameObject[] guardPool = (anchorGuardPrefabs != null && anchorGuardPrefabs.Length > 0)
-            ? anchorGuardPrefabs : CombinePools(mediumPrefabs, weakPrefabs);
+        GameObject[] guardPool = ResolvePool(anchorGuardPrefabs, CombinePools(mediumPrefabs, weakPrefabs));
+        if (guardPool == null || guardPool.Length == 0)
+            Debug.LogWarning($"[Totem] '{name}' has no guard prefabs and the scene EnemySpawner pool is empty — its anchors will stand unguarded.");
 
         for (int i = 0; i < _anchorsTotal; i++)
         {
@@ -660,6 +711,36 @@ public class RegionTotem : MonoBehaviour
                 "The totem is shielded by <b>corruption anchors</b>. Destroy every anchor to break the shield — only then can you purify the totem.", 6f);
 
         StartCoroutine(SpawnRaidAnchorsRoutine(_preGateHpMult, _preGateDmgMult));
+    }
+
+    // A standing watch around a totem that has no raid pre-gate, so no capture
+    // point is ever undefended.
+    private void SpawnIdleGarrison()
+    {
+        _garrisonSpawned = true;
+
+        GameObject[] pool = ResolvePool(anchorGuardPrefabs, CombinePools(mediumPrefabs, weakPrefabs), weakPrefabs);
+        if (pool == null || pool.Length == 0)
+        {
+            Debug.LogWarning($"[Totem] '{name}' could not garrison — no enemy prefabs on the totem and no EnemySpawner pool in the scene.");
+            return;
+        }
+
+        int playerPower = PowerSystemManager.Instance != null ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
+        RegionData region = manager != null ? manager.currentRegion
+                          : (GameManager.Instance != null ? GameManager.Instance.currentRegion : null);
+        float diff = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, region != null ? region.recommendedPower : 100);
+        float hp = (region != null ? region.enemyHpMultiplier : 1f) * diff;
+        float dmg = (region != null ? region.enemyDamageMultiplier : 1f) * diff;
+
+        for (int i = 0; i < idleGarrisonCount; i++)
+        {
+            float ang = (360f / Mathf.Max(1, idleGarrisonCount)) * i + Random.Range(-20f, 20f);
+            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
+            Vector3 p = transform.position + dir * Random.Range(idleGarrisonRadius * 0.6f, idleGarrisonRadius);
+            p.y = GetGroundHeight(p);
+            SpawnEntityAt(pool[Random.Range(0, pool.Length)], p, hp, dmg);
+        }
     }
 
     private void SpawnAnchor(Vector3 pos, float hp)

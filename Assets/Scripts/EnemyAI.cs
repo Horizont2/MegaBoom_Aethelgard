@@ -671,7 +671,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 if (animator != null) animator.SetBool("isMoving", true);
 
-                Vector3 moveDir = (directionToPlayer + repulsion).normalized;
+                Vector3 moveDir = SteerAroundObstacles(currentPos, (directionToPlayer + repulsion).normalized);
                 Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
@@ -686,7 +686,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 if (distanceToPlayer > attackRange * 0.9f) flankDir += directionToPlayer * 0.4f;
                 else if (distanceToPlayer < attackRange * 0.6f) flankDir -= directionToPlayer * 0.5f;
 
-                Vector3 moveDir = (flankDir + repulsion).normalized;
+                Vector3 moveDir = SteerAroundObstacles(currentPos, (flankDir + repulsion).normalized);
                 Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.7f) * Time.deltaTime;
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
@@ -699,6 +699,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
             Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce + (rightDir * sway * 0.5f)).normalized;
             finalDirection.y = 0f;
+            finalDirection = SteerAroundObstacles(currentPos, finalDirection);
 
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
@@ -936,7 +937,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             moveSpeedMult = 0f;
         }
         move = (move + repulsion * 0.6f);
-        if (move.sqrMagnitude > 0.0001f) move.Normalize();
+        if (move.sqrMagnitude > 0.0001f) { move.Normalize(); move = SteerAroundObstacles(pos, move); }
 
         if (move != Vector3.zero)
         {
@@ -1498,6 +1499,76 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
 
         Destroy(gameObject);
+    }
+
+    // ── Obstacle avoidance ───────────────────────────────────────────────
+    // Enemies steer purely toward the player, so on region locations they walked
+    // straight into houses and clipped through them. Before moving we probe ahead
+    // and, when something solid is in the way, deflect the heading until it's
+    // clear — so they path AROUND buildings, walls and props.
+    [Header("Obstacle avoidance")]
+    [Tooltip("Steer around buildings/props instead of walking into them.")]
+    public bool avoidObstacles = true;
+    [Tooltip("How far ahead to probe (metres).")]
+    public float avoidLookAhead = 2.4f;
+    [Tooltip("Radius of the probe — roughly the body width.")]
+    public float avoidProbeRadius = 0.45f;
+    [Tooltip("Height above the feet at which to probe, so the ground itself isn't read as a wall.")]
+    public float avoidProbeHeight = 0.9f;
+    [Tooltip("Layers treated as solid. Leave as Nothing to probe everything except enemies and the player (terrain is skipped automatically).")]
+    public LayerMask obstacleMask;
+
+    private static readonly RaycastHit[] s_avoidBuffer = new RaycastHit[8];
+
+    private int ResolvedObstacleMask()
+    {
+        if (obstacleMask.value != 0) return obstacleMask.value;
+        int m = ~0;
+        m &= ~(1 << 2);   // Ignore Raycast
+        m &= ~(1 << 9);   // other enemies — the repulsion pass already handles crowding
+        return m;
+    }
+
+    private Vector3 SteerAroundObstacles(Vector3 pos, Vector3 dir)
+    {
+        if (!avoidObstacles) return dir;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.0001f) return dir;
+        dir.Normalize();
+
+        Vector3 origin = pos + Vector3.up * avoidProbeHeight;
+        if (!ProbeBlocked(origin, dir)) return dir;
+
+        // Fan out to either side until a clear heading is found. Alternating
+        // left/right keeps the deflection minimal, so they hug the wall and
+        // slip past a corner instead of turning around.
+        for (int step = 1; step <= 4; step++)
+        {
+            float a = step * 25f;
+            Vector3 l = Quaternion.Euler(0f, -a, 0f) * dir;
+            if (!ProbeBlocked(origin, l)) return l;
+            Vector3 r = Quaternion.Euler(0f, a, 0f) * dir;
+            if (!ProbeBlocked(origin, r)) return r;
+        }
+        // Boxed in — slide sideways rather than grinding into the wall.
+        return Quaternion.Euler(0f, 90f, 0f) * dir;
+    }
+
+    private bool ProbeBlocked(Vector3 origin, Vector3 dir)
+    {
+        int n = Physics.SphereCastNonAlloc(origin, avoidProbeRadius, dir.normalized, s_avoidBuffer,
+                                           avoidLookAhead, ResolvedObstacleMask(), QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            Collider c = s_avoidBuffer[i].collider;
+            if (c == null) continue;
+            if (c is TerrainCollider) continue;                  // the ground is not a wall
+            if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
+            if (c.CompareTag("Player")) continue;                // never dodge the target
+            if (c.GetComponentInParent<EnemyAI>() != null) continue;
+            return true;
+        }
+        return false;
     }
 
     private void SetPositionSafe(Vector3 newPos)

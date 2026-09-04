@@ -583,19 +583,36 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
-        Volume[] allVolumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
-        foreach (Volume v in allVolumes)
+        // Resolve the scene's atmosphere volume DETERMINISTICALLY. This used to
+        // walk FindObjectsByType in its arbitrary order and keep the first global
+        // volume carrying a DepthOfField, yielding a frame between candidates —
+        // so which volume won changed from run to run, and when none matched,
+        // `dofEffect` kept pointing at the PREVIOUS scene's destroyed override.
+        // That is why the region-map atmosphere effects came up only sometimes.
+        dofEffect = null;
+        for (int attempt = 0; attempt < 6 && dofEffect == null; attempt++)
         {
-            if (v.isGlobal && v.profile != null && v.profile.TryGet(out dofEffect))
+            Volume best = null;
+            foreach (Volume v in FindObjectsByType<Volume>(FindObjectsSortMode.None))
             {
-                if (dofEffect != null)
-                {
-                    bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
-                    dofEffect.active = isShop || isPaused;
-                }
-                break;
+                if (v == null || !v.isActiveAndEnabled || !v.isGlobal) continue;
+                if (v.profile == null || v.weight <= 0f) continue;
+                if (!v.profile.Has<DepthOfField>()) continue;
+                // Highest priority wins, ties broken by name so it is stable.
+                if (best == null || v.priority > best.priority ||
+                    (Mathf.Approximately(v.priority, best.priority) &&
+                     string.CompareOrdinal(v.name, best.name) < 0))
+                    best = v;
             }
-            yield return null;
+
+            if (best != null && best.profile.TryGet(out DepthOfField dof)) dofEffect = dof;
+            else yield return new WaitForSecondsRealtime(0.15f);   // volume may still be spawning
+        }
+
+        if (dofEffect != null)
+        {
+            bool isShop = SceneManager.GetActiveScene().name == "ShopScene";
+            dofEffect.active = isShop || isPaused;
         }
     }
 

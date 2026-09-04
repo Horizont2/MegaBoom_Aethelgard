@@ -42,6 +42,9 @@ public class TrailerCameraCutter : MonoBehaviour
         if (want != _idx) Cut(want);
     }
 
+    [Tooltip("Snap the camera we cut to straight to its framing (no damped glide in from where it last was). This is what makes a cut read as a CUT.")]
+    public bool hardCuts = true;
+
     private void Cut(int i)
     {
         if (cameras == null) return;
@@ -52,6 +55,14 @@ public class TrailerCameraCutter : MonoBehaviour
             var p = cameras[c].Priority;
             p.Value = (c == i) ? 100 : 0;
             cameras[c].Priority = p;
+        }
+
+        if (hardCuts && i >= 0 && i < cameras.Length && cameras[i] != null)
+        {
+            // deltaTime < 0 tells Cinemachine to evaluate with damping disabled,
+            // so the shot is already correctly framed on its first frame.
+            cameras[i].PreviousStateIsValid = false;
+            cameras[i].InternalUpdateCameraState(Vector3.up, -1f);
         }
     }
 }

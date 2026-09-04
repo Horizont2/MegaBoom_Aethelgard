@@ -15,7 +15,7 @@ public class TrailerCutsceneAnim : MonoBehaviour
     private AnimationLayerMixerPlayable _mixer;
     private AnimationClipPlayable _overlay;
     private bool _built, _hold, _active;
-    private float _len, _t;
+    private float _len, _t, _weight = 1f;
 
     private void Awake() { if (animator == null) animator = GetComponentInChildren<Animator>(); }
     private void OnDisable() { if (_graph.IsValid()) _graph.Destroy(); _built = false; _active = false; }
@@ -38,7 +38,9 @@ public class TrailerCutsceneAnim : MonoBehaviour
 
     // mask null = full-body override; hold = freeze on the last frame (fall/rear),
     // otherwise it fades back to the controller after the clip (look-back).
-    public void Play(AnimationClip clip, AvatarMask mask, bool hold)
+    // weight < 1 blends the clip OVER the riding pose instead of replacing it —
+    // that's what keeps the rider seated during the glance back.
+    public void Play(AnimationClip clip, AvatarMask mask, bool hold, float weight = 1f)
     {
         if (clip == null) return;
         Build();
@@ -51,7 +53,8 @@ public class TrailerCutsceneAnim : MonoBehaviour
         _overlay = AnimationClipPlayable.Create(_graph, clip);
         _overlay.SetApplyFootIK(false);
         _graph.Connect(_overlay, 0, _mixer, 1);
-        _mixer.SetInputWeight(1, 1f);
+        _weight = Mathf.Clamp01(weight);
+        _mixer.SetInputWeight(1, _weight);
         if (mask != null) _mixer.SetLayerMaskFromAvatarMask(1, mask);
         _hold = hold; _len = Mathf.Max(0.05f, clip.length); _t = 0f; _active = true;
     }
@@ -69,7 +72,7 @@ public class TrailerCutsceneAnim : MonoBehaviour
         }
         else
         {
-            float w = Mathf.Clamp01(1f - (_t - _len) / 0.3f);
+            float w = _weight * Mathf.Clamp01(1f - (_t - _len) / 0.3f);
             _mixer.SetInputWeight(1, w);
             if (w <= 0f) { _graph.Disconnect(_mixer, 1); _overlay.Destroy(); _active = false; }
         }
