@@ -54,6 +54,8 @@ public class TrailerRideEvent : MonoBehaviour
     public float fallGravity = 14f;
     [Tooltip("Seconds on the ground before he pushes himself up.")]
     public float getUpDelay = 1.4f;
+    [Tooltip("Metres between the rider's pivot and his feet. Leave 0 for a rig pivoted between the feet; raise it if he ends up sunk.")]
+    public float riderFootOffset = 0f;
 
     [Header("Fall camera (cuts in at the strike)")]
     public bool useFallCamera = true;
@@ -220,14 +222,21 @@ public class TrailerRideEvent : MonoBehaviour
         if (!Fire(_riderAnimator, fallTrigger) && _riderAnim != null)
             _riderAnim.Play(fallingBackClip, fallMask, hold: true);
 
+        // Root motion off, or the fall and get-up clips drag him around and
+        // fight the fall we are driving here.
+        if (_riderAnimator != null) _riderAnimator.applyRootMotion = false;
+
         Vector3 vel = (-t.forward * throwBackwards) + (t.right * throwSideways) + (Vector3.up * throwUp);
-        float groundY = TryGround(_riderGO.position, out float g0) ? g0 : _riderGO.position.y - 2f;
+        // The TERRAIN surface, sampled from the heightmap — not a raycast. The
+        // raycast was catching grass and prop colliders on the way down, which is
+        // the fall that landed half-way and then dropped again.
+        float groundY = TrailerGroundClamp.TryTerrainY(_riderGO.position, out float g0) ? g0 : _riderGO.position.y - 2f;
 
         while (_riderGO.position.y > groundY + 0.02f)
         {
             vel.y -= fallGravity * Time.deltaTime;
             _riderGO.position += vel * Time.deltaTime;
-            if (TryGround(_riderGO.position, out float g)) groundY = g;
+            if (TrailerGroundClamp.TryTerrainY(_riderGO.position, out float g)) groundY = g;
             if (_riderGO.position.y <= groundY)
             {
                 var p = _riderGO.position; p.y = groundY; _riderGO.position = p;
@@ -235,6 +244,13 @@ public class TrailerRideEvent : MonoBehaviour
             }
             yield return null;
         }
+
+        // Stay planted for the rest of the shot: the get-up left his legs buried
+        // until the idle popped him back out, because nothing held him on the
+        // surface between the beats.
+        var clamp = _riderGO.GetComponent<TrailerGroundClamp>() ?? _riderGO.gameObject.AddComponent<TrailerGroundClamp>();
+        clamp.footOffset = riderFootOffset;
+        clamp.snapNow = true;
 
         // Landed: face away from the horse, sprawled on the ground.
         Vector3 away = _riderGO.position - t.position; away.y = 0f;

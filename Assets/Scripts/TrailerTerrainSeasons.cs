@@ -26,6 +26,14 @@ public class TrailerTerrainSeasons : MonoBehaviour
     public bool swapGroundTexture = false;
     public Texture2D summerGround, autumnGround, winterGround;
 
+    [Header("Painted ground (terrain layers)")]
+    [Tooltip("Tint the painted GROUND per season. This is the layer the terrain is painted with — the green you actually see underfoot — and it is a different thing from both the detail prototypes and the ground texture swap below.")]
+    public bool tintTerrainLayers = true;
+    public Color groundAutumn = new Color(0.68f, 0.5f, 0.28f);
+    public Color groundWinter = new Color(0.95f, 0.97f, 1f);
+    [Range(0f, 1f)] public float groundAutumnBlend = 0.65f;
+    [Range(0f, 1f)] public float groundWinterBlend = 0.92f;
+
     [Header("Grass (detail) tint")]
     public Color grassAutumn = new Color(0.72f, 0.5f, 0.24f);
     public Color grassWinter = new Color(0.92f, 0.95f, 1.0f);
@@ -61,6 +69,13 @@ public class TrailerTerrainSeasons : MonoBehaviour
         // when it is registered, and even RefreshPrototypes did not pick the new
         // colour up. Swapping the prototype OBJECT is a change it cannot miss.
         public GameObject[][] seasonClones;   // [season][prototypeIndex]
+
+        // Cloned terrain LAYERS and their original diffuse remap. The painted
+        // ground is what most of the "grass" actually is — this terrain's layers
+        // are literally named Cauliflower_Green / Cauliflower_Dark_Brown — and
+        // neither the detail tint nor the prototype swap touches it.
+        public TerrainLayer[] layerClones;
+        public Color[] layerBaseRemap;
     }
 
     private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
@@ -116,6 +131,7 @@ public class TrailerTerrainSeasons : MonoBehaviour
             if (touched) s.work.detailPrototypes = det;
 
             if (tintDetailMaterials) BuildDetailTintClones(s);
+            if (tintTerrainLayers) BuildLayerClones(s);
 
             var tp = s.work.treePrototypes;
             s.origTree = new GameObject[tp.Length];
@@ -199,6 +215,43 @@ public class TrailerTerrainSeasons : MonoBehaviour
         ApplySeasonClones(s, 0);
     }
 
+    // Clone the terrain's layers so their diffuse remap can be tinted per season
+    // without touching the shared TerrainLayer assets. diffuseRemapMax multiplies
+    // the layer's albedo, so this recolours the painted ground itself.
+    private void BuildLayerClones(TState s)
+    {
+        var src = s.work.terrainLayers;
+        if (src == null || src.Length == 0) return;
+
+        s.layerClones = new TerrainLayer[src.Length];
+        s.layerBaseRemap = new Color[src.Length];
+        for (int i = 0; i < src.Length; i++)
+        {
+            if (src[i] == null) continue;
+            var clone = Instantiate(src[i]);
+            clone.hideFlags = HideFlags.HideAndDontSave;
+            s.layerClones[i] = clone;
+            s.layerBaseRemap[i] = clone.diffuseRemapMax;
+            src[i] = clone;
+        }
+        s.work.terrainLayers = src;
+    }
+
+    private void TintTerrainLayers(TState s, Color tint, float blend)
+    {
+        if (s.layerClones == null) return;
+        for (int i = 0; i < s.layerClones.Length; i++)
+        {
+            var l = s.layerClones[i];
+            if (l == null) continue;
+            Color b = s.layerBaseRemap[i];
+            Color c = Color.Lerp(b, tint, blend);
+            c.a = b.a;
+            l.diffuseRemapMax = c;
+        }
+        if (s.terrain != null) s.terrain.Flush();
+    }
+
     // Point every mesh detail prototype at that season's pre-tinted clone.
     private void ApplySeasonClones(TState s, int season)
     {
@@ -231,6 +284,7 @@ public class TrailerTerrainSeasons : MonoBehaviour
             if (s.seasonClones != null)
                 foreach (var arr in s.seasonClones)
                     if (arr != null) foreach (var g in arr) if (g != null) Destroy(g);
+            if (s.layerClones != null) foreach (var l in s.layerClones) if (l != null) Destroy(l);
         }
         _states.Clear();
         _ready = false;
@@ -294,6 +348,21 @@ public class TrailerTerrainSeasons : MonoBehaviour
                     if (s.terrain != null) s.terrain.Flush();
                 }
             }
+            // The painted ground — the biggest visible surface, and the piece
+            // that stayed summer-green through winter.
+            if (tintTerrainLayers)
+            {
+                Color gTint; float gBlend;
+                if (u < 0.5f) { gTint = groundAutumn; gBlend = Smooth(Mathf.InverseLerp(0.18f, 0.5f, u)) * groundAutumnBlend; }
+                else
+                {
+                    float k2 = Smooth(Mathf.InverseLerp(0.5f, 0.85f, u));
+                    gTint = Color.Lerp(groundAutumn, groundWinter, k2);
+                    gBlend = Mathf.Lerp(groundAutumnBlend, groundWinterBlend, k2);
+                }
+                foreach (var s in _states) TintTerrainLayers(s, gTint, gBlend);
+            }
+
             _lastBlend = blend;
         }
 

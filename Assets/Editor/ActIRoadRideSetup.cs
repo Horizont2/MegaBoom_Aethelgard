@@ -124,6 +124,37 @@ public static class ActIRoadRideSetup
     // Enable the LoreTrailer_Rig and switch its PlayableDirector to Play-On-Awake
     // so the cameras go live the instant you press Play (and stay in sync with the
     // horse, which also starts at frame 0).
+    // CM_05..CM_13 were staged for later acts and never finished: their Spline
+    // Dolly has no spline, so Cinemachine parks them at the world ORIGIN, inside
+    // the terrain. Whichever one the brain happened to pick is the camera that
+    // kept appearing in the ground, and parking them at runtime only hid the
+    // symptom. They are removed from the scene here.
+    private static void DeleteStrandedCameras(GameObject rig)
+    {
+        var doomed = new System.Collections.Generic.List<GameObject>();
+        foreach (var cam in rig.GetComponentsInChildren<Unity.Cinemachine.CinemachineCamera>(true))
+        {
+            if (cam == null) continue;
+
+            // A dolly with no spline sits at the origin and can never frame
+            // anything. That, not the name, is what makes it stranded.
+            bool strandedDolly = false;
+            foreach (var d in cam.GetComponents<Unity.Cinemachine.CinemachineSplineDolly>())
+                if (d != null && d.Spline == null) { strandedDolly = true; break; }
+
+            bool atOrigin = cam.transform.position.sqrMagnitude < 0.01f;
+            if (strandedDolly || atOrigin) doomed.Add(cam.gameObject);
+        }
+
+        foreach (var go in doomed)
+        {
+            Debug.Log($"[Trailer] Deleted stranded camera '{go.name}' — it had a Spline Dolly with no spline and sat at the world origin, inside the terrain.");
+            Undo.DestroyObjectImmediate(go);
+        }
+        if (doomed.Count > 0)
+            Debug.Log($"[Trailer] Removed {doomed.Count} stranded camera(s). Re-add them properly when those acts are built.");
+    }
+
     private static bool ActivateRigAndDirector()
     {
         // Switching back to Act I: park the Act II / Part 2 rigs so their priority
@@ -148,6 +179,8 @@ public static class ActIRoadRideSetup
         // GameObject.Find never returns those.
         var rig = TrailerFind.ByName(RigName);
         if (rig == null) return false;
+
+        DeleteStrandedCameras(rig);
 
         if (!rig.activeSelf) { Undo.RecordObject(rig, "enable rig"); rig.SetActive(true); }
 
