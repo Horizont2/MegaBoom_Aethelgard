@@ -52,11 +52,13 @@ public class TrailerBattleDirector : MonoBehaviour
     private readonly List<EnemyAI> _enemies = new List<EnemyAI>();
     private bool _firstBlood;
 
-    public static TrailerBattleDirector Begin(Transform hero)
+    public static TrailerBattleDirector Begin(Transform hero, GameObject[] prefabs = null, int count = 0)
     {
         var go = new GameObject("TrailerBattleDirector");
         var d = go.AddComponent<TrailerBattleDirector>();
         d._hero = hero;
+        if (prefabs != null && prefabs.Length > 0) d.enemyPrefabs = prefabs;
+        if (count > 0) d.attackerCount = count;
         d.StartCoroutine(d.Run());
         return d;
     }
@@ -172,6 +174,13 @@ public class TrailerBattleDirector : MonoBehaviour
             foreach (var se in sp.enemyPool)
                 if (se != null && se.enemyPrefab != null && !list.Contains(se.enemyPrefab)) list.Add(se.enemyPrefab);
         }
+        if (list.Count > 0) return list;
+
+        // Nothing wired and no spawner in this scene — which is exactly the case
+        // in the trailer scene. Fall back to a Resources lookup so the fight can
+        // still happen rather than silently not starting.
+        var fromResources = Resources.LoadAll<GameObject>("TrailerEnemies");
+        foreach (var g in fromResources) if (g != null) list.Add(g);
         return list;
     }
 

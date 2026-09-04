@@ -26,7 +26,7 @@ public class TrailerBreathVapor : MonoBehaviour
     {
         if (mouth == null) mouth = transform;
         _season = Object.FindFirstObjectByType<TrailerSeasonRide>();
-        if (vapor == null) vapor = Build();
+        vapor ??= Build();
     }
 
     private ParticleSystem Build()
@@ -62,13 +62,68 @@ public class TrailerBreathVapor : MonoBehaviour
                   new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.2f), new GradientAlphaKey(0f, 1f) });
         col.color = new ParticleSystem.MinMaxGradient(g);
 
+        // A ParticleSystem added from script has NO material, and an unassigned
+        // material renders bright magenta — which is exactly the purple specks
+        // that appeared around the horse. Build one, and if no shader resolves,
+        // switch the whole effect off rather than showing the error colour.
+        var r = go.GetComponent<ParticleSystemRenderer>();
+        var mat = BuildVaporMaterial();
+        if (mat == null)
+        {
+            Debug.LogWarning("[Trailer] Breath vapor: no usable particle shader — effect disabled rather than rendered as magenta.");
+            Destroy(go);
+            enabled = false;
+            return null;
+        }
+        r.sharedMaterial = mat;
+        r.renderMode = ParticleSystemRenderMode.Billboard;
+        r.alignment = ParticleSystemRenderSpace.View;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        r.sortMode = ParticleSystemSortMode.Distance;
+
         ps.Play();
         return ps;
     }
 
+    private static Material s_vaporMat;
+
+    private static Material BuildVaporMaterial()
+    {
+        if (s_vaporMat != null) return s_vaporMat;
+
+        var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+              ?? Shader.Find("Universal Render Pipeline/Unlit")
+              ?? Shader.Find("Sprites/Default");
+        if (sh == null) return null;
+
+        s_vaporMat = new Material(sh) { name = "M_BreathVapor (runtime)" };
+
+        // The snowflake texture doubles as a soft round puff; without a texture
+        // the quad shows as a hard square.
+        var tex = Resources.Load<Texture2D>("Shaders/T_Snowflake");
+        if (tex != null)
+        {
+            if (s_vaporMat.HasProperty("_BaseMap")) s_vaporMat.SetTexture("_BaseMap", tex);
+            if (s_vaporMat.HasProperty("_MainTex")) s_vaporMat.SetTexture("_MainTex", tex);
+        }
+
+        Color c = new Color(1f, 1f, 1f, 0.35f);
+        if (s_vaporMat.HasProperty("_BaseColor")) s_vaporMat.SetColor("_BaseColor", c);
+        if (s_vaporMat.HasProperty("_Color")) s_vaporMat.SetColor("_Color", c);
+        if (s_vaporMat.HasProperty("_Surface")) s_vaporMat.SetFloat("_Surface", 1f);   // transparent
+        if (s_vaporMat.HasProperty("_Blend")) s_vaporMat.SetFloat("_Blend", 0f);       // alpha
+        if (s_vaporMat.HasProperty("_ZWrite")) s_vaporMat.SetFloat("_ZWrite", 0f);
+        if (s_vaporMat.HasProperty("_SrcBlend")) s_vaporMat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (s_vaporMat.HasProperty("_DstBlend")) s_vaporMat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        s_vaporMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        s_vaporMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        return s_vaporMat;
+    }
+
     private void Update()
     {
-        if (vapor == null) return;
+        if (vapor == null || !enabled) return;
         if (requireWinter && _season != null && !IsCold()) return;
         if (Time.time < _next) return;
 

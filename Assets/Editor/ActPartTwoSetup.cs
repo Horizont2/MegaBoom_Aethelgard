@@ -141,6 +141,27 @@ public static class ActPartTwoSetup
         evt.ride = ride;
         evt.lookBackProgress = 0.35f;   // lands just after the face camera cuts in
         evt.strikeProgress = 0.88f;
+
+        // The BATTLE needs real enemy prefabs, and this scene has no
+        // EnemySpawner to borrow a pool from — which is why the fight reported
+        // "no enemy prefabs" and never started. Hand it the same skeletons the
+        // roadside dressing uses, unstripped.
+        var battlePrefabs = new System.Collections.Generic.List<GameObject>();
+        foreach (var path in new[] { "Assets/Prefabs/Skeleton_Minion.prefab" })
+        {
+            var g = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (g != null) battlePrefabs.Add(g);
+        }
+        if (battlePrefabs.Count == 0)
+            foreach (var guid in AssetDatabase.FindAssets("t:GameObject Skeleton", new[] { "Assets/Prefabs" }))
+            {
+                var g = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+                if (g != null && g.GetComponent<EnemyAI>() != null) battlePrefabs.Add(g);
+            }
+        evt.battleEnemyPrefabs = battlePrefabs.ToArray();
+        Debug.Log($"[Trailer] Battle will use {battlePrefabs.Count} enemy prefab(s): " +
+                  string.Join(", ", battlePrefabs.ConvertAll(g => g.name)));
+
         EditorUtility.SetDirty(evt);
 
         // Winter grade for the whole part.

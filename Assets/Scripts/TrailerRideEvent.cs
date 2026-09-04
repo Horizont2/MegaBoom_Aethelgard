@@ -99,6 +99,9 @@ public class TrailerRideEvent : MonoBehaviour
     [Header("Part 3 — the battle")]
     [Tooltip("Hand off to the fight once he is on his feet, instead of ending on black. The skeletons that chased him down close the ring.")]
     public bool startBattle = true;
+    [Tooltip("Enemy prefabs for the fight — the game's real ones. Assigned by 'Setup Part 2'. The trailer scene has no EnemySpawner to borrow a pool from, which is why the battle found nothing to spawn.")]
+    public GameObject[] battleEnemyPrefabs;
+    public int battleAttackerCount = 7;
 
     private TrailerLightningStrike _bolt;
     private Transform _riderGO;
@@ -333,7 +336,8 @@ public class TrailerRideEvent : MonoBehaviour
         // Part 3 takes over from here and ends the piece on its own fade.
         if (startBattle)
         {
-            TrailerBattleDirector.Begin(_riderGO != null ? _riderGO : ride.transform);
+            TrailerBattleDirector.Begin(_riderGO != null ? _riderGO : ride.transform,
+                                        battleEnemyPrefabs, battleAttackerCount);
             yield break;
         }
 
