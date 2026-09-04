@@ -3621,6 +3621,9 @@ MonoBehaviour:
   isPurified: 0
   isActivated: 0
   preGateApproachRadius: 32
+  spawnIdleGarrison: 1
+  idleGarrisonCount: 4
+  idleGarrisonRadius: 9
 --- !u!65 &6646926782651472930
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -11401,6 +11404,9 @@ MonoBehaviour:
   isPurified: 0
   isActivated: 0
   preGateApproachRadius: 32
+  spawnIdleGarrison: 1
+  idleGarrisonCount: 4
+  idleGarrisonRadius: 9
 --- !u!65 &1022537595520441973
 BoxCollider:
   m_ObjectHideFlags: 0

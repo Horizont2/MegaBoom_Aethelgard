@@ -24261,6 +24261,9 @@ MonoBehaviour:
   isPurified: 0
   isActivated: 0
   preGateApproachRadius: 32
+  spawnIdleGarrison: 1
+  idleGarrisonCount: 4
+  idleGarrisonRadius: 9
 --- !u!64 &6135284607533228155
 MeshCollider:
   m_ObjectHideFlags: 0
