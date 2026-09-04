@@ -240,8 +240,17 @@ public class TrailerRideEvent : MonoBehaviour
         // OLD controller, so it has to come down before the swap or it keeps
         // driving the animator with the cutscene rig.
         if (_riderAnim != null) _riderAnim.Detach();
+
         _riderAnimator.runtimeAnimatorController = heroAnimator;
         _riderAnimator.Rebind();
+
+        // Rebind leaves the animator on the controller's default state, and if
+        // that state has no motion the rig shows its bind pose — the T-pose.
+        // Enter Idle explicitly, then evaluate a frame so the pose is applied
+        // before anything is rendered.
+        int idle = Animator.StringToHash("Idle");
+        if (_riderAnimator.HasState(0, idle)) _riderAnimator.Play(idle, 0, 0f);
+        else Debug.LogWarning($"[Trailer] '{heroAnimator.name}' has no 'Idle' state on layer 0 — the rider will show his bind pose. Rename the default state to Idle or set riderIdleState.");
         _riderAnimator.Update(0f);
         Debug.Log($"[Trailer] Rider handed back to '{heroAnimator.name}'.");
     }
@@ -308,20 +317,33 @@ public class TrailerRideEvent : MonoBehaviour
         return cur;
     }
 
-    private static readonly string[] GroundNames = { "terrain", "ground", "floor", "road", "path" };
+    private static readonly string[] GroundNames = { "ground", "floor", "road", "path" };
+
+    // The TERRAIN wins outright. Taking the highest ground-ish hit landed the
+    // rider on whatever prop or foliage collider stood tallest, and only then did
+    // he settle onto the real ground — which is the two-stage fall.
     private static bool TryGround(Vector3 pos, out float y)
     {
         y = pos.y;
         var hits = Physics.RaycastAll(pos + Vector3.up * 20f, Vector3.down, 60f, ~0, QueryTriggerInteraction.Ignore);
+
+        bool onTerrain = false; float terrainY = 0f;
         float best = float.NegativeInfinity; bool found = false;
+
         foreach (var h in hits)
         {
             var col = h.collider; if (col == null) continue;
-            bool g = col.GetComponentInParent<Terrain>() != null;
-            if (!g) { string n = col.name.ToLowerInvariant(); foreach (var s in GroundNames) if (n.Contains(s)) { g = true; break; } }
-            if (!g) continue;
-            if (h.point.y > best) { best = h.point.y; found = true; }
+            if (col is TerrainCollider || col.GetComponentInParent<Terrain>() != null)
+            {
+                if (!onTerrain || h.point.y > terrainY) { terrainY = h.point.y; onTerrain = true; }
+                continue;
+            }
+            string n = col.name.ToLowerInvariant();
+            foreach (var s in GroundNames)
+                if (n.Contains(s)) { if (h.point.y > best) { best = h.point.y; found = true; } break; }
         }
+
+        if (onTerrain) { y = terrainY; return true; }
         if (found) { y = best; return true; }
         return false;
     }

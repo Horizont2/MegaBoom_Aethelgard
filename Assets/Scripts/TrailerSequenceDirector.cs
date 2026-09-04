@@ -72,6 +72,8 @@ public class TrailerSequenceDirector : MonoBehaviour
         }
         else Debug.LogWarning("[Trailer] No 'LoreTrailer_Rig' in the scene — run 'Setup Act I Road Ride'.");
 
+        RemoveRivalCranes();
+
         // Park EVERY Part 2 rig (earlier tool runs could leave duplicates behind).
         foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig")) g.SetActive(false);
         if (part2Rig != null) part2Rig.SetActive(false);
@@ -90,6 +92,26 @@ public class TrailerSequenceDirector : MonoBehaviour
             ride.BeginRide();
         }
         BuildCrane();
+    }
+
+    [Header("Act I cameras to delete")]
+    [Tooltip("Act I owns a second crane (CM_04) whose Timeline shot runs before this director takes over, and it sits in the terrain aiming at the rider. There can only be one crane, and it is this director's — so the rival is destroyed outright rather than merely out-prioritised, because a Timeline track drives the brain directly and ignores priority.")]
+    public string[] deleteActICameras = { "CM_04" };
+
+    private void RemoveRivalCranes()
+    {
+        if (actIRig == null || deleteActICameras == null) return;
+        foreach (var cam in actIRig.GetComponentsInChildren<CinemachineCamera>(true))
+        {
+            if (cam == null) continue;
+            foreach (var n in deleteActICameras)
+            {
+                if (string.IsNullOrEmpty(n) || !cam.name.Contains(n)) continue;
+                Debug.Log($"[Trailer] Removed rival Act I camera '{cam.name}' — this director owns the end crane.");
+                Destroy(cam.gameObject);
+                break;
+            }
+        }
     }
 
     private void AutoFind()

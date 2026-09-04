@@ -185,14 +185,26 @@ public class TrailerTerrainSeasons : MonoBehaviour
 
     private void TintDetailMaterials(TState s, Color tint, float blend)
     {
-        if (s.tintMats == null) return;
+        if (s.tintMats == null || s.tintMats.Count == 0) return;
+
+        bool changed = false;
         for (int i = 0; i < s.tintMats.Count; i++)
         {
             var m = s.tintMats[i]; if (m == null) continue;
             Color c = Color.Lerp(s.tintMatBase[i], tint, blend);
             c.a = s.tintMatBase[i].a;
-            if (m.HasProperty(BaseColorID)) m.SetColor(BaseColorID, c);
-            if (m.HasProperty(ColorID)) m.SetColor(ColorID, c);
+            if (m.HasProperty(BaseColorID)) { m.SetColor(BaseColorID, c); changed = true; }
+            if (m.HasProperty(ColorID)) { m.SetColor(ColorID, c); changed = true; }
+        }
+
+        // Writing the colour is not enough on its own: the terrain snapshots a
+        // detail prototype when it is registered, so a later change to that
+        // material is not picked up until the prototypes are refreshed. This is
+        // why the grass stayed summer-green all the way into winter.
+        if (changed)
+        {
+            s.work.RefreshPrototypes();
+            if (s.terrain != null) s.terrain.Flush();
         }
     }
 
