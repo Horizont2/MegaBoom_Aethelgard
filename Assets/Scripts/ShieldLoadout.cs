@@ -96,14 +96,42 @@ public class ShieldLoadout : MonoBehaviour
 
     public WeaponData EquippedShield()
     {
-        int id = PlayerPrefs.GetInt(PP_SELECTED, -1);
-        if (id < 0) return null;
-
         var index = WeaponIndex.Load();
         if (index == null || index.weapons == null) return null;
+
+        int id = PlayerPrefs.GetInt(PP_SELECTED, -1);
+        if (id >= 0)
+        {
+            foreach (var w in index.weapons)
+                if (w != null && w.category == ItemCategory.Shield && w.weaponID == id) return w;
+        }
+
+        // NOTHING CHOSEN YET: FALL BACK TO THE FREE ONE.
+        //
+        // The starter shield is priced at zero, which the shop already reads as
+        // "owned" — but owning it and HOLDING it are different things, and
+        // SelectedShieldID starts unset. Without this a new player has a block
+        // button, a shield they own, and an empty left hand, which reads as the
+        // feature being broken rather than as a shop they have not visited.
+        //
+        // Resolved at runtime rather than by the build tool writing PlayerPrefs:
+        // that write lands in the EDITOR's prefs and never reaches a player's
+        // fresh save, so it looks correct on the machine it was built on and
+        // nowhere else.
+        WeaponData free = null;
         foreach (var w in index.weapons)
-            if (w != null && w.category == ItemCategory.Shield && w.weaponID == id) return w;
-        return null;
+        {
+            if (w == null || w.category != ItemCategory.Shield || w.price != 0) continue;
+            // The cheapest free one, by power, so adding a second freebie later
+            // cannot silently promote it over the intended starter.
+            if (free == null || w.basePower < free.basePower) free = w;
+        }
+        if (free == null) return null;
+
+        PlayerPrefs.SetInt(PP_UNLOCK_PREFIX + free.weaponID, 1);
+        PlayerPrefs.SetInt(PP_SELECTED, free.weaponID);
+        PlayerPrefs.Save();
+        return free;
     }
 
     private Transform ResolveOffHandSocket()

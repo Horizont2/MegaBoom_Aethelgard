@@ -102,15 +102,11 @@ public static class BuildShieldSetTool
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        // The free one is owned from the start, or a new player has a block
-        // button and nothing to block with.
-        if (made.Count > 0 && made[0].price == 0)
-        {
-            PlayerPrefs.SetInt(ShieldLoadout.PP_UNLOCK_PREFIX + made[0].weaponID, 1);
-            if (!PlayerPrefs.HasKey(ShieldLoadout.PP_SELECTED))
-                PlayerPrefs.SetInt(ShieldLoadout.PP_SELECTED, made[0].weaponID);
-            PlayerPrefs.Save();
-        }
+        // NOT written to PlayerPrefs here on purpose. An editor tool's prefs
+        // write lands in the editor's own save and never reaches a player's
+        // fresh one, so granting the starter shield that way looks right on the
+        // machine it was built on and nowhere else. ShieldLoadout equips the
+        // free shield at runtime instead — see EquippedShield.
 
         string report = $"[Shields] Built {made.Count} shields in {ShieldFolder}.";
         if (missing.Count > 0) report += "\n  Models not found:\n    " + string.Join("\n    ", missing);
