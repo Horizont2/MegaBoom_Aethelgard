@@ -41,8 +41,28 @@ public class ResourceNode : MonoBehaviour, IDamageable
     public int minDropsAtSmallest = 1;
     [Tooltip("Most a single node can give at full size.")]
     public int maxDropsAtLargest = 3;
-    [Tooltip("Health of the smallest node as a fraction of its rolled health. A pebble should be a couple of swings, not a formality.")]
+    [Tooltip("Health of the smallest node as a fraction of its rolled health. Only used when health is NOT being measured in swings — see healthInSwings.")]
     [Range(0.1f, 1f)] public float smallHealthFraction = 0.35f;
+
+    // ==== HEALTH MEASURED IN SWINGS, NOT IN POINTS ====
+    //
+    // A tree used to roll 50-200 health against a player who starts on 25
+    // damage per hit and ends the campaign on several times that. The same tree
+    // is therefore eight swings in the first region and one swing later — and no
+    // fixed number can fix that, because the thing that changes is the player.
+    //
+    // What the design actually wants is a FEELING: a sapling is a couple of
+    // chops, an old tree is a real commitment, and neither ever collapses from a
+    // single tap or drags past the point of being a chore. That is a statement
+    // about swings, so swings are what gets authored here and the health is
+    // derived from whatever the player currently hits for.
+    [Header("Effort")]
+    [Tooltip("Derive health from the player's current damage so a node always takes the same NUMBER of hits, however strong the player has become. Off = the old raw min/max health roll.")]
+    public bool healthInSwings = true;
+    [Tooltip("Swings to fell the smallest node of this kind. Two, never one: a resource that pops on contact reads as scenery being deleted rather than gathered.")]
+    [Range(1, 10)] public int swingsAtSmallest = 2;
+    [Tooltip("Swings to fell the largest. Five is about where chopping stops being a decision and starts being a wait.")]
+    [Range(1, 12)] public int swingsAtLargest = 5;
 
     // 0 for the smallest node of its kind, 1 for the largest.
     //
@@ -108,6 +128,7 @@ public class ResourceNode : MonoBehaviour, IDamageable
 
     private float currentHealth;
     private float actualMaxHealth;
+    private bool _healthResolved;
     private Vector3 originalScale;
     private bool isDead = false;
 
@@ -134,14 +155,47 @@ public class ResourceNode : MonoBehaviour, IDamageable
     {
         originalScale = transform.localScale;
 
-        actualMaxHealth = Random.Range(minHealth, maxHealth);
-        if (scaleWithSize)
-        {
-            // Big nodes keep their full rolled health; small ones are quick.
-            actualMaxHealth *= Mathf.Lerp(smallHealthFraction, 1f, SizeFactor01);
-            actualMaxHealth = Mathf.Max(1f, actualMaxHealth);
-        }
+        actualMaxHealth = RollHealth();
         currentHealth = actualMaxHealth;
+    }
+
+    private float RollHealth()
+    {
+        if (healthInSwings)
+        {
+            int swings = swingsAtSmallest;
+            if (scaleWithSize)
+                swings = Mathf.RoundToInt(Mathf.Lerp(swingsAtSmallest, swingsAtLargest, SizeFactor01));
+            swings = Mathf.Max(1, swings);
+
+            float perSwing = PlayerSwingDamage();
+            if (perSwing > 0.01f)
+            {
+                // A hair under the whole number, so the last swing always
+                // finishes it. Landing exactly on the total means a rounding
+                // error or a damage modifier can leave a tree standing on a
+                // sliver of health and cost an extra chop — which is precisely
+                // the "one more than it should be" feeling this is removing.
+                return perSwing * (swings - 0.05f);
+            }
+            // No player to measure against (spawned during generation, or a
+            // node being chopped by something else): fall through to the roll.
+        }
+
+        float rolled = Random.Range(minHealth, maxHealth);
+        if (scaleWithSize) rolled = Mathf.Max(1f, rolled * Mathf.Lerp(smallHealthFraction, 1f, SizeFactor01));
+        return rolled;
+    }
+
+    // What one ordinary chop takes off, WITHOUT the crit roll.
+    //
+    // Crits are a bonus on top; folding the average crit in here would mean a
+    // player who crits sizes the tree up for themselves and gains nothing.
+    private static float PlayerSwingDamage()
+    {
+        var p = PlayerController.LocalInstance;
+        if (p == null) return 0f;
+        return Mathf.Max(0f, p.meleeDamage * p.globalDamageMultiplier);
     }
 
     // How much this node gives up. Size decides the band; the roll inside it
@@ -173,6 +227,21 @@ public class ResourceNode : MonoBehaviour, IDamageable
     public void TakeDamage(DamageInfo info)
     {
         if (isDead) return;
+
+        // ==== SIZED ON FIRST CONTACT, NOT AT SPAWN ====
+        //
+        // Nodes are created during world generation, which finishes before the
+        // player's weapon bonus and forge upgrades are applied — so measuring
+        // against their damage in Start() reads a number the player no longer
+        // has, and the whole point of counting in swings is lost. The first blow
+        // is the earliest moment the answer is correct, and it is also the only
+        // moment it is needed.
+        if (!_healthResolved)
+        {
+            _healthResolved = true;
+            float sized = RollHealth();
+            if (sized > 0.01f) { actualMaxHealth = sized; currentHealth = sized; }
+        }
 
         currentHealth -= info.Amount;
 
@@ -356,10 +425,25 @@ public class ResourceNode : MonoBehaviour, IDamageable
             hitSfxHandle = -1;
         }
 
+        // ==== THE COUNT ON THE GROUND IS WHAT THE PLAYER RECEIVES ====
+        //
+        // This spawned RollDropCount() copies of the pickup prefab and left each
+        // one carrying its authored amount — and Log_Pickup and Stone_Pickup are
+        // both authored at TWO. So "one to three by size" quietly paid out two
+        // to six, and every tree in the world doubled the wood economy the
+        // moment size scaling was switched on. That is the "дуже багато
+        // древесини" report, and it was mine.
+        //
+        // The roll is a number of RESOURCE UNITS, so each pickup now carries
+        // exactly one of them. The player can count the logs on the ground and
+        // know what they are about to get, which is also how a drop should read.
         int dropCount = RollDropCount();
         for (int i = 0; i < dropCount; i++)
         {
-            if (dropPrefab != null) Instantiate(dropPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+            if (dropPrefab == null) continue;
+            var drop = Instantiate(dropPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+            var payload = drop.GetComponent<ResourceDrop>();
+            if (payload != null) payload.amount = 1;
         }
 
         if (nodeType == NodeType.Tree)
