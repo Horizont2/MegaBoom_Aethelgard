@@ -1650,6 +1650,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             _vulnerableMult = damageMultiplier;
             _vulnerableUntil = Time.time + vulnerableFor;
+            // MARK THE TARGET, NOT JUST THE SCREEN.
+            //
+            // The player is told they parried by a flash, a word and a freeze —
+            // but none of those say WHO is now open, and in a crowd that is the
+            // only part they have to act on. A parried enemy pulses gold for as
+            // long as it is vulnerable, so the answer to "where do I swing" is
+            // on the enemy itself.
+            StartCoroutine(VulnerableGlowRoutine());
         }
 
         // Shoved back off the shield, so the recoil is visible and not just a
@@ -1665,6 +1673,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float _vulnerableUntil = -1f;
 
     public bool IsVulnerable => Time.time < _vulnerableUntil;
+
+    private IEnumerator VulnerableGlowRoutine()
+    {
+        var gold = new Color(1f, 0.85f, 0.35f);
+        while (!isDead && IsVulnerable)
+        {
+            // Pulsing rather than a steady tint: a static colour on one enemy in
+            // a crowd is easy to miss, and it also reads as a status the enemy
+            // always had rather than one the player just created.
+            float k = 0.45f + 0.55f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 9f));
+            SetColor(Color.Lerp(Color.white, gold, k));
+            yield return null;
+        }
+        if (!isDead) SetColor(Color.white);
+    }
 
     private IEnumerator RecoilRoutine(Vector3 dir, float seconds)
     {
