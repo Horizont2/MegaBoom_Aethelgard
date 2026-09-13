@@ -885,10 +885,35 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 float urgency = Mathf.Clamp01(toPost.magnitude / 3f);
                 Vector3 desired = toPost.sqrMagnitude > 0.04f ? toPost.normalized : Vector3.zero;
 
-                Vector3 moveDir = SteerAroundObstacles(currentPos, (desired + repulsion * 0.6f).normalized);
-                Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
-                nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                SetPositionSafe(nextPos);
+                // ==== WHY THIS DOES NOT NORMALISE BLINDLY ====
+                //
+                // The steering vector is the post direction plus the crowd's
+                // mutual repulsion, and when two enemies want overlapping ground
+                // those two very nearly cancel. Normalising a near-zero vector
+                // amplifies whatever noise is left, so the direction flipped
+                // every frame and the pair stood there shaking against each
+                // other — the vibration in the report.
+                //
+                // So: below a threshold the enemy simply does not move, and
+                // above it the direction is EASED rather than snapped, which
+                // also stops a waiter twitching as its orbit target slides past.
+                Vector3 steer = desired + repulsion * 0.6f;
+                if (steer.sqrMagnitude < 0.09f)
+                {
+                    if (animator != null) animator.SetBool("isMoving", false);
+                }
+                else
+                {
+                    Vector3 wanted = SteerAroundObstacles(currentPos, steer.normalized);
+                    _ringHeading = _ringHeading == Vector3.zero
+                        ? wanted
+                        : Vector3.Slerp(_ringHeading, wanted, 6f * Time.deltaTime);
+
+                    Vector3 nextPos = currentPos + _ringHeading.normalized
+                                    * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
+                    nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+                    SetPositionSafe(nextPos);
+                }
 
                 // A waiter still THREATENS. Every few seconds it lunges a step
                 // and raises its weapon without swinging — enough that the crowd
@@ -1381,7 +1406,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // finishes a swing and stands in your face leaves no moment to lower a
         // guard and answer; one that gives ground for a beat creates the opening
         // the whole block-and-counter loop is built around.
-        if (CombatRing.Instance != null) CombatRing.Instance.Release(this);
+        // Released WITH a wait. Handing the token back clean let this enemy
+        // immediately re-request it, or the next one take it the same frame,
+        // which is how three attackers cycled through inside two seconds.
+        if (CombatRing.Instance != null) CombatRing.Instance.Release(this, penalise: true, extraWait: 0.5f);
         if (!isDead) StartCoroutine(BackOffRoutine(0.55f));
     }
 
@@ -1587,6 +1615,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private bool _feinting;
     private bool _thisSwingUnblockable;
+    // Smoothed circling direction — see the note where it is used.
+    private Vector3 _ringHeading;
 
     // ==== BEING BLOCKED HURTS ====
     //
@@ -1675,6 +1705,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private IEnumerator AttackRoutine()
     {
         isPreparingAttack = true;
+        // Starts the shared rhythm clock, so nobody else may begin a swing for
+        // the next fraction of a second. See CombatRing.globalAttackGap.
+        if (CombatRing.Instance != null) CombatRing.Instance.NoteSwingStarted();
 
         // START THE SWING NOW, NOT AT THE END OF THE WIND-UP.
         //

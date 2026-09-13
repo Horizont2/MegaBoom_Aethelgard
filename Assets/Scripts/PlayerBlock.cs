@@ -67,6 +67,10 @@ public class PlayerBlock : MonoBehaviour
     public float parriedStagger = 1.6f;
     [Tooltip("Extra damage a parried enemy takes while staggered.")]
     public float vulnerableMultiplier = 1.75f;
+    [Tooltip("Seconds the WHOLE crowd hesitates after an ordinary block. Long enough to lower the guard and land a swing — without it the other attackers simply take over and blocking buys nothing.")]
+    public float blockHesitation = 0.7f;
+    [Tooltip("Seconds the whole crowd hesitates after a parry. This is the counter-attack window the system is built around, so it is generous.")]
+    public float parryHesitation = 1.5f;
 
     public bool IsBlocking { get; private set; }
     public bool GuardBroken { get; private set; }
@@ -295,7 +299,13 @@ public class PlayerBlock : MonoBehaviour
                                   vulnerable ? stagger : 0f);
 
         if (CombatRing.Instance != null)
+        {
             CombatRing.Instance.Release(attacker, penalise: true, extraWait: vulnerable ? 1.2f : 0.3f);
+            // And everyone else holds off for a beat, so the opening is real.
+            // Without this the other two in the rotation swing while this one
+            // reels, and defending well is punished instead of rewarded.
+            CombatRing.Instance.Hesitate(vulnerable ? parryHesitation : blockHesitation);
+        }
     }
 
     // ---- feedback ------------------------------------------------------------
