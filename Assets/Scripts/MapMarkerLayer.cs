@@ -61,6 +61,10 @@ public class MapMarkerLayer : MonoBehaviour
 
             var entry = _set.For(m.kind);
             if (entry == null || entry.revealRadius <= 0f) continue;
+            // No sprite means an Image with a null source, which Unity draws as
+            // a solid white rectangle — worse than showing nothing, and it looks
+            // like a broken UI rather than a missing assignment.
+            if (entry.icon == null) { _missingIcon |= 1 << (int)m.kind; continue; }
 
             float reveal = m.RevealRadius(_set);
             Vector3 rel = m.transform.position - _player.position;
@@ -95,6 +99,59 @@ public class MapMarkerLayer : MonoBehaviour
         }
 
         for (int i = used; i < _pool.Count; i++) _pool[i].enabled = false;
+
+        Census(used);
+    }
+
+    // ==== SAYS WHAT IT IS ACTUALLY DOING, ONCE EVERY FEW SECONDS ====
+    //
+    // Bind() already explains why nothing is drawn when it cannot find the
+    // minimap. The state it could NOT explain is the one that kept happening:
+    // bound successfully, markers registered, and still an empty map — because
+    // every marker was out of range, or its kind had no sprite, or the only
+    // kinds with sprites were kinds nothing in the game ever registers (which
+    // was exactly the case for Altar).
+    //
+    // From the player's seat all of those look identical to "the feature does
+    // not work", and each is a ten-second fix once named.
+    private float _census;
+    private int _missingIcon;
+
+    private void Census(int drawn)
+    {
+        _census -= Time.unscaledDeltaTime;
+        if (_census > 0f) return;
+        _census = 5f;
+
+        if (drawn > 0) { _missingIcon = 0; return; }
+
+        if (_missingIcon != 0)
+        {
+            var names = new List<string>();
+            foreach (MapEventIcons.Kind k in System.Enum.GetValues(typeof(MapEventIcons.Kind)))
+                if ((_missingIcon & (1 << (int)k)) != 0) names.Add(k.ToString());
+            Debug.LogWarning("[MapIcons] Markers exist but have no sprite assigned for: " + string.Join(", ", names) +
+                             ". Assign them in Tools > World > Map Event Icons.");
+            _missingIcon = 0;
+            return;
+        }
+
+        // Nothing drawn and nothing missing a sprite: everything registered is
+        // simply too far away. Report what exists and how far off it is, so the
+        // answer is "walk that way" or "raise the radius" rather than a guess.
+        float nearest = float.PositiveInfinity;
+        string nearestKind = "none";
+        for (int i = 0; i < MapEventMarker.All.Count; i++)
+        {
+            var m = MapEventMarker.All[i];
+            if (m == null) continue;
+            Vector3 rel = m.transform.position - _player.position;
+            float d = new Vector2(rel.x, rel.z).magnitude;
+            if (d < nearest) { nearest = d; nearestKind = m.kind.ToString(); }
+        }
+        if (MapEventMarker.All.Count > 0)
+            Debug.Log($"[MapIcons] {MapEventMarker.All.Count} marker(s) registered, none in range. " +
+                      $"Nearest is a {nearestKind} at {nearest:F0}m; its reveal radius decides when it appears.");
     }
 
     // Re-finds the minimap when the scene changes. Throttled, because the failure

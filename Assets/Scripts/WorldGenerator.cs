@@ -377,6 +377,17 @@ public class WorldGenerator : MonoBehaviour
     // cover the entire location so nothing spawns inside it.
     private readonly List<Vector4> locationExclusions = new List<Vector4>();
 
+    // Where an EVENT already stands — altars, caged allies. Separate from
+    // forbiddenZones on purpose.
+    //
+    // forbiddenZones is "do not put scenery here", and roads flood it with a
+    // point every sixteen metres along every road. Roadside events are placed
+    // seven metres from a road centreline BY DESIGN, so measuring their spacing
+    // against that list asks every candidate whether it is too close to the very
+    // road it is supposed to be standing beside. The answer was always yes, and
+    // the interior pass placed nothing, ever — see the note where this is used.
+    private readonly List<Vector3> eventSpots = new List<Vector3>();
+
     // Terrain-tree painting: normal (baseTrees/deadTrees) trees are batched onto
     // the Unity terrain as TreeInstances instead of GameObjects — a big FPS win in
     // dense forests. Giant trees, cursed husks and everything else stay as objects
@@ -675,6 +686,7 @@ public class WorldGenerator : MonoBehaviour
         CursedTree.ResetWave(); // fresh region: don't let a stale bloom wave insta-bloom
         forbiddenZones.Clear();
         locationExclusions.Clear();
+        eventSpots.Clear();
         generatedRivers.Clear();
 
         // Очищаємо списки доріг
@@ -3232,6 +3244,9 @@ public class WorldGenerator : MonoBehaviour
 
         float startTime = Time.realtimeSinceStartup;
         int roadsBuilt = 0;
+        int roadsRelaxed = 0;
+        int roadsAlreadyConnected = 0;
+        int roadsFailed = 0;
 
         // Read the heightmap ONCE; every road carves into this shared array and
         // it's written back a single time after the loop (see fix below).
@@ -3254,7 +3269,31 @@ public class WorldGenerator : MonoBehaviour
             // very quiet failure: the map simply comes out sparse, and nothing
             // says a road was ever meant to be there.
             List<Vector3> path = null;
-            try { path = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL, cellSize, absWaterH); }
+            try
+            {
+                path = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL, cellSize, absWaterH);
+
+                // ASK AGAIN, LESS FUSSILY, BEFORE GIVING UP.
+                //
+                // The first pass refuses anything over 40 degrees and pays a
+                // heavy toll for every degree of slope, which is what keeps
+                // roads in the valleys where they belong. On broken ground that
+                // can leave a target with no route at all — and the result is
+                // not "a road that takes the ugly way round", it is NO ROAD, and
+                // with it no altar, no caged ally and no reason to walk there.
+                //
+                // A steep road is worse than a gentle one and enormously better
+                // than nothing, so a failure is retried once with the slope limit
+                // raised and the toll cut. Only the roads that would otherwise
+                // not exist take this path, so it cannot make the normal ones
+                // uglier.
+                if (path == null || path.Count <= 4)
+                {
+                    var relaxed = FindAStarPathToNetwork(startGrid, totemGrid, roadNetwork, gridW, gridL,
+                                                         cellSize, absWaterH, maxSteep: 55f, steepPenalty: 0.6f);
+                    if (relaxed != null && relaxed.Count > 4) { path = relaxed; roadsRelaxed++; }
+                }
+            }
             catch (System.Exception e)
             {
                 Debug.LogError($"[Smart Roads] Pathfinding threw for target {targetPos}; skipping this road and " +
@@ -3312,7 +3351,13 @@ public class WorldGenerator : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[Smart Roads] Шлях заблоковано ландшафтом для цілі: {targetPos}");
+                // Not necessarily a failure. A target that already sits on the
+                // network needs no road of its own, and counting that as
+                // "blocked by terrain" is what made the log unreadable — the
+                // warning fired dozens of times on a map whose roads were fine.
+                Vector2Int sg = startGrid;
+                if (roadNetwork[sg.x, sg.y]) roadsAlreadyConnected++;
+                else { roadsFailed++; Debug.LogWarning($"[Smart Roads] Шлях заблоковано ландшафтом для цілі: {targetPos}"); }
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
         }
@@ -3328,7 +3373,8 @@ public class WorldGenerator : MonoBehaviour
             TerrainCollider tcRoad = terrain.GetComponent<TerrainCollider>();
             if (tcRoad != null) { tcRoad.enabled = false; tcRoad.enabled = true; }
         }
-        GameLog.Info($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг.");
+        GameLog.Info($"[Smart Roads] Готово! Побудовано {roadsBuilt} доріг з {allTargets.Count} цілей " +
+                     $"({roadsRelaxed} через складний рельєф, {roadsAlreadyConnected} вже були на мережі, {roadsFailed} не вдалося).");
     }
 
     private void PaintSandCircle(float[,,] splat, TerrainData td,
@@ -4582,7 +4628,27 @@ public class WorldGenerator : MonoBehaviour
     private static readonly int[] s_navDX = { -1, 1, 0, 0, -1, 1, -1, 1 };
     private static readonly int[] s_navDZ = { 0, 0, -1, 1, -1, -1, 1, 1 };
 
-    private List<Vector3> FindAStarPathToNetwork(Vector2Int start, Vector2Int totemNode, bool[,] roadNetwork, int gridW, int gridL, float cellSize, float absWaterH)
+    // ==== THE HEURISTIC HAS TO BE ON THE SAME SCALE AS THE COST ====
+    //
+    // A step costs `1 + steepness * 2`, and steepness is in DEGREES — so
+    // ordinary walkable ground at ten degrees costs twenty-one per cell, and
+    // rougher ground sixty. The heuristic was raw cell distance: one per cell.
+    //
+    // An A* whose heuristic is twenty to sixty times smaller than the real
+    // remaining cost is not an A*. It is Dijkstra: it flood-fills every flat
+    // basin in reach before it will consider a single uphill cell, spends its
+    // whole iteration budget doing it, and returns null. Which is reported as
+    // "Шлях заблоковано ландшафтом" — a road that was perfectly reachable and
+    // was simply never searched for in the right direction.
+    //
+    // Deliberately weighted rather than admissible. An admissible heuristic here
+    // would have to assume every remaining cell is dead flat, which is exactly
+    // the assumption that produced the problem. Trading a guaranteed-shortest
+    // road for a good road that is actually FOUND is the right trade in a world
+    // generator, and it is the standard one in game pathfinding.
+    private const float RoadHeuristicWeight = 6f;
+
+    private List<Vector3> FindAStarPathToNetwork(Vector2Int start, Vector2Int totemNode, bool[,] roadNetwork, int gridW, int gridL, float cellSize, float absWaterH, float maxSteep = 40f, float steepPenalty = 2f)
     {
         if (roadNetwork[start.x, start.y]) return null;
         if (_navHeight == null || _navW != gridW || _navL != gridL) BuildRoadNavGrid(gridW, gridL, cellSize);
@@ -4594,7 +4660,7 @@ public class WorldGenerator : MonoBehaviour
 
         int startIdx = start.x * gridL + start.y;
         _aG[startIdx] = 0f;
-        _aF[startIdx] = Vector2Int.Distance(start, totemNode);
+        _aF[startIdx] = Vector2Int.Distance(start, totemNode) * RoadHeuristicWeight;
         _aParent[startIdx] = -1;
         _aStamp[startIdx] = _aRun;
         HeapPush(startIdx);
@@ -4641,13 +4707,13 @@ public class WorldGenerator : MonoBehaviour
                 if (_aStamp[nIdx] == -_aRun) continue;                  // already expanded
                 if (_navHeight[nIdx] < absWaterH + 0.5f) continue;      // deep water
                 float steepness = _navSteep[nIdx];
-                if (steepness > 40f) continue;                          // sheer cliff
+                if (steepness > maxSteep) continue;                     // sheer cliff
 
-                float newG = _aG[cur] + ((i < 4) ? 1f : 1.414f) + steepness * 2f;
+                float newG = _aG[cur] + ((i < 4) ? 1f : 1.414f) + steepness * steepPenalty;
                 if (_aStamp[nIdx] == _aRun && newG >= _aG[nIdx]) continue;
 
                 _aG[nIdx] = newG;
-                _aF[nIdx] = newG + Vector2Int.Distance(new Vector2Int(nx, nz), totemNode);
+                _aF[nIdx] = newG + Vector2Int.Distance(new Vector2Int(nx, nz), totemNode) * RoadHeuristicWeight;
                 _aParent[nIdx] = cur;
                 _aStamp[nIdx] = _aRun;
                 HeapPush(nIdx);
@@ -4815,6 +4881,24 @@ public class WorldGenerator : MonoBehaviour
         go.transform.position += new Vector3(0f, delta, 0f);
     }
 
+    // Puts a thing on the map.
+    //
+    // Reliquaries and caged allies register themselves from their own scripts,
+    // but an altar is a bare prefab instantiated here with no behaviour of its
+    // own — so nothing ever created a marker for one. The icon set has had an
+    // Altar entry with a sprite and a 300m radius assigned in it the whole time,
+    // pointing at a kind that no object in the game had ever registered.
+    private static void TagMapEvent(GameObject go, MapEventIcons.Kind kind)
+    {
+        if (go == null) return;
+        var marker = go.GetComponent<MapEventMarker>();
+        if (marker == null) marker = go.AddComponent<MapEventMarker>();
+        marker.kind = kind;
+        // An altar is not consumed the way a chest is: it stays worth walking
+        // back to, so the map keeps pointing at it.
+        marker.hideWhenDone = false;
+    }
+
     private IEnumerator SpawnRoadDecorationsRoutine()
     {
         // The altar-at-dead-end spawn is intentionally NOT gated on
@@ -4969,6 +5053,7 @@ public class WorldGenerator : MonoBehaviour
                         ev.allyPrefab = cagedAllyPrefab;
                         spawnedCagedAllies++;
                         forbiddenZones.Add(endSpawn);
+                        eventSpots.Add(endSpawn);
                         spawnedCaged = true;
                         GameLog.Info($"[Smart Roads] Caged-ally event spawned at {endSpawn} ({spawnedCagedAllies}/{maxCagedAllies}).");
                     }
@@ -4984,6 +5069,8 @@ public class WorldGenerator : MonoBehaviour
                         SnapAltarInstanceToGround(inst, endSpawn.y);
                         spawnedAltars++;
                         forbiddenZones.Add(inst.transform.position);
+                        eventSpots.Add(inst.transform.position);
+                        TagMapEvent(inst, MapEventIcons.Kind.Altar);
                         GameLog.Info($"🎯 [Smart Roads] Вівтар успішно заспавнено! Координати: {inst.transform.position} ({spawnedAltars}/{altarsAmount})");
                     }
                     else if (deadEndAssets != null && deadEndAssets.Length > 0)
@@ -5068,12 +5155,43 @@ public class WorldGenerator : MonoBehaviour
                     // smaller maps, so the fallback pass placed nothing). 0.6x
                     // still keeps events comfortably apart.
                     float interiorSeparation = deadEndMinSeparation * 0.6f;
-                    bool nearForbidden = false;
-                    for (int k = 0; k < forbiddenZones.Count; k++)
+
+                    // ==== MEASURED AGAINST OTHER EVENTS, NOT AGAINST THE ROAD ====
+                    //
+                    // This tested forbiddenZones, and forbiddenZones contains a
+                    // point every SIXTEEN METRES ALONG EVERY ROAD. The candidate
+                    // is placed roadWidth * 1.4 — seven metres — off the road
+                    // centreline on purpose, so the nearest road point is never
+                    // more than about eleven metres away, against a required
+                    // separation of thirty-six.
+                    //
+                    // Every candidate therefore failed, on every map, without
+                    // exception: this pass has been placing exactly zero altars
+                    // and zero caged allies since the check was written. With the
+                    // dead-end pass capped at one of each, that is the whole of
+                    // "вівтарів дуже рідко, часто їх 0" — the safety net that was
+                    // supposed to make up the count could never fire.
+                    //
+                    // Spacing is a rule about how far apart EVENTS should be. The
+                    // road is what the event is standing next to.
+                    bool tooNearEvent = false;
+                    for (int k = 0; k < eventSpots.Count; k++)
                     {
-                        if (Vector3.Distance(spawnPos, forbiddenZones[k]) < interiorSeparation) { nearForbidden = true; break; }
+                        if (Vector3.Distance(spawnPos, eventSpots[k]) < interiorSeparation) { tooNearEvent = true; break; }
                     }
-                    if (nearForbidden) continue;
+                    // Locations keep their footprint: an altar inside a castle
+                    // courtyard is a different kind of wrong.
+                    if (!tooNearEvent)
+                    {
+                        for (int k = 0; k < locationExclusions.Count; k++)
+                        {
+                            Vector4 e = locationExclusions[k];
+                            float dx = spawnPos.x - e.x, dz = spawnPos.z - e.z;
+                            float r = e.w + 8f;
+                            if (dx * dx + dz * dz < r * r) { tooNearEvent = true; break; }
+                        }
+                    }
+                    if (tooNearEvent) continue;
                     // Same rock/obstacle guard as the dead-end tips — no more
                     // events buried inside cliffs or props.
                     if (!IsPositionClear(spawnPos, 3f)) continue;
@@ -5094,6 +5212,7 @@ public class WorldGenerator : MonoBehaviour
                         ev.allyPrefab = cagedAllyPrefab;
                         spawnedCagedAllies++;
                         forbiddenZones.Add(spawnPos);
+                        eventSpots.Add(spawnPos);
                         GameLog.Info($"[Smart Roads] Interior caged-ally spawned at {spawnPos} ({spawnedCagedAllies}/{maxCagedAllies}).");
                     }
                     else if (hasAltars && spawnedAltars < altarsAmount)
@@ -5105,6 +5224,8 @@ public class WorldGenerator : MonoBehaviour
                         SnapAltarInstanceToGround(inst, spawnPos.y);
                         spawnedAltars++;
                         forbiddenZones.Add(inst.transform.position);
+                        eventSpots.Add(inst.transform.position);
+                        TagMapEvent(inst, MapEventIcons.Kind.Altar);
                         GameLog.Info($"[Smart Roads] Interior altar spawned at {inst.transform.position} ({spawnedAltars}/{altarsAmount}).");
                     }
                 }
