@@ -69,6 +69,13 @@ public class DayNightCycle : MonoBehaviour
     [Tooltip("Low snow blowing along the ground. Falling snow says it is snowing; snow DRIVEN across the surface says it is cold and open — and without something moving at ground level the landscape sits perfectly still however much falls from the sky.")]
     public bool winterGroundDrift = true;
 
+    [Tooltip("Sky used in a winter region instead of daySkybox. Leave empty to keep the ordinary sky. FS003_Snowy / FS002_Snowy from Fantasy Skybox FREE are already in the project.")]
+    public Material winterDaySkybox;
+    [Tooltip("Night sky for a winter region. Leave empty to keep the ordinary night sky.")]
+    public Material winterNightSkybox;
+    [Tooltip("Storm sky for a winter region — a blizzard rather than a rainstorm. Leave empty to keep the ordinary storm sky.")]
+    public Material winterStormSkybox;
+
     private bool IsWinter => winterLighting && currentBiome == 2;
 
     [Header("Night readability")]
@@ -359,6 +366,25 @@ public class DayNightCycle : MonoBehaviour
             Material targetMat = daySkybox;
             if (targetSkybox == SkyboxType.Night) targetMat = nightSkybox;
             else if (targetSkybox == SkyboxType.Storm) targetMat = stormSkybox;
+
+            // ==== THE SKY IS HALF THE SCREEN AND IT WAS THE WRONG SEASON ====
+            //
+            // Everything else about the winter region had been tuned — cold low
+            // sun, brighter nights, more fog, drifting snow — while the largest
+            // single surface in the frame stayed the same warm summer sky as the
+            // forest region. No amount of work on the ground survives a horizon
+            // that disagrees with it: the eye reads the sky first and colour-
+            // matches everything below to it.
+            //
+            // Falls back to the ordinary sky when a winter one has not been
+            // assigned, so leaving these empty is the previous behaviour rather
+            // than a black horizon.
+            if (IsWinter)
+            {
+                if (targetSkybox == SkyboxType.Day && winterDaySkybox != null) targetMat = winterDaySkybox;
+                else if (targetSkybox == SkyboxType.Night && winterNightSkybox != null) targetMat = winterNightSkybox;
+                else if (targetSkybox == SkyboxType.Storm && winterStormSkybox != null) targetMat = winterStormSkybox;
+            }
 
             if (skyboxBlendCoroutine != null) StopCoroutine(skyboxBlendCoroutine);
             skyboxBlendCoroutine = StartCoroutine(TransitionSkyboxRoutine(targetMat));

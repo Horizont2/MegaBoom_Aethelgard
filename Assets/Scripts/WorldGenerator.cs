@@ -40,6 +40,8 @@ public class WorldGenerator : MonoBehaviour
     // it too, and a second hand-rolled copy is a second thing to get wrong.
     public float AbsoluteWaterHeight => transform.position.y + (depth * waterLevel);
     public Material waterMaterial;
+    [Tooltip("Surface used instead of waterMaterial in a winter region. Leave empty and the water stays liquid — there is no ice material in the project yet, so this is opt-in rather than a silent change.")]
+    public Material winterIceMaterial;
 
     [Header("Side Objectives (Dead End Altars)")]
     public GameObject[] altarPrefabs;
@@ -295,6 +297,39 @@ public class WorldGenerator : MonoBehaviour
     public float borderOffset = 10f;
     public float borderMinScale = 3f;
     public float borderMaxScale = 6f;
+
+    // ==== WHAT ACTUALLY MAKES A WINTER REGION LOOK LIKE WINTER ====
+    //
+    // Not the colour. The winter region was already tinted, lit with a low cold
+    // sun and blown over with ground drift, and it still read as "the summer map
+    // painted white" — because GetTemperature returns a CONSTANT in a region
+    // mission, so every single alphamap cell resolved to `temp <= 0.35` and got
+    // weights[2] = 1. One texture, whole map, zero variation. A forest region at
+    // least gets Perlin variation between grass, sand and snow; winter got a
+    // white bedsheet.
+    //
+    // Real snow is not a coat of paint, it is a MATERIAL THAT MOVES. It slides
+    // off anything steep, it is scoured off ridges and off every face that looks
+    // into the wind, and all of it ends up piled in the hollows and on the lee
+    // side of things. That is why a snowy landscape has enormous contrast — bare
+    // dark rock a metre from a waist-deep drift — and why a uniform white one
+    // looks fake even when every individual colour is correct.
+    //
+    // So the cover is computed from the terrain itself: slope, wind exposure,
+    // how high the ground stands above its own neighbourhood, and noise for
+    // patchiness. Where it survives you get snow; where it is stripped you get
+    // the rock and dead grass underneath.
+    [Header("Winter Snow Cover")]
+    [Tooltip("Lay snow by slope, wind and shelter instead of covering the region uniformly. Off = the old flat white sheet.")]
+    public bool winterSnowDrifts = true;
+    [Tooltip("How much ground loses its snow. 0 = everything stays buried (the old look), 0.5 = a hard, scoured landscape with a lot of bare rock showing.")]
+    [Range(0f, 0.7f)] public float winterBareGround = 0.28f;
+    [Tooltip("Size of the drift patches. Lower = broad snowfields, higher = a restless, blotchy surface.")]
+    [Range(1f, 20f)] public float winterDriftScale = 6f;
+    [Tooltip("Which way the wind blows, in degrees. Faces looking into it are stripped; their lee sides collect. Matches WinterGroundDrift.windDegrees by default, so the snow blowing across the ground agrees with the way the snow on it is lying.")]
+    public float winterWindDegrees = 30f;
+    [Tooltip("How much the wind matters against slope and shelter. 0 = snow depth depends only on terrain shape.")]
+    [Range(0f, 1f)] public float winterWindStrength = 0.65f;
 
     [Header("Points of Interest")]
     public GameObject[] poiPrefabs;
@@ -1756,6 +1791,17 @@ public class WorldGenerator : MonoBehaviour
         terrainData.SetHeights(0, 0, heights); terrainData.size = new Vector3(terrainData.size.x, depth, terrainData.size.z);
     }
 
+    // True only in a winter REGION MISSION. Ordinary maps get snow from the
+    // temperature noise like any other biome and must not be touched by any of
+    // the winter-specific work below.
+    private bool IsWinterRegion => isRegionMissionCached && regionBiomeTypeCached == 2;
+
+    // Snow depth per alphamap cell, 0 = scoured bare, 1 = buried. Built by the
+    // paint pass and kept because the grass pass, which runs after it, needs the
+    // same field: vegetation should be absent from both the bare wind-scoured
+    // ground AND the deep drifts, and present in the band between them.
+    private float[,] winterSnowCover;
+
     private IEnumerator PaintTerrainRoutine(TerrainData terrainData)
     {
         if (grassLayer == null || sandLayer == null || snowLayer == null || rockLayer == null || roadLayer == null) yield break;
@@ -1763,6 +1809,13 @@ public class WorldGenerator : MonoBehaviour
         terrainData.terrainLayers = TintLayersForSeason(
             new TerrainLayer[] { grassLayer, sandLayer, snowLayer, rockLayer, roadLayer });
         int aWidth = terrainData.alphamapWidth; int aHeight = terrainData.alphamapHeight;
+
+        winterSnowCover = null;
+        if (IsWinterRegion && winterSnowDrifts)
+        {
+            winterSnowCover = BuildWinterSnowCover(terrainData, aWidth, aHeight);
+            yield return null;
+        }
 
         // ФІКС: Правильний порядок масиву для Unity Terrain (Висота, Ширина, Шари)
         float[,,] splatmapData = new float[aHeight, aWidth, 5];
@@ -1782,11 +1835,46 @@ public class WorldGenerator : MonoBehaviour
                 float normalizedHeight = terrainData.GetHeight(y, x) / depth;
                 weights[0] = weights[1] = weights[2] = weights[3] = weights[4] = 0f;
 
-                if (normalizedHeight > 0.65f) weights[2] = 1f;
-                else if (normalizedHeight <= waterLevel + 0.02f) weights[1] = 1f;
+                // Rock that shows because the snow was stripped off it, as
+                // opposed to rock that shows because the slope is a cliff. Zero
+                // outside a winter region, so nothing else changes.
+                float scouredRock = 0f;
+
+                bool shoreline = normalizedHeight <= waterLevel + 0.02f;
+                if (winterSnowCover != null && !shoreline)
+                {
+                    float cover = winterSnowCover[y, x];
+                    float bare = 1f - cover;
+
+                    // WHAT IS UNDER THE SNOW depends on where you are. High and
+                    // steep, it is rock; low and sheltered, it is the dead grass
+                    // of whatever grew there before the cold — which is the tone
+                    // that stops a bare patch reading as a texture error.
+                    float rockShare = Mathf.Clamp01(
+                        Mathf.InverseLerp(0.42f, 0.68f, normalizedHeight) +
+                        Mathf.InverseLerp(18f, 34f, steepness));
+
+                    scouredRock = bare * rockShare;
+
+                    // The three ground layers must still sum to 1 on their own:
+                    // the rock share is applied once, below, and everything else
+                    // is scaled into what it leaves. Folding rock in twice is
+                    // what would make the alphamap stop summing to one and the
+                    // terrain go translucent in patches.
+                    float rest = 1f - scouredRock;
+                    if (rest > 0.0001f)
+                    {
+                        weights[2] = cover / rest;
+                        weights[0] = (bare - scouredRock) / rest;
+                    }
+                }
+                else if (normalizedHeight > 0.65f) weights[2] = 1f;
+                else if (shoreline) weights[1] = 1f;
                 else { if (temp >= 0.65f) weights[1] = 1f; else if (temp <= 0.35f) weights[2] = 1f; else weights[0] = 1f; }
 
-                weights[3] = Mathf.Clamp01(Mathf.InverseLerp(30f, 45f, steepness));
+                // Max, not assignment: a cliff is rock whatever the snow is
+                // doing, and scoured ground is rock even where it is flat.
+                weights[3] = Mathf.Max(scouredRock, Mathf.Clamp01(Mathf.InverseLerp(30f, 45f, steepness)));
                 float remainAfterRock = 1f - weights[3];
                 weights[0] *= remainAfterRock; weights[1] *= remainAfterRock; weights[2] *= remainAfterRock;
 
@@ -1946,6 +2034,24 @@ public class WorldGenerator : MonoBehaviour
                 // Same rule for the hand-built locations. See the stamp above.
                 float locKeep = locationKeep != null ? locationKeep[y, x] : 1f;
                 if (locKeep <= 0f) continue;
+
+                // ==== VEGETATION LIVES IN THE BAND BETWEEN BARE AND BURIED ====
+                //
+                // The paint pass has already worked out how deep the snow lies
+                // here; the grass has to agree with it or the two passes describe
+                // different winters. Nothing grows on ground the wind has scraped
+                // down to rock, and nothing shows through a drift — so the tufts
+                // appear only in the middle, which is also the only place a
+                // player would expect to find them. It is the cheapest way to
+                // make the ground look composed rather than sprinkled.
+                if (winterSnowCover != null)
+                {
+                    float cov = winterSnowCover[ay, ax];
+                    float band = Mathf.Min(Mathf.InverseLerp(0.05f, 0.32f, cov),
+                                           Mathf.InverseLerp(0.95f, 0.62f, cov));
+                    locKeep *= band;
+                    if (locKeep <= 0.02f) continue;
+                }
 
                 float temp = GetTemperature(normX, normZ);
                 bool isSnowBiome = false;
@@ -2815,6 +2921,162 @@ public class WorldGenerator : MonoBehaviour
     // ground reads as the region's season. Cloned because these layers are
     // project assets shared by every scene — writing to them directly would
     // repaint the whole game to whatever region was generated last.
+    // Works out how deep the snow lies on every alphamap cell.
+    //
+    // Four things decide it, and they are the four things that decide it in the
+    // real world:
+    //
+    //   SLOPE     — snow will not stay on anything steep. This alone breaks the
+    //               white sheet, because it means every cliff and gully wall in
+    //               the region turns to bare rock.
+    //   WIND      — a face that looks into the wind is scoured; the lee side of
+    //               the same ridge is where all of that snow ends up. This is
+    //               what gives a snowfield direction, so the whole region reads
+    //               as having weather rather than a climate.
+    //   SHELTER   — ground standing above its own neighbourhood is stripped,
+    //               ground sunk below it fills in. Ridges bare, hollows buried.
+    //   PATCHINESS— noise, so none of the above resolves into a clean band.
+    //
+    // Cheap: one GetHeights, one separable blur, no per-cell TerrainData calls.
+    // The paint pass it feeds already costs less than roads or grass did.
+    private float[,] BuildWinterSnowCover(TerrainData td, int aW, int aH)
+    {
+        int hRes = td.heightmapResolution;
+        float[,] raw = td.GetHeights(0, 0, hRes, hRes);
+        float metresPerSample = td.size.x / Mathf.Max(1, hRes - 1);
+
+        float[,] height = new float[aH, aW];
+        float[,] steepDeg = new float[aH, aW];
+        // How much this face looks INTO the wind: +1 straight into it, -1 in
+        // its lee, 0 side-on or flat.
+        float[,] exposure = new float[aH, aW];
+
+        float windRad = winterWindDegrees * Mathf.Deg2Rad;
+        Vector2 wind = new Vector2(Mathf.Sin(windRad), Mathf.Cos(windRad));
+
+        for (int y = 0; y < aH; y++)
+        {
+            int hy = Mathf.Clamp(Mathf.RoundToInt((float)y / aH * (hRes - 1)), 0, hRes - 1);
+            int ym = Mathf.Max(hy - 1, 0), yp = Mathf.Min(hy + 1, hRes - 1);
+
+            for (int x = 0; x < aW; x++)
+            {
+                int hx = Mathf.Clamp(Mathf.RoundToInt((float)x / aW * (hRes - 1)), 0, hRes - 1);
+                int xm = Mathf.Max(hx - 1, 0), xp = Mathf.Min(hx + 1, hRes - 1);
+
+                height[y, x] = raw[hy, hx];
+
+                float ddx = (raw[hy, xp] - raw[hy, xm]) * td.size.y / ((xp - xm) * metresPerSample);
+                float ddz = (raw[yp, hx] - raw[ym, hx]) * td.size.y / ((yp - ym) * metresPerSample);
+                steepDeg[y, x] = Mathf.Atan(Mathf.Sqrt(ddx * ddx + ddz * ddz)) * Mathf.Rad2Deg;
+
+                // The slope descends along -(ddx, ddz), so that is the direction
+                // the face looks. Looking against the wind means exposed.
+                Vector2 face = new Vector2(-ddx, -ddz);
+                float m = face.magnitude;
+                exposure[y, x] = m > 0.0015f ? -Vector2.Dot(face / m, wind) : 0f;
+            }
+        }
+        raw = null;
+
+        // Blur the height to get "the ground around here", so a cell can be
+        // compared against its own neighbourhood. Separable, so the radius is
+        // nearly free.
+        float[,] smooth = BoxBlur(height, aW, aH, 9);
+
+        var cover = new float[aH, aW];
+        float noiseScale = winterDriftScale;
+
+        for (int y = 0; y < aH; y++)
+        {
+            float nz = (float)y / aH;
+            for (int x = 0; x < aW; x++)
+            {
+                float nx = (float)x / aW;
+
+                // Metres this cell stands above (or below) its surroundings.
+                float relief = (height[y, x] - smooth[y, x]) * td.size.y;
+
+                // ==== WHY THIS DOES NOT START AT FULLY COVERED ====
+                //
+                // The obvious base is 1 — everything buried, and the terrain
+                // takes snow away. That reproduces the original bug on every
+                // flat part of the map: with nothing to subtract, open level
+                // ground lands at 1, saturates the threshold, and comes out as
+                // the same uniform white sheet this whole pass exists to break.
+                // And most of a region IS flat-ish, so most of it would not
+                // change at all.
+                //
+                // Starting mid-range instead means flat open ground is decided
+                // by the noise and therefore VARIES, while the terrain features
+                // push decisively either side of it.
+                float c = 0.55f;
+
+                // Snow slides off. By 55 degrees there is essentially none left.
+                c -= Mathf.InverseLerp(30f, 55f, steepDeg[y, x]) * 0.95f;
+
+                // Ridges scoured, hollows filled.
+                c -= Mathf.Clamp01(relief / 9f) * 0.50f;
+                c += Mathf.Clamp01(-relief / 7f) * 0.30f;
+
+                // Windward stripped, lee loaded.
+                float e = exposure[y, x];
+                c -= Mathf.Max(0f, e) * 0.45f * winterWindStrength;
+                c += Mathf.Max(0f, -e) * 0.28f * winterWindStrength;
+
+                // Two octaves of patchiness so nothing resolves into a band.
+                float n = Mathf.PerlinNoise(nx * noiseScale + offsetX + 700f,
+                                            nz * noiseScale + offsetZ + 700f) * 0.7f
+                        + Mathf.PerlinNoise(nx * noiseScale * 3.7f + offsetX + 1300f,
+                                            nz * noiseScale * 3.7f + offsetZ + 1300f) * 0.3f;
+                c += (n - 0.5f) * 0.55f;
+
+                // One dial for the whole region, with a soft band around it so
+                // the transition from snow to bare ground is a gradient rather
+                // than a cut line.
+                cover[y, x] = Mathf.SmoothStep(0f, 1f,
+                    Mathf.InverseLerp(winterBareGround, winterBareGround + 0.42f, Mathf.Clamp01(c)));
+            }
+        }
+
+        Debug.Log("[WorldGenerator] Winter snow cover built — drifts, scoured ridges and lee loading.");
+        return cover;
+    }
+
+    // Separable box blur. Two passes of a running sum, so the cost does not
+    // depend on the radius.
+    private static float[,] BoxBlur(float[,] src, int w, int h, int radius)
+    {
+        var tmp = new float[h, w];
+        var dst = new float[h, w];
+        int span = radius * 2 + 1;
+
+        for (int y = 0; y < h; y++)
+        {
+            float sum = 0f;
+            for (int i = -radius; i <= radius; i++) sum += src[y, Mathf.Clamp(i, 0, w - 1)];
+            for (int x = 0; x < w; x++)
+            {
+                tmp[y, x] = sum / span;
+                sum -= src[y, Mathf.Clamp(x - radius, 0, w - 1)];
+                sum += src[y, Mathf.Clamp(x + radius + 1, 0, w - 1)];
+            }
+        }
+
+        for (int x = 0; x < w; x++)
+        {
+            float sum = 0f;
+            for (int i = -radius; i <= radius; i++) sum += tmp[Mathf.Clamp(i, 0, h - 1), x];
+            for (int y = 0; y < h; y++)
+            {
+                dst[y, x] = sum / span;
+                sum -= tmp[Mathf.Clamp(y - radius, 0, h - 1), x];
+                sum += tmp[Mathf.Clamp(y + radius + 1, 0, h - 1), x];
+            }
+        }
+        return dst;
+    }
+
     private TerrainLayer[] TintLayersForSeason(TerrainLayer[] src)
     {
         if (!tintGroundBySeason || src == null) return src;
@@ -2834,6 +3096,15 @@ public class WorldGenerator : MonoBehaviour
             // The ROAD keeps its own colour — a snow-white or autumn-brown road
             // stops reading as a road at all.
             if (src[i] == roadLayer) { outLayers[i] = src[i]; continue; }
+
+            // AND SO DOES THE ROCK, IN WINTER. The tint was pushing every layer
+            // toward white, rock included, which took away the last thing on the
+            // ground with any tonal weight — so a snowfield with bare crags in it
+            // came out as pale grey on pale white and read as one flat surface.
+            // Dark rock against snow is the entire contrast budget of a winter
+            // landscape; spending it on consistency is what made the region look
+            // washed out rather than cold.
+            if (biome == 2 && src[i] == rockLayer) { outLayers[i] = src[i]; continue; }
 
             var clone = Instantiate(src[i]);
             clone.name = src[i].name + (biome == 2 ? " (Winter)" : " (Autumn)");
@@ -2863,12 +3134,17 @@ public class WorldGenerator : MonoBehaviour
     private void SpawnWaterPlane()
     {
         if (waterMaterial == null) return;
+        // Open, rippling water in a region where snow is lying is the single
+        // loudest wrong note left on the map — it says the temperature is above
+        // freezing everywhere the player looks. Optional: with no ice material
+        // assigned the water stays as it is rather than disappearing.
+        Material surface = (IsWinterRegion && winterIceMaterial != null) ? winterIceMaterial : waterMaterial;
         float w = terrain.terrainData.size.x; float l = terrain.terrainData.size.z; float absoluteWaterHeight = transform.position.y + (depth * waterLevel);
         GameObject waterObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
         waterObj.name = "Bitgem_WaterPlane"; waterObj.transform.SetParent(this.transform);
         waterObj.transform.position = new Vector3(transform.position.x + w / 2, absoluteWaterHeight, transform.position.z + l / 2);
         waterObj.transform.localScale = new Vector3(w / 10f, 1f, l / 10f);
-        MeshRenderer mr = waterObj.GetComponent<MeshRenderer>(); mr.material = waterMaterial; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        MeshRenderer mr = waterObj.GetComponent<MeshRenderer>(); mr.material = surface; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         Destroy(waterObj.GetComponent<Collider>());
         // No collider means nothing can detect this by physics, so register the
         // surface for gameplay (PlayerWaterState) to query.
@@ -3208,6 +3484,10 @@ public class WorldGenerator : MonoBehaviour
 
                 if (normalizedHeight <= waterLevel + 0.03f)
                 {
+                    // Lush green reeds standing in a frozen lake undo the whole
+                    // biome in one glance, and they sit exactly where the player
+                    // walks to reach water.
+                    if (IsWinterRegion) continue;
                     if (waterPlantsPrefabs != null && waterPlantsPrefabs.Length > 0 && GetRandomFloat() > 0.4f)
                     {
                         GameObject wpPrefab = GetRandomPrefab(waterPlantsPrefabs);
