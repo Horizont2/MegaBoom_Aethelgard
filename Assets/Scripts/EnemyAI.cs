@@ -1586,6 +1586,69 @@ public class EnemyAI : MonoBehaviour, IDamageable
     }
 
     private bool _feinting;
+    private bool _thisSwingUnblockable;
+
+    // ==== BEING BLOCKED HURTS ====
+    //
+    // Recoiling off a shield is what turns a block from a delay into an
+    // opening. Without it the player absorbs hits forever and never gets a
+    // turn, which is a defensive stance rather than a defensive MECHANIC.
+    //
+    // A parry additionally marks this enemy vulnerable — extra damage taken
+    // for a moment — so the counter-attack the stagger allows is also worth
+    // more than an ordinary swing. That is the payoff that makes the read
+    // worth learning.
+    public void ApplyBlockRecoil(float stagger, float damageMultiplier, float vulnerableFor)
+    {
+        if (isDead) return;
+
+        stunTimer = Mathf.Max(stunTimer, stagger);
+        // Cancel the swing outright. An enemy that finishes its animation and
+        // connects anyway makes the block look like it did nothing.
+        StopCoroutine(nameof(AttackRoutine));
+        isPreparingAttack = false;
+        lastAttackTime = Time.time;
+
+        if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.SetTrigger("Hit");
+        }
+        SetColor(Color.white);
+
+        if (damageMultiplier > 1f && vulnerableFor > 0f)
+        {
+            _vulnerableMult = damageMultiplier;
+            _vulnerableUntil = Time.time + vulnerableFor;
+        }
+
+        // Shoved back off the shield, so the recoil is visible and not just a
+        // pause in the animation.
+        if (target != null)
+        {
+            Vector3 away = transform.position - target.position; away.y = 0f;
+            if (away.sqrMagnitude > 0.01f) StartCoroutine(RecoilRoutine(away.normalized, stagger));
+        }
+    }
+
+    private float _vulnerableMult = 1f;
+    private float _vulnerableUntil = -1f;
+
+    public bool IsVulnerable => Time.time < _vulnerableUntil;
+
+    private IEnumerator RecoilRoutine(Vector3 dir, float seconds)
+    {
+        float t0 = 0f;
+        float dur = Mathf.Min(0.25f, seconds);
+        while (t0 < dur && !isDead)
+        {
+            t0 += Time.deltaTime;
+            Vector3 next = transform.position + dir * (5.5f * (1f - t0 / dur) * Time.deltaTime);
+            next.y = SampleTerrainHeight(next) + verticalOffset;
+            SetPositionSafe(next);
+            yield return null;
+        }
+    }
 
     // Gives ground after a swing, so the player has somewhere to answer into.
     private IEnumerator BackOffRoutine(float seconds)
@@ -1646,6 +1709,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isBoss && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Telegraph, transform.position);
 
+        // ONE SWING IN THREE FROM A HEAVY ENEMY CANNOT BE BLOCKED.
+        //
+        // Decided at the START of the wind-up, never at the moment of impact,
+        // because the whole point is that the player can SEE it coming. An
+        // unblockable attack chosen when it lands would be indistinguishable
+        // from the shield failing at random, which is the difference between a
+        // mechanic and a gotcha.
+        _thisSwingUnblockable = (isBoss || isElite) && UnityEngine.Random.value < 0.34f;
+
         float telegraph = EffectiveTelegraph;
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, telegraph + 0.2f);
 
@@ -1661,7 +1733,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
             TutorialHints.Instance.ShowIfNew("CombatTelegraph",
                 "TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.", 5f);
 
-        Color baseTele = isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f));
+        // An unblockable swing announces itself in a colour nothing else uses.
+        // The player has to be able to read "shield will not save you" from
+        // across the fight, before the swing commits.
+        Color baseTele = _thisSwingUnblockable
+            ? new Color(0.85f, 0.05f, 0.45f)
+            : isEnraged ? Color.black : (isElite ? new Color(1f, 0.5f, 0f) : new Color(1f, 0.15f, 0.05f));
         Color flashTele = Color.white;
         float elapsed = 0f;
         // A heavy swing pulses SLOWER than a light one. The flash rate is the
@@ -1796,7 +1873,23 @@ public class EnemyAI : MonoBehaviour, IDamageable
             string src = gameObject.name;
             int cloneIdx = src.IndexOf("(Clone)");
             if (cloneIdx > 0) src = src.Substring(0, cloneIdx).TrimEnd();
-            tgt.TakeDamage(new DamageInfo { Amount = damage, PushDirection = transform.forward, SourceName = src });
+            tgt.TakeDamage(new DamageInfo
+            {
+                Amount = damage,
+                PushDirection = transform.forward,
+                SourceName = src,
+                // Where the blow comes FROM, so a shield can tell whether it was
+                // covering that side. Without it the guard has to guess, and in
+                // a crowd it guesses wrong — which is exactly the fight blocking
+                // is meant to be for.
+                HitPoint = transform.position + Vector3.up * 1.2f,
+                Attacker = this,
+                // Elites and bosses throw one attack in three that a shield
+                // cannot answer, so a raised guard is never the whole answer.
+                // The telegraph already differs by archetype (see
+                // TelegraphScale); this is the half that has teeth.
+                Unblockable = _thisSwingUnblockable,
+            });
             // Landed-hit impact SFX. Enemy_Hit is the meaty thud; the
             // player's own Hurt SFX plays inside TakeDamage.
             if (AudioManager.Instance != null)
@@ -1813,6 +1906,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Aggro();
             if (parentGroup != null) parentGroup.AlertAll();
         }
+
+        // A parried enemy takes more for a moment — the reward for the read.
+        if (IsVulnerable) info.Amount *= _vulnerableMult;
 
         currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;

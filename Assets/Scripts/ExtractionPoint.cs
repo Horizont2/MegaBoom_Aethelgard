@@ -11,7 +11,10 @@ using UnityEngine;
 public class ExtractionPoint : MonoBehaviour
 {
     [Tooltip("Bank the backpack into the camp stash without ending the run.")]
-    public KeyCode stowKey = KeyCode.Q;
+    // NOT Q — that raises the shield now, and a player defending themselves
+    // beside the cart should not be banking their backpack every time they
+    // block. F is free in a region; it only means "inspect" back in camp.
+    public KeyCode stowKey = KeyCode.F;
 
     private bool isPlayerNear = false;
 

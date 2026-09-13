@@ -1148,7 +1148,12 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         float currentAccel = (!isCampMode && currentStack >= 30) ? dragAcceleration : normalAcceleration;
+        // A raised shield is heavy. Slowing to a walk is what makes holding it
+        // a commitment rather than a free permanent state — the player has to
+        // choose between covering themselves and getting anywhere.
+        bool guarding = PlayerBlock.Instance != null && PlayerBlock.Instance.IsBlocking;
         float actualSpeed = isAimingGrenade ? moveSpeed * 0.4f
+                          : guarding ? moveSpeed * PlayerBlock.Instance.blockMoveMultiplier
                           : IsAttackWalking ? moveSpeed * attackMoveSpeedMult
                           : moveSpeed;
         float dt = isBulletTime || isAimingGrenade ? Time.unscaledDeltaTime : Time.deltaTime;
@@ -2317,6 +2322,24 @@ public class PlayerController : MonoBehaviour, IDamageable
         // negate your own blast for free.
         if (isDashing && !info.IgnoresIFrames) return;
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(); // getting hit = combat
+
+        // THE GUARD RESOLVES BEFORE ANYTHING ELSE TOUCHES THE HIT.
+        //
+        // Ahead of the dodge roll, the armour reduction and the health maths,
+        // because a blocked hit is not a hit that was reduced — it is a hit
+        // that did not land. Running it later would have a block still consume
+        // the dodge chance, still play the hurt reaction, and still count as
+        // damage taken for anything watching. See PlayerBlock for the three
+        // outcomes; it zeroes the amount itself on a block or a parry, so a
+        // guard break falls through here untouched and lands in full.
+        if (PlayerBlock.Instance != null)
+        {
+            Vector3 from = info.HitPoint != Vector3.zero
+                ? info.HitPoint
+                : transform.position - (info.PushDirection == Vector3.zero ? transform.forward : info.PushDirection);
+            var result = PlayerBlock.Instance.Resolve(ref info, from, info.Attacker);
+            if (result == PlayerBlock.Result.Blocked || result == PlayerBlock.Result.Parried) return;
+        }
 
         // Feed the death recap's "Slain by ___" line. Overwrites on
         // every hit — whatever landed the LAST blow before Die() wins.
