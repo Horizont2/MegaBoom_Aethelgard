@@ -52,6 +52,8 @@ public class ShopManager : MonoBehaviour
     public Button btnCategorySwords;
     public Button btnCategoryAxes;
     public Button btnCategoryBows;
+    [Tooltip("Shields. The icon already exists at NewShopUI/Category_Arsenal/Shield_Icon.png — wire the button here once it is placed and everything behind it is already done.")]
+    public Button btnCategoryShields;
 
     [Header("Arsenal Category Buttons (ARMOR)")]
     public Button btnCategoryHelmets;
@@ -335,6 +337,7 @@ public class ShopManager : MonoBehaviour
         if (btnCategorySwords) btnCategorySwords.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Sword));
         if (btnCategoryAxes) btnCategoryAxes.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Axe));
         if (btnCategoryBows) btnCategoryBows.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Bow));
+        if (btnCategoryShields) btnCategoryShields.onClick.AddListener(() => OpenWeaponCategory(ItemCategory.Shield));
 
         if (btnCategoryHelmets) btnCategoryHelmets.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Head));
         if (btnCategoryArmor) btnCategoryArmor.onClick.AddListener(() => OpenArmorCategory(ArmorCategory.Chest));
@@ -523,7 +526,12 @@ public class ShopManager : MonoBehaviour
 
         WeaponData firstWep = null;
         int myDiamonds = ReadDiamonds();
-        int equippedWepID = PlayerPrefs.GetInt("SelectedWeaponID", 0);
+        // Shields live in the other hand, so "equipped" for them is a different
+        // key. Reading SelectedWeaponID here would show the player's sword as
+        // the equipped shield, or nothing as equipped at all.
+        int equippedWepID = cat == ItemCategory.Shield
+            ? PlayerPrefs.GetInt(ShieldLoadout.PP_SELECTED, -1)
+            : PlayerPrefs.GetInt("SelectedWeaponID", 0);
         foreach (var w in weapons)
         {
             if (w.category != cat) continue;
@@ -947,26 +955,50 @@ public class ShopManager : MonoBehaviour
         {
             int id = selectedWeaponData.weaponID;
             int price = selectedWeaponData.price;
+
+            // A SHIELD IS NOT THE MAIN WEAPON.
+            //
+            // Shields ride WeaponData so they can reuse the shop, the index and
+            // the upgrade maths — but they are held in the OTHER hand, and
+            // writing them to SelectedWeaponID would silently unequip the
+            // player's sword the moment they bought one. Their own keys keep
+            // the two loadout slots independent.
+            bool isShield = selectedWeaponData.category == ItemCategory.Shield;
             string unlockKey = "WeaponUnlocked_" + id;
             bool isBought = PlayerPrefs.GetInt(unlockKey, price == 0 ? 1 : 0) == 1;
+
+            void Equip()
+            {
+                if (isShield)
+                {
+                    PlayerPrefs.SetInt(ShieldLoadout.PP_SELECTED, id);
+                    // The dummy in the shop shows what you just bought, and the
+                    // live player picks it up on the next scene load.
+                    var live = FindFirstObjectByType<ShieldLoadout>();
+                    if (live != null) live.Refresh();
+                }
+                else
+                {
+                    PlayerPrefs.SetInt("SelectedWeaponID", id);
+                    // Persist the weapon's family so PlayerController can pick
+                    // the right hit SFX (sword vs axe vs bow) without needing
+                    // the full WeaponData asset available at runtime.
+                    PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
+                }
+            }
 
             if (!isBought && myDiamonds >= price)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Purchase);
                 WriteDiamonds(myDiamonds - price);
                 PlayerPrefs.SetInt(unlockKey, 1);
-                PlayerPrefs.SetInt("SelectedWeaponID", id);
-                // Persist the weapon's family so PlayerController can pick
-                // the right hit SFX (sword vs axe vs bow) without needing
-                // the full WeaponData asset available at runtime.
-                PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
+                Equip();
                 didPurchase = true;
             }
             else if (isBought)
             {
                 AudioManager.Instance?.PlayUI(AudioID.UI_Click);
-                PlayerPrefs.SetInt("SelectedWeaponID", id);
-                PlayerPrefs.SetInt("EquippedWeaponCategory", (int)selectedWeaponData.category);
+                Equip();
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
         }

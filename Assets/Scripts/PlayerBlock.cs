@@ -106,12 +106,63 @@ public class PlayerBlock : MonoBehaviour
         if (_pc != null) _pc.bonusStamina = stats.bonusStamina;
     }
 
+    // SELF-INSTALLING, so no player prefab has to be re-authored.
+    //
+    // There are two player prefabs and several scenes, and a mechanic that only
+    // works in whichever one somebody remembered to add a component to is a
+    // mechanic that is broken half the time. Adding it from the controller's
+    // own Awake means every player that exists has a guard.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Hook()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnScene;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnScene;
+        Attach();
+    }
+
+    private static void OnScene(UnityEngine.SceneManagement.Scene s,
+                                UnityEngine.SceneManagement.LoadSceneMode m) => Attach();
+
+    private static void Attach()
+    {
+        var pc = FindFirstObjectByType<PlayerController>();
+        if (pc == null) return;
+        if (pc.GetComponent<PlayerBlock>() == null) pc.gameObject.AddComponent<PlayerBlock>();
+        if (pc.GetComponent<ShieldLoadout>() == null) pc.gameObject.AddComponent<ShieldLoadout>();
+    }
+
     private void Awake()
     {
         Instance = this;
         _pc = GetComponent<PlayerController>();
         _anim = GetComponentInChildren<Animator>();
+        CacheAnimatorParams();
     }
+
+    // THE ANIMATOR MAY NOT KNOW THESE YET.
+    //
+    // Setting a parameter an AnimatorController does not declare logs an error
+    // EVERY TIME — several a second while the guard is up — which buries the
+    // console and makes every other warning in the game useless. The block has
+    // to work before the controller is authored, so the calls are gated on the
+    // parameter actually existing.
+    private bool _hasBlockBool, _hasBlockHit;
+
+    private void CacheAnimatorParams()
+    {
+        if (_anim == null || _anim.runtimeAnimatorController == null) return;
+        foreach (var p in _anim.parameters)
+        {
+            if (p.type == AnimatorControllerParameterType.Bool && p.name == "isBlocking") _hasBlockBool = true;
+            if (p.type == AnimatorControllerParameterType.Trigger && p.name == "BlockHit") _hasBlockHit = true;
+        }
+        if (!_hasBlockBool)
+            Debug.Log("[Block] The player animator has no 'isBlocking' bool, so the guard has no pose yet. " +
+                      "Run Tools > Combat > Add Block To Player Animator. Everything else works regardless.");
+    }
+
+    private void SetBlockPose(bool on) { if (_hasBlockBool) _anim.SetBool("isBlocking", on); }
+    private void TriggerBlockHit() { if (_hasBlockHit) { _anim.ResetTrigger("BlockHit"); _anim.SetTrigger("BlockHit"); } }
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
 
@@ -133,7 +184,7 @@ public class PlayerBlock : MonoBehaviour
             IsBlocking = true;
             _raisedAt = Time.time;
             GuardBroken = false;
-            if (_anim != null) _anim.SetBool("isBlocking", true);
+            if (_anim != null) SetBlockPose(true);
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_Click);
         }
         else if (!wants && IsBlocking)
@@ -154,7 +205,7 @@ public class PlayerBlock : MonoBehaviour
     private void LowerGuard()
     {
         IsBlocking = false;
-        if (_anim != null) _anim.SetBool("isBlocking", false);
+        if (_anim != null) SetBlockPose(false);
     }
 
     // ---- the resolution ------------------------------------------------------
@@ -253,7 +304,7 @@ public class PlayerBlock : MonoBehaviour
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, at);
         CameraShakeUtil.TryShake(0.25f, 0.09f);
-        if (_anim != null) { _anim.ResetTrigger("BlockHit"); _anim.SetTrigger("BlockHit"); }
+        if (_anim != null) TriggerBlockHit();
     }
 
     // The moment the whole system exists for, so it gets the full treatment:
@@ -265,7 +316,7 @@ public class PlayerBlock : MonoBehaviour
             AudioManager.Instance.PlaySFX(AudioID.Player_Crit);
             AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, at);
         }
-        if (_anim != null) { _anim.ResetTrigger("BlockHit"); _anim.SetTrigger("BlockHit"); }
+        if (_anim != null) TriggerBlockHit();
         Vector3 dir = (attackerPos - transform.position); dir.y = 0f;
         CameraShakeUtil.TryDirectionalShake(dir.normalized, 1.1f, 0.22f, 0.25f);
         StartCoroutine(ParryTimeRoutine());
@@ -299,6 +350,6 @@ public class PlayerBlock : MonoBehaviour
     {
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_Error);
         CameraShakeUtil.TryShake(0.9f, 0.4f);
-        if (_anim != null) _anim.SetBool("isBlocking", false);
+        if (_anim != null) SetBlockPose(false);
     }
 }

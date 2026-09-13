@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum ItemCategory { Sword, Axe, Bow, Helmet, Armor, Gloves } // ����: �������
+public enum ItemCategory { Sword, Axe, Bow, Helmet, Armor, Gloves, Shield }
 
 [CreateAssetMenu(fileName = "NewWeapon", menuName = "Game/Weapon Data")]
 public class WeaponData : ScriptableObject
@@ -35,6 +35,35 @@ public class WeaponData : ScriptableObject
     public float damageBonus;
     public float attackSpeed;
     public float critChance;
+
+    // ==== SHIELDS ====
+    //
+    // A shield is a held item bought and upgraded exactly like a weapon, so it
+    // rides WeaponData rather than getting a parallel asset type with its own
+    // index, its own shop path and its own save keys to keep in step.
+    //
+    // The four numbers below are deliberately not a power ladder. A tier-3
+    // shield is not "better" than a tier-1 one, it is a different bargain: the
+    // light round shield parries generously and costs little stamina but covers
+    // a narrow arc, the barbarian slab covers everything and carries its own
+    // reserve but is nearly impossible to parry with. That is what makes buying
+    // one a choice about how you fight instead of a queue of upgrades.
+    [Header("Shield (ItemCategory.Shield only)")]
+    [Tooltip("Added to the base parry window. Positive is a forgiving shield, negative a punishing one.")]
+    public float parryWindowBonus = 0f;
+    [Tooltip("Multiplies the stamina an absorbed hit costs. Below 1 is light, above 1 is heavy.")]
+    public float staminaMultiplier = 1f;
+    [Tooltip("Added to the guard arc in degrees. A wide shield is harder to flank.")]
+    public float guardAngleBonus = 0f;
+    [Tooltip("Fraction of a blocked hit thrown back at the attacker. Spiked shields only.")]
+    [Range(0f, 0.6f)] public float reflectFraction = 0f;
+    [Tooltip("Extra stamina pool carried by the shield itself.")]
+    public float bonusStamina = 0f;
+
+    [Header("Shield Growth Per Level")]
+    public float staminaMultiplierPerLevel = -0.04f;
+    public float bonusStaminaPerLevel = 4f;
+    public float reflectPerLevel = 0f;
 
     [Header("Stat Growth Per Level")]
     public float damagePerLevel = 10f;
