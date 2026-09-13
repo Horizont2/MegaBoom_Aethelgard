@@ -349,6 +349,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void OnEnable()
     {
         ActiveEnemiesCount++;
+        // A pooled enemy comes back believing whatever it believed when it went
+        // away; if that was "engaged", it never re-registers with the ring and
+        // is invisible to the slot count for the rest of its life.
+        _reportedEngaged = false;
+        _ringHeading = Vector3.zero;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
@@ -358,6 +363,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // means the crowd is quietly allowed fewer attackers than it should be,
         // and after a few fights nobody can swing at all.
         if (CombatRing.Instance != null) CombatRing.Instance.ReportDisengaged(this);
+        _reportedEngaged = false;
 
         ActiveEnemiesCount--;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
@@ -822,6 +828,72 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         float distanceToPlayer = Vector3.Distance(transform.position, target.position);
 
+        // ==== THE RING IS ASKED BEFORE THE DISTANCE CLOSES, NOT AFTER ====
+        //
+        // All of this used to live INSIDE the `distanceToPlayer <= attackRange *
+        // 1.5f` branch below, which meant the crowd control only had an opinion
+        // once an enemy was already standing on top of the player. Everything
+        // further out — which is where the ring's posts actually are, at three to
+        // six metres — fell straight through to the plain chase at the bottom of
+        // this method and beelined in.
+        //
+        // So every enemy arrived in the huddle FIRST and was only then told to
+        // wait its turn, by which point it was already inside the player's guard
+        // with five others. The ring was built, posted and never occupied, and
+        // from the player's seat the fight was still a scrum with a shield
+        // bouncing off it. That is the "вороги стоять впритул" report, and it was
+        // never a tuning problem — the waiters were never given the chance to
+        // wait anywhere but in your face.
+        //
+        // Deciding here, while there is still ground between them and the player,
+        // is the whole fix.
+        var ring = CombatRing.Instance;
+        float ringOuter = ring != null ? ring.outerRadius : 0f;
+
+        // Two bands, deliberately different sizes. The fight is joined generously
+        // so the slot count reflects the real size of the crowd; the ring itself
+        // is tighter, so an enemy still crossing open ground just runs.
+        bool inFight = ring != null && distanceToPlayer <= ringOuter + 6f;
+        bool inRingBand = ring != null && distanceToPlayer <= ringOuter + 2f;
+
+        // Only on the edges, not every frame — ReportDisengaged also hands back
+        // any slot, and calling it continuously for every enemy still crossing
+        // the map is churn for nothing.
+        if (ring != null && inFight != _reportedEngaged)
+        {
+            _reportedEngaged = inFight;
+            if (inFight) ring.ReportEngaged(this);
+            else ring.ReportDisengaged(this);
+        }
+
+        // A boss is never a member of a crowd — see CombatRing.RequestAttack.
+        bool hasSlot = ring == null || isBoss || ring.IsAttacking(this);
+
+        // Only ASK once close enough to use the answer. A token claimed from
+        // twelve metres out would expire on the walk in, and would be held —
+        // and therefore denied to someone in range — the whole way.
+        if (!hasSlot && inRingBand && Time.time >= lastAttackTime + attackCooldown)
+            hasSlot = ring.RequestAttack(this);
+
+        // Anyone in the band without a token holds the ring instead of closing.
+        bool holdRing = ring != null && inRingBand && !hasSlot;
+
+        if (holdRing)
+        {
+            // Face the player while circling. A waiter that turns its back to
+            // walk its orbit reads as an enemy that has lost interest, which is
+            // the opposite of what the ring is for.
+            if (directionToPlayer != Vector3.zero)
+            {
+                Vector3 faceDir = directionToPlayer; faceDir.y = 0f;
+                if (faceDir.sqrMagnitude > 0.0001f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 9f * Time.deltaTime);
+            }
+
+            HoldRingPost(currentPos, repulsion, ring);
+            return;
+        }
+
         if (distanceToPlayer <= attackRange * 1.5f)
         {
             if (directionToPlayer != Vector3.zero)
@@ -832,15 +904,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             bool isAttackReady = Time.time >= lastAttackTime + attackCooldown;
 
-            // ==== ASK BEFORE SWINGING ====
-            //
-            // Two enemies press at a time; the rest circle. See CombatRing for
-            // why — eight independent attackers produce a wall of damage with no
-            // gaps, which is not difficulty, it is arithmetic, and it makes both
-            // blocking and counter-attacking impossible before they are written.
-            var ring = CombatRing.Instance;
-            if (ring != null) ring.ReportEngaged(this);
-            bool hasSlot = ring == null || ring.IsAttacking(this);
+            // The token was already resolved above, before the approach — the
+            // enemies without one never reach this branch at all, they are
+            // circling out at their posts.
 
             // Commit only once genuinely in range.
             //
@@ -850,12 +916,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // through the whole telegraph, so backing off did nothing and hits
             // seemed to land from outside the range the player could see. Wind up
             // on arrival, not on approach.
-            if (isAttackReady && distanceToPlayer <= attackRange
-                && (hasSlot || ring.RequestAttack(this)))
+            if (isAttackReady && distanceToPlayer <= attackRange && hasSlot)
             {
                 StartCoroutine(AttackRoutine());
             }
-            else if (isAttackReady && distanceToPlayer > attackRange && (hasSlot || ring.RequestAttack(this)))
+            else if (isAttackReady && distanceToPlayer > attackRange && hasSlot)
             {
                 if (animator != null) animator.SetBool("isMoving", true);
 
@@ -864,62 +929,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                 SetPositionSafe(nextPos);
-            }
-            else if (ring != null && !hasSlot)
-            {
-                // NO SLOT: CIRCLE, DO NOT QUEUE.
-                //
-                // The whole risk of a token system is that the ones waiting look
-                // like they are waiting. They must not stand, and they must not
-                // all orbit alike — CombatRing.PostFor gives each of them its own
-                // radius, direction, pace and drift, so the shape around the
-                // player stays ragged and alive rather than reading as a circle
-                // somebody spawned.
-                if (animator != null) animator.SetBool("isMoving", true);
-
-                Vector3 post = ring.PostFor(this, target.position, Time.time);
-                Vector3 toPost = post - currentPos; toPost.y = 0f;
-
-                // Close fast when far from the post, ease when near it, so a
-                // waiter settles into its orbit instead of jittering on the spot.
-                float urgency = Mathf.Clamp01(toPost.magnitude / 3f);
-                Vector3 desired = toPost.sqrMagnitude > 0.04f ? toPost.normalized : Vector3.zero;
-
-                // ==== WHY THIS DOES NOT NORMALISE BLINDLY ====
-                //
-                // The steering vector is the post direction plus the crowd's
-                // mutual repulsion, and when two enemies want overlapping ground
-                // those two very nearly cancel. Normalising a near-zero vector
-                // amplifies whatever noise is left, so the direction flipped
-                // every frame and the pair stood there shaking against each
-                // other — the vibration in the report.
-                //
-                // So: below a threshold the enemy simply does not move, and
-                // above it the direction is EASED rather than snapped, which
-                // also stops a waiter twitching as its orbit target slides past.
-                Vector3 steer = desired + repulsion * 0.6f;
-                if (steer.sqrMagnitude < 0.09f)
-                {
-                    if (animator != null) animator.SetBool("isMoving", false);
-                }
-                else
-                {
-                    Vector3 wanted = SteerAroundObstacles(currentPos, steer.normalized);
-                    _ringHeading = _ringHeading == Vector3.zero
-                        ? wanted
-                        : Vector3.Slerp(_ringHeading, wanted, 6f * Time.deltaTime);
-
-                    Vector3 nextPos = currentPos + _ringHeading.normalized
-                                    * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
-                    nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                    SetPositionSafe(nextPos);
-                }
-
-                // A waiter still THREATENS. Every few seconds it lunges a step
-                // and raises its weapon without swinging — enough that the crowd
-                // reads as a pack looking for an opening rather than an audience.
-                if (ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
-                    StartCoroutine(FeintRoutine());
             }
             else
             {
@@ -1617,6 +1626,89 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool _thisSwingUnblockable;
     // Smoothed circling direction — see the note where it is used.
     private Vector3 _ringHeading;
+    private bool _reportedEngaged;
+
+    // NO SLOT: CIRCLE, DO NOT QUEUE.
+    //
+    // The whole risk of a token system is that the ones waiting look like they
+    // are waiting. They must not stand, and they must not all orbit alike —
+    // CombatRing.PostFor gives each of them its own radius, direction, pace and
+    // drift, so the shape around the player stays ragged and alive rather than
+    // reading as a circle somebody spawned.
+    //
+    // Called from the movement update BEFORE the approach logic, so a waiter
+    // holds this distance instead of closing to melee and then being told to
+    // wait there. That ordering is the whole point — see the note at the call.
+    private void HoldRingPost(Vector3 currentPos, Vector3 repulsion, CombatRing ring)
+    {
+        if (ring == null || target == null) return;
+
+        if (animator != null) animator.SetBool("isMoving", true);
+
+        Vector3 post = ring.PostFor(this, target.position, Time.time);
+        Vector3 toPost = post - currentPos; toPost.y = 0f;
+
+        // Close fast when far from the post, ease when near it, so a waiter
+        // settles into its orbit instead of jittering on the spot.
+        float urgency = Mathf.Clamp01(toPost.magnitude / 3f);
+        Vector3 desired = toPost.sqrMagnitude > 0.04f ? toPost.normalized : Vector3.zero;
+
+        // ==== BACKING OFF BEATS DRIFTING OFF ====
+        //
+        // A waiter that has been shoved inside the ring — knocked back, or
+        // simply spawned on top of the player — has a post that is roughly
+        // sideways from where it stands, so pure post-seeking walks it in a slow
+        // arc while STILL standing in the player's face for a second or two.
+        // With three of them doing it, the scrum never actually clears.
+        //
+        // So being too close is treated as its own emergency: push directly out
+        // from the player, hard, until back at the ring. It is the difference
+        // between a crowd that gives the player room and one that technically
+        // intends to.
+        Vector3 fromPlayer = currentPos - target.position; fromPlayer.y = 0f;
+        float distNow = fromPlayer.magnitude;
+        if (distNow > 0.05f && distNow < ring.innerRadius)
+        {
+            float crowding = Mathf.InverseLerp(ring.innerRadius, ring.innerRadius * 0.4f, distNow);
+            desired = Vector3.Lerp(desired, fromPlayer / distNow, crowding).normalized;
+            urgency = Mathf.Max(urgency, crowding);
+        }
+
+        // ==== WHY THIS DOES NOT NORMALISE BLINDLY ====
+        //
+        // The steering vector is the post direction plus the crowd's mutual
+        // repulsion, and when two enemies want overlapping ground those two very
+        // nearly cancel. Normalising a near-zero vector amplifies whatever noise
+        // is left, so the direction flipped every frame and the pair stood there
+        // shaking against each other — the vibration in the report.
+        //
+        // So: below a threshold the enemy simply does not move, and above it the
+        // direction is EASED rather than snapped, which also stops a waiter
+        // twitching as its orbit target slides past.
+        Vector3 steer = desired + repulsion * 0.6f;
+        if (steer.sqrMagnitude < 0.09f)
+        {
+            if (animator != null) animator.SetBool("isMoving", false);
+        }
+        else
+        {
+            Vector3 wanted = SteerAroundObstacles(currentPos, steer.normalized);
+            _ringHeading = _ringHeading == Vector3.zero
+                ? wanted
+                : Vector3.Slerp(_ringHeading, wanted, 6f * Time.deltaTime);
+
+            Vector3 nextPos = currentPos + _ringHeading.normalized
+                            * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
+            nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+            SetPositionSafe(nextPos);
+        }
+
+        // A waiter still THREATENS. Every few seconds it lunges a step and
+        // raises its weapon without swinging — enough that the crowd reads as a
+        // pack looking for an opening rather than an audience.
+        if (ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
+            StartCoroutine(FeintRoutine());
+    }
 
     // ==== BEING BLOCKED HURTS ====
     //

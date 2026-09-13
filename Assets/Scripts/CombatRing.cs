@@ -50,8 +50,14 @@ public class CombatRing : MonoBehaviour
     public int baseSlots = 2;
     [Tooltip("Attackers allowed once the crowd is large. One more, so a big fight IS heavier without becoming unanswerable.")]
     public int crowdSlots = 3;
-    [Tooltip("Enemies engaged before the extra slot opens.")]
-    public int crowdThreshold = 6;
+    // CALIBRATED AGAINST WHAT "ENGAGED" NOW MEANS. This was 6, set when enemies
+    // only reported in once they were already at melee range — so it took six
+    // bodies literally touching the player to trip. Enemies now report in from
+    // the whole engagement band, roughly twelve metres, where six is an ordinary
+    // group rather than a mob. Left at 6 the third slot would open in almost
+    // every fight, which is the opposite of what the ring is for.
+    [Tooltip("Enemies engaged (anywhere in the ~12m engagement band, not just at melee range) before the extra slot opens.")]
+    public int crowdThreshold = 9;
 
     [Header("Rotation")]
     [Tooltip("Seconds a holder may keep its slot before it is offered to somebody else. Stops the same two doing all the fighting while the rest look like spectators.")]

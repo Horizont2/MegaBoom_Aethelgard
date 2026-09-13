@@ -325,10 +325,11 @@ public class PlayerBlock : MonoBehaviour
     // which makes the deepest mechanic in the fight invisible.
     //
     // So it announces itself in four ways at once, on four different channels,
-    // because in a crowded fight any single one can be missed: a ring of light
+    // because in a crowded fight any single one can be missed: a flash of light
     // at the point of contact, a word on screen, the world stopping, and the
     // enemy itself flashing. Overkill is correct here. This is the one beat the
-    // player is meant to chase.
+    // player is meant to chase — but see ParryFlashRoutine for why none of these
+    // channels is allowed to sit between the camera and the enemy.
     private void PlayParryFeedback(Vector3 at, Vector3 attackerPos)
     {
         if (AudioManager.Instance != null)
@@ -342,65 +343,51 @@ public class PlayerBlock : MonoBehaviour
         StartCoroutine(ParryTimeRoutine());
 
         Vector3 spark = at != Vector3.zero ? at : transform.position + Vector3.up * 1.2f;
-        StartCoroutine(ParryRingRoutine(spark));
+        StartCoroutine(ParryFlashRoutine(spark));
         ParryBanner.Show(LocalizationManager.Tr("PARRY"), new Color(1f, 0.93f, 0.55f));
     }
 
-    // A hard ring of light that snaps outward from the point of contact.
+    // A flash of light at the point of contact — light only, no geometry.
     //
-    // Built from primitives rather than a VFX prefab for the same reason the
-    // reward reveal generates its own starburst: there is no parry effect in the
-    // project to wire, and an effect that must be assigned per scene is an
-    // effect that is missing in half of them.
-    private IEnumerator ParryRingRoutine(Vector3 at)
+    // This started as an expanding emissive sphere. It read clearly and it was
+    // also a three-metre white ball detonating in the middle of the screen at
+    // exactly the moment the player needs to see the staggered enemy in order to
+    // punish it. The effect was hiding the opening it was announcing, which is
+    // the worst thing a piece of feedback can do.
+    //
+    // A point light says the same thing without occluding anything: the player,
+    // the attacker and the ground between them all flare for a fifth of a
+    // second. The legibility the sphere was carrying now lives in the on-screen
+    // word, the hitstop and the gold pulse on the parried enemy — three channels,
+    // none of which sit between the camera and the fight.
+    private IEnumerator ParryFlashRoutine(Vector3 at)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        Destroy(go.GetComponent<Collider>());
-        go.transform.position = at;
-        go.name = "ParryFlash";
-
-        var r = go.GetComponent<Renderer>();
-        var mat = new Material(r.sharedMaterial);
         Color glow = new Color(1f, 0.95f, 0.65f);
-        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", glow);
-        if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", glow * 6f); }
-        r.material = mat;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        // A brief point light with it, so the parry lights the player and the
-        // attacker for an instant — the cheapest way to make a flash feel like
-        // it happened IN the world rather than on top of it.
         var lightGo = new GameObject("ParryLight");
         lightGo.transform.position = at;
         var lg = lightGo.AddComponent<Light>();
         lg.type = LightType.Point;
         lg.color = glow;
-        lg.range = 7f;
+        lg.range = 9f;
         lg.shadows = LightShadows.None;
 
         // UNSCALED, because the hitstop this plays over sets timeScale to 0.05.
         // On scaled time the flash would crawl through the freeze and land after
         // the moment it is describing.
         float t = 0f;
-        const float dur = 0.32f;
+        const float dur = 0.22f;
         while (t < dur)
         {
             t += Time.unscaledDeltaTime;
             float k = t / dur;
-            // Snaps out fast, then eases — a ring that expands linearly reads as
-            // a bubble; one that decelerates reads as an impact.
-            float s = Mathf.Lerp(0.3f, 3.2f, 1f - Mathf.Pow(1f - k, 3f));
-            go.transform.localScale = Vector3.one * s;
-
-            float fade = 1f - k;
-            if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", glow * 6f * fade);
-            lg.intensity = 5f * fade;
+            // Hard in, eased out: a light that ramps up reads as a lamp, one
+            // that is already at full brightness on frame one reads as a strike.
+            lg.intensity = 7f * (1f - k) * (1f - k);
             yield return null;
         }
 
         Destroy(lightGo);
-        Destroy(mat);
-        Destroy(go);
     }
 
     // A hitstop and a dip, on UNSCALED time. A parry frequently happens while

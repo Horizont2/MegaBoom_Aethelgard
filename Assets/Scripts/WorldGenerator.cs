@@ -1869,6 +1869,60 @@ public class WorldGenerator : MonoBehaviour
         }
         rawH = null;
 
+        // ==== NO GRASS INSIDE A LOCATION ====
+        //
+        // Roads were already excluded below via roadBlendMap; locations were
+        // not, and the result was a hand-built POI standing in waist-high grass
+        // that grew through its own floor.
+        //
+        // STAMPED, NOT TESTED. Testing every detail cell against every location
+        // is a quarter of a million cells times a dozen discs on the load path
+        // this phase was only just optimised out of. Each disc instead paints
+        // its own bounding box, which touches a few thousand cells in total.
+        //
+        // And it fades rather than cutting: bare across the inner three
+        // quarters, thinning to full grass at the rim. A hard-edged bald circle
+        // in a meadow reads as a bug; a fade reads as ground that gets walked
+        // on.
+        float[,] locationKeep = null;
+        if (locationExclusions.Count > 0)
+        {
+            locationKeep = new float[dRes, dRes];
+            for (int y = 0; y < dRes; y++)
+                for (int x = 0; x < dRes; x++) locationKeep[y, x] = 1f;
+
+            Vector3 tPos = terrain.transform.position;
+            float cellsPerMetreX = dRes / Mathf.Max(0.01f, td.size.x);
+            float cellsPerMetreZ = dRes / Mathf.Max(0.01f, td.size.z);
+
+            for (int li = 0; li < locationExclusions.Count; li++)
+            {
+                Vector4 e = locationExclusions[li];
+                float cx = (e.x - tPos.x) * cellsPerMetreX;
+                float cz = (e.z - tPos.z) * cellsPerMetreZ;
+                float rx = Mathf.Max(0.001f, e.w * cellsPerMetreX);
+                float rz = Mathf.Max(0.001f, e.w * cellsPerMetreZ);
+
+                int x0 = Mathf.Max(0, Mathf.FloorToInt(cx - rx));
+                int x1 = Mathf.Min(dRes - 1, Mathf.CeilToInt(cx + rx));
+                int z0 = Mathf.Max(0, Mathf.FloorToInt(cz - rz));
+                int z1 = Mathf.Min(dRes - 1, Mathf.CeilToInt(cz + rz));
+
+                for (int zz = z0; zz <= z1; zz++)
+                {
+                    for (int xx = x0; xx <= x1; xx++)
+                    {
+                        float dx = (xx - cx) / rx;
+                        float dz = (zz - cz) / rz;
+                        float d = Mathf.Sqrt(dx * dx + dz * dz);
+                        if (d >= 1f) continue;
+                        float keep = Mathf.InverseLerp(0.75f, 1f, d);
+                        if (keep < locationKeep[zz, xx]) locationKeep[zz, xx] = keep;
+                    }
+                }
+            }
+        }
+
         for (int y = 0; y < dRes; y++)
         {
             CurrentProgress = startProgress + (endProgress - startProgress) * ((float)y / dRes);
@@ -1888,6 +1942,10 @@ public class WorldGenerator : MonoBehaviour
                 int ay = Mathf.Clamp(Mathf.RoundToInt(normZ * td.alphamapHeight), 0, td.alphamapHeight - 1);
                 if (roadBlendMap != null && roadBlendMap[ay, ax] > 0.1f) continue;
                 // -------------------------------------------------
+
+                // Same rule for the hand-built locations. See the stamp above.
+                float locKeep = locationKeep != null ? locationKeep[y, x] : 1f;
+                if (locKeep <= 0f) continue;
 
                 float temp = GetTemperature(normX, normZ);
                 bool isSnowBiome = false;
@@ -1927,7 +1985,7 @@ public class WorldGenerator : MonoBehaviour
                         if (layerMeadowNoise > 0.3f) density = 255;
                     }
 
-                    detailMaps[layer][y, x] = density;
+                    detailMaps[layer][y, x] = locKeep >= 1f ? density : Mathf.RoundToInt(density * locKeep);
                 }
             }
             if (Time.realtimeSinceStartup - startTime > MAX_FRAME_TIME) { yield return null; startTime = Time.realtimeSinceStartup; }
@@ -3785,6 +3843,19 @@ public class WorldGenerator : MonoBehaviour
             roadTargets.Add(new Vector3(poi.worldPosition.x, poi.worldPosition.y, poi.worldPosition.z));
             FlattenTerrainRobust(poi.worldPosition, poi.settings.flattenRadius, 15f, poi.worldPosition.y);
             forbiddenZones.Add(poi.worldPosition);
+            // THE LOCATION OWNS ITS GROUND.
+            //
+            // forbiddenZones on its own is a single 18m point sample, which is
+            // narrower than most locations and — more importantly — is only ever
+            // consulted by the scatter pass. The grass pass never saw it, so a
+            // chest site dropped into a meadow ended up knee-deep in grass
+            // growing straight out of its floor.
+            //
+            // Registering the flattened disc here puts locations on the same
+            // footing as the region totem: one footprint, honoured by both the
+            // scatter and the detail layers.
+            locationExclusions.Add(new Vector4(poi.worldPosition.x, poi.worldPosition.y, poi.worldPosition.z,
+                                               poi.settings.flattenRadius));
         }
 
         // ЖОРСТКИЙ СИНХРОН ФІЗИКИ: 
