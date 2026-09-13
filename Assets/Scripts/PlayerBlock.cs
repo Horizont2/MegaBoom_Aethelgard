@@ -174,7 +174,7 @@ public class PlayerBlock : MonoBehaviour
         if (_pc == null) return;
 
         bool wants = Input.GetKey(blockKey)
-                     && !_pc.isDead
+                     && !_pc.IsDead
                      && !_pc.isControlBlocked
                      && Time.time >= _lockedUntil
                      && _pc.HasStamina(1f);
