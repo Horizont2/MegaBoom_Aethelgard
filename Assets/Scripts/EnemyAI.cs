@@ -354,6 +354,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void OnDisable()
     {
+        // Give the attack slot back. A dead or pooled enemy still holding one
+        // means the crowd is quietly allowed fewer attackers than it should be,
+        // and after a few fights nobody can swing at all.
+        if (CombatRing.Instance != null) CombatRing.Instance.ReportDisengaged(this);
+
         ActiveEnemiesCount--;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged -= OnActiveSceneChanged;
         // Kill any live combat vocal when the enemy is pooled / despawned
@@ -827,6 +832,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             bool isAttackReady = Time.time >= lastAttackTime + attackCooldown;
 
+            // ==== ASK BEFORE SWINGING ====
+            //
+            // Two enemies press at a time; the rest circle. See CombatRing for
+            // why — eight independent attackers produce a wall of damage with no
+            // gaps, which is not difficulty, it is arithmetic, and it makes both
+            // blocking and counter-attacking impossible before they are written.
+            var ring = CombatRing.Instance;
+            if (ring != null) ring.ReportEngaged(this);
+            bool hasSlot = ring == null || ring.IsAttacking(this);
+
             // Commit only once genuinely in range.
             //
             // This used to fire at 1.15x, on the theory that the wind-up lunge
@@ -835,11 +850,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // through the whole telegraph, so backing off did nothing and hits
             // seemed to land from outside the range the player could see. Wind up
             // on arrival, not on approach.
-            if (isAttackReady && distanceToPlayer <= attackRange)
+            if (isAttackReady && distanceToPlayer <= attackRange
+                && (hasSlot || ring.RequestAttack(this)))
             {
                 StartCoroutine(AttackRoutine());
             }
-            else if (isAttackReady && distanceToPlayer > attackRange)
+            else if (isAttackReady && distanceToPlayer > attackRange && (hasSlot || ring.RequestAttack(this)))
             {
                 if (animator != null) animator.SetBool("isMoving", true);
 
@@ -848,6 +864,37 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                 SetPositionSafe(nextPos);
+            }
+            else if (ring != null && !hasSlot)
+            {
+                // NO SLOT: CIRCLE, DO NOT QUEUE.
+                //
+                // The whole risk of a token system is that the ones waiting look
+                // like they are waiting. They must not stand, and they must not
+                // all orbit alike — CombatRing.PostFor gives each of them its own
+                // radius, direction, pace and drift, so the shape around the
+                // player stays ragged and alive rather than reading as a circle
+                // somebody spawned.
+                if (animator != null) animator.SetBool("isMoving", true);
+
+                Vector3 post = ring.PostFor(this, target.position, Time.time);
+                Vector3 toPost = post - currentPos; toPost.y = 0f;
+
+                // Close fast when far from the post, ease when near it, so a
+                // waiter settles into its orbit instead of jittering on the spot.
+                float urgency = Mathf.Clamp01(toPost.magnitude / 3f);
+                Vector3 desired = toPost.sqrMagnitude > 0.04f ? toPost.normalized : Vector3.zero;
+
+                Vector3 moveDir = SteerAroundObstacles(currentPos, (desired + repulsion * 0.6f).normalized);
+                Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
+                nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+                SetPositionSafe(nextPos);
+
+                // A waiter still THREATENS. Every few seconds it lunges a step
+                // and raises its weapon without swinging — enough that the crowd
+                // reads as a pack looking for an opening rather than an audience.
+                if (ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
+                    StartCoroutine(FeintRoutine());
             }
             else
             {
@@ -1322,6 +1369,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // the archer holds the bow nocked between shots instead of dropping it.
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
+
+        // HAND THE SLOT BACK, AND STEP OFF.
+        //
+        // Holding it until the cooldown expires would mean the same two enemies
+        // monopolise the fight while everyone else circles — the version of this
+        // system that looks staged. Releasing here lets somebody from the ring
+        // lunge in next, so the crowd keeps rotating who presses.
+        //
+        // The brief retreat is what gives the player their turn. An enemy that
+        // finishes a swing and stands in your face leaves no moment to lower a
+        // guard and answer; one that gives ground for a beat creates the opening
+        // the whole block-and-counter loop is built around.
+        if (CombatRing.Instance != null) CombatRing.Instance.Release(this);
+        if (!isDead) StartCoroutine(BackOffRoutine(0.55f));
     }
 
     // Sets an Animator bool only if the controller actually has that parameter,
@@ -1484,6 +1545,69 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // a random slice off its FIRST cooldown at spawn (see Start), so they arrive
     // at their first swing at different moments and stay out of phase from then
     // on, with nothing to go wrong mid-fight.
+
+    // A threat with no swing behind it.
+    //
+    // This is the single cheapest thing that stops a waiting crowd looking like
+    // a queue: a step in, the weapon up, a growl, and back out. It costs the
+    // player nothing and reads as an enemy hunting for an opening, which is what
+    // the ones without a slot are supposed to be doing.
+    private IEnumerator FeintRoutine()
+    {
+        if (isDead || target == null) yield break;
+        _feinting = true;
+
+        if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
+        PlayVocal(AudioID.Enemy_Telegraph);
+
+        // A short step toward the player and back. Short on purpose — a feint
+        // that closes real distance is just an attack that forgot to hit.
+        float t0 = 0f;
+        while (t0 < 0.28f && !isDead && target != null && stunTimer <= 0f)
+        {
+            t0 += Time.deltaTime;
+            Vector3 to = target.position - transform.position; to.y = 0f;
+            if (to.sqrMagnitude > 0.01f)
+            {
+                Vector3 step = to.normalized * (moveSpeed * 0.5f * Time.deltaTime);
+                Vector3 next = transform.position + step;
+                next.y = SampleTerrainHeight(next) + verticalOffset;
+                SetPositionSafe(next);
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                    Quaternion.LookRotation(to.normalized), 12f * Time.deltaTime);
+            }
+            yield return null;
+        }
+
+        // The swing is cancelled before it could ever land damage, so the
+        // animator is put back rather than left mid-attack.
+        if (animator != null) animator.ResetTrigger("Attack");
+        _feinting = false;
+    }
+
+    private bool _feinting;
+
+    // Gives ground after a swing, so the player has somewhere to answer into.
+    private IEnumerator BackOffRoutine(float seconds)
+    {
+        float t0 = 0f;
+        while (t0 < seconds && !isDead && target != null && stunTimer <= 0f && !isPreparingAttack)
+        {
+            t0 += Time.deltaTime;
+            Vector3 away = transform.position - target.position; away.y = 0f;
+            if (away.sqrMagnitude > 0.01f)
+            {
+                Vector3 next = transform.position + away.normalized * (moveSpeed * 0.55f * Time.deltaTime);
+                next.y = SampleTerrainHeight(next) + verticalOffset;
+                SetPositionSafe(next);
+                // Still facing the player while backing off. An enemy that turns
+                // its back to reposition reads as fleeing, not as circling.
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                    Quaternion.LookRotation(-away.normalized), 10f * Time.deltaTime);
+            }
+            yield return null;
+        }
+    }
 
     private IEnumerator AttackRoutine()
     {

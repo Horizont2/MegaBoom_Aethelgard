@@ -135,12 +135,98 @@ public class PlayerController : MonoBehaviour, IDamageable
     private float lastHpCatchupFill = -1f;
     private float lastXpFill = -1f;
     private float lastDashStaminaFill = -1f;
+    // The authored colour, captured once so the low-stamina tinting can put it
+    // back rather than guessing what the designer chose.
+    private Color staminaBarBase = new Color(0.35f, 0.8f, 0.95f);
+    private bool staminaBarBaseCaptured;
 
     [Header("Dash Juice")]
     public ParticleSystem dashParticles;
     public float dashSpeed = 25f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1.5f;
+
+    // ==== STAMINA IS A POOL NOW, NOT A COOLDOWN ====
+    //
+    // The bar labelled STAMINA was never a resource: it drew
+    // (now - lastDashTime) / dashCooldown, a timer wearing a resource's
+    // clothes. It could not be spent on anything but dashing, could not run
+    // out, and told the player nothing they could act on beyond "wait".
+    //
+    // A real pool is the precondition for blocking, but it is worth having on
+    // its own, because it is what makes dash and guard COMPETE. Spending on a
+    // dodge means not having it for the next swing, which is a decision; two
+    // independent cooldowns are two reminders to wait.
+    //
+    // The dash cooldown stays alongside it as a rate limit — a pool alone lets
+    // a player chain four dashes in half a second, which reads as a glitch
+    // rather than as skill.
+    [Header("Stamina")]
+    public float maxStamina = 100f;
+    [Tooltip("Points per second once regeneration starts.")]
+    public float staminaRegen = 22f;
+    [Tooltip("Seconds after the last spend before regeneration resumes. Without a pause, chip spending is free and the pool stops meaning anything.")]
+    public float staminaRegenDelay = 0.8f;
+    public float dashStaminaCost = 25f;
+    [Tooltip("Bonus pool from equipment — heavy shields carry their own reserve. Set by the loadout, not by hand.")]
+    [HideInInspector] public float bonusStamina = 0f;
+
+    private float stamina = -1f;
+    private float lastStaminaSpend = -100f;
+    private bool staminaLocked;          // true while a broken guard recovers
+    private float staminaLockUntil;
+
+    public float MaxStaminaTotal => maxStamina + bonusStamina;
+    public float Stamina => stamina < 0f ? MaxStaminaTotal : stamina;
+    public float Stamina01 => Mathf.Clamp01(Stamina / Mathf.Max(1f, MaxStaminaTotal));
+    public bool HasStamina(float amount) => !staminaLocked && Stamina >= amount;
+
+    // Returns false and spends NOTHING when the pool is short. Partial spends
+    // are how a player ends up paying for a dash they did not get.
+    public bool TrySpendStamina(float amount)
+    {
+        if (staminaLocked) return false;
+        if (stamina < 0f) stamina = MaxStaminaTotal;
+        if (stamina < amount) return false;
+        stamina -= amount;
+        lastStaminaSpend = Time.time;
+        return true;
+    }
+
+    // Drains without refusing — used by continuous costs like holding a guard,
+    // where running dry is a STATE the caller wants to react to rather than an
+    // action to deny. Reports whether the pool emptied on this call.
+    public bool DrainStamina(float amount)
+    {
+        if (stamina < 0f) stamina = MaxStaminaTotal;
+        stamina = Mathf.Max(0f, stamina - amount);
+        lastStaminaSpend = Time.time;
+        return stamina <= 0.001f;
+    }
+
+    public void RefundStamina(float amount)
+    {
+        if (stamina < 0f) stamina = MaxStaminaTotal;
+        stamina = Mathf.Min(MaxStaminaTotal, stamina + amount);
+    }
+
+    // A broken guard cannot be re-raised instantly, or guard-breaking achieves
+    // nothing: the player would simply block again on the next frame.
+    public void LockStamina(float seconds)
+    {
+        staminaLocked = true;
+        staminaLockUntil = Time.time + seconds;
+        lastStaminaSpend = Time.time;
+    }
+
+    private void TickStamina()
+    {
+        if (stamina < 0f) stamina = MaxStaminaTotal;
+        if (staminaLocked && Time.time >= staminaLockUntil) staminaLocked = false;
+        if (staminaLocked) return;
+        if (Time.time - lastStaminaSpend < staminaRegenDelay) return;
+        stamina = Mathf.Min(MaxStaminaTotal, stamina + staminaRegen * Time.deltaTime);
+    }
     private bool isDashing = false;
     private float lastDashTime = -100f;
 
@@ -608,7 +694,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (isHP && n.Contains("fill") && !n.Contains("catchup")) hpFill = img;
             else if (isHP && n.Contains("catchup")) hpCatchupFill = img;
             else if (isXP && n.Contains("fill")) xpFill = img;
-            else if (isStamina && n.Contains("fill")) dashStaminaFill = img;
+            else if (isStamina && n.Contains("fill"))
+            {
+                dashStaminaFill = img;
+                // Remember what the designer picked BEFORE the low-stamina
+                // tinting ever touches it, or the "back to normal" colour is
+                // whatever the bar happened to be showing when it was found.
+                if (!staminaBarBaseCaptured) { staminaBarBase = img.color; staminaBarBaseCaptured = true; }
+            }
         }
 
         TextMeshProUGUI[] texts = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -892,14 +985,30 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         SaveCampHeartbeat();
 
+        TickStamina();
+
         if (dashStaminaFill != null)
         {
-            float dashTarget = Mathf.Lerp(dashStaminaFill.fillAmount, Mathf.Clamp01((Time.unscaledTime - lastDashTime) / dashCooldown), Time.unscaledDeltaTime * 15f);
+            // The pool itself, not a cooldown. Lerped so a spend reads as the
+            // bar draining rather than snapping, which is the difference
+            // between a resource and a light switch.
+            float dashTarget = Mathf.Lerp(dashStaminaFill.fillAmount, Stamina01, Time.unscaledDeltaTime * 15f);
             if (Mathf.Abs(dashTarget - lastDashStaminaFill) > 0.001f)
             {
                 dashStaminaFill.fillAmount = dashTarget;
                 lastDashStaminaFill = dashTarget;
             }
+
+            // Colour is the warning. A player watching a crowd has no attention
+            // spare for reading a bar's length, but they will catch it going red
+            // in their peripheral vision — and running dry mid-guard is the
+            // worst moment in the fight to be surprised by.
+            Color bar = staminaLocked ? new Color(0.55f, 0.18f, 0.18f)
+                      : Stamina01 < 0.15f ? Color.Lerp(new Color(0.9f, 0.2f, 0.2f), Color.white,
+                                                       Mathf.PingPong(Time.unscaledTime * 4f, 1f) * 0.4f)
+                      : Stamina01 < 0.35f ? new Color(0.95f, 0.65f, 0.2f)
+                      : staminaBarBase;
+            dashStaminaFill.color = bar;
         }
 
         float targetHpFill = currentHealth / maxHealth;
@@ -988,7 +1097,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             inputDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical")).normalized;
 
-            if (Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown)
+            if (Input.GetKeyDown(KeyCode.LeftShift) && Time.unscaledTime >= lastDashTime + dashCooldown
+                && TrySpendStamina(dashStaminaCost))
             {
                 if (!isAimingGrenade)
                 {
