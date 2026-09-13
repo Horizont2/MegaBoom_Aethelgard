@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba1d0e895a576047b59f0e41baf8fff, type: 3}
+  m_Name: shield_round_barbarian
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponID: 903
+  weaponName: Ironhide Slab
+  category: 6
+  icon: {fileID: 0}
+  description: A wall with a strap. Nearly impossible to parry with, nearly impossible
+    to flank.
+  price: 1150
+  shopPrefab: {fileID: 919132149155446097, guid: 7062ab7d3202f7e4bbba84ae26944c02, type: 3}
+  inGamePrefab: {fileID: 919132149155446097, guid: 7062ab7d3202f7e4bbba84ae26944c02, type: 3}
+  shopRotationEuler: {x: 0, y: 0, z: 0}
+  basePower: 20
+  powerPerLevel: 4
+  maxUpgradeLevel: 5
+  baseUpgradeCost: 100
+  upgradeCostMultiplier: 1.5
+  damageBonus: 0
+  attackSpeed: 0
+  critChance: 0
+  parryWindowBonus: -0.06
+  staminaMultiplier: 1.4
+  guardAngleBonus: 25
+  reflectFraction: 0
+  bonusStamina: 40
+  staminaMultiplierPerLevel: -0.04
+  bonusStaminaPerLevel: 4
+  reflectPerLevel: 0
+  damagePerLevel: 10
+  attackSpeedPerLevel: 0.02
+  critChancePerLevel: 0.02

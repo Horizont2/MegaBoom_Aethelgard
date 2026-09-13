@@ -10221,6 +10221,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ae3bbfe430a8a9649a2c297f434be02e, type: 2}
   - {fileID: 11400000, guid: 98a40646d0a650d4f9a23a972db1b204, type: 2}
   - {fileID: 11400000, guid: 4033146a3afa8a645a3e192a5137ec15, type: 2}
+  - {fileID: 11400000, guid: 333f359e563cfa84cacf088058101c8e, type: 2}
+  - {fileID: 11400000, guid: 0019a4d062144d24da0d2b5909bf61a7, type: 2}
+  - {fileID: 11400000, guid: 2b8ac57925a0d9f4288f3e62c630534c, type: 2}
+  - {fileID: 11400000, guid: 90f69a3add2883a468d2e35613dafa9c, type: 2}
   armors:
   - {fileID: 11400000, guid: eaf98c11599f7a94c9f8e859b4fad25d, type: 2}
   - {fileID: 11400000, guid: dfdfcc05365147a4ca234a90a2a86a10, type: 2}
@@ -10346,6 +10350,7 @@ MonoBehaviour:
   btnCategorySwords: {fileID: 1769190266}
   btnCategoryAxes: {fileID: 1753708739}
   btnCategoryBows: {fileID: 1673991599}
+  btnCategoryShields: {fileID: 0}
   btnCategoryHelmets: {fileID: 1000095740}
   btnCategoryArmor: {fileID: 81792064}
   btnCategoryGloves: {fileID: 224284805}
@@ -14116,6 +14121,94 @@ MonoBehaviour:
         Data3: 1964989079
         Data4: -245983134
       Path: event:/ENemy/Boss/Cinematic Whoosh
+  trailerDread:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneStress:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneCrack:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerStoneBurst:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerRubble:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWarHorn:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerMarchLoop:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBoneRattle:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBossStep:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerCrows:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWindDesolate:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   encounterCleared:
     fmodEvent:
       Guid:
@@ -14148,6 +14241,14 @@ MonoBehaviour:
         Data3: 1137872263
         Data4: -40351538
       Path: event:/AMB/AMB_Wind
+  ambientCampFire:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   ambientHowl:
     fmodEvent:
       Guid:
@@ -14332,6 +14433,118 @@ MonoBehaviour:
         Data3: -1399672903
         Data4: -207979194
       Path: event:/Raid/Purify_Complete
+  horseGallop:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseBreath:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  horseSnort:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerMusic:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerRiser:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerThunderClose:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerImpact:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWhoosh:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBodyFall:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerSwordDraw:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerBoneRise:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerHordeGrowl:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerWindHigh:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
+  trailerCastleReveal:
+    fmodEvent:
+      Guid:
+        Data1: 0
+        Data2: 0
+        Data3: 0
+        Data4: 0
+      Path: 
   musicCamp:
     fmodEvent:
       Guid:

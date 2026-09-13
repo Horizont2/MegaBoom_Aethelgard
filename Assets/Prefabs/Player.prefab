@@ -12109,12 +12109,17 @@ MonoBehaviour:
   isCampMode: 1
   isControlBlocked: 0
   isCinematicInvincible: 0
+  attackMoveSpeedMult: 0.45
+  attackCommitTime: 0.45
+  hitFlinchDuration: 0.08
+  hitFlinchCooldown: 0.7
   weaponPrefabs:
   - {fileID: 919132149155446097, guid: 1b7c5ebd1e164cc4cb2698c1f9995749, type: 3}
   - {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
   - {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
   - {fileID: 5548968681433392241, guid: d9ebcf06070c13044a82cab96c409270, type: 3}
   - {fileID: 7705683734966450536, guid: 4f6e37ac6643cd14e84eb94f9516c131, type: 3}
+  weaponHandRotations: []
   noclipSpeed: 30
   moveSpeed: 6
   rotationSpeed: 15
@@ -12163,6 +12168,11 @@ MonoBehaviour:
   dashSpeed: 20
   dashDuration: 0.35
   dashCooldown: 2.3
+  maxStamina: 100
+  staminaRegen: 22
+  staminaRegenDelay: 0.8
+  dashStaminaCost: 25
+  bonusStamina: 0
   globalDamageMultiplier: 1
   globalCritChance: 0.05
   damageReduction: 0
@@ -12187,6 +12197,8 @@ MonoBehaviour:
   healVFX: {fileID: 9017484664307500583, guid: 1245b8d2997d5b34fb1637be70a7eb05, type: 3}
   hitVFX: {fileID: 5435998012328932994, guid: d8703a33a4eb0b84a875202fde23e8f7, type: 3}
   isNextAttackGuaranteedCrit: 0
+  isSwimming: 0
+  swimVerticalVelocity: 0
 --- !u!54 &655461266166395312
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -30812,6 +30824,37 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.000000074505806, y: 0.88412756, z: 0.17106196}
     m_Extent: {x: 0.07575524, y: 0.011585534, z: 0.018551216}
   m_DirtyAABB: 0
+--- !u!1 &8087436968505309921
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4368280034396954963}
+  m_Layer: 0
+  m_Name: ShieldSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4368280034396954963
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8087436968505309921}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.000000023283055, y: 0.1676753, z: -0.98023695, w: 0.104978964}
+  m_LocalPosition: {x: -0.022, y: 0.101, z: 0.036}
+  m_LocalScale: {x: 0.5000001, y: 0.5000003, z: 0.5000003}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3258232638385485549}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8174549532031881338
 GameObject:
   m_ObjectHideFlags: 0
@@ -33326,6 +33369,7 @@ Transform:
   - {fileID: 4795630587479363181}
   - {fileID: 2034154468105124249}
   - {fileID: 4450580384342692012}
+  - {fileID: 4368280034396954963}
   m_Father: {fileID: 4975797141849580067}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8777463714344897557
