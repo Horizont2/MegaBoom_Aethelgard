@@ -2549,6 +2549,7 @@ public static class LocalizationManager
         Add5("STEP_HELMET_BUY_BODY",        "Каждый уровень стоит алмазы и навсегда поднимает броню.","Cada nivel cuesta diamantes y sube la armadura para siempre.","Jede Stufe kostet Diamanten und erhöht die Rüstung dauerhaft.","Chaque niveau coûte des diamants et augmente l'armure définitivement.","Każdy poziom kosztuje diamenty i trwale zwiększa pancerz.");
         Add5("STEP_HELMET_DONE_TITLE",      "Готово",                  "Listo",                     "Fertig",                     "Terminé",                      "Gotowe");
         Add5("STEP_HELMET_DONE_BODY",       "Эта броня теперь твоя в каждом забеге. Возвращайся в лагерь.","Esa armadura es tuya en cada partida. Vuelve al campamento.","Diese Rüstung gehört dir in jedem Lauf. Kehr ins Lager zurück.","Cette armure est à toi à chaque partie. Rentre au camp.","Ten pancerz jest twój w każdym biegu. Wracaj do obozu.");
+        Add5("PARRY",                       "ПАРИРОВАНИЕ!",            "¡PARADA!",                  "PARIERT!",                   "PARADE !",                     "PARADA!");
         Add5("PRESS_ANY_KEY",               "Нажми любую клавишу, чтобы продолжить","Pulsa cualquier tecla para continuar","Beliebige Taste zum Fortfahren","Appuie sur une touche pour continuer","Naciśnij dowolny klawisz, by kontynuować");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
@@ -4000,6 +4001,9 @@ public static class LocalizationManager
 
         // === Region victory screen ===
         Add("PRESS_ANY_KEY", "Press any key to continue", "Натисни будь-яку клавішу, щоб продовжити");
+
+        // === Combat ===
+        Add("PARRY", "PARRY!", "ПАРИРУВАННЯ!");
 
         // === The guided first upgrade ===
         Add("ELIAS_HELMET_GIVE",

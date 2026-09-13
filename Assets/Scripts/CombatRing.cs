@@ -71,6 +71,47 @@ public class CombatRing : MonoBehaviour
     private readonly List<EnemyAI> _engaged = new List<EnemyAI>(16);
     private float _prune;
 
+    // ==== THE OPENING A BLOCK BUYS ====
+    //
+    // Staggering the enemy that was blocked is not enough on its own: the other
+    // two in the rotation simply swing while it reels, so the player is punished
+    // for defending well and the counter-attack the whole system promises never
+    // arrives. A successful block makes the WHOLE ring hesitate for a moment.
+    //
+    // It reads as the crowd flinching when the shield rings, which is both fair
+    // and legible — and it is the only place in the fight where the player is
+    // given a turn rather than having to steal one.
+    private float _hesitateUntil = -1f;
+
+    public void Hesitate(float seconds)
+    {
+        _hesitateUntil = Mathf.Max(_hesitateUntil, Time.time + seconds);
+    }
+
+    public bool Hesitating => Time.time < _hesitateUntil;
+
+    // ==== NO TWO SWINGS AT ONCE ====
+    //
+    // Slots alone did not deliver what they promised. A holder released its
+    // token the instant its swing ended, so with three enemies and two slots
+    // the rotation was A and B swing, A finishes, C starts immediately — all
+    // three landing inside about two seconds, which from the player's seat is
+    // indistinguishable from all three attacking at once.
+    //
+    // The token says WHO may attack. This says WHEN, and it is the rule that
+    // actually paces the fight: whoever holds a slot, no two attacks may BEGIN
+    // within this gap of each other. It turns a burst into a rhythm the player
+    // can hear coming.
+    [Tooltip("Minimum seconds between any two attacks starting anywhere in the crowd. The single most effective pacing control here — raise it if fights still feel like a wall.")]
+    public float globalAttackGap = 0.85f;
+
+    private float _lastSwingAt = -99f;
+
+    public bool SwingWindowOpen => Time.time - _lastSwingAt >= globalAttackGap;
+
+    // Called by an enemy the instant it commits, so the next one has to wait.
+    public void NoteSwingStarted() => _lastSwingAt = Time.time;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
@@ -109,6 +150,13 @@ public class CombatRing : MonoBehaviour
     public bool RequestAttack(EnemyAI who)
     {
         if (who == null || who.IsDead) return false;
+        // Even a boss waits out the flinch. A boss that swings through a parry
+        // teaches the player that parrying a boss is pointless, which is the one
+        // fight where it matters most.
+        if (Hesitating) return false;
+        // A boss skips the token queue but NOT the rhythm — otherwise a boss
+        // with adds produces exactly the overlapping wall this exists to stop.
+        if (!SwingWindowOpen) return false;
         if (who.isBoss) return true;
 
         if (_holders.Contains(who)) return true;

@@ -1285,7 +1285,18 @@ public class PlayerController : MonoBehaviour, IDamageable
                     // No swinging a weapon while treading water.
                     if (Input.GetMouseButtonDown(0) && !isSwimming)
                     {
-                        if (!isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
+                        // NOT WHILE THE GUARD IS UP.
+                        //
+                        // The swing was never blocked before, and the Block
+                        // override layer simply hid it: the player attacked from
+                        // behind their shield, dealing damage while immune, and
+                        // the moment they lowered the guard the animation became
+                        // visible and read as an instant free attack. Both halves
+                        // of that are wrong. Guarding and swinging are opposite
+                        // choices, and the whole block-and-counter loop only
+                        // exists because you have to drop one to do the other.
+                        bool guardUp = PlayerBlock.Instance != null && PlayerBlock.Instance.IsBlocking;
+                        if (!guardUp && !isAimingGrenade && Time.unscaledTime >= lastAttackTime + attackCooldown)
                         {
                             lastAttackTime = Time.unscaledTime;
 
