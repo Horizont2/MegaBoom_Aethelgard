@@ -310,15 +310,31 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     // Optional: if the animator declares an "InWater" bool, drive it too, so a
     // dedicated swim state can be authored later without another code change.
+    // ==== Animator.parameters ALLOCATES, EVERY CALL ====
+    //
+    // It is a native getter that builds a fresh AnimatorControllerParameter[]
+    // and one managed object per element. This helper walked it, and Update
+    // called the helper unconditionally every frame — so the player alone fed a
+    // few hundred bytes into gen-0 every single frame of gameplay, forever. That
+    // is not a spike, it is a steady drip, and a steady drip into gen-0 is what
+    // players feel as periodic stutter.
+    //
+    // Resolved once and remembered. Same pattern PlayerBlock already uses.
+    private readonly System.Collections.Generic.Dictionary<string, bool> _boolParamCache
+        = new System.Collections.Generic.Dictionary<string, bool>(8);
+
     private void SetAnimBoolIfPresent(string param, bool value)
     {
         if (anim == null) return;
-        foreach (var p in anim.parameters)
-            if (p.type == AnimatorControllerParameterType.Bool && p.name == param)
-            {
-                anim.SetBool(param, value);
-                return;
-            }
+
+        if (!_boolParamCache.TryGetValue(param, out bool present))
+        {
+            present = false;
+            foreach (var p in anim.parameters)
+                if (p.type == AnimatorControllerParameterType.Bool && p.name == param) { present = true; break; }
+            _boolParamCache[param] = present;
+        }
+        if (present) anim.SetBool(param, value);
     }
     private bool isBulletTime = false;
 
@@ -1485,7 +1501,11 @@ public class PlayerController : MonoBehaviour, IDamageable
         // so the predicted landing stays grounded. The old code carried the
         // enemy's elevated Y into the target, which is half the reason the
         // marker drifted away from the real explosion.
-        int magnetCount = Physics.OverlapSphereNonAlloc(hitPoint, aimAssistRadius, s_overlapBuffer);
+        // Enemy layer only. Unmasked, this swept every tree, rock and bush in a
+        // 3.5m ball and then threw them all away on a tag check — and in dense
+        // woods it could OVERFLOW the 64-slot buffer, silently truncating the
+        // list so the aim assist missed enemies that were actually there.
+        int magnetCount = Physics.OverlapSphereNonAlloc(hitPoint, aimAssistRadius, s_overlapBuffer, 1 << 9);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
         for (int mi = 0; mi < magnetCount; mi++)
@@ -1538,7 +1558,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         Vector3 markerPosition;
         int simulatedCount = SimulateTrajectoryToLanding(currentGrenadeTarget, out markerPosition);
 
-        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, resolvedBlastRadius, s_overlapBuffer);
+        // Same, and worse at 6m: an unmasked sweep in a forest overflowed the
+        // buffer and made the blast preview lie about who it would hit.
+        int blastCount = Physics.OverlapSphereNonAlloc(markerPosition, resolvedBlastRadius, s_overlapBuffer, 1 << 9);
         bool enemyInBlast = false;
         for (int bi = 0; bi < blastCount; bi++)
         {

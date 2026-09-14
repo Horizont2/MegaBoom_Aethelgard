@@ -1551,15 +1551,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
         return false;
     }
 
+    // Animator.parameters allocates a fresh array on every call. This runs once
+    // per ranged enemy per frame (the "Aim" pose), so a group of archers was
+    // feeding gen-0 continuously. Resolved once per parameter and remembered.
+    private readonly System.Collections.Generic.Dictionary<string, bool> _boolParamCache
+        = new System.Collections.Generic.Dictionary<string, bool>(8);
+
     private void SetAnimBoolSafe(string param, bool value)
     {
         if (animator == null) return;
-        foreach (var p in animator.parameters)
-            if (p.type == AnimatorControllerParameterType.Bool && p.name == param)
-            {
-                animator.SetBool(param, value);
-                return;
-            }
+
+        if (!_boolParamCache.TryGetValue(param, out bool present))
+        {
+            present = false;
+            foreach (var p in animator.parameters)
+                if (p.type == AnimatorControllerParameterType.Bool && p.name == param) { present = true; break; }
+            _boolParamCache[param] = present;
+        }
+        if (present) animator.SetBool(param, value);
+        return;
     }
 
     private void FireProjectile()

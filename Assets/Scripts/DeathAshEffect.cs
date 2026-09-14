@@ -334,7 +334,29 @@ public static class DeathAshEffect
             s_unlit = Shader.Find("Universal Render Pipeline/Particles/Unlit")
                       ?? Shader.Find("Sprites/Default");
 
-        var mat = new Material(s_unlit);
+        // ==== THREE MATERIALS PER KILL, NEVER FREED ====
+        //
+        // This built a fresh Material every time and handed it to the particle
+        // renderer. Destroy(root, 5f) frees the GameObjects; it does NOT free a
+        // Material created in script and assigned through .material — that is an
+        // engine-side allocation only Destroy can release.
+        //
+        // Spawn() calls this three times, and Spawn() runs on EVERY enemy death,
+        // which in a horde roguelite is the single most frequent event in the
+        // game. Hundreds of kills a run, three leaks each, compounding across
+        // every raid in a session: memory climbs all session and the process
+        // dies on whatever allocation comes next. That is the crash profile
+        // reported as "sometimes when you take a screenshot".
+        //
+        // Nothing here varies per death — only the colour and the blend mode, and
+        // there are three combinations in the whole effect. So they are built
+        // once and shared. A cache rather than three fields because the colours
+        // are passed in, and a caller adding a fourth should not silently start
+        // leaking again.
+        var key = (additive, matColor);
+        if (s_mats.TryGetValue(key, out var cached) && cached != null) { Apply(rend, cached); return; }
+
+        var mat = new Material(s_unlit) { hideFlags = HideFlags.HideAndDontSave };
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", matColor);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", matColor);
 
@@ -360,10 +382,22 @@ public static class DeathAshEffect
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
 
-        rend.material = mat;
+        s_mats[key] = mat;
+        Apply(rend, mat);
+    }
+
+    // sharedMaterial, not material: assigning through .material would have Unity
+    // instantiate a per-renderer copy of the very material we just cached, which
+    // is the same leak wearing a different hat.
+    private static void Apply(ParticleSystemRenderer rend, Material mat)
+    {
+        rend.sharedMaterial = mat;
         rend.renderMode = ParticleSystemRenderMode.Billboard;
         rend.sortMode = ParticleSystemSortMode.Distance;
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rend.receiveShadows = false;
     }
+
+    private static readonly System.Collections.Generic.Dictionary<(bool, Color), Material> s_mats
+        = new System.Collections.Generic.Dictionary<(bool, Color), Material>(4);
 }
