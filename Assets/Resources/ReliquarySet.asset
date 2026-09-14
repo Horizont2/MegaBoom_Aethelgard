@@ -43,7 +43,7 @@ MonoBehaviour:
   woodIcon: {fileID: 456167851, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
   stoneIcon: {fileID: 1914097800, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
   foodIcon: {fileID: -737478651, guid: e6087bf72726c1440bdc1ffc8cde7ccf, type: 3}
-  diamondIcon: {fileID: 260429349, guid: b8c694fc27c6c6a44ad38ea3f73fb345, type: 3}
+  diamondIcon: {fileID: 2028752718, guid: 0745c23391668294b9dfdd34181e4962, type: 3}
   woodDrop: {fileID: 1558540992293105036, guid: b2069a990000a2e47aaecdf06f4d68b4, type: 3}
   stoneDrop: {fileID: 4209158938728457358, guid: 725a49cddebab314ca5335aedfc23f71, type: 3}
   foodDrop: {fileID: 4974451591028166963, guid: 20a2049a67389164998d1464b536d198, type: 3}

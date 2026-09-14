@@ -57,8 +57,62 @@ public class MapMarkerLayer : MonoBehaviour
         Debug.Log("[MapIcons] Marker layer installed.");
     }
 
+    // ==== ONE LOUD REPORT, A FEW SECONDS IN ====
+    //
+    // The markers have now been reported as not working three times, and each
+    // round of guessing cost more than this will. Every possible cause is
+    // knowable from inside this component; it just never said which one it was.
+    // So a few seconds after a scene settles it prints the whole state at once.
+    private float _selfReportAt = -1f;
+    private bool _selfReported;
+
+    private void SelfReport()
+    {
+        if (_selfReported) return;
+        if (_selfReportAt < 0f) { _selfReportAt = Time.unscaledTime + 4f; return; }
+        if (Time.unscaledTime < _selfReportAt) return;
+        _selfReported = true;
+
+        var sb = new System.Text.StringBuilder("[MapIcons] SELF-REPORT\n");
+        sb.AppendLine($"  layer alive: yes   bound: {(_map != null && _cam != null && _player != null && _set != null)}");
+        sb.AppendLine($"  minimap rect: {(_map != null ? _map.name + $" ({_mapWidth:F0}px, radius {_radius:F0})" : "NULL")}");
+        sb.AppendLine($"  minimap camera: {(_cam != null ? _cam.name + (_cam.orthographic ? $" ortho size {_cam.orthographicSize}" : " perspective") : "NULL")}");
+        sb.AppendLine($"  player: {(_player != null ? _player.name : "NULL")}");
+        sb.AppendLine($"  icon set: {(_set != null ? "loaded" : "NULL — no MapEventIcons in a Resources folder")}");
+        sb.AppendLine($"  markers registered: {MapEventMarker.All.Count}");
+        sb.AppendLine($"  icon pool objects: {_pool.Count}");
+
+        if (_set != null)
+        {
+            foreach (MapEventIcons.Kind k in System.Enum.GetValues(typeof(MapEventIcons.Kind)))
+            {
+                var e = _set.For(k);
+                int live = 0;
+                float nearest = float.PositiveInfinity;
+                for (int i = 0; i < MapEventMarker.All.Count; i++)
+                {
+                    var m = MapEventMarker.All[i];
+                    if (m == null || m.kind != k) continue;
+                    live++;
+                    if (_player != null)
+                    {
+                        Vector3 rel = m.transform.position - _player.position;
+                        nearest = Mathf.Min(nearest, new Vector2(rel.x, rel.z).magnitude);
+                    }
+                }
+                if (live == 0 && (e == null || e.icon == null)) continue;
+                string dist = float.IsInfinity(nearest) ? "-" : $"{nearest:F0}m";
+                string iconName = e != null && e.icon != null ? e.icon.name : "NONE";
+                sb.AppendLine($"    {k,-14} markers:{live,-3} icon:{iconName,-22} " +
+                              $"radius:{(e != null ? e.revealRadius : 0f),-5:F0} nearest:{dist}");
+            }
+        }
+        Debug.Log(sb.ToString());
+    }
+
     private void LateUpdate()
     {
+        SelfReport();
         if (!Bind()) { HideAll(); return; }
         if (MapEventMarker.All.Count == 0)
         {

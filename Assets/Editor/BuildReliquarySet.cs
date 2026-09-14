@@ -72,9 +72,11 @@ public static class BuildReliquarySetTool
     // stone or food is not knowable from the file, so they go in sheet order and
     // the fields are swappable by hand in the inspector if the order is wrong.
     private const string ResourceIcons = "Assets/Icons/Resource Icons.png";
-    // The same diamond the crystal resource node uses, so gems read identically
-    // wherever they appear.
-    private const string DiamondIcon = "Assets/UpgradePanel/Diamond.png";
+    // The diamond the REGION PANEL uses (Icons_Resources_3 on this sheet), so a
+    // gem reads identically on a mission card and on the map. An earlier pass
+    // picked UpgradePanel/Diamond.png, which is a different piece of art.
+    private const string DiamondIcon = "Assets/MapUI/Icons_Resources.png";
+    private const string DiamondSpriteName = "Icons_Resources_3";
 
     private static readonly string[] Guardians =
     {
@@ -142,7 +144,7 @@ public static class BuildReliquarySetTool
         // that way would have quietly assigned nothing.
         Sprite gem = null;
         foreach (var sub in AssetDatabase.LoadAllAssetsAtPath(DiamondIcon))
-            if (sub is Sprite sp) { gem = sp; break; }
+            if (sub is Sprite sp && sp.name == DiamondSpriteName) { gem = sp; break; }
         if (gem != null) set.diamondIcon = gem;
         else missing.Add(DiamondIcon + " (no sprite sub-asset — is it sliced?)");
 
