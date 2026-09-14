@@ -3650,8 +3650,17 @@ public class WorldGenerator : MonoBehaviour
                 }
                 if (inForbiddenZone) continue;
 
-                Vector3 terrainNormal = terrain.terrainData.GetInterpolatedNormal(normalizedX, normalizedZ);
-                Quaternion slopeRotation = Quaternion.FromToRotation(Vector3.up, terrainNormal);
+                // ==== COMPUTED WHEN SOMETHING IS ACTUALLY SPAWNED ====
+                //
+                // GetInterpolatedNormal was called here, before most of the
+                // rejection tests below — so it ran on all sixty thousand spawn
+                // ATTEMPTS to serve the few thousand that survive them. It is
+                // only ever used to orient an object that gets instantiated, so
+                // it now runs at the point of instantiation instead. Roughly a
+                // tenfold cut in calls for an identical result.
+                // Deferred: assigned by SlopeAt at each spawn site below.
+                Quaternion slopeRotation = Quaternion.identity;
+                bool slopeResolved = false;
 
                 bool isSnow = false;
                 bool isDesert = false;
@@ -3807,7 +3816,11 @@ public class WorldGenerator : MonoBehaviour
                                 vfxGO.AddComponent<GiantTreeVFXLOD>();
                         }
 
-                        if (groundClutterPrefabs != null && groundClutterPrefabs.Length > 0) SpawnNatureCluster(GetRandomPrefab(groundClutterPrefabs), obj.transform.position, bushContainer, 3, 6, 3f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
+                        if (groundClutterPrefabs != null && groundClutterPrefabs.Length > 0)
+                        {
+                            if (!slopeResolved) { slopeResolved = true; slopeRotation = SlopeAt(normalizedX, normalizedZ); }
+                            SpawnNatureCluster(GetRandomPrefab(groundClutterPrefabs), obj.transform.position, bushContainer, 3, 6, 3f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
+                        }
                     }
                     else if (currentTreeCount < maxTrees && randomSpawn > 0.65f)
                     {
@@ -3900,7 +3913,10 @@ public class WorldGenerator : MonoBehaviour
                         if (painted >= 0)
                             currentBushCount += painted;
                         else
+                        {
+                            if (!slopeResolved) { slopeResolved = true; slopeRotation = SlopeAt(normalizedX, normalizedZ); }
                             currentBushCount += SpawnNatureCluster(naturePrefab, new Vector3(worldX, worldY, worldZ), bushContainer, 2, 6, 4f, true, slopeRotation, currentFoliageColor, currentTreeTexture, currentBushMat);
+                        }
                     }
                 }
                 else if (density < 0.3f || isMeadow)
@@ -3913,6 +3929,7 @@ public class WorldGenerator : MonoBehaviour
                         {
                             float ox = GetRandomRange(-4f, 4f); float oz = GetRandomRange(-4f, 4f);
                             float cy = terrain.SampleHeight(new Vector3(worldX + ox, 0, worldZ + oz)) + transform.position.y;
+                            if (!slopeResolved) { slopeResolved = true; slopeRotation = SlopeAt(normalizedX, normalizedZ); }
                             GameObject obj = Instantiate(rockBase, new Vector3(worldX + ox, cy, worldZ + oz), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
                             obj.transform.localScale *= GetRandomRange(0.5f, 1.2f); ApplyBiomeColor(obj, currentRockColor, true);
                             currentRockCount++;
@@ -3922,6 +3939,7 @@ public class WorldGenerator : MonoBehaviour
                     {
                         bool isRuin = ruinPrefabs != null && ruinPrefabs.Length > 0 && GetRandomFloat() > 0.8f;
                         GameObject targetPrefab = isRuin ? GetRandomPrefab(ruinPrefabs) : GetRandomPrefab(baseRocks);
+                        if (!slopeResolved) { slopeResolved = true; slopeRotation = SlopeAt(normalizedX, normalizedZ); }
                         GameObject obj = Instantiate(targetPrefab, new Vector3(worldX, worldY, worldZ), slopeRotation * Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), rockContainer);
                         // Ruins/rocks were spawning at a fixed size — vary them.
                         obj.transform.localScale = Vector3.Scale(obj.transform.localScale,
@@ -3977,11 +3995,22 @@ public class WorldGenerator : MonoBehaviour
         foreach (Renderer rend in renderers)
         {
             if (rend is ParticleSystemRenderer) continue;
-            if (IsVFX(rend.gameObject.name)) continue;
+            string rendName = rend.gameObject.name;
+            if (IsVFX(rendName)) continue;
 
-            for (int i = 0; i < rend.sharedMaterials.Length; i++)
+            // ==== sharedMaterials ALLOCATES AN ARRAY ON EVERY ACCESS ====
+            //
+            // It is a native getter that builds a fresh Material[] each call, and
+            // this read it in the loop condition AND again in the body — two
+            // allocations per submaterial per renderer. Renderer.name allocates a
+            // fresh string too, and it was read twice per iteration. Multiplied by
+            // the ~6700 nature objects a region spawns, that is tens of thousands
+            // of garbage objects during generation, which is where the GC spikes
+            // in the loading coroutine were coming from.
+            Material[] mats = rend.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
             {
-                Material mat = rend.sharedMaterials[i];
+                Material mat = mats[i];
                 if (mat == null) continue;
 
                 // GPU INSTANCING: colors here are pushed per-renderer via a
@@ -3992,7 +4021,7 @@ public class WorldGenerator : MonoBehaviour
                 if (!mat.enableInstancing) mat.enableInstancing = true;
 
                 // Більше ніяких .ToLower(), це економить МЕГАБАЙТИ оперативної пам'яті
-                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mat.name))
+                if (IsWoodOrTrunk(rendName) || IsWoodOrTrunk(mat.name))
                 {
                     continue;
                 }
@@ -4024,23 +4053,37 @@ public class WorldGenerator : MonoBehaviour
         foreach (Renderer rend in renderers)
         {
             if (rend is ParticleSystemRenderer) continue;
-            if (IsVFX(rend.gameObject.name)) continue;
+            string rendName = rend.gameObject.name;
+            if (IsVFX(rendName)) continue;
 
-            for (int i = 0; i < rend.sharedMaterials.Length; i++)
+            Material[] mats = rend.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
             {
-                Material mat = rend.sharedMaterials[i];
+                Material mat = mats[i];
                 if (mat == null) continue;
 
-                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mat.name)) continue;
+                if (IsWoodOrTrunk(rendName) || IsWoodOrTrunk(mat.name)) continue;
 
-                propBlock.Clear();
-                rend.GetPropertyBlock(propBlock, i);
-
-                propBlock.SetTexture("_BaseMap", biomeTexture);
-                propBlock.SetTexture("_MainTex", biomeTexture);
-                propBlock.SetTexture("_Albedo", biomeTexture);
-
-                rend.SetPropertyBlock(propBlock, i);
+                // ==== A TEXTURE IN A PROPERTY BLOCK UNDOES THE INSTANCING ====
+                //
+                // ApplyBiomeColor deliberately turns instancing ON and pushes
+                // per-tree COLOUR through a property block, which is
+                // instancing-friendly. Writing a per-renderer TEXTURE here
+                // cancels that outright: a texture cannot live in the instancing
+                // cbuffer, so every one of these renderers is submitted on its
+                // own — thousands of individual draw calls instead of a handful
+                // of batches — and any property block at all also drops the
+                // renderer out of the SRP Batcher.
+                //
+                // And it never needed to be per-renderer: biomeTexture is the
+                // SAME texture for every object in the biome. Assigning it once
+                // to the shared material keeps instancing intact and produces an
+                // identical image. ApplyBiomeSpecificMaterial below already does
+                // it this way.
+                if (mat.HasProperty("_BaseMap") && mat.GetTexture("_BaseMap") != biomeTexture)
+                    mat.SetTexture("_BaseMap", biomeTexture);
+                else if (mat.HasProperty("_MainTex") && mat.GetTexture("_MainTex") != biomeTexture)
+                    mat.SetTexture("_MainTex", biomeTexture);
             }
         }
     }
@@ -4071,6 +4114,11 @@ public class WorldGenerator : MonoBehaviour
             if (changed) rend.sharedMaterials = mats;
         }
     }
+
+    // The terrain normal as a rotation. Called only where something is about to
+    // be instantiated — see the note in the scatter loop.
+    private Quaternion SlopeAt(float nx, float nz)
+        => Quaternion.FromToRotation(Vector3.up, terrain.terrainData.GetInterpolatedNormal(nx, nz));
 
     private int SpawnNatureCluster(GameObject prefab, Vector3 centerPos, Transform container, int minCount, int maxCount, float radius, bool alignToSlope, Quaternion slopeRotation, Color tintColor, Texture2D biomeTexture = null, Material biomeMaterial = null)
     {
