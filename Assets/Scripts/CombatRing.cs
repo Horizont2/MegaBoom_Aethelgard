@@ -23,8 +23,11 @@ using UnityEngine;
 // turn destroys the fiction instantly. Everything in the Post section below
 // exists to prevent that:
 //
-//   NOBODY STANDS STILL. A waiter orbits continuously, at its own speed, in its
-//   own direction, and drifts in and out rather than holding a radius.
+//   THEY HOLD STATION AND RESETTLE. A waiter stands at its post facing the
+//   player, then after a few seconds steps to a new one. It does NOT orbit —
+//   continuous lateral movement needs a strafe animation and there is not one,
+//   so it read as sliding sideways however slowly it was done. Movement in
+//   bursts is movement the animation set can actually show.
 //
 //   THE RING IS NOT A CIRCLE. Each waiter has its own preferred distance and
 //   its own angular offset, so the shape is ragged. A perfect circle reads as
@@ -39,7 +42,7 @@ using UnityEngine;
 //   six spectators.
 //
 //   AND THEY ARRIVE FROM THE RING. An enemy granted a slot lunges in from where
-//   it was orbiting. Nothing teleports into range.
+//   it was standing. Nothing teleports into range.
 [DisallowMultipleComponent]
 public class CombatRing : MonoBehaviour
 {
@@ -66,9 +69,9 @@ public class CombatRing : MonoBehaviour
     public float cooldownAfterHold = 1.6f;
 
     [Header("The ring")]
-    [Tooltip("Closest a waiting enemy circles. Must be beyond the player's melee reach or the ring reads as enemies clipping into you and refusing to swing.")]
+    [Tooltip("Closest a waiting enemy stands. Must be beyond the player's melee reach or the ring reads as enemies clipping into you and refusing to swing.")]
     public float innerRadius = 3.6f;
-    [Tooltip("Furthest a waiting enemy circles before closing back in.")]
+    [Tooltip("Furthest a waiting enemy stands.")]
     public float outerRadius = 6.2f;
 
     [Header("Facing")]
@@ -295,24 +298,42 @@ public class CombatRing : MonoBehaviour
         // same speed in the same direction looks like a carousel.
         float angle0 = Frac(seed * 0.6180339887f) * Mathf.PI * 2f;
         float radius = Mathf.Lerp(innerRadius, outerRadius, Frac(seed * 0.7548776662f));
-        // ==== SLOWER THAN IT LOOKS ON PAPER ====
+
+        // ==== THEY HOLD STATION AND RESETTLE. THEY DO NOT ORBIT. ====
         //
-        // This was 0.35-0.75 rad/s. At a five-metre radius that is a tangential
-        // speed of nearly four metres a second — a full sprint, sideways, while
-        // facing the player. With no strafe animation in the set the enemies
-        // played a forward run while sliding crabwise, which is the "бігають
-        // боком" report.
+        // This rotated the post continuously, so a waiting enemy was always
+        // walking sideways — at 0.35-0.75 rad/s it was a full sprint crabwise,
+        // and even after dropping it to a fifth of that it was still a constant
+        // slow slide. Three separate reports of enemies "running left and right"
+        // were all this, and no speed makes continuous lateral movement look
+        // right without a strafe animation, which this project does not have.
         //
-        // A waiting enemy should be shifting its weight and repositioning, not
-        // sprinting a circuit. Slower reads as menace; faster reads as a bug.
-        float speed = Mathf.Lerp(0.12f, 0.28f, Frac(seed * 0.3247179572f));
+        // So the post STEPS. It stays put for a few seconds, then jumps to a new
+        // angle, and the enemy walks there and stops. Standing still facing you,
+        // then repositioning, then standing still again is what a pack actually
+        // does — and every metre of movement is now forward movement, which is
+        // the only kind the animation set can show.
+        //
+        // Each enemy gets its own dwell time and its own step size, so the group
+        // never resettles in unison.
+        float dwell = Mathf.Lerp(2.6f, 5.2f, Frac(seed * 0.3247179572f));
+        float phase = Frac(seed * 0.8912f) * dwell;
+        int step = Mathf.FloorToInt((time + phase) / dwell);
+
+        // A modest arc per step — a third of the way round would read as
+        // teleporting from one side to the other.
+        float stepArc = Mathf.Lerp(0.35f, 0.9f, Frac(seed * 0.5771f));
         float dir = (seed & 1) == 0 ? 1f : -1f;
+        // Deterministic wobble per step so the arc is not perfectly regular.
+        float jitter = (Frac((seed * 0.318f) + step * 0.6180339887f) - 0.5f) * 0.5f;
 
-        // And a slow breathing in and out, so nobody holds a fixed distance.
-        float breathe = Mathf.Sin(time * 0.6f + angle0) * 0.9f;
+        float a = angle0 + (step * stepArc * dir) + jitter;
 
-        float a = angle0 + time * speed * dir;
-        return playerPos + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (radius + breathe);
+        // Distance varies per step too, instead of breathing continuously —
+        // same reason: movement should happen in bursts, not always.
+        float ring = radius + (Frac((seed * 0.7717f) + step * 0.3247179572f) - 0.5f) * 1.4f;
+
+        return playerPos + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * ring;
     }
 
     // Should this waiter throw a feint right now? Rare, staggered per enemy, and
