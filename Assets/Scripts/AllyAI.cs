@@ -27,13 +27,43 @@ public class AllyAI : MonoBehaviour, IDamageable
     private bool isAttacking;
 
     [Header("Survivability")]
-    [Tooltip("The ally CAN die — it isn't invincible. Kept modest so a freed captive is a helper, not a juggernaut.")]
-    public float maxHealth = 60f;
+    // 60 was too little to matter. A freed captive that dies to the first pack
+    // is a reward the player watches evaporate — and since the retaliation below
+    // charges per adjacent enemy, being useful in a fight was itself what killed
+    // it fastest.
+    [Tooltip("The ally CAN die — it isn't invincible. High enough to survive the fight it was freed into, low enough that a crowd still finishes it.")]
+    public float maxHealth = 180f;
     [Tooltip("Chip damage per second the ally takes for EACH enemy in melee range — so a lone ally worn down by a crowd eventually falls.")]
-    public float meleeRetaliationDPS = 5f;
+    public float meleeRetaliationDPS = 4f;
     public GameObject deathVFXPrefab;
     private float currentHealth;
     private bool dead;
+
+    public float Health => currentHealth;
+    public float HealthMax => Mathf.Max(1f, maxHealth);
+    public float Health01 => Mathf.Clamp01(currentHealth / HealthMax);
+    public bool IsDead => dead;
+
+    [Header("Health bar")]
+    [Tooltip("Draw a small health bar above the ally. Built in code, so no prefab wiring is needed.")]
+    public bool showHealthBar = true;
+    [Tooltip("Metres above the ally's origin the bar floats.")]
+    public float healthBarHeight = 2.3f;
+    [Tooltip("Width of the bar in world units.")]
+    public float healthBarWidth = 1.1f;
+
+    [Header("Campfire")]
+    [Tooltip("Heal beside a campfire the way the player does.")]
+    public bool healAtCampfires = true;
+    [Tooltip("Health per second regained inside a campfire's radius.")]
+    public float campfireHealPerSecond = 14f;
+    [Tooltip("Below this fraction of maximum health the ally will BREAK OFF and go warm itself — but only when no enemy is in aggro range. A companion that walks away mid-fight is worse than one that dies.")]
+    [Range(0f, 0.9f)] public float seekFireBelowHealth = 0.45f;
+    [Tooltip("Furthest the ally will travel to reach a fire. Beyond this it stays with the player and takes its chances.")]
+    public float campfireSeekRange = 26f;
+
+    private CampfireInteract _fire;
+    private float _fireScan;
 
     [Header("Lifetime")]
     [Tooltip("Seconds the ally fights before leaving. 0 = stays until it dies / the scene ends.")]
@@ -87,6 +117,7 @@ public class AllyAI : MonoBehaviour, IDamageable
     {
         animator = GetComponentInChildren<Animator>();
         CachePlayer();
+        if (showHealthBar) AllyHealthBar.Attach(this);
     }
 
     private void CachePlayer()
@@ -116,6 +147,8 @@ public class AllyAI : MonoBehaviour, IDamageable
             }
         }
 
+        TickCampfireHealing();
+
         if (isAttacking) { SetMoving(false); return; } // one swing at a time — no double-hit
 
         Component enemy = FindNearestEnemy();
@@ -136,6 +169,30 @@ public class AllyAI : MonoBehaviour, IDamageable
         }
         else
         {
+            // ==== WARM ITSELF, BUT ONLY WHEN THE FIGHT IS OVER ====
+            //
+            // A companion that breaks off mid-fight to go stand by a fire is
+            // worse than one that dies fighting, so this branch is only reached
+            // when FindNearestEnemy came back empty. Enemies always win.
+            if (healAtCampfires && Health01 < seekFireBelowHealth)
+            {
+                var fire = NearestFire();
+                if (fire != null)
+                {
+                    float dFire = FlatDist(transform.position, fire.transform.position);
+                    if (dFire > fire.healRadius * 0.6f)
+                    {
+                        MoveToward(fire.transform.position);
+                        FaceToward(fire.transform.position);
+                        SetMoving(true);
+                        return;
+                    }
+                    // At the fire: stand still and recover.
+                    SetMoving(false);
+                    return;
+                }
+            }
+
             // No enemy near — stick close to the player.
             if (FlatDist(transform.position, player.position) > followDistance)
             {
@@ -145,6 +202,39 @@ public class AllyAI : MonoBehaviour, IDamageable
             }
             else SetMoving(false);
         }
+    }
+
+    // Healing happens wherever the ally is standing, whether it walked there on
+    // purpose or the fight simply happened next to a fire.
+    private void TickCampfireHealing()
+    {
+        if (!healAtCampfires || dead || currentHealth >= maxHealth) return;
+
+        var fire = NearestFire();
+        if (fire == null) return;
+        if (FlatDist(transform.position, fire.transform.position) > fire.healRadius) return;
+
+        currentHealth = Mathf.Min(maxHealth, currentHealth + campfireHealPerSecond * Time.deltaTime);
+    }
+
+    // Cached, because scanning every campfire in the scene every frame for a
+    // companion that mostly does not need one is pure waste.
+    private CampfireInteract NearestFire()
+    {
+        _fireScan -= Time.deltaTime;
+        if (_fireScan <= 0f)
+        {
+            _fireScan = 1f;
+            _fire = null;
+            float best = campfireSeekRange * campfireSeekRange;
+            foreach (var f in FindObjectsByType<CampfireInteract>(FindObjectsSortMode.None))
+            {
+                if (f == null) continue;
+                float sq = (f.transform.position - transform.position).sqrMagnitude;
+                if (sq < best) { best = sq; _fire = f; }
+            }
+        }
+        return _fire;
     }
 
     // One full swing: lock out re-attacking for the clip length, trigger the
@@ -201,6 +291,8 @@ public class AllyAI : MonoBehaviour, IDamageable
         float d = dir.magnitude;
         if (d < 0.001f) return;
         dir /= d;
+        // Remembered for the locomotion blend — see SetMoving.
+        _lastMoveDir = dir;
         // Ease speed up/down instead of snapping to full velocity instantly.
         _curSpeed = Mathf.MoveTowards(_curSpeed, moveSpeed, moveSpeed * 3f * Time.deltaTime);
         Vector3 next = transform.position + dir * _curSpeed * Time.deltaTime;
@@ -215,16 +307,36 @@ public class AllyAI : MonoBehaviour, IDamageable
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
     }
 
+    // ==== THE ALLY RUNS ON THE PLAYER'S ANIMATOR ====
+    //
+    // The caged ally is the Barbarian prefab, and its controller is
+    // HeroAnimator — the player's. That controller has no "isMoving" bool at
+    // all; its Locomotion blend is driven by MoveX and MoveZ, with Speed on top.
+    // This set isMoving (a no-op, the parameter does not exist) and Speed, and
+    // never touched MoveX/MoveZ — so the blend tree stayed at its origin and the
+    // ally slid around in an idle pose.
+    //
+    // Both conventions are still driven, because Set…Safe no-ops on a missing
+    // parameter and a different companion may yet use a simpler controller.
+    private Vector3 _lastMoveDir;
+
     private void SetMoving(bool m)
     {
         if (animator == null) return;
         if (!m) _curSpeed = Mathf.MoveTowards(_curSpeed, 0f, moveSpeed * 4f * Time.deltaTime);
-        // Drive BOTH conventions safely: a plain "isMoving" bool AND the
-        // Speed/MoveX/MoveZ blend-tree params HeroAnimator uses. Set…Safe no-ops
-        // when a param is absent, so nothing warns whichever controller is on it.
+
         animator.SetBoolSafe("isMoving", m);
         animator.SetBoolSafe("IsGrounded", true);
-        animator.SetFloatSafe("Speed", m ? _curSpeed : 0f);
+
+        float speed01 = moveSpeed > 0.01f ? Mathf.Clamp01(_curSpeed / moveSpeed) : 0f;
+        if (!m) speed01 = 0f;
+        animator.SetFloatSafe("Speed", speed01);
+
+        // Movement in the ally's OWN space, which is what a 2D locomotion blend
+        // expects: +Z forward, +X to its right.
+        Vector3 local = m ? transform.InverseTransformDirection(_lastMoveDir) : Vector3.zero;
+        animator.SetFloatSafe("MoveX", Mathf.Clamp(local.x, -1f, 1f) * speed01);
+        animator.SetFloatSafe("MoveZ", Mathf.Clamp(local.z, -1f, 1f) * speed01);
     }
 
     private static float FlatDist(Vector3 a, Vector3 b)

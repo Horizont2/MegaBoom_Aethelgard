@@ -70,7 +70,8 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
         bool canAfford = !isMax && ResourceManager.Instance != null && ResourceManager.Instance.CanAffordDiamonds(cost);
         if (upgradeButton != null)
         {
-            upgradeButton.interactable = canAfford;
+            // Dimmed, not faded out — see UIButtonState.
+            UIButtonState.SetInteractable(upgradeButton, canAfford);
             upgradeButton.onClick.RemoveAllListeners();
             upgradeButton.onClick.AddListener(() => OnUpgradeClick(cost));
         }

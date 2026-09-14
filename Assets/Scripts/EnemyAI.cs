@@ -1961,16 +1961,30 @@ public class EnemyAI : MonoBehaviour, IDamageable
         _thisSwingUnblockable = (isBoss || isElite) && UnityEngine.Random.value < 0.34f;
 
         float telegraph = EffectiveTelegraph;
-        if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, telegraph + 0.2f);
 
-        // The parry clock. The colour pulse says an attack is COMING; only this
-        // says when to answer it — and it is the one piece of feedback the whole
-        // block mechanic was missing. Also the only thing that makes an attack
-        // from behind fair, because its mark pins to the screen edge and tells
-        // the player which way to turn.
-        ParryCue.Show(this, telegraph, PlayerBlock.ParryWindowSecondsFor(this), _thisSwingUnblockable);
+        // ==== ONLY WARN THE PLAYER ABOUT SWINGS AIMED AT THE PLAYER ====
+        //
+        // An enemy fighting a rescued ally was raising the threat indicator, the
+        // parry countdown and the perfect-dodge window on the player's screen,
+        // for a blow that was never going to reach them. Across a fight with a
+        // companion in it that is a constant stream of marks demanding a
+        // reaction to nothing, and it makes the real ones worthless.
+        bool aimedAtPlayer = currentTargetDamageable == null
+                             || (playerTarget != null && ReferenceEquals(currentTargetDamageable, playerTarget));
 
-        if (isElite && playerTarget != null)
+        if (aimedAtPlayer)
+        {
+            if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, telegraph + 0.2f);
+
+            // The parry clock. The colour pulse says an attack is COMING; only
+            // this says when to answer it — and it is the one piece of feedback
+            // the whole block mechanic was missing. Also the only thing that
+            // makes an attack from behind fair, because its mark pins to the
+            // screen edge and tells the player which way to turn.
+            ParryCue.Show(this, telegraph, PlayerBlock.ParryWindowSecondsFor(this), _thisSwingUnblockable);
+        }
+
+        if (isElite && playerTarget != null && aimedAtPlayer)
         {
             playerTarget.OpenPerfectDodgeWindow(transform, telegraph + 0.6f);
 
