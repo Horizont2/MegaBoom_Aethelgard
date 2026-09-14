@@ -76,7 +76,8 @@ public class MissionPaperUI : MonoBehaviour
 
         var set = ReliquarySet.Load();
         // No icon set resolved: keep the words rather than showing nothing.
-        if (set == null || (set.woodIcon == null && set.stoneIcon == null && set.foodIcon == null))
+        if (set == null || (set.woodIcon == null && set.stoneIcon == null
+                            && set.foodIcon == null && set.diamondIcon == null))
         {
             rewardText.gameObject.SetActive(true);
             string rewText = $"<b>{LocalizationManager.Tr("MISSION_REWARDS_LABEL")}</b> ";
@@ -106,7 +107,11 @@ public class MissionPaperUI : MonoBehaviour
 
             var layout = go.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 14f;
-            layout.childAlignment = TextAnchor.MiddleLeft;
+            // Centred. Left-aligned put the rewards hard against the card's edge
+            // while the title, the objective and the button above and below them
+            // are all centred — one row out of alignment is what makes an
+            // otherwise tidy card look unfinished.
+            layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childForceExpandWidth = false;
             layout.childForceExpandHeight = false;
             layout.childControlWidth = true;
@@ -122,9 +127,13 @@ public class MissionPaperUI : MonoBehaviour
         AddReward(set.woodIcon, wood, h);
         AddReward(set.stoneIcon, stone, h);
         AddReward(set.foodIcon, food, h);
-        // No gem icon exists in the set, so diamonds keep a word — better an
-        // honest label than a wood log standing in for a diamond.
-        if (diamond > 0) AddReward(null, diamond, h, LocalizationManager.Tr("MISSION_RES_GEMS", diamond));
+        // Gems get the same treatment as everything else now that the set
+        // carries their icon. Falls back to the word if it has not been built.
+        if (diamond > 0)
+        {
+            if (set.diamondIcon != null) AddReward(set.diamondIcon, diamond, h);
+            else AddReward(null, diamond, h, LocalizationManager.Tr("MISSION_RES_GEMS", diamond));
+        }
     }
 
     private void AddReward(Sprite icon, int amount, float height, string overrideLabel = null)
