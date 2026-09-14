@@ -211,7 +211,23 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
     }
 
-    private float EffectiveTelegraph => attackTelegraphTime * TelegraphScale;
+    // ==== A WIND-UP SHORTER THAN A REACTION IS NOT A TELL ====
+    //
+    // The archetype scales produced a Rogue wind-up of 0.65 * 0.62 = 0.40s and a
+    // Minion's of 0.51s. Human reaction to a visual cue is around 0.25s, and the
+    // parry window sits at the END of the wind-up — so against a Rogue the
+    // window opened at 0.22s, BEFORE the player could have reacted to the tell
+    // at all. Parrying the fast archetypes was not difficult, it was impossible
+    // by reaction and could only be guessed.
+    //
+    // An attack the player cannot answer is not a mechanic, it is just damage
+    // arriving. The floor is what makes every enemy in the game readable; the
+    // scales above still decide who is quick and who is ponderous, they just do
+    // it above the line where a human can participate.
+    [Tooltip("Shortest wind-up any enemy may have, in seconds. Reaction to a visual cue is about 0.25s and the parry window sits at the end of the wind-up, so anything below roughly 0.5 cannot be answered on reaction — only guessed.")]
+    public float minTelegraphTime = 0.55f;
+
+    public float EffectiveTelegraph => Mathf.Max(minTelegraphTime, attackTelegraphTime * TelegraphScale);
     private Transform mainCamTransform;
 
     private static Transform s_player;

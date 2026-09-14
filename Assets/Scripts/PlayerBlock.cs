@@ -43,20 +43,79 @@ public class PlayerBlock : MonoBehaviour
     public KeyCode blockKey = KeyCode.Q;
 
     [Header("Guard")]
-    [Tooltip("Seconds after raising the guard during which a hit is a PERFECT block. Short enough to be a read, long enough to be learnable — this is the number to tune first if parrying feels unfair.")]
+    [Tooltip("Floor for the parry window, in seconds. Used when the attacker's wind-up is unknown; otherwise the window is a fraction of that wind-up — see parryWindowOfTelegraph.")]
     public float parryWindow = 0.18f;
+
+    // ==== THE WINDOW BELONGS TO THE ATTACK, NOT TO THE CLOCK ====
+    //
+    // A flat 0.18s means the difficulty of parrying is decided entirely by how
+    // long the attacker's wind-up is, and those differ by nearly threefold
+    // across the archetypes. Against a slow boss the player had almost a second
+    // of warning for the same 0.18s window; against a quick enemy the window
+    // opened before the tell had finished registering.
+    //
+    // So the fast enemies were unparryable and the slow ones trivial — the exact
+    // inverse of what the fight wants, since a boss parry is the one worth
+    // building a mechanic around.
+    //
+    // Taking the window as a FRACTION of this attacker's wind-up makes every
+    // enemy the same read: watch the tell, answer in its last four-tenths. A
+    // Rogue and a Boss now ask for the same skill on different clocks, which is
+    // what "learnable" actually means.
+    [Tooltip("Parry window as a fraction of the attacker's wind-up. 0.4 means the last four-tenths of any telegraph is parryable, whether that telegraph is half a second or two.")]
+    [Range(0.15f, 0.7f)] public float parryWindowOfTelegraph = 0.4f;
     [Tooltip("Degrees of cover, centred on where the player faces. A hit from outside this arc is not blocked at all.")]
     public float guardAngle = 130f;
-    [Tooltip("Stamina per second just to keep the shield up. Small: the cost of blocking should come from being HIT, not from holding.")]
-    public float holdDrain = 6f;
+    // ==== HOLDING IS FREE. BEING HIT IS NOT. ====
+    //
+    // This was 6/s, and the damage it did was far worse than the number looks:
+    // DrainStamina stamps lastStaminaSpend, and regeneration requires 0.8s
+    // without a spend. So while the shield was up the pool drained AND
+    // regenerated at exactly zero — not slower, nothing. Three seconds of
+    // correct defensive play cost about seventy of a hundred points, and the
+    // dash comes out of the same pool, so every block also spent the escape.
+    //
+    // The whole defensive half of the fight was therefore a slow loss, with only
+    // a parry paying anything back. That is the "сиро" in the report: the
+    // mechanic punished the player for using it properly.
+    //
+    // Turtling does not need a bleed to discourage it. A raised shield deals no
+    // damage, the ring keeps circling, and nothing about the fight advances —
+    // that is already the cost. And it still cannot be held forever under
+    // pressure, because every ABSORBED hit restarts the regeneration delay: with
+    // attackers landing about one blow a second there is never a gap long enough
+    // to recover in, so the pool still runs down. The player recovers in the
+    // openings they earn, which is exactly where recovery belongs.
+    [Tooltip("Stamina per second just to keep the shield up. Zero on purpose — see the note above. Raise it only if holding the guard turns out to need a cost of its own.")]
+    public float holdDrain = 0f;
     [Tooltip("Flat stamina per absorbed hit, before the damage-scaled part.")]
     public float blockCostBase = 6f;
     [Tooltip("Extra stamina per point of damage absorbed. This is what makes a boss swing expensive and a minion's cheap, with nothing to author per enemy.")]
     public float blockCostPerDamage = 0.55f;
     [Tooltip("Stamina handed back for a perfect block. Generous on purpose: parrying well should let a good player fight indefinitely.")]
     public float parryRefund = 18f;
-    [Tooltip("Seconds the guard cannot be raised after it is broken.")]
-    public float guardBreakLock = 2f;
+    // ==== A BREAK IS A PUNISHMENT, NOT A SENTENCE ====
+    //
+    // It used to be the harshest outcome the game can produce, applied at the
+    // worst possible moment: full damage, plus LockStamina for two seconds — and
+    // LockStamina refuses ALL spending, so the dash went with it. The player ran
+    // out of stamina because they were under pressure, and the punishment for
+    // that was two seconds of standing in the middle of a crowd with no guard,
+    // no dash and no way to move the situation.
+    //
+    // Nothing is learned from it and there is no play to make. The break still
+    // hurts and still takes the shield away, but it now ENDS with the player
+    // somewhere else: the blow throws them clear, the guard alone is locked, and
+    // stamina starts climbing again on the ordinary delay so a dash is
+    // affordable within about a second.
+    [Tooltip("Seconds the guard cannot be raised after it is broken. Only the GUARD — dashing and stamina regeneration are deliberately left alone, so a break is recoverable.")]
+    public float guardBreakLock = 1.2f;
+    [Tooltip("Fraction of the blow that lands through a broken guard. Not the full hit: the shield was there, it just was not enough.")]
+    [Range(0.2f, 1f)] public float guardBreakDamageFraction = 0.6f;
+    [Tooltip("How hard the break throws the player clear of the attacker. This is the exit — without it a break just parks the player, defenceless, exactly where they were standing.")]
+    public float guardBreakKnockback = 9f;
+    [Tooltip("Seconds the rest of the crowd holds off after a break. Short: enough that the second attacker cannot free-hit a player who has just lost their guard, nowhere near enough to make breaking one harmless.")]
+    public float guardBreakHesitation = 0.5f;
     [Tooltip("Movement speed multiplier while blocking.")]
     [Range(0.2f, 1f)] public float blockMoveMultiplier = 0.55f;
 
@@ -170,7 +229,15 @@ public class PlayerBlock : MonoBehaviour
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
 
-    private float EffectiveParryWindow => Mathf.Max(0.05f, parryWindow + _shield.parryWindowBonus);
+    // The window for THIS attacker: the flat floor, or a slice of its wind-up,
+    // whichever is more generous. The shield's own bonus rides on top either
+    // way, so a parry-focused shield still helps against everything.
+    private float ParryWindowFor(EnemyAI attacker)
+    {
+        float w = parryWindow;
+        if (attacker != null) w = Mathf.Max(w, attacker.EffectiveTelegraph * parryWindowOfTelegraph);
+        return Mathf.Max(0.05f, w + _shield.parryWindowBonus);
+    }
     private float EffectiveAngle => Mathf.Clamp(guardAngle + _shield.angleBonus, 40f, 220f);
 
     private void Update()
@@ -196,12 +263,13 @@ public class PlayerBlock : MonoBehaviour
             LowerGuard();
         }
 
-        if (IsBlocking)
+        // Only spend if somebody has actually configured a hold cost. Calling
+        // DrainStamina with zero would still stamp lastStaminaSpend and suppress
+        // regeneration for the whole time the guard is up, which is the exact
+        // bug this is fixing — a free hold has to mean NO call, not a call for
+        // nothing.
+        if (IsBlocking && holdDrain > 0.001f)
         {
-            // Holding costs a trickle. If it runs the pool dry on its own the
-            // guard simply drops — no break, no stagger. Being punished for
-            // holding a shield in a lull would teach the player to never raise
-            // it early, which is the opposite of what parrying needs.
             if (_pc.DrainStamina(holdDrain * Time.deltaTime)) LowerGuard();
         }
     }
@@ -230,7 +298,7 @@ public class PlayerBlock : MonoBehaviour
             if (angle > EffectiveAngle * 0.5f) return Result.NotBlocked;
         }
 
-        bool perfect = Time.time - _raisedAt <= EffectiveParryWindow;
+        bool perfect = Time.time - _raisedAt <= ParryWindowFor(attacker);
 
         if (perfect)
         {
@@ -250,12 +318,27 @@ public class PlayerBlock : MonoBehaviour
         if (!_pc.HasStamina(cost))
         {
             _pc.DrainStamina(cost);
-            _pc.LockStamina(guardBreakLock);
+            // NO LockStamina. It refuses every spend, dash included, which is
+            // what turned a break into two seconds of being unable to act. The
+            // guard alone is locked, below; stamina climbs again on the ordinary
+            // delay, so an escape becomes affordable shortly after the blow.
             _lockedUntil = Time.time + guardBreakLock;
             GuardBroken = true;
             LowerGuard();
             PlayGuardBreakFeedback();
-            // The hit lands in full and staggers — info is left untouched.
+
+            // The shield was there. It was not enough — but it was there.
+            info.Amount *= guardBreakDamageFraction;
+            // Thrown clear, and that is the point: the player ends the exchange
+            // somewhere other than the middle of the crowd that just broke them.
+            Vector3 away = transform.position - attackerPos; away.y = 0f;
+            if (away.sqrMagnitude > 0.001f) info.PushDirection = away.normalized;
+            info.KnockbackForce = Mathf.Max(info.KnockbackForce, guardBreakKnockback);
+
+            // And the others hold for a beat, so a break is not an execution by
+            // whoever happens to be swinging next.
+            if (CombatRing.Instance != null) CombatRing.Instance.Hesitate(guardBreakHesitation);
+
             return Result.GuardBreak;
         }
 
