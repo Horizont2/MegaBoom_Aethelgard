@@ -981,18 +981,54 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
             else
             {
-                if (animator != null) animator.SetBool("isMoving", true);
+                // ==== THIS IS THE "RUNNING LEFT AND RIGHT" ====
+                //
+                // Reported five times, and it was never the ring: it is here.
+                // This branch runs when an enemy is inside melee range, HOLDS an
+                // attack token, and is waiting out its cooldown — which is about
+                // two seconds of every 2.1, so it is where a front-line attacker
+                // spends most of its life.
+                //
+                // And it moved PURELY SIDEWAYS: Cross(up, directionToPlayer) is
+                // a tangent, with only a small in/out correction added to it. At
+                // 70% of run speed, facing the player the whole time, with no
+                // strafe animation in the set — a forward-run clip playing while
+                // the body slides crabwise, one metre from the player's face.
+                // The unclamped repulsion on top of it meant two attackers
+                // standing close flipped each other's direction as they jostled,
+                // which is the left-right oscillation specifically.
+                //
+                // An attacker waiting for its cooldown should HOLD ITS GROUND.
+                // The only movement it needs is closing or backing off to keep
+                // its reach, and that is forward-and-back — the one axis the
+                // animation set can actually show.
+                float ideal = attackRange * 0.75f;
+                float off = distanceToPlayer - ideal;
 
-                Vector3 flankDir = Vector3.Cross(Vector3.up, directionToPlayer) * strafeDir;
+                // Deadzone: at the right distance it simply stands there. A
+                // creature adjusting its footing every frame reads as jitter.
+                if (Mathf.Abs(off) < 0.35f && repulsion.sqrMagnitude < 0.04f)
+                {
+                    if (animator != null) animator.SetBool("isMoving", false);
+                }
+                else
+                {
+                    if (animator != null) animator.SetBool("isMoving", true);
 
-                if (distanceToPlayer > attackRange * 0.9f) flankDir += directionToPlayer * 0.4f;
-                else if (distanceToPlayer < attackRange * 0.6f) flankDir -= directionToPlayer * 0.5f;
+                    // In or out along the line to the player, plus a capped
+                    // nudge so bodies still separate without steering.
+                    Vector3 step = directionToPlayer * Mathf.Sign(off)
+                                 + Vector3.ClampMagnitude(repulsion, 0.5f);
 
-                Vector3 moveDir = SteerAroundObstacles(currentPos, (flankDir + repulsion).normalized);
-                Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.7f) * Time.deltaTime;
-
-                nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                SetPositionSafe(nextPos);
+                    if (step.sqrMagnitude > 0.0001f)
+                    {
+                        Vector3 moveDir = SteerAroundObstacles(currentPos, step.normalized);
+                        // Slower than a charge: this is footwork, not a run.
+                        Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.45f) * Time.deltaTime;
+                        nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+                        SetPositionSafe(nextPos);
+                    }
+                }
             }
         }
         else
