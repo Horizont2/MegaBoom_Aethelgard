@@ -944,42 +944,38 @@ public class CampBuilding : MonoBehaviour
         EnsureGlimmerDriver();
     }
 
-    // ==== THE GLIMMER ANIMATOR PLAYS A VILLAGER ====
+    // ==== IT WARNS, IT NO LONGER TAKES OVER ====
     //
-    // Not a metaphor. UpgradeGlimmer5.controller and UpgradeGlimmer6.controller
-    // are wired to the scene's glimmer Lights, and EVERY state in both of them
-    // has its motion set to a clip inside Peasant Nolant(Free Version).fbx —
-    // a humanoid NPC animation, on an object that is a Light with no avatar and
-    // no bones.
+    // The six UpgradeGlimmer controllers all had their state motions set to a
+    // clip inside Peasant Nolant(Free Version).fbx — a humanoid NPC animation
+    // on an object that is a Light with no bones — while the six GlimmerSweep
+    // .anim files that were actually authored for them, animating
+    // m_LocalPosition and m_Intensity on a loop, were referenced by nothing.
+    // That is why the light sat in one place.
     //
-    // A humanoid clip cannot bind to anything here, so the Animator runs and
-    // moves nothing: the light sits at whichever point it was authored at and
-    // never sweeps or pulses. That is exactly "встає в 1 точку і не програє
-    // анімацію", and no amount of Rebind()/Play() fixes it, because there is
-    // nothing in the controller that could ever animate this object.
+    // The first attempt at this disabled the Animator and drove the light from
+    // code instead. That was the wrong call: it produced movement, but movement
+    // along a path nobody had designed, silently replacing hand-authored
+    // animation with a procedural guess. The controllers are repaired now and
+    // the Animator runs the authored clips again.
     //
-    // GlimmerSweep already exists in the project and does precisely what these
-    // lights want — travel between two points and breathe on a sine — and it is
-    // referenced by nothing at all. So the broken Animator steps aside and the
-    // component that was written for this job drives the light instead.
-    //
-    // Detection is exact rather than a guess: an Animator whose every clip is
-    // humanoid motion, on an object with no Avatar, is provably incapable of
-    // animating it. A real glimmer animation authored later will not be humanoid
-    // and will be left alone.
+    // What stays is the DETECTION, as a warning only. An Animator whose every
+    // clip is humanoid motion, on an object with no Avatar, provably cannot
+    // animate it — and that is worth saying out loud once, because the failure
+    // is completely silent otherwise. It no longer changes anything.
+    private bool _warnedGlimmerAnimator;
+
     private void EnsureGlimmerDriver()
     {
-        if (upgradeGlimmer == null) return;
+        if (upgradeGlimmer == null || _warnedGlimmerAnimator) return;
 
         foreach (var an in upgradeGlimmer.GetComponentsInChildren<Animator>(true))
         {
-            if (an == null || !CannotPossiblyAnimate(an)) { if (an != null) an.enabled = true; continue; }
-
-            an.enabled = false;
-
-            var light = an.GetComponent<Light>();
-            if (light == null) continue;
-            if (an.GetComponent<GlimmerSweep>() == null) an.gameObject.AddComponent<GlimmerSweep>();
+            if (an == null || !CannotPossiblyAnimate(an)) continue;
+            _warnedGlimmerAnimator = true;
+            Debug.LogWarning($"[Camp] The glimmer on '{buildingID}' has an Animator whose clips are all humanoid " +
+                             "motion, on an object with no Avatar — it cannot animate anything and the light will " +
+                             "sit still. Point its controller states at the GlimmerSweep clips.", upgradeGlimmer);
         }
     }
 
