@@ -86,8 +86,15 @@ public class ShopTutorialDirector : MonoBehaviour
         // STEP 3 — spend. Completion is the diamonds actually leaving, checked
         // through the quest flag the shop sets, so a click that failed for lack
         // of funds does not advance the step and quietly lie to the player.
+        //
+        // The UPGRADE button, not the buy button. ShopManager sets PP_DONE from
+        // inside the upgrade handler, so the step could only ever be completed
+        // by upgrading — while the arrow pointed at buy, which on a helmet the
+        // player already owns reads "EQUIPPED" and does nothing. The words said
+        // temper it and the arrow pointed at a button that cannot temper
+        // anything.
         yield return Step(
-            () => RectOf(_shop.buyButton),
+            () => RectOf(_shop.upgradeButton),
             "STEP_HELMET_BUY_TITLE", "STEP_HELMET_BUY_BODY",
             () => PlayerPrefs.GetInt(PP_DONE, 0) == 1);
 

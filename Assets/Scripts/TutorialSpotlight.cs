@@ -128,7 +128,10 @@ public class TutorialSpotlight : MonoBehaviour
         var arrowGo = new GameObject("Arrow", typeof(RectTransform));
         _arrow = arrowGo.GetComponent<RectTransform>();
         _arrow.SetParent(transform, false);
-        _arrow.sizeDelta = new Vector2(64f, 64f);
+        // Smaller than it was. At 64 the wedge was competing with the ring for
+        // attention and covering the control underneath it — an arrow only has
+        // to say WHICH thing, and the ring is already saying LOOK HERE.
+        _arrow.sizeDelta = new Vector2(34f, 34f);
         _arrowImg = arrowGo.AddComponent<Image>();
         _arrowImg.sprite = BuildArrowSprite();
         _arrowImg.raycastTarget = false;
@@ -138,14 +141,31 @@ public class TutorialSpotlight : MonoBehaviour
         _textPanelRT = panelGo.GetComponent<RectTransform>();
         _textPanelRT.SetParent(transform, false);
         _textPanelRT.sizeDelta = new Vector2(560f, 150f);
+        // ==== NO PLATE BEHIND THE WORDS ====
+        //
+        // The panel was a near-opaque dark slab, and it read as a second window
+        // pasted over the screen — heavier than the thing it was explaining, and
+        // it hid whatever it happened to land on. The whole screen is already
+        // dimmed for the step, which is what a backing plate is normally there
+        // to achieve, so it was doing the job twice and charging the layout for
+        // it. The text carries its own contrast with an outline instead.
         _textPanel = panelGo.AddComponent<Image>();
-        _textPanel.color = new Color(0.05f, 0.05f, 0.07f, 0.92f);
+        _textPanel.color = new Color(0f, 0f, 0f, 0f);
         _textPanel.raycastTarget = false;
 
         _title = MakeText(_textPanelRT, "Title", 34f, FontStyles.Bold, new Vector2(0f, 40f));
         _body = MakeText(_textPanelRT, "Body", 24f, FontStyles.Normal, new Vector2(0f, -18f));
         _title.color = new Color(1f, 0.87f, 0.55f);
-        _body.color = new Color(0.86f, 0.86f, 0.84f);
+        _body.color = new Color(0.90f, 0.90f, 0.88f);
+
+        // Without the plate the text has to hold on its own, over anything the
+        // step happens to sit in front of. A hard outline does that everywhere
+        // and costs nothing.
+        foreach (var t in new[] { _title, _body })
+        {
+            t.outlineWidth = 0.22f;
+            t.outlineColor = new Color32(8, 7, 5, 255);
+        }
     }
 
     private Image MakePanel(string name)
