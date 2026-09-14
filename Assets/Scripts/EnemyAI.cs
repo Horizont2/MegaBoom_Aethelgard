@@ -1777,7 +1777,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
         trail.startWidth = 0.42f * (magicOrbSize / 0.5f);
         trail.endWidth = 0f;
         trail.numCapVertices = 4;
-        trail.material = mat;
+        // The trail shares the orb's cached material rather than getting its own
+        // — sharedMaterial, so TrailRenderer does not instantiate a copy of it.
+        trail.sharedMaterial = OrbMaterial(magicOrbColor);
         trail.startColor = magicOrbColor;
         trail.endColor = new Color(magicOrbColor.r, magicOrbColor.g, magicOrbColor.b, 0f);
 

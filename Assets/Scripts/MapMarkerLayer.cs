@@ -26,13 +26,35 @@ public class MapMarkerLayer : MonoBehaviour
     private readonly List<Image> _pool = new List<Image>(16);
     private float _rebind;
 
+    // ==== RE-INSTALLED PER SCENE, NOT ONCE PER SESSION ====
+    //
+    // RuntimeInitializeOnLoadMethod fires exactly ONCE, in whatever scene the
+    // session starts in — the boot logo. The object it made is
+    // DontDestroyOnLoad, so in principle it survives; in practice this project
+    // has now lost four separate features to that assumption, because anything
+    // that clears persistent objects between scenes takes it with no second
+    // chance and no log line.
+    //
+    // Subscribing to sceneLoaded as well costs nothing and removes the whole
+    // class of failure. Same pattern PlayerBlock uses.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Hook()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnScene;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnScene;
+        Install();
+    }
+
+    private static void OnScene(UnityEngine.SceneManagement.Scene s,
+                                UnityEngine.SceneManagement.LoadSceneMode m) => Install();
+
     private static void Install()
     {
         if (FindFirstObjectByType<MapMarkerLayer>() != null) return;
         var go = new GameObject("[MapMarkers]");
         DontDestroyOnLoad(go);
         go.AddComponent<MapMarkerLayer>();
+        Debug.Log("[MapIcons] Marker layer installed.");
     }
 
     private void LateUpdate()
@@ -189,18 +211,34 @@ public class MapMarkerLayer : MonoBehaviour
         if (_set == null)
             return Fail("no MapEventIcons asset in a Resources folder. Create it with Tools > World > Map Event Icons.");
 
-        var host = FindFirstObjectByType<MinimapIconTracker>();
-        if (host == null)
-            return Fail("no MinimapIconTracker in the scene — this layer borrows the minimap's geometry from it, " +
-                        "so without one there is nothing to draw onto.");
-        if (host.minimapRect == null)
-            return Fail("the MinimapIconTracker has no minimapRect assigned, so the marker positions cannot be " +
-                        "worked out. Wire it in the inspector.");
-        _map = host.minimapRect;
+        // The tracker is the preferred source — it already knows the minimap's
+        // rect and camera. INCLUDING INACTIVE ones, because it lives on the HUD
+        // and a HUD element that happens to be switched off should not take the
+        // whole marker layer down with it.
+        var host = FindFirstObjectByType<MinimapIconTracker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        _map = host != null ? host.minimapRect : null;
 
-        _cam = host.minimapCamera != null
+        // No tracker, or one that was never wired: find the minimap directly
+        // rather than giving up. This layer only needs a rect and a camera, and
+        // both are findable on their own.
+        if (_map == null)
+        {
+            foreach (var rt in FindObjectsByType<RectTransform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (rt == null) continue;
+                string n = rt.name;
+                if (n == "MinimapBase" || (n.IndexOf("minimap", System.StringComparison.OrdinalIgnoreCase) >= 0
+                                           && n.IndexOf("icon", System.StringComparison.OrdinalIgnoreCase) < 0))
+                { _map = rt; break; }
+            }
+        }
+        if (_map == null)
+            return Fail("no minimap rect found — neither a MinimapIconTracker with minimapRect wired, nor an " +
+                        "object named MinimapBase. There is nothing to draw markers onto.");
+
+        _cam = host != null && host.minimapCamera != null
              ? host.minimapCamera
-             : FindFirstObjectByType<MinimapCamera>()?.GetComponent<Camera>();
+             : FindFirstObjectByType<MinimapCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None)?.GetComponent<Camera>();
         if (_cam == null)
             return Fail("no minimap camera found, so world metres cannot be converted to map pixels.");
 
