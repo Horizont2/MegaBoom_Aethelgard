@@ -2606,6 +2606,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
         return Quaternion.Euler(0f, first * 90f, 0f);
     }
 
+    // ==== A MUSHROOM IS NOT A WALL ====
+    //
+    // This is the zigzag, reported four times, and none of the previous fixes
+    // could have cured it because they were all about how the enemy REACTS to an
+    // obstacle. The real fault is what counts as one.
+    //
+    // With no explicit mask the probe sweeps every layer but enemies, and this
+    // loop then returned true for ANY collider it touched. The generator fills a
+    // region with up to three thousand trees, two and a half thousand bushes and
+    // mushrooms, twelve hundred rocks, plus dropped pickups and ground clutter —
+    // all of them with colliders, because they are harvestable. So an enemy
+    // running at the player across ordinary forest floor had something inside its
+    // 2.4-metre probe almost every frame, and dutifully swerved around a bush.
+    //
+    // Size is the test. Something you would walk THROUGH or step OVER is not an
+    // obstacle however solid its collider is; a wall, a building or a boulder is.
+    [Tooltip("Narrower than this (metres, horizontal) and the enemy walks through it rather than around it. Bushes, mushrooms, dropped loot and saplings are scenery, not walls.")]
+    public float minObstacleWidth = 0.9f;
+    [Tooltip("Shorter than this (metres) and the enemy steps over it instead of steering. Logs, rubble and low clutter.")]
+    public float minObstacleHeight = 0.8f;
+
     private bool ProbeBlocked(Vector3 origin, Vector3 dir)
     {
         int n = Physics.SphereCastNonAlloc(origin, avoidProbeRadius, dir.normalized, s_avoidBuffer,
@@ -2618,6 +2639,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
             if (c.CompareTag("Player")) continue;                // never dodge the target
             if (c.GetComponentInParent<EnemyAI>() != null) continue;
+            if (c.GetComponentInParent<AllyAI>() != null) continue;      // walk past a companion
+            if (c.GetComponentInParent<ResourceDrop>() != null) continue; // loot on the floor
+
+            // Big enough to be worth going round?
+            Bounds b = c.bounds;
+            float width = Mathf.Max(b.size.x, b.size.z);
+            if (width < minObstacleWidth) continue;
+            if (b.size.y < minObstacleHeight) continue;
+
             return true;
         }
         return false;
