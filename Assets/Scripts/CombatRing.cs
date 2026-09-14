@@ -71,6 +71,44 @@ public class CombatRing : MonoBehaviour
     [Tooltip("Furthest a waiting enemy circles before closing back in.")]
     public float outerRadius = 6.2f;
 
+    [Header("Facing")]
+    [Tooltip("How many attackers at once may swing from outside the player's guard arc. One keeps being flanked a real threat without making the shield pointless.")]
+    public int maxRearAttackers = 1;
+    [Tooltip("Half-angle, in degrees, counted as 'in front of the player'. Slightly wider than the guard arc, so an enemy at the very edge of cover is not treated as a rear attacker.")]
+    public float frontHalfAngle = 80f;
+
+    private Transform _player;
+
+    private Transform Player
+    {
+        get
+        {
+            if (_player == null)
+            {
+                var p = GameObject.FindGameObjectWithTag("Player");
+                if (p != null) _player = p.transform;
+            }
+            return _player;
+        }
+    }
+
+    private bool IsBehindPlayer(EnemyAI who)
+    {
+        var p = Player;
+        if (p == null || who == null) return false;
+        Vector3 to = who.transform.position - p.position; to.y = 0f;
+        if (to.sqrMagnitude < 0.01f) return false;
+        return Vector3.Angle(p.forward, to.normalized) > frontHalfAngle;
+    }
+
+    private int CountRearHolders()
+    {
+        int n = 0;
+        for (int i = 0; i < _holders.Count; i++)
+            if (_holders[i] != null && IsBehindPlayer(_holders[i])) n++;
+        return n;
+    }
+
     private readonly List<EnemyAI> _holders = new List<EnemyAI>(4);
     private readonly Dictionary<EnemyAI, float> _grantedAt = new Dictionary<EnemyAI, float>(8);
     private readonly Dictionary<EnemyAI, float> _blockedUntil = new Dictionary<EnemyAI, float>(8);
@@ -156,6 +194,23 @@ public class CombatRing : MonoBehaviour
     public bool RequestAttack(EnemyAI who)
     {
         if (who == null || who.IsDead) return false;
+
+        // ==== THE FIGHT HAPPENS IN FRONT OF THE PLAYER ====
+        //
+        // A guard is a direction, so an attack from behind cannot be blocked —
+        // it can only be turned into. That is fine as an occasional pressure and
+        // ruinous as the default: with attackers picked without regard to where
+        // the player is looking, roughly half of every fight arrived from
+        // outside the guard arc, the player was asked to spin a full circle for
+        // each one, and the shield stopped being worth holding at all.
+        //
+        // The conductor already decides WHO may swing. Deciding it with the
+        // player's facing in mind costs nothing and is what makes a shield a
+        // real answer rather than a lottery. Being flanked still happens — one
+        // slot may always come from behind — so turning around remains part of
+        // the fight instead of becoming most of it.
+        if (!who.isBoss && IsBehindPlayer(who) && !_holders.Contains(who)
+            && CountRearHolders() >= maxRearAttackers) return false;
         // Even a boss waits out the flinch. A boss that swings through a parry
         // teaches the player that parrying a boss is pointless, which is the one
         // fight where it matters most.
@@ -240,7 +295,17 @@ public class CombatRing : MonoBehaviour
         // same speed in the same direction looks like a carousel.
         float angle0 = Frac(seed * 0.6180339887f) * Mathf.PI * 2f;
         float radius = Mathf.Lerp(innerRadius, outerRadius, Frac(seed * 0.7548776662f));
-        float speed = Mathf.Lerp(0.35f, 0.75f, Frac(seed * 0.3247179572f));
+        // ==== SLOWER THAN IT LOOKS ON PAPER ====
+        //
+        // This was 0.35-0.75 rad/s. At a five-metre radius that is a tangential
+        // speed of nearly four metres a second — a full sprint, sideways, while
+        // facing the player. With no strafe animation in the set the enemies
+        // played a forward run while sliding crabwise, which is the "бігають
+        // боком" report.
+        //
+        // A waiting enemy should be shifting its weight and repositioning, not
+        // sprinting a circuit. Slower reads as menace; faster reads as a bug.
+        float speed = Mathf.Lerp(0.12f, 0.28f, Frac(seed * 0.3247179572f));
         float dir = (seed & 1) == 0 ? 1f : -1f;
 
         // And a slow breathing in and out, so nobody holds a fixed distance.

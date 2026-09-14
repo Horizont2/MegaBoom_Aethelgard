@@ -379,6 +379,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // means the crowd is quietly allowed fewer attackers than it should be,
         // and after a few fights nobody can swing at all.
         if (CombatRing.Instance != null) CombatRing.Instance.ReportDisengaged(this);
+        ParryCue.Cancel(this);
         _reportedEngaged = false;
 
         ActiveEnemiesCount--;
@@ -896,16 +897,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (holdRing)
         {
-            // Face the player while circling. A waiter that turns its back to
-            // walk its orbit reads as an enemy that has lost interest, which is
-            // the opposite of what the ring is for.
-            if (directionToPlayer != Vector3.zero)
-            {
-                Vector3 faceDir = directionToPlayer; faceDir.y = 0f;
-                if (faceDir.sqrMagnitude > 0.0001f)
-                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(faceDir), 9f * Time.deltaTime);
-            }
-
             HoldRingPost(currentPos, repulsion, ring);
             return;
         }
@@ -1229,7 +1220,26 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // space. If the FMOD event has no spatializer authored, add a
         // "3D Panner" preset in FMOD Studio; the position we pass will
         // then attenuate distance and pan by direction.
-        PlayVocal(isBoss ? AudioID.Boss_Roar : AudioID.Enemy_Agro);
+        // ==== NOT EVERY ENEMY ANNOUNCES ITSELF ====
+        //
+        // The shared vocal gate is 0.22s, which stops a crowd barking on ONE
+        // frame and does nothing about the rate: twenty enemies spotting the
+        // player still produced four and a half barks a second for four
+        // straight seconds. And BeginSearch clears isAggroed, so an enemy that
+        // loses sight behind a tree and finds the player again barks afresh
+        // every time — a player weaving through a forest is followed by a
+        // continuous chorus.
+        //
+        // A bark exists to tell the player "you have been seen". One is
+        // information; twenty is noise that also drowns the attack telegraphs,
+        // which are the sounds that actually matter now that blocking is timed
+        // off them. So it gets its own long gate, and only the first enemy in a
+        // group through that gate says anything.
+        if (isBoss || Time.time - s_lastAggroBark >= AGGRO_BARK_INTERVAL)
+        {
+            if (!isBoss) s_lastAggroBark = Time.time;
+            PlayVocal(isBoss ? AudioID.Boss_Roar : AudioID.Enemy_Agro);
+        }
         if (isBoss)
         {
             SetAnimTriggerSafe("Roar");
@@ -1258,6 +1268,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // own, much shorter cooldown and never competes with the crowd.
     private static float s_lastBossVocalTime = -10f;
     private const float BOSS_VOCAL_INTERVAL = 0.05f;
+
+    // Separate, much longer gate for the "I have seen you" bark specifically.
+    // The 0.22s gate above is about not stacking sounds on one frame; this is
+    // about how OFTEN the crowd is allowed to say the same thing. See Aggro().
+    private static float s_lastAggroBark = -10f;
+    private const float AGGRO_BARK_INTERVAL = 3.5f;
 
     private void PlayVocal(string audioId)
     {
@@ -1713,10 +1729,41 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 ? wanted
                 : Vector3.Slerp(_ringHeading, wanted, 6f * Time.deltaTime);
 
-            Vector3 nextPos = currentPos + _ringHeading.normalized
-                            * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency)) * Time.deltaTime;
+            Vector3 step = _ringHeading.normalized * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency));
+            Vector3 nextPos = currentPos + step * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             SetPositionSafe(nextPos);
+
+            // ==== LOOK WHERE YOU ARE GOING, MOSTLY ====
+            //
+            // Facing the player while circling is what a strafe animation is
+            // for, and the enemy animation set has none — so a waiter locked
+            // onto the player played a forward run while travelling sideways.
+            //
+            // The compromise: the faster it is actually moving, the more it
+            // turns into its own path, and as it settles at its post it comes
+            // back round to face the player. Crossing ground looks like
+            // running; holding station looks like watching you.
+            Vector3 toPlayer = target.position - currentPos; toPlayer.y = 0f;
+            if (toPlayer.sqrMagnitude > 0.0001f)
+            {
+                float travel = Mathf.Clamp01(step.magnitude / Mathf.Max(0.1f, actualMoveSpeed));
+                Vector3 look = Vector3.Slerp(toPlayer.normalized, _ringHeading.normalized,
+                                             Mathf.SmoothStep(0f, 0.85f, travel));
+                if (look.sqrMagnitude > 0.0001f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation,
+                                                          Quaternion.LookRotation(look.normalized),
+                                                          8f * Time.deltaTime);
+            }
+        }
+        else
+        {
+            // Standing at its post: watch the player.
+            Vector3 toPlayer = target.position - currentPos; toPlayer.y = 0f;
+            if (toPlayer.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                                                      Quaternion.LookRotation(toPlayer.normalized),
+                                                      8f * Time.deltaTime);
         }
 
         // A waiter still THREATENS. Every few seconds it lunges a step and
@@ -1741,6 +1788,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (isDead) return;
 
         stunTimer = Mathf.Max(stunTimer, stagger);
+        // The mark goes with the swing. A countdown still running for an attack
+        // that was just parried out of existence teaches a timing that is not
+        // there any more.
+        ParryCue.Cancel(this);
         // Cancel the swing outright. An enemy that finishes its animation and
         // connects anyway makes the block look like it did nothing.
         StopCoroutine(nameof(AttackRoutine));
@@ -1884,6 +1935,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         float telegraph = EffectiveTelegraph;
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, telegraph + 0.2f);
+
+        // The parry clock. The colour pulse says an attack is COMING; only this
+        // says when to answer it — and it is the one piece of feedback the whole
+        // block mechanic was missing. Also the only thing that makes an attack
+        // from behind fair, because its mark pins to the screen edge and tells
+        // the player which way to turn.
+        ParryCue.Show(this, telegraph, PlayerBlock.ParryWindowSecondsFor(this), _thisSwingUnblockable);
 
         if (isElite && playerTarget != null)
         {
@@ -2386,6 +2444,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public float avoidSolvesPerSecond = 10f;
     private float _nextAvoidSolve;
     private Quaternion _avoidDeflection = Quaternion.identity;
+    // Which way round the current obstacle this enemy committed to: -1 left,
+    // +1 right, 0 nothing in the way. See SolveDeflection.
+    private int _avoidSide;
 
     private int ResolvedObstacleMask()
     {
@@ -2417,21 +2478,40 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private Quaternion SolveDeflection(Vector3 pos, Vector3 dir)
     {
         Vector3 origin = pos + Vector3.up * avoidProbeHeight;
-        if (!ProbeBlocked(origin, dir)) return Quaternion.identity;
+        // Path is clear: forget the side we were committed to, so the next
+        // obstacle is judged fresh rather than inheriting an old preference.
+        if (!ProbeBlocked(origin, dir)) { _avoidSide = 0; return Quaternion.identity; }
 
-        // Fan out to either side until a clear heading is found. Alternating
-        // left/right keeps the deflection minimal, so they hug the wall and
-        // slip past a corner instead of turning around.
-        for (int step = 1; step <= 4; step++)
+        // ==== COMMIT TO A SIDE ====
+        //
+        // This tried left first every time. Which side is clear changes as the
+        // enemy moves, so on any awkward obstacle the answer flipped from left
+        // to right and back at the solve rate — and the enemy walked a zigzag
+        // instead of walking round the thing. That is the "рухаються дуже дивно
+        // зігзагами" report, and it is a decision problem, not a steering one:
+        // the choice was correct each time and simply kept being re-made.
+        //
+        // Whichever way it went last time is tried first now, and it only
+        // changes sides when its committed side is blocked at every angle. A
+        // human going round a rock does the same thing — picks a side and stays
+        // with it — and the movement instantly reads as intent rather than
+        // indecision.
+        int first = _avoidSide != 0 ? _avoidSide : 1;
+
+        for (int pass = 0; pass < 2; pass++)
         {
-            float a = step * 25f;
-            var lq = Quaternion.Euler(0f, -a, 0f);
-            if (!ProbeBlocked(origin, lq * dir)) return lq;
-            var rq = Quaternion.Euler(0f, a, 0f);
-            if (!ProbeBlocked(origin, rq * dir)) return rq;
+            int side = pass == 0 ? first : -first;
+            for (int step = 1; step <= 4; step++)
+            {
+                var q = Quaternion.Euler(0f, side * step * 25f, 0f);
+                if (!ProbeBlocked(origin, q * dir)) { _avoidSide = side; return q; }
+            }
         }
-        // Boxed in — slide sideways rather than grinding into the wall.
-        return Quaternion.Euler(0f, 90f, 0f);
+
+        // Boxed in — slide sideways rather than grinding into the wall, and
+        // keep sliding the same way for the same reason as above.
+        _avoidSide = first;
+        return Quaternion.Euler(0f, first * 90f, 0f);
     }
 
     private bool ProbeBlocked(Vector3 origin, Vector3 dir)

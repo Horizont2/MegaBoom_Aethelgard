@@ -229,6 +229,19 @@ public class PlayerBlock : MonoBehaviour
 
     private void OnDestroy() { if (Instance == this) Instance = null; }
 
+    // What the on-screen cue has to draw. It must be the SAME number the hit
+    // will be judged against — a countdown that disagrees with the rule it is
+    // counting down to is worse than no countdown, because the player learns a
+    // timing that then fails.
+    public static float ParryWindowSecondsFor(EnemyAI attacker)
+    {
+        if (Instance != null) return Instance.ParryWindowFor(attacker);
+        // No guard installed yet: fall back to the same shape with default
+        // numbers so the cue is still honest about roughly when to press.
+        float t = attacker != null ? attacker.EffectiveTelegraph : 0.6f;
+        return Mathf.Max(0.18f, t * 0.4f);
+    }
+
     // The window for THIS attacker: the flat floor, or a slice of its wind-up,
     // whichever is more generous. The shield's own bonus rides on top either
     // way, so a parry-focused shield still helps against everything.
