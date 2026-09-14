@@ -333,6 +333,12 @@ public class WorldGenerator : MonoBehaviour
 
     [Header("Points of Interest")]
     public GameObject[] poiPrefabs;
+    [Tooltip("How far out from the map centre a RARE location (one with a per-region cap, or one that is not guaranteed to appear) may be placed, as a fraction of the half-span. Most of a square's area is in its outer ring, so a uniform scatter reliably puts the one Barrow in a region out by the border mountains.")]
+    [Range(0.3f, 1f)] public float rareLocationInnerFraction = 0.62f;
+
+    // The weighted draw is held across rejected grid points — see the note in
+    // SpawnPOIsRoutine.
+    private POICandidate _heldPick;
     public int maxPOIs = 15;
     public float maxPOISteepness = 12f;
     public float poiClearanceRadius = 4f;
@@ -692,6 +698,7 @@ public class WorldGenerator : MonoBehaviour
         // Очищаємо списки доріг
         roadTargets.Clear();
         deadEndTargets.Clear();
+        _heldPick = null;
         roadSplines.Clear();
 
         // 1. СПОЧАТКУ знаходимо Terrain
@@ -4312,12 +4319,44 @@ public class WorldGenerator : MonoBehaviour
             if (prefabsAssigned >= maxPOIs) break;
             if (pool.Count == 0) break;   // everything left has hit its cap
 
-            POICandidate pick = PickWeighted(pool);
+            // ==== A REJECTED SPOT MUST NOT COST A DRAW ====
+            //
+            // PickWeighted ran once per grid point and the result was thrown
+            // away whenever the spot failed a test — overlap, slope, water. Most
+            // points fail, so most draws were discarded, and the rare entries
+            // were burning their odds on ground they never occupied. Holding the
+            // pick until it is actually placed is what makes the weights mean
+            // what they say.
+            if (_heldPick == null) _heldPick = PickWeighted(pool);
+            POICandidate pick = _heldPick;
             if (pick == null) break;
             GameObject prefab = pick.prefab;
             POISettings settings = pick.settings;
 
             Vector3 centerPos = new Vector3(gridPoint.x, 0, gridPoint.y);
+
+            // ==== RARE LOCATIONS BELONG IN THE MAP, NOT ROUND ITS EDGE ====
+            //
+            // The grid is a uniform scatter over a square, and most of a square's
+            // area is in its outer ring — so a uniform draw genuinely does put
+            // most placements out near the rim. For eighty camps and barrels that
+            // is invisible. For the one Barrow in a region it is the whole
+            // experience: the rarest thing in the game reliably ends up in a
+            // corner behind the border mountains, which is the "спавняться лише
+            // по краям" report.
+            //
+            // Anything the designer marked as an event — capped per region, or
+            // not guaranteed to appear — is held to the inner part of the map,
+            // where the player actually travels.
+            bool isRareEvent = settings.maxPerRegion > 0 || settings.regionAppearChance < 0.999f;
+            if (isRareEvent)
+            {
+                float cx = transform.position.x + w * 0.5f;
+                float cz = transform.position.z + l * 0.5f;
+                float halfSpan = Mathf.Min(w, l) * 0.5f;
+                float fromCentre = Vector2.Distance(new Vector2(gridPoint.x, gridPoint.y), new Vector2(cx, cz));
+                if (fromCentre > halfSpan * rareLocationInnerFraction) continue;
+            }
 
             // Перевіряємо, чи не накладається на інші заплановані локації
             bool isOverlap = false;
@@ -4370,13 +4409,18 @@ public class WorldGenerator : MonoBehaviour
                     settings = settings
                 });
                 prefabsAssigned++;
+                _heldPick = null;   // placed — draw again for the next site
 
                 // A capped location leaves the pool the moment it is satisfied,
                 // so the remaining weight redistributes to whatever is left
                 // instead of the draw quietly re-rolling something it can no
                 // longer place.
                 pick.placed++;
-                if (settings.maxPerRegion > 0 && pick.placed >= settings.maxPerRegion) pool.Remove(pick);
+                if (settings.maxPerRegion > 0 && pick.placed >= settings.maxPerRegion)
+                {
+                    pool.Remove(pick);
+                    if (_heldPick == pick) _heldPick = null;   // never hold a capped-out entry
+                }
             }
         }
 

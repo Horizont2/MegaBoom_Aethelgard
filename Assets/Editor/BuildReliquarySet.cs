@@ -137,9 +137,14 @@ public static class BuildReliquarySetTool
         }
         else missing.Add(ResourceIcons + " (needs 3 sliced sprites)");
 
-        var gem = AssetDatabase.LoadAssetAtPath<Sprite>(DiamondIcon);
+        // Diamond.png is a MULTI-sprite texture, so LoadAssetAtPath<Sprite>
+        // returns null on it — the sprites are sub-assets. That is why wiring it
+        // that way would have quietly assigned nothing.
+        Sprite gem = null;
+        foreach (var sub in AssetDatabase.LoadAllAssetsAtPath(DiamondIcon))
+            if (sub is Sprite sp) { gem = sp; break; }
         if (gem != null) set.diamondIcon = gem;
-        else missing.Add(DiamondIcon);
+        else missing.Add(DiamondIcon + " (no sprite sub-asset — is it sliced?)");
 
         if (isNew) AssetDatabase.CreateAsset(set, Path);
         EditorUtility.SetDirty(set);

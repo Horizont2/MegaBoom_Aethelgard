@@ -215,7 +215,7 @@ public class MapMarkerLayer : MonoBehaviour
         // rect and camera. INCLUDING INACTIVE ones, because it lives on the HUD
         // and a HUD element that happens to be switched off should not take the
         // whole marker layer down with it.
-        var host = FindFirstObjectByType<MinimapIconTracker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var host = FindFirstObjectByType<MinimapIconTracker>(FindObjectsInactive.Include);
         _map = host != null ? host.minimapRect : null;
 
         // No tracker, or one that was never wired: find the minimap directly
@@ -238,7 +238,7 @@ public class MapMarkerLayer : MonoBehaviour
 
         _cam = host != null && host.minimapCamera != null
              ? host.minimapCamera
-             : FindFirstObjectByType<MinimapCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None)?.GetComponent<Camera>();
+             : FindFirstObjectByType<MinimapCamera>(FindObjectsInactive.Include)?.GetComponent<Camera>();
         if (_cam == null)
             return Fail("no minimap camera found, so world metres cannot be converted to map pixels.");
 
