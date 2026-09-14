@@ -931,8 +931,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // Only ASK once close enough to use the answer. A token claimed from
         // twelve metres out would expire on the walk in, and would be held —
         // and therefore denied to someone in range — the whole way.
+        //
+        // RequestSlot, not RequestAttack: this decides the ROLE, and the role
+        // must not be revoked by the crowd's swing rhythm. It used to be, and
+        // the consequence was severe — every time any enemy anywhere started a
+        // swing, everyone else was told they were no longer an attacker,
+        // turned around and walked back to their ring post, then turned again
+        // 0.85s later. See the note on CombatRing.MayStrikeNow.
         if (!hasSlot && inRingBand && Time.time >= lastAttackTime + attackCooldown)
-            hasSlot = ring.RequestAttack(this);
+            hasSlot = ring.RequestSlot(this);
 
         // Anyone in the band without a token holds the ring instead of closing.
         bool holdRing = ring != null && inRingBand && !hasSlot;
@@ -965,7 +972,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // through the whole telegraph, so backing off did nothing and hits
             // seemed to land from outside the range the player could see. Wind up
             // on arrival, not on approach.
-            if (isAttackReady && distanceToPlayer <= attackRange && hasSlot)
+            // The rhythm is asked HERE, at the swing, and nowhere else. Failing
+            // it means "wait a beat", not "stop being an attacker" — so the
+            // enemy holds its ground in the footwork branch below instead of
+            // abandoning its approach.
+            bool rhythmOk = CombatRing.Instance == null || CombatRing.Instance.MayStrikeNow();
+
+            if (isAttackReady && distanceToPlayer <= attackRange && hasSlot && rhythmOk)
             {
                 StartCoroutine(AttackRoutine());
             }

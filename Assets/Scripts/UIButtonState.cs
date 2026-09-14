@@ -19,8 +19,10 @@ using UnityEngine.UI;
 public static class UIButtonState
 {
     [Tooltip("How much colour a disabled button keeps. 0 = flat grey, 1 = unchanged.")]
-    private const float DisabledSaturation = 0.35f;
-    private const float DisabledBrightness = 0.55f;
+    // Deliberately a big step. Over a dark panel a gentle dim is invisible, and
+    // the whole point is that the player can tell at a glance.
+    private const float DisabledSaturation = 0.12f;
+    private const float DisabledBrightness = 0.42f;
 
     // Sets interactable AND repairs the disabled tint, so no prefab has to be
     // re-authored one button at a time.
@@ -39,19 +41,32 @@ public static class UIButtonState
     {
         if (target == null) return;
 
-        // This can only repair a ColorTint button — that is where the disabled
-        // ALPHA lives. A button using Sprite Swap or Animation gets its faded
-        // look from an authored sprite or an animation clip, and no code change
-        // here can touch it; it has to be fixed in the prefab. Saying so once is
-        // better than silently doing nothing to half the panel.
-        if (target.transition != Selectable.Transition.ColorTint)
+        // ==== SPRITE SWAP WITH NO DISABLED SPRITE SHOWS NOTHING AT ALL ====
+        //
+        // The barracks buttons are SpriteSwap, which ignores the ColorBlock
+        // entirely — so the first version of this fix did nothing to them. And
+        // their m_DisabledSprite is EMPTY, which means Unity falls back to the
+        // normal sprite: an unaffordable button rendered pixel-for-pixel like an
+        // affordable one. That is worse than the fade it was meant to replace,
+        // and it is what "active buttons still look the same as inactive" meant.
+        //
+        // With no disabled sprite authored there is nothing to preserve, so the
+        // button is switched to ColorTint, which this CAN drive. A button that
+        // does have a disabled sprite is left alone — someone drew it on purpose.
+        if (target.transition == Selectable.Transition.SpriteSwap)
         {
+            if (target.spriteState.disabledSprite != null) return;   // authored — respect it
+            target.transition = Selectable.Transition.ColorTint;
+        }
+        else if (target.transition != Selectable.Transition.ColorTint)
+        {
+            // Animation transitions are driven by a clip; nothing here can help.
             if (!s_warnedTransition)
             {
                 s_warnedTransition = true;
-                Debug.LogWarning($"[UI] '{target.name}' uses {target.transition} transition, not ColorTint, so its " +
-                                 "disabled look comes from an authored sprite or clip and cannot be fixed in code. " +
-                                 "Switch it to Color Tint, or author an opaque disabled sprite.", target);
+                Debug.LogWarning($"[UI] '{target.name}' uses an {target.transition} transition, so its disabled " +
+                                 "look comes from an animation clip and cannot be set in code. Give it a Color Tint " +
+                                 "or Sprite Swap transition instead.", target);
             }
             return;
         }

@@ -194,7 +194,30 @@ public class CombatRing : MonoBehaviour
 
     // "May I swing?" Bosses never ask — a boss fight is not a crowd, and a boss
     // waiting politely for a token behind two skeletons would be absurd.
-    public bool RequestAttack(EnemyAI who)
+    // ==== TWO DIFFERENT QUESTIONS, AND CONFLATING THEM CAUSED THE ZIGZAG ====
+    //
+    // "Am I one of the attackers?" is a ROLE. It lasts seconds, and the enemy
+    // walks in on the strength of it.
+    //
+    // "May I swing this instant?" is a RHYTHM gate. It flips every 0.85s,
+    // because it goes false the moment ANY enemy anywhere starts a swing.
+    //
+    // This method answered both at once, and EnemyAI used the answer to decide
+    // whether to approach the player or fall back to its ring post. So every
+    // time one enemy swung, every other enemy in the crowd was told it was no
+    // longer an attacker, turned around and walked away from the player — then
+    // 0.85 seconds later was told it was one again and turned back. With several
+    // of them out of phase, that is a crowd surging in different directions and
+    // reversing constantly, which is exactly the reported zigzag.
+    //
+    // MayStrikeNow is the rhythm, asked at the moment of the swing.
+    // RequestSlot is the role, and nothing transient may take it away.
+    public bool MayStrikeNow() => !Hesitating && SwingWindowOpen;
+
+    // Kept for callers that genuinely want both at once.
+    public bool RequestAttack(EnemyAI who) => MayStrikeNow() && RequestSlot(who);
+
+    public bool RequestSlot(EnemyAI who)
     {
         if (who == null || who.IsDead) return false;
 
@@ -214,13 +237,10 @@ public class CombatRing : MonoBehaviour
         // the fight instead of becoming most of it.
         if (!who.isBoss && IsBehindPlayer(who) && !_holders.Contains(who)
             && CountRearHolders() >= maxRearAttackers) return false;
-        // Even a boss waits out the flinch. A boss that swings through a parry
-        // teaches the player that parrying a boss is pointless, which is the one
-        // fight where it matters most.
-        if (Hesitating) return false;
-        // A boss skips the token queue but NOT the rhythm — otherwise a boss
-        // with adds produces exactly the overlapping wall this exists to stop.
-        if (!SwingWindowOpen) return false;
+        // The rhythm checks that used to live here have moved to MayStrikeNow —
+        // a boss still waits out a parry's flinch and still respects the gap
+        // between swings, but at the moment it SWINGS, not when it decides
+        // whether to walk toward the player.
         if (who.isBoss) return true;
 
         if (_holders.Contains(who)) return true;
