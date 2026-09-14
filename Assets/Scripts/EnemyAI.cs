@@ -1392,6 +1392,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // is off because it was culled or because the enemy was never hurt.
     private bool _healthBarWanted;
 
+    private static bool s_showDamagePopups = true;
+    private static float s_popupPrefRefresh = -1f;
+
     // int.MinValue = not resolved yet; 0 is a legitimate answer (no such layers).
     private static int s_losBlockers = int.MinValue;
 
@@ -2352,7 +2355,16 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3DAttached(AudioID.Enemy_Hurt, transform);
         StartCoroutine(HitFlashRoutine());
 
-        bool showPopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
+        // Cached across enemies. This ran on EVERY hit on EVERY enemy — an AoE
+        // swing into a crowd was one marshalled PlayerPrefs lookup per body — to
+        // answer a question that changes only when the player opens the settings
+        // panel. Refreshed on a timer so it still responds to that.
+        if (Time.unscaledTime >= s_popupPrefRefresh)
+        {
+            s_popupPrefRefresh = Time.unscaledTime + 1f;
+            s_showDamagePopups = PlayerPrefs.GetInt("Settings_DamagePopups", 1) == 1;
+        }
+        bool showPopups = s_showDamagePopups;
         if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)
         {
             GameObject popup = ObjectPoolManager.Instance.SpawnFromPool(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
@@ -2651,6 +2663,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float _nextAvoidSolve;
     private Quaternion _avoidDeflection = Quaternion.identity;
     private Quaternion _avoidTarget = Quaternion.identity;
+
+    [Tooltip("How many enemies may re-solve their obstacle steering in a single frame, across the whole horde. Anyone over the limit keeps the heading they already had and tries next frame.")]
+    public int maxAvoidSolvesPerFrame = 6;
+    private static int s_solveFrame = -1;
+    private static int s_solvesThisFrame;
     // Which way round the current obstacle this enemy committed to: -1 left,
     // +1 right, 0 nothing in the way. See SolveDeflection.
     private int _avoidSide;
@@ -2671,10 +2688,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (dir.sqrMagnitude < 0.0001f) return dir;
         dir.Normalize();
 
+        // ==== ONE HORDE, ONE SOLVE BUDGET ====
+        //
+        // SolveDeflection can fire up to nine spherecasts when a path is blocked,
+        // at ten solves a second, PER ENEMY. Forty aggro'd skeletons is a few
+        // thousand casts a second, and nothing stopped them all landing on the
+        // same frame — which is a spike rather than a cost.
+        //
+        // A shared per-frame budget spreads them: an enemy that misses its turn
+        // keeps steering on the answer it already has, which is exactly what the
+        // cached deflection is for, and tries again next frame.
         if (Time.time >= _nextAvoidSolve)
         {
-            _nextAvoidSolve = Time.time + 1f / Mathf.Max(1f, avoidSolvesPerSecond);
-            _avoidTarget = SolveDeflection(pos, dir);
+            if (s_solveFrame != Time.frameCount) { s_solveFrame = Time.frameCount; s_solvesThisFrame = 0; }
+            if (s_solvesThisFrame < maxAvoidSolvesPerFrame)
+            {
+                s_solvesThisFrame++;
+                _nextAvoidSolve = Time.time + 1f / Mathf.Max(1f, avoidSolvesPerSecond);
+                _avoidTarget = SolveDeflection(pos, dir);
+            }
         }
 
         // ==== THE DEFLECTION EASES IN, IT DOES NOT SNAP ====
@@ -2763,7 +2795,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (c is TerrainCollider) continue;                  // the ground is not a wall
             if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
             if (c.CompareTag("Player")) continue;                // never dodge the target
-            if (c.GetComponentInParent<EnemyAI>() != null) continue;
+            // (No GetComponentInParent<EnemyAI> here: the default obstacle mask
+            // already excludes layer 9, so walking the parent chain per hit was
+            // dead weight on a query that runs up to nine times per solve.)
             if (c.GetComponentInParent<AllyAI>() != null) continue;      // walk past a companion
             if (c.GetComponentInParent<ResourceDrop>() != null) continue; // loot on the floor
 
