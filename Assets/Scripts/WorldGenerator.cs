@@ -704,6 +704,10 @@ public class WorldGenerator : MonoBehaviour
         // 2. ТІЛЬКИ ТЕПЕР створюємо маску (бо terrain більше не null!)
         roadBlendMap = new float[terrain.terrainData.alphamapWidth, terrain.terrainData.alphamapHeight];
 
+        // Work out how far the border scenery reaches inward before anything is
+        // placed, so every later phase can stay out of it.
+        ComputeBorderBand();
+
         propBlock = new MaterialPropertyBlock();
 
         if (skyboxMaterial != null) RenderSettings.skybox = skyboxMaterial;
@@ -1851,6 +1855,64 @@ public class WorldGenerator : MonoBehaviour
     // the winter-specific work below.
     private bool IsWinterRegion => isRegionMissionCached && regionBiomeTypeCached == 2;
 
+    // ==== THE RIM THE BORDER MOUNTAINS ACTUALLY OCCUPY ====
+    //
+    // The mountains are placed borderOffset metres OUTSIDE the terrain — three
+    // by default — and then scaled by up to borderMaxScale. A mountain mesh is
+    // tens of metres across, so most of that bulk lands INSIDE the playable
+    // area, and everything else is placed with no idea it is there. Hence
+    // totems, roads and whole stands of trees ending up buried in a mountain at
+    // the map edge.
+    //
+    // Their colliders are stripped, so nothing stops a spawn physically and
+    // nothing ever complained. This is the missing knowledge: how far in from
+    // each edge the scenery reaches.
+    private float _borderBand;
+
+    private void ComputeBorderBand()
+    {
+        _borderBand = 0f;
+        if (borderMountainPrefabs == null) return;
+
+        foreach (var p in borderMountainPrefabs)
+        {
+            if (p == null) continue;
+
+            // Measured off the MESH, not Renderer.bounds: an un-instantiated
+            // prefab's renderer bounds are not reliable, and this runs before
+            // anything has been spawned.
+            float r = 0f;
+            foreach (var mf in p.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf == null || mf.sharedMesh == null) continue;
+                Vector3 e = mf.sharedMesh.bounds.extents;
+                Vector3 s = mf.transform.lossyScale;
+                r = Mathf.Max(r, Mathf.Max(Mathf.Abs(e.x * s.x), Mathf.Abs(e.z * s.z)));
+            }
+            r *= Mathf.Max(1f, borderMaxScale);
+            if (r > _borderBand) _borderBand = r;
+        }
+
+        // The first borderOffset metres of that radius are spent outside the
+        // terrain before it reaches anything.
+        _borderBand = Mathf.Max(0f, _borderBand - borderOffset);
+        if (_borderBand > 0.5f)
+            Debug.Log($"[WorldGenerator] Border mountains reach ~{_borderBand:F0}m inside the map edge; " +
+                      "nothing else will be placed in that band.");
+    }
+
+    // True for anything standing where a border mountain will later be drawn.
+    private bool InBorderBand(float worldX, float worldZ)
+    {
+        if (_borderBand <= 0.5f || terrain == null) return false;
+        float lx = worldX - transform.position.x;
+        float lz = worldZ - transform.position.z;
+        float w = terrain.terrainData.size.x;
+        float l = terrain.terrainData.size.z;
+        return lx < _borderBand || lz < _borderBand
+            || lx > w - _borderBand || lz > l - _borderBand;
+    }
+
     // Snow depth per alphamap cell, 0 = scoured bare, 1 = buried. Built by the
     // paint pass and kept because the grass pass, which runs after it, needs the
     // same field: vegetation should be absent from both the bare wind-scoured
@@ -2278,7 +2340,10 @@ public class WorldGenerator : MonoBehaviour
         // a totem placed at the old ~50m margin got visually swallowed by
         // one ("totem at map edge inside a rock"). 120m of clearance from
         // every edge keeps it in open ground.
-        float edgeMargin = flatRadius + 120f;
+        // 120m was a guess at how far the mountains reach; _borderBand is the
+        // measured answer. Whichever is larger wins, so a bigger mountain set
+        // can never quietly outgrow the margin again.
+        float edgeMargin = Mathf.Max(flatRadius + 120f, _borderBand + flatRadius + 20f);
         // On a small map, flatRadius+120 can exceed half the map and the
         // scan loop below never runs → validSpots empty → fallback to the
         // map centre (which is always safe). Clamp so we still get a scan
@@ -3239,6 +3304,10 @@ public class WorldGenerator : MonoBehaviour
                 // Тупик має бути далеко від бази (> 70м), не крутий, над водою,
                 // і достатньо далеко від інших тупиків, щоб не спавнилися пари.
                 if (wY <= absWaterH + 5f) continue;
+                // Dead-ends are deliberately placed out near the rim, which is
+                // precisely where the border mountains stand — this is how roads
+                // and their altars ended up inside one.
+                if (InBorderBand(wX, wZ)) continue;
                 if (terrain.terrainData.GetSteepness(px / mapW, pz / mapL) >= deadEndMaxSteepness) continue;
                 if (Vector3.Distance(candidate, spawnedTotemPos) <= 70f) continue;
 
@@ -3493,6 +3562,8 @@ public class WorldGenerator : MonoBehaviour
             {
                 float px = GetRandomRange(10f, w - 10f); float pz = GetRandomRange(10f, l - 10f);
                 float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
+                // Inside the band the border mountains will be drawn over.
+                if (InBorderBand(worldX, worldZ)) continue;
                 float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
 
                 float normalizedX = px / w; float normalizedZ = pz / l;
@@ -4055,7 +4126,9 @@ public class WorldGenerator : MonoBehaviour
         // ==========================================
         List<Vector2> masterGrid = new List<Vector2>();
         float scanStep = 40f;
-        float edgeMargin = 120f; // Ближче ніж 120м до краю карти нічого не будуємо
+        // Ближче ніж 120м до краю карти нічого не будуємо — or further, if the
+        // border mountains measure wider than that.
+        float edgeMargin = Mathf.Max(120f, _borderBand + 25f);
 
         for (float x = edgeMargin; x < w - edgeMargin; x += scanStep)
         {
@@ -4416,6 +4489,7 @@ public class WorldGenerator : MonoBehaviour
                 if (terrain.terrainData.GetSteepness(px / w, pz / l) < 8f)
                 {
                     float worldX = transform.position.x + px; float worldZ = transform.position.z + pz;
+                    if (InBorderBand(worldX, worldZ)) continue;
                     float worldY = terrain.SampleHeight(new Vector3(worldX, 0, worldZ)) + transform.position.y;
                     if (worldY <= absoluteWaterHeight + 2f) continue;
                     Vector3 spawnPos = new Vector3(worldX, worldY, worldZ);
