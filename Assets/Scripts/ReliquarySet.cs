@@ -48,6 +48,8 @@ public class ReliquarySet : ScriptableObject
     public Sprite woodIcon;
     public Sprite stoneIcon;
     public Sprite foodIcon;
+    [Tooltip("Diamonds/gems. Assigned by Tools > Exploration > Build Reliquary Set from Assets/UpgradePanel/Diamond.png, the same art the crystal node uses.")]
+    public Sprite diamondIcon;
 
     [Header("Visible payout")]
     [Tooltip("Physical pickups thrown out of the chest as the lid opens, so the reward is something the player watches land and collects — not a number that changes on the HUD.")]

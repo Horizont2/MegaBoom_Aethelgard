@@ -72,6 +72,9 @@ public static class BuildReliquarySetTool
     // stone or food is not knowable from the file, so they go in sheet order and
     // the fields are swappable by hand in the inspector if the order is wrong.
     private const string ResourceIcons = "Assets/Icons/Resource Icons.png";
+    // The same diamond the crystal resource node uses, so gems read identically
+    // wherever they appear.
+    private const string DiamondIcon = "Assets/UpgradePanel/Diamond.png";
 
     private static readonly string[] Guardians =
     {
@@ -133,6 +136,10 @@ public static class BuildReliquarySetTool
             set.foodIcon = icons[2];
         }
         else missing.Add(ResourceIcons + " (needs 3 sliced sprites)");
+
+        var gem = AssetDatabase.LoadAssetAtPath<Sprite>(DiamondIcon);
+        if (gem != null) set.diamondIcon = gem;
+        else missing.Add(DiamondIcon);
 
         if (isNew) AssetDatabase.CreateAsset(set, Path);
         EditorUtility.SetDirty(set);
