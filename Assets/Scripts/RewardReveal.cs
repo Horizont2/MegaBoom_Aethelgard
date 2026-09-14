@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -219,10 +220,27 @@ public class RewardReveal : MonoBehaviour
         return t;
     }
 
-    // A radial starburst, drawn once into a texture. Generated rather than
-    // authored so there is no art dependency and nothing to wire.
+    // ==== DRAWN ONCE, NOT ONCE PER REVEAL ====
+    //
+    // "Drawn once into a texture" was the intent and not what the code did:
+    // this had no cache, so every reward reveal allocated a fresh 256x256
+    // RGBA texture — a quarter of a megabyte — and never released it. The glow
+    // below did the same at 64KB. A run that opens twenty chests leaks about
+    // six megabytes of texture memory that nothing will ever reclaim, and the
+    // reveal fires on every chest, every armour drop and every altar.
+    //
+    // That is the shape of a crash that arrives "randomly, sometimes when you
+    // take a screenshot": memory climbs all session, and the process dies on
+    // whichever allocation happens to be next — which is very often the large
+    // one a screen capture or an overlay asks for.
+    //
+    // Cached per lobe count, and marked DontSave so a scene change cannot
+    // strand them either.
+    private static readonly Dictionary<int, Sprite> s_rays = new Dictionary<int, Sprite>(4);
+
     private static Sprite BuildRaySprite(int lobes)
     {
+        if (s_rays.TryGetValue(lobes, out var cached) && cached != null) return cached;
         const int S = 256;
         var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
         var px = new Color[S * S];
@@ -244,7 +262,11 @@ public class RewardReveal : MonoBehaviour
         }
         tex.SetPixels(px);
         tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        tex.hideFlags = HideFlags.HideAndDontSave;
+        var raySprite = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        raySprite.hideFlags = HideFlags.HideAndDontSave;
+        s_rays[lobes] = raySprite;
+        return raySprite;
     }
 
     // The stand-in for a reward whose real icon could not be resolved.
@@ -273,8 +295,11 @@ public class RewardReveal : MonoBehaviour
 
     // A soft round falloff — the same trick TrailerSoftSprite uses to stop
     // particles rendering as hard squares.
+    private static Sprite s_glow;
+
     private static Sprite BuildGlowSprite()
     {
+        if (s_glow != null) return s_glow;
         const int S = 128;
         var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
         var px = new Color[S * S];
@@ -290,7 +315,10 @@ public class RewardReveal : MonoBehaviour
         }
         tex.SetPixels(px);
         tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        tex.hideFlags = HideFlags.HideAndDontSave;
+        s_glow = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        s_glow.hideFlags = HideFlags.HideAndDontSave;
+        return s_glow;
     }
 
     // ---- the beat ------------------------------------------------------------
