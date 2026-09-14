@@ -762,9 +762,11 @@ public class Reliquary : MonoBehaviour
 
         if (grade == Grade.Barrow && !gaveArmour)
         {
-            Debug.Log($"[Reliquary] Barrow gave no armour — odds were {armourOdds:P0}, roll " +
-                      $"{(rolledForArmour ? "PASSED but the loot table returned nothing (pool empty, or everything " +
-                         "inside the tier ceiling is already owned — check Tools > Shop > Build Weapon Index)" : "failed")}.");
+            string why = rolledForArmour
+                ? "the roll PASSED but the loot table returned nothing — the pool is empty, or everything inside " +
+                  "the campaign's tier ceiling is already owned. Check Tools > Shop > Build Weapon Index."
+                : "the roll failed.";
+            Debug.Log($"[Reliquary] Barrow gave no armour — odds were {armourOdds:P0} and {why}");
         }
 
         // ==== HOW MUCH, AND WHY IT IS NOT ALWAYS THE SAME ====
