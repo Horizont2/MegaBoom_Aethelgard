@@ -1876,6 +1876,7 @@ MonoBehaviour:
   skyboxMaterial: {fileID: 2100000, guid: 8b7dd0809c7c6498789fa32a61eaa6cb, type: 2}
   waterLevel: 0.12
   waterMaterial: {fileID: 2100000, guid: 77a7c1b497cc0524ab6136a1c2508e63, type: 2}
+  winterIceMaterial: {fileID: 0}
   altarPrefabs:
   - {fileID: 689540240055712982, guid: 27a0bf9c6967bd746b42a267caf187b9, type: 3}
   altarsAmount: 4
@@ -2106,13 +2107,18 @@ MonoBehaviour:
   borderOffset: 3
   borderMinScale: 1
   borderMaxScale: 2
+  winterSnowDrifts: 1
+  winterBareGround: 0.28
+  winterDriftScale: 6
+  winterWindDegrees: 30
+  winterWindStrength: 0.65
   poiPrefabs:
   - {fileID: 8142392612343546995, guid: 41ecda8a1339cd44791b517be79ca6e9, type: 3}
   - {fileID: 4196578333971713651, guid: dda69bdb03d328b4a9530f60d1c5dfc7, type: 3}
   - {fileID: 472382735203061453, guid: e1907ee825553ca4cbb8a5095efed3e9, type: 3}
   - {fileID: 1335958607354298, guid: 6d9ffac09535f23449762fd769a551d4, type: 3}
   - {fileID: 986185504386416560, guid: 6d37dd13f909d9f4d94ae65aa61b50d5, type: 3}
-  maxPOIs: 80
+  maxPOIs: 120
   maxPOISteepness: 10
   poiClearanceRadius: 10
   extractionCartPrefab: {fileID: 6192871940845744868, guid: 193aee7492a991b449f387042318f530, type: 3}
@@ -2625,6 +2631,9 @@ MonoBehaviour:
   winterNightTint: {r: 0.62, g: 0.74, b: 1, a: 1}
   winterFogMultiplier: 1.5
   winterGroundDrift: 1
+  winterDaySkybox: {fileID: 0}
+  winterNightSkybox: {fileID: 0}
+  winterStormSkybox: {fileID: 0}
   stormDimAtDay: 0.2
   stormDimAtNight: 0.8
   minNightIntensity: 0.16
