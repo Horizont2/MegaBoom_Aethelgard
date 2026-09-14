@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 
@@ -88,9 +89,29 @@ public class TutorialSpotlight : MonoBehaviour
         _group.alpha = 0f;
         gameObject.SetActive(true);
         SetPanelsActive(false);
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void OnDestroy() { if (Instance == this) Instance = null; }
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (Instance == this) Instance = null;
+    }
+
+    // ==== A STEP BELONGS TO THE SCREEN IT WAS RAISED ON ====
+    //
+    // This object is DontDestroyOnLoad, and its target is a RectTransform in
+    // whatever scene raised it. Leaving the shop destroyed that button and left
+    // the spotlight holding a dead reference — so the final "Готово" card
+    // followed the player back to camp and sat there, over a scene it had
+    // nothing to say about, with no way to dismiss it.
+    //
+    // Anything the guide still wants to say after a scene change is the new
+    // scene's business to raise.
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (_active) End();
+    }
 
     // ---- construction ---------------------------------------------------------
 

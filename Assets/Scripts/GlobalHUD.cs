@@ -164,6 +164,19 @@ public class GlobalHUD : MonoBehaviour
             if (StoryIntroPlayer.IsPlaying) return;
             if (Level1_QuestManager.IntroInProgress) return;
 
+            // ==== NO ESCAPE OUT OF A GUIDED STEP ====
+            //
+            // The spotlight dims every control except the one the step is
+            // about, and it does that by covering them — but Escape is not a
+            // control, it is a key, and it went straight past the dim. In the
+            // shop that reopened the category grid underneath a spotlight still
+            // pointing at a button that was no longer on screen, and neither
+            // the guide nor the player could get out of it: the game was stuck.
+            //
+            // A guided step is a modal state. The key that leaves modal states
+            // has to respect it like everything else does.
+            if (TutorialSpotlight.IsShowing) return;
+
             if (SettingsUI.Instance != null && SettingsUI.Instance.settingsPanel != null && SettingsUI.Instance.settingsPanel.activeInHierarchy)
             {
                 SettingsUI.Instance.CloseSettings();
