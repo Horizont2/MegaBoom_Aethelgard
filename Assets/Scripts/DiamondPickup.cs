@@ -54,9 +54,26 @@ public class DiamondPickup : MonoBehaviour
         trail.startWidth = 0.15f;
         trail.endWidth = 0f;
         trail.emitting = false;
-        trail.material = new Material(Shader.Find("Sprites/Default"));
+        // ==== ONE TRAIL MATERIAL, NOT ONE PER DIAMOND ====
+        //
+        // Diamonds drop from every kill and every chest, and this built a fresh
+        // Material for each one. Destroying the pickup does not free a material
+        // assigned from script, so the same per-kill leak as the death ash — and
+        // Shader.Find on top, a string lookup over the whole shader table, for a
+        // shader that never changes.
+        trail.sharedMaterial = SharedTrailMaterial();
         trail.startColor = new Color(0.8f, 0.2f, 1f, 0.7f); // ĳ������ ����� ���������� ���
         trail.endColor = new Color(0.8f, 0.2f, 1f, 0f);
+    }
+
+    private static Material s_trailMaterial;
+
+    private static Material SharedTrailMaterial()
+    {
+        if (s_trailMaterial != null) return s_trailMaterial;
+        var sh = Shader.Find("Sprites/Default");
+        s_trailMaterial = new Material(sh) { name = "M_DiamondTrail (shared)", hideFlags = HideFlags.HideAndDontSave };
+        return s_trailMaterial;
     }
 
     private void OnEnable()

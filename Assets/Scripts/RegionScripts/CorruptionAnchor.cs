@@ -70,6 +70,9 @@ public class CorruptionAnchor : MonoBehaviour, IDamageable
         _visual = root.transform;
 
         // --- dark jagged stone base ---
+        // Both materials below are shared across the anchor's own pieces and
+        // freed with its root — destroying the GameObject does not free a
+        // material built in script. See OwnedMaterial.
         var baseMat = new Material(lit);
         baseMat.color = new Color(0.09f, 0.07f, 0.11f);
         for (int i = 0; i < 3; i++)
@@ -90,6 +93,7 @@ public class CorruptionAnchor : MonoBehaviour, IDamageable
         crystalMat.EnableKeyword("_EMISSION");
         _baseEmission = glowColor * glowIntensity;
         crystalMat.SetColor("_EmissionColor", _baseEmission);
+        OwnedMaterial.Attach(root, baseMat, crystalMat);
 
         // Central tall shard + three smaller leaning ones.
         SpawnShard(root.transform, crystalMat, new Vector3(0f, 0.9f, 0f), Quaternion.Euler(0f, 45f, 0f), new Vector3(0.34f, 1.7f, 0.34f));

@@ -209,8 +209,14 @@ public class CursedTree : MonoBehaviour
             new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
         col.color = g;
         var rend = ps.GetComponent<ParticleSystemRenderer>();
-        rend.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
-        rend.material.color = new Color(0.8f, 1f, 0.55f, 1f);
+        // The object is Destroyed on a timer below, which does NOT free a
+        // material assigned from script — see OwnedMaterial. Two allocations,
+        // too: reading .material after assigning it makes Unity instantiate
+        // another copy on top of the one just built.
+        var bloomMat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
+        bloomMat.color = new Color(0.8f, 1f, 0.55f, 1f);
+        rend.sharedMaterial = bloomMat;
+        OwnedMaterial.Attach(go, bloomMat);
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         ps.Play();
         Destroy(go, 2f);

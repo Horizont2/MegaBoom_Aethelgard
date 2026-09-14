@@ -855,6 +855,18 @@ public class WorldGenerator : MonoBehaviour
         _phaseTimes[name] = (Time.realtimeSinceStartup - t0) * 1000f;
     }
 
+    private void OnDestroy()
+    {
+        // The tinted layers are HideAndDontSave, so nothing else will collect
+        // them when this generator goes with the scene.
+        if (_tintedLayers != null)
+        {
+            foreach (var l in _tintedLayers)
+                if (l != null && l.hideFlags == HideFlags.HideAndDontSave) Destroy(l);
+            _tintedLayers = null;
+        }
+    }
+
     // Restore even if the scene is torn down mid-generation, or the player would
     // be left with vsync off for the rest of the session.
     private void OnDisable()
@@ -1925,6 +1937,10 @@ public class WorldGenerator : MonoBehaviour
     // same field: vegetation should be absent from both the bare wind-scoured
     // ground AND the deep drifts, and present in the band between them.
     private float[,] winterSnowCover;
+
+    // Tinted terrain layers, kept between generations — see TintLayersForSeason.
+    private TerrainLayer[] _tintedLayers;
+    private int _tintedLayerBiome = -1;
 
     private IEnumerator PaintTerrainRoutine(TerrainData terrainData)
     {
@@ -3270,6 +3286,23 @@ public class WorldGenerator : MonoBehaviour
         Color tint = biome == 2 ? winterGroundTint : autumnGroundTint;
         float blend = biome == 2 ? winterGroundBlend : autumnGroundBlend;
 
+        // ==== CLONED EVERY GENERATION, FREED NEVER ====
+        //
+        // Instantiate on a TerrainLayer makes an engine-side asset, and these
+        // are marked HideAndDontSave, so a scene unload will not collect them
+        // either. Four of them per autumn or winter region, for every raid in a
+        // session. Nothing about them varies between two regions of the same
+        // biome, so they are built once and reused.
+        if (_tintedLayers != null && _tintedLayerBiome == biome && _tintedLayers.Length == src.Length)
+        {
+            bool stillValid = true;
+            foreach (var l in _tintedLayers) if (l == null) { stillValid = false; break; }
+            if (stillValid) return _tintedLayers;
+        }
+        if (_tintedLayers != null)
+            foreach (var l in _tintedLayers)
+                if (l != null && l.hideFlags == HideFlags.HideAndDontSave) Destroy(l);
+
         var outLayers = new TerrainLayer[src.Length];
         for (int i = 0; i < src.Length; i++)
         {
@@ -3299,6 +3332,8 @@ public class WorldGenerator : MonoBehaviour
             outLayers[i] = clone;
         }
         Debug.Log($"[WorldGenerator] Ground tinted for biome {biome} ({(biome == 2 ? "winter" : "autumn")}).");
+        _tintedLayers = outLayers;
+        _tintedLayerBiome = biome;
         return outLayers;
     }
 

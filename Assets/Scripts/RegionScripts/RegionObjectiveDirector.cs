@@ -136,7 +136,10 @@ public class RegionObjectiveDirector : MonoBehaviour
         // so to get world (diameter, height) we use scale (diameter, height/2, diameter).
         beacon.transform.localScale = new Vector3(beaconDiameter, beaconHeight * 0.5f, beaconDiameter);
 
+        // One material per beacon, freed with the beacon. Destroying the object
+        // does not free a material built in script — see OwnedMaterial.
         Material mat = BuildBeaconMaterial();
+        OwnedMaterial.Attach(beacon, mat);
         Renderer rend = beacon.GetComponent<Renderer>();
         rend.sharedMaterial = mat;
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

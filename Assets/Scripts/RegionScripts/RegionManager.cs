@@ -911,8 +911,12 @@ public class RegionManager : MonoBehaviour
 
         var rend = ps.GetComponent<ParticleSystemRenderer>();
         var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Sprites/Default");
-        rend.material = new Material(shader);
-        rend.material.color = new Color(1f, 0.88f, 0.55f, 1f);
+        // Assigned, not read back: `rend.material = new Material(...)` followed
+        // by `rend.material.color` builds TWO materials and leaks both, since
+        // destroying the object frees neither.
+        var moteMat = new Material(shader) { color = new Color(1f, 0.88f, 0.55f, 1f) };
+        rend.sharedMaterial = moteMat;
+        OwnedMaterial.Attach(rend.gameObject, moteMat);
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rend.receiveShadows = false;
         // Spread the emitter box AHEAD of and below the camera so motes rise
@@ -1072,7 +1076,8 @@ public class RegionManager : MonoBehaviour
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
-        lr.material = mat;
+        lr.sharedMaterial = mat;
+        OwnedMaterial.Attach(beam, mat);
         lr.startColor = dark;
         lr.endColor = new Color(dark.r, dark.g, dark.b, 0f);
 

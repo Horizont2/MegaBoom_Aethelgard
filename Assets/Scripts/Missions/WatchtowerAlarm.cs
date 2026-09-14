@@ -119,7 +119,12 @@ public class WatchtowerAlarm : MonoBehaviour
         ring.receiveShadows = false;
 
         Shader sh = Shader.Find("Sprites/Default");
-        if (sh != null) ring.material = new Material(sh);
+        if (sh != null)
+        {
+            var ringMat = new Material(sh);
+            ring.sharedMaterial = ringMat;
+            OwnedMaterial.Attach(ring.gameObject, ringMat);
+        }
         ring.startColor = calmColor;
         ring.endColor = calmColor;
     }

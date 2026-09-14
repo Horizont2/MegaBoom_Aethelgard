@@ -384,7 +384,8 @@ public class Reliquary : MonoBehaviour
             var mat = new Material(r.sharedMaterial);
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Accent);
             if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", Accent * 3f); }
-            r.material = mat;
+            r.sharedMaterial = mat;
+            OwnedMaterial.Attach(bead, mat);
         }
 
         var lightGo = new GameObject("SealGlow");
