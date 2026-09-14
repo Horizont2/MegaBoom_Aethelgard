@@ -92,6 +92,10 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
+    private float _settingsRefresh;
+    private float _sensMul = 1f;
+    private float _yInvert = 1f;
+
     private void LateUpdate()
     {
         // ДОДАНО: PauseSceneController.IsPauseActive, щоб скрипт відключався під час кінематографічної паузи
@@ -111,8 +115,19 @@ public class CameraFollow : MonoBehaviour
 
         currentTargetPos = Vector3.SmoothDamp(currentTargetPos, target.position, ref targetPosVelocity, positionSmoothTime);
 
-        float sensMul = PlayerPrefs.GetFloat("Settings_MouseSensitivity", 1f);
-        float yInvert = PlayerPrefs.GetInt("Settings_InvertYAxis", 0) == 1 ? -1f : 1f;
+        // PlayerPrefs is a native key/value store behind a marshalled string,
+        // not a field read, and this ran twice on every camera update. Cached
+        // and refreshed a few times a second so the settings panel still takes
+        // effect immediately without paying for it every frame.
+        _settingsRefresh -= Time.unscaledDeltaTime;
+        if (_settingsRefresh <= 0f)
+        {
+            _settingsRefresh = 0.25f;
+            _sensMul = PlayerPrefs.GetFloat("Settings_MouseSensitivity", 1f);
+            _yInvert = PlayerPrefs.GetInt("Settings_InvertYAxis", 0) == 1 ? -1f : 1f;
+        }
+        float sensMul = _sensMul;
+        float yInvert = _yInvert;
         currentX += Input.GetAxis("Mouse X") * mouseSensitivity * sensMul;
         currentY -= Input.GetAxis("Mouse Y") * mouseSensitivity * sensMul * yInvert;
         currentY = Mathf.Clamp(currentY, minYAngle, maxYAngle);

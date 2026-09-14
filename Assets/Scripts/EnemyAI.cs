@@ -725,9 +725,38 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // 2. Фікс повороту: Канвас ворога завжди дивиться прямо в камеру.
             // CameraCache re-resolves lazily on scene load, so we don't pay
             // Camera.main's scene-walk each frame.
+            //
+            // ==== BUT NOT FOR AN ENEMY A HUNDRED METRES AWAY ====
+            //
+            // This block sits ABOVE the distance throttle below, and the canvas
+            // is switched on at first damage and stays on until death — so once
+            // a fight starts, every damaged enemy in the region billboards its
+            // own world-space Canvas every single frame regardless of range.
+            // The throttle exists precisely to make crowds affordable and this
+            // walked straight past it, and each write dirties a separate
+            // world-space canvas, which do not batch with each other.
+            //
+            // A bar you cannot read is not worth a draw call: past the cutoff it
+            // is switched off entirely and comes back when the player returns.
             if (mainCamTransform == null) mainCamTransform = CameraCache.MainTransform;
             if (mainCamTransform != null)
-                healthCanvas.transform.rotation = mainCamTransform.rotation;
+            {
+                float sqrToCam = (mainCamTransform.position - transform.position).sqrMagnitude;
+                if (sqrToCam > healthBarCullDistance * healthBarCullDistance)
+                {
+                    healthCanvas.SetActive(false);
+                }
+                else
+                {
+                    healthCanvas.transform.rotation = mainCamTransform.rotation;
+                }
+            }
+        }
+        else if (healthCanvas != null && !healthCanvas.activeSelf && _healthBarWanted && mainCamTransform != null)
+        {
+            // Came back into range — restore the bar the cull switched off.
+            float sqr = (mainCamTransform.position - transform.position).sqrMagnitude;
+            if (sqr <= healthBarCullDistance * healthBarCullDistance) healthCanvas.SetActive(true);
         }
 
         // Victory cinematic: freeze in place — no movement, no attack decisions.
@@ -1062,11 +1091,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         // Only static world geometry blocks sight. Other enemies must not, or a
         // crowd would blind itself and the whole pack would give up at once.
-        int blockers = 0;
-        int def = LayerMask.NameToLayer("Default");      if (def >= 0) blockers |= 1 << def;
-        int obs = LayerMask.NameToLayer("Obstacles");    if (obs >= 0) blockers |= 1 << obs;
-        int nat = LayerMask.NameToLayer("Nature");       if (nat >= 0) blockers |= 1 << nat;
+        // Resolved once. NameToLayer is a string lookup and this runs four times
+        // a second PER ENEMY; SampleTerrainHeight in this same file already
+        // caches its mask exactly this way.
+        if (s_losBlockers == int.MinValue)
+        {
+            int m = 0;
+            int def = LayerMask.NameToLayer("Default");   if (def >= 0) m |= 1 << def;
+            int obs = LayerMask.NameToLayer("Obstacles"); if (obs >= 0) m |= 1 << obs;
+            int nat = LayerMask.NameToLayer("Nature");    if (nat >= 0) m |= 1 << nat;
+            s_losBlockers = m;
+        }
+        int blockers = s_losBlockers;
         if (blockers == 0) return true;
+
+
 
         return !Physics.Raycast(eye, to / dist, dist - 0.5f, blockers, QueryTriggerInteraction.Ignore);
     }
@@ -1311,6 +1350,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // Separate, much longer gate for the "I have seen you" bark specifically.
     // The 0.22s gate above is about not stacking sounds on one frame; this is
     // about how OFTEN the crowd is allowed to say the same thing. See Aggro().
+    [Tooltip("Metres past which a damaged enemy's health bar is switched off entirely. A bar you cannot read is not worth a world-space canvas and a draw call.")]
+    public float healthBarCullDistance = 35f;
+    // Set when the bar is first shown, so the cull knows whether an off canvas
+    // is off because it was culled or because the enemy was never hurt.
+    private bool _healthBarWanted;
+
+    // int.MinValue = not resolved yet; 0 is a legitimate answer (no such layers).
+    private static int s_losBlockers = int.MinValue;
+
     private static float s_lastAggroBark = -10f;
     private const float AGGRO_BARK_INTERVAL = 3.5f;
 
@@ -2253,9 +2301,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (currentHealth < 0) currentHealth = 0;
 
         // --- Показуємо ХП та передаємо нове значення для анімації ---
-        if (!suppressWorldHealthBar && healthCanvas != null && !healthCanvas.activeSelf)
+        if (!suppressWorldHealthBar && healthCanvas != null)
         {
-            healthCanvas.SetActive(true);
+            // Remembered so the distance cull can tell a bar it switched off
+            // from one that was never meant to be up.
+            _healthBarWanted = true;
+            if (!healthCanvas.activeSelf) healthCanvas.SetActive(true);
         }
         targetHealthRatio = currentHealth / maxHealth;
         // -------------------------------------------------------------

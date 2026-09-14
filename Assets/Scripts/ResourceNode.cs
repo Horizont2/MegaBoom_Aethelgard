@@ -357,7 +357,13 @@ public class ResourceNode : MonoBehaviour, IDamageable
         float radius = crushRadius * (finalHit ? 1.5f : 1f);
 
         int n = Physics.OverlapCapsuleNonAlloc(pivot + Vector3.up * 0.3f, tip, radius,
-                                               s_crushBuffer, ~0, QueryTriggerInteraction.Ignore);
+                                               // Enemy layer only. Unmasked this swept the terrain and
+                                               // every tree, rock and bush along the trunk's whole length,
+                                               // every frame of the topple, and then discarded all of them
+                                               // on a GetComponentInParent check — and in dense woods it
+                                               // could fill the 32-slot buffer with scenery and miss the
+                                               // enemies the tree was actually falling on.
+                                               s_crushBuffer, 1 << 9, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
         {
             if (s_crushBuffer[i] == null) continue;

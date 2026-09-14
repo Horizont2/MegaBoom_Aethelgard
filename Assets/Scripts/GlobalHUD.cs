@@ -1362,11 +1362,23 @@ public class GlobalHUD : MonoBehaviour
         lowHealthVignette.maskable = false;
     }
 
+    private float _vignetteRefresh;
+    private bool _vignetteEnabled = true;
+
     private void UpdateLowHealthVignette()
     {
         if (lowHealthVignette == null) return;
 
-        if (PlayerPrefs.GetInt("Settings_LowHpVignette", 1) != 1)
+        // Cached: this is called unconditionally from Update, and PlayerPrefs is
+        // a marshalled native lookup rather than a field read.
+        _vignetteRefresh -= Time.unscaledDeltaTime;
+        if (_vignetteRefresh <= 0f)
+        {
+            _vignetteRefresh = 0.5f;
+            _vignetteEnabled = PlayerPrefs.GetInt("Settings_LowHpVignette", 1) == 1;
+        }
+
+        if (!_vignetteEnabled)
         {
             lowHealthAlpha = Mathf.Lerp(lowHealthAlpha, 0f, Time.unscaledDeltaTime * 8f);
             Color cc = lowHealthVignette.color; cc.a = lowHealthAlpha; lowHealthVignette.color = cc;
