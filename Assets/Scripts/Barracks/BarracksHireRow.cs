@@ -49,6 +49,9 @@ public class BarracksHireRow : MonoBehaviour
         {
             // Dimmed, not faded out — see UIButtonState.
             UIButtonState.SetInteractable(hireButton, unlocked && canAfford && hasRoom);
+            // Rows are built at runtime, so any other Selectable on this row
+            // (an info button, a remove button) gets the same treatment.
+            UIButtonState.SolidifyAllUnder(transform);
             hireButton.onClick.RemoveAllListeners();
             hireButton.onClick.AddListener(OnHireClick);
             // The button label was baked into the prefab in English ("HIRE"); localise it.

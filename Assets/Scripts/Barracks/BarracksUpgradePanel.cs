@@ -171,6 +171,22 @@ public class BarracksUpgradePanel : MonoBehaviour
             t = t.parent;
         }
         rootObject.SetActive(true);
+
+        // ==== EVERY BUTTON IN HERE, NOT JUST THE TWO ROWS ====
+        //
+        // Unity's default disabled colour is the normal colour at about half
+        // alpha, so any control the player cannot press fades toward the
+        // background. In the barracks most rows are unaffordable most of the
+        // time, which made the whole list look like it was failing to load.
+        //
+        // The two row scripts were fixed individually and that was not enough:
+        // the panel has hire buttons, upgrade buttons, deploy and close controls
+        // and anything else authored into the prefab, and each is disabled by
+        // whatever code owns it. Solidifying the whole subtree once when the
+        // panel opens catches all of them, including ones added later, without
+        // hunting down every site that flips interactable.
+        UIButtonState.SolidifyAllUnder(rootObject.transform);
+
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 1f;

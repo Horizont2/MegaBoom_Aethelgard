@@ -33,9 +33,28 @@ public static class UIButtonState
 
     // Rewrites just the disabled entry of the button's ColorBlock: fully
     // opaque, desaturated and darkened from whatever the normal colour is.
+    private static bool s_warnedTransition;
+
     public static void SolidifyDisabledColour(Selectable target)
     {
         if (target == null) return;
+
+        // This can only repair a ColorTint button — that is where the disabled
+        // ALPHA lives. A button using Sprite Swap or Animation gets its faded
+        // look from an authored sprite or an animation clip, and no code change
+        // here can touch it; it has to be fixed in the prefab. Saying so once is
+        // better than silently doing nothing to half the panel.
+        if (target.transition != Selectable.Transition.ColorTint)
+        {
+            if (!s_warnedTransition)
+            {
+                s_warnedTransition = true;
+                Debug.LogWarning($"[UI] '{target.name}' uses {target.transition} transition, not ColorTint, so its " +
+                                 "disabled look comes from an authored sprite or clip and cannot be fixed in code. " +
+                                 "Switch it to Color Tint, or author an opaque disabled sprite.", target);
+            }
+            return;
+        }
 
         var c = target.colors;
         Color normal = c.normalColor;

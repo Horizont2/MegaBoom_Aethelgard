@@ -72,6 +72,9 @@ public class BarracksUpgradeUnitRow : MonoBehaviour
         {
             // Dimmed, not faded out — see UIButtonState.
             UIButtonState.SetInteractable(upgradeButton, canAfford);
+            // Rows are built at runtime, so any other Selectable on this row
+            // (an info button, a remove button) gets the same treatment.
+            UIButtonState.SolidifyAllUnder(transform);
             upgradeButton.onClick.RemoveAllListeners();
             upgradeButton.onClick.AddListener(() => OnUpgradeClick(cost));
         }
