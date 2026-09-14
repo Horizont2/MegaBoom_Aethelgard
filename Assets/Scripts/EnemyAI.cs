@@ -370,6 +370,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // is invisible to the slot count for the rest of its life.
         _reportedEngaged = false;
         _ringHeading = Vector3.zero;
+        _chaseHeading = Vector3.zero;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
@@ -957,9 +958,35 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             float sway = Mathf.PerlinNoise(Time.time * 0.5f, randomOffset) * 2f - 1f;
             Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
-            Vector3 finalDirection = (directionToPlayer + repulsion * repulsionForce + (rightDir * sway * 0.5f)).normalized;
-            finalDirection.y = 0f;
-            finalDirection = SteerAroundObstacles(currentPos, finalDirection);
+
+            // ==== REPULSION NUDGES. IT DOES NOT STEER. ====
+            //
+            // This was `repulsion * repulsionForce`, and repulsion is an
+            // UNBOUNDED SUM: every neighbour inside 1.5m adds up to 1.5 to it,
+            // then the whole thing is multiplied by four. Three enemies jostling
+            // produced a push of around eighteen against a direction-to-player
+            // of magnitude one — so where the enemy went was decided almost
+            // entirely by who it was standing next to, and since that flips as
+            // the pack shuffles, the heading flipped with it every frame.
+            //
+            // That is the zigzag, and it is also why it looked jerky rather than
+            // curved: the body rotation follows this vector directly.
+            //
+            // Capped at a fraction of the pull toward the player, so a crowd
+            // still spreads out and never decides the direction of travel.
+            Vector3 push = Vector3.ClampMagnitude(repulsion * repulsionForce, 0.55f);
+            Vector3 wanted = (directionToPlayer + push + (rightDir * sway * 0.5f)).normalized;
+            wanted.y = 0f;
+            wanted = SteerAroundObstacles(currentPos, wanted);
+
+            // And EASED, the way the ring branch already does it. A heading that
+            // is recomputed from scratch every frame snaps; one that turns
+            // toward its new answer reads as an animal changing its mind.
+            _chaseHeading = _chaseHeading == Vector3.zero
+                ? wanted
+                : Vector3.Slerp(_chaseHeading, wanted, 7f * Time.deltaTime);
+
+            Vector3 finalDirection = _chaseHeading.sqrMagnitude > 0.0001f ? _chaseHeading.normalized : wanted;
 
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
@@ -1658,6 +1685,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private bool _thisSwingUnblockable;
     // Smoothed circling direction — see the note where it is used.
     private Vector3 _ringHeading;
+    // Same, for the straight chase.
+    private Vector3 _chaseHeading;
     private bool _reportedEngaged;
 
     // NO SLOT: CIRCLE, DO NOT QUEUE.
@@ -2442,6 +2471,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public float avoidSolvesPerSecond = 10f;
     private float _nextAvoidSolve;
     private Quaternion _avoidDeflection = Quaternion.identity;
+    private Quaternion _avoidTarget = Quaternion.identity;
     // Which way round the current obstacle this enemy committed to: -1 left,
     // +1 right, 0 nothing in the way. See SolveDeflection.
     private int _avoidSide;
@@ -2465,8 +2495,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (Time.time >= _nextAvoidSolve)
         {
             _nextAvoidSolve = Time.time + 1f / Mathf.Max(1f, avoidSolvesPerSecond);
-            _avoidDeflection = SolveDeflection(pos, dir);
+            _avoidTarget = SolveDeflection(pos, dir);
         }
+
+        // ==== THE DEFLECTION EASES IN, IT DOES NOT SNAP ====
+        //
+        // The solve runs a few times a second, and the answer used to be applied
+        // the instant it changed — so an enemy rounding a rock jumped its
+        // heading by twenty-five degrees at a time, several times a second. Even
+        // with a committed side that reads as a stutter rather than a turn.
+        // Rotating toward the answer costs nothing and turns the same decisions
+        // into a curve.
+        _avoidDeflection = Quaternion.RotateTowards(_avoidDeflection, _avoidTarget, 220f * Time.deltaTime);
         return _avoidDeflection * dir;
     }
 
