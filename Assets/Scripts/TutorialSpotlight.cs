@@ -280,15 +280,36 @@ public class TutorialSpotlight : MonoBehaviour
         _arrow.pivot = new Vector2(0.5f, 0.5f);
         float arrowY = above ? hole.yMax + 56f + bob : hole.yMin - 56f - bob;
         _arrow.anchoredPosition = new Vector2(hole.center.x, arrowY) / scale;
-        _arrow.localRotation = Quaternion.Euler(0f, 0f, above ? 180f : 0f);
+        // BuildArrowSprite draws the wedge with its POINT AT THE BOTTOM, so an
+        // unrotated arrow already points down. This had it the other way round
+        // and applied 180 when sitting above the target — so the arrow above the
+        // button pointed up, away from the thing it was indicating, and the one
+        // below pointed down. Exactly inverted, in both cases.
+        _arrow.localRotation = Quaternion.Euler(0f, 0f, above ? 0f : 180f);
 
         // Text panel on the roomier side of the hole, clamped on screen.
         bool textAbove = !above;
         float panelH = _textPanelRT.sizeDelta.y * scale;
         float ty = textAbove ? hole.yMax + 120f + panelH * 0.5f : hole.yMin - 120f - panelH * 0.5f;
         ty = Mathf.Clamp(ty, panelH * 0.6f, h - panelH * 0.6f);
-        float tx = Mathf.Clamp(hole.center.x, _textPanelRT.sizeDelta.x * scale * 0.55f,
-                               w - _textPanelRT.sizeDelta.x * scale * 0.55f);
+        // ==== BESIDE THE TARGET, NOT ON TOP OF IT ====
+        //
+        // This centred the panel on the hole horizontally, which is fine for a
+        // target in the middle of the screen and wrong for the shop, where the
+        // categories run down the left edge: the panel sat squarely over the
+        // buttons it was telling the player to look at, and covered the rest of
+        // the list as well.
+        //
+        // It now steps aside to whichever horizontal side has more room, and
+        // clears the highlighted element by its own half-width. The panel is
+        // explanation; the thing it explains has to stay visible.
+        float panelHalf = _textPanelRT.sizeDelta.x * scale * 0.5f;
+        float roomLeft = hole.xMin;
+        float roomRight = w - hole.xMax;
+        float tx = roomRight >= roomLeft
+            ? hole.xMax + 28f + panelHalf
+            : hole.xMin - 28f - panelHalf;
+        tx = Mathf.Clamp(tx, panelHalf + 12f, w - panelHalf - 12f);
         _textPanelRT.anchorMin = _textPanelRT.anchorMax = Vector2.zero;
         _textPanelRT.pivot = new Vector2(0.5f, 0.5f);
         _textPanelRT.anchoredPosition = new Vector2(tx, ty) / scale;
