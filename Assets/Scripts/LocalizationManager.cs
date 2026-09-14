@@ -1335,7 +1335,7 @@ public static class LocalizationManager
              "Drei Läufer durchqueren den Sumpf. Halte hier, bis das Signalfeuer aufflammt.",
              "Trois coureurs traversent le marécage. Tiens ici jusqu'à ce que le feu de signal s'allume.",
              "Trzej gońcy przeprawiają się przez bagno. Wytrwaj tu, aż zapłonie ogień sygnałowy.");
-        Add7("Camp Expansion", "Camp Expansion", "Розширення табору", "Расширение лагеря", "Ampliación del campamento", "Lager-Ausbau", "Expansion du camp", "Rozbudowa obozu");
+        Add7("Camp Expansion", "Camp Expansion", "Розширення табору", "Расширение лагеря", "Ampliación del campamento", "Lagerausbau", "Expansion du camp", "Rozbudowa obozu");
         Add7("Lay the first stones for a new outpost. The wood comes from your hand.",
              "Lay the first stones for a new outpost. The wood comes from your hand.",
              "Заклади перше каміння нового форпосту. Дерево — з твоїх рук.",
@@ -1371,7 +1371,7 @@ public static class LocalizationManager
              "Bewache den hohen Pass. Fällst du, fallen die östlichen Dörfer mit dir.",
              "Surveille le haut col. Si tu tombes, les villages de l'est tombent avec toi.",
              "Pilnuj wysokiej przełęczy. Jeśli padniesz, wschodnie wioski padną z tobą.");
-        Add7("Crystal Rush", "Crystal Rush", "Кришталева гарячка", "Кристальный рывок", "Fiebre del cristal", "Kristallrausch", "Ruée du cristal", "Gorączka kryształu");
+        Add7("Crystal Rush", "Crystal Rush", "Кристальна гарячка", "Кристальная лихорадка", "Fiebre del cristal", "Kristallrausch", "Ruée du cristal", "Gorączka kryształu");
         Add7("The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
              "The aetherwells are bleeding. Reap what they leak before the corruption seals them.",
              "Ефірні джерела кровоточать. Збери те, що вони точать, поки скверна їх не запечатала.",
@@ -1389,7 +1389,7 @@ public static class LocalizationManager
              "Brenn den Hang sauber. Jedes Skelett, jeden Geist, jedes angekettete Ding.",
              "Brûle le versant à blanc. Chaque squelette, chaque spectre, chaque chose enchaînée.",
              "Wypal zbocze do czysta. Każdy szkielet, każdą zjawę, każde skute stworzenie.");
-        Add7("Engineering Mastery", "Engineering Mastery", "Майстерність будівництва", "Мастерство строительства", "Maestría de ingeniería", "Baumeisterschaft", "Maîtrise du génie", "Mistrzostwo inżynierii");
+        Add7("Engineering Mastery", "Engineering Mastery", "Майстерність будівництва", "Мастерство строительства", "Maestría en ingeniería", "Meisterhafte Baukunst", "Maîtrise de la construction", "Mistrzostwo inżynierii");
         Add7("Two more structures, and the camp will hold a winter.",
              "Two more structures, and the camp will hold a winter.",
              "Ще дві будівлі — і табір перезимує.",
@@ -1416,7 +1416,7 @@ public static class LocalizationManager
              "Welle um Welle, bis der Morgen sie bricht. Keiner passiert die Linie.",
              "Vague après vague, jusqu'à ce que l'aube les brise. Nul ne franchit la ligne.",
              "Fala za falą, aż świt je złamie. Nikt nie przejdzie linii.");
-        Add7("Aether Motherlode", "Aether Motherlode", "Багата ефірна жила", "Эфирная материнская жила", "Filón madre de éter", "Äther-Mutterader", "Filon-mère d'éther", "Eterowa macierz złoża");
+        Add7("Aether Motherlode", "Aether Motherlode", "Багата ефірна жила", "Материнская жила эфира", "Filón madre de éter", "Äther-Mutterader", "Filon-mère d'éther", "Macierzysta żyła eteru");
         Add7("A motherlode under the chapel. Strip it bare before the wardens wake.",
              "A motherlode under the chapel. Strip it bare before the wardens wake.",
              "Багатюща жила під каплицею. Обдери її до дна, поки не прокинулися вартові.",
@@ -1443,7 +1443,7 @@ public static class LocalizationManager
              "Fünf Hauptleute heute Nacht im Feld. Bring den Beweis für alle fünf.",
              "Cinq capitaines sur le terrain cette nuit. Rapporte la preuve des cinq.",
              "Pięciu kapitanów w polu tej nocy. Przynieś dowód całej piątki.");
-        Add7("Master Architect", "Master Architect", "Головний зодчий", "Главный зодчий", "Arquitecto maestro", "Baumeister", "Maître architecte", "Mistrz architekt");
+        Add7("Master Architect", "Master Architect", "Головний зодчий", "Главный зодчий", "Arquitecto maestro", "Baumeister", "Maître architecte", "Mistrz budowniczy");
         Add7("Three pillars. Stone, wood, and patience. The camp must endure.",
              "Three pillars. Stone, wood, and patience. The camp must endure.",
              "Три стовпи. Камінь, дерево і терпіння. Табір мусить вистояти.",
@@ -1505,7 +1505,7 @@ public static class LocalizationManager
         // ── Building names (title is Tr(buildingName).ToUpper()). FORGE / CABIN /
         //    HUT / VAULT were registered elsewhere; these two were not. ──
         Add7("SCOUT'S LODGE", "SCOUT'S LODGE", "ХИЖА РОЗВІДНИКА", "ХИЖИНА РАЗВЕДЧИКА",
-             "REFUGIO DEL EXPLORADOR", "SPÄHERHÜTTE", "GÎTE DE L'ÉCLAIREUR", "CHATA ZWIADOWCY");
+             "CABAÑA DEL EXPLORADOR", "SPÄHERHÜTTE", "CABANE DE L'ÉCLAIREUR", "CHATA ZWIADOWCY");
         Add7("Barracks", "Barracks", "Казарма", "Казарма", "Cuartel", "Kaserne", "Caserne", "Koszary");
 
         // ── Barracks ──
@@ -1569,17 +1569,17 @@ public static class LocalizationManager
         Add5("Vitality Reserves", "Резервы жизненных сил", "Reservas de vitalidad", "Vitalitätsreserven", "Réserves de vitalité", "Rezerwy witalności");
         Add5("Vanguard March", "Марш авангарда", "Marcha de vanguardia", "Vorhut-Marsch", "Marche d'avant-garde", "Marsz awangardy");
         Add5("Siege Might", "Осадная мощь", "Poder de asedio", "Belagerungswucht", "Puissance de siège", "Potęga oblężnicza");
-        Add5("Crystal Lure", "Кристальная приманка", "Señuelo de cristal", "Kristalllockung", "Appât de cristal", "Kryształowa przynęta");
-        Add5("Whetstone Rhythm", "Ритм точила", "Ritmo de amoladera", "Wetzstein-Rhythmus", "Rythme de la meule", "Rytm osełki");
-        Add5("Aethelgard Plate", "Латы Этельгарда", "Placa de Aethelgard", "Aethelgard-Platte", "Plaque d'Aethelgard", "Płyta Aethelgardu");
+        Add5("Crystal Lure", "Кристальная приманка", "Señuelo de cristal", "Kristallköder", "Appât de cristal", "Kryształowa przynęta");
+        Add5("Whetstone Rhythm", "Ритм точила", "Ritmo de la piedra de afilar", "Wetzstein-Rhythmus", "Rythme de la meule", "Rytm osełki");
+        Add5("Aethelgard Plate", "Латы Этельгарда", "Coraza de Aethelgard", "Aethelgard-Panzer", "Cuirasse d'Aethelgard", "Pancerz Aethelgardu");
         Add5("Field Medicine", "Полевая медицина", "Medicina de campaña", "Feldmedizin", "Médecine de campagne", "Medycyna polowa");
         Add5("Keen Eye", "Острый глаз", "Ojo agudo", "Scharfes Auge", "Œil aiguisé", "Bystre oko");
         Add5("Executioner's Edge", "Клинок палача", "Filo del verdugo", "Klinge des Henkers", "Tranchant du bourreau", "Ostrze kata");
-        Add5("Bloodbound Pact", "Кровавый пакт", "Pacto de sangre", "Blutbund-Pakt", "Pacte de sang", "Pakt krwi");
+        Add5("Bloodbound Pact", "Кровавый пакт", "Pacto de sangre", "Blutbund", "Pacte de sang", "Pakt krwi");
         Add5("Wind-Touched", "Тронутый ветром", "Tocado por el viento", "Windberührt", "Touché par le vent", "Muśnięty wiatrem");
         Add5("Reaver's Reward", "Награда налётчика", "Recompensa del asaltante", "Lohn des Räubers", "Récompense du pillard", "Nagroda grabieżcy");
-        Add5("Wardbreaker Sigil", "Печать взлома оберегов", "Sigilo rompeguardas", "Wallbrecher-Sigille", "Sceau brise-garde", "Sygil łamacza osłon");
-        Add5("Soulreader", "Чтец душ", "Lector de almas", "Seelenleser", "Liseur d'âmes", "Czytelnik dusz");
+        Add5("Wardbreaker Sigil", "Печать разрушителя оберегов", "Sello rompeguardas", "Bannbrecher-Siegel", "Sceau brise-garde", "Pieczęć łamacza osłon");
+        Add5("Soulreader", "Чтец душ", "Lector de almas", "Seelenleser", "Liseur d'âmes", "Czytający dusze");
         Add5("Hoarder's Gaze", "Взор скопидома", "Mirada del avaro", "Blick des Hamsterers", "Regard de l'avare", "Spojrzenie skąpca");
 
         // ── Flavour descriptions ──
@@ -1590,16 +1590,16 @@ public static class LocalizationManager
              "Tendons forgés. Chaque couche est un coup de plus que tu encaisses.",
              "Zahartowane ścięgna. Każda warstwa to kolejny cios, który przetrwasz.");
         Add5("Lighter step, longer stride. The blade always arrives first.",
-             "Легче шаг, шире размах. Клинок всегда приходит первым.",
+             "Легче поступь, шире шаг. Клинок всегда приходит первым.",
              "Paso más ligero, zancada más larga. La hoja siempre llega primero.",
-             "Leichterer Schritt, längere Schrittweite. Die Klinge kommt immer zuerst.",
+             "Leichterer Tritt, größere Schrittweite. Die Klinge kommt immer zuerst.",
              "Pas plus léger, foulée plus longue. La lame arrive toujours en premier.",
-             "Lżejszy krok, dłuższy zamach. Ostrze zawsze przybywa pierwsze.");
+             "Lżejsza stopa, dłuższy krok. Ostrze zawsze przybywa pierwsze.");
         Add5("The hammer drinks deeper. Bones break at half the effort.",
-             "Молот пьёт глубже. Кости ломаются с половины усилия.",
+             "Молот пьёт глубже. Кости ломаются вдвое легче.",
              "El martillo bebe más hondo. Los huesos se rompen con la mitad de esfuerzo.",
              "Der Hammer trinkt tiefer. Knochen brechen mit halber Mühe.",
-             "Le marteau boit plus profond. Les os cèdent à moitié moins d'effort.",
+             "Le marteau boit plus profond. Les os cèdent pour moitié moins d'effort.",
              "Młot pije głębiej. Kości pękają przy połowie wysiłku.");
         Add5("Aether shards leap toward you from farther afield.",
              "Осколки эфира летят к тебе с большего расстояния.",
@@ -1652,7 +1652,7 @@ public static class LocalizationManager
         Add5("Each kill stitches another scar shut.",
              "Каждое убийство затягивает ещё один шрам.",
              "Cada muerte cierra otra cicatriz.",
-             "Jeder Kill vernäht eine weitere Narbe.",
+             "Jede Tötung vernäht eine weitere Narbe.",
              "Chaque mise à mort referme une cicatrice de plus.",
              "Każde zabójstwo zaszywa kolejną bliznę.");
         Add5("Those who strike you bleed for the privilege.",
@@ -1730,7 +1730,7 @@ public static class LocalizationManager
         Add5("NEW GAME",           "НОВАЯ ИГРА",     "NUEVA PARTIDA","NEUES SPIEL","NOUVELLE PARTIE","NOWA GRA");
         AddSelf("CREDITS",         "АВТОРИ");
         Add5("CREDITS",            "АВТОРЫ",         "CRÉDITOS",   "MITWIRKENDE", "CRÉDITS",   "TWÓRCY");
-        Add5("Retry",              "Заново",         "Reintentar", "Erneut",      "Réessayer", "Spróbuj ponownie");
+        Add5("Retry",              "Заново",         "Reintentar", "Erneut versuchen", "Réessayer", "Spróbuj ponownie");
         Add5("Return to Camp",     "В лагерь",       "Al campamento","Ins Lager", "Au camp",   "Do obozu");
         Add5("Return to Menu",     "В меню",         "Al menú",    "Zum Menü",    "Au menu",   "Do menu");
         Add5("Main Menu",          "Главное меню",   "Menú principal","Hauptmenü","Menu principal","Menu główne");
@@ -1748,7 +1748,7 @@ public static class LocalizationManager
 
         // --- Pause + Restart Run + Quit to Desktop confirmation ---
         Add5("Restart Run",        "Начать заново",  "Reiniciar intento","Lauf neu starten","Recommencer","Zacznij od nowa");
-        Add5("Quit to Desktop",    "Выйти на рабочий стол","Salir al escritorio","Beenden","Quitter","Wyjdź do systemu");
+        Add5("Quit to Desktop",    "Выйти на рабочий стол","Salir al escritorio","Spiel beenden","Quitter le jeu","Wyjdź do systemu");
         Add5("Really quit to desktop?","Точно выйти?","¿Salir de verdad?","Wirklich beenden?","Vraiment quitter ?","Na pewno wyjść?");
         Add5("Give Up",            "Сдаться",        "Rendirse",   "Aufgeben",    "Abandonner","Poddaj się");
         Add5("Back to Menu",       "В главное меню", "Volver al menú","Zum Hauptmenü","Menu principal","Menu główne");
@@ -1756,9 +1756,9 @@ public static class LocalizationManager
         Add5("MENU_CONFIRM_QUIT",  "Выйти из игры?","¿Salir del juego?","Spiel beenden?","Quitter le jeu ?","Wyjść z gry?");
 
         // --- Batch 2: HUD chrome, camp building UI, mission labels ---
-        Add5("CAMP STASH",         "ЗАПАСЫ ЛАГЕРЯ", "ALMACÉN",         "LAGERVORRAT",       "RÉSERVE DU CAMP", "ZAPASY OBOZU");
+        Add5("CAMP STASH",         "ЗАПАСЫ ЛАГЕРЯ", "ALMACÉN DEL CAMPAMENTO", "LAGERVORRAT",  "RÉSERVE DU CAMP", "ZAPASY OBOZU");
         Add5("BACKPACK",           "РЮКЗАК",       "MOCHILA",          "RUCKSACK",           "SAC À DOS",       "PLECAK");
-        Add5("CONQUER REWARDS",    "НАГРАДЫ ЗА ЗАХВАТ","RECOMPENSAS DE CONQUISTA","EROBERUNGS-BELOHNUNGEN","RÉCOMPENSES DE CONQUÊTE","NAGRODY ZA PODBÓJ");
+        Add5("CONQUER REWARDS",    "НАГРАДЫ ЗА ЗАХВАТ","RECOMPENSAS DE CONQUISTA","EROBERUNGSBELOHNUNGEN","RÉCOMPENSES DE CONQUÊTE","NAGRODY ZA PODBÓJ");
         Add5("EMBARK ON JOURNEY",  "ОТПРАВИТЬСЯ",  "PARTIR",            "AUFBRECHEN",         "PARTIR",           "WYRUSZAJ");
         Add5("Take Mission",       "Взять миссию", "Aceptar misión",    "Mission annehmen",   "Prendre la mission","Podejmij misję");
         Add5("TAKE MISSION",       "ВЗЯТЬ МИССИЮ", "TOMAR MISIÓN",     "MISSION ANNEHMEN",   "PRENDRE LA MISSION","PODEJMIJ MISJĘ");
@@ -1768,7 +1768,7 @@ public static class LocalizationManager
         // Camp Building panel labels
         Add5("CB_UNBUILT_LABEL",   "(Не построено)","(Sin construir)",  "(Nicht gebaut)",     "(Non construit)",   "(Nie zbudowano)");
         Add5("CB_LEVEL_LABEL",     "(Уровень {0})", "(Nivel {0})",       "(Stufe {0})",        "(Niveau {0})",      "(Poziom {0})");
-        Add5("CB_MAX_LEVEL",       "Максимальный уровень","Nivel máximo","Maximalstufe erreicht","Niveau maximum",  "Osiągnięto maks. poziom");
+        Add5("CB_MAX_LEVEL",       "Максимальный уровень","Nivel máximo","Maximalstufe","Niveau maximum",  "Poziom maksymalny");
         Add5("CB_PRODUCTION_LABEL","Производство", "Producción",        "Produktion",         "Production",        "Produkcja");
         Add5("CB_FEATURE_LABEL",   "Особенность",  "Característica",    "Merkmal",            "Caractéristique",   "Cecha");
         Add5("CB_BUILD_TIME",      "Время: {0} с", "Tiempo: {0}s",      "Bauzeit: {0} s",     "Temps : {0}s",      "Czas: {0}s");
@@ -1815,21 +1815,21 @@ public static class LocalizationManager
         Add5("+10 Max HP",            "+10 макс. HP",         "+10 HP máx",         "+10 max. LP",         "+10 PV max",           "+10 maks. HP");
         Add5("Vanguard March",        "Марш авангарда",       "Marcha de vanguardia","Vorhut-Marsch",       "Marche d'avant-garde", "Marsz awangardy");
         Add5("Lighter step, longer stride. The blade always arrives first.",
-             "Легче шаг, шире размах. Клинок всегда приходит первым.",
+             "Легче поступь, шире шаг. Клинок всегда приходит первым.",
              "Paso más ligero, zancada más larga. La hoja siempre llega primero.",
-             "Leichterer Schritt, längere Schrittweite. Die Klinge kommt immer zuerst.",
+             "Leichterer Tritt, größere Schrittweite. Die Klinge kommt immer zuerst.",
              "Pas plus léger, foulée plus longue. La lame arrive toujours en premier.",
-             "Lżejszy krok, dłuższy zamach. Ostrze zawsze przybywa pierwsze.");
+             "Lżejsza stopa, dłuższy krok. Ostrze zawsze przybywa pierwsze.");
         Add5("+0.5 Speed",            "+0.5 скорости",        "+0.5 velocidad",      "+0.5 Tempo",          "+0.5 vitesse",         "+0.5 prędkości");
         Add5("Siege Might",           "Осадная мощь",         "Poder de asedio",     "Belagerungswucht",    "Puissance de siège",   "Potęga oblężnicza");
         Add5("The hammer drinks deeper. Bones break at half the effort.",
-             "Молот пьёт глубже. Кости ломаются с половины усилия.",
+             "Молот пьёт глубже. Кости ломаются вдвое легче.",
              "El martillo bebe más hondo. Los huesos se rompen con la mitad de esfuerzo.",
              "Der Hammer trinkt tiefer. Knochen brechen mit halber Mühe.",
-             "Le marteau boit plus profond. Les os cèdent à moitié moins d'effort.",
+             "Le marteau boit plus profond. Les os cèdent pour moitié moins d'effort.",
              "Młot pije głębiej. Kości pękają przy połowie wysiłku.");
         Add5("+5 Damage",             "+5 урона",             "+5 daño",             "+5 Schaden",          "+5 dégâts",            "+5 obrażeń");
-        Add5("Crystal Lure",          "Кристальная приманка", "Señuelo de cristal",  "Kristalllockung",       "Appât de cristal",     "Kryształowa przynęta");
+        Add5("Crystal Lure",          "Кристальная приманка", "Señuelo de cristal",  "Kristallköder",       "Appât de cristal",     "Kryształowa przynęta");
         Add5("Aether shards leap toward you from farther afield.",
              "Осколки эфира летят к тебе с большего расстояния.",
              "Los fragmentos de éter saltan hacia ti desde más lejos.",
@@ -1837,7 +1837,7 @@ public static class LocalizationManager
              "Les éclats d'éther bondissent vers toi de plus loin.",
              "Odłamki eteru skaczą ku tobie z większej odległości.");
         Add5("+0.5 Pickup Range",     "+0.5 радиуса подбора", "+0.5 rango de recogida","+0.5 Aufsammelreichweite","+0.5 portée de ramassage","+0.5 zasięgu zbierania");
-        Add5("Whetstone Rhythm",      "Ритм точила",          "Ritmo de amoladera","Wetzstein-Rhythmus","Rythme de la meule",   "Rytm osełki");
+        Add5("Whetstone Rhythm",      "Ритм точила",          "Ritmo de la piedra de afilar","Wetzstein-Rhythmus","Rythme de la meule",   "Rytm osełki");
         Add5("The swing-arc tightens. More strikes per breath.",
              "Дуга удара сжимается. Больше ударов на вдох.",
              "El arco del golpe se estrecha. Más golpes por aliento.",
@@ -1845,7 +1845,7 @@ public static class LocalizationManager
              "L'arc du coup se resserre. Plus de frappes par souffle.",
              "Łuk zamachu się zacieśnia. Więcej ciosów na oddech.");
         Add5("+15 Atk Speed",         "+15 скорости атаки",   "+15 vel. de ataque",     "+15 Angriffstempo",   "+15 vitesse d'attaque",     "+15 szybkości ataku");
-        Add5("Aethelgard Plate",      "Латы Этельгарда",     "Placa de Aethelgard", "Aethelgard-Platte",   "Plaque d'Aethelgard",  "Płyta Aethelgardu");
+        Add5("Aethelgard Plate",      "Латы Этельгарда",     "Coraza de Aethelgard", "Aethelgard-Panzer",   "Cuirasse d'Aethelgard",  "Pancerz Aethelgardu");
         Add5("Damp the next blow with old steel and older oaths.",
              "Смягчи следующий удар старой сталью и ещё более старыми клятвами.",
              "Amortigua el próximo golpe con acero viejo y juramentos aún más viejos.",
@@ -1877,7 +1877,7 @@ public static class LocalizationManager
              "Quand la lame mord juste, elle mord plus profond.",
              "Gdy ostrze tnie celnie, tnie głębiej.");
         Add5("+25% Crit Damage",      "+25% крит. урона",       "+25% daño crítico",   "+25% Kritschaden",  "+25% dégâts crit.",     "+25% obrażeń kryt.");
-        Add5("Bloodbound Pact",       "Кровавый пакт",         "Pacto de sangre",     "Blutbund-Pakt",       "Pacte de sang",        "Pakt krwi");
+        Add5("Bloodbound Pact",       "Кровавый пакт",         "Pacto de sangre",     "Blutbund",       "Pacte de sang",        "Pakt krwi");
         Add5("Every wound you deliver feeds you back a sip.",
              "Каждая нанесённая рана возвращает тебе глоток.",
              "Cada herida que infliges te devuelve un sorbo.",
@@ -1897,11 +1897,11 @@ public static class LocalizationManager
         Add5("Each kill stitches another scar shut.",
              "Каждое убийство затягивает ещё один шрам.",
              "Cada muerte cierra otra cicatriz.",
-             "Jeder Kill vernäht eine weitere Narbe.",
+             "Jede Tötung vernäht eine weitere Narbe.",
              "Chaque mise à mort referme une cicatrice de plus.",
              "Każde zabójstwo zaszywa kolejną bliznę.");
         Add5("+3 HP per Kill",        "+3 HP за убийство",      "+3 HP por muerte",    "+3 LP pro Kill",      "+3 PV par kill","+3 HP za zabójstwo");
-        Add5("Wardbreaker Sigil",     "Печать взлома оберегов",     "Sigilo rompeguardas", "Wallbrecher-Sigille","Sceau brise-garde",  "Sygil łamacza osłon");
+        Add5("Wardbreaker Sigil",     "Печать разрушителя оберегов", "Sello rompeguardas", "Bannbrecher-Siegel","Sceau brise-garde",  "Pieczęć łamacza osłon");
         Add5("Those who strike you bleed for the privilege.",
              "Те, кто бьёт тебя, платят за это кровью.",
              "Quienes te golpean sangran por el privilegio.",
@@ -1909,7 +1909,7 @@ public static class LocalizationManager
              "Ceux qui te frappent saignent pour ce privilège.",
              "Ci, którzy cię uderzają, krwawią za ten przywilej.");
         Add5("+15% Thorns",           "+15% шипов",             "+15% espinas",           "+15% Dornen",         "+15% épines",          "+15% kolców");
-        Add5("Soulreader",            "Чтец душ",           "Lector de almas",     "Seelenleser",         "Liseur d'âmes",        "Czytelnik dusz");
+        Add5("Soulreader",            "Чтец душ",           "Lector de almas",     "Seelenleser",         "Liseur d'âmes",        "Czytający dusze");
         Add5("You hear the song each fallen soul carries. Learn faster.",
              "Ты слышишь песню каждой павшей души. Учишься быстрее.",
              "Oyes la canción que porta cada alma caída. Aprendes más rápido.",
@@ -1932,21 +1932,21 @@ public static class LocalizationManager
         Add5("Scout's Map",              "Карта Разведчика",  "Mapa del Explorador","Karte des Spähers","Carte de l'Éclaireur","Mapa Zwiadowcy");
         Add5("First Blood",              "Первая кровь",      "Primera sangre",  "Erstes Blut",         "Premier Sang",       "Pierwsza krew");
         Add5("Supply Lines",             "Снабжение",         "Suministros",     "Nachschub",           "Ravitaillement",     "Zaopatrzenie");
-        Add5("For Hire",                 "На службу",         "En alquiler",     "Anwerbung",           "À louer",            "Do wynajęcia");
+        Add5("For Hire",                 "На службу",         "A sueldo",        "Anwerbung",           "À gages",            "Na żołdzie");
         Add5("March of War",             "Марш войны",        "Marcha de guerra","Marsch des Krieges", "Marche de guerre",   "Marsz wojny");
         Add5("Veterans",                 "Ветераны",          "Veteranos",       "Veteranen",           "Vétérans",           "Weterani");
         Add5("Strategist",               "Стратег",           "Estratega",       "Stratege",            "Stratège",           "Strateg");
-        Add5("Halfway",                  "На полпути",        "A mitad",         "Halbzeit",            "À mi-chemin",        "W połowie");
+        Add5("Halfway",                  "На полпути",        "A mitad de camino","Auf halbem Weg",     "À mi-chemin",        "W połowie drogi");
         Add5("Altar Hunter",             "Охотник за Алтарями","Cazador de Altares","Altarjäger",       "Chasseur d'Autels",  "Łowca Ołtarzy");
         Add5("Executioner",              "Палач",             "Verdugo",         "Henker",              "Bourreau",           "Kat");
         Add5("The Shopkeeper's Friend",  "Друг Торговца",     "Amigo del Tendero","Freund des Ladenbesitzers","Ami du Marchand","Przyjaciel Kupca");
         Add5("Untouchable",              "Неуловимый",        "Intocable",       "Unantastbar",         "Intouchable",        "Nietykalny");
         Add5("Blood in the Air",         "Кровь в воздухе",   "Sangre en el aire","Blut in der Luft",   "Sang dans l'air",    "Krew w powietrzu");
-        Add5("City Siege",               "Осада города",      "Asedio a la ciudad","Städtebelagerung", "Siège de la ville",  "Oblężenie miasta");
+        Add5("City Siege",               "Осада города",      "Asedio a la ciudad","Stadtbelagerung", "Siège de la ville",  "Oblężenie miasta");
         Add5("The Throne Taken",         "Трон захвачен",     "Trono tomado",    "Der Thron erobert",   "Trône pris",         "Zdobyty Tron");
         Add5("Kingdom Restored",         "Королевство восстановлено","Reino restaurado","Königreich wiederhergestellt","Royaume restauré","Królestwo przywrócone");
-        Add5("Lore Master",              "Знаток Легенд",     "Maestro del Saber","Wissensmeister",    "Maître du Savoir",   "Znawca Legend");
-        Add5("Deep Pockets",             "Глубокие карманы",  "Bolsillos hondos","Tiefe Taschen",       "Poches Profondes",   "Głębokie Kieszenie");
+        Add5("Lore Master",              "Знаток Легенд",     "Maestro del Saber","Legendenmeister",   "Maître du Savoir",   "Znawca Legend");
+        Add5("Deep Pockets",             "Глубокие карманы",  "Bolsillos profundos","Tiefe Taschen",     "Poches profondes",   "Głębokie kieszenie");
 
         // Achievement toast + heading
         Add5("ACHIEVEMENT_UNLOCKED", "Достижение открыто: {0}","Logro desbloqueado: {0}","Erfolg freigeschaltet: {0}","Succès débloqué : {0}","Odblokowano osiągnięcie: {0}");
@@ -1958,21 +1958,21 @@ public static class LocalizationManager
         Add5("Upgrade the Scout's Lodge to level 2.",             "Улучши Хижину Разведчика до 2-го уровня.","Mejora la Cabaña del Explorador al nivel 2.","Verbessere die Späherhütte auf Stufe 2.","Améliore la Cabane de l'Éclaireur au niveau 2.","Ulepsz Chatę Zwiadowcy do poziomu 2.");
         Add5("Conquer your first region.",                        "Захвати свой первый регион.","Conquista tu primera región.","Erobere deine erste Region.","Conquiers ta première région.","Zdobądź swój pierwszy region.");
         Add5("Build the Storage Vault.",                          "Построй Хранилище.","Construye el Almacén.","Baue das Lagergewölbe.","Construis l'Entrepôt.","Zbuduj Skarbiec.");
-        Add5("Hire your first mercenary.",                        "Найми первого наёмника.","Contrata a tu primer mercenario.","Heure deinen ersten Söldner an.","Engage ton premier mercenaire.","Wynajmij pierwszego najemnika.");
+        Add5("Hire your first mercenary.",                        "Найми первого наёмника.","Contrata a tu primer mercenario.","Heuere deinen ersten Söldner an.","Engage ton premier mercenaire.","Wynajmij pierwszego najemnika.");
         Add5("Send your first army on a campaign.",               "Отправь первую армию в поход.","Envía a tu primer ejército en campaña.","Sende dein erstes Heer auf Feldzug.","Envoie ta première armée en campagne.","Wyślij pierwszą armię na wyprawę.");
         Add5("Fill your entire mercenary roster (5 units).",      "Заполни весь состав наёмников (5 юнитов).","Llena toda tu lista de mercenarios (5 unidades).","Fülle deine gesamte Söldnerliste (5 Einheiten).","Complète toute ta liste de mercenaires (5 unités).","Uzupełnij pełną listę najemników (5 jednostek).");
-        Add5("Win an auto-battle with a Siege tactic.",           "Выиграй авто-бой с тактикой Осада.","Gana un combate automático con tácticas de Asedio.","Gewinne einen Auto-Kampf mit der Belagerungstaktik.","Gagne un combat auto avec la tactique de Siège.","Wygraj auto-bitwę z taktyką Oblężenia.");
+        Add5("Win an auto-battle with a Siege tactic.",           "Выиграй авто-бой с тактикой Осада.","Gana un combate automático con la táctica de Asedio.","Gewinne einen Auto-Kampf mit der Belagerungstaktik.","Gagne un combat auto avec la tactique de Siège.","Wygraj auto-bitwę z taktyką Oblężenia.");
         Add5("Conquer 12 regions.",                               "Захвати 12 регионов.","Conquista 12 regiones.","Erobere 12 Regionen.","Conquiers 12 régions.","Zdobądź 12 regionów.");
         Add5("Purify a roadside altar.",                          "Очисти придорожный алтарь.","Purifica un altar al borde del camino.","Reinige einen Wegaltar.","Purifie un autel au bord de la route.","Oczyść przydrożny ołtarz.");
-        Add5("Perform a Glory Kill on a boss.",                   "Соверши Славное Убийство над боссом.","Realiza una Muerte Gloriosa a un jefe.","Führe einen Ruhmes-Kill an einem Boss aus.","Exécute une Frappe de Gloire sur un boss.","Wykonaj Chwalebne Zabójstwo na bossie.");
-        Add5("Spend 500 diamonds in the Shop.",                   "Потрать 500 диамантов в Магазине.","Gasta 500 diamantes en la Tienda.","Gib 500 Diamanten im Laden aus.","Dépense 500 diamants dans la Boutique.","Wydaj 500 diamentów w Sklepie.");
-        Add5("Land a Perfect Dodge.",                             "Соверши Идеальный Уклон.","Realiza una Esquiva Perfecta.","Führe einen perfekten Ausweichmanöver aus.","Réalise une Esquive Parfaite.","Wykonaj Idealny Unik.");
+        Add5("Perform a Glory Kill on a boss.",                   "Соверши Славное Убийство над боссом.","Realiza una Muerte Gloriosa a un jefe.","Führe eine Ruhmestötung an einem Boss aus.","Exécute une Frappe de Gloire sur un boss.","Wykonaj Chwalebne Zabójstwo na bossie.");
+        Add5("Spend 500 diamonds in the Shop.",                   "Потрать 500 алмазов в Магазине.","Gasta 500 diamantes en la Tienda.","Gib 500 Diamanten im Laden aus.","Dépense 500 diamants dans la Boutique.","Wydaj 500 diamentów w Sklepie.");
+        Add5("Land a Perfect Dodge.",                             "Соверши Идеальный Уклон.","Realiza una Esquiva Perfecta.","Führe ein perfektes Ausweichmanöver aus.","Réalise une Esquive Parfaite.","Wykonaj Idealny Unik.");
         Add5("Reach a 15-enemy Stack.",                           "Достигни стека из 15 врагов.","Alcanza una pila de 15 enemigos.","Erreiche einen 15-Feind-Stapel.","Atteins une pile de 15 ennemis.","Osiągnij stos 15 wrogów.");
         Add5("Conquer the Citadel Outskirts.",                    "Захвати Окраины Цитадели.","Conquista las Afueras de la Ciudadela.","Erobere die Zitadellen-Vororte.","Conquiers les Faubourgs de la Citadelle.","Zdobądź Przedmieścia Cytadeli.");
-        Add5("Defeat the Overlord in the Throne Room.",           "Победи Владыку в Тронной зале.","Derrota al Señor Supremo en la Sala del Trono.","Besiege den Oberherrn im Thronsaal.","Vaincs le Suzerain dans la Salle du Trône.","Pokonaj Władcę w Sali Tronowej.");
+        Add5("Defeat the Overlord in the Throne Room.",           "Победи Владыку в Тронном зале.","Derrota al Señor Supremo en la Sala del Trono.","Besiege den Oberherrn im Thronsaal.","Vaincs le Suzerain dans la Salle du Trône.","Pokonaj Władcę w Sali Tronowej.");
         Add5("Conquer every region in Aethelgard.",               "Захвати каждый регион Этельгарда.","Conquista todas las regiones de Aethelgard.","Erobere jede Region Aethelgards.","Conquiers chaque région d'Aethelgard.","Zdobądź każdy region Aethelgardu.");
-        Add5("Recover 5 lore scrolls.",                           "Найди 5 свитков легенд.","Recupera 5 pergaminos de saber.","Berge 5 Legendenschriften.","Récupère 5 parchemins de savoir.","Odnajdź 5 zwojów legend.");
-        Add5("Hoard 2000 diamonds at once.",                      "Накопи 2000 диамантов одновременно.","Acumula 2000 diamantes a la vez.","Horte 2000 Diamanten auf einmal.","Accumule 2000 diamants d'un coup.","Nazbieraj 2000 diamentów naraz.");
+        Add5("Recover 5 lore scrolls.",                           "Найди 5 свитков легенд.","Recupera 5 pergaminos de saber.","Sammle 5 Legendenrollen.","Récupère 5 parchemins de savoir.","Odnajdź 5 zwojów legend.");
+        Add5("Hoard 2000 diamonds at once.",                      "Накопи 2000 алмазов разом.","Acumula 2000 diamantes a la vez.","Horte 2000 Diamanten auf einmal.","Accumule 2000 diamants d'un coup.","Nazbieraj 2000 diamentów naraz.");
 
         // --- Batch 4: Loading hints ---
         Add5("The Kingdom of Aethelgard does not forgive mistakes. Always compare your Power with the Recommended Power of a region before venturing out.",
@@ -1989,14 +1989,14 @@ public static class LocalizationManager
              "Odwrót to nie tchórzostwo. Lepiej Poddać się i wrócić do obozu niż zginąć w lesie.");
         Add5("Grenades are your best friend against a crowd. Use them to thin the enemy ranks before drawing your sword.",
              "Гранаты — твой лучший друг против толпы. Прореди ими вражеские ряды прежде, чем достать меч.",
-             "Las granadas son tu mejor amiga contra una multitud. Usa para diezmar las filas antes de sacar la espada.",
+             "Las granadas son tus mejores amigas contra una multitud. Úsalas para diezmar las filas antes de sacar la espada.",
              "Granaten sind dein bester Freund gegen die Masse. Lichte damit die Reihen, bevor du das Schwert ziehst.",
-             "Les grenades sont ta meilleure amie contre la foule. Amincis les rangs avant de dégainer.",
+             "Les grenades sont tes meilleures amies contre la foule. Éclaircis les rangs avant de dégainer.",
              "Granaty to twój najlepszy przyjaciel przeciw tłumowi. Przerzedź szeregi wroga zanim wyciągniesz miecz.");
         Add5("Even the thickest helmet won't save you if you stand still. Keep moving during combat.",
              "Даже самый толстый шлем не спасёт, если стоишь на месте. Двигайся постоянно в бою.",
              "Ni el casco más grueso te salvará si te quedas quieto. Sigue moviéndote en combate.",
-             "Selbst der dickste Helm rettet dich nicht, wenn du still stehst. Bleib in Bewegung.",
+             "Selbst der dickste Helm rettet dich nicht, wenn du stillstehst. Bleib in Bewegung.",
              "Même le casque le plus épais ne te sauvera pas si tu restes immobile. Bouge en combat.",
              "Nawet najgrubszy hełm cię nie ocali, jeśli stoisz w miejscu. Ruszaj się w walce.");
         Add5("Conquered territories provide passive income. Don't forget to regularly collect resources from your domain.",
@@ -2027,18 +2027,18 @@ public static class LocalizationManager
              "Исследуй Карту Мира внимательно. Новые территории могут скрывать как богатства, так и смертельную опасность.",
              "Explora bien el Mapa Mundial. Nuevos territorios ocultan riquezas y peligros mortales.",
              "Erkunde die Weltkarte gründlich. Neue Gebiete verbergen Reichtümer und tödliche Gefahren.",
-             "Explore soigneusement la Carte du Monde. Nouveaux territoires cachent richesses et dangers.",
+             "Explore soigneusement la Carte du Monde. De nouveaux territoires cachent richesses et dangers mortels.",
              "Badaj Mapę Świata dokładnie. Nowe terytoria skrywają skarby i śmiertelne zagrożenia.");
         Add5("They say in Stonefall Quarry, undead miners still mindlessly swing their pickaxes. Stay on your guard.",
              "Говорят, в Каменопадном Карьере мёртвые шахтёры всё ещё бездумно машут кирками. Будь настороже.",
-             "Dicen que en la Cantera de Piedracaída, mineros muertos aún balancean sus picos.",
+             "Dicen que en la Cantera de Piedracaída los mineros muertos aún blanden sus picos. Mantente alerta.",
              "Es heißt, im Steinfall-Steinbruch schwingen tote Grubenarbeiter noch immer stumpf ihre Spitzhacken.",
-             "On dit qu'à la Carrière des Pierres Tombées, des mineurs morts balancent encore leurs pioches.",
-             "Mówią, że w Kamiennym Kamieniołomie martwi górnicy wciąż bezmyślnie machają kilofami.");
+             "On dit qu'à la Carrière des Pierres Tombées, des mineurs morts manient encore leurs pioches. Reste sur tes gardes.",
+             "Mówią, że w Kamieniołomie Kamiennego Zwaliska martwi górnicy wciąż bezmyślnie machają kilofami.");
         Add5("Your Camp is the only truly safe haven in all of Aethelgard. Return there to catch your breath by the fire.",
              "Твой Лагерь — единственная по-настоящему безопасная гавань во всём Этельгарде. Вернись передохнуть у костра.",
              "Tu campamento es el único refugio verdaderamente seguro. Vuelve a respirar junto al fuego.",
-             "Dein Lager ist der einzige wirklich sichere Hafen. Kehre am Feuer zurück, um zu verschnaufen.",
+             "Dein Lager ist der einzige wirklich sichere Hafen. Kehre zurück und verschnaufe am Feuer.",
              "Ton Camp est le seul véritable havre. Reviens y reprendre haleine près du feu.",
              "Twój Obóz to jedyna prawdziwa bezpieczna przystań. Wróć tam odetchnąć przy ogniu.");
         Add5("The dead do not feel pain, but they can still be hacked to pieces. Keep your blade sharp.",
@@ -3950,7 +3950,7 @@ public static class LocalizationManager
              "Elias: Toma estos {0} diamantes. Bastan para {1} buenas espadas: mándalas a la Espesura y que se lo ganen.",
              "Elias: Nimm diese {0} Diamanten. Genug für {1} gute Klingen — schick sie ins Dickicht, sie sollen es verdienen.",
              "Elias : Prends ces {0} diamants. De quoi payer {1} bonnes lames — envoie-les dans le Fourré, qu'elles le méritent.",
-             "Elias: Weź te {0} diamentów. Starczy na {1} dobre miecze — poślij je w Gąszcz, niech zapracują.");
+             "Elias: Weź te {0} diamentów. Starczy na {1} dobre miecze — poślij je w Zagajnik, niech zapracują.");
 
         Add7("Elias: One province back. That changes what we can attempt next.",
              "Elias: One province back. That changes what we can attempt next.",
@@ -3967,8 +3967,8 @@ public static class LocalizationManager
              "Элиас: Следующая на моих картах — Шепчущая Чаща, и туда не ходят в одиночку.",
              "Elias: La Espesura Susurrante es la siguiente en mis mapas, y no es lugar para entrar solo.",
              "Elias: Als Nächstes steht das Flüsternde Dickicht auf meinen Karten — kein Ort, den man allein betritt.",
-             "Elias : Le Fourré Murmurant est le suivant sur mes cartes, et ce n'est pas un lieu où l'on entre seul.",
-             "Elias: Następny na moich mapach jest Szepczący Gąszcz, a tam nie chodzi się samemu.");
+             "Elias : Le Fourré Chuchotant est le suivant sur mes cartes, et ce n'est pas un lieu où l'on entre seul.",
+             "Elias: Następny na moich mapach jest Szepczący Zagajnik, a tam nie chodzi się samemu.");
 
         Add7("Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.",
              "Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.",
@@ -4025,7 +4025,7 @@ public static class LocalizationManager
         // === The guided first upgrade ===
         Add("ELIAS_HELMET_GIVE",
             "Elias: {0} diamonds. Have the smith temper your helmet before you ride out — it is cheap, and it stays with you.",
-            "Еліас: {0} алмазів. Хай коваль загартує твій шолом, перш ніж ти вирушиш — це дешево, і воно лишається з тобою.");
+            "Еліас: {0} діамантів. Хай коваль загартує твій шолом, перш ніж ти вирушиш — це дешево, і воно лишається з тобою.");
         Add("GUIDE_TALK_ELIAS_HELMET", "Speak to Elias before you ride out", "Поговори з Еліасом перед виступом");
         Add("GUIDE_UPGRADE_HELMET", "Upgrade a helmet at the shop", "Покращ шолом у магазині");
 
@@ -4040,7 +4040,7 @@ public static class LocalizationManager
         Add("STEP_HELMET_BUY_TITLE", "Temper it", "Загартуй його");
         Add("STEP_HELMET_BUY_BODY",
             "Each level costs diamonds and raises armour for good — it carries between runs.",
-            "Кожен рівень коштує алмази й піднімає броню назавжди — вона переходить між забігами.");
+            "Кожен рівень коштує діамантів і піднімає броню назавжди — вона переходить між забігами.");
         Add("STEP_HELMET_DONE_TITLE", "Done", "Готово");
         Add("STEP_HELMET_DONE_BODY",
             "That armour is yours for every run from now on. Head back to camp when you are ready.",
@@ -4143,18 +4143,18 @@ public static class LocalizationManager
         Add("An abandoned camp where woodcutters once thrived. Now, only restless bones remain among the logs.",
             "An abandoned camp where woodcutters once thrived. Now, only restless bones remain among the logs.",
             "Покинутий табір лісорубів. Тепер серед колод лишились самі неспокійні кістки.");
-        Add("Whispering Thicket", "Whispering Thicket", "Шепітний ліс");
+        Add("Whispering Thicket", "Whispering Thicket", "Шепітні Хащі");
         Add("The trees here absorb the moonlight, making it dangerously dark. Beware of ambushes.",
             "The trees here absorb the moonlight, making it dangerously dark. Beware of ambushes.",
             "Дерева тут поглинають місячне світло — небезпечно темно. Стережись засідок.");
         Add("Bandit's Crossing", "Bandit's Crossing", "Розбійницьке перепуття");
         Add("A broken bridge heavily guarded by corrupted scavengers. A great source of basic materials.",
             "A broken bridge heavily guarded by corrupted scavengers. A great source of basic materials.",
-            "Зламаний міст під охороною зіпсутих падл. Гарне джерело базових матеріалів.");
+            "Зламаний міст під охороною осквернених стерв'ятників. Гарне джерело базових матеріалів.");
         Add("Forgotten Shrine", "Forgotten Shrine", "Забутий храм");
         Add("An overgrown statue of a nameless god. The enemies here are slightly more aggressive.",
             "An overgrown statue of a nameless god. The enemies here are slightly more aggressive.",
-            "Зарослий статуя безіменного бога. Вороги тут трохи агресивніші.");
+            "Заросла статуя безіменного бога. Вороги тут трохи агресивніші.");
         Add("Mossy Foothills", "Mossy Foothills", "Мохові передгір'я");
         Add("The forest begins to thin out, revealing rocky terrain. Stone is easier to find here.",
             "The forest begins to thin out, revealing rocky terrain. Stone is easier to find here.",
@@ -4163,15 +4163,15 @@ public static class LocalizationManager
         Add("The border between the forest and the old kingdom. Heavily defended by skeleton guards.",
             "The border between the forest and the old kingdom. Heavily defended by skeleton guards.",
             "Кордон між лісом і старим королівством. Пильно охороняється скелетами.");
-        Add("Stonefall Quarry", "Stonefall Quarry", "Каменепадне кар'єр");
+        Add("Stonefall Quarry", "Stonefall Quarry", "Каменепадний кар'єр");
         Add("Deep pits where slaves once mined stone. The undead miners still blindly swing their pickaxes.",
             "Deep pits where slaves once mined stone. The undead miners still blindly swing their pickaxes.",
-            "Глибокі ями де раби добували камінь. Мертві шахтарі досі сліпо махають кирками.");
+            "Глибокі ями, де раби колись добували камінь. Мертві шахтарі досі сліпо махають кирками.");
         Add("Sunken Outpost", "Sunken Outpost", "Затоплений форпост");
         Add("A flooded military camp. Movement is slightly impaired, and enemies hit harder.",
             "A flooded military camp. Movement is slightly impaired, and enemies hit harder.",
             "Затоплений військовий табір. Рухи трохи скуті, вороги б'ють сильніше.");
-        Add("Howling Valley", "Howling Valley", "Виюча долина");
+        Add("Howling Valley", "Howling Valley", "Долина виття");
         Add("The wind through this canyon sounds like screaming. The cursed souls here are relentless.",
             "The wind through this canyon sounds like screaming. The cursed souls here are relentless.",
             "Вітер у каньйоні звучить як крик. Прокляті душі тут невтомні.");
@@ -4183,10 +4183,10 @@ public static class LocalizationManager
         Add("A dangerous mountain road. You'll need decent armor and a sharp blade to survive the swarm.",
             "A dangerous mountain road. You'll need decent armor and a sharp blade to survive the swarm.",
             "Небезпечний гірський шлях. Потрібна пристойна броня і гострий клинок щоб пережити рій.");
-        Add("Deadman's Gorge", "Deadman's Gorge", "Ущелина мертвяка");
+        Add("Deadman's Gorge", "Deadman's Gorge", "Ущелина мерця");
         Add("A massive graveyard of fallen knights. Their rusted armor makes them tougher to kill.",
             "A massive graveyard of fallen knights. Their rusted armor makes them tougher to kill.",
-            "Величезний цвинтар полеглих лицарів. Іржава броня робить їх складнішими для вбивства.");
+            "Величезний цвинтар полеглих лицарів. Іржава броня робить їх живучішими.");
         Add("Smuggler's Cove", "Smuggler's Cove", "Бухта контрабандистів");
         Add("Hidden caches of stolen goods remain here, guarded by the ghosts of greedy mercenaries.",
             "Hidden caches of stolen goods remain here, guarded by the ghosts of greedy mercenaries.",
@@ -4199,14 +4199,14 @@ public static class LocalizationManager
         Add("The crystals here glow with dark energy. The enemies are highly mutated and resilient.",
             "The crystals here glow with dark energy. The enemies are highly mutated and resilient.",
             "Кристали тут світяться темною енергією. Вороги дуже мутовані й живучі.");
-        Add("Desolate Tundra", "Desolate Tundra", "Пустельна тундра");
+        Add("Desolate Tundra", "Desolate Tundra", "Безлюдна тундра");
         Add("A frozen wasteland where stamina drains fast. Perfect for gathering rare frozen supplies.",
             "A frozen wasteland where stamina drains fast. Perfect for gathering rare frozen supplies.",
             "Замерзла пустка, де витривалість тане швидко. Ідеальна для збору рідкісних заморожених припасів.");
         Add("Warlord's Camp", "Warlord's Camp", "Табір воєводи");
         Add("The staging ground for the undead army. Huge swarms of enemies will test your crowd control.",
             "The staging ground for the undead army. Huge swarms of enemies will test your crowd control.",
-            "Плацдарм армії мертвих. Величезні рої ворогів випробують твоє контроль натовпу.");
+            "Плацдарм армії мертвих. Величезні рої ворогів випробують твоє вміння стримувати натовп.");
         Add("Shattered Bridge", "Shattered Bridge", "Розтрощений міст");
         Add("The only way to the Dark Citadel. The defense here is brutal. Don't go without upgrading your forge.",
             "The only way to the Dark Citadel. The defense here is brutal. Don't go without upgrading your forge.",
@@ -4219,7 +4219,7 @@ public static class LocalizationManager
         Add("The water supply for the citadel. It is completely corrupted. A grim and difficult battleground.",
             "The water supply for the citadel. It is completely corrupted. A grim and difficult battleground.",
             "Водопостачання цитаделі. Повністю зіпсуте. Похмуре й важке поле бою.");
-        Add("Abyssal Descent", "Abyssal Descent", "Прірва");
+        Add("Abyssal Descent", "Abyssal Descent", "Спуск у безодню");
         Add("A dark staircase leading into the depths of the earth. Claustrophobic combat awaits.",
             "A dark staircase leading into the depths of the earth. Claustrophobic combat awaits.",
             "Темні сходи вглиб землі. Чекає клаустрофобний бій.");
