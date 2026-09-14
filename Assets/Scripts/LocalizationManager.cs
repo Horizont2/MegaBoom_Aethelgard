@@ -3813,6 +3813,12 @@ public static class LocalizationManager
         // === Combat prompts ===
         AddSelf("[F] EXECUTE", "[F] ДОБИТИ");
 
+        // === Chest haul ===
+        Add("HAUL_BACKPACK_FULL_TITLE", "BACKPACK FULL", "РЮКЗАК ПОВНИЙ");
+        Add("HAUL_BACKPACK_FULL_BODY",
+            "The chest had supplies. You have nowhere to put them.",
+            "У скрині були припаси. Тобі нема куди їх покласти.");
+
         // === Elias dialogue: the helmet and war-chest beats ===
         // CampNPC_Elias passes each spoken line straight to Tr(), so the
         // English sentence IS the key. Most of his script was registered when

@@ -858,10 +858,35 @@ public class Reliquary : MonoBehaviour
     {
         if (wood + stone + food <= 0) return;
 
+        // ==== ANNOUNCE WHAT THE PLAYER ACTUALLY GETS ====
+        //
+        // AddRunResources clamps every deposit to the backpack's capacity and
+        // silently discards the rest. This was announcing the ROLLED numbers, so
+        // a chest could promise sixty wood into a backpack with five slots left
+        // and the player would watch the counter move by five. That is the
+        // "зараховується не та сума" report, and it is not a payout bug — the
+        // payout is correct and the message was lying about it.
+        var rm = ResourceManager.Instance;
+        wood = Deliverable(rm, "Wood", rm != null ? rm.runWood : 0, wood);
+        stone = Deliverable(rm, "Stone", rm != null ? rm.runStone : 0, stone);
+        food = Deliverable(rm, "Food", rm != null ? rm.runFood : 0, food);
+        if (wood + stone + food <= 0)
+        {
+            // Everything the chest held was refused by a full backpack. Saying
+            // so is far better than a reveal that reads as a reward.
+            RewardReveal.Show(set != null ? set.woodIcon : null,
+                LocalizationManager.Tr("HAUL_BACKPACK_FULL_TITLE"),
+                LocalizationManager.Tr("HAUL_BACKPACK_FULL_BODY"),
+                new Color(0.85f, 0.5f, 0.35f), 2.6f);
+            return;
+        }
+
         // One reveal for the whole chest, led by whatever there was most of
         // relative to what the player can carry — three separate reveals for one
-        // chest would be three times as long and a third as impressive.
-        var rm = ResourceManager.Instance;
+        // chest would be three times as long and a third as impressive. The
+        // OTHER resources are no longer dropped from the picture: they ride
+        // along as a row of icons under the title. Showing a single icon for a
+        // haul of three things was the "показується іконка тільки одного".
         float fW = wood / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Wood") : 100);
         float fS = stone / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Stone") : 50);
         float fF = food / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Food") : 30);
@@ -892,11 +917,27 @@ public class Reliquary : MonoBehaviour
         // managed to read is a hoard that may as well have been a handful.
         Debug.Log($"[Reliquary] {grade} haul: wood {wood}, stone {stone}, food {food} " +
                   $"(fortune {fortune}) — showing the reward reveal.");
-        RewardReveal.Show(icon,
+        var row = new List<(Sprite, int)>(3);
+        if (wood > 0 && set != null && set.woodIcon != null) row.Add((set.woodIcon, wood));
+        if (stone > 0 && set != null && set.stoneIcon != null) row.Add((set.stoneIcon, stone));
+        if (food > 0 && set != null && set.foodIcon != null) row.Add((set.foodIcon, food));
+
+        RewardReveal.ShowHaul(icon,
             LocalizationManager.Tr(FortuneTitleKey(fortune)),
-            string.Join("   ·   ", parts),
+            row.Count > 1 ? null : string.Join("   ·   ", parts),
             FortuneColour(fortune),
+            row,
             3.0f + parts.Count * 0.45f + (fortune >= 2 ? 0.6f : 0f));
+    }
+
+    // How much of `want` will actually land, given what the backpack already
+    // holds and what it can hold at all.
+    private static int Deliverable(ResourceManager rm, string type, int current, int want)
+    {
+        if (want <= 0) return 0;
+        if (rm == null) return want;
+        int room = Mathf.Max(0, rm.GetRunMax(type) - current);
+        return Mathf.Min(want, room);
     }
 
     private static string FortuneTitleKey(int fortune) => fortune switch

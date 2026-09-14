@@ -1,21 +1,18 @@
 using UnityEngine;
 
-// The cart is both the way out AND the bank.
+// The cart is the way out. Only the way out.
 //
-// It used to be only the way out, and that quietly punished the whole
-// exploration half of the game: everything in the backpack was lost on death, so
-// the moment a chest paid out, the correct play was to stop playing and walk
-// home. Adding a stow action makes the cart a save point you can visit as often
-// as you like — the walk back is still the risk, but it is a risk you choose the
-// size of, instead of the run being all-or-nothing.
+// It briefly doubled as a bank: a stow key that pushed the backpack into the
+// camp stash without ending the run. Removed on request, and the design reason
+// is sound — a save point you can visit as often as you like takes the whole
+// decision out of a run. Carrying a full backpack is supposed to be a growing
+// bet on getting home with it, and being able to cash out at the exit whenever
+// you pass it means there is never anything at stake.
+//
+// Everything is banked on evacuation, which is the one moment the risk actually
+// resolves.
 public class ExtractionPoint : MonoBehaviour
 {
-    [Tooltip("Bank the backpack into the camp stash without ending the run.")]
-    // NOT Q — that raises the shield now, and a player defending themselves
-    // beside the cart should not be banking their backpack every time they
-    // block. F is free in a region; it only means "inspect" back in camp.
-    public KeyCode stowKey = KeyCode.F;
-
     private bool isPlayerNear = false;
 
     void Update()
@@ -44,20 +41,6 @@ public class ExtractionPoint : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(stowKey) && ResourceManager.Instance != null)
-        {
-            if (ResourceManager.Instance.StowRunToStash(out int w, out int s, out int f))
-            {
-                if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Purchase);
-                if (GlobalHUD.Instance != null)
-                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_STOWED", w + s + f));
-            }
-            else if (GlobalHUD.Instance != null)
-            {
-                // Says WHY nothing happened. Silence here reads as a broken key.
-                GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_STOW_NOTHING"));
-            }
-        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -84,12 +67,7 @@ public class ExtractionPoint : MonoBehaviour
     {
         _promptTimer = 1.5f;
         if (GlobalHUD.Instance == null) return;
-        bool carrying = ResourceManager.Instance != null &&
-                        (ResourceManager.Instance.runWood + ResourceManager.Instance.runStone
-                         + ResourceManager.Instance.runFood) > 0;
-        GlobalHUD.Instance.ShowPrompt(carrying
-            ? LocalizationManager.Tr("PROMPT_EVACUATE_OR_STOW", stowKey.ToString())
-            : LocalizationManager.Tr("PROMPT_EVACUATE"));
+        GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_EVACUATE"));
     }
 
     private void OnTriggerExit(Collider other)

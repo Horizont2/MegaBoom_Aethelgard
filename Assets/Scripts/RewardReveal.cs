@@ -66,7 +66,24 @@ public class RewardReveal : MonoBehaviour
     public static void Show(Sprite icon, string title, string subtitle, Color accent, float hold = -1f)
     {
         if (Instance == null) Install();
-        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent, hold);
+        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent, hold, null);
+    }
+
+    // ==== A HAUL IS SEVERAL THINGS, AND IT SHOULD LOOK LIKE SEVERAL THINGS ====
+    //
+    // A chest that pays wood AND stone AND food was reduced to whichever one was
+    // biggest, with the rest surviving only as words in the subtitle. From the
+    // player's seat that is a single-resource reward with some text under it,
+    // and the size of the find never lands.
+    //
+    // `row` draws each resource as its own icon with its amount beside it,
+    // under the title. One entry falls back to the plain subtitle so a
+    // single-resource haul is unchanged.
+    public static void ShowHaul(Sprite icon, string title, string subtitle, Color accent,
+                                System.Collections.Generic.List<(Sprite, int)> row, float hold = -1f)
+    {
+        if (Instance == null) Install();
+        if (Instance != null) Instance.Enqueue(icon, title, subtitle, accent, hold, row);
     }
 
     // Reveals QUEUE rather than replacing each other.
@@ -81,11 +98,13 @@ public class RewardReveal : MonoBehaviour
         public string title, subtitle;
         public Color accent;
         public float hold;
+        public System.Collections.Generic.List<(Sprite, int)> row;
     }
 
     private readonly System.Collections.Generic.Queue<Pending> _queue = new System.Collections.Generic.Queue<Pending>();
 
-    private void Enqueue(Sprite icon, string title, string subtitle, Color accent, float hold)
+    private void Enqueue(Sprite icon, string title, string subtitle, Color accent, float hold,
+                         System.Collections.Generic.List<(Sprite, int)> row)
     {
         // A cap, because a queue with no bound is a way for one silly frame to
         // lock the screen up for a minute. It says so when it drops one, since a
@@ -96,7 +115,7 @@ public class RewardReveal : MonoBehaviour
                              "out rewards faster than they can be shown.");
             return;
         }
-        _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent, hold = hold });
+        _queue.Enqueue(new Pending { icon = icon, title = title, subtitle = subtitle, accent = accent, hold = hold, row = row });
         PumpQueue();
     }
 
@@ -133,7 +152,7 @@ public class RewardReveal : MonoBehaviour
             while (_queue.Count > 0)
             {
                 var p = _queue.Dequeue();
-                yield return Routine(p.icon, p.title, p.subtitle, p.accent, p.hold);
+                yield return Routine(p.icon, p.title, p.subtitle, p.accent, p.hold, p.row);
             }
         }
         finally
@@ -293,6 +312,82 @@ public class RewardReveal : MonoBehaviour
         return s_token;
     }
 
+    // The icon strip under the title, one entry per resource in the haul.
+    //
+    // Rebuilt each reveal rather than pooled: a reveal happens a handful of
+    // times a run, the row is at most three cells, and a pool here would be
+    // more state to get wrong than it could ever save.
+    private RectTransform _row;
+
+    private void BuildRow(System.Collections.Generic.List<(Sprite, int)> row, Color accent)
+    {
+        if (_row != null)
+            for (int i = _row.childCount - 1; i >= 0; i--) Destroy(_row.GetChild(i).gameObject);
+
+        if (row == null || row.Count == 0)
+        {
+            if (_row != null) _row.gameObject.SetActive(false);
+            return;
+        }
+
+        if (_row == null)
+        {
+            var go = new GameObject("HaulRow", typeof(RectTransform));
+            _row = go.GetComponent<RectTransform>();
+            _row.SetParent(_subtitle.transform.parent, false);
+            _row.anchorMin = _row.anchorMax = new Vector2(0.5f, 0.5f);
+            _row.pivot = new Vector2(0.5f, 0.5f);
+            _row.anchoredPosition = _subtitle.rectTransform.anchoredPosition;
+            _row.sizeDelta = new Vector2(720f, 74f);
+
+            var layout = go.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+            layout.spacing = 34f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+        }
+        _row.gameObject.SetActive(true);
+
+        foreach (var (sprite, amount) in row)
+        {
+            var cell = new GameObject("Haul", typeof(RectTransform));
+            cell.transform.SetParent(_row, false);
+            var cl = cell.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+            cl.spacing = 8f;
+            cl.childAlignment = TextAnchor.MiddleLeft;
+            cl.childForceExpandWidth = false;
+            cl.childForceExpandHeight = false;
+            cl.childControlWidth = true;
+            cl.childControlHeight = true;
+            cell.AddComponent<UnityEngine.UI.ContentSizeFitter>().horizontalFit =
+                UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+
+            var ico = new GameObject("Icon", typeof(RectTransform));
+            ico.transform.SetParent(cell.transform, false);
+            var img = ico.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            var le = ico.AddComponent<UnityEngine.UI.LayoutElement>();
+            le.preferredWidth = 56f; le.preferredHeight = 56f;
+
+            var num = new GameObject("Amount", typeof(RectTransform));
+            num.transform.SetParent(cell.transform, false);
+            var tmp = num.AddComponent<TextMeshProUGUI>();
+            tmp.text = amount.ToString();
+            tmp.fontSize = 40f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = accent;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.raycastTarget = false;
+            tmp.enableWordWrapping = false;
+            num.AddComponent<UnityEngine.UI.ContentSizeFitter>().horizontalFit =
+                UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        }
+    }
+
     // A soft round falloff — the same trick TrailerSoftSprite uses to stop
     // particles rendering as hard squares.
     private static Sprite s_glow;
@@ -323,7 +418,8 @@ public class RewardReveal : MonoBehaviour
 
     // ---- the beat ------------------------------------------------------------
 
-    private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent, float hold)
+    private IEnumerator Routine(Sprite icon, string title, string subtitle, Color accent, float hold,
+                                System.Collections.Generic.List<(Sprite, int)> row)
     {
         float stay = hold > 0f ? hold : holdTime;
         // A MISSING SPRITE STILL GETS A SHAPE.
@@ -342,6 +438,7 @@ public class RewardReveal : MonoBehaviour
         _title.color = accent;
         _subtitle.text = subtitle ?? "";
         _subtitle.color = new Color(0.85f, 0.85f, 0.85f);
+        BuildRow(row, accent);
 
         Color glow = accent; glow.a = 1f;
         _burst.color = glow;

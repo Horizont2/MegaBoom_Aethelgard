@@ -23,7 +23,28 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class ReliquaryDirector : MonoBehaviour
 {
+    // ==== OFF BY DEFAULT: THE HAND-BUILT LOCATIONS ARE THE CONTENT NOW ====
+    //
+    // This director exists from before there were any authored reliquary
+    // locations. It scatters a generated site on bare ground — banners, a
+    // chest, some guardians — which was the only way to have the feature at
+    // all back then.
+    //
+    // Reliq_1/2/3 are now in the generator's POI list with their own rarity,
+    // and a composed location beats anything this can assemble from parts. Both
+    // running at once is how a region ends up showing the improvised version
+    // INSTEAD of the designed one, which is what was reported.
+    //
+    // The stand-down check below was supposed to prevent that by counting what
+    // the POI pass had already placed, but it is a race against the whole POI
+    // phase succeeding, and it fails silently and in the wrong direction — the
+    // procedural site appears and the authored one does not. Not running unless
+    // asked is the honest default. Turn it on only if a region needs sites the
+    // POI list cannot supply.
     [Header("How many exist at all")]
+    [Tooltip("Scatter GENERATED reliquary sites on open ground. Off by default: the hand-built Reliq locations in the generator's POI list are the real content, and running both means the improvised version can show up instead of the designed one.")]
+    public bool enableProceduralSites = false;
+
     [Tooltip("Chance this region contains any reliquary. Below 1 on purpose: a region with nothing in it is what makes the next one's silhouette worth noticing.")]
     [Range(0f, 1f)] public float regionHasOneChance = 0.9f;
     [Tooltip("Upper bound when the roll succeeds. Two is a lot already.")]
@@ -66,6 +87,13 @@ public class ReliquaryDirector : MonoBehaviour
         // line to say why. This director only ever runs because a WorldGenerator
         // finished building a world, and a generated world is a world worth
         // exploring, whichever mission put it there.
+        if (!enableProceduralSites)
+        {
+            Debug.Log("[Reliquary] Procedural sites are off — the hand-built Reliq locations in the generator's " +
+                      "POI list are the source of reliquaries. See ReliquaryDirector.enableProceduralSites.");
+            yield break;
+        }
+
         if (!WorldEncounterDirector.IsAnyRegionMode())
             Debug.Log("[Reliquary] Not flagged as a region mission — placing anyway, since a world was generated.");
 
