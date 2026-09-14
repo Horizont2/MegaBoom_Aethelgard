@@ -129,7 +129,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::POISettings
   flattenRadius: 4
-  yOffset: -0.1
+  yOffset: -0.3
   maxAllowedSlope: 10
   spawnWeight: 1
   regionAppearChance: 1
