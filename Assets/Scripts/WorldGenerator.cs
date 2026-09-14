@@ -1937,6 +1937,61 @@ public class WorldGenerator : MonoBehaviour
         // ФІКС: Правильний порядок масиву для Unity Terrain (Висота, Ширина, Шари)
         float[,,] splatmapData = new float[aHeight, aWidth, 5];
 
+        // ==== THE SAME MISTAKE THE GRASS PASS ALREADY FIXED ====
+        //
+        // The loop below asked TerrainData for GetSteepness and GetHeight per
+        // alphamap cell. Neither is a lookup: each is a managed-to-native call
+        // that samples the heightmap, and steepness derives a surface normal on
+        // top. At a 512-square alphamap that is a quarter of a million cells and
+        // half a million derived queries, every single generation.
+        //
+        // GenerateDetailsRoutine, one method down, already replaced exactly this
+        // with a single bulk GetHeights and a central-difference gradient, and
+        // its own comment records what that was worth: 2.4 seconds of a twelve
+        // second load. This is the same grid and the same fix.
+        //
+        // ==== AND IT WAS READING THE HEIGHTMAP TRANSPOSED ====
+        //
+        // BEHAVIOUR CHANGE, deliberate. The old line was
+        //   terrainData.GetHeight(y, x)
+        // and the signature is GetHeight(int x, int y) — so the loop's row index
+        // went in as the column and vice versa. Steepness on the line above it
+        // was passed (x, y) correctly, which is what gives the game away: the
+        // two were disagreeing about where they were.
+        //
+        // The effect was that height-driven painting — snow above 0.65, sand at
+        // the shoreline — was placed against a mirrored copy of the terrain, so
+        // snowcaps and beaches landed at coordinates that had nothing to do with
+        // the actual mountains and lakes. It also passed the raw loop indices
+        // rather than scaling them to the heightmap resolution.
+        //
+        // Both are corrected here. Region ground will paint differently from
+        // this commit on, and correctly.
+        int hRes = terrainData.heightmapResolution;
+        float[,] rawH = terrainData.GetHeights(0, 0, hRes, hRes);
+        float metresPerSample = terrainData.size.x / Mathf.Max(1, hRes - 1);
+        var cellHeight = new float[aHeight, aWidth];
+        var cellSteep = new float[aHeight, aWidth];
+
+        for (int y = 0; y < aHeight; y++)
+        {
+            int hy = Mathf.Clamp(Mathf.RoundToInt((float)y / aHeight * (hRes - 1)), 0, hRes - 1);
+            int ym = Mathf.Max(hy - 1, 0), yp = Mathf.Min(hy + 1, hRes - 1);
+
+            for (int x = 0; x < aWidth; x++)
+            {
+                int hx = Mathf.Clamp(Mathf.RoundToInt((float)x / aWidth * (hRes - 1)), 0, hRes - 1);
+                int xm = Mathf.Max(hx - 1, 0), xp = Mathf.Min(hx + 1, hRes - 1);
+
+                cellHeight[y, x] = rawH[hy, hx] * terrainData.size.y;
+
+                float ddx = (rawH[hy, xp] - rawH[hy, xm]) * terrainData.size.y / ((xp - xm) * metresPerSample);
+                float ddz = (rawH[yp, hx] - rawH[ym, hx]) * terrainData.size.y / ((yp - ym) * metresPerSample);
+                cellSteep[y, x] = Mathf.Atan(Mathf.Sqrt(ddx * ddx + ddz * ddz)) * Mathf.Rad2Deg;
+            }
+        }
+        rawH = null;
+
         float startTime = Time.realtimeSinceStartup;
 
         // One reusable weights buffer for the whole paint pass — the old code
@@ -1948,8 +2003,8 @@ public class WorldGenerator : MonoBehaviour
             for (int x = 0; x < aWidth; x++)
             {
                 float temp = GetTemperature((float)x / aWidth, (float)y / aHeight);
-                float steepness = terrainData.GetSteepness((float)x / aWidth, (float)y / aHeight);
-                float normalizedHeight = terrainData.GetHeight(y, x) / depth;
+                float steepness = cellSteep[y, x];
+                float normalizedHeight = cellHeight[y, x] / depth;
                 weights[0] = weights[1] = weights[2] = weights[3] = weights[4] = 0f;
 
                 // Rock that shows because the snow was stripped off it, as

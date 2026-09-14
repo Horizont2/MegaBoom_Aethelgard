@@ -109,6 +109,14 @@ public class DayNightCycle : MonoBehaviour
     private Camera mainCam;
     private ParticleSystem[] weatherVFXCache;
 
+    private void OnDestroy()
+    {
+        // The scratch skies are HideAndDontSave, so nothing else will collect
+        // them when the scene goes.
+        if (_scratchOut != null) Destroy(_scratchOut);
+        if (_scratchIn != null) Destroy(_scratchIn);
+    }
+
     private void Start()
     {
         mainCam = Camera.main;
@@ -391,6 +399,37 @@ public class DayNightCycle : MonoBehaviour
         }
     }
 
+    // ==== TWO SKYBOX MATERIALS PER WEATHER CHANGE, FOREVER ====
+    //
+    // This built `new Material(...)` twice per transition and dropped both when
+    // the blend finished — RenderSettings.skybox is reassigned to the real
+    // material at the end and the copies are simply forgotten. Materials are
+    // engine-side; forgetting one leaks it.
+    //
+    // Weather flips every 15-30 seconds and the day/night boundary adds more, so
+    // this leaked steadily for the whole session. Worse, the caller
+    // StopCoroutine's an in-flight blend, which orphaned that run's copy
+    // mid-fade — so a rapid weather change leaked without even finishing.
+    //
+    // Two persistent scratch materials instead, reused every transition. They
+    // are rebuilt only when the shader they must imitate changes, since a
+    // Material cannot swap shader families cleanly.
+    private Material _scratchOut, _scratchIn;
+
+    private static Material ScratchSky(ref Material scratch, Material source)
+    {
+        if (scratch == null || scratch.shader != source.shader)
+        {
+            if (scratch != null) Destroy(scratch);
+            scratch = new Material(source) { hideFlags = HideFlags.HideAndDontSave };
+        }
+        else
+        {
+            scratch.CopyPropertiesFromMaterial(source);
+        }
+        return scratch;
+    }
+
     private IEnumerator TransitionSkyboxRoutine(Material newSkyboxMat)
     {
         if (newSkyboxMat == null) yield break;
@@ -407,7 +446,7 @@ public class DayNightCycle : MonoBehaviour
         {
             // Guard against null source — Material's source-copy ctor
             // throws ArgumentNullException for sources without a shader.
-            Material tempOutMat = new Material(currentMat);
+            Material tempOutMat = ScratchSky(ref _scratchOut, currentMat);
             RenderSettings.skybox = tempOutMat;
             Color startTint = tempOutMat.HasProperty("_Tint") ? tempOutMat.GetColor("_Tint") : Color.gray;
 
@@ -421,7 +460,7 @@ public class DayNightCycle : MonoBehaviour
         }
 
         if (newSkyboxMat.shader == null) yield break;
-        Material tempInMat = new Material(newSkyboxMat);
+        Material tempInMat = ScratchSky(ref _scratchIn, newSkyboxMat);
         RenderSettings.skybox = tempInMat;
         Color originalNewTint = newSkyboxMat.HasProperty("_Tint") ? newSkyboxMat.GetColor("_Tint") : Color.gray;
         if (tempInMat.HasProperty("_Tint")) tempInMat.SetColor("_Tint", currentFogColor);

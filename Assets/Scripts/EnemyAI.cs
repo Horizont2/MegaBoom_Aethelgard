@@ -1634,6 +1634,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Totem_Activate, spawn);
     }
 
+    private static readonly System.Collections.Generic.Dictionary<Color, Material> s_orbMats
+        = new System.Collections.Generic.Dictionary<Color, Material>(4);
+    private static Shader s_orbShader;
+
+    private static Material OrbMaterial(Color c)
+    {
+        if (s_orbMats.TryGetValue(c, out var cached) && cached != null) return cached;
+
+        if (s_orbShader == null)
+            s_orbShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+        var mat = new Material(s_orbShader) { hideFlags = HideFlags.HideAndDontSave };
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c); else mat.color = c;
+        mat.EnableKeyword("_EMISSION");
+        if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", c * 3.5f);
+        s_orbMats[c] = mat;
+        return mat;
+    }
+
     private GameObject BuildMagicOrb(Vector3 pos)
     {
         var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1645,13 +1664,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         var pc = orb.GetComponent<Collider>();
         if (pc != null) Destroy(pc);
 
-        Shader sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        var mat = new Material(sh);
-        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", magicOrbColor); else mat.color = magicOrbColor;
-        mat.EnableKeyword("_EMISSION");
-        if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", magicOrbColor * 3.5f);
+        // ==== ONE MATERIAL FOR EVERY ORB EVER FIRED ====
+        //
+        // This built a Material and ran Shader.Find on EVERY SHOT, and
+        // EnemyProjectile only ever Destroys the GameObject — so each cast
+        // leaked a material, and each cast paid for a string lookup over the
+        // whole shader table. A caster firing through a whole raid adds up to
+        // hundreds of both.
+        //
+        // Nothing about the orb varies per shot except its colour, which is a
+        // per-archetype constant, so the material is cached by colour and
+        // shared. sharedMaterial, not material — the latter would instantiate a
+        // per-renderer copy of the very thing being cached.
         var rend = orb.GetComponent<Renderer>();
-        rend.material = mat;
+        rend.sharedMaterial = OrbMaterial(magicOrbColor);
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         var light = orb.AddComponent<Light>();
