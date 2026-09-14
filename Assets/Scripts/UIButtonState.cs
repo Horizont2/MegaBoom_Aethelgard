@@ -16,74 +16,36 @@ using UnityEngine.UI;
 // of it. The button stays obviously a button, obviously present, and obviously
 // not ready. Its label stays readable too, which matters most of all, because
 // the label is usually the thing that says WHY it is not ready.
+//
+// ==== WHY THIS DOES NOT TOUCH THE TRANSITION ====
+//
+// The barracks buttons are SpriteSwap, which ignores the ColorBlock entirely,
+// so an earlier version of this switched them to ColorTint in order to have
+// something to drive. That was wrong twice over: the authored highlighted and
+// pressed sprites stopped being used, and the disabled state fell back to the
+// normal sprite — an unavailable button drawn pixel-for-pixel like an available
+// one.
+//
+// So nothing here writes `transition`, `colors` or `spriteState`. The dim is
+// applied on top, to the Graphics themselves, which works the same for every
+// transition mode and leaves the artist's sprites exactly as authored.
 public static class UIButtonState
 {
-    [Tooltip("How much colour a disabled button keeps. 0 = flat grey, 1 = unchanged.")]
-    // Deliberately a big step. Over a dark panel a gentle dim is invisible, and
-    // the whole point is that the player can tell at a glance.
-    private const float DisabledSaturation = 0.12f;
-    private const float DisabledBrightness = 0.42f;
-
-    // Sets interactable AND repairs the disabled tint, so no prefab has to be
+    // Sets interactable AND installs the dimmer, so no prefab has to be
     // re-authored one button at a time.
     public static void SetInteractable(Selectable target, bool on)
     {
         if (target == null) return;
-        SolidifyDisabledColour(target);
+        Dim(target);
         target.interactable = on;
     }
 
-    // Rewrites just the disabled entry of the button's ColorBlock: fully
-    // opaque, desaturated and darkened from whatever the normal colour is.
-    private static bool s_warnedTransition;
-
-    public static void SolidifyDisabledColour(Selectable target)
+    // Installs the dimmer on a single Selectable. Idempotent.
+    public static void Dim(Selectable target)
     {
         if (target == null) return;
-
-        // ==== SPRITE SWAP WITH NO DISABLED SPRITE SHOWS NOTHING AT ALL ====
-        //
-        // The barracks buttons are SpriteSwap, which ignores the ColorBlock
-        // entirely — so the first version of this fix did nothing to them. And
-        // their m_DisabledSprite is EMPTY, which means Unity falls back to the
-        // normal sprite: an unaffordable button rendered pixel-for-pixel like an
-        // affordable one. That is worse than the fade it was meant to replace,
-        // and it is what "active buttons still look the same as inactive" meant.
-        //
-        // With no disabled sprite authored there is nothing to preserve, so the
-        // button is switched to ColorTint, which this CAN drive. A button that
-        // does have a disabled sprite is left alone — someone drew it on purpose.
-        if (target.transition == Selectable.Transition.SpriteSwap)
-        {
-            if (target.spriteState.disabledSprite != null) return;   // authored — respect it
-            target.transition = Selectable.Transition.ColorTint;
-        }
-        else if (target.transition != Selectable.Transition.ColorTint)
-        {
-            // Animation transitions are driven by a clip; nothing here can help.
-            if (!s_warnedTransition)
-            {
-                s_warnedTransition = true;
-                Debug.LogWarning($"[UI] '{target.name}' uses an {target.transition} transition, so its disabled " +
-                                 "look comes from an animation clip and cannot be set in code. Give it a Color Tint " +
-                                 "or Sprite Swap transition instead.", target);
-            }
-            return;
-        }
-
-        var c = target.colors;
-        Color normal = c.normalColor;
-
-        Color.RGBToHSV(normal, out float h, out float s, out float v);
-        Color dim = Color.HSVToRGB(h, s * DisabledSaturation, v * DisabledBrightness);
-        // Opaque, always. This is the entire point.
-        dim.a = 1f;
-
-        if (c.disabledColor != dim)
-        {
-            c.disabledColor = dim;
-            target.colors = c;
-        }
+        if (target.GetComponent<DisabledDimmer>() == null)
+            target.gameObject.AddComponent<DisabledDimmer>();
     }
 
     // Applies the same treatment to every Selectable under a root — for panels
@@ -93,6 +55,84 @@ public static class UIButtonState
     {
         if (root == null) return;
         foreach (var s in root.GetComponentsInChildren<Selectable>(true))
-            SolidifyDisabledColour(s);
+            Dim(s);
+    }
+
+    // Older call sites used this name.
+    public static void SolidifyDisabledColour(Selectable target) => Dim(target);
+}
+
+// Drains colour out of a Selectable's graphics while it is not interactable.
+//
+// Alpha is left EXACTLY as authored — fading is the thing this exists to
+// replace. Only hue saturation and value move, so the button keeps its shape,
+// its sprite and its text, and simply reads as greyed out.
+[DisallowMultipleComponent]
+public class DisabledDimmer : MonoBehaviour
+{
+    [Tooltip("Fraction of the original saturation kept while disabled. 0 = flat grey.")]
+    public float saturation = 0.15f;
+
+    [Tooltip("Fraction of the original brightness kept while disabled.")]
+    public float brightness = 0.45f;
+
+    private Selectable _target;
+    private Graphic[] _graphics;
+    private Color[] _original;
+    private bool _captured;
+    private bool _dimmed;
+
+    private void Awake()
+    {
+        _target = GetComponent<Selectable>();
+    }
+
+    private void OnEnable()
+    {
+        // The row may have been re-pooled with different colours; re-read them.
+        _captured = false;
+        _dimmed = false;
+    }
+
+    private void Capture()
+    {
+        _graphics = GetComponentsInChildren<Graphic>(true);
+        _original = new Color[_graphics.Length];
+        for (int i = 0; i < _graphics.Length; i++)
+            _original[i] = _graphics[i] != null ? _graphics[i].color : Color.white;
+        _captured = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (_target == null) return;
+
+        bool wantDim = !_target.interactable;
+        if (wantDim == _dimmed && _captured) return;
+
+        // Capture only once we know the authored colours are the live ones:
+        // the first frame the state actually matters.
+        if (!_captured) Capture();
+
+        for (int i = 0; i < _graphics.Length; i++)
+        {
+            var g = _graphics[i];
+            if (g == null) continue;
+
+            if (wantDim)
+            {
+                Color src = _original[i];
+                Color.RGBToHSV(src, out float h, out float s, out float v);
+                Color dim = Color.HSVToRGB(h, s * saturation, v * brightness);
+                dim.a = src.a;          // opacity is the artist's call, not ours
+                g.color = dim;
+            }
+            else
+            {
+                g.color = _original[i];
+            }
+        }
+
+        _dimmed = wantDim;
     }
 }
