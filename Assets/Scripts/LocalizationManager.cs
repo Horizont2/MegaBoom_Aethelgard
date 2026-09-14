@@ -3814,6 +3814,10 @@ public static class LocalizationManager
         AddSelf("[F] EXECUTE", "[F] ДОБИТИ");
 
         // === Chest haul ===
+        Add("BARROW_NO_ARMOUR_TITLE", "THE BARROW WAS PLUNDERED", "КУРГАН УЖЕ РОЗГРАБОВАНО");
+        Add("BARROW_NO_ARMOUR_BODY",
+            "No armour left in it. You take the coin instead: {0} diamonds.",
+            "Броні в ньому не лишилось. Береш монету: {0} алмазів.");
         Add("HAUL_BACKPACK_FULL_TITLE", "BACKPACK FULL", "РЮКЗАК ПОВНИЙ");
         Add("HAUL_BACKPACK_FULL_BODY",
             "The chest had supplies. You have nowhere to put them.",

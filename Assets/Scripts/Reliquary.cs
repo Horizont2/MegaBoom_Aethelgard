@@ -748,7 +748,24 @@ public class Reliquary : MonoBehaviour
     // The lid is up. Everything the reward consists of happens now, in one beat.
     private void OnLidOpened()
     {
-        bool gaveArmour = Random.value < ArmourLootTable.ArmourChance(grade) && GrantArmour();
+        // ==== THE RAREST THING IN THE GAME MUST NEVER PAY NOTHING IN SILENCE ====
+        //
+        // A Barrow is a nine-second vigil against a wave. Walking away from one
+        // with no armour, no icons and no explanation is the worst outcome the
+        // reward system can produce, and there are three separate ways to reach
+        // it: the 55% roll simply fails; WeaponIndex has not been built, so the
+        // pool is empty; or every piece within the campaign's tier ceiling is
+        // already owned. All three look identical from the player's seat.
+        float armourOdds = ArmourLootTable.ArmourChance(grade);
+        bool rolledForArmour = Random.value < armourOdds;
+        bool gaveArmour = rolledForArmour && GrantArmour();
+
+        if (grade == Grade.Barrow && !gaveArmour)
+        {
+            Debug.Log($"[Reliquary] Barrow gave no armour — odds were {armourOdds:P0}, roll " +
+                      $"{(rolledForArmour ? "PASSED but the loot table returned nothing (pool empty, or everything " +
+                         "inside the tier ceiling is already owned — check Tools > Shop > Build Weapon Index)" : "failed")}.");
+        }
 
         // ==== HOW MUCH, AND WHY IT IS NOT ALWAYS THE SAME ====
         //
@@ -839,7 +856,23 @@ public class Reliquary : MonoBehaviour
                 rm.AddRunResources(creditWood, creditStone, creditFood);
             // No diamonds on top of a piece of armour — see ArmourLootTable.
             if (!gaveArmour)
-                rm.AddDiamonds(Mathf.Max(1, Mathf.RoundToInt(Random.Range(8f, 18f) * GradeCoin() * FortuneScale(fortune))));
+            {
+                int gems = Mathf.Max(1, Mathf.RoundToInt(Random.Range(8f, 18f) * GradeCoin() * FortuneScale(fortune)));
+
+                // A Barrow that produced no armour pays a real purse instead and
+                // SAYS SO. The consolation has to be visible or the encounter
+                // reads as broken rather than unlucky.
+                if (grade == Grade.Barrow)
+                {
+                    gems = Mathf.RoundToInt(gems * 2.5f);
+                    var set2 = ReliquarySet.Load();
+                    RewardReveal.Show(set2 != null ? set2.diamondIcon : null,
+                        LocalizationManager.Tr("BARROW_NO_ARMOUR_TITLE"),
+                        LocalizationManager.Tr("BARROW_NO_ARMOUR_BODY", gems),
+                        new Color(0.72f, 0.85f, 1f), 3.2f);
+                }
+                rm.AddDiamonds(gems);
+            }
             rm.UpdateUI();
         }
 
