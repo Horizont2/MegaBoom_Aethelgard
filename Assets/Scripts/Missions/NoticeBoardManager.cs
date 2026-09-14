@@ -26,6 +26,25 @@ public class NoticeBoardManager : MonoBehaviour
     public float restockTimeMinutes = 5f;
 
     private List<GameObject> activePapers = new List<GameObject>();
+
+    // What the marker over the board needs to know: is there anything here to
+    // take right now? Papers are destroyed when the board is emptied and added
+    // when it restocks, so the list itself is the honest answer — no second
+    // piece of state to fall out of sync with it.
+    public static NoticeBoardManager Instance { get; private set; }
+
+    public bool HasMissionsToTake
+    {
+        get
+        {
+            for (int i = activePapers.Count - 1; i >= 0; i--)
+            {
+                if (activePapers[i] == null) { activePapers.RemoveAt(i); continue; }
+                if (activePapers[i].activeInHierarchy) return true;
+            }
+            return false;
+        }
+    }
     private bool isPlayerNear = false;
     public bool isBoardOpen = false;
 
@@ -39,6 +58,9 @@ public class NoticeBoardManager : MonoBehaviour
     private CursorLockMode savedCursorLock;
     private bool savedCursorVisible;
     private bool cursorStateSaved;
+
+    private void Awake() { Instance = this; }
+    private void OnDestroy() { if (Instance == this) Instance = null; }
 
     private void Start()
     {

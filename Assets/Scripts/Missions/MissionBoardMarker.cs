@@ -34,7 +34,19 @@ public class MissionBoardMarker : MonoBehaviour
         bool hasVisitedBoard = PlayerPrefs.GetInt("MissionBoard_Visited", 0) == 1;
 
         // Показуємо знак оклику ТІЛЬКИ якщо діалог прослухано, а дошку ще не відкривали
-        exclamationMark.SetActive(hasHeardIntro && !hasVisitedBoard);
+        // ==== AND ONLY WHILE THERE IS SOMETHING TO TAKE ====
+        //
+        // The two flags above are a one-time "go and look at this" hint: they
+        // stop being true once the player has visited the board, and they knew
+        // nothing about whether the board actually had anything on it. So the
+        // mark hung over an empty board, pointing the player at a walk that
+        // ends in "no new missions available right now".
+        //
+        // A marker is a promise. It should be up when the promise can be kept.
+        bool boardHasWork = NoticeBoardManager.Instance == null
+                            || NoticeBoardManager.Instance.HasMissionsToTake;
+
+        exclamationMark.SetActive(hasHeardIntro && !hasVisitedBoard && boardHasWork);
     }
 
     // ВАЖЛИВО: Виклич цей метод зі скрипта взаємодії з дошкою, 

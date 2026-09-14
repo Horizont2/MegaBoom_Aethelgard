@@ -4358,9 +4358,64 @@ public class WorldGenerator : MonoBehaviour
             // 4. Застосовуємо ручний відступ з твого скрипта POISettings 
             // (можеш ставити yOffset = -0.5f в Інспекторі, щоб додатково "втопити" локацію в траву)
             instance.transform.position += (Vector3.up * poi.settings.yOffset);
+
+            // 5. MEASURE WHETHER IT ACTUALLY LANDED.
+            //
+            // Everything above computes where the location SHOULD sit: mesh
+            // bounds against a single SampleHeight taken at the POI's centre.
+            // That is a prediction, and it is wrong by a little whenever the
+            // flattened disc is not perfectly level under the whole footprint —
+            // heightmap quantisation, a slope the flatten only partly ate, the
+            // terrain collider lagging the heightmap by a frame. A little is all
+            // it takes: the location ends up hanging a few centimetres up, which
+            // is exactly what reads as "трохи в повітрі".
+            //
+            // So this stops predicting and measures. It checks the real ground
+            // under several points of the footprint and closes whatever gap is
+            // left. Cheap, and it cannot be wrong in the way a prediction can.
+            SettleOnGround(instance, poi.settings.flattenRadius);
         }
 
         GameLog.Info($"[AAA Gen] Успішно згенеровано {plannedPOIs.Count} POI.");
+    }
+
+    // Closes the residual gap between a placed location and the ground it is
+    // standing on, measured rather than predicted.
+    //
+    // Samples the terrain at the centre and at four points around the footprint
+    // and takes the HIGHEST of them: a building must not sink into the tallest
+    // ground it covers, and a few centimetres buried is invisible while a few
+    // centimetres of daylight underneath is not.
+    private void SettleOnGround(GameObject instance, float footprintRadius)
+    {
+        if (instance == null || terrain == null) return;
+
+        // Where the visible base actually is now.
+        float baseY = float.MaxValue;
+        foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (rend == null || !rend.enabled) continue;
+            if (IsBelowGradeDecor(rend.transform, instance.transform)) continue;
+            baseY = Mathf.Min(baseY, rend.bounds.min.y);
+        }
+        if (baseY == float.MaxValue) return;   // nothing to measure
+
+        Vector3 c = instance.transform.position;
+        float r = Mathf.Max(1f, footprintRadius * 0.55f);
+        float ground = terrain.SampleHeight(c) + transform.position.y;
+        ground = Mathf.Max(ground, terrain.SampleHeight(c + new Vector3(r, 0f, 0f)) + transform.position.y);
+        ground = Mathf.Max(ground, terrain.SampleHeight(c + new Vector3(-r, 0f, 0f)) + transform.position.y);
+        ground = Mathf.Max(ground, terrain.SampleHeight(c + new Vector3(0f, 0f, r)) + transform.position.y);
+        ground = Mathf.Max(ground, terrain.SampleHeight(c + new Vector3(0f, 0f, -r)) + transform.position.y);
+
+        float gap = baseY - ground;
+
+        // Only ever CLOSE a gap, and only a small one. A large discrepancy means
+        // the snap above already failed and warned about it; shoving the
+        // location further on top of that would hide the real fault. Sinking is
+        // left alone — that is usually deliberate (yOffset).
+        if (gap > 0.02f && gap < 3f)
+            instance.transform.position -= new Vector3(0f, gap, 0f);
     }
 
     // Sits a location's visible base on the ground, and says so when it cannot.
