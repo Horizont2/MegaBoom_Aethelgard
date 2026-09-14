@@ -52,13 +52,120 @@ public class MissionPaperUI : MonoBehaviour
         else
             descText.text = primary;
 
-        string rewText = $"<b>{LocalizationManager.Tr("MISSION_REWARDS_LABEL")}</b> ";
-        if (finalWood > 0)    rewText += $"<color=#5C4033>{LocalizationManager.Tr("MISSION_RES_WOOD", finalWood)}</color>  ";
-        if (finalStone > 0)   rewText += $"<color=#4A4A4A>{LocalizationManager.Tr("MISSION_RES_STONE", finalStone)}</color>  ";
-        if (finalFood > 0)    rewText += $"<color=#B85E00>{LocalizationManager.Tr("MISSION_RES_FOOD", finalFood)}</color>  ";
-        if (finalDiamond > 0) rewText += $"<color=#005500>{LocalizationManager.Tr("MISSION_RES_GEMS", finalDiamond)}</color>";
+        BuildRewardRow(finalWood, finalStone, finalFood, finalDiamond);
+    }
 
-        rewardText.text = rewText;
+    // ==== THE REWARD IS FOUR NUMBERS, NOT A SENTENCE ====
+    //
+    // This read "REWARDS: 40 Wood  25 Stone  10 Food" — a label, then the name
+    // of each resource spelled out beside its amount, in four different text
+    // colours. On a small paper card next to an objective line and a line of
+    // flavour that is a wall of words, and the part the player actually scans
+    // for — how much of what — is the part buried deepest in it.
+    //
+    // The icons already exist and are already the language the rest of the game
+    // uses for these three resources: the region victory screen and the chest
+    // rewards both draw them from the same sheet. Reusing them here means the
+    // card says the same thing in a quarter of the space, and says it in a form
+    // the player has already learned everywhere else.
+    private Transform _rewardRow;
+
+    private void BuildRewardRow(int wood, int stone, int food, int diamond)
+    {
+        if (rewardText == null) return;
+
+        var set = ReliquarySet.Load();
+        // No icon set resolved: keep the words rather than showing nothing.
+        if (set == null || (set.woodIcon == null && set.stoneIcon == null && set.foodIcon == null))
+        {
+            rewardText.gameObject.SetActive(true);
+            string rewText = $"<b>{LocalizationManager.Tr("MISSION_REWARDS_LABEL")}</b> ";
+            if (wood > 0)    rewText += $"<color=#5C4033>{LocalizationManager.Tr("MISSION_RES_WOOD", wood)}</color>  ";
+            if (stone > 0)   rewText += $"<color=#4A4A4A>{LocalizationManager.Tr("MISSION_RES_STONE", stone)}</color>  ";
+            if (food > 0)    rewText += $"<color=#B85E00>{LocalizationManager.Tr("MISSION_RES_FOOD", food)}</color>  ";
+            if (diamond > 0) rewText += $"<color=#005500>{LocalizationManager.Tr("MISSION_RES_GEMS", diamond)}</color>";
+            rewardText.text = rewText;
+            return;
+        }
+
+        // The row takes the label's place exactly, so it lands wherever the card
+        // was laid out to put the rewards — no prefab has to be re-authored, and
+        // a card with a different layout still works.
+        if (_rewardRow == null)
+        {
+            var go = new GameObject("RewardRow", typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(rewardText.transform.parent, false);
+            rt.SetSiblingIndex(rewardText.transform.GetSiblingIndex());
+
+            var src = rewardText.rectTransform;
+            rt.anchorMin = src.anchorMin; rt.anchorMax = src.anchorMax;
+            rt.pivot = src.pivot;
+            rt.anchoredPosition = src.anchoredPosition;
+            rt.sizeDelta = src.sizeDelta;
+
+            var layout = go.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 14f;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+
+            _rewardRow = rt;
+        }
+
+        for (int i = _rewardRow.childCount - 1; i >= 0; i--) Destroy(_rewardRow.GetChild(i).gameObject);
+        rewardText.gameObject.SetActive(false);
+
+        float h = Mathf.Max(22f, rewardText.fontSize * 1.35f);
+        AddReward(set.woodIcon, wood, h);
+        AddReward(set.stoneIcon, stone, h);
+        AddReward(set.foodIcon, food, h);
+        // No gem icon exists in the set, so diamonds keep a word — better an
+        // honest label than a wood log standing in for a diamond.
+        if (diamond > 0) AddReward(null, diamond, h, LocalizationManager.Tr("MISSION_RES_GEMS", diamond));
+    }
+
+    private void AddReward(Sprite icon, int amount, float height, string overrideLabel = null)
+    {
+        if (amount <= 0 && overrideLabel == null) return;
+
+        var cell = new GameObject(icon != null ? "Reward" : "RewardText", typeof(RectTransform));
+        cell.transform.SetParent(_rewardRow, false);
+        var row = cell.AddComponent<HorizontalLayoutGroup>();
+        row.spacing = 4f;
+        row.childAlignment = TextAnchor.MiddleLeft;
+        row.childForceExpandWidth = false;
+        row.childForceExpandHeight = false;
+        row.childControlWidth = true;
+        row.childControlHeight = true;
+        cell.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        if (icon != null)
+        {
+            var iconGo = new GameObject("Icon", typeof(RectTransform));
+            iconGo.transform.SetParent(cell.transform, false);
+            var img = iconGo.AddComponent<Image>();
+            img.sprite = icon;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            var le = iconGo.AddComponent<LayoutElement>();
+            le.preferredHeight = height;
+            le.preferredWidth = height;
+        }
+
+        var textGo = new GameObject("Amount", typeof(RectTransform));
+        textGo.transform.SetParent(cell.transform, false);
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = overrideLabel ?? amount.ToString();
+        tmp.font = rewardText.font;
+        tmp.fontSize = rewardText.fontSize;
+        tmp.color = rewardText.color;
+        tmp.alignment = TextAlignmentOptions.MidlineLeft;
+        tmp.raycastTarget = false;
+        tmp.enableWordWrapping = false;
+        textGo.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
     }
 
     private void AcceptMission()
