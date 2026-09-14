@@ -1003,7 +1003,7 @@ public class Reliquary : MonoBehaviour
         ArmourLootTable.NoteGranted();
 
         int tier = ArmourLootTable.TierOf(prize);
-        RewardReveal.Show(prize.icon, prize.armorName,
+        RewardReveal.Show(prize.icon, ArmorNaming.Display(prize.armorName),
             LocalizationManager.Tr("REVEAL_ARMOUR_SUB",
                                    LocalizationManager.Tr(ArmourLootTable.TierNameKey(tier)),
                                    prize.category.ToString(), prize.basePower),

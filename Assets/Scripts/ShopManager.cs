@@ -723,7 +723,11 @@ public class ShopManager : MonoBehaviour
         ShopItemButton itemSlot = btnObj.GetComponent<ShopItemButton>();
         if (itemSlot != null)
         {
-            if (itemSlot.nameText != null) itemSlot.nameText.text = LocalizationManager.Tr(name);
+            // ArmorNaming, not Tr: gear is authored as "Tier Slot (Variant)" and the
+            // generic translator rebuilds those words in ENGLISH order, which is
+            // how "Novice Helm" became "Новачок Шолом". Non-gear names fall
+            // straight through to Tr inside it.
+            if (itemSlot.nameText != null) itemSlot.nameText.text = ArmorNaming.Display(name);
             itemSlot.boundIcon = icon;   // SetState re-asserts this every state change
             if (itemSlot.iconImage != null)
             {
@@ -1303,7 +1307,7 @@ public class ShopManager : MonoBehaviour
         MarkNoAutoLocalize(itemDescriptionText);
         MarkNoAutoLocalize(priceText);
 
-        if (itemNameText) itemNameText.text = LocalizationManager.Tr(name) + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
+        if (itemNameText) itemNameText.text = ArmorNaming.Display(name) + (lvl > 0 ? $" <size=70%><color=#AAAAAA>{LocalizationManager.Tr("SHOP_ITEM_LEVEL_TAG", lvl, maxLvl)}</color></size>" : "");
         if (itemDescriptionText) itemDescriptionText.text = LocalizationManager.Tr(desc);
         if (descriptionItemIcon)
         {
