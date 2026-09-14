@@ -58,13 +58,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Tooltip("Optional bow/muzzle transform to fire from. Falls back to chest height + forward.")]
     public Transform projectileSpawnPoint;
 
+    [Header("Caster pacing")]
+    [Tooltip("Shots fired back-to-back before the caster pauses. A ranged enemy with one flat cooldown is a turret; a burst-and-rest gives the player a window to close in.")]
+    public int castsPerBurst = 3;
+    [Tooltip("Seconds the caster holds fire after a burst.")]
+    public float castRestSeconds = 2.6f;
+
+    private int _castsInBurst;
+    private float _castRestUntil;
+
     [Header("Skeleton Mage")]
     [Tooltip("Casts a flying magic orb instead of meleeing. Auto-enabled for enemies whose name contains 'mage'. Uses ranged behavior; the orb is built at runtime, no prefab needed.")]
     public bool magicCaster = false;
     [Tooltip("Color of the mage's magic orb + its glow/trail.")]
     public Color magicOrbColor = new Color(0.55f, 0.35f, 1f);
     [Tooltip("Diameter of the mage's orb, in metres. It was a hard-coded 0.5, which is large next to characters at this scale — the bolt read as a boulder.")]
-    [Range(0.12f, 0.8f)] public float magicOrbSize = 0.34f;
+    // Was 0.34, which at the range these are fired from is a beach ball with a
+    // point light in it — it covers the enemy that threw it and reads as an
+    // explosion rather than a projectile you are supposed to dodge.
+    [Range(0.08f, 0.8f)] public float magicOrbSize = 0.2f;
 
     [Header("Summon Ability (optional — e.g. the Necromancer)")]
     [Tooltip("Enable to give this enemy the reusable minion-summon ability. Assign at least one minion prefab below.")]
@@ -1359,12 +1371,40 @@ public class EnemyAI : MonoBehaviour, IDamageable
         bool engaged = dist <= preferredRange * 1.5f;
         SetAnimBoolSafe("Aim", engaged);
 
-        // Can fire from point-blank up to max range (no dead min-range), so a
-        // cornered archer keeps shooting instead of standing there doing nothing.
+        // ==== CASTERS ARE PART OF THE FIGHT, NOT A SEPARATE METRONOME ====
+        //
+        // This whole branch bypassed CombatRing: no token, no global rhythm, no
+        // hesitation after a block. A mage therefore fired on nothing but its
+        // own cooldown, forever, through parries and staggers and everything
+        // else the crowd was doing — which is the "безкінечно атакує" report,
+        // and it also quietly cancelled the reward for parrying, since a caster
+        // kept the pressure up while the melee ring was flinching.
+        //
+        // It does NOT take a melee token: a caster holding one would starve the
+        // enemies actually standing in front of the player. It respects the
+        // RHYTHM instead — the shared gap between any two attacks starting, and
+        // the pause the whole crowd takes after a successful block.
+        var ring = CombatRing.Instance;
+        bool rhythmAllows = ring == null || (!ring.Hesitating && ring.SwingWindowOpen);
+
+        // And it rests. A caster with one flat cooldown reads as a turret; one
+        // that fires a short burst and then pauses gives the player a window to
+        // close the distance in, which is the only counterplay a ranged enemy
+        // can offer.
+        bool resting = Time.time < _castRestUntil;
+
         bool ready = Time.time >= lastAttackTime + attackCooldown;
-        if (ready && dist <= preferredRange * 1.35f)
+        if (ready && rhythmAllows && !resting && dist <= preferredRange * 1.35f)
         {
             if (animator != null) animator.SetBool("isMoving", false);
+            if (ring != null) ring.NoteSwingStarted();
+
+            if (++_castsInBurst >= castsPerBurst)
+            {
+                _castsInBurst = 0;
+                _castRestUntil = Time.time + castRestSeconds;
+            }
+
             StartCoroutine(RangedAttackRoutine());
             return;
         }
