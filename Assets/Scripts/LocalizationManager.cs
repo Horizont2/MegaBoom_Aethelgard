@@ -3813,6 +3813,23 @@ public static class LocalizationManager
         // === Combat prompts ===
         AddSelf("[F] EXECUTE", "[F] ДОБИТИ");
 
+        // === Elias dialogue: the helmet and war-chest beats ===
+        // CampNPC_Elias passes each spoken line straight to Tr(), so the
+        // English sentence IS the key. Most of his script was registered when
+        // it was written; these five arrived with the helmet-upgrade and
+        // barracks steps and never were, so they showed in English whatever
+        // language the game was set to — Tr returns an unknown key unchanged.
+        AddSelf("Elias: Before you go. You are planning to walk into that province bare-headed, and I would rather not bury you.",
+                "Еліас: Стривай. Ти зібрався йти в ту провінцію з непокритою головою, а мені не хочеться тебе ховати.");
+        AddSelf("Elias: The smith at the market will temper what you already carry. It costs less than you think and it holds between runs.",
+                "Еліас: Коваль на ринку загартує те, що вже маєш. Це дешевше, ніж здається, і зберігається між вилазками.");
+        AddSelf("Elias: One province back. That changes what we can attempt next.",
+                "Еліас: Одна провінція повернена. Це змінює те, за що ми можемо взятися далі.");
+        AddSelf("Elias: The Whispering Thicket is next on my charts, and it is no place to walk into alone.",
+                "Еліас: Наступний на моїх картах — Шепітливий Гущавник, і туди не ходять самотою.");
+        AddSelf("Elias: So don't. Raise the barracks, put coin in willing hands, and send them in your stead.",
+                "Еліас: То й не ходи. Зведи казарми, поклади монету в охочі руки — і пошли їх замість себе.");
+
         // === Camp onboarding guide (CampGuideDirector.promptKey) ===
         Add("GUIDE_TALK_ELIAS",         "Talk to Elias",                        "Поговори з Еліасом");
         Add("GUIDE_BUILD_LODGE",        "Upgrade the Scout's Lodge",            "Прокачай Хатину Розвідника");

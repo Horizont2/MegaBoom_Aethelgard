@@ -403,6 +403,38 @@ public class CampGuideDirector : MonoBehaviour
             if (ep != null && ep.campSceneName != null && ep.campSceneName.ToLowerInvariant().Contains("shop"))
                 return ep.transform;
         }
+        // ==== THE PORTAL IS CALLED SOMETHING ELSE ====
+        //
+        // There is no ExtractionPortal anywhere in CampScene, and the exact-name
+        // lookup below asked for "Shop", "ShopPortal" or "ShopInteract" — while
+        // the object in the scene is named "Portal_To_Shop". So this returned
+        // null (or, worse, the shop BUILDING named "Shop", which is not where
+        // the player has to stand), the step got a null target, and the trail to
+        // the shop simply never drew. The mission still advanced, so nothing
+        // ever reported a fault.
+        //
+        // Matching by fragments instead of by exact string is what makes this
+        // survive the next rename, and inactive objects are included because a
+        // portal can easily be disabled until its step comes up.
+        Transform best = null;
+        int bestScore = 0;
+        foreach (var t in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (t == null) continue;
+            string n = t.name.ToLowerInvariant();
+            if (!n.Contains("shop")) continue;
+
+            // A thing you walk into beats a thing you look at.
+            int score = 1;
+            if (n.Contains("portal") || n.Contains("teleport") || n.Contains("door")) score = 3;
+            else if (n.Contains("interact") || n.Contains("enter")) score = 2;
+            // Spawn points and cameras named after the shop are not the shop.
+            if (n.Contains("spawn") || n.Contains("vcam") || n.Contains("camera") || n.Contains("exit")) continue;
+
+            if (score > bestScore) { bestScore = score; best = t; }
+        }
+        if (best != null) return best;
+
         var go = GameObject.Find("Shop") ?? GameObject.Find("ShopPortal") ?? GameObject.Find("ShopInteract");
         return go != null ? go.transform : null;
     }
