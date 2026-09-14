@@ -32,7 +32,10 @@ public class GlimmerSweep : MonoBehaviour
         // prefab lacked those references (the lumberjack, per report) the light
         // just sat frozen. Now the pulse ALWAYS animates; the positional sweep is
         // the only part that needs the points.
-        progress += Time.deltaTime * Mathf.Max(0.01f, speed);
+        // UNSCALED. This is decoration on a camp building, and the camp opens
+        // panels that stop the clock — on scaled time the glimmer freezes the
+        // moment the player opens the very upgrade screen it is advertising.
+        progress += Time.unscaledDeltaTime * Mathf.Max(0.01f, speed);
         if (progress > 1f) progress -= 1f;
 
         if (startPoint != null && endPoint != null)

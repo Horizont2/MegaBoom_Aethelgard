@@ -917,6 +917,12 @@ public class CampBuilding : MonoBehaviour
             {
                 upgradeGlimmer.SetActive(false);
             }
+            else if (shouldShow)
+            {
+                // Already visible. Something still has to keep it MOVING — see
+                // EnsureGlimmerDriver.
+                EnsureGlimmerDriver();
+            }
         }
     }
 
@@ -935,12 +941,58 @@ public class CampBuilding : MonoBehaviour
             ps.Clear(true);
             ps.Play(true);
         }
+        EnsureGlimmerDriver();
+    }
+
+    // ==== THE GLIMMER ANIMATOR PLAYS A VILLAGER ====
+    //
+    // Not a metaphor. UpgradeGlimmer5.controller and UpgradeGlimmer6.controller
+    // are wired to the scene's glimmer Lights, and EVERY state in both of them
+    // has its motion set to a clip inside Peasant Nolant(Free Version).fbx —
+    // a humanoid NPC animation, on an object that is a Light with no avatar and
+    // no bones.
+    //
+    // A humanoid clip cannot bind to anything here, so the Animator runs and
+    // moves nothing: the light sits at whichever point it was authored at and
+    // never sweeps or pulses. That is exactly "встає в 1 точку і не програє
+    // анімацію", and no amount of Rebind()/Play() fixes it, because there is
+    // nothing in the controller that could ever animate this object.
+    //
+    // GlimmerSweep already exists in the project and does precisely what these
+    // lights want — travel between two points and breathe on a sine — and it is
+    // referenced by nothing at all. So the broken Animator steps aside and the
+    // component that was written for this job drives the light instead.
+    //
+    // Detection is exact rather than a guess: an Animator whose every clip is
+    // humanoid motion, on an object with no Avatar, is provably incapable of
+    // animating it. A real glimmer animation authored later will not be humanoid
+    // and will be left alone.
+    private void EnsureGlimmerDriver()
+    {
+        if (upgradeGlimmer == null) return;
+
         foreach (var an in upgradeGlimmer.GetComponentsInChildren<Animator>(true))
         {
-            an.enabled = true;
-            an.Rebind();
-            an.Update(0f);
+            if (an == null || !CannotPossiblyAnimate(an)) { if (an != null) an.enabled = true; continue; }
+
+            an.enabled = false;
+
+            var light = an.GetComponent<Light>();
+            if (light == null) continue;
+            if (an.GetComponent<GlimmerSweep>() == null) an.gameObject.AddComponent<GlimmerSweep>();
         }
+    }
+
+    private static bool CannotPossiblyAnimate(Animator an)
+    {
+        if (an.runtimeAnimatorController == null) return false;
+        if (an.avatar != null) return false;
+
+        var clips = an.runtimeAnimatorController.animationClips;
+        if (clips == null || clips.Length == 0) return false;
+        foreach (var c in clips)
+            if (c != null && !c.isHumanMotion) return false;   // something here could bind
+        return true;
     }
 
     // Exposed so companion panels (e.g. BarracksUpgradePanel) can drive

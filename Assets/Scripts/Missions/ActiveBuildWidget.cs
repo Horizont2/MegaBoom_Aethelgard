@@ -50,7 +50,7 @@ public class ActiveBuildWidget : MonoBehaviour
             {
                 GlobalHUD.Instance.RemoveUpgradeFromList(buildingID);
                 if (titleText != null)
-                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("TOAST_BUILDING_UPGRADED", titleText.text));
+                    GlobalHUD.Instance.ShowToast(LocalizationManager.Tr("TOAST_BUILDING_UPGRADED", titleText.text));
             }
 
             // 3. ³��������� ���� �������� ������

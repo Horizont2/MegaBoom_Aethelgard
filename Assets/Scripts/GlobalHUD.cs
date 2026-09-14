@@ -773,6 +773,41 @@ public class GlobalHUD : MonoBehaviour
         promptTypingCoroutine = StartCoroutine(TypeTextRoutine(localised, promptText));
     }
 
+    // ==== A PROMPT WAITS TO BE DISMISSED. A TOAST DISMISSES ITSELF. ====
+    //
+    // ShowPrompt fades in, types, and then does nothing else forever — which is
+    // correct for what it was built for ("[E] to open"), because the thing that
+    // put it up is the thing that takes it down when the player walks away.
+    //
+    // The "building upgraded" message is not that. It is a one-shot
+    // announcement, nobody owns it, and nobody was ever going to call
+    // HidePrompt for it — so it simply stayed on screen for the rest of the
+    // session. Announcements need their own call, one that knows when it is
+    // finished.
+    public void ShowToast(string message, float seconds = 3.5f)
+    {
+        ShowPrompt(message);
+        if (_toastRoutine != null) StopCoroutine(_toastRoutine);
+        _toastRoutine = StartCoroutine(ToastRoutine(LocalizationManager.Tr(message), seconds));
+    }
+
+    private Coroutine _toastRoutine;
+
+    private IEnumerator ToastRoutine(string shown, float seconds)
+    {
+        // Unscaled: a toast fires from menus and cutscenes that stop the clock,
+        // and one that waits on a stopped clock is exactly the stuck message
+        // this replaces.
+        float t = 0f;
+        while (t < seconds) { t += Time.unscaledDeltaTime; yield return null; }
+
+        // Only clear if it is still OUR message. A real prompt raised in the
+        // meantime ("[E] to open") belongs to whatever raised it, and pulling it
+        // down here would make interaction prompts flicker off at random.
+        if (currentPromptMessage == GamepadGlyphs.Apply(shown)) HidePrompt();
+        _toastRoutine = null;
+    }
+
     public void HidePrompt()
     {
         currentPromptMessage = "";
@@ -786,7 +821,7 @@ public class GlobalHUD : MonoBehaviour
         if (promptCanvasGroup == null) yield break;
         while (Mathf.Abs(promptCanvasGroup.alpha - targetAlpha) > 0.01f)
         {
-            promptCanvasGroup.alpha = Mathf.MoveTowards(promptCanvasGroup.alpha, targetAlpha, Time.deltaTime * promptFadeSpeed);
+            promptCanvasGroup.alpha = Mathf.MoveTowards(promptCanvasGroup.alpha, targetAlpha, Time.unscaledDeltaTime * promptFadeSpeed);
             yield return null;
         }
         promptCanvasGroup.alpha = targetAlpha;

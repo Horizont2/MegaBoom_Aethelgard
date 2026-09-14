@@ -806,10 +806,41 @@ public class WorldGenerator : MonoBehaviour
     // Runs one generation phase and records what it cost. Wrapping rather than
     // sprinkling timers keeps the sequence readable — the phase list below still
     // reads as a list of phases.
+    // ==== ONE BAD PHASE MUST NOT COST THE WHOLE WORLD ====
+    //
+    // This was `yield return StartCoroutine(routine)`, which means an exception
+    // anywhere inside any phase stops GenerateWorldRoutine dead. Every later
+    // phase silently never happens AND — worse — execution never reaches
+    // `IsGenerationDone = true`, so the survival timer's watchdog waits out its
+    // full twelve-second fallback before starting. From the player's seat: a
+    // half-dressed map and a clock stuck at 00:00, with nothing saying why.
+    //
+    // Stepping the inner routine by hand is the only way to put a try/catch
+    // around a coroutine's execution — C# forbids `yield` inside a try that has
+    // a catch clause, so wrapping the yield is not an option. A phase that
+    // throws is now abandoned, named loudly in the console, and the rest of the
+    // world still gets built.
     private IEnumerator Phase(string name, IEnumerator routine)
     {
         float t0 = Time.realtimeSinceStartup;
-        yield return StartCoroutine(routine);
+
+        while (true)
+        {
+            object current;
+            try
+            {
+                if (!routine.MoveNext()) break;
+                current = routine.Current;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[WorldGenerator] Phase '{name}' threw and was abandoned. Everything it had " +
+                               $"still to do is missing from this map; the remaining phases continue.\n{e}");
+                break;
+            }
+            yield return current;
+        }
+
         _phaseTimes[name] = (Time.realtimeSinceStartup - t0) * 1000f;
     }
 
@@ -826,6 +857,14 @@ public class WorldGenerator : MonoBehaviour
 
     private IEnumerator GenerateWorldRoutine()
     {
+        // try/FINALLY, not try/catch — C# allows a finally around yields and
+        // forbids a catch. Whatever happens above, the world reports itself
+        // finished exactly once: the survival timer, the loading screen and the
+        // spawn logic all wait on that flag, and leaving it false because a
+        // phase misbehaved strands the player on a loading screen or a clock
+        // frozen at 00:00.
+        try
+        {
         BeginGenerationPerfMode();
         yield return Phase("Heights", GenerateHeightsRoutine(terrain.terrainData));
         CurrentProgress = 0.10f;
@@ -929,10 +968,14 @@ public class WorldGenerator : MonoBehaviour
         VegetationHydrator.Install(terrain);
 
         CurrentProgress = 1f;
-        IsGenerationDone = true;
-        EndGenerationPerfMode();
-        try { OnWorldGenerationComplete?.Invoke(); }
-        catch (System.Exception e) { Debug.LogError("[WorldGenerator] OnWorldGenerationComplete handler threw: " + e); }
+        }
+        finally
+        {
+            IsGenerationDone = true;
+            EndGenerationPerfMode();
+            try { OnWorldGenerationComplete?.Invoke(); }
+            catch (System.Exception e) { Debug.LogError("[WorldGenerator] OnWorldGenerationComplete handler threw: " + e); }
+        }
     }
 
     // Hands the bird prefabs to AmbientBirdLife, which keeps a small number of
