@@ -1721,6 +1721,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (steer.sqrMagnitude < 0.09f)
         {
             if (animator != null) animator.SetBool("isMoving", false);
+
+            // Standing at its post: watch the player.
+            Vector3 idleToPlayer = target.position - currentPos; idleToPlayer.y = 0f;
+            if (idleToPlayer.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                                                      Quaternion.LookRotation(idleToPlayer.normalized),
+                                                      8f * Time.deltaTime);
         }
         else
         {
@@ -1755,15 +1762,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
                                                           Quaternion.LookRotation(look.normalized),
                                                           8f * Time.deltaTime);
             }
-        }
-        else
-        {
-            // Standing at its post: watch the player.
-            Vector3 toPlayer = target.position - currentPos; toPlayer.y = 0f;
-            if (toPlayer.sqrMagnitude > 0.0001f)
-                transform.rotation = Quaternion.Slerp(transform.rotation,
-                                                      Quaternion.LookRotation(toPlayer.normalized),
-                                                      8f * Time.deltaTime);
         }
 
         // A waiter still THREATENS. Every few seconds it lunges a step and
