@@ -136,6 +136,48 @@ public static class AudioID
     public const string Trailer_HordeGrowl = "Trailer/Horde_Growl";      // the mass behind him
     public const string Trailer_WindHigh = "Trailer/Wind_High";          // exposed ridge wind for the crane + reveal
     public const string Trailer_CastleReveal = "Trailer/Castle_Reveal";  // the sting on the castle
+
+    // ==== THE SHIELD, THE GUARD AND THE STAMINA ====
+    //
+    // The block system shipped borrowing other events: an ordinary block plays
+    // Enemy_Attack, a parry plays Player_Crit plus a stone break. Those were
+    // stand-ins to get the mechanic testable and they are actively working
+    // against it now — blocking is a TIMING read, and timing reads are learned
+    // by ear at least as much as by eye. A parry that sounds like a critical hit
+    // teaches nothing about the difference between a parry and a block.
+    public const string Block_Raise = "Combat/Block_Raise";           // shield comes up
+    public const string Block_Impact = "Combat/Block_Impact";         // a blow absorbed
+    public const string Block_Parry = "Combat/Block_Parry";           // the ring of a perfect block
+    public const string Block_GuardBreak = "Combat/Guard_Break";      // the guard fails
+    public const string Stamina_Empty = "Combat/Stamina_Empty";       // the pool runs out
+    public const string Enemy_Unblockable = "Combat/Unblockable_Tell";// the swing no shield stops
+
+    // ==== THE EXPLORATION LOOP ====
+    public const string Chest_Locked = "Exploration/Chest_Locked";    // sealed, the vigil begins
+    public const string Chest_VigilStart = "Exploration/Vigil_Start";
+    public const string Chest_VigilTick = "Exploration/Vigil_Tick";   // the hold counting down
+    public const string Chest_VigilDone = "Exploration/Vigil_Done";   // the seal breaks
+    public const string Reward_Reveal = "Exploration/Reward_Reveal";  // the centre-screen beat
+    public const string Pickup_Wood = "Exploration/Pickup_Wood";
+    public const string Pickup_Stone = "Exploration/Pickup_Stone";
+    public const string Pickup_Food = "Exploration/Pickup_Food";
+
+    // ==== WINTER ====
+    //
+    // The winter region has its own light, its own ground and its own sky, and
+    // sounds exactly like the forest one.
+    public const string Ambient_Blizzard = "Ambient/Blizzard";
+    public const string Player_Footstep_Snow = "Player/Footstep_Snow";
+    public const string Player_Footstep_Stone = "Player/Footstep_Stone";
+    public const string Player_Footstep_Wood = "Player/Footstep_Wood";
+    public const string Env_IceCrack = "Env/Ice_Crack";
+
+    // ==== CAMP AND UI GAPS ====
+    public const string Camp_UpgradeReady = "Camp/Upgrade_Ready";     // the glimmer appearing
+    public const string Shop_Equip = "UI/Equip";
+    public const string Shop_Upgrade = "UI/Upgrade_Success";
+    public const string Board_PaperTake = "UI/Paper_Take";            // taking a notice-board mission
+    public const string Env_TreeCrush = "Env/Tree_Crush";             // a falling trunk landing on something
 }
 
 [System.Serializable]
@@ -171,6 +213,38 @@ public class AudioManager : MonoBehaviour
     public SoundGroup playerHeal;
     public SoundGroup playerFootstep;
     public SoundGroup explosion;
+
+    [Header("=== COMBAT: SHIELD & GUARD ===")]
+    public SoundGroup blockRaise;
+    public SoundGroup blockImpact;
+    public SoundGroup blockParry;
+    public SoundGroup blockGuardBreak;
+    public SoundGroup staminaEmpty;
+    public SoundGroup enemyUnblockable;
+
+    [Header("=== EXPLORATION ===")]
+    public SoundGroup chestLocked;
+    public SoundGroup chestVigilStart;
+    public SoundGroup chestVigilTick;
+    public SoundGroup chestVigilDone;
+    public SoundGroup rewardReveal;
+    public SoundGroup pickupWood;
+    public SoundGroup pickupStone;
+    public SoundGroup pickupFood;
+
+    [Header("=== WINTER & SURFACES ===")]
+    public SoundGroup ambientBlizzard;
+    public SoundGroup footstepSnow;
+    public SoundGroup footstepStone;
+    public SoundGroup footstepWood;
+    public SoundGroup envIceCrack;
+
+    [Header("=== CAMP & SHOP ===")]
+    public SoundGroup campUpgradeReady;
+    public SoundGroup shopEquip;
+    public SoundGroup shopUpgrade;
+    public SoundGroup boardPaperTake;
+    public SoundGroup envTreeCrush;
 
     [Header("=== ENEMY SOUNDS ===")]
     public SoundGroup enemyAgro;
@@ -705,6 +779,34 @@ public class AudioManager : MonoBehaviour
         sfxDictionary = new Dictionary<string, SoundGroup>();
 
         sfxDictionary.Add(AudioID.UI_Click, uiClick);
+
+        // New events. Every one is OPTIONAL: an unassigned SoundGroup is skipped
+        // by HasEvent, so the game is silent where a sound has not been authored
+        // yet rather than throwing. See the AudioID block for why each exists.
+        sfxDictionary.Add(AudioID.Block_Raise, blockRaise);
+        sfxDictionary.Add(AudioID.Block_Impact, blockImpact);
+        sfxDictionary.Add(AudioID.Block_Parry, blockParry);
+        sfxDictionary.Add(AudioID.Block_GuardBreak, blockGuardBreak);
+        sfxDictionary.Add(AudioID.Stamina_Empty, staminaEmpty);
+        sfxDictionary.Add(AudioID.Enemy_Unblockable, enemyUnblockable);
+        sfxDictionary.Add(AudioID.Chest_Locked, chestLocked);
+        sfxDictionary.Add(AudioID.Chest_VigilStart, chestVigilStart);
+        sfxDictionary.Add(AudioID.Chest_VigilTick, chestVigilTick);
+        sfxDictionary.Add(AudioID.Chest_VigilDone, chestVigilDone);
+        sfxDictionary.Add(AudioID.Reward_Reveal, rewardReveal);
+        sfxDictionary.Add(AudioID.Pickup_Wood, pickupWood);
+        sfxDictionary.Add(AudioID.Pickup_Stone, pickupStone);
+        sfxDictionary.Add(AudioID.Pickup_Food, pickupFood);
+        sfxDictionary.Add(AudioID.Ambient_Blizzard, ambientBlizzard);
+        sfxDictionary.Add(AudioID.Player_Footstep_Snow, footstepSnow);
+        sfxDictionary.Add(AudioID.Player_Footstep_Stone, footstepStone);
+        sfxDictionary.Add(AudioID.Player_Footstep_Wood, footstepWood);
+        sfxDictionary.Add(AudioID.Env_IceCrack, envIceCrack);
+        sfxDictionary.Add(AudioID.Camp_UpgradeReady, campUpgradeReady);
+        sfxDictionary.Add(AudioID.Shop_Equip, shopEquip);
+        sfxDictionary.Add(AudioID.Shop_Upgrade, shopUpgrade);
+        sfxDictionary.Add(AudioID.Board_PaperTake, boardPaperTake);
+        sfxDictionary.Add(AudioID.Env_TreeCrush, envTreeCrush);
         sfxDictionary.Add(AudioID.UI_Hover, uiHover);
         sfxDictionary.Add(AudioID.UI_QuestAccept, uiQuestAccept);
         sfxDictionary.Add(AudioID.UI_QuestComplete, uiQuestComplete);

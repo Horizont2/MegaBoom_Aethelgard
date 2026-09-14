@@ -269,7 +269,8 @@ public class PlayerBlock : MonoBehaviour
             _raisedAt = Time.time;
             GuardBroken = false;
             if (_anim != null) SetBlockPose(true);
-            if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_Click);
+            if (AudioManager.Instance != null && AudioManager.Instance.HasEvent(AudioID.Block_Raise))
+                AudioManager.Instance.PlaySFX(AudioID.Block_Raise);
         }
         else if (!wants && IsBlocking)
         {
@@ -408,7 +409,16 @@ public class PlayerBlock : MonoBehaviour
 
     private void PlayBlockFeedback(Vector3 at)
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, at);
+        if (AudioManager.Instance != null)
+        {
+            // Its own event now. Blocking is a timing read and timing reads are
+            // learned by ear as much as by eye — reusing the enemy's swing here
+            // meant a successful block sounded exactly like being hit.
+            if (AudioManager.Instance.HasEvent(AudioID.Block_Impact))
+                AudioManager.Instance.PlaySFX3D(AudioID.Block_Impact, at);
+            else
+                AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, at);
+        }
         CameraShakeUtil.TryShake(0.25f, 0.09f);
         if (_anim != null) TriggerBlockHit();
     }
@@ -430,8 +440,17 @@ public class PlayerBlock : MonoBehaviour
     {
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX(AudioID.Player_Crit);
-            AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, at);
+            // A parry must not sound like a critical hit — that is the exact
+            // distinction the player is trying to learn.
+            if (AudioManager.Instance.HasEvent(AudioID.Block_Parry))
+            {
+                AudioManager.Instance.PlaySFX(AudioID.Block_Parry);
+            }
+            else
+            {
+                AudioManager.Instance.PlaySFX(AudioID.Player_Crit);
+                AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, at);
+            }
         }
         if (_anim != null) TriggerBlockHit();
         Vector3 dir = (attackerPos - transform.position); dir.y = 0f;
@@ -512,7 +531,16 @@ public class PlayerBlock : MonoBehaviour
 
     private void PlayGuardBreakFeedback()
     {
-        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.UI_Error);
+        if (AudioManager.Instance != null)
+        {
+            // A guard break is a physical event, not a menu rejection. UI_Error
+            // was a placeholder and it makes the worst moment in the fight sound
+            // like clicking a disabled button.
+            if (AudioManager.Instance.HasEvent(AudioID.Block_GuardBreak))
+                AudioManager.Instance.PlaySFX(AudioID.Block_GuardBreak);
+            else
+                AudioManager.Instance.PlaySFX(AudioID.UI_Error);
+        }
         CameraShakeUtil.TryShake(0.9f, 0.4f);
         if (_anim != null) SetBlockPose(false);
     }
