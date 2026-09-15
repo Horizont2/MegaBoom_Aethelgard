@@ -37,12 +37,47 @@ public class MissionUIElement : MonoBehaviour
 
     private Coroutine _typing;
 
+    // ==== WHERE THE PLATE ACTUALLY LIVES, READ ONCE ====
+    //
+    // Both animations used to take the card's CURRENT local position as its
+    // home. Setup StopAllCoroutines() first, so a new objective arriving while
+    // the last one was still sliding caught the card mid-flight — 180px left of
+    // home, say — and adopted that as home. Every interrupted objective walked
+    // the plate up to another 300px left, permanently, until it was sitting in
+    // the middle of the screen instead of in the container it was authored in.
+    //
+    // The authored position is a fact about the prefab, so it is read once,
+    // before anything has had a chance to move it, and every animation returns
+    // to that.
+    private Vector3 _home;
+    private bool _homeCached;
+
+    private void Awake()
+    {
+        // Declared and used but never fetched — the fade-in has never actually
+        // run, despite the RequireComponent above guaranteeing one is present.
+        if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
+        CacheHome();
+    }
+
+    private void CacheHome()
+    {
+        if (_homeCached || backgroundImage == null) return;
+        _home = backgroundImage.transform.localPosition;
+        _homeCached = true;
+    }
+
     public void Setup(string title, string description, int current, int target)
     {
         isCompleted = false;
         _setupCalled = true;
+        CacheHome();
         StopAllCoroutines();
         _typing = null;
+
+        // Whatever the interrupted coroutines were part-way through, the card
+        // belongs at home before the next one starts from it.
+        if (_homeCached) backgroundImage.transform.localPosition = _home;
 
         // Restore the background if a previous CompleteMission flash was
         // interrupted before its own lerp finished, otherwise the tile shows
@@ -96,8 +131,8 @@ public class MissionUIElement : MonoBehaviour
 
         Transform visualTransform = backgroundImage.transform;
 
-        // ������� �������� ������� Bg (�������� �� 0,0,0)
-        Vector3 targetPos = visualTransform.localPosition;
+        CacheHome();
+        Vector3 targetPos = _home;
 
         // ³������� �� �� 300 ������ ���� ��� ������
         Vector3 startPos = targetPos + new Vector3(-300f, 0, 0);
@@ -149,6 +184,8 @@ public class MissionUIElement : MonoBehaviour
     {
         isCompleted = true;
         _setupCalled = true;
+        CacheHome();
+        if (_homeCached) backgroundImage.transform.localPosition = _home;
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
         if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
 
@@ -167,7 +204,8 @@ public class MissionUIElement : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestComplete);
 
         Transform visual = backgroundImage != null ? backgroundImage.transform : transform;
-        Vector3 restPos = visual.localPosition;
+        CacheHome();
+        Vector3 restPos = _homeCached ? _home : visual.localPosition;
         Color originalColor = backgroundImage != null ? backgroundImage.color : Color.white;
         if (backgroundImage != null) backgroundImage.color = Color.white;
 
