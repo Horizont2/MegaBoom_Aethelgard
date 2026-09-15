@@ -39,7 +39,7 @@ public class EnemyMotionProbe : MonoBehaviour
     [Tooltip("Leave on and a probe installs itself on the nearest aggroed enemy a few seconds into the scene. Off, it only measures the enemy it is attached to.")]
     public bool autoAttach = true;
 
-    [Tooltip("Seconds to watch before printing.")]
+    [Tooltip("Seconds of ACTUAL MOVEMENT to collect before printing. Frames where the subject is standing still do not count — the first run spent 1403 frames measuring a skeleton standing over a dead player and learned nothing.")]
     public float sampleSeconds = 4f;
 
     [Tooltip("Print again every sampleSeconds instead of once.")]
@@ -50,7 +50,14 @@ public class EnemyMotionProbe : MonoBehaviour
     private Transform _player;
 
     private float _endAt;
+    private float _movingTime;
     private bool _done;
+
+    private bool PlayerDead()
+    {
+        var pc = PlayerController.LocalInstance;
+        return pc != null && pc.IsDead;
+    }
 
     private Vector3 _lastPos;
     private Vector3 _lastHeading;
@@ -99,23 +106,37 @@ public class EnemyMotionProbe : MonoBehaviour
             _anim = _ai.GetComponentInChildren<Animator>();
             _lastPos = _ai.transform.position;
             _lastHeading = _ai.transform.forward;
-            _endAt = Time.time + sampleSeconds;
-            Debug.Log($"[MotionProbe] Watching '{_ai.name}' for {sampleSeconds:F0}s.", _ai);
+            _movingTime = 0f;
+            Debug.Log($"[MotionProbe] Watching '{_ai.name}' — will report after {sampleSeconds:F0}s of it actually moving while aggroed.", _ai);
             return;
         }
 
         if (_ai == null) return;
+
+        // ==== ONLY MEASURE WHAT WE ARE ASKING ABOUT ====
+        //
+        // The first run sampled a skeleton standing over a dead player: 1403
+        // frames, 85 of them moving, and naturally zero reversals. The question
+        // is what an enemy does while CHASING, so that is the only thing that
+        // counts toward the sample — and the clock is unscaled, because the
+        // death screen slows time and a scaled clock stops advancing with it.
+        if (_ai.IsDead || !_ai.IsAggroed || PlayerDead())
+        {
+            _lastPos = _ai.transform.position;
+            return;
+        }
 
         Vector3 pos = _ai.transform.position;
         Vector3 step = pos - _lastPos; step.y = 0f;
         _lastPos = pos;
         _frames++;
 
-        float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+        float dt = Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
         float speed = step.magnitude / dt;
         if (speed > 0.2f)
         {
             _movedFrames++;
+            _movingTime += dt;
             _stepMin = Mathf.Min(_stepMin, speed);
             _stepMax = Mathf.Max(_stepMax, speed);
 
@@ -150,17 +171,32 @@ public class EnemyMotionProbe : MonoBehaviour
             _lastAnimSpeed = sp;
         }
 
-        if (Time.time < _endAt) return;
+        // Enough MOVEMENT, not enough wall clock.
+        if (_movingTime < sampleSeconds) return;
         Report();
     }
 
     private void Report()
     {
         _done = true;
-        float secs = Mathf.Max(0.001f, sampleSeconds);
+        float secs = Mathf.Max(0.001f, _movingTime);
+
+        // The verdict first: the console shows two lines collapsed, and the
+        // whole point of this is that the first line already answers it.
+        string verdict;
+        float revPerSec = _reversals / secs;
+        float statePerSec = _animStateChanges / secs;
+        float speedSpread = (_speedMax > 0f ? _speedMax : 0f) - (_speedMin < float.MaxValue ? _speedMin : 0f);
+
+        if (revPerSec >= 2f && statePerSec < 1.5f) verdict = "THE PATH WEAVES -> steering";
+        else if (revPerSec < 2f && statePerSec >= 1.5f) verdict = "THE CLIP KEEPS SWITCHING -> animator triggers";
+        else if (revPerSec >= 2f && statePerSec >= 1.5f) verdict = "BOTH -> branch selection is flipping";
+        else if (speedSpread > 0.8f) verdict = "LEGS LURCH (one clip, uneven rate) -> MatchLocomotion";
+        else verdict = "NOTHING ABNORMAL in this sample";
 
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"[MotionProbe] {_ai.name} over {secs:F1}s, {_frames} frames ({_movedFrames} moving)");
+        sb.AppendLine($"[MotionProbe] {_ai.name}: {verdict}");
+        sb.AppendLine($"  sample: {secs:F1}s of movement, {_frames} frames ({_movedFrames} moving)");
         sb.AppendLine($"  heading reversals : {_reversals}  ({_reversals / secs:F1}/s)   <- a straight run is near 0; a zigzag is 3+/s");
         sb.AppendLine($"  turns over 25 deg : {_bigTurns}  ({_bigTurns / secs:F1}/s)");
         sb.AppendLine($"  avg turn/frame    : {(_movedFrames > 0 ? _turnSum / _movedFrames : 0f):F1} deg   max {_turnMax:F0} deg");
@@ -175,12 +211,12 @@ public class EnemyMotionProbe : MonoBehaviour
         Debug.Log(sb.ToString(), _ai);
 
         if (!repeat) return;
+        _movingTime = 0f;
         _reversals = _bigTurns = _frames = _movedFrames = _animStateChanges = _animSpeedJumps = 0;
         _turnSum = _turnMax = 0f;
         _speedMin = _stepMin = float.MaxValue;
         _speedMax = _stepMax = 0f;
         _done = false;
-        _endAt = Time.time + sampleSeconds;
     }
 
     private EnemyAI NearestAggroed()
@@ -197,6 +233,7 @@ public class EnemyMotionProbe : MonoBehaviour
         foreach (var e in FindObjectsByType<EnemyAI>(FindObjectsSortMode.None))
         {
             if (e == null || e.IsDead || !e.isActiveAndEnabled) continue;
+            if (!e.IsAggroed) continue;   // a patrolling enemy is not the question
             float sq = (e.transform.position - _player.position).sqrMagnitude;
             if (sq < bestSq) { bestSq = sq; best = e; }
         }
