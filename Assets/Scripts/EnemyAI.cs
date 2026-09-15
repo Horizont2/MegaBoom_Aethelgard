@@ -760,8 +760,18 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 Vector3 moved = transform.position - _lastGaitPos;
                 moved.y = 0f;
-                _measuredSpeed = Mathf.Lerp(_measuredSpeed, moved.magnitude / dt, 1f - Mathf.Exp(-10f * dt));
+                float actual = moved.magnitude / dt;
+
+                // Intent, not travel. Travel includes CharacterController
+                // depenetration, which measured up to 9.2 m/s on an enemy whose
+                // fastest requested step was 3.6 — and feeding that to the gait
+                // pinned animator.speed to both ends of its clamp twenty times
+                // in four seconds. Travel is still used as a floor so a blocked
+                // enemy does not moonwalk on the spot.
+                float forLegs = Mathf.Min(_intendedSpeed, actual);
+                _measuredSpeed = Mathf.Lerp(_measuredSpeed, forLegs, 1f - Mathf.Exp(-10f * dt));
                 _lastGaitPos = transform.position;
+                _intendedSpeed = 0f;
                 // ==== DO NOT MATCH THE LEGS TO BEING THROWN ====
                 //
                 // _measuredSpeed is actual travel, and a knockback moves the
@@ -1463,9 +1473,34 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private float _animSpeed;
 
+    [Tooltip("How long an enemy must actually be stationary before the animator is told it stopped. Below about 0.15s the run/idle pair flickers on every momentary pause in the AI.")]
+    public float stopSettleTime = 0.2f;
+
+    // ==== A BRIEF STOP IS NOT A STOP ====
+    //
+    // isMoving was measured flipping 2.2 times a second on an enemy that never
+    // stopped chasing — seven Running<->Idle round trips in four seconds. Each
+    // one is a full state change with a blend either way, and that is what
+    // "the animation keeps switching" actually looks like.
+    //
+    // The bool is written from about twenty places and every momentary pause —
+    // a frame in the footwork deadzone, a tick at the hold distance, a branch
+    // change — reached the animator immediately. Going to false now has to be
+    // sustained; going to true is instant, because starting to move should
+    // never look delayed.
+    private float _notMovingSince = -1f;
+
     private void SetMovingAnim(bool moving, float speed)
     {
         if (animator == null || !animator.enabled) return;
+
+        if (moving) _notMovingSince = -1f;
+        else
+        {
+            if (_notMovingSince < 0f) _notMovingSince = Time.time;
+            if (Time.time - _notMovingSince < stopSettleTime) moving = true;   // still counts as moving
+        }
+
         animator.SetBoolSafe("isMoving", moving);
 
         // ==== EASE THE BLEND VALUE, DO NOT SNAP IT ====
@@ -3246,6 +3281,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
     public static float DbgBiggestStep;
     private static int s_dbgFrame = -1;
 
+    // Metres per second the movement code asked for this frame. Zero on a frame
+    // where nothing asked, which is what standing still means.
+    private float _intendedSpeed;
+
     private void SetPositionSafe(Writer who, Vector3 newPos)
     {
         if (s_dbgFrame != Time.frameCount)
@@ -3258,6 +3297,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 d = newPos - transform.position; d.y = 0f;
         float step = d.magnitude / Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
         if (step > DbgBiggestStep) { DbgBiggestStep = step; DbgBiggestWriter = who; }
+
+        // ==== WHAT WAS ASKED FOR, NOT WHAT THE CONTROLLER DID ====
+        //
+        // The measurement that cracked this: no single write exceeded 3.6 m/s,
+        // yet the body reached 9.2. CharacterController.Move does not only
+        // travel the delta it is given — when it is overlapping something it
+        // DEPENETRATES, pushing further than asked. So actual travel is the
+        // request plus whatever physics added, and the gait matcher was being
+        // fed that total.
+        //
+        // The legs should follow what the enemy is TRYING to do. Being shoved
+        // out of a collision is not walking faster.
+        _intendedSpeed = step;
 
         SetPositionSafe(newPos);
     }
