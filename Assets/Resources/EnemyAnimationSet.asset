@@ -73,6 +73,5 @@ MonoBehaviour:
   bossAttacks:
   - {fileID: -9223009570372283427, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
   - {fileID: -7026903285959738687, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
-  - {fileID: 3342610860920371277, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
   - {fileID: 5509831886509256486, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
   bossSlam: {fileID: -8053727146932420721, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
