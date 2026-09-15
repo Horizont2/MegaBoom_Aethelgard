@@ -414,7 +414,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [HideInInspector] public Vector3 anchorPoint;
     [HideInInspector] public Transform anchorTransform;
     [HideInInspector] public float roamRadius = 3.5f;
-    [HideInInspector] public float aggroRange = 14f;
+    // Fourteen metres was a short leash for a top-down camera: the player can
+    // see an enemy long before it notices them, walk up and take the first
+    // swing, every time. Eighteen means being SEEN is part of approaching.
+    // Sight is still required — see CanSeeTarget — so this widens notice, not
+    // omniscience.
+    [HideInInspector] public float aggroRange = 18f;
     [HideInInspector] public EnemyEncounterGroup parentGroup;
     [HideInInspector] public bool roamWhilePassive = true;
     [HideInInspector] public bool faceAnchorWhenIdle = false;
@@ -2122,7 +2127,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // A waiter still THREATENS. Every few seconds it lunges a step and
         // raises its weapon without swinging — enough that the crowd reads as a
         // pack looking for an opening rather than an audience.
-        if (ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
+        // ==== ONLY FEINT WHEN STANDING STILL ====
+        //
+        // A feint triggers the ATTACK animation and steps forward. Fired while
+        // the enemy is still walking to its post, that cuts a run animation to
+        // an attack animation mid-stride for no reason the player can see —
+        // which is most of "they switch to the attack animation while running".
+        //
+        // A feint is a threat made from a standstill. _holdSettled says the
+        // enemy has arrived and is watching, which is exactly when one reads as
+        // menace rather than as a glitch.
+        if (_holdSettled && ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
             StartCoroutine(FeintRoutine());
     }
 
@@ -2355,6 +2370,29 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // enemy. Falls back to the ordinary telegraph until authored, so
             // nothing is lost in the meantime.
             if (_thisSwingUnblockable) PlayVocal(AudioID.Enemy_Unblockable);
+
+            // ==== NOTHING IN THE GAME EXPLAINED THE SHIELD ====
+            //
+            // There are 28 authored hints and not one of them mentions block,
+            // parry or the guard key. Behind that key sit PlayerBlock, the
+            // combat ring, the parry cue and banner, four purchasable shields
+            // and a whole stamina economy — and the key itself, Q, appeared in
+            // no prompt anywhere in the project.
+            //
+            // The first swing aimed at the player is the moment it matters:
+            // the ring is on screen, closing, and the answer to it is one key.
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("Block",
+                    "Hold <b>Q</b> to raise your shield. Press it just as the ring closes to PARRY — that " +
+                    "staggers the attacker. The guard only covers the FRONT, and pink swings go straight " +
+                    "through it.", 8f);
+
+            // MOVED INSIDE aimedAtPlayer. An enemy swinging at a rescued
+            // captive was freezing the game for seven seconds to teach the
+            // player about a blow that was never coming at them.
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("CombatTelegraph",
+                    "TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.", 5f);
         }
 
         if (isElite && playerTarget != null && aimedAtPlayer)
@@ -2364,10 +2402,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (weaponGlintVFX != null && ObjectPoolManager.Instance != null)
                 ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
         }
-
-        if (TutorialHints.Instance != null)
-            TutorialHints.Instance.ShowIfNew("CombatTelegraph",
-                "TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.", 5f);
 
         // An unblockable swing announces itself in a colour nothing else uses.
         // The player has to be able to read "shield will not save you" from
@@ -2594,8 +2628,32 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 {
                     knockbackVelocity = info.PushDirection * info.KnockbackForce;
                     stunTimer = info.StunDuration;
-                    isPreparingAttack = false;
                     currentPoise = maxPoise;
+
+                    // ==== A STAGGER HAS TO ACTUALLY STOP THE SWING ====
+                    //
+                    // Clearing isPreparingAttack does not cancel anything. It
+                    // only re-opens the early-out at the top of Update, while
+                    // AttackRoutine keeps running and lands its damage a few
+                    // frames later — so the one read this fight is built to
+                    // teach, punish the wind-up, paid out in a damage number
+                    // the player cannot see and then hit them anyway. Exactly
+                    // the failure the block path already had a note about.
+                    //
+                    // Worse, re-opening Update while the old routine is alive
+                    // lets a SECOND AttackRoutine start over the top of it.
+                    //
+                    // Only on a real stagger. A chip hit that happens to land
+                    // during a wind-up must not cancel it, or every swing in a
+                    // crowd would be interrupted by somebody's stray arrow.
+                    if (info.StunDuration > 0f)
+                    {
+                        if (_attackCo != null) { StopCoroutine(_attackCo); _attackCo = null; }
+                        ParryCue.Cancel(this);
+                        isPreparingAttack = false;
+                        if (animator != null) animator.ResetTrigger("Attack");
+                    }
+
                     ResetColor();
                     // A broken-poise boss reads as a real beat, not a flinch.
                     if (isBoss)

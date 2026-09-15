@@ -943,12 +943,49 @@ public class PlayerController : MonoBehaviour, IDamageable
     // player to 40% rather than rooting them.
     private void SwingAttack()
     {
+        _swingCancelled = false;
         attackWalkEndTime = Time.unscaledTime + attackCommitTime;
         if (anim != null)
         {
             anim.ResetTrigger("Attack");
             anim.SetTrigger("Attack");
         }
+    }
+
+    // ==== A CANCELLED SWING STAYS CANCELLED ====
+    //
+    // The first attempt at this checked IsBlocking inside ExecuteAttack, which
+    // runs at the swing's contact frame. That is not the same question. The
+    // player can raise the guard and drop it again before the blow lands — the
+    // guard is down by the time the check runs, the check passes, and the hit
+    // connects. Tap-block became a way to swing for free rather than a way to
+    // cancel.
+    //
+    // So the DECISION is recorded when the guard goes up, and the contact frame
+    // only reads it. The flag clears when the next swing starts.
+    private bool _swingCancelled;
+
+    public void CancelSwing()
+    {
+        // Called on every guard raise, including ones with no swing in flight.
+        // That is harmless: SwingAttack clears the flag at the start of each
+        // swing, so a stale true can never block a later, legitimate one.
+        _swingCancelled = true;
+        attackWalkEndTime = 0f;          // the swing's movement penalty goes with it
+
+        if (anim == null) return;
+
+        // Take the animation back too. Clearing the trigger alone only stops a
+        // swing that has not STARTED; one already playing runs to the end, and
+        // the player sees a full attack that deals nothing — which reads as the
+        // hit being eaten rather than as their own cancel.
+        //
+        // Moving to the block pose is what a cancel actually looks like, and it
+        // is the state the player just asked for. SetAnimBoolIfPresent rather
+        // than SetBool, because a rig without a block layer must not be left
+        // driving a parameter it does not have.
+        anim.ResetTrigger("Attack");
+        SetAnimBoolIfPresent("isBlocking", true);
     }
 
     private void LockAction(string trigger, float duration, bool keepMomentum = false)
@@ -2257,16 +2294,15 @@ public class PlayerController : MonoBehaviour, IDamageable
         // the other. The input check at the top of the swing already refuses to
         // START one with the guard up; this closes the same door on the way out.
         //
-        // The swing is only ever started with the guard DOWN, so a guard that is
-        // up by the time the blow should land can only mean the player changed
-        // their mind mid-swing. Honour that — and let it cost the cooldown it
-        // has already spent, so cancelling is a decision rather than a freebie.
-        if (PlayerBlock.Instance != null && PlayerBlock.Instance.IsBlocking)
-        {
-            attackWalkEndTime = 0f;            // the swing's movement penalty goes with it
-            if (anim != null) anim.ResetTrigger("Attack");
-            return;
-        }
+        // The swing is only ever started with the guard DOWN, so a guard that
+        // went up during it can only mean the player changed their mind. That
+        // decision is recorded by CancelSwing at the moment the guard rises —
+        // reading IsBlocking here instead would let a tap-block through, because
+        // the guard can already be down again by the contact frame.
+        //
+        // It costs the cooldown it has already spent, so cancelling is a
+        // decision rather than a freebie.
+        if (_swingCancelled) return;
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 

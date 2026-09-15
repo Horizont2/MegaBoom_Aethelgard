@@ -37,6 +37,6 @@ MonoBehaviour:
   staminaMultiplierPerLevel: -0.04
   bonusStaminaPerLevel: 4
   reflectPerLevel: 0
-  damagePerLevel: 10
-  attackSpeedPerLevel: 0.02
-  critChancePerLevel: 0.02
+  damagePerLevel: 0
+  attackSpeedPerLevel: 0
+  critChancePerLevel: 0
