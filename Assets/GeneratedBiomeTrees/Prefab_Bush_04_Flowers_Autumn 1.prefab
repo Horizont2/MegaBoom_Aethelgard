@@ -90,7 +90,7 @@ GameObject:
   - component: {fileID: 6791765921685831364}
   - component: {fileID: 1955585279114056485}
   - component: {fileID: 1593581315887467546}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: Bush_04_Flowers_LOD0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -128,7 +128,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3275311669658355946}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -182,7 +182,7 @@ GameObject:
   - component: {fileID: 6873726547068910282}
   - component: {fileID: 7622375093241747998}
   - component: {fileID: 6729104284051625341}
-  m_Layer: 0
+  m_Layer: 15
   m_Name: Bush_04_Flowers_LOD1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -220,7 +220,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8654240176577296139}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0

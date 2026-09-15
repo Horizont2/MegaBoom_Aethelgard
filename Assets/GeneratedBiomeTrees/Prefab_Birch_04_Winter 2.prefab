@@ -49,7 +49,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1148729711206261073}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -140,7 +140,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2434698867672344556}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -4849,7 +4849,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4673784478604096629}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -4940,7 +4940,7 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5835142933013869157}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -9691,6 +9691,21 @@ MonoBehaviour:
   dropPrefab: {fileID: 1558540992293105036, guid: b2069a990000a2e47aaecdf06f4d68b4, type: 3}
   minDrops: 1
   maxDrops: 1
+  scaleWithSize: 1
+  smallHeight: 0
+  largeHeight: 0
+  minDropsAtSmallest: 1
+  maxDropsAtLargest: 3
+  smallHealthFraction: 0.35
+  healthInSwings: 1
+  swingsAtSmallest: 2
+  swingsAtLargest: 5
+  crushesEnemies: 1
+  crushBaseDamage: 140
+  crushEliteHealthCap: 0.18
+  crushBossHealthCap: 0.06
+  crushStaggersBosses: 1
+  crushRadius: 1.4
   hitEffect: {fileID: 4467205873771607382}
   stumpPrefab: {fileID: 100000, guid: 76a4663a496d6584ab5fb3442baf5ef5, type: 3}
 --- !u!114 &3952517958035103547
