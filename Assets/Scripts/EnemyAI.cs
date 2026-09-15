@@ -846,6 +846,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (isPreparingAttack) return;
 
+        // ==== ONE SYSTEM OWNS THE TRANSFORM AT A TIME ====
+        //
+        // THIS is what was left of the zigzag, and it was never in the steering.
+        //
+        // Three coroutines move this enemy every frame of their own accord:
+        // FeintRoutine steps toward the player, RecoilRoutine is knocked away,
+        // BackOffRoutine walks away after a shot. None of them stopped the
+        // movement code below from running in the same frame — so two systems
+        // wrote the position each tick, in opposite directions, through two
+        // CharacterController.Move calls. The body lands somewhere between them,
+        // and the place between them changes every frame. That is a vibration,
+        // and no amount of easing in either system could damp it, because they
+        // were not disagreeing about a heading — they were fighting for the
+        // transform itself.
+        //
+        // The feint had a flag for exactly this. It was set, it was cleared, and
+        // it was never read anywhere. The other two had no flag at all.
+        //
+        // Whichever system is driving, drives alone.
+        if (_scriptedMove) return;
+
         if (startPassive && !isAggroed)
         {
             UpdatePassiveBehavior();
@@ -994,7 +1015,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             if (isAttackReady && distanceToPlayer <= attackRange && hasSlot && rhythmOk)
             {
-                StartCoroutine(AttackRoutine());
+                _attackCo = StartCoroutine(AttackRoutine());
             }
             else if (isAttackReady && distanceToPlayer > attackRange && hasSlot)
             {
@@ -1905,37 +1926,61 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private IEnumerator FeintRoutine()
     {
         if (isDead || target == null) yield break;
+
         _feinting = true;
+        _scriptedMove = true;
 
-        if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
-        PlayVocal(AudioID.Enemy_Telegraph);
-
-        // A short step toward the player and back. Short on purpose — a feint
-        // that closes real distance is just an attack that forgot to hit.
-        float t0 = 0f;
-        while (t0 < 0.28f && !isDead && target != null && stunTimer <= 0f)
+        // In a finally. _scriptedMove switches the movement update off, so a
+        // feint that is interrupted — the enemy dies mid-step, the object is
+        // pooled, StopAllCoroutines is called — would otherwise leave this
+        // enemy unable to move for the rest of its life, standing still in the
+        // middle of a fight with nothing in the log to say why.
+        try
         {
-            t0 += Time.deltaTime;
-            Vector3 to = target.position - transform.position; to.y = 0f;
-            if (to.sqrMagnitude > 0.01f)
-            {
-                Vector3 step = to.normalized * (moveSpeed * 0.5f * Time.deltaTime);
-                Vector3 next = transform.position + step;
-                next.y = SampleTerrainHeight(next) + verticalOffset;
-                SetPositionSafe(next);
-                transform.rotation = Quaternion.Slerp(transform.rotation,
-                    Quaternion.LookRotation(to.normalized), 12f * Time.deltaTime);
-            }
-            yield return null;
-        }
+            if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
+            PlayVocal(AudioID.Enemy_Telegraph);
 
-        // The swing is cancelled before it could ever land damage, so the
-        // animator is put back rather than left mid-attack.
-        if (animator != null) animator.ResetTrigger("Attack");
-        _feinting = false;
+            // A short step toward the player and back. Short on purpose — a
+            // feint that closes real distance is just an attack that forgot to
+            // hit.
+            float t0 = 0f;
+            while (t0 < 0.28f && !isDead && target != null && stunTimer <= 0f)
+            {
+                t0 += Time.deltaTime;
+                Vector3 to = target.position - transform.position; to.y = 0f;
+                if (to.sqrMagnitude > 0.01f)
+                {
+                    Vector3 step = to.normalized * (moveSpeed * 0.5f * Time.deltaTime);
+                    Vector3 next = transform.position + step;
+                    next.y = SampleTerrainHeight(next) + verticalOffset;
+                    SetPositionSafe(next);
+                    transform.rotation = Quaternion.Slerp(transform.rotation,
+                        Quaternion.LookRotation(to.normalized), 12f * Time.deltaTime);
+                }
+                yield return null;
+            }
+        }
+        finally
+        {
+            // The swing is cancelled before it could ever land damage, so the
+            // animator is put back rather than left mid-attack.
+            if (animator != null) animator.ResetTrigger("Attack");
+            _feinting = false;
+            _scriptedMove = false;
+        }
     }
 
     private bool _feinting;
+
+    // Set by any coroutine that is driving this enemy's transform itself, and
+    // read at the top of the movement update. See the note there: without it,
+    // two systems wrote the position in the same frame and the body vibrated
+    // between them.
+    private bool _scriptedMove;
+
+    // The live swing, so a parry can actually stop it. See the note in the
+    // parry handler for why the name-based overload could not.
+    private Coroutine _attackCo;
     private bool _thisSwingUnblockable;
     // Smoothed circling direction — see the note where it is used.
     private Vector3 _ringHeading;
@@ -2100,9 +2145,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // that was just parried out of existence teaches a timing that is not
         // there any more.
         ParryCue.Cancel(this);
-        // Cancel the swing outright. An enemy that finishes its animation and
+        // ==== THIS WAS CANCELLING NOTHING ====
+        //
+        // Cancel the swing outright: an enemy that finishes its animation and
         // connects anyway makes the block look like it did nothing.
-        StopCoroutine(nameof(AttackRoutine));
+        //
+        // That was the intent, and the line did not do it. StopCoroutine(string)
+        // only stops a coroutine that was STARTED by name, and this one is
+        // started as StartCoroutine(AttackRoutine()) — so the call matched
+        // nothing, the routine ran on, and a parried swing still landed its
+        // damage a few frames later. The block system's own contract, silently
+        // broken by an overload that fails quietly instead of complaining.
+        //
+        // Stopping the handle works regardless of how it was started.
+        if (_attackCo != null) { StopCoroutine(_attackCo); _attackCo = null; }
         isPreparingAttack = false;
         lastAttackTime = Time.time;
 
@@ -2160,35 +2216,64 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         float t0 = 0f;
         float dur = Mathf.Min(0.25f, seconds);
-        while (t0 < dur && !isDead)
+        // A finally, because a knockback that is interrupted — the enemy dies
+        // mid-recoil, the object is disabled — must not leave the movement code
+        // switched off for the rest of this enemy's life.
+        _scriptedMove = true;
+        try
         {
-            t0 += Time.deltaTime;
-            Vector3 next = transform.position + dir * (5.5f * (1f - t0 / dur) * Time.deltaTime);
-            next.y = SampleTerrainHeight(next) + verticalOffset;
-            SetPositionSafe(next);
-            yield return null;
+            while (t0 < dur && !isDead)
+            {
+                t0 += Time.deltaTime;
+                Vector3 next = transform.position + dir * (5.5f * (1f - t0 / dur) * Time.deltaTime);
+                next.y = SampleTerrainHeight(next) + verticalOffset;
+                SetPositionSafe(next);
+                yield return null;
+            }
         }
+        finally { _scriptedMove = false; }
     }
 
     // Gives ground after a swing, so the player has somewhere to answer into.
     private IEnumerator BackOffRoutine(float seconds)
     {
         float t0 = 0f;
-        while (t0 < seconds && !isDead && target != null && stunTimer <= 0f && !isPreparingAttack)
+        float pace = moveSpeed * 0.55f;
+        _scriptedMove = true;
+        try
         {
-            t0 += Time.deltaTime;
-            Vector3 away = transform.position - target.position; away.y = 0f;
-            if (away.sqrMagnitude > 0.01f)
+            while (t0 < seconds && !isDead && target != null && stunTimer <= 0f && !isPreparingAttack)
             {
-                Vector3 next = transform.position + away.normalized * (moveSpeed * 0.55f * Time.deltaTime);
-                next.y = SampleTerrainHeight(next) + verticalOffset;
-                SetPositionSafe(next);
-                // Still facing the player while backing off. An enemy that turns
-                // its back to reposition reads as fleeing, not as circling.
-                transform.rotation = Quaternion.Slerp(transform.rotation,
-                    Quaternion.LookRotation(-away.normalized), 10f * Time.deltaTime);
+                t0 += Time.deltaTime;
+                Vector3 away = transform.position - target.position; away.y = 0f;
+                if (away.sqrMagnitude > 0.01f)
+                {
+                    Vector3 dir = away.normalized;
+                    Vector3 next = transform.position + dir * (pace * Time.deltaTime);
+                    next.y = SampleTerrainHeight(next) + verticalOffset;
+                    SetPositionSafe(next);
+
+                    // FACE THE WAY IT WALKS. This used to keep its eyes on the
+                    // player while travelling backwards, on the theory that
+                    // turning away reads as fleeing. It does — but there is no
+                    // backward walk in this animation set, so what actually
+                    // played was a forward run on a body moving in reverse,
+                    // which reads as broken rather than as anything.
+                    transform.rotation = Quaternion.Slerp(transform.rotation,
+                        Quaternion.LookRotation(dir), 10f * Time.deltaTime);
+
+                    // And the legs move, because the enemy does. Nothing drove
+                    // the animator here at all, so a backing-off enemy slid with
+                    // whatever pose the previous branch happened to leave.
+                    SetMovingAnim(true, pace);
+                }
+                yield return null;
             }
-            yield return null;
+        }
+        finally
+        {
+            _scriptedMove = false;
+            SetMovingAnim(false);
         }
     }
 

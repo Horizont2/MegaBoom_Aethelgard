@@ -2241,6 +2241,33 @@ public class PlayerController : MonoBehaviour, IDamageable
     public void ExecuteAttack()
     {
         if (meleePoint == null || isCampMode) return;
+
+        // ==== RAISING THE SHIELD CANCELS THE SWING ====
+        //
+        // The damage does not happen when the player presses attack. It happens
+        // at the contact frame of the swing clip, through an animation event
+        // landing here — and between those two moments the player can raise the
+        // guard. The blow still landed, so press-attack-then-block dealt full
+        // damage AND blocked the answer to it.
+        //
+        // That is not a timing window the player earned, it is a free hit with
+        // no downside, and it undoes the entire reason the block economy exists:
+        // guarding and swinging are supposed to be opposite choices, and the
+        // block-and-counter loop only works because you have to drop one to do
+        // the other. The input check at the top of the swing already refuses to
+        // START one with the guard up; this closes the same door on the way out.
+        //
+        // The swing is only ever started with the guard DOWN, so a guard that is
+        // up by the time the blow should land can only mean the player changed
+        // their mind mid-swing. Honour that — and let it cost the cooldown it
+        // has already spent, so cancelling is a decision rather than a freebie.
+        if (PlayerBlock.Instance != null && PlayerBlock.Instance.IsBlocking)
+        {
+            attackWalkEndTime = 0f;            // the swing's movement penalty goes with it
+            if (anim != null) anim.ResetTrigger("Attack");
+            return;
+        }
+
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Swing);
 
         if (TutorialHints.Instance != null)
