@@ -33,10 +33,19 @@ public class CagedAllyEvent : MonoBehaviour
     public Color cageBarColor = new Color(0.32f, 0.28f, 0.22f);
 
     [Header("Freed ally balance (basic militia — not a juggernaut)")]
-    [Tooltip("Damage per hit of the freed ally.")]
+    [Tooltip("Damage per hit of the freed ally. -1 keeps whatever the prefab is set to.")]
     public float allyDamage = 12f;
-    [Tooltip("Health of the freed ally — modest, so it can die if overwhelmed.")]
-    public float allyHealth = 60f;
+    // ==== THIS WAS SILENTLY UNDOING THE PREFAB ====
+    //
+    // AllyAI's own health was raised to 180 because a freed captive that dies to
+    // the first pack is a reward the player watches evaporate. It never took
+    // effect: this line overwrote it with 60 a frame later, on every captive in
+    // the game. Raised to match, so the two numbers no longer disagree.
+    //
+    // -1 in either field now means "leave the prefab alone", which is the right
+    // default once there IS a prefab to leave alone.
+    [Tooltip("Health of the freed ally. -1 keeps whatever the prefab is set to.")]
+    public float allyHealth = 180f;
 
     [Header("Trigger")]
     public float triggerRadius = 10f;
@@ -88,8 +97,8 @@ public class CagedAllyEvent : MonoBehaviour
             // Freed captive = a basic militia helper: stays for the whole run
             // (until it DIES), but deliberately modest so it isn't a juggernaut.
             ai.allyLifetime = 0f;      // no auto-leave; persists until killed
-            ai.damage = allyDamage;
-            ai.maxHealth = allyHealth;
+            if (allyDamage >= 0f) ai.damage = allyDamage;
+            if (allyHealth >= 0f) ai.maxHealth = allyHealth;
             // A captive spawned from an ENEMY prefab must not attack the player —
             // disable any EnemyAI on it while caged/allied.
             EnemyAI foe = allyObject.GetComponent<EnemyAI>();

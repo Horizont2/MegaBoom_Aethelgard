@@ -174,7 +174,11 @@ public class AllyHealthBar : MonoBehaviour
 
         // Hidden at full health. A bar that is always there is furniture; one
         // that appears when the companion is hurt is information.
-        bool show = ally.showHealthBar && ally.Health01 < 0.999f;
+        //
+        // And hidden entirely while the AllyAI is switched off. A caged captive
+        // has not run OnEnable yet, so its health is still zero — without this
+        // the prisoner sits in the cage under a full red empty bar.
+        bool show = ally.isActiveAndEnabled && ally.showHealthBar && ally.Health01 < 0.999f;
         SetVisible(show);
         if (!show) return;
 
