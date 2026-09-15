@@ -293,22 +293,38 @@ public class EnemyPersonality : MonoBehaviour
     // Only while moving, and never during an attack: animator.speed is global, so
     // scaling it for the legs would speed the swing up too and desynchronise the
     // blow from the moment the damage lands.
+    private float _playRate = 1f;
+
     public void MatchLocomotion(float worldSpeed, bool attacking)
     {
         if (_animator == null) return;
 
         if (attacking || worldSpeed < 0.15f)
         {
-            _animator.speed = _tempo;
+            // Straight to the tempo: an attack must play at its authored rate
+            // or the contact frame stops matching the damage.
+            _playRate = _tempo;
+            _animator.speed = _playRate;
             return;
         }
 
         float reference = _walking ? walkClipSpeed : runClipSpeed;
-        if (reference <= 0.01f) { _animator.speed = _tempo; return; }
+        if (reference <= 0.01f) { _playRate = _tempo; _animator.speed = _playRate; return; }
 
         // The tempo jitter rides on top as a small per-enemy difference, kept
         // narrow enough that it reads as gait and not as sliding.
-        _animator.speed = Mathf.Clamp(worldSpeed / reference, 0.45f, 2.2f) * _tempo;
+        float want = Mathf.Clamp(worldSpeed / reference, 0.45f, 2.2f) * _tempo;
+
+        // ==== EASED, BECAUSE THE MEASURED SPEED IS NOISY ====
+        //
+        // worldSpeed is measured from actual travel, and actual travel jumps
+        // whenever the CharacterController clips a corner, the crowd separation
+        // slides the body, or a branch changes pace. Writing that straight into
+        // animator.speed makes the run cycle visibly surge and stall — which
+        // from the player's seat is the legs changing animation, even though the
+        // clip never changed.
+        _playRate = Mathf.MoveTowards(_playRate, want, 2.5f * Time.deltaTime);
+        _animator.speed = _playRate;
     }
 
     // Nudge the animator off whatever beat everything else spawned on.

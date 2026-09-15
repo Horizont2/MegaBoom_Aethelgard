@@ -2973,6 +2973,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // a position.
     [Tooltip("How many times a second the obstacle heading is re-solved. 8-12 is indistinguishable from every frame and costs a fraction as much.")]
     public float avoidSolvesPerSecond = 10f;
+
+    [Tooltip("How much wider the probe is when deciding to STOP avoiding than when deciding to start. Below about 1.3 the enemy releases while still tangent to the obstacle and walks back into it — see SolveDeflection.")]
+    [Range(1f, 2.5f)] public float avoidReleaseWidening = 1.6f;
+    [Tooltip("How much further ahead the release probe looks. Same reason: release only once genuinely past the thing.")]
+    [Range(1f, 2.5f)] public float avoidReleaseReach = 1.4f;
     private float _nextAvoidSolve;
     private Quaternion _avoidDeflection = Quaternion.identity;
     private Quaternion _avoidTarget = Quaternion.identity;
@@ -3030,7 +3035,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // with a committed side that reads as a stutter rather than a turn.
         // Rotating toward the answer costs nothing and turns the same decisions
         // into a curve.
-        _avoidDeflection = Quaternion.RotateTowards(_avoidDeflection, _avoidTarget, 220f * Time.deltaTime);
+        // 220 deg/s was fast enough to make every solve visible as a flick. At
+        // this rate a full 25-degree step takes about a quarter of a second,
+        // which reads as leaning into a turn.
+        _avoidDeflection = Quaternion.RotateTowards(_avoidDeflection, _avoidTarget, 110f * Time.deltaTime);
         return _avoidDeflection * dir;
     }
 
@@ -3040,9 +3048,28 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private Quaternion SolveDeflection(Vector3 pos, Vector3 dir)
     {
         Vector3 origin = pos + Vector3.up * avoidProbeHeight;
-        // Path is clear: forget the side we were committed to, so the next
-        // obstacle is judged fresh rather than inheriting an old preference.
-        if (!ProbeBlocked(origin, dir)) { _avoidSide = 0; return Quaternion.identity; }
+
+        // ==== COMMITTING TO A SIDE WAS ONLY HALF OF IT ====
+        //
+        // The side no longer flips, but the deflection itself did — on and off,
+        // at the solve rate. Skirting a rock, the straight line to the player
+        // alternates between blocked and clear as the enemy slides along the
+        // tangent: one solve says "go round", the next says "path is clear,
+        // straighten up", and it walks back into the rock. Ten times a second.
+        // That is a textbook avoidance limit cycle, and it is the zigzag that
+        // survived every fix aimed at the steering.
+        //
+        // The cure is asymmetric thresholds. Starting to avoid takes an ordinary
+        // probe; STOPPING takes a wider and longer one, so the enemy stays
+        // committed until it is genuinely past the obstacle rather than merely
+        // tangent to it. Same principle as the hysteresis on the hold band —
+        // a threshold crossed in both directions by the same movement is not a
+        // threshold, it is an oscillator.
+        bool avoiding = _avoidSide != 0;
+        float rs = avoiding ? avoidReleaseWidening : 1f;
+        float ls = avoiding ? avoidReleaseReach : 1f;
+
+        if (!ProbeBlocked(origin, dir, rs, ls)) { _avoidSide = 0; return Quaternion.identity; }
 
         // ==== COMMIT TO A SIDE ====
         //
@@ -3097,10 +3124,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [Tooltip("Shorter than this (metres) and the enemy steps over it instead of steering. Logs, rubble and low clutter.")]
     public float minObstacleHeight = 0.8f;
 
-    private bool ProbeBlocked(Vector3 origin, Vector3 dir)
+    private bool ProbeBlocked(Vector3 origin, Vector3 dir) => ProbeBlocked(origin, dir, 1f, 1f);
+
+    private bool ProbeBlocked(Vector3 origin, Vector3 dir, float radiusScale, float lengthScale)
     {
-        int n = Physics.SphereCastNonAlloc(origin, avoidProbeRadius, dir.normalized, s_avoidBuffer,
-                                           avoidLookAhead, ResolvedObstacleMask(), QueryTriggerInteraction.Ignore);
+        int n = Physics.SphereCastNonAlloc(origin, avoidProbeRadius * radiusScale, dir.normalized, s_avoidBuffer,
+                                           avoidLookAhead * lengthScale, ResolvedObstacleMask(), QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
         {
             Collider c = s_avoidBuffer[i].collider;

@@ -93,7 +93,7 @@ public class ChestBeacon : MonoBehaviour
         // Their own material, with a round falloff to fully transparent at the
         // rim, so what floats out of the chest is a spark rather than a brick.
         _moteMat = new Material(template);
-        _moteMat.mainTexture = MoteTexture();
+        _moteMat.mainTexture = SoftParticleTexture.Dot;
         if (_moteMat.HasProperty("_BaseMap")) _moteMat.SetTexture("_BaseMap", _moteMat.mainTexture);
         if (_moteMat.HasProperty("_Cull")) _moteMat.SetFloat("_Cull", 0f);
         OwnedMaterial.Attach(gameObject, _moteMat);
@@ -262,40 +262,6 @@ public class ChestBeacon : MonoBehaviour
     // Bright at the bottom, gone at the top, soft at the vertical edges. Drawn
     // once and shared: the shaft's whole appearance is this gradient, so it is
     // worth the twenty lines and it costs no art dependency.
-    // A round spark: bright in the middle, gone at the rim. The falloff is
-    // squared so the core stays tight and the edge disappears into nothing
-    // rather than ending on a visible ring.
-    private static Texture2D s_moteTex;
-    private static Texture2D MoteTexture()
-    {
-        if (s_moteTex != null) return s_moteTex;
-        const int S = 48;
-        s_moteTex = new Texture2D(S, S, TextureFormat.RGBA32, false)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear,
-            hideFlags = HideFlags.HideAndDontSave,
-        };
-        var px = new Color[S * S];
-        float c = (S - 1) * 0.5f;
-        for (int y = 0; y < S; y++)
-        {
-            for (int x = 0; x < S; x++)
-            {
-                float dx = (x - c) / c, dy = (y - c) / c;
-                float r = Mathf.Sqrt(dx * dx + dy * dy);
-                // Zero at and beyond the rim, so the quad's corners are empty
-                // and no square can show however bright the tint gets.
-                float a = Mathf.Clamp01(1f - r);
-                a = a * a * (0.35f + 0.65f * a);
-                px[y * S + x] = new Color(1f, 1f, 1f, a);
-            }
-        }
-        s_moteTex.SetPixels(px);
-        s_moteTex.Apply();
-        return s_moteTex;
-    }
-
     private static Texture2D s_tex;
     private static Texture2D ShaftTexture()
     {

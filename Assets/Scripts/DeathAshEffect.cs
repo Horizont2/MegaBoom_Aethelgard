@@ -357,6 +357,20 @@ public static class DeathAshEffect
         if (s_mats.TryGetValue(key, out var cached) && cached != null) { Apply(rend, cached); return; }
 
         var mat = new Material(s_unlit) { hideFlags = HideFlags.HideAndDontSave };
+
+        // ==== NO TEXTURE MEANS A SOLID SQUARE, NOT NOTHING ====
+        //
+        // Nothing was ever assigned here, so the shader fell back to its default
+        // white pixel — and a billboarded quad stretched over a solid pixel is a
+        // rectangle. Every ember and every speck of ash off a dying enemy drew
+        // as a hard-edged coloured square.
+        //
+        // One shared round sprite with the alpha falling to zero before the rim,
+        // so the quad's corners are empty and the particle is a particle.
+        var dot = SoftParticleTexture.Dot;
+        mat.mainTexture = dot;
+        if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", dot);
+
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", matColor);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", matColor);
 
