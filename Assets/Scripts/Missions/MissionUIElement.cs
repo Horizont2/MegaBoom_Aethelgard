@@ -88,7 +88,14 @@ public class MissionUIElement : MonoBehaviour
         if (titleText != null) titleText.text = title;
 
         baseDescription = description;
-        UpdateProgress(current, target);
+        _progressCurrent = current;
+        _progressTarget = target;
+
+        // A stopped TypeRoutine leaves maxVisibleCharacters part-way, and
+        // nothing else ever puts it back — the rest of the line would simply
+        // never appear.
+        if (descriptionText != null) descriptionText.maxVisibleCharacters = int.MaxValue;
+        ApplyDescription();
 
         // EVERY new objective slides in, not only the first.
         //
@@ -98,29 +105,76 @@ public class MissionUIElement : MonoBehaviour
         // notice, and the one that got the least attention.
         StartCoroutine(AppearRoutine());
         if (typewriter && descriptionText != null)
-            _typing = StartCoroutine(TypeRoutine(baseDescription));
+            _typing = StartCoroutine(TypeRoutine());
+    }
+
+    // ==== ONE PLACE BUILDS THE LINE ====
+    //
+    // There used to be three: Setup composed it with the progress counter,
+    // TypeRoutine then overwrote it with the bare label so the counter was
+    // typed away, and UpdateProgress — the one that would have put it back —
+    // was gated behind `_typing == null` and so could not. That is why the
+    // plates stopped showing progress.
+    //
+    // The typewriter no longer touches the text at all. It reveals whatever is
+    // there, so progress can change mid-reveal and the counter simply appears
+    // with the rest of the line.
+    private int _progressCurrent;
+    private int _progressTarget;
+
+    private string ComposeDescription()
+    {
+        if (isCompleted)
+            return $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
+        if (_progressTarget > 1)
+            return $"{baseDescription} (<color=#FFD700>{_progressCurrent}</color>/{_progressTarget})";
+        return baseDescription;
+    }
+
+    private void ApplyDescription()
+    {
+        if (descriptionText == null) return;
+        descriptionText.text = ComposeDescription();
+        // While the typewriter is running it owns the reveal; otherwise the
+        // whole line is visible.
+        if (_typing == null) descriptionText.maxVisibleCharacters = int.MaxValue;
     }
 
     // Reveals the objective a character at a time. Unscaled: objectives are
     // handed out during dialogue and menus, where the game clock is often
     // stopped, and a line that never finishes typing is worse than none.
-    private IEnumerator TypeRoutine(string full)
+    private IEnumerator TypeRoutine()
     {
-        if (string.IsNullOrEmpty(full)) yield break;
-        descriptionText.text = "";
-        float shown = 0f;
-        while (shown < full.Length)
+        // Glyph count, not string length: maxVisibleCharacters counts rendered
+        // characters, so the <color> markup around the counter must not be
+        // included or the line finishes typing early and looks truncated.
+        descriptionText.maxVisibleCharacters = 0;
+        descriptionText.ForceMeshUpdate();
+        int total = descriptionText.textInfo.characterCount;
+
+        if (total <= 0)
         {
-            shown += Time.unscaledDeltaTime * typeSpeed;
-            int n = Mathf.Clamp(Mathf.FloorToInt(shown), 0, full.Length);
-            // Rich-text safe: TMP's maxVisibleCharacters counts glyphs, not the
-            // markup around them, so a tag is never cut in half.
-            descriptionText.text = full;
-            descriptionText.maxVisibleCharacters = n;
-            yield return null;
+            descriptionText.maxVisibleCharacters = int.MaxValue;
+            _typing = null;
+            yield break;
         }
-        descriptionText.maxVisibleCharacters = int.MaxValue;
-        _typing = null;
+
+        float shown = 0f;
+        try
+        {
+            while (shown < total)
+            {
+                shown += Time.unscaledDeltaTime * typeSpeed;
+                descriptionText.maxVisibleCharacters = Mathf.Clamp(Mathf.FloorToInt(shown), 0, total);
+                yield return null;
+            }
+        }
+        finally
+        {
+            // Interrupted or finished, the line ends up fully readable.
+            if (descriptionText != null) descriptionText.maxVisibleCharacters = int.MaxValue;
+            _typing = null;
+        }
     }
 
     private IEnumerator AppearRoutine()
@@ -160,13 +214,9 @@ public class MissionUIElement : MonoBehaviour
     {
         if (isCompleted) return;
 
-        if (descriptionText != null && _typing == null)
-        {
-            if (target > 1)
-                descriptionText.text = $"{baseDescription} (<color=#FFD700>{current}</color>/{target})";
-            else
-                descriptionText.text = baseDescription;
-        }
+        _progressCurrent = current;
+        _progressTarget = target;
+        ApplyDescription();
     }
 
     public void CompleteMission()
@@ -175,7 +225,10 @@ public class MissionUIElement : MonoBehaviour
         isCompleted = true;
 
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
-        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
+
+        // A half-typed line must not be left half-typed by being ticked off.
+        if (_typing != null) { StopCoroutine(_typing); _typing = null; }
+        ApplyDescription();
 
         StartCoroutine(CompleteAnimationRoutine());
     }
@@ -187,7 +240,9 @@ public class MissionUIElement : MonoBehaviour
         CacheHome();
         if (_homeCached) backgroundImage.transform.localPosition = _home;
         if (titleText != null) titleText.text = $"<s>{titleText.text}</s>";
-        if (descriptionText != null) descriptionText.text = $"{baseDescription} <color=#00FF00>({LocalizationManager.Tr("MISSION_DONE_TAG")})</color>";
+
+        if (_typing != null) { StopCoroutine(_typing); _typing = null; }
+        ApplyDescription();
 
         if (canvasGroup != null) canvasGroup.alpha = 1f;
     }
