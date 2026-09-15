@@ -502,6 +502,9 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private Vector3 _lastGaitPos;
     private float _measuredSpeed;
     [HideInInspector] public float loseSightDuration = 6f;   // grace after sight breaks
+
+    [Tooltip("Inside this range the enemy simply knows where the player is. A line-of-sight ray over uneven ground gives false negatives most often at short distance, and an enemy losing track of somebody standing next to it never reads as anything but broken.")]
+    [HideInInspector] public float closeQuartersSight = 9f;
     [HideInInspector] public float searchDuration = 9f;      // how long the area is searched
     [HideInInspector] public float searchRoamRadius = 7f;
     [HideInInspector] public float chaseGiveUpRange = 34f;   // too far to see, whatever the walls say
@@ -1310,9 +1313,40 @@ public class EnemyAI : MonoBehaviour, IDamageable
         int blockers = s_losBlockers;
         if (blockers == 0) return true;
 
+        // ==== AT ARM'S LENGTH, SIGHT IS NOT IN QUESTION ====
+        //
+        // An enemy standing next to the player does not lose track of them
+        // because a hillock came between their chest and its eye. Skipping the
+        // ray entirely up close also skips the most common false negative,
+        // since a short ray over uneven ground is the one most likely to clip.
+        if (dist <= closeQuartersSight) return true;
 
-
-        return !Physics.Raycast(eye, to / dist, dist - 0.5f, blockers, QueryTriggerInteraction.Ignore);
+        // ==== THE GROUND IS NOT A WALL ====
+        //
+        // This was a plain boolean Raycast, so ANY hit counted — including the
+        // terrain. The eye is at 1.4m and the target at 1.0m, so on undulating
+        // ground the ray dips into the hillside constantly, and every dip is a
+        // frame of "cannot see the player".
+        //
+        // Six seconds of that and UpdateChasePerception calls BeginSearch, which
+        // clears isAggroed and hands the enemy to the passive roamer — moving at
+        // 0.4x speed toward a roam point rather than at the player. It then
+        // re-spots them and charges again. Measured: a chasing enemy spent 64 of
+        // 650 frames running the PASSIVE mover, which is where the sudden
+        // changes of speed and direction came from.
+        //
+        // ProbeBlocked, ten lines away, already had the rule: "the ground is not
+        // a wall". This is the same rule, applied where it was missing.
+        int n = Physics.RaycastNonAlloc(eye, to / dist, s_sightBuffer, dist - 0.5f, blockers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = s_sightBuffer[i].collider;
+            if (c == null) continue;
+            if (c is TerrainCollider) continue;
+            if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
+            return false;   // something solid and not the floor is in the way
+        }
+        return true;
     }
 
     // Runs while aggroed. Decides when the chase is over.
@@ -1647,6 +1681,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // int.MinValue = not resolved yet; 0 is a legitimate answer (no such layers).
     private static DayNightCycle s_dayNight;
     private static int s_losBlockers = int.MinValue;
+    private static readonly RaycastHit[] s_sightBuffer = new RaycastHit[8];
 
     private static float s_lastAggroBark = -10f;
     private const float AGGRO_BARK_INTERVAL = 3.5f;
