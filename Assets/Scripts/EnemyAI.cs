@@ -762,7 +762,22 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 moved.y = 0f;
                 _measuredSpeed = Mathf.Lerp(_measuredSpeed, moved.magnitude / dt, 1f - Mathf.Exp(-10f * dt));
                 _lastGaitPos = transform.position;
-                personality.MatchLocomotion(_measuredSpeed, isPreparingAttack);
+                // ==== DO NOT MATCH THE LEGS TO BEING THROWN ====
+                //
+                // _measuredSpeed is actual travel, and a knockback moves the
+                // body at 8 to 36 m/s against a walk speed of 4. Feeding that
+                // to the gait pinned animator.speed to its 2.2 ceiling on every
+                // hit and dropped it to the 0.45 floor while stunned — measured
+                // as sixteen jumps in four seconds, on a SOLO enemy with nothing
+                // near it but the player.
+                //
+                // A character being knocked back is not walking fast. While it
+                // is being thrown or recovering, the clip plays at its authored
+                // rate, which is what the `attacking` flag already means here.
+                bool notSelfPropelled = isPreparingAttack
+                                        || stunTimer > 0f
+                                        || knockbackVelocity.sqrMagnitude > 0.04f;
+                personality.MatchLocomotion(_measuredSpeed, notSelfPropelled);
             }
         }
 
@@ -912,7 +927,21 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (stunTimer > 0 && !isEnraged)
         {
             stunTimer -= Time.deltaTime;
-            SetMovingAnim(false);
+
+            // ==== A STUN MUST NOT TOUCH THE LOCOMOTION BOOL ====
+            //
+            // This set isMoving false for the whole stun. The hit reaction is
+            // already handled — Hit_A is entered from Any State on the Hit
+            // trigger — so all this did in addition was drive the locomotion
+            // layer to Idle underneath it. When Hit_A ended, the enemy landed in
+            // Idle and had to climb back out through Idle -> Running before it
+            // could run again.
+            //
+            // The player lands hits constantly, so that is a Running-Idle-
+            // Running cycle per hit, which is most of the measured isMoving
+            // flapping: 2.2 flips a second on an enemy that never stopped
+            // chasing. Leaving the bool alone lets Hit_A return straight to
+            // Running, which the controller now supports.
             return;
         }
 
