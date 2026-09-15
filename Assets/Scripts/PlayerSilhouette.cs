@@ -178,8 +178,12 @@ public class PlayerSilhouette : MonoBehaviour
         Vector3 dir = delta / dist;
         float span = dist - cameraNearIgnore - playerNearIgnore;
 
+        // TRIGGERS COUNT. Foliage a player can walk through must not be solid,
+        // so the only colliders a bush can reasonably carry are triggers — and
+        // ignoring them here would mean the probe could never see the one thing
+        // this whole effect exists for. Trees are solid and hit either way.
         int n = Physics.SphereCastNonAlloc(from + dir * cameraNearIgnore, probeRadius, dir,
-                                           s_probe, span, foliageLayers, QueryTriggerInteraction.Ignore);
+                                           s_probe, span, foliageLayers, QueryTriggerInteraction.Collide);
         for (int i = 0; i < n; i++)
         {
             var c = s_probe[i].collider;
