@@ -975,18 +975,29 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (anim == null) return;
 
-        // Take the animation back too. Clearing the trigger alone only stops a
-        // swing that has not STARTED; one already playing runs to the end, and
-        // the player sees a full attack that deals nothing — which reads as the
-        // hit being eaten rather than as their own cancel.
+        // ==== THE CLIP HAS TO BE LEFT, NOT JUST UNTRIGGERED ====
         //
-        // Moving to the block pose is what a cancel actually looks like, and it
-        // is the state the player just asked for. SetAnimBoolIfPresent rather
-        // than SetBool, because a rig without a block layer must not be left
-        // driving a parameter it does not have.
+        // ResetTrigger does nothing once the state has already been entered, and
+        // that is the whole of what this used to do. The swing kept playing on
+        // the ActionLayer while the Block layer simply drew over the top of it —
+        // so raising the guard HID the attack rather than stopping it, and
+        // lowering the guard again revealed a swing still in progress, which
+        // then reached its contact frame and asked to deal damage.
+        //
+        // The attack states live on ActionLayer, whose rest state is Empty.
+        // Crossfading that layer back to Empty is what actually ends the swing:
+        // the clip stops, so its animation event never arrives, and there is
+        // nothing left underneath to reappear when the shield drops.
         anim.ResetTrigger("Attack");
-        SetAnimBoolIfPresent("isBlocking", true);
+
+        int action = anim.GetLayerIndex(ActionLayerName);
+        if (action >= 0) anim.CrossFade(ActionRestState, 0.08f, action);
     }
+
+    // Named rather than indexed: a layer added or reordered in the controller
+    // would silently make a hardcoded index cancel the wrong thing.
+    private const string ActionLayerName = "ActionLayer";
+    private const string ActionRestState = "Empty";
 
     private void LockAction(string trigger, float duration, bool keepMomentum = false)
     {
