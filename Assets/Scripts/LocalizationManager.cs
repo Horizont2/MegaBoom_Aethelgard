@@ -4412,6 +4412,11 @@ public static class LocalizationManager
         Add7("HEALTH",         "HEALTH",         "ЗДОРОВ'Я",         "ЗДОРОВЬЕ",        "SALUD",             "GESUNDHEIT",         "SANTÉ",               "ZDROWIE");
         Add7("DEFENSE",        "DEFENSE",        "ЗАХИСТ",           "ЗАЩИТА",          "DEFENSA",           "VERTEIDIGUNG",       "DÉFENSE",             "OBRONA");
         Add7("POWER",          "POWER",          "СИЛА",             "СИЛА",            "PODER",             "MACHT",              "PUISSANCE",           "MOC");
+        // Shield stat rows. A shield is described by these, not by damage.
+        Add7("PARRY WINDOW",   "PARRY WINDOW",   "ВІКНО ПАРИРУВАННЯ", "ОКНО ПАРИРОВАНИЯ", "VENTANA DE PARADA", "PARIER-FENSTER",    "FENÊTRE DE PARADE",   "OKNO PARowania");
+        Add7("STAMINA COST",   "STAMINA COST",   "ВИТРАТА ВИТРИВАЛОСТІ", "РАСХОД ВЫНОСЛИВОСТИ", "COSTE DE AGUANTE", "AUSDAUERKOSTEN", "COÛT D'ENDURANCE",   "KOSZT WYTRZYMAŁOŚCI");
+        Add7("GUARD ARC",      "GUARD ARC",      "СЕКТОР ЗАХИСТУ",   "СЕКТОР ЗАЩИТЫ",   "ARCO DE GUARDIA",   "DECKUNGSWINKEL",     "ARC DE GARDE",        "ŁUK OSŁONY");
+        Add7("REFLECTED",      "REFLECTED",      "ВІДБИТО",          "ОТРАЖЕНО",        "REFLEJADO",         "REFLEKTIERT",        "RENVOYÉ",             "ODBITE");
         Add7("EQUIP",          "EQUIP",          "СПОРЯДИТИ",        "ЭКИПИРОВАТЬ",     "EQUIPAR",           "AUSRÜSTEN",          "ÉQUIPER",             "ZAŁÓŻ");
         Add7("EQUIPPED",       "EQUIPPED",       "СПОРЯДЖЕНО",       "ЭКИПИРОВАНО",     "EQUIPADO",          "AUSGERÜSTET",        "ÉQUIPÉ",              "ZAŁOŻONO");
         Add7("MAX",            "MAX",            "МАКС",             "МАКС",            "MÁX",               "MAX",                "MAX",                 "MAKS");

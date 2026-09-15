@@ -1247,9 +1247,27 @@ public class ShopManager : MonoBehaviour
             UpdateItemDetails(w.weaponName, w.description, w.icon, lvl, w.maxUpgradeLevel, w.price, isBought, isEquipped, myDiamonds, w.GetUpgradeCost(lvl));
             bool wPreview = isBought && lvl < w.maxUpgradeLevel;
             int nl = lvl + 1;
-            UpdateStatsUI(w.damageBonus + (lvl * w.damagePerLevel), 400f, w.attackSpeed + (lvl * w.attackSpeedPerLevel), 3f, w.critChance + (lvl * w.critChancePerLevel), 1f, w.basePower + (lvl * w.powerPerLevel),
-                wPreview,
-                w.damageBonus + (nl * w.damagePerLevel), w.attackSpeed + (nl * w.attackSpeedPerLevel), w.critChance + (nl * w.critChancePerLevel), w.basePower + (nl * w.powerPerLevel));
+
+            // ==== A SHIELD IS NOT A WEAPON WITH ZERO DAMAGE ====
+            //
+            // Shields are WeaponData with category Shield, so they came through
+            // the weapon branch and were described with damage, attack speed and
+            // crit — all three exactly zero on every shield in the game, with an
+            // upgrade preview promising damage the item does not grant.
+            //
+            // Meanwhile the five fields that actually define a shield were shown
+            // nowhere, and they INVERT with price: the free Wayfarer's Round
+            // parries better and costs less stamina than the 1150-diamond
+            // Ironhide Slab, which is a real and interesting trade the shop was
+            // hiding behind "Power 20 vs Power 8".
+            if (w.category == ItemCategory.Shield) UpdateShieldStatsUI(w, lvl, wPreview);
+            else
+            {
+                RestoreWeaponStatLabels();
+                UpdateStatsUI(w.damageBonus + (lvl * w.damagePerLevel), 400f, w.attackSpeed + (lvl * w.attackSpeedPerLevel), 3f, w.critChance + (lvl * w.critChancePerLevel), 1f, w.basePower + (lvl * w.powerPerLevel),
+                    wPreview,
+                    w.damageBonus + (nl * w.damagePerLevel), w.attackSpeed + (nl * w.attackSpeedPerLevel), w.critChance + (nl * w.critChancePerLevel), w.basePower + (nl * w.powerPerLevel));
+            }
         }
         else if (!isViewingWeapon && selectedArmorData != null)
         {
@@ -1259,6 +1277,7 @@ public class ShopManager : MonoBehaviour
             bool isEquipped = PlayerPrefs.GetInt($"EquippedArmor_{a.category}", 0) == a.prefabIndex;
 
             UpdateItemDetails(a.armorName, a.description, a.icon, lvl, a.maxUpgradeLevel, a.price, isBought, isEquipped, myDiamonds, a.GetUpgradeCost(lvl));
+            RestoreWeaponStatLabels();
             bool aPreview = isBought && lvl < a.maxUpgradeLevel;
             int nla = lvl + 1;
             UpdateStatsUI(a.baseHealthBonus + (lvl * a.healthPerLevel), 500f, (a.baseDamageReduction + (lvl * a.reductionPerLevel)) * 100f, 60f, 0, 1f, a.basePower + (lvl * a.powerPerLevel),
@@ -1399,6 +1418,95 @@ public class ShopManager : MonoBehaviour
     {
         if (t != null && t.GetComponent<NoAutoLocalize>() == null)
             t.gameObject.AddComponent<NoAutoLocalize>();
+    }
+
+    // ==== THE THREE NUMBERS A SHIELD IS ACTUALLY JUDGED ON ====
+    //
+    // Of the five shield fields, these are the three that differ between the
+    // shields in the game and that the player can feel: how long the parry
+    // window is, how much stamina a blow costs to absorb, and how wide the
+    // guard covers. Bonus stamina and reflect are folded into the third row
+    // when a shield has them, because a shield that reflects is defined by
+    // that and nothing else in the set does it.
+    //
+    // Labels are rewritten here and put back by RestoreWeaponStatLabels, so a
+    // weapon selected after a shield is not still captioned "PARRY WINDOW".
+    private string[] _weaponStatLabels;
+
+    private void UpdateShieldStatsUI(WeaponData w, int lvl, bool preview)
+    {
+        CacheWeaponStatLabels();
+
+        var block = PlayerBlock.Instance;
+        float baseWindow = block != null ? block.parryWindow : 0.18f;
+        float baseAngle  = block != null ? block.guardAngle  : 130f;
+
+        int nl = lvl + 1;
+
+        // Parry window, in milliseconds. Bigger is better.
+        float win  = Mathf.Max(0.05f, baseWindow + w.parryWindowBonus);
+        float winN = win;   // no per-level growth on the window; it is the shield's character
+
+        // Stamina cost as a percentage of normal. LOWER is better, so the bar
+        // is inverted — a fuller bar has to mean a better shield or the panel
+        // is lying with a picture.
+        float mult  = Mathf.Max(0.1f, w.staminaMultiplier + lvl * w.staminaMultiplierPerLevel);
+        float multN = Mathf.Max(0.1f, w.staminaMultiplier + nl  * w.staminaMultiplierPerLevel);
+
+        // Guard arc in degrees.
+        float ang = Mathf.Clamp(baseAngle + w.guardAngleBonus, 40f, 220f);
+
+        string arrow = " <color=#A8E6CF>→</color> ";
+
+        if (stat1Label) stat1Label.text = LocalizationManager.Tr("PARRY WINDOW");
+        if (stat1PercentText) stat1PercentText.text = Mathf.RoundToInt(win * 1000f) + " ms";
+        LerpBar(0, stat1Fill, Mathf.Clamp01(win / 0.45f));
+
+        if (stat2Label) stat2Label.text = LocalizationManager.Tr("STAMINA COST");
+        if (stat2PercentText)
+        {
+            string cur = Mathf.RoundToInt(mult * 100f) + "%";
+            string nxt = Mathf.RoundToInt(multN * 100f) + "%";
+            stat2PercentText.text = preview ? cur + arrow + "<color=#A8E6CF>" + nxt + "</color>" : cur;
+        }
+        LerpBar(1, stat2Fill, Mathf.Clamp01(1f - (mult - 0.4f) / 1.2f));
+
+        if (w.reflectFraction > 0.001f)
+        {
+            if (stat3Label) stat3Label.text = LocalizationManager.Tr("REFLECTED");
+            if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt(w.reflectFraction * 100f) + "%";
+            LerpBar(2, stat3Fill, Mathf.Clamp01(w.reflectFraction / 0.6f));
+        }
+        else
+        {
+            if (stat3Label) stat3Label.text = LocalizationManager.Tr("GUARD ARC");
+            if (stat3PercentText) stat3PercentText.text = Mathf.RoundToInt(ang) + "°";
+            LerpBar(2, stat3Fill, Mathf.Clamp01(ang / 220f));
+        }
+
+        int pow  = w.basePower + lvl * w.powerPerLevel;
+        int powN = w.basePower + nl  * w.powerPerLevel;
+        if (powerPercentText) powerPercentText.text = preview ? pow + arrow + "<color=#A8E6CF>" + powN + "</color>" : pow.ToString();
+        LerpBar(3, powerFill, Mathf.Clamp01(pow / 1000f));
+    }
+
+    private void CacheWeaponStatLabels()
+    {
+        if (_weaponStatLabels != null) return;
+        _weaponStatLabels = new[]
+        {
+            stat1Label != null ? stat1Label.text : "",
+            stat2Label != null ? stat2Label.text : "",
+            stat3Label != null ? stat3Label.text : "",
+        };
+    }
+
+    private void RestoreWeaponStatLabels()
+    {
+        if (_weaponStatLabels == null) return;
+        if (stat1Label) stat1Label.text = _weaponStatLabels[0];
+        if (stat2Label) stat2Label.text = _weaponStatLabels[1];
+        if (stat3Label) stat3Label.text = _weaponStatLabels[2];
     }
 
     private Coroutine[] statBarLerps = new Coroutine[4];

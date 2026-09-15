@@ -2370,6 +2370,29 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // enemy. Falls back to the ordinary telegraph until authored, so
             // nothing is lost in the meantime.
             if (_thisSwingUnblockable) PlayVocal(AudioID.Enemy_Unblockable);
+
+            // ==== NOTHING IN THE GAME EXPLAINED THE SHIELD ====
+            //
+            // There are 28 authored hints and not one of them mentions block,
+            // parry or the guard key. Behind that key sit PlayerBlock, the
+            // combat ring, the parry cue and banner, four purchasable shields
+            // and a whole stamina economy — and the key itself, Q, appeared in
+            // no prompt anywhere in the project.
+            //
+            // The first swing aimed at the player is the moment it matters:
+            // the ring is on screen, closing, and the answer to it is one key.
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("Block",
+                    "Hold <b>Q</b> to raise your shield. Press it just as the ring closes to PARRY — that " +
+                    "staggers the attacker. The guard only covers the FRONT, and pink swings go straight " +
+                    "through it.", 8f);
+
+            // MOVED INSIDE aimedAtPlayer. An enemy swinging at a rescued
+            // captive was freezing the game for seven seconds to teach the
+            // player about a blow that was never coming at them.
+            if (TutorialHints.Instance != null)
+                TutorialHints.Instance.ShowIfNew("CombatTelegraph",
+                    "TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.", 5f);
         }
 
         if (isElite && playerTarget != null && aimedAtPlayer)
@@ -2379,10 +2402,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (weaponGlintVFX != null && ObjectPoolManager.Instance != null)
                 ObjectPoolManager.Instance.SpawnFromPool(weaponGlintVFX, transform.position + Vector3.up * 1.5f, Quaternion.identity);
         }
-
-        if (TutorialHints.Instance != null)
-            TutorialHints.Instance.ShowIfNew("CombatTelegraph",
-                "TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.", 5f);
 
         // An unblockable swing announces itself in a colour nothing else uses.
         // The player has to be able to read "shield will not save you" from
