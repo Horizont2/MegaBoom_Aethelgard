@@ -1959,7 +1959,7 @@ MonoBehaviour:
   waterfallPrefabs:
   - {fileID: 8087146570348667094, guid: 1789e3f75681b0f4caaeb931b5738c84, type: 3}
   cliffSteepnessThreshold: 40
-  maxGrassDensity: 8
+  maxGrassDensity: 200
   waterPlantsPrefabs: []
   deadTreesPrefabs: []
   ambientVFXPrefabs: []

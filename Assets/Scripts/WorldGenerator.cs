@@ -184,7 +184,18 @@ public class WorldGenerator : MonoBehaviour
     // dense map that renders, not a cheap one. Most of the real saving comes
     // from detailObjectDistance instead, which thins grass in the distance
     // where nobody can tell, and leaves the grass around the player untouched.
-    [Tooltip("Instances per terrain detail cell. Unity's ceiling is 255, and that is what this used to write. 96 still reads as thick meadow and costs about a third as much. Lower it if the region still runs heavy.")]
+    // ==== MAKING A DEAD FIELD LIVE APPLIES ITS STALE VALUE ====
+    //
+    // This defaulted to 8 and was read nowhere, so every scene that ever
+    // serialized a WorldGenerator has 8 sitting in it. The moment the cap below
+    // started reading it, that 8 took effect and the grass all but vanished —
+    // a change in code, with the actual value coming from a scene file nobody
+    // had looked at in a year.
+    //
+    // Worth remembering for the next dead field: the default in the source is
+    // not what runs. The scene value is, and it has to be raised in every scene
+    // that already has one.
+    [Tooltip("Instances per terrain detail cell; Unity's ceiling is 255. Raising this is free at generation time and paid for every frame afterwards — the runtime dial for a quality preset is the terrain's detail DISTANCE, not this.")]
     [Range(8, 255)] public int maxGrassDensity = 200;
 
     [Header("Dreamscape: New Ecosystem")]
