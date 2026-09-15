@@ -185,7 +185,7 @@ public class WorldGenerator : MonoBehaviour
     // from detailObjectDistance instead, which thins grass in the distance
     // where nobody can tell, and leaves the grass around the player untouched.
     [Tooltip("Instances per terrain detail cell. Unity's ceiling is 255, and that is what this used to write. 96 still reads as thick meadow and costs about a third as much. Lower it if the region still runs heavy.")]
-    [Range(8, 255)] public int maxGrassDensity = 96;
+    [Range(8, 255)] public int maxGrassDensity = 200;
 
     [Header("Dreamscape: New Ecosystem")]
     public GameObject[] waterPlantsPrefabs;

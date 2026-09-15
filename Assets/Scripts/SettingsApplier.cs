@@ -69,6 +69,7 @@ public class SettingsApplier : MonoBehaviour
         ApplyTextureQuality();
         ApplyShadowQuality();
         ApplyShadowDistance();
+        ApplyFoliageDetail();
         ApplyRenderScale();
         ApplyMotionBlur();
         ApplyDepthOfField();
@@ -163,9 +164,28 @@ public class SettingsApplier : MonoBehaviour
         QualitySettings.SetQualityLevel(Mathf.Clamp(q, 0, QualitySettings.names.Length - 1), true);
     }
 
+    // ==== URP DOES NOT READ QualitySettings ====
+    //
+    // Every graphics option below used to write QualitySettings.antiAliasing,
+    // .shadows, .shadowResolution and .shadowDistance. Under the Universal
+    // pipeline none of those are read: MSAA, shadow distance, cascade count and
+    // shadowmap resolution all live on the UniversalRenderPipelineAsset, and
+    // ambient occlusion is a renderer feature. So every graphics slider in the
+    // menu moved a number that nothing rendered from — the player could not
+    // lower quality at all, which is why the only way to gain frames was to
+    // degrade the top preset for everyone.
+    //
+    // They write the pipeline asset now. Ultra stays as rich as it was
+    // authored; a player on weaker hardware finally has somewhere to go.
+    private static UniversalRenderPipelineAsset Pipe =>
+        UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+
     public static void ApplyAntiAliasing()
     {
         int aa = PlayerPrefs.GetInt("Settings_AntiAliasing", 1);
+        var p = Pipe;
+        if (p != null) p.msaaSampleCount = aa switch { 0 => 1, 1 => 2, 2 => 4, _ => 8 };
+        // Kept in step for anything still reading the legacy value.
         QualitySettings.antiAliasing = aa switch { 0 => 0, 1 => 2, 2 => 4, _ => 8 };
     }
 
@@ -180,27 +200,56 @@ public class SettingsApplier : MonoBehaviour
 
     public static void ApplyShadowQuality()
     {
-        int q = PlayerPrefs.GetInt("Settings_ShadowQuality", 2);
+        int q = PlayerPrefs.GetInt("Settings_ShadowQuality", 3);
+        var p = Pipe;
+        if (p != null)
+        {
+            p.supportsMainLightShadows = q > 0;
+            p.supportsAdditionalLightShadows = q >= 2;
+            // Resolution and softness are the two that actually cost, and the
+            // two the legacy API could never reach.
+            p.mainLightShadowmapResolution = q switch { 0 => 512, 1 => 512, 2 => 1024, _ => 2048 };
+            p.shadowCascadeCount = q switch { 0 => 1, 1 => 1, 2 => 2, _ => 4 };
+        }
+
         QualitySettings.shadows = q switch
         {
             0 => UnityEngine.ShadowQuality.Disable,
             1 => UnityEngine.ShadowQuality.HardOnly,
             _ => UnityEngine.ShadowQuality.All,
         };
-        QualitySettings.shadowResolution = q switch
-        {
-            0 => UnityEngine.ShadowResolution.Low,
-            1 => UnityEngine.ShadowResolution.Low,
-            2 => UnityEngine.ShadowResolution.Medium,
-            _ => UnityEngine.ShadowResolution.High,
-        };
     }
 
     public static void ApplyShadowDistance()
     {
-        // 80m default — 50 clipped shadows visibly close on open terrain.
-        // Auto-config overrides per tier (30 low → 130 ultra).
-        QualitySettings.shadowDistance = PlayerPrefs.GetFloat("Settings_ShadowDistance", 80f);
+        // 100m default matches the authored Ultra asset. The slider can take it
+        // down to 30 on weaker hardware, which is where the real saving is:
+        // every caster inside the distance is redrawn once PER CASCADE.
+        float d = PlayerPrefs.GetFloat("Settings_ShadowDistance", 100f);
+        var p = Pipe;
+        if (p != null) p.shadowDistance = d;
+        QualitySettings.shadowDistance = d;
+    }
+
+    // ==== GRASS IS THE BIGGEST DIAL ON THIS MAP ====
+    //
+    // Terrain detail is drawn per frame within detailObjectDistance, and this
+    // map is meadow from edge to edge. Density is baked during generation and
+    // cannot change without regenerating, but BOTH of the runtime dials can —
+    // and they are what a quality preset should be moving, rather than the
+    // richness of the top preset.
+    public static void ApplyFoliageDetail()
+    {
+        int q = Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail", 3), 0, 3);
+        float dist    = q switch { 0 => 25f,  1 => 40f,  2 => 60f,  _ => 80f };
+        float density = q switch { 0 => 0.35f, 1 => 0.55f, 2 => 0.7f, _ => 0.8f };
+
+        foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (t == null) continue;
+            t.detailObjectDistance = dist;
+            t.detailObjectDensity = density;
+        }
     }
 
     public static void ApplyRenderScale()
