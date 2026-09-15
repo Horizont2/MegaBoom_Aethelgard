@@ -28,15 +28,44 @@ public class ConfirmDialog : MonoBehaviour
     private static void EnsureInstance()
     {
         if (s_instance != null) return;
-        var go = new GameObject("[ConfirmDialog]");
+
+        // Drop a prefab at Assets/Resources/UI/ConfirmDialog.prefab and it is
+        // used instead of the bare object.
+        var prefab = Resources.Load<GameObject>(PrefabResource);
+        GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[ConfirmDialog]");
+        go.name = "[ConfirmDialog]";
         DontDestroyOnLoad(go);
-        s_instance = go.AddComponent<ConfirmDialog>();
+        s_instance = go.GetComponent<ConfirmDialog>();
+        if (s_instance == null) s_instance = go.AddComponent<ConfirmDialog>();
     }
+
+    public const string PrefabResource = "UI/ConfirmDialog";
+
+    // ==== AUTHOR IT, OR LET THE CODE BUILD IT ====
+    //
+    // This dialog DESTROYED AND REBUILT its entire hierarchy on every open —
+    // panel, border, message and both buttons, from scratch, because the
+    // message and the labels change per call. Rebuilding a whole UI tree to
+    // change two strings is waste, and it left nothing in the project to open:
+    // the one screen that asks the player to confirm something irreversible
+    // could not be laid out, restyled or localised in the editor at all.
+    //
+    // Assign these — on a prefab — and the code only fills in the text and
+    // hooks up the callbacks. Leave them empty and it builds what it always
+    // did, so nothing changes until somebody authors a dialog.
+    [Header("Dialog parts — leave empty to build them in code")]
+    [SerializeField] private GameObject root;
+    [SerializeField] private TextMeshProUGUI messageText;
+    [SerializeField] private Button yesButton;
+    [SerializeField] private TextMeshProUGUI yesButtonLabel;
+    [SerializeField] private Button noButton;
+    [SerializeField] private TextMeshProUGUI noButtonLabel;
 
     private Canvas canvas;
     private CanvasGroup group;
-    private GameObject root;
     private Action pendingYes, pendingNo;
+
+    private bool Authored => root != null && messageText != null && yesButton != null && noButton != null;
 
     private void Build(string message, Action onYes, Action onNo, string yesLabel, string noLabel)
     {
@@ -63,6 +92,29 @@ public class ConfirmDialog : MonoBehaviour
             var es = new GameObject("[ConfirmDialog.EventSystem]",
                 typeof(EventSystem), typeof(StandaloneInputModule));
             DontDestroyOnLoad(es);
+        }
+
+        // ==== AN AUTHORED DIALOG IS FILLED IN, NOT REBUILT ====
+        //
+        // Two strings and two callbacks. Everything below this branch exists
+        // only for the case where nobody has authored one yet.
+        if (Authored)
+        {
+            root.SetActive(true);
+            messageText.text = message;
+
+            string yesA = string.IsNullOrEmpty(yesLabel) ? LocalizationManager.Tr("Yes") : yesLabel;
+            string noA  = string.IsNullOrEmpty(noLabel)  ? LocalizationManager.Tr("No")  : noLabel;
+            if (yesButtonLabel != null) yesButtonLabel.text = yesA;
+            if (noButtonLabel != null) noButtonLabel.text = noA;
+
+            // RemoveAllListeners, because this object survives scene loads and
+            // the same buttons are reused for every question ever asked.
+            yesButton.onClick.RemoveAllListeners();
+            yesButton.onClick.AddListener(OnYes);
+            noButton.onClick.RemoveAllListeners();
+            noButton.onClick.AddListener(OnNo);
+            return;
         }
 
         // ---- rebuild root ----
@@ -167,6 +219,13 @@ public class ConfirmDialog : MonoBehaviour
         s_open = false;
         pendingYes = null;
         pendingNo = null;
+
+        // An AUTHORED dialog is hidden, never destroyed. Destroying it would
+        // work exactly once and then silently stop opening for the rest of the
+        // session, because there is nothing left to fill in. Only the
+        // code-built tree is thrown away, which is what it was made for.
+        if (Authored) { root.SetActive(false); return; }
+
         if (root != null) { Destroy(root); root = null; }
     }
 
