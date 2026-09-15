@@ -831,11 +831,26 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (currentPoise < maxPoise && stunTimer <= 0) currentPoise += Time.deltaTime * 15f;
 
-        if (knockbackVelocity.magnitude > 0.1f)
+        // ==== KNOCKBACK WAS THE FOURTH WRITER ====
+        //
+        // Same defect as the three coroutines, and the one still left: this
+        // pushed the enemy one way while the movement code further down pulled
+        // it the other, in the SAME frame, every frame a knockback was decaying.
+        // In a fight the player is landing hits constantly, so the tug-of-war
+        // is more or less continuous — which is the zigzag, seen at exactly the
+        // moment the player is closest and looking hardest.
+        //
+        // It also wrote transform.position directly, bypassing the
+        // CharacterController, so it shoved the body through geometry the
+        // movement code was carefully steering around.
+        if (knockbackVelocity.sqrMagnitude > 0.01f)
         {
-            transform.position += knockbackVelocity * Time.deltaTime;
+            Vector3 kb = transform.position + knockbackVelocity * Time.deltaTime;
+            kb.y = SampleTerrainHeight(kb) + verticalOffset;
+            SetPositionSafe(kb);
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
+        else knockbackVelocity = Vector3.zero;
 
         if (isCinematicFrozen || isSpawning)
         {
@@ -877,7 +892,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // it was never read anywhere. The other two had no flag at all.
         //
         // Whichever system is driving, drives alone.
-        if (_scriptedMove) return;
+        // Knockback owns the transform while it is still meaningful — see the
+        // note where it is applied. Below the threshold it has already been
+        // zeroed, so this costs one comparison in the normal case.
+        if (_scriptedMove || knockbackVelocity.sqrMagnitude > 0.04f) return;
 
         if (startPassive && !isAggroed)
         {
@@ -2327,7 +2345,19 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // fight is not one animation on loop and two of the same enemy side by
         // side stop mirroring each other. Swapped before the trigger, never
         // during — mid-swing it would restart the clip on the contact frame.
-        if (personality != null) personality.RerollAttack();
+        // ==== NOT ON THE FRAME THE SWING STARTS ====
+        //
+        // RerollAttack assigns through the AnimatorOverrideController indexer,
+        // and every such assignment rebuilds the controller — Unity's own docs
+        // say to batch them for exactly that reason. Doing it in the same frame
+        // as SetTrigger("Attack") means the controller is rebuilt at the precise
+        // moment the run-to-attack transition should be blending, so the blend
+        // is lost and the run CUTS to the attack. That is the animation switch
+        // the player keeps seeing mid-stride.
+        //
+        // The variety is still worth having, so it is kept — just paid for at
+        // the END of the swing, during recovery, where a hitch is invisible and
+        // the next attack gets the new clip. See AttackRoutine.
         SetAnimIntSafe("AttackIndex", UnityEngine.Random.Range(0, 3));
         if (animator != null) { animator.ResetTrigger("Attack"); animator.SetTrigger("Attack"); }
         // Telegraph growl is the pre-attack roar the player kept hearing
@@ -2516,6 +2546,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
         yield return new WaitForSeconds(0.2f);
         isPreparingAttack = false;
+        _attackCo = null;
+
+        // Roll the NEXT swing's clip here, in recovery, rather than on the frame
+        // the current one starts. The assignment rebuilds the animator
+        // controller; doing it during the run-to-attack transition destroys the
+        // blend. Doing it now costs a hitch nobody is looking at, and a long
+        // fight still gets a different swing each time.
+        if (personality != null) personality.RerollAttack();
     }
 
     // Guards against a single swing landing twice. The animation event that
