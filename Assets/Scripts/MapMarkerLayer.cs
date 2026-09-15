@@ -18,6 +18,7 @@ using UnityEngine.UI;
 public class MapMarkerLayer : MonoBehaviour
 {
     private RectTransform _map;
+    private RectTransform _iconHost;
     private Camera _cam;
     private Transform _player;
     private MapEventIcons _set;
@@ -75,7 +76,8 @@ public class MapMarkerLayer : MonoBehaviour
 
         var sb = new System.Text.StringBuilder("[MapIcons] SELF-REPORT\n");
         sb.AppendLine($"  layer alive: yes   bound: {(_map != null && _cam != null && _player != null && _set != null)}");
-        sb.AppendLine($"  minimap rect: {(_map != null ? _map.name + $" ({_mapWidth:F0}px, radius {_radius:F0})" : "NULL")}");
+        sb.AppendLine($"  minimap rect: {(_map != null ? _map.name : "NULL")}");
+        sb.AppendLine($"  icon parent: {(_iconHost != null ? _iconHost.name + $" ({_mapWidth:F0}px, radius {_radius:F0}, sibling {_iconHost.GetSiblingIndex()})" : "NULL")}");
         sb.AppendLine($"  minimap camera: {(_cam != null ? _cam.name + (_cam.orthographic ? $" ortho size {_cam.orthographicSize}" : " perspective") : "NULL")}");
         sb.AppendLine($"  player: {(_player != null ? _player.name : "NULL")}");
         sb.AppendLine($"  icon set: {(_set != null ? "loaded" : "NULL — no MapEventIcons in a Resources folder")}");
@@ -253,9 +255,38 @@ public class MapMarkerLayer : MonoBehaviour
         return false;
     }
 
+    // ==== THE RECT THAT SHOWS THE MAP IS NOT THE RECT THE TRACKER NAMES ====
+    //
+    // This is what made the markers invisible for four rounds of reports. The
+    // minimap widget is built like this:
+    //
+    //     Minimap_Widget
+    //     ├── MinimapBase   <- a faint backing plate, child 0. minimapRect points HERE.
+    //     ├── Mask
+    //     │   ├── RawImage  <- the actual map surface, opaque
+    //     │   └── HorseIcon <- the one icon that has always worked
+    //     └── Minimap_Frame
+    //
+    // Parenting icons to MinimapBase puts them at sibling index 0, and UGUI
+    // paints later siblings on top — so every marker was positioned perfectly
+    // and then painted over by the RawImage. Nothing logged, nothing looked
+    // wrong, and the maths was never the problem: the two rects share a centre
+    // to within a pixel and differ by 3% in width.
+    //
+    // So icons go where the icon that works goes: alongside the RawImage, after
+    // it. The map surface is the reliable landmark here, not a name.
+    private RectTransform ResolveIconHost(RectTransform mapRect)
+    {
+        Transform widget = mapRect.parent != null ? mapRect.parent : mapRect;
+        var surface = widget.GetComponentInChildren<RawImage>(true);
+        if (surface != null && surface.transform.parent is RectTransform holder && holder.rect.width > 1f)
+            return holder;
+        return mapRect;
+    }
+
     private bool Bind()
     {
-        if (_map != null && _cam != null && _player != null && _set != null) return true;
+        if (_map != null && _iconHost != null && _cam != null && _player != null && _set != null) return true;
 
         _rebind -= Time.unscaledDeltaTime;
         if (_rebind > 0f) return false;
@@ -300,19 +331,26 @@ public class MapMarkerLayer : MonoBehaviour
         if (p == null) return Fail("no object tagged Player, so there is nothing to measure distance from.");
         _player = p.transform;
 
+        _iconHost = ResolveIconHost(_map);
+
         // Off the RESOLVED rect, not sizeDelta. A minimap anchored by stretch
         // has a sizeDelta of zero regardless of how big it looks, which made
         // every marker pile up in the centre with a negative clamp radius — the
         // markers were being drawn perfectly, on top of each other, invisibly.
-        float width = _map.rect.width;
-        if (width < 1f) width = _map.sizeDelta.x;
+        //
+        // Measured off the host, so the pixels-per-metre scale and the rim clamp
+        // are in the same space the icons are actually parented into.
+        float width = _iconHost.rect.width;
+        if (width < 1f) width = _iconHost.sizeDelta.x;
+        if (width < 1f) width = _map.rect.width;
         if (width < 1f)
             return Fail("the minimap rect resolves to zero width, so there is nowhere to place a marker.");
         _mapWidth = width;
         _radius = (width / 2f) - 10f;
 
         _lastComplaint = null;
-        Debug.Log($"[MapIcons] Bound to the minimap ({width:F0}px). Markers live: {MapEventMarker.All.Count}.");
+        Debug.Log($"[MapIcons] Bound to the minimap: rect '{_map.name}', icons parented to '{_iconHost.name}' " +
+                  $"({width:F0}px). Markers live: {MapEventMarker.All.Count}.");
 
         // The pool lives under the minimap, so it inherits its mask and moves
         // with it. Icons from a previous bind are DESTROYED rather than merely
@@ -332,7 +370,9 @@ public class MapMarkerLayer : MonoBehaviour
         {
             var go = new GameObject($"MapMarker_{_pool.Count}", typeof(RectTransform));
             var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(_map, false);
+            rt.SetParent(_iconHost, false);
+            // Above the map surface, not under it — see ResolveIconHost.
+            rt.SetAsLastSibling();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             var img = go.AddComponent<Image>();

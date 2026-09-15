@@ -13,6 +13,8 @@ public class AllyAI : MonoBehaviour, IDamageable
     [Header("Movement")]
     public float moveSpeed = 5f;
     public float followDistance = 3f;
+    [Tooltip("Once following, the ally keeps closing until it is this near. Must be comfortably below followDistance or the companion vibrates on the threshold.")]
+    public float followStopDistance = 1.6f;
     public float aggroRange = 12f;
 
     [Header("Combat")]
@@ -165,7 +167,7 @@ public class AllyAI : MonoBehaviour, IDamageable
                     StartCoroutine(AttackRoutine(enemy));
                 }
             }
-            else { MoveToward(ep); SetMoving(true); }
+            else { MoveToward(ep, attackRange * 0.8f); SetMoving(true); }
         }
         else
         {
@@ -193,10 +195,23 @@ public class AllyAI : MonoBehaviour, IDamageable
                 }
             }
 
-            // No enemy near — stick close to the player.
-            if (FlatDist(transform.position, player.position) > followDistance)
+            // ==== A BARE DISTANCE THRESHOLD MAKES A COMPANION VIBRATE ====
+            //
+            // "Move if further than followDistance, stand still otherwise" reads
+            // fine and shakes on screen. While the player runs, the gap sits
+            // right on the threshold, so the ally steps at full speed on one
+            // frame and freezes on the next, forever — and the locomotion blend
+            // snaps between run and idle along with it.
+            //
+            // Hysteresis: once it has set off it keeps closing until it is well
+            // inside, and it does not set off again until the player is properly
+            // away. The arrival ramp in MoveToward does the rest.
+            float dPlayer = FlatDist(transform.position, player.position);
+            _following = dPlayer > (_following ? followStopDistance : followDistance);
+
+            if (_following)
             {
-                MoveToward(player.position);
+                MoveToward(player.position, followStopDistance);
                 FaceToward(player.position);
                 SetMoving(true);
             }
@@ -284,8 +299,12 @@ public class AllyAI : MonoBehaviour, IDamageable
     }
 
     private float _curSpeed; // ramped, for non-robotic accel/decel
+    private bool _following; // hysteresis latch — see the follow branch
 
-    private void MoveToward(Vector3 dest)
+    // stopAt: how close is close enough. Speed tapers over the last stretch and
+    // the step is clamped so a single frame can never carry the ally past the
+    // destination and into whatever is standing on it.
+    private void MoveToward(Vector3 dest, float stopAt = 0f)
     {
         Vector3 dir = dest - transform.position; dir.y = 0f;
         float d = dir.magnitude;
@@ -293,9 +312,17 @@ public class AllyAI : MonoBehaviour, IDamageable
         dir /= d;
         // Remembered for the locomotion blend — see SetMoving.
         _lastMoveDir = dir;
-        // Ease speed up/down instead of snapping to full velocity instantly.
-        _curSpeed = Mathf.MoveTowards(_curSpeed, moveSpeed, moveSpeed * 3f * Time.deltaTime);
-        Vector3 next = transform.position + dir * _curSpeed * Time.deltaTime;
+
+        // Ease speed up/down instead of snapping to full velocity instantly,
+        // and back off on approach so it settles rather than overshooting.
+        float target = moveSpeed;
+        if (stopAt > 0f) target *= Mathf.Clamp01((d - stopAt) / 1.2f);
+        _curSpeed = Mathf.MoveTowards(_curSpeed, target, moveSpeed * 3f * Time.deltaTime);
+
+        float step = Mathf.Min(_curSpeed * Time.deltaTime, Mathf.Max(0f, d - stopAt));
+        if (step <= 0f) return;
+
+        Vector3 next = transform.position + dir * step;
         next.y = GroundY(next);
         transform.position = next;
     }
@@ -328,13 +355,16 @@ public class AllyAI : MonoBehaviour, IDamageable
         animator.SetBoolSafe("isMoving", m);
         animator.SetBoolSafe("IsGrounded", true);
 
+        // Ride the ramp down instead of hard-zeroing the blend the instant the
+        // ally stops. Slamming Speed to 0 on the same frame the transform stops
+        // is half of what made the stop-start threshold look like a vibration.
         float speed01 = moveSpeed > 0.01f ? Mathf.Clamp01(_curSpeed / moveSpeed) : 0f;
-        if (!m) speed01 = 0f;
         animator.SetFloatSafe("Speed", speed01);
 
         // Movement in the ally's OWN space, which is what a 2D locomotion blend
-        // expects: +Z forward, +X to its right.
-        Vector3 local = m ? transform.InverseTransformDirection(_lastMoveDir) : Vector3.zero;
+        // expects: +Z forward, +X to its right. Kept pointing the same way while
+        // decelerating, so the blend eases out along the direction it was going.
+        Vector3 local = transform.InverseTransformDirection(_lastMoveDir);
         animator.SetFloatSafe("MoveX", Mathf.Clamp(local.x, -1f, 1f) * speed01);
         animator.SetFloatSafe("MoveZ", Mathf.Clamp(local.z, -1f, 1f) * speed01);
     }
