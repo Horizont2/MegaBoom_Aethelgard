@@ -268,6 +268,15 @@ public class PlayerBlock : MonoBehaviour
             IsBlocking = true;
             _raisedAt = Time.time;
             GuardBroken = false;
+
+            // Raising the guard cancels a swing already in flight — and it has
+            // to be said HERE, on the rising edge, not inferred later from
+            // whether the guard is still up. The damage lands at the swing's
+            // contact frame, which can be after the player has already let go,
+            // so checking the live state at that moment lets a quick tap through
+            // and the hit connects anyway.
+            _pc.CancelSwing();
+
             if (_anim != null) SetBlockPose(true);
             if (AudioManager.Instance != null && AudioManager.Instance.HasEvent(AudioID.Block_Raise))
                 AudioManager.Instance.PlaySFX(AudioID.Block_Raise);

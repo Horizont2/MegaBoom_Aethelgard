@@ -414,7 +414,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [HideInInspector] public Vector3 anchorPoint;
     [HideInInspector] public Transform anchorTransform;
     [HideInInspector] public float roamRadius = 3.5f;
-    [HideInInspector] public float aggroRange = 14f;
+    // Fourteen metres was a short leash for a top-down camera: the player can
+    // see an enemy long before it notices them, walk up and take the first
+    // swing, every time. Eighteen means being SEEN is part of approaching.
+    // Sight is still required — see CanSeeTarget — so this widens notice, not
+    // omniscience.
+    [HideInInspector] public float aggroRange = 18f;
     [HideInInspector] public EnemyEncounterGroup parentGroup;
     [HideInInspector] public bool roamWhilePassive = true;
     [HideInInspector] public bool faceAnchorWhenIdle = false;
@@ -2122,7 +2127,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // A waiter still THREATENS. Every few seconds it lunges a step and
         // raises its weapon without swinging — enough that the crowd reads as a
         // pack looking for an opening rather than an audience.
-        if (ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
+        // ==== ONLY FEINT WHEN STANDING STILL ====
+        //
+        // A feint triggers the ATTACK animation and steps forward. Fired while
+        // the enemy is still walking to its post, that cuts a run animation to
+        // an attack animation mid-stride for no reason the player can see —
+        // which is most of "they switch to the attack animation while running".
+        //
+        // A feint is a threat made from a standstill. _holdSettled says the
+        // enemy has arrived and is watching, which is exactly when one reads as
+        // menace rather than as a glitch.
+        if (_holdSettled && ring.ShouldFeint(this, Time.time) && !isPreparingAttack)
             StartCoroutine(FeintRoutine());
     }
 

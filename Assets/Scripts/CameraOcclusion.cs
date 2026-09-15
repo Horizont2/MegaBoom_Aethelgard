@@ -63,7 +63,19 @@ public class CameraOcclusion : MonoBehaviour
         // path even when the player is hugging a tree.
         float checkDistance = Mathf.Max(0f, dist - playerProximityIgnore);
 
-        int hitCount = Physics.SphereCastNonAlloc(startPos, raycastRadius, dir, s_hitBuffer, checkDistance, foliageLayer);
+        // ==== TRIGGERS ARE THE SILHOUETTE'S JOB, NOT THIS ONE'S ====
+        //
+        // Bushes were given trigger colliders so something could detect a player
+        // standing in one. This cast defaults to hitting triggers, so it started
+        // fading every bush the player walked behind — and fading a bush is the
+        // WRONG answer to that: the whole point of the silhouette is that the
+        // foliage stays, and the player reads through it.
+        //
+        // Solid colliders — trees, rocks, buildings — are what this exists for,
+        // because there is no reading through a tree trunk. Ignoring triggers
+        // splits the two systems cleanly along exactly the right line.
+        int hitCount = Physics.SphereCastNonAlloc(startPos, raycastRadius, dir, s_hitBuffer, checkDistance,
+                                                  foliageLayer, QueryTriggerInteraction.Ignore);
 
         for (int i = 0; i < hitCount; i++)
         {
