@@ -496,7 +496,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // gives up on LOSING SIGHT rather than on distance, so breaking line of sight
     // is the skill that works. Encounter enemies keep the tighter numbers set on
     // them by their group.
-    [HideInInspector] public bool canDeAggro = true;
+    //
+    // ==== THE DEFAULT WAS BACKWARDS, AND THAT WAS THE WHOLE BUG ====
+    //
+    // The comment in UpdateBehavior says "only encounter enemies can give up;
+    // the radial horde stays relentless", and every spawner that genuinely wants
+    // one behaviour or the other already says so out loud: EnemyEncounterGroup
+    // and RegionAlertDirector set this true, the Reliquary's guards and waves and
+    // the RegionTotem's waves set it false. Nobody was relying on the default
+    // being true — it was simply inherited by everything nobody had thought
+    // about: the radial horde, boss adds, mage summons, caged-ally guards and
+    // every enemy dropped into a scene by hand.
+    //
+    // Those are exactly the enemies that were reported as moving in zigzags
+    // while the Reliquary's guards, the one group with an explicit false, moved
+    // normally. A de-aggro hands the enemy to the search roamer, which walks to
+    // random points and stands still between them, so the symptom is a change of
+    // direction and a Run->Idle->Run flip every couple of seconds.
+    //
+    // False is what the design always said it was; the ones that need to give up
+    // ask for it.
+    [HideInInspector] public bool canDeAggro = false;
     // This enemy's own look and gait. Added in Start; see the note there.
     private EnemyPersonality personality;
     private Vector3 _lastGaitPos;
@@ -1307,7 +1327,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
             int m = 0;
             int def = LayerMask.NameToLayer("Default");   if (def >= 0) m |= 1 << def;
             int obs = LayerMask.NameToLayer("Obstacles"); if (obs >= 0) m |= 1 << obs;
-            int nat = LayerMask.NameToLayer("Nature");    if (nat >= 0) m |= 1 << nat;
+            // Nature is deliberately NOT here. It used to be, and then every
+            // painted bush got a real collider and the Nature layer — which
+            // turned waist-high shrubbery into a sight wall and blinded enemies
+            // in the middle of an open field. Buildings and rocks are Default or
+            // Obstacles; foliage stops arrows, not eyes. (The player silhouette
+            // shader exists precisely so the player stays visible through a bush,
+            // so having the AI go blind at the same one was doubly wrong.)
             s_losBlockers = m;
         }
         int blockers = s_losBlockers;
@@ -1397,6 +1423,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         anchorPoint = center;
         roamRadius = searchRoamRadius;
         roamWhilePassive = true;
+        _searchLeg = 0;          // first leg goes straight to where they were last seen
         nextRoamPickTime = 0f;   // pick a search point immediately
     }
 
@@ -1430,6 +1457,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         anchorPoint = position;
         roamRadius = searchRoamRadius;
         roamWhilePassive = true;
+        _searchLeg = 0;          // first leg goes straight to where they were last seen
         nextRoamPickTime = 0f;
     }
 
@@ -1461,10 +1489,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             if (Time.time >= nextRoamPickTime || Vector3.SqrMagnitude(transform.position - currentRoamTarget) < 0.6f)
             {
-                Vector2 r = Random.insideUnitCircle * roamRadius;
-                currentRoamTarget = anchor + new Vector3(r.x, 0f, r.y);
-                currentRoamTarget.y = SampleTerrainHeight(currentRoamTarget) + verticalOffset;
-                nextRoamPickTime = Time.time + Random.Range(2.5f, 5f);
+                currentRoamTarget = PickRoamPoint(anchor);
+                // A patrol may dawdle between legs; a search may not. Standing
+                // still at the end of every leg is half of the reported "changes
+                // animation every few steps", and a hunter that stops looking for
+                // two seconds at a time does not read as hunting. The number kept
+                // for a search is a stuck-timeout, not a rest.
+                nextRoamPickTime = Time.time + (isSearching ? 6f : Random.Range(2.5f, 5f));
             }
         }
         else
@@ -1503,6 +1534,52 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
             SetMovingAnim(false, 0f);
         }
+    }
+
+    private int _searchLeg;
+
+    // ==== A SEARCH IS A DIRECTION, NOT A DICE ROLL ====
+    //
+    // Every roam point was Random.insideUnitCircle around the anchor, so
+    // consecutive legs pointed anywhere at all, very much including straight back
+    // the way the enemy had just come. Across a 7m search radius that is a
+    // visible zigzag, and it is the other half of the animation complaint,
+    // because the enemy reaches each point, stops, and starts again.
+    //
+    // A search now walks to the last known position first — which is the obvious
+    // thing to do and reads as intent — and only then casts about. Each later leg
+    // turns no more than 70 degrees off the one before, so the path curves
+    // instead of doubling back. An ordinary patrol keeps its old wander.
+    private Vector3 PickRoamPoint(Vector3 anchor)
+    {
+        Vector3 p;
+        if (isSearching && _searchLeg == 0)
+        {
+            p = anchor;
+        }
+        else
+        {
+            Vector3 facing = transform.forward;
+            facing.y = 0f;
+            if (facing.sqrMagnitude < 0.01f) facing = Vector3.forward;
+            facing.Normalize();
+
+            float turn = isSearching ? Random.Range(-70f, 70f) : Random.Range(-180f, 180f);
+            Vector3 dir = Quaternion.Euler(0f, turn, 0f) * facing;
+            p = transform.position + dir * Mathf.Max(2f, roamRadius) * Random.Range(0.6f, 1f);
+
+            // Stay in this enemy's own patch: a leg that would leave the radius is
+            // pulled back to its edge rather than letting the search drift away.
+            Vector3 fromAnchor = p - anchor;
+            fromAnchor.y = 0f;
+            float out2 = fromAnchor.magnitude;
+            if (out2 > roamRadius && out2 > 0.001f)
+                p = anchor + fromAnchor * (roamRadius / out2);
+        }
+
+        _searchLeg++;
+        p.y = SampleTerrainHeight(p) + verticalOffset;
+        return p;
     }
 
     private float _animSpeed;
