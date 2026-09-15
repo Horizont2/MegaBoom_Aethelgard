@@ -78,6 +78,8 @@ public class EnemyMotionProbe : MonoBehaviour
     private int _writeFrames, _writesTotal, _maxWritesInAFrame;
     private float _worstStep;
     private string _worstWriter = "-";
+    private float _worstActual;
+    private string _worstActualHit = "-";
     private readonly System.Collections.Generic.List<string> _wNames = new System.Collections.Generic.List<string>(8);
     private readonly System.Collections.Generic.List<int> _wCounts = new System.Collections.Generic.List<int>(8);
 
@@ -246,17 +248,26 @@ public class EnemyMotionProbe : MonoBehaviour
         // whichever writer produced the largest step each frame, and how many
         // writers ran. More than one in a frame is the shape of this bug in
         // every form it has taken so far.
-        if (EnemyAI.DbgWritesThisFrame > 0)
+        // Read from the SUBJECT now. These used to be static, so every number
+        // was the whole horde summed together and described nobody.
+        if (_ai.DbgWritesThisFrame > 0)
         {
             _writeFrames++;
-            _writesTotal += EnemyAI.DbgWritesThisFrame;
-            if (EnemyAI.DbgWritesThisFrame > _maxWritesInAFrame) _maxWritesInAFrame = EnemyAI.DbgWritesThisFrame;
-            if (EnemyAI.DbgBiggestStep > _worstStep)
+            _writesTotal += _ai.DbgWritesThisFrame;
+            if (_ai.DbgWritesThisFrame > _maxWritesInAFrame) _maxWritesInAFrame = _ai.DbgWritesThisFrame;
+            if (_ai.DbgBiggestStep > _worstStep)
             {
-                _worstStep = EnemyAI.DbgBiggestStep;
-                _worstWriter = EnemyAI.DbgBiggestWriter.ToString();
+                _worstStep = _ai.DbgBiggestStep;
+                _worstWriter = _ai.DbgBiggestWriter.ToString();
             }
-            CountWriter(EnemyAI.DbgBiggestWriter.ToString());
+            // The gap between what was asked for and what the body did is the
+            // remaining unknown, so track the worst of each.
+            if (_ai.DbgActualStep > _worstActual)
+            {
+                _worstActual = _ai.DbgActualStep;
+                _worstActualHit = _ai.DbgLastHit;
+            }
+            CountWriter(_ai.DbgBiggestWriter.ToString());
         }
 
         // Enough MOVEMENT, not enough wall clock.
@@ -293,7 +304,13 @@ public class EnemyMotionProbe : MonoBehaviour
         sb.AppendLine($"  animator.speed    : {(_speedMin < float.MaxValue ? _speedMin : 0f):F2} .. {_speedMax:F2}   jumps over 0.25: {_animSpeedJumps}");
         sb.AppendLine($"  isMoving flips    : {_movingFlips}  ({_movingFlips / secs:F1}/s)   <- a steady chase should be 0");
         sb.AppendLine($"  position writers  : {(_writeFrames > 0 ? (float)_writesTotal / _writeFrames : 0f):F2} per frame, worst frame had {_maxWritesInAFrame}   <- more than 1 is the bug");
-        sb.AppendLine($"  fastest single write: {_worstStep:F1} m/s by {_worstWriter}");
+        sb.AppendLine($"  fastest ASKED-FOR step: {_worstStep:F1} m/s by {_worstWriter}");
+        sb.AppendLine($"  fastest ACHIEVED step : {_worstActual:F1} m/s   last thing the capsule touched: {_worstActualHit}");
+        if (_worstActual > _worstStep * 1.5f && _worstStep > 0.1f)
+            sb.AppendLine("    -> the body moved far further than it was asked to. That is CharacterController");
+        sb.AppendLine(_worstActual > _worstStep * 1.5f && _worstStep > 0.1f
+            ? "       depenetration: the capsule is overlapping the collider named above and being shoved out."
+            : "    -> request and result agree, so nothing is shoving it.");
         if (_wNames.Count > 0)
         {
             sb.AppendLine("  frames each writer led, most first:");
@@ -333,6 +350,7 @@ public class EnemyMotionProbe : MonoBehaviour
         _wNames.Clear(); _wCounts.Clear();
         _writeFrames = _writesTotal = _maxWritesInAFrame = 0;
         _worstStep = 0f; _worstWriter = "-";
+        _worstActual = 0f; _worstActualHit = "-";
         _reversals = _bigTurns = _frames = _movedFrames = _animStateChanges = _animSpeedJumps = 0;
         _turnSum = _turnMax = 0f;
         _speedMin = _stepMin = float.MaxValue;

@@ -3275,11 +3275,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Feint, HoldSettle, HoldMove, Recoil, BackOff, AttackLunge,
     }
 
-    // Per-frame, shared across enemies — the probe watches one at a time.
-    public static int DbgWritesThisFrame;
-    public static Writer DbgBiggestWriter;
-    public static float DbgBiggestStep;
-    private static int s_dbgFrame = -1;
+    // ==== PER INSTANCE, NOT STATIC ====
+    //
+    // These were shared across every enemy, so "3.18 writers per frame, worst
+    // frame had 13" was the whole horde added together and said nothing about
+    // the one being watched. They belong to the enemy they describe.
+    [System.NonSerialized] public int DbgWritesThisFrame;
+    [System.NonSerialized] public Writer DbgBiggestWriter;
+    [System.NonSerialized] public float DbgBiggestStep;      // what the AI ASKED for
+    [System.NonSerialized] public float DbgActualStep;       // what the body DID
+    [System.NonSerialized] public string DbgLastHit = "-";   // what shoved it, if anything
+    private int _dbgFrame = -1;
 
     // Metres per second the movement code asked for this frame. Zero on a frame
     // where nothing asked, which is what standing still means.
@@ -3287,11 +3293,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
     private void SetPositionSafe(Writer who, Vector3 newPos)
     {
-        if (s_dbgFrame != Time.frameCount)
+        if (_dbgFrame != Time.frameCount)
         {
-            s_dbgFrame = Time.frameCount;
+            _dbgFrame = Time.frameCount;
             DbgWritesThisFrame = 0;
             DbgBiggestStep = 0f;
+            DbgActualStep = 0f;
         }
         DbgWritesThisFrame++;
         Vector3 d = newPos - transform.position; d.y = 0f;
@@ -3311,7 +3318,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // out of a collision is not walking faster.
         _intendedSpeed = step;
 
+        // ==== REQUESTED VERSUS ACHIEVED ====
+        //
+        // The gap between these two is the whole remaining question. The AI's
+        // fastest request measured 4.8 m/s while the body reached 10.9, so
+        // something adds displacement after the request — almost certainly
+        // CharacterController depenetration, which moves further than the delta
+        // it was handed when the capsule is overlapping. Measuring both, and
+        // naming whatever the controller is touching, settles it.
+        Vector3 before = transform.position;
         SetPositionSafe(newPos);
+        Vector3 did = transform.position - before; did.y = 0f;
+        DbgActualStep += did.magnitude / Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
+    }
+
+    // Unity calls this for every collider the CharacterController touches during
+    // a Move. Whatever the capsule is wedged against is what depenetration is
+    // pushing it out of, so this is the name the probe needs.
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (hit == null || hit.collider == null) return;
+        DbgLastHit = hit.collider.name + " [" + LayerMask.LayerToName(hit.collider.gameObject.layer) + "]";
     }
 
     private void SetPositionSafe(Vector3 newPos)
