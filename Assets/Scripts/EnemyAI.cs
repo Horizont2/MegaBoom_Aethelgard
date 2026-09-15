@@ -2382,7 +2382,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (TutorialHints.Instance != null)
             TutorialHints.Instance.ShowIfNew("CombatTelegraph",
-                "TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.", 5f);
+                "TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.", 5f);
 
         // An unblockable swing announces itself in a colour nothing else uses.
         // The player has to be able to read "shield will not save you" from
@@ -2609,8 +2609,32 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 {
                     knockbackVelocity = info.PushDirection * info.KnockbackForce;
                     stunTimer = info.StunDuration;
-                    isPreparingAttack = false;
                     currentPoise = maxPoise;
+
+                    // ==== A STAGGER HAS TO ACTUALLY STOP THE SWING ====
+                    //
+                    // Clearing isPreparingAttack does not cancel anything. It
+                    // only re-opens the early-out at the top of Update, while
+                    // AttackRoutine keeps running and lands its damage a few
+                    // frames later — so the one read this fight is built to
+                    // teach, punish the wind-up, paid out in a damage number
+                    // the player cannot see and then hit them anyway. Exactly
+                    // the failure the block path already had a note about.
+                    //
+                    // Worse, re-opening Update while the old routine is alive
+                    // lets a SECOND AttackRoutine start over the top of it.
+                    //
+                    // Only on a real stagger. A chip hit that happens to land
+                    // during a wind-up must not cancel it, or every swing in a
+                    // crowd would be interrupted by somebody's stray arrow.
+                    if (info.StunDuration > 0f)
+                    {
+                        if (_attackCo != null) { StopCoroutine(_attackCo); _attackCo = null; }
+                        ParryCue.Cancel(this);
+                        isPreparingAttack = false;
+                        if (animator != null) animator.ResetTrigger("Attack");
+                    }
+
                     ResetColor();
                     // A broken-poise boss reads as a real beat, not a flinch.
                     if (isBoss)

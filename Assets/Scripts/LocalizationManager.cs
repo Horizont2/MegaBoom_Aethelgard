@@ -2436,12 +2436,12 @@ public static class LocalizationManager
              "Wegaltäre rufen einen Mini-Boss. Besiegen bringt Diamanten + XP. Optional aber verlockend.",
              "Les autels de bord de route invoquent un mini-boss. Vaincs-le pour diamants + XP. Optionnel mais tentant.",
              "Przydrożne ołtarze przywołują miniboosa. Pokonanie daje diamenty + PD. Opcjonalne, ale kuszące.");
-        Add5("TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.",
-             "СОВЕТ: красная вспышка на враге = входящая атака. РЫВОК (Space) сквозь неё для уклонения.",
-             "PISTA: destello rojo en un enemigo = ataque entrante. ESQUIVA (Espacio) para evitarla.",
-             "TIPP: rotes Blinken beim Feind = eingehender Angriff. AUSWEICHEN (Leertaste) hindurch.",
-             "ASTUCE : flash rouge sur un ennemi = attaque entrante. ESQUIVE (Espace) à travers.",
-             "PORADA: czerwony błysk u wroga = nadchodzący cios. UNIK (Spacja) przez niego.");
+        Add5("TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.",
+             "СОВЕТ: красная вспышка на враге = входящая атака. РЫВОК (SHIFT) сквозь неё для уклонения.",
+             "PISTA: destello rojo en un enemigo = ataque entrante. ESQUIVA (SHIFT) para evitarla.",
+             "TIPP: rotes Blinken beim Feind = eingehender Angriff. AUSWEICHEN (SHIFT) hindurch.",
+             "ASTUCE : flash rouge sur un ennemi = attaque entrante. ESQUIVE (SHIFT) à travers.",
+             "PORADA: czerwony błysk u wroga = nadchodzący cios. UNIK (SHIFT) przez niego.");
         Add5("Each level lets you pick one of three upgrades. Hover a card to read its effect, click to commit.",
              "Каждый уровень даёт выбор из трёх улучшений. Наведи на карту чтобы прочитать эффект, кликни чтобы взять.",
              "Cada nivel te deja elegir una de tres mejoras. Pasa el ratón para ver el efecto, clic para elegir.",
@@ -3046,14 +3046,14 @@ public static class LocalizationManager
              "Fremder: ZUM PFERD, SOFORT!!",
              "Étranger : AU CHEVAL, TOUT DE SUITE !!",
              "Nieznajomy: DO KONIA, JUŻ!!");
-        Add7("[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
-             "[TIP] You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
-             "[ПОРАДА] Їх не вбити! Утримуй SHIFT, щоб бігти, і дістанься точки евакуації!",
-             "[СОВЕТ] Их не убить! Удерживай SHIFT для спринта и добеги до точки эвакуации!",
-             "[CONSEJO] ¡No puedes matarlos! Mantén SHIFT para esprintar y llega al Punto de Extracción.",
-             "[TIPP] Sie sind unbesiegbar! Halte SHIFT zum Sprinten und erreiche den Fluchtpunkt!",
-             "[ASTUCE] Impossible de les tuer ! Maintiens SHIFT pour sprinter jusqu'au Point d'Extraction !",
-             "[WSKAZÓWKA] Nie da się ich zabić! Trzymaj SHIFT, by biec, i dotrzyj do Punktu Ewakuacji!");
+        Add7("[TIP] You can't kill them! Dash with SHIFT and reach the Extraction Point!",
+             "[TIP] You can't kill them! Dash with SHIFT and reach the Extraction Point!",
+             "[ПОРАДА] Їх не вбити! Ухиляйся ривком (SHIFT) і дістанься точки евакуації!",
+             "[СОВЕТ] Их не убить! Уклоняйся рывком (SHIFT) и добеги до точки эвакуации!",
+             "[CONSEJO] ¡No puedes matarlos! ¡Esquiva con SHIFT y llega al Punto de Extracción!",
+             "[TIPP] Sie sind unbesiegbar! Weiche mit SHIFT aus und erreiche den Fluchtpunkt!",
+             "[ASTUCE] Impossible de les tuer ! Esquive avec SHIFT et rejoins le Point d'Extraction !",
+             "[WSKAZÓWKA] Nie da się ich zabić! Unikaj skokiem (SHIFT) i dotrzyj do Punktu Ewakuacji!");
         Add7("YOU HAVE FALLEN...",
              "<color=#8B0000>YOU HAVE FALLEN...</color>",
              "<color=#8B0000>ТИ ЗАГИНУВ...</color>",
@@ -3401,8 +3401,8 @@ public static class LocalizationManager
             "Стань на заражений тотем і натисни <b>F</b> для очищення. З'явиться хвиля ворогів — виживи, щоб захопити регіон.");
         AddSelf("Activating a totem summons a wave. Defeat <b>every</b> enemy to purify it — the next totem unlocks afterward.",
             "Активація тотема викликає хвилю. Знищ <b>усіх</b> ворогів для очищення — після цього відкриється наступний тотем.");
-        AddSelf("TIP: red flash on an enemy = incoming attack. DASH (Space) through it to dodge.",
-            "ПОРАДА: червоний спалах на ворогові = атака. РИВОК (Space) крізь неї — ухилення.");
+        AddSelf("TIP: red flash on an enemy = incoming attack. DASH (SHIFT) through it to dodge.",
+            "ПОРАДА: червоний спалах на ворогові = атака. РИВОК (SHIFT) крізь неї — ухилення.");
         AddSelf("Welcome to camp — your safe hub. Walk up to a building slot and press <b>F</b> to inspect or build. Pick missions at the Notice Board.",
             "Вітаємо в таборі — твоєму безпечному хабі. Підійди до будівлі й натисни <b>F</b> для огляду чи будівництва. Місії — на Дошці оголошень.");
         AddSelf("WASD to move, mouse to look. Hold <b>SHIFT</b> to dash and slip past attacks.",
@@ -4826,14 +4826,14 @@ public static class LocalizationManager
              "Feinde greifen an! Linke Maustaste zum Kämpfen, achte auf deine Gesundheit.",
              "Ennemis en approche ! Clic gauche pour attaquer, surveille ta santé.",
              "Wrogowie atakują! Lewy przycisk myszy do walki, uważaj na zdrowie.");
-        Add7("You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
-             "You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!",
-             "Їх не вбити! Утримуй SHIFT, щоб бігти, і дістанься точки евакуації!",
-             "Их не убить! Удерживай SHIFT для спринта и добеги до точки эвакуации!",
-             "¡No puedes matarlos! Mantén SHIFT para esprintar y llega al Punto de Extracción!",
-             "Sie sind unbesiegbar! Halte SHIFT zum Sprinten und erreiche den Fluchtpunkt!",
-             "Impossible de les tuer ! Maintiens SHIFT pour sprinter jusqu'au Point d'Extraction !",
-             "Nie da się ich zabić! Trzymaj SHIFT, by biec, i dotrzyj do Punktu Ewakuacji!");
+        Add7("You can't kill them! Dash with SHIFT and reach the Extraction Point!",
+             "You can't kill them! Dash with SHIFT and reach the Extraction Point!",
+             "Їх не вбити! Ухиляйся ривком (SHIFT) і дістанься точки евакуації!",
+             "Их не убить! Уклоняйся рывком (SHIFT) и добеги до точки эвакуации!",
+             "¡No puedes matarlos! ¡Esquiva con SHIFT y llega al Punto de Extracción!",
+             "Sie sind unbesiegbar! Weiche mit SHIFT aus und erreiche den Fluchtpunkt!",
+             "Impossible de les tuer ! Esquive avec SHIFT et rejoins le Point d'Extraction !",
+             "Nie da się ich zabić! Unikaj skokiem (SHIFT) i dotrzyj do Punktu Ewakuacji!");
 
         // ── Raid pre-gate prompt shown when the totem is anchor-shielded. ──
         Add7("The totem is shielded by <b>corruption anchors</b>. Destroy every anchor to break the shield — only then can you purify the totem.",

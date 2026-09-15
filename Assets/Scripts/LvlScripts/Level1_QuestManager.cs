@@ -663,7 +663,7 @@ public class Level1_QuestManager : MonoBehaviour
         if (tutorialTrail != null && evacuationHorse != null)
             tutorialTrail.SetTarget(evacuationHorse.transform);
 
-        Hint("LVL1_FLEE", "You can't kill them! Hold SHIFT to sprint and reach the Extraction Point!");
+        Hint("LVL1_FLEE", "You can't kill them! Dash with SHIFT and reach the Extraction Point!");
     }
 
     private IEnumerator DroneCameraFlyAndTrack(Vector3 targetPosition, float flyDuration)
