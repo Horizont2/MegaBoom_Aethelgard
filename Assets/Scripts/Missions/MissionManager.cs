@@ -177,7 +177,19 @@ public class MissionManager : MonoBehaviour
     {
         if (missionUIPrefab == null || missionUIParent == null) return;
 
-        GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent);
+        // worldPositionStays: FALSE, and it matters.
+        //
+        // Instantiate(prefab, parent) defaults that flag to TRUE, which tells
+        // Unity to keep the prefab's WORLD position and back-solve a local one
+        // to match. For a 3D prop that is usually what you want. For UI it
+        // throws the layout away: the plate's anchoredPosition is recomputed
+        // from wherever the prefab root happened to sit, so the margin authored
+        // into missionUIParent is discarded and the card lands flush against the
+        // screen edge.
+        //
+        // With false the plate keeps the offsets it was authored with and simply
+        // adopts the container — which is the whole reason the container exists.
+        GameObject uiObj = Instantiate(missionUIPrefab, missionUIParent, false);
         mission.uiElement = uiObj.GetComponent<MissionUIElement>();
         // HUD widget shows the WHAT-TO-DO short label (e.g. "Defeat enemies"),
         // not the flavor description — the player already knows the

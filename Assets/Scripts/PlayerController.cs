@@ -999,6 +999,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (isDead) return;
 
+        ControllerWatchdog();
+
         SaveCampHeartbeat();
 
         TickStamina();
@@ -2030,14 +2032,52 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Player_Dash);
         if (perfectDodgeVFX != null) ActivateSceneVFX(perfectDodgeVFX);
 
-        yield return StartCoroutine(BlinkBehindRoutine(fallbackDirection));
+        // isBulletTime is a hard early-out in TakeDamage and the timeScale is
+        // global, so if this routine dies part-way the player is invulnerable
+        // and the whole game stays in slow motion — for the rest of the run.
+        // Neither of those may depend on the routine reaching its last line.
+        try
+        {
+            yield return StartCoroutine(BlinkBehindRoutine(fallbackDirection));
+            yield return new WaitForSecondsRealtime(perfectDodgeDuration);
+        }
+        finally
+        {
+            if (!isAimingGrenade) Time.timeScale = 1f;
+            isBulletTime = false;
+            if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
+            if (perfectDodgeVFX != null && isActiveAndEnabled) StartCoroutine(FadeOutSceneVFX(perfectDodgeVFX));
+        }
+    }
 
-        yield return new WaitForSecondsRealtime(perfectDodgeDuration);
+    // ==== NOTHING IS ALLOWED TO LEAVE THE PLAYER ROOTED ====
+    //
+    // The finally blocks above close the paths we know about. This closes the
+    // ones we do not: being unable to move, with no reason on record, is the
+    // single worst state this script can end up in, and it has now reached a
+    // player twice. The controller is legitimately off while spawning, while
+    // noclipping and while dead; anything else that keeps it off for more than
+    // a moment is a bug, and the recovery costs one comparison per frame.
+    private float _rootedSince = -1f;
 
-        if (!isAimingGrenade) Time.timeScale = 1f;
+    private void ControllerWatchdog()
+    {
+        if (characterController == null) return;
+
+        bool allowed = isDead || isNoclip || isDashing;
+        if (characterController.enabled || allowed) { _rootedSince = -1f; return; }
+
+        if (_rootedSince < 0f) { _rootedSince = Time.unscaledTime; return; }
+        if (Time.unscaledTime - _rootedSince < 1.5f) return;
+
+        _rootedSince = -1f;
+        characterController.enabled = true;
         isBulletTime = false;
+        if (!isAimingGrenade && Time.timeScale != 0f && Time.timeScale < 1f) Time.timeScale = 1f;
         if (anim != null) anim.updateMode = AnimatorUpdateMode.Normal;
-        if (perfectDodgeVFX != null) StartCoroutine(FadeOutSceneVFX(perfectDodgeVFX));
+
+        Debug.LogWarning("[Player] The CharacterController was left disabled with nothing holding it off — " +
+                         "a movement coroutine died part-way. Recovered; check the console above for the throw.");
     }
 
     private IEnumerator BlinkBehindRoutine(Vector3 fallbackDirection)
@@ -2055,43 +2095,77 @@ public class PlayerController : MonoBehaviour, IDamageable
         Vector3 targetPos = threat.position - threat.forward * 2.5f;
         targetPos.y = GetGroundHeight(targetPos);
 
-        float originalFOV = mainCameraCached.fieldOfView;
-        mainCameraCached.fieldOfView = originalFOV + 20f;
-        if (dashParticles != null) dashParticles.Play();
-        if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
-
-        characterController.enabled = false;
-
-        float blinkDuration = 0.15f;
+        float originalFOV = mainCameraCached != null ? mainCameraCached.fieldOfView : 60f;
         float elapsed = 0f;
-        Vector3 startPos = transform.position;
 
-        while (elapsed < blinkDuration)
+        // ==== THE CONTROLLER MUST COME BACK ON, WHATEVER HAPPENS IN HERE ====
+        //
+        // The teleport needs the CharacterController off, and it used to be
+        // switched back on at the bottom of the routine. Anything that killed
+        // the coroutine in between left the player with no controller AND
+        // isDashing stuck true — rooted to the spot and permanently immune,
+        // because dashing grants i-frames. That is the "frozen after a perfect
+        // dodge and nothing can hurt me" bug.
+        //
+        // The threat dying, despawning or being pooled during the blink was the
+        // path that actually bit: reading a destroyed Transform throws, and the
+        // throw took the re-enable with it. Both problems are closed here — the
+        // threat is re-checked every frame, and the restore is in a finally,
+        // which runs on an exception and on StopCoroutine alike.
+        try
         {
-            elapsed += Time.unscaledDeltaTime;
-            float t = elapsed / blinkDuration;
+            if (mainCameraCached != null) mainCameraCached.fieldOfView = originalFOV + 20f;
+            if (dashParticles != null) dashParticles.Play();
+            if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
 
-            transform.position = Vector3.Lerp(startPos, targetPos, t);
+            characterController.enabled = false;
 
-            Vector3 lookDir = (threat.position - transform.position).normalized;
-            lookDir.y = 0;
-            if (lookDir != Vector3.zero) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), t * 15f);
+            const float blinkDuration = 0.15f;
+            Vector3 startPos = transform.position;
 
-            yield return null;
+            while (elapsed < blinkDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = elapsed / blinkDuration;
+
+                transform.position = Vector3.Lerp(startPos, targetPos, t);
+
+                if (threat != null)
+                {
+                    Vector3 lookDir = threat.position - transform.position;
+                    lookDir.y = 0f;
+                    if (lookDir.sqrMagnitude > 0.0001f)
+                        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), t * 15f);
+                }
+
+                yield return null;
+            }
+
+            transform.position = targetPos;
+        }
+        finally
+        {
+            if (characterController != null) characterController.enabled = true;
+            isDashing = false;
         }
 
-        transform.position = targetPos;
-        characterController.enabled = true;
-        isDashing = false;
-
+        // Same treatment for the camera: a punched-out FOV that never eases
+        // back is a smaller failure, but it is the same shape of failure.
         elapsed = 0f;
-        while (elapsed < 0.3f)
+        try
         {
-            elapsed += Time.unscaledDeltaTime;
-            mainCameraCached.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
-            yield return null;
+            while (elapsed < 0.3f)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                if (mainCameraCached != null)
+                    mainCameraCached.fieldOfView = Mathf.Lerp(originalFOV + 20f, originalFOV, elapsed / 0.3f);
+                yield return null;
+            }
         }
-        mainCameraCached.fieldOfView = originalFOV;
+        finally
+        {
+            if (mainCameraCached != null) mainCameraCached.fieldOfView = originalFOV;
+        }
     }
 
     private IEnumerator DashRoutine(Vector3 direction, bool isPerfectDodge = false)

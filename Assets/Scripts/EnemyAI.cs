@@ -642,7 +642,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private IEnumerator SpawnRoutine()
     {
         isSpawning = true;
-        if (animator != null) animator.SetBool("isMoving", true);
+        SetMovingAnim(true);
 
         Vector3 finalPos = transform.position;
         finalPos.y = SampleTerrainHeight(finalPos) + verticalOffset;
@@ -679,7 +679,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         isSpawning = false;
 
-        if (animator != null) animator.SetBool("isMoving", false);
+        SetMovingAnim(false);
     }
 
     private void Update()
@@ -790,7 +790,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         if (playerTarget != null && playerTarget.currentHealth <= 0)
         {
-            if (animator != null) animator.SetBool("isMoving", false);
+            SetMovingAnim(false);
             return;
         }
 
@@ -832,15 +832,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // scene drives the animator itself, and having this overwrite it
             // every frame is what left skeletons running in place while standing
             // still — so it now respects cinematicDrivesAnimator.
-            if (animator != null && isCinematicFrozen && !cinematicDrivesAnimator)
-                animator.SetBool("isMoving", true);
+            if (isCinematicFrozen && !cinematicDrivesAnimator)
+                SetMovingAnim(true);
             return;
         }
 
         if (stunTimer > 0 && !isEnraged)
         {
             stunTimer -= Time.deltaTime;
-            if (animator != null) animator.SetBool("isMoving", false);
+            SetMovingAnim(false);
             return;
         }
 
@@ -984,9 +984,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
             }
             else if (isAttackReady && distanceToPlayer > attackRange && hasSlot)
             {
-                if (animator != null) animator.SetBool("isMoving", true);
+                SetMovingAnim(true);
 
-                Vector3 moveDir = SteerAroundObstacles(currentPos, (directionToPlayer + repulsion).normalized);
+                // ==== THE LAST PLACE RAW REPULSION STILL STEERED ====
+                //
+                // The chase branch below caps the crowd push and eases the
+                // heading; this one did neither, and it is the branch that runs
+                // in the final metre — right in front of the player, where the
+                // wobble is most visible. repulsion is an unbounded sum, so with
+                // two or three neighbours it dwarfed the unit vector pointing at
+                // the player and decided the heading outright, flipping as the
+                // pack shuffled. Same cap and same easing as the charge.
+                Vector3 closePush = Vector3.ClampMagnitude(repulsion, 0.45f);
+                Vector3 closeWanted = SteerAroundObstacles(currentPos, (directionToPlayer + closePush).normalized);
+
+                _chaseHeading = _chaseHeading == Vector3.zero
+                    ? closeWanted
+                    : Vector3.Slerp(_chaseHeading, closeWanted, 9f * Time.deltaTime);
+
+                Vector3 moveDir = _chaseHeading.sqrMagnitude > 0.0001f ? _chaseHeading.normalized : closeWanted;
                 Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
@@ -1022,11 +1038,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 // creature adjusting its footing every frame reads as jitter.
                 if (Mathf.Abs(off) < 0.35f && repulsion.sqrMagnitude < 0.04f)
                 {
-                    if (animator != null) animator.SetBool("isMoving", false);
+                    SetMovingAnim(false);
                 }
                 else
                 {
-                    if (animator != null) animator.SetBool("isMoving", true);
+                    // Footwork speed, so the legs match the shuffle instead of
+                    // playing a full charge on the spot.
+                    SetMovingAnim(true, actualMoveSpeed * 0.45f);
 
                     // In or out along the line to the player, plus a capped
                     // nudge so bodies still separate without steering.
@@ -1046,7 +1064,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
         else
         {
-            float sway = Mathf.PerlinNoise(Time.time * 0.5f, randomOffset) * 2f - 1f;
+            // A whisper of wander so a pack does not advance as one rigid line.
+            //
+            // This was 0.5 against a unit heading — up to 27 degrees off the
+            // line to the player, reversing every couple of seconds. That is
+            // not character, that is an enemy visibly not running at you, and
+            // it is half of what still read as weaving after the repulsion was
+            // capped. Eight degrees is enough to break up a formation and
+            // little enough that the charge still looks aimed.
+            float sway = Mathf.PerlinNoise(Time.time * 0.35f, randomOffset) * 2f - 1f;
             Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
 
             // ==== REPULSION NUDGES. IT DOES NOT STEER. ====
@@ -1065,7 +1091,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Capped at a fraction of the pull toward the player, so a crowd
             // still spreads out and never decides the direction of travel.
             Vector3 push = Vector3.ClampMagnitude(repulsion * repulsionForce, 0.55f);
-            Vector3 wanted = (directionToPlayer + push + (rightDir * sway * 0.5f)).normalized;
+            Vector3 wanted = (directionToPlayer + push + (rightDir * sway * 0.14f)).normalized;
             wanted.y = 0f;
             wanted = SteerAroundObstacles(currentPos, wanted);
 
@@ -1085,7 +1111,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             if (finalDirection != Vector3.zero)
             {
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(finalDirection), 10f * Time.deltaTime);
-                if (animator != null) animator.SetBool("isMoving", true);
+                SetMovingAnim(true);
             }
         }
 
@@ -1322,6 +1348,20 @@ public class EnemyAI : MonoBehaviour, IDamageable
         animator.SetFloatSafe("Speed", moving ? speed : 0f);
     }
 
+    // ==== isMoving IS ONLY HALF OF THE ANIMATOR ====
+    //
+    // The locomotion tree blends on Speed; isMoving only decides whether to be
+    // in it at all. Every combat branch used to write the bool directly and
+    // leave Speed at whatever the last PATROL tick put there — passiveSpeed,
+    // which is 40% of a walk. So an enemy charging at full speed played a
+    // stroll, and the pose changed as it crossed between branches even though
+    // its travel speed had not changed at all. That is the "switches to some
+    // strange animation while running" report, and no amount of steering work
+    // was ever going to fix it.
+    //
+    // Everything now goes through here, and here always sets both.
+    private void SetMovingAnim(bool moving) => SetMovingAnim(moving, moving ? actualMoveSpeed : 0f);
+
     public void Aggro()
     {
         if (isAggroed) return;
@@ -1496,7 +1536,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         bool ready = Time.time >= lastAttackTime + attackCooldown;
         if (ready && rhythmAllows && !resting && dist <= preferredRange * 1.35f)
         {
-            if (animator != null) animator.SetBool("isMoving", false);
+            SetMovingAnim(false);
             if (ring != null) ring.NoteSwingStarted();
 
             if (++_castsInBurst >= castsPerBurst)
@@ -1553,15 +1593,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 next = pos + move * (actualMoveSpeed * moveSpeedMult) * Time.deltaTime;
             next.y = SampleTerrainHeight(next) + verticalOffset;
             SetPositionSafe(next);
-            if (animator != null) animator.SetBool("isMoving", true);
+            SetMovingAnim(true);
         }
-        else if (animator != null) animator.SetBool("isMoving", false);
+        else SetMovingAnim(false);
     }
 
     private IEnumerator RangedAttackRoutine()
     {
         isPreparingAttack = true;
-        if (animator != null) animator.SetBool("isMoving", false);
+        SetMovingAnim(false);
         SetAnimBoolSafe("Aim", true);   // archer draws the bow (aim state) during the wind-up
         PlayVocal(AudioID.Enemy_Telegraph);
         if (ThreatUI.Instance != null) ThreatUI.Instance.ShowThreat(transform, attackTelegraphTime + 0.2f);
@@ -1882,7 +1922,8 @@ public class EnemyAI : MonoBehaviour, IDamageable
     {
         if (ring == null || target == null) return;
 
-        if (animator != null) animator.SetBool("isMoving", true);
+        // Set below, once the actual travel speed for this frame is known — a
+        // waiter easing toward its post should not play a full sprint.
 
         Vector3 post = ring.PostFor(this, target.position, Time.time);
         Vector3 toPost = post - currentPos; toPost.y = 0f;
@@ -1927,7 +1968,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 steer = desired + repulsion * 0.6f;
         if (steer.sqrMagnitude < 0.09f)
         {
-            if (animator != null) animator.SetBool("isMoving", false);
+            SetMovingAnim(false);
 
             // Standing at its post: watch the player.
             Vector3 idleToPlayer = target.position - currentPos; idleToPlayer.y = 0f;
@@ -1947,6 +1988,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 nextPos = currentPos + step * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             SetPositionSafe(nextPos);
+
+            // The legs match the ACTUAL pace: a waiter drifting the last half
+            // metre to its post walks, one crossing the ring runs.
+            SetMovingAnim(true, step.magnitude);
 
             // ==== LOOK WHERE YOU ARE GOING, MOSTLY ====
             //
@@ -2229,10 +2274,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
                         nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                         SetPositionSafe(nextPos);
                         // Run the LEGS while lunging so the enemy doesn't slide with
-                        // motionless feet during the approach-attack.
-                        if (animator != null) animator.SetBool("isMoving", true);
+                        // motionless feet during the approach-attack — at the
+                        // lunge's own pace, not a full charge.
+                        SetMovingAnim(true, actualMoveSpeed * 0.3f);
                     }
-                    else if (animator != null) animator.SetBool("isMoving", false);
+                    else SetMovingAnim(false);
                 }
             }
             yield return null;
@@ -2245,7 +2291,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // Plant the feet for the blow. The swing itself started back at the
             // top of the wind-up and is mid-clip by now; re-triggering it here
             // would restart the animation on the frame it is supposed to connect.
-            if (animator != null) animator.SetBool("isMoving", false);
+            SetMovingAnim(false);
 
             // LAND THE BLOW FROM CODE.
             //
