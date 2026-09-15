@@ -54,12 +54,20 @@ public class RegionVictoryScreen : MonoBehaviour
     [Tooltip("How dark the world behind goes. Not fully black on purpose — a hint of the region you just cleansed is worth keeping.")]
     [Range(0.5f, 1f)] public float dim = 0.93f;
 
-    private CanvasGroup _group;
-    private Image _veil;
-    private TextMeshProUGUI _title;
-    private TextMeshProUGUI _subtitle;
-    private RectTransform _rows;
-    private TextMeshProUGUI _continue;
+    // ==== AUTHOR IT, OR LET THE CODE BUILD IT ====
+    //
+    // Assign these — on a prefab, in a scene, however — and Build() leaves them
+    // alone. Leave them empty and it builds exactly what it always did, so
+    // nothing changes until somebody deliberately replaces a piece. The screen
+    // the player sees on winning a region could not be art-directed at all
+    // before this, because there was nothing in the project to open.
+    [Header("Panel parts — leave empty to build them in code")]
+    [SerializeField] private CanvasGroup _group;
+    [SerializeField] private Image _veil;
+    [SerializeField] private TextMeshProUGUI _title;
+    [SerializeField] private TextMeshProUGUI _subtitle;
+    [SerializeField] private RectTransform _rows;
+    [SerializeField] private TextMeshProUGUI _continue;
     private Action _onDone;
     private bool _accepting;
 
@@ -103,9 +111,11 @@ public class RegionVictoryScreen : MonoBehaviour
     {
         if (Instance == null)
         {
-            var go = new GameObject("[RegionVictory]");
+            var prefab = Resources.Load<GameObject>(PrefabResource);
+            GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[RegionVictory]");
+            go.name = "[RegionVictory]";
             DontDestroyOnLoad(go);
-            go.AddComponent<RegionVictoryScreen>();
+            if (go.GetComponent<RegionVictoryScreen>() == null) go.AddComponent<RegionVictoryScreen>();
         }
         if (Instance != null) Instance.Play(title, subtitle, awards, onDone);
     }
@@ -125,40 +135,59 @@ public class RegionVictoryScreen : MonoBehaviour
 
     // ---- construction ---------------------------------------------------------
 
+    // Drop a prefab at Assets/Resources/UI/RegionVictory.prefab and it is used
+    // instead of the bare object.
+    public const string PrefabResource = "UI/RegionVictory";
+
+    // Fills in whatever was NOT authored, so a half-converted screen works.
     private void Build()
     {
-        var canvas = gameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        // Above everything, including the reward reveal — this is a scene
-        // transition, and nothing may draw over it.
-        canvas.sortingOrder = 5000;
+        var canvas = GetComponent<Canvas>();
+        if (canvas == null)
+        {
+            canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Above everything, including the reward reveal — this is a scene
+            // transition, and nothing may draw over it.
+            canvas.sortingOrder = 5000;
+        }
 
-        var scaler = gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        if (GetComponent<CanvasScaler>() == null)
+        {
+            var scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+        }
 
-        _group = gameObject.AddComponent<CanvasGroup>();
+        if (_group == null) _group = GetComponent<CanvasGroup>();
+        if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
         _group.blocksRaycasts = true;
 
-        _veil = MakeImage("Veil", transform);
-        var vrt = _veil.rectTransform;
-        vrt.anchorMin = Vector2.zero;
-        vrt.anchorMax = Vector2.one;
-        vrt.offsetMin = vrt.offsetMax = Vector2.zero;
-        _veil.color = new Color(0f, 0f, 0f, dim);
+        if (_veil == null)
+        {
+            _veil = MakeImage("Veil", transform);
+            var vrt = _veil.rectTransform;
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = vrt.offsetMax = Vector2.zero;
+            _veil.color = new Color(0f, 0f, 0f, dim);
+        }
 
-        _title = MakeText("Title", 250f, 74f, FontStyles.Bold);
-        _subtitle = MakeText("Subtitle", 180f, 30f, FontStyles.Normal);
+        if (_title == null) _title = MakeText("Title", 250f, 74f, FontStyles.Bold);
+        if (_subtitle == null) _subtitle = MakeText("Subtitle", 180f, 30f, FontStyles.Normal);
 
-        var rowsGo = new GameObject("Rows", typeof(RectTransform));
-        _rows = rowsGo.GetComponent<RectTransform>();
-        _rows.SetParent(transform, false);
-        _rows.anchorMin = _rows.anchorMax = new Vector2(0.5f, 0.5f);
-        _rows.pivot = new Vector2(0.5f, 0.5f);
-        _rows.anchoredPosition = new Vector2(0f, 10f);
+        if (_rows == null)
+        {
+            var rowsGo = new GameObject("Rows", typeof(RectTransform));
+            _rows = rowsGo.GetComponent<RectTransform>();
+            _rows.SetParent(transform, false);
+            _rows.anchorMin = _rows.anchorMax = new Vector2(0.5f, 0.5f);
+            _rows.pivot = new Vector2(0.5f, 0.5f);
+            _rows.anchoredPosition = new Vector2(0f, 10f);
+        }
 
-        _continue = MakeText("Continue", -300f, 30f, FontStyles.Normal);
+        if (_continue == null) _continue = MakeText("Continue", -300f, 30f, FontStyles.Normal);
     }
 
     private static Image MakeImage(string name, Transform parent)

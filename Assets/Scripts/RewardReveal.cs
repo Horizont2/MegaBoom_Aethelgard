@@ -36,24 +36,56 @@ public class RewardReveal : MonoBehaviour
     public float rayCount = 12f;
     public float raySpinSpeed = 18f;
 
-    private Canvas _canvas;
-    private CanvasGroup _group;
-    private RectTransform _iconRT;
-    private Image _icon;
-    private Image _burst;
-    private RectTransform _burstRT;
-    private RectTransform _raysRT;
-    private TextMeshProUGUI _title;
-    private TextMeshProUGUI _subtitle;
+    // ==== AUTHOR IT, OR LET THE CODE BUILD IT ====
+    //
+    // This panel was built entirely in code so it would work in any scene with
+    // nothing wired anywhere, which is the right default and a bad ceiling: the
+    // one screen the player stares at when they find something rare could not be
+    // art-directed at all, because there was nothing in the project to open.
+    //
+    // Every part is assignable now. Assign them — on a prefab, in a scene,
+    // however — and Build() leaves them alone. Leave them empty and the code
+    // builds exactly what it always did, so nothing that exists today changes
+    // until somebody deliberately replaces a piece.
+    //
+    // The two procedural sprites are exposed for the same reason. They are
+    // drawn as a stand-in for art nobody had made yet, not as a preference.
+    [Header("Panel parts — leave empty to build them in code")]
+    [SerializeField] private Canvas _canvas;
+    [SerializeField] private CanvasGroup _group;
+    [SerializeField] private RectTransform _iconRT;
+    [SerializeField] private Image _icon;
+    [SerializeField] private Image _burst;
+    [SerializeField] private RectTransform _burstRT;
+    [SerializeField] private RectTransform _raysRT;
+    [SerializeField] private TextMeshProUGUI _title;
+    [SerializeField] private TextMeshProUGUI _subtitle;
+
+    [Header("Art — leave empty for the procedural stand-ins")]
+    [Tooltip("The sunburst behind the icon. Drawn in code when empty.")]
+    public Sprite raySprite;
+    [Tooltip("The soft glow behind the icon. Drawn in code when empty.")]
+    public Sprite glowSprite;
+
     private Coroutine _playing;
+
+    // Drop a prefab at Assets/Resources/UI/RewardReveal.prefab and it is used
+    // instead of the bare object. That is the whole opt-in: no scene wiring, no
+    // reference to keep alive across a load, and the code path still stands
+    // behind it for any scene that has no prefab.
+    public const string PrefabResource = "UI/RewardReveal";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
         if (Instance != null) return;
-        var go = new GameObject("[RewardReveal]");
+
+        var prefab = Resources.Load<GameObject>(PrefabResource);
+        GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[RewardReveal]");
+        go.name = "[RewardReveal]";
         DontDestroyOnLoad(go);
-        go.AddComponent<RewardReveal>();
+
+        if (go.GetComponent<RewardReveal>() == null) go.AddComponent<RewardReveal>();
     }
 
     // The one entry point. Anything that hands the player something rare calls
@@ -174,44 +206,70 @@ public class RewardReveal : MonoBehaviour
 
     // ---- construction --------------------------------------------------------
 
+    // Fills in whatever was NOT authored. Every step is guarded, so a panel that
+    // has a hand-built icon but no title gets a code-built title and keeps the
+    // icon — mixing is allowed, because half-converting a screen is a normal
+    // state to be in while you are converting it.
     private void Build()
     {
-        _canvas = gameObject.AddComponent<Canvas>();
-        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        // Above the HUD but below the letterbox overlay the trailer uses, so a
-        // drop during a cinematic does not punch through the bars.
-        _canvas.sortingOrder = 4000;
+        if (_canvas == null) _canvas = GetComponent<Canvas>();
+        if (_canvas == null)
+        {
+            _canvas = gameObject.AddComponent<Canvas>();
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Above the HUD but below the letterbox overlay the trailer uses, so
+            // a drop during a cinematic does not punch through the bars.
+            _canvas.sortingOrder = 4000;
+        }
 
-        var scaler = gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        if (GetComponent<CanvasScaler>() == null)
+        {
+            var scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+        }
 
-        _group = gameObject.AddComponent<CanvasGroup>();
+        if (_group == null) _group = GetComponent<CanvasGroup>();
+        if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
         _group.blocksRaycasts = false;   // never eat a click; this is not a dialog
         _group.interactable = false;
 
         // Layer order matters: rays behind the soft burst, burst behind the icon.
-        _raysRT = MakeChild("Rays", 0f).GetComponent<RectTransform>();
-        var rays = _raysRT.gameObject.AddComponent<Image>();
-        rays.sprite = BuildRaySprite(Mathf.Max(3, Mathf.RoundToInt(rayCount)));
-        rays.raycastTarget = false;
-        _raysRT.sizeDelta = new Vector2(iconSize * 4.2f, iconSize * 4.2f);
+        if (_raysRT == null)
+        {
+            _raysRT = MakeChild("Rays", 0f).GetComponent<RectTransform>();
+            var rays = _raysRT.gameObject.AddComponent<Image>();
+            rays.raycastTarget = false;
+            _raysRT.sizeDelta = new Vector2(iconSize * 4.2f, iconSize * 4.2f);
+        }
+        var raysImg = _raysRT.GetComponent<Image>();
+        if (raysImg != null && raysImg.sprite == null)
+            raysImg.sprite = raySprite != null ? raySprite : BuildRaySprite(Mathf.Max(3, Mathf.RoundToInt(rayCount)));
 
-        _burstRT = MakeChild("Burst", 0f).GetComponent<RectTransform>();
-        _burst = _burstRT.gameObject.AddComponent<Image>();
-        _burst.sprite = BuildGlowSprite();
-        _burst.raycastTarget = false;
-        _burstRT.sizeDelta = new Vector2(iconSize * 2.6f, iconSize * 2.6f);
+        if (_burstRT == null)
+        {
+            _burstRT = MakeChild("Burst", 0f).GetComponent<RectTransform>();
+            _burst = _burstRT.gameObject.AddComponent<Image>();
+            _burst.raycastTarget = false;
+            _burstRT.sizeDelta = new Vector2(iconSize * 2.6f, iconSize * 2.6f);
+        }
+        if (_burst == null) _burst = _burstRT.GetComponent<Image>();
+        if (_burst != null && _burst.sprite == null)
+            _burst.sprite = glowSprite != null ? glowSprite : BuildGlowSprite();
 
-        _iconRT = MakeChild("Icon", 0f).GetComponent<RectTransform>();
-        _icon = _iconRT.gameObject.AddComponent<Image>();
-        _icon.raycastTarget = false;
-        _icon.preserveAspect = true;
-        _iconRT.sizeDelta = new Vector2(iconSize, iconSize);
+        if (_iconRT == null)
+        {
+            _iconRT = MakeChild("Icon", 0f).GetComponent<RectTransform>();
+            _icon = _iconRT.gameObject.AddComponent<Image>();
+            _icon.raycastTarget = false;
+            _icon.preserveAspect = true;
+            _iconRT.sizeDelta = new Vector2(iconSize, iconSize);
+        }
+        if (_icon == null) _icon = _iconRT.GetComponent<Image>();
 
-        _title = MakeText("Title", -iconSize * 0.78f, 54f, FontStyles.Bold);
-        _subtitle = MakeText("Subtitle", -iconSize * 0.78f - 52f, 30f, FontStyles.Normal);
+        if (_title == null) _title = MakeText("Title", -iconSize * 0.78f, 54f, FontStyles.Bold);
+        if (_subtitle == null) _subtitle = MakeText("Subtitle", -iconSize * 0.78f - 52f, 30f, FontStyles.Normal);
     }
 
     private GameObject MakeChild(string name, float y)
