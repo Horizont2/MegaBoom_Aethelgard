@@ -75,6 +75,20 @@ public class EnemyMotionProbe : MonoBehaviour
 
     private float _stepMin = float.MaxValue, _stepMax;
 
+    private int _writeFrames, _writesTotal, _maxWritesInAFrame;
+    private float _worstStep;
+    private string _worstWriter = "-";
+    private readonly System.Collections.Generic.List<string> _wNames = new System.Collections.Generic.List<string>(8);
+    private readonly System.Collections.Generic.List<int> _wCounts = new System.Collections.Generic.List<int>(8);
+
+    private void CountWriter(string w)
+    {
+        for (int i = 0; i < _wNames.Count; i++)
+            if (_wNames[i] == w) { _wCounts[i]++; return; }
+        if (_wNames.Count >= 12) return;
+        _wNames.Add(w); _wCounts.Add(1);
+    }
+
     private bool _hasMovingBool;
     private bool _lastMoving;
     private int _movingFlips;
@@ -225,6 +239,26 @@ public class EnemyMotionProbe : MonoBehaviour
             _lastAnimSpeed = sp;
         }
 
+        // ==== WHICH SYSTEM MOVED THE BODY, AND HOW MANY DID ====
+        //
+        // The remaining unknown. A solo enemy that was never hit cannot reach
+        // 9.7 m/s from anything the AI asks for, so this records the tag of
+        // whichever writer produced the largest step each frame, and how many
+        // writers ran. More than one in a frame is the shape of this bug in
+        // every form it has taken so far.
+        if (EnemyAI.DbgWritesThisFrame > 0)
+        {
+            _writeFrames++;
+            _writesTotal += EnemyAI.DbgWritesThisFrame;
+            if (EnemyAI.DbgWritesThisFrame > _maxWritesInAFrame) _maxWritesInAFrame = EnemyAI.DbgWritesThisFrame;
+            if (EnemyAI.DbgBiggestStep > _worstStep)
+            {
+                _worstStep = EnemyAI.DbgBiggestStep;
+                _worstWriter = EnemyAI.DbgBiggestWriter.ToString();
+            }
+            CountWriter(EnemyAI.DbgBiggestWriter.ToString());
+        }
+
         // Enough MOVEMENT, not enough wall clock.
         if (_movingTime < sampleSeconds) return;
         Report();
@@ -258,6 +292,21 @@ public class EnemyMotionProbe : MonoBehaviour
         sb.AppendLine($"  animator state    : {_animStateChanges} change(s)  ({_animStateChanges / secs:F1}/s)");
         sb.AppendLine($"  animator.speed    : {(_speedMin < float.MaxValue ? _speedMin : 0f):F2} .. {_speedMax:F2}   jumps over 0.25: {_animSpeedJumps}");
         sb.AppendLine($"  isMoving flips    : {_movingFlips}  ({_movingFlips / secs:F1}/s)   <- a steady chase should be 0");
+        sb.AppendLine($"  position writers  : {(_writeFrames > 0 ? (float)_writesTotal / _writeFrames : 0f):F2} per frame, worst frame had {_maxWritesInAFrame}   <- more than 1 is the bug");
+        sb.AppendLine($"  fastest single write: {_worstStep:F1} m/s by {_worstWriter}");
+        if (_wNames.Count > 0)
+        {
+            sb.AppendLine("  frames each writer led, most first:");
+            for (int pass = 0; pass < _wNames.Count; pass++)
+            {
+                int best = -1, bestN = -1;
+                for (int i = 0; i < _wNames.Count; i++)
+                    if (_wCounts[i] > bestN) { bestN = _wCounts[i]; best = i; }
+                if (best < 0 || bestN <= 0) break;
+                sb.AppendLine($"    {_wCounts[best],4}x  {_wNames[best]}");
+                _wCounts[best] = -1;
+            }
+        }
         if (_flipNames.Count > 0)
         {
             sb.AppendLine("  state flips, most frequent first:");
@@ -281,6 +330,9 @@ public class EnemyMotionProbe : MonoBehaviour
         if (!repeat) return;
         _movingTime = 0f;
         _flipNames.Clear(); _flipCounts.Clear(); _movingFlips = 0;
+        _wNames.Clear(); _wCounts.Clear();
+        _writeFrames = _writesTotal = _maxWritesInAFrame = 0;
+        _worstStep = 0f; _worstWriter = "-";
         _reversals = _bigTurns = _frames = _movedFrames = _animStateChanges = _animSpeedJumps = 0;
         _turnSum = _turnMax = 0f;
         _speedMin = _stepMin = float.MaxValue;

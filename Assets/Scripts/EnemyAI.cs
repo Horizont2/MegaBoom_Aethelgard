@@ -907,7 +907,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             Vector3 kb = transform.position + knockbackVelocity * Time.deltaTime;
             kb.y = SampleTerrainHeight(kb) + verticalOffset;
-            SetPositionSafe(kb);
+            SetPositionSafe(Writer.Knockback, kb);
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, Time.deltaTime * 10f);
         }
         else knockbackVelocity = Vector3.zero;
@@ -1138,7 +1138,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                                 + SeparationStep(repulsion);
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                SetPositionSafe(nextPos);
+                SetPositionSafe(Writer.CloseApproach, nextPos);
             }
             else
             {
@@ -1191,7 +1191,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 {
                     Vector3 nextPos = currentPos + footwork + slide;
                     nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                    SetPositionSafe(nextPos);
+                    SetPositionSafe(Writer.Footwork, nextPos);
                 }
             }
         }
@@ -1226,7 +1226,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime
                             + SeparationStep(repulsion);
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-            SetPositionSafe(nextPos);
+            SetPositionSafe(Writer.Chase, nextPos);
 
             if (finalDirection != Vector3.zero)
             {
@@ -1440,7 +1440,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             float passiveSpeed = actualMoveSpeed * (isSearching ? 0.8f : 0.4f);
             Vector3 nextPos = transform.position + moveDir * passiveSpeed * Time.deltaTime;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-            SetPositionSafe(nextPos);
+            SetPositionSafe(Writer.Passive, nextPos);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), 5f * Time.deltaTime);
             SetMovingAnim(true, passiveSpeed);
             UpdateFootstepAudio();
@@ -1754,7 +1754,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             Vector3 next = pos + move * (actualMoveSpeed * moveSpeedMult) * Time.deltaTime;
             next.y = SampleTerrainHeight(next) + verticalOffset;
-            SetPositionSafe(next);
+            SetPositionSafe(Writer.Ranged, next);
             SetMovingAnim(true);
         }
         else SetMovingAnim(false);
@@ -2058,7 +2058,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                     Vector3 step = to.normalized * (moveSpeed * 0.5f * Time.deltaTime);
                     Vector3 next = transform.position + step;
                     next.y = SampleTerrainHeight(next) + verticalOffset;
-                    SetPositionSafe(next);
+                    SetPositionSafe(Writer.Feint, next);
                     transform.rotation = Quaternion.Slerp(transform.rotation,
                         Quaternion.LookRotation(to.normalized), 12f * Time.deltaTime);
                 }
@@ -2188,7 +2188,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 Vector3 settle = currentPos + slide;
                 settle.y = SampleTerrainHeight(settle) + verticalOffset;
-                SetPositionSafe(settle);
+                SetPositionSafe(Writer.HoldSettle, settle);
             }
 
             Vector3 idleToPlayer = target.position - currentPos; idleToPlayer.y = 0f;
@@ -2209,7 +2209,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             Vector3 nextPos = currentPos + heading * speed * Time.deltaTime + slide;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-            SetPositionSafe(nextPos);
+            SetPositionSafe(Writer.HoldMove, nextPos);
 
             SetMovingAnim(true, speed);
 
@@ -2342,7 +2342,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 t0 += Time.deltaTime;
                 Vector3 next = transform.position + dir * (5.5f * (1f - t0 / dur) * Time.deltaTime);
                 next.y = SampleTerrainHeight(next) + verticalOffset;
-                SetPositionSafe(next);
+                SetPositionSafe(Writer.Recoil, next);
                 yield return null;
             }
         }
@@ -2366,7 +2366,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                     Vector3 dir = away.normalized;
                     Vector3 next = transform.position + dir * (pace * Time.deltaTime);
                     next.y = SampleTerrainHeight(next) + verticalOffset;
-                    SetPositionSafe(next);
+                    SetPositionSafe(Writer.BackOff, next);
 
                     // FACE THE WAY IT WALKS. This used to keep its eyes on the
                     // player while travelling backwards, on the theory that
@@ -2568,7 +2568,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
                     {
                         Vector3 nextPos = transform.position + dir * (actualMoveSpeed * 0.3f) * Time.deltaTime;
                         nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                        SetPositionSafe(nextPos);
+                        SetPositionSafe(Writer.AttackLunge, nextPos);
                         // Run the LEGS while lunging so the enemy doesn't slide with
                         // motionless feet during the approach-attack — at the
                         // lunge's own pace, not a full charge.
@@ -3226,6 +3226,40 @@ public class EnemyAI : MonoBehaviour, IDamageable
             return true;
         }
         return false;
+    }
+
+    // ==== WHO MOVED THE BODY, AND HOW FAR ====
+    //
+    // A solo enemy that was never hit reached 9.7 m/s on a Move Speed of 4.
+    // Nothing in the AI can ask for that, so something is writing the position
+    // that nobody has accounted for. Every call site is tagged; the probe reads
+    // these and names the writer instead of another round of guessing.
+    public enum Writer
+    {
+        Knockback, CloseApproach, Footwork, Chase, Passive, Ranged,
+        Feint, HoldSettle, HoldMove, Recoil, BackOff, AttackLunge,
+    }
+
+    // Per-frame, shared across enemies — the probe watches one at a time.
+    public static int DbgWritesThisFrame;
+    public static Writer DbgBiggestWriter;
+    public static float DbgBiggestStep;
+    private static int s_dbgFrame = -1;
+
+    private void SetPositionSafe(Writer who, Vector3 newPos)
+    {
+        if (s_dbgFrame != Time.frameCount)
+        {
+            s_dbgFrame = Time.frameCount;
+            DbgWritesThisFrame = 0;
+            DbgBiggestStep = 0f;
+        }
+        DbgWritesThisFrame++;
+        Vector3 d = newPos - transform.position; d.y = 0f;
+        float step = d.magnitude / Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
+        if (step > DbgBiggestStep) { DbgBiggestStep = step; DbgBiggestWriter = who; }
+
+        SetPositionSafe(newPos);
     }
 
     private void SetPositionSafe(Vector3 newPos)
