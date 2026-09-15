@@ -179,6 +179,32 @@ public class ResourceDrop : MonoBehaviour
         if (isCollected) return;
         isCollected = true;
 
+        // ==== THE DROP GOES, WHATEVER THE PAYOUT DOES ====
+        //
+        // This is the third time a pickup has been reported flying to the player
+        // and then hanging there, and the shape is always the same: something in
+        // the payout throws, the exception escapes Collect, and the Destroy at
+        // the bottom never runs. The drop is left with isCollected already true,
+        // so every later trigger returns at the guard — frozen on the player,
+        // permanently, with no way back.
+        //
+        // Every previous fix chased whichever call happened to be throwing that
+        // month. The real defect is structural: disposal must not be the last
+        // statement of a block that can fail. In a finally it cannot be skipped,
+        // and the throw still reaches the console with its stack trace intact
+        // instead of being swallowed.
+        try
+        {
+            Payout();
+        }
+        finally
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private void Payout()
+    {
         if (ResourceManager.Instance != null)
         {
             // ResourceManager.AddRunResources now fires its own toast
@@ -210,7 +236,5 @@ public class ResourceDrop : MonoBehaviour
                 else ResourceManager.Instance.AddDiamonds(amount);
             }
         }
-
-        Destroy(gameObject);
     }
 }

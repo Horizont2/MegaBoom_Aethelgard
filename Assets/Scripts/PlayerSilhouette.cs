@@ -65,9 +65,12 @@ public class PlayerSilhouette : MonoBehaviour
 
     private void OnEnable()
     {
-        Build();
-        // Ghosts are switched per camera, not globally — see OnBeginCamera.
+        // Subscribe FIRST. Build can switch this component off when the shader
+        // is missing, and OnDisable would then unsubscribe a handler that had
+        // not been added yet — leaving it subscribed forever once Build was
+        // retried.
         RenderPipelineManager.beginCameraRendering += OnBeginCamera;
+        Build();
     }
 
     private void OnDisable()
@@ -94,9 +97,48 @@ public class PlayerSilhouette : MonoBehaviour
         SetGhostsEnabled(mine);
     }
 
+    // ==== ONE LOUD REPORT, A FEW SECONDS IN ====
+    //
+    // Every way this can fail looks identical from the player's seat: no
+    // silhouette. The map markers cost three rounds of guessing before a report
+    // like this named the cause in one line; this one says it up front.
+    private float _reportAt = -1f;
+    private bool _reported;
+
+    private void SelfReport()
+    {
+        if (_reported) return;
+        if (_reportAt < 0f) { _reportAt = Time.unscaledTime + 4f; return; }
+        if (Time.unscaledTime < _reportAt) return;
+        _reported = true;
+
+        var sb = new System.Text.StringBuilder("[Silhouette] SELF-REPORT\n");
+        sb.AppendLine($"  ghost renderers built: {_ghosts.Count} (from {_sourceCount} source renderer(s))");
+        sb.AppendLine($"  material: {(_runtimeMat != null ? _runtimeMat.shader.name : "NULL — shader not found")}");
+        sb.AppendLine($"  main camera: {(_cam != null ? _cam.name : "NULL — nothing is tagged MainCamera")}");
+        sb.AppendLine($"  foliage layer mask: {foliageLayers.value} (Nature=1<<15, Damageable=1<<9)");
+        sb.AppendLine($"  currently occluded: {_wantVisible}   fade: {_alpha:F2}");
+
+        // The one that actually bites: a probe can only hit a COLLIDER, and the
+        // bush prefabs in this project have none at all. Trees do. Say so
+        // plainly rather than letting it look like the shader is broken.
+        int n = Physics.OverlapSphereNonAlloc(transform.position, 6f, s_probeCols, foliageLayers,
+                                              QueryTriggerInteraction.Collide);
+        sb.AppendLine($"  colliders on the foliage layers within 6m: {n}");
+        if (n == 0)
+            sb.AppendLine("  -> Nothing here can be detected. Foliage needs a collider on one of those " +
+                          "layers for the probe to see it; the bush prefabs currently have none, so the " +
+                          "silhouette will only trigger behind trees.");
+
+        Debug.Log(sb.ToString(), this);
+    }
+
+    private static readonly Collider[] s_probeCols = new Collider[24];
+
     private void Update()
     {
         if (_cam == null || !_cam.isActiveAndEnabled) _cam = Camera.main;
+        SelfReport();
 
         // The armour system swaps renderers when the player equips something, so
         // a ghost set built once goes stale. Cheap to notice, cheap to redo.
