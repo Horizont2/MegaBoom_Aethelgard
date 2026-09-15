@@ -305,6 +305,7 @@ MonoBehaviour:
   description: A barracks trains and dispatches mercenary companies to distant regions.
     Upgrade to unlock stronger unit tiers and battle tactics.
   isStorageVault: 0
+  producesResource: 0
   currentLevel: 1
   levels:
   - costWood: 0

@@ -38,7 +38,11 @@ public class PowerSystemManager : MonoBehaviour
         int gearPower = PlayerPrefs.GetInt("PlayerTotalPower_Gear", -1);
         if (gearPower < 0) gearPower = PlayerPrefs.GetInt("PlayerTotalPower", 50);
 
-        int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
+        // Same wrong key as PlayerController had: the Forge saves under
+        // "SaveBld_Forge_01", so this always read 0 and the Forge contributed
+        // nothing to Power either — which also meant it never moved the
+        // recommended-power comparison on the world map.
+        int forgeLevel = CampBuilding.ForgeLevel;
 
         // Power = equipped gear (weapon + armor) + forge bonus. The old
         // MetaDamage/MetaHealth terms were removed: those perks had no

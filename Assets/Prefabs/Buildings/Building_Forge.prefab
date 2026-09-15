@@ -283,6 +283,7 @@ MonoBehaviour:
   description: A roaring hearth for crafting tools and weapons. Attracts skilled
     metalworkers to your camp.
   isStorageVault: 0
+  producesResource: 0
   currentLevel: 0
   levels:
   - costWood: 112

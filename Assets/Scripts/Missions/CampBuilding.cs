@@ -103,6 +103,26 @@ public class CampBuilding : MonoBehaviour
     private string ppKey_IsUpgrading;
     private string ppKey_UpgradeStart;
 
+    // ==== productionValue MEANS DIFFERENT THINGS TO DIFFERENT BUILDINGS ====
+    //
+    // This branch used to be "storage vault, or else produce" — so every
+    // building that was not a vault trickled productionValue of productionType
+    // into the stash every minute. For the Hunter and the Lumberjack that is
+    // exactly right and is what the field is for.
+    //
+    // For the Forge, productionValue holds the DAMAGE PERCENTAGES (2, 5, 8, 11,
+    // 15) and productionType was never set, so it defaulted to Wood: the Forge
+    // quietly paid 2 to 15 wood a minute. The Barracks holds RECRUIT TIERS (1
+    // to 5) and did the same. Neither panel mentions income, and the numbers
+    // arriving were percentages and tiers.
+    //
+    // Somebody hit this once before: the Scout's Lodge instance in CampScene has
+    // all five productionValues zeroed by hand, which makes ProductionRoutine
+    // bail on its first line. That is a workaround at one call site; this is the
+    // rule. Defaults to true so every existing producer keeps producing.
+    [Tooltip("Does this building actually add resources to the stash every minute? OFF for buildings whose productionValue means something else — the Forge stores damage percentages in it, the Barracks stores recruit tiers.")]
+    public bool producesResource = true;
+
     private void Awake()
     {
         // Cache PlayerPrefs keys once so the Update path stops allocating
@@ -629,18 +649,40 @@ public class CampBuilding : MonoBehaviour
         }
     }
 
-    private float GetForgeMultiplier(int level)
+    // ==== ONE OWNER FOR THE FORGE BONUS ====
+    //
+    // The Forge's +15% weapon damage was never applied to anything. Its
+    // buildingID is "Forge_01", so its level saves to "SaveBld_Forge_01" — but
+    // both readers, PlayerController and PowerSystemManager, asked for
+    // "SaveBld_Forge". Nothing in the project has ever written that key, so the
+    // level came back 0 and the bonus was always zero. The most expensive
+    // building in camp — 900 wood, 900 stone, 375 food to max — did nothing,
+    // while its panel, its first-open hint and seven localisations all promised
+    // a damage increase.
+    //
+    // Two copies of the curve existed as well: this one, which nothing called,
+    // and a switch inside PlayerController. Both are replaced by these, so the
+    // key is spelled once and the numbers live in one place.
+    public const string ForgeBuildingID = "Forge_01";
+
+    public static string SaveKeyFor(string buildingID) => "SaveBld_" + buildingID;
+
+    public static int LevelOf(string buildingID) =>
+        string.IsNullOrEmpty(buildingID) ? 0 : PlayerPrefs.GetInt(SaveKeyFor(buildingID), 0);
+
+    public static int ForgeLevel => LevelOf(ForgeBuildingID);
+
+    /// Additive damage bonus from the Forge: 0 at level 0, 0.15 at level 5.
+    /// These are the same percentages the building's own panel advertises.
+    public static float ForgeDamageBonus => ForgeLevel switch
     {
-        switch (level)
-        {
-            case 1: return 1.02f;
-            case 2: return 1.05f;
-            case 3: return 1.08f;
-            case 4: return 1.11f;
-            case 5: return 1.15f;
-            default: return 1.00f;
-        }
-    }
+        1 => 0.02f,
+        2 => 0.05f,
+        3 => 0.08f,
+        4 => 0.11f,
+        5 => 0.15f,
+        _ => 0f,
+    };
 
     private void UpdateUIData()
     {
@@ -840,7 +882,7 @@ public class CampBuilding : MonoBehaviour
         {
             ResourceManager.Instance.SetExtraCapacity(currentData.productionValue);
         }
-        else if (!isStorageVault)
+        else if (!isStorageVault && producesResource)
         {
             if (productionCoroutine != null) StopCoroutine(productionCoroutine);
             productionCoroutine = StartCoroutine(ProductionRoutine(currentData.productionValue));

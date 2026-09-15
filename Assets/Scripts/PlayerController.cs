@@ -865,17 +865,17 @@ public class PlayerController : MonoBehaviour, IDamageable
         float armorDR = PlayerPrefs.GetFloat("EquippedArmorReduction", 0f);
         damageReduction = Mathf.Clamp(damageReduction + armorDR * ARMOR_DR_SCALE, 0f, MAX_TOTAL_DR);
 
-        int forgeLevel = PlayerPrefs.GetInt("SaveBld_Forge", 0);
-        float forgeDamageBonus = 0f;
-        switch (forgeLevel)
-        {
-            case 1: forgeDamageBonus = 0.02f; break;
-            case 2: forgeDamageBonus = 0.05f; break;
-            case 3: forgeDamageBonus = 0.08f; break;
-            case 4: forgeDamageBonus = 0.11f; break;
-            case 5: forgeDamageBonus = 0.15f; break;
-        }
-        globalDamageMultiplier += forgeDamageBonus;
+        // ==== THIS READ THE WRONG KEY, SO IT WAS ALWAYS ZERO ====
+        //
+        // It asked for "SaveBld_Forge". The Forge's buildingID is "Forge_01", so
+        // CampBuilding saves to "SaveBld_Forge_01", and nothing in the project
+        // has ever written the shorter name. The level came back 0 every time
+        // and the bonus was never applied — while the building's panel, its
+        // first-open hint and seven localisations all promised up to +15%.
+        //
+        // The key and the curve now live in one place, next to the building that
+        // owns them, so the two cannot drift apart again.
+        globalDamageMultiplier += CampBuilding.ForgeDamageBonus;
     }
 
     // Բ�� ����̲��ֲ�: ������ ��� �������� �������
