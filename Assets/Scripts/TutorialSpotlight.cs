@@ -38,16 +38,29 @@ public class TutorialSpotlight : MonoBehaviour
     public float padding = 14f;
     public float fadeTime = 0.28f;
 
-    private Canvas _canvas;
-    private CanvasGroup _group;
-    private Image _top, _bottom, _left, _right;
-    private RectTransform _ring;
-    private RectTransform _arrow;
-    private Image _arrowImg;
-    private TextMeshProUGUI _title;
-    private TextMeshProUGUI _body;
-    private RectTransform _textPanelRT;
-    private Image _textPanel;
+    // ==== AUTHOR IT, OR LET THE CODE BUILD IT ====
+    //
+    // Assign these and Build() leaves them alone; leave them empty and it builds
+    // exactly what it always did. The guide's own card was the one piece of UI
+    // in the game with no asset to open, so its wording could be changed but its
+    // look could not.
+    [Header("Panel parts — leave empty to build them in code")]
+    [SerializeField] private Canvas _canvas;
+    [SerializeField] private CanvasGroup _group;
+    [SerializeField] private Image _top, _bottom, _left, _right;
+    [SerializeField] private RectTransform _ring;
+    [SerializeField] private RectTransform _arrow;
+    [SerializeField] private Image _arrowImg;
+    [SerializeField] private TextMeshProUGUI _title;
+    [SerializeField] private TextMeshProUGUI _body;
+    [SerializeField] private RectTransform _textPanelRT;
+    [SerializeField] private Image _textPanel;
+
+    [Header("Art — leave empty for the procedural stand-ins")]
+    [Tooltip("The frame drawn around the highlighted control. Sliced; drawn in code when empty.")]
+    public Sprite ringSprite;
+    [Tooltip("The wedge pointing at the highlighted control. Drawn in code when empty.")]
+    public Sprite arrowSprite;
 
     private RectTransform _target;
     private bool _active;
@@ -76,9 +89,14 @@ public class TutorialSpotlight : MonoBehaviour
     private static void Ensure()
     {
         if (Instance != null) return;
-        var go = new GameObject("[TutorialSpotlight]");
+
+        // Drop a prefab at Assets/Resources/UI/TutorialSpotlight.prefab and it is
+        // used instead of the bare object.
+        var prefab = Resources.Load<GameObject>(PrefabResource);
+        GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[TutorialSpotlight]");
+        go.name = "[TutorialSpotlight]";
         DontDestroyOnLoad(go);
-        go.AddComponent<TutorialSpotlight>();
+        if (go.GetComponent<TutorialSpotlight>() == null) go.AddComponent<TutorialSpotlight>();
     }
 
     private void Awake()
@@ -115,69 +133,101 @@ public class TutorialSpotlight : MonoBehaviour
 
     // ---- construction ---------------------------------------------------------
 
+    public const string PrefabResource = "UI/TutorialSpotlight";
+
+    // Fills in whatever was NOT authored, so a half-converted card works.
     private void Build()
     {
-        _canvas = gameObject.AddComponent<Canvas>();
-        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        // Over the shop UI, under the region victory screen.
-        _canvas.sortingOrder = 4500;
-        gameObject.AddComponent<GraphicRaycaster>();
+        if (_canvas == null) _canvas = GetComponent<Canvas>();
+        if (_canvas == null)
+        {
+            _canvas = gameObject.AddComponent<Canvas>();
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Over the shop UI, under the region victory screen.
+            _canvas.sortingOrder = 4500;
+        }
+        if (GetComponent<GraphicRaycaster>() == null) gameObject.AddComponent<GraphicRaycaster>();
 
-        var scaler = gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        if (GetComponent<CanvasScaler>() == null)
+        {
+            var scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+        }
 
-        _group = gameObject.AddComponent<CanvasGroup>();
+        if (_group == null) _group = GetComponent<CanvasGroup>();
+        if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
 
-        _top = MakePanel("DimTop");
-        _bottom = MakePanel("DimBottom");
-        _left = MakePanel("DimLeft");
-        _right = MakePanel("DimRight");
+        if (_top == null) _top = MakePanel("DimTop");
+        if (_bottom == null) _bottom = MakePanel("DimBottom");
+        if (_left == null) _left = MakePanel("DimLeft");
+        if (_right == null) _right = MakePanel("DimRight");
 
         // A soft frame around the opening, so the eye is pulled to the hole
         // rather than merely permitted to look at it.
-        var ringGo = new GameObject("Ring", typeof(RectTransform));
-        _ring = ringGo.GetComponent<RectTransform>();
-        _ring.SetParent(transform, false);
-        var ringImg = ringGo.AddComponent<Image>();
-        ringImg.sprite = BuildRingSprite();
-        ringImg.type = Image.Type.Sliced;
-        ringImg.raycastTarget = false;
-        ringImg.color = new Color(1f, 0.85f, 0.4f, 0.85f);
+        if (_ring == null)
+        {
+            var ringGo = new GameObject("Ring", typeof(RectTransform));
+            _ring = ringGo.GetComponent<RectTransform>();
+            _ring.SetParent(transform, false);
+            var ringImg = ringGo.AddComponent<Image>();
+            ringImg.type = Image.Type.Sliced;
+            ringImg.raycastTarget = false;
+            ringImg.color = new Color(1f, 0.85f, 0.4f, 0.85f);
+        }
+        var ringImage = _ring.GetComponent<Image>();
+        if (ringImage != null && ringImage.sprite == null)
+            ringImage.sprite = ringSprite != null ? ringSprite : BuildRingSprite();
 
-        var arrowGo = new GameObject("Arrow", typeof(RectTransform));
-        _arrow = arrowGo.GetComponent<RectTransform>();
-        _arrow.SetParent(transform, false);
-        // Smaller than it was. At 64 the wedge was competing with the ring for
-        // attention and covering the control underneath it — an arrow only has
-        // to say WHICH thing, and the ring is already saying LOOK HERE.
-        _arrow.sizeDelta = new Vector2(34f, 34f);
-        _arrowImg = arrowGo.AddComponent<Image>();
-        _arrowImg.sprite = BuildArrowSprite();
-        _arrowImg.raycastTarget = false;
-        _arrowImg.color = new Color(1f, 0.85f, 0.4f, 1f);
+        if (_arrow == null)
+        {
+            var arrowGo = new GameObject("Arrow", typeof(RectTransform));
+            _arrow = arrowGo.GetComponent<RectTransform>();
+            _arrow.SetParent(transform, false);
+            // Smaller than it was. At 64 the wedge was competing with the ring
+            // for attention and covering the control underneath it — an arrow
+            // only has to say WHICH thing, and the ring already says LOOK HERE.
+            _arrow.sizeDelta = new Vector2(34f, 34f);
+            _arrowImg = arrowGo.AddComponent<Image>();
+            _arrowImg.raycastTarget = false;
+            _arrowImg.color = new Color(1f, 0.85f, 0.4f, 1f);
+        }
+        if (_arrowImg == null) _arrowImg = _arrow.GetComponent<Image>();
+        if (_arrowImg != null && _arrowImg.sprite == null)
+            _arrowImg.sprite = arrowSprite != null ? arrowSprite : BuildArrowSprite();
 
-        var panelGo = new GameObject("TextPanel", typeof(RectTransform));
-        _textPanelRT = panelGo.GetComponent<RectTransform>();
-        _textPanelRT.SetParent(transform, false);
-        _textPanelRT.sizeDelta = new Vector2(560f, 150f);
-        // ==== NO PLATE BEHIND THE WORDS ====
-        //
-        // The panel was a near-opaque dark slab, and it read as a second window
-        // pasted over the screen — heavier than the thing it was explaining, and
-        // it hid whatever it happened to land on. The whole screen is already
-        // dimmed for the step, which is what a backing plate is normally there
-        // to achieve, so it was doing the job twice and charging the layout for
-        // it. The text carries its own contrast with an outline instead.
-        _textPanel = panelGo.AddComponent<Image>();
-        _textPanel.color = new Color(0f, 0f, 0f, 0f);
-        _textPanel.raycastTarget = false;
+        if (_textPanelRT == null)
+        {
+            var panelGo = new GameObject("TextPanel", typeof(RectTransform));
+            _textPanelRT = panelGo.GetComponent<RectTransform>();
+            _textPanelRT.SetParent(transform, false);
+            _textPanelRT.sizeDelta = new Vector2(560f, 150f);
+            // ==== NO PLATE BEHIND THE WORDS ====
+            //
+            // The panel was a near-opaque dark slab, and it read as a second
+            // window pasted over the screen — heavier than the thing it was
+            // explaining, and it hid whatever it landed on. The whole screen is
+            // already dimmed for the step, which is what a backing plate is
+            // normally there to achieve, so it was doing the job twice and
+            // charging the layout for it. The text carries its own contrast
+            // with an outline instead.
+            _textPanel = panelGo.AddComponent<Image>();
+            _textPanel.color = new Color(0f, 0f, 0f, 0f);
+            _textPanel.raycastTarget = false;
+        }
+        if (_textPanel == null) _textPanel = _textPanelRT.GetComponent<Image>();
 
-        _title = MakeText(_textPanelRT, "Title", 34f, FontStyles.Bold, new Vector2(0f, 40f));
-        _body = MakeText(_textPanelRT, "Body", 24f, FontStyles.Normal, new Vector2(0f, -18f));
-        _title.color = new Color(1f, 0.87f, 0.55f);
-        _body.color = new Color(0.90f, 0.90f, 0.88f);
+        if (_title == null)
+        {
+            _title = MakeText(_textPanelRT, "Title", 34f, FontStyles.Bold, new Vector2(0f, 40f));
+            _title.color = new Color(1f, 0.87f, 0.55f);
+        }
+        if (_body == null)
+        {
+            _body = MakeText(_textPanelRT, "Body", 24f, FontStyles.Normal, new Vector2(0f, -18f));
+            _body.color = new Color(0.90f, 0.90f, 0.88f);
+        }
 
         // Without the plate the text has to hold on its own, over anything the
         // step happens to sit in front of. A hard outline does that everywhere
