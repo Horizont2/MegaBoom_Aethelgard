@@ -874,15 +874,29 @@ public class EnemyAI : MonoBehaviour, IDamageable
         for (int i = 0; i < neighborCount; i++)
         {
             Collider neighbor = s_overlapBuffer[i];
-            if (neighbor.gameObject != gameObject && !neighbor.isTrigger)
-            {
-                Vector3 pushDir = currentPos - neighbor.transform.position;
-                float distance = pushDir.magnitude;
-                if (distance < repulsionRadius && distance > 0)
-                {
-                    repulsion += pushDir.normalized * (repulsionRadius - distance);
-                }
-            }
+            if (neighbor == null || neighbor.isTrigger) continue;
+
+            // ==== AN ENEMY WAS PUSHING ITSELF AROUND ====
+            //
+            // This compared gameObject only, but a collider usually sits on a
+            // CHILD of the enemy root — and on these rigs some of them hang off
+            // animated bones. So an enemy counted its own hitboxes as
+            // neighbours, and because those bones move with the run cycle, the
+            // push it computed swung left and right in time with its own
+            // footsteps. Every frame it steered away from where its own arm had
+            // just been.
+            //
+            // A whole-hierarchy test costs one extra comparison and removes a
+            // wobble that was locked to the animation, which is exactly the kind
+            // that looks deliberate and unnatural at the same time.
+            Transform nt = neighbor.transform;
+            if (nt == transform || nt.IsChildOf(transform)) continue;
+
+            Vector3 pushDir = currentPos - nt.position;
+            pushDir.y = 0f;
+            float distance = pushDir.magnitude;
+            if (distance < repulsionRadius && distance > 0.001f)
+                repulsion += pushDir / distance * (repulsionRadius - distance);
         }
 
         float distanceToPlayer = Vector3.Distance(transform.position, target.position);
@@ -986,24 +1000,17 @@ public class EnemyAI : MonoBehaviour, IDamageable
             {
                 SetMovingAnim(true);
 
-                // ==== THE LAST PLACE RAW REPULSION STILL STEERED ====
-                //
-                // The chase branch below caps the crowd push and eases the
-                // heading; this one did neither, and it is the branch that runs
-                // in the final metre — right in front of the player, where the
-                // wobble is most visible. repulsion is an unbounded sum, so with
-                // two or three neighbours it dwarfed the unit vector pointing at
-                // the player and decided the heading outright, flipping as the
-                // pack shuffled. Same cap and same easing as the charge.
-                Vector3 closePush = Vector3.ClampMagnitude(repulsion, 0.45f);
-                Vector3 closeWanted = SteerAroundObstacles(currentPos, (directionToPlayer + closePush).normalized);
+                // Closing the last metre: same rule as the charge. Straight at
+                // the player, separation applied afterwards as a slide.
+                Vector3 closeWanted = SteerAroundObstacles(currentPos, directionToPlayer);
 
                 _chaseHeading = _chaseHeading == Vector3.zero
                     ? closeWanted
-                    : Vector3.Slerp(_chaseHeading, closeWanted, 9f * Time.deltaTime);
+                    : Vector3.Slerp(_chaseHeading, closeWanted, 12f * Time.deltaTime);
 
                 Vector3 moveDir = _chaseHeading.sqrMagnitude > 0.0001f ? _chaseHeading.normalized : closeWanted;
-                Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime;
+                Vector3 nextPos = currentPos + moveDir * actualMoveSpeed * Time.deltaTime
+                                + SeparationStep(repulsion);
 
                 nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
                 SetPositionSafe(nextPos);
@@ -1036,75 +1043,55 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
                 // Deadzone: at the right distance it simply stands there. A
                 // creature adjusting its footing every frame reads as jitter.
-                if (Mathf.Abs(off) < 0.35f && repulsion.sqrMagnitude < 0.04f)
-                {
-                    SetMovingAnim(false);
-                }
-                else
-                {
-                    // Footwork speed, so the legs match the shuffle instead of
-                    // playing a full charge on the spot.
-                    SetMovingAnim(true, actualMoveSpeed * 0.45f);
+                // Crowding no longer drags it out of the deadzone — the slide
+                // below handles that without pretending it is footwork.
+                bool needsFootwork = Mathf.Abs(off) >= 0.35f;
 
-                    // In or out along the line to the player, plus a capped
-                    // nudge so bodies still separate without steering.
-                    Vector3 step = directionToPlayer * Mathf.Sign(off)
-                                 + Vector3.ClampMagnitude(repulsion, 0.5f);
+                SetMovingAnim(needsFootwork, actualMoveSpeed * 0.45f);
 
-                    if (step.sqrMagnitude > 0.0001f)
-                    {
-                        Vector3 moveDir = SteerAroundObstacles(currentPos, step.normalized);
-                        // Slower than a charge: this is footwork, not a run.
-                        Vector3 nextPos = currentPos + moveDir * (actualMoveSpeed * 0.45f) * Time.deltaTime;
-                        nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
-                        SetPositionSafe(nextPos);
-                    }
+                Vector3 footwork = needsFootwork
+                    ? SteerAroundObstacles(currentPos, directionToPlayer * Mathf.Sign(off)) * (actualMoveSpeed * 0.45f) * Time.deltaTime
+                    : Vector3.zero;
+
+                Vector3 slide = SeparationStep(repulsion);
+                if (footwork != Vector3.zero || slide != Vector3.zero)
+                {
+                    Vector3 nextPos = currentPos + footwork + slide;
+                    nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
+                    SetPositionSafe(nextPos);
                 }
             }
         }
         else
         {
-            // A whisper of wander so a pack does not advance as one rigid line.
+            // ==== STRAIGHT AT THE PLAYER. THAT IS THE WHOLE HEADING. ====
             //
-            // This was 0.5 against a unit heading — up to 27 degrees off the
-            // line to the player, reversing every couple of seconds. That is
-            // not character, that is an enemy visibly not running at you, and
-            // it is half of what still read as weaving after the repulsion was
-            // capped. Eight degrees is enough to break up a formation and
-            // little enough that the charge still looks aimed.
-            float sway = Mathf.PerlinNoise(Time.time * 0.35f, randomOffset) * 2f - 1f;
-            Vector3 rightDir = Vector3.Cross(Vector3.up, directionToPlayer).normalized;
-
-            // ==== REPULSION NUDGES. IT DOES NOT STEER. ====
+            // What used to be here: the direction to the player, plus a capped
+            // crowd push, plus a Perlin wander, all summed and normalised, then
+            // eased. Six rounds of tuning went into those two extra terms and
+            // the charge still did not read as a charge, because both of them
+            // move the heading — and the body faces the heading. An enemy that
+            // is running at you does not need a reason to look like it is not.
             //
-            // This was `repulsion * repulsionForce`, and repulsion is an
-            // UNBOUNDED SUM: every neighbour inside 1.5m adds up to 1.5 to it,
-            // then the whole thing is multiplied by four. Three enemies jostling
-            // produced a push of around eighteen against a direction-to-player
-            // of magnitude one — so where the enemy went was decided almost
-            // entirely by who it was standing next to, and since that flips as
-            // the pack shuffles, the heading flipped with it every frame.
-            //
-            // That is the zigzag, and it is also why it looked jerky rather than
-            // curved: the body rotation follows this vector directly.
-            //
-            // Capped at a fraction of the pull toward the player, so a crowd
-            // still spreads out and never decides the direction of travel.
-            Vector3 push = Vector3.ClampMagnitude(repulsion * repulsionForce, 0.55f);
-            Vector3 wanted = (directionToPlayer + push + (rightDir * sway * 0.14f)).normalized;
+            // Separation happens after the move now (see SeparationStep), and
+            // the wander is gone. A pack advancing on the same line is fine:
+            // they arrive at different times, they have different speeds, and
+            // the ones without a slot stop short. That is variety the player can
+            // read, rather than noise that reads as a bug.
+            Vector3 wanted = SteerAroundObstacles(currentPos, directionToPlayer);
             wanted.y = 0f;
-            wanted = SteerAroundObstacles(currentPos, wanted);
 
-            // And EASED, the way the ring branch already does it. A heading that
-            // is recomputed from scratch every frame snaps; one that turns
-            // toward its new answer reads as an animal changing its mind.
+            // Still eased, but only to soften the turn when an obstacle forces
+            // one. With nothing in the way this settles onto the line to the
+            // player and stays there.
             _chaseHeading = _chaseHeading == Vector3.zero
                 ? wanted
-                : Vector3.Slerp(_chaseHeading, wanted, 7f * Time.deltaTime);
+                : Vector3.Slerp(_chaseHeading, wanted, 9f * Time.deltaTime);
 
             Vector3 finalDirection = _chaseHeading.sqrMagnitude > 0.0001f ? _chaseHeading.normalized : wanted;
 
-            Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime;
+            Vector3 nextPos = currentPos + finalDirection * actualMoveSpeed * Time.deltaTime
+                            + SeparationStep(repulsion);
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             SetPositionSafe(nextPos);
 
@@ -1361,6 +1348,32 @@ public class EnemyAI : MonoBehaviour, IDamageable
     //
     // Everything now goes through here, and here always sets both.
     private void SetMovingAnim(bool moving) => SetMovingAnim(moving, moving ? actualMoveSpeed : 0f);
+
+    // ==== SEPARATION IS A NUDGE, NOT A DIRECTION ====
+    //
+    // Every previous attempt at the zigzag capped the crowd push, eased it, or
+    // reduced it — and it kept coming back, because all of them left it inside
+    // the HEADING. The heading is what the body rotates to face, so any amount
+    // of it makes the enemy turn toward wherever its neighbours are not, and
+    // neighbours shuffle constantly. Capping it only decided how far the enemy
+    // turned, never whether it turned at all.
+    //
+    // So it is out of the heading entirely. The enemy decides where it is going
+    // — the player, or its holding distance — and goes there in a straight
+    // line. Bodies still stop overlapping, because afterwards they are slid
+    // apart as a position correction. A correction cannot rotate anything, and
+    // it cannot bend the path: it can only stop two enemies occupying one spot.
+    //
+    // This is the standard separation-after-steering split, and it is what
+    // should have been done the first time.
+    private Vector3 SeparationStep(Vector3 repulsion)
+    {
+        if (repulsion.sqrMagnitude < 0.0001f) return Vector3.zero;
+        return Vector3.ClampMagnitude(repulsion, 1f) * (separationSpeed * Time.deltaTime);
+    }
+
+    [Tooltip("Metres per second an enemy slides sideways to stop overlapping another. This never steers — it only un-stacks bodies after the move.")]
+    public float separationSpeed = 1.8f;
 
     public void Aggro()
     {
@@ -1907,70 +1920,75 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private Vector3 _chaseHeading;
     private bool _reportedEngaged;
 
-    // NO SLOT: CIRCLE, DO NOT QUEUE.
-    //
-    // The whole risk of a token system is that the ones waiting look like they
-    // are waiting. They must not stand, and they must not all orbit alike —
-    // CombatRing.PostFor gives each of them its own radius, direction, pace and
-    // drift, so the shape around the player stays ragged and alive rather than
-    // reading as a circle somebody spawned.
+    // NO SLOT: CLOSE, THEN HOLD.
     //
     // Called from the movement update BEFORE the approach logic, so a waiter
-    // holds this distance instead of closing to melee and then being told to
-    // wait there. That ordering is the whole point — see the note at the call.
+    // holds its distance instead of closing to melee and only then being told
+    // to wait there. That ordering is the whole point — see the note at the
+    // call.
     private void HoldRingPost(Vector3 currentPos, Vector3 repulsion, CombatRing ring)
     {
         if (ring == null || target == null) return;
 
-        // Set below, once the actual travel speed for this frame is known — a
-        // waiter easing toward its post should not play a full sprint.
-
-        Vector3 post = ring.PostFor(this, target.position, Time.time);
-        Vector3 toPost = post - currentPos; toPost.y = 0f;
-
-        // Close fast when far from the post, ease when near it, so a waiter
-        // settles into its orbit instead of jittering on the spot.
-        float urgency = Mathf.Clamp01(toPost.magnitude / 3f);
-        Vector3 desired = toPost.sqrMagnitude > 0.04f ? toPost.normalized : Vector3.zero;
-
-        // ==== BACKING OFF BEATS DRIFTING OFF ====
+        // ==== A WAITER RUNS AT YOU AND STOPS. IT DOES NOT CIRCLE. ====
         //
-        // A waiter that has been shoved inside the ring — knocked back, or
-        // simply spawned on top of the player — has a post that is roughly
-        // sideways from where it stands, so pure post-seeking walks it in a slow
-        // arc while STILL standing in the player's face for a second or two.
-        // With three of them doing it, the scrum never actually clears.
+        // This used to seek a POST — a point on a ring around the player that
+        // jumps 20 to 50 degrees round every few seconds. At those radii each
+        // jump is a four-metre sideways walk, every enemy on its own timer, and
+        // the radius re-rolled on each step too.
         //
-        // So being too close is treated as its own emergency: push directly out
-        // from the player, hard, until back at the ring. It is the difference
-        // between a crowd that gives the player room and one that technically
-        // intends to.
+        // It was written to stop the ring reading as a queue of statues, and it
+        // is the real answer to seven reports of enemies moving strangely. None
+        // of the steering fixes could reach it, because it was not noise in the
+        // steering — the AI was deliberately walking sideways, and doing it
+        // correctly.
+        //
+        // What the ring is FOR is the slot limit: two or three press at once and
+        // the rest wait. That part stays. The choreography goes. A waiter closes
+        // in a straight line, stops at its own distance, and watches. Enemies
+        // still look different from one another because their distances differ,
+        // they arrive at different times, slots rotate between them, and they
+        // still feint.
+        float hold = ring.HoldDistanceFor(this);
+
         Vector3 fromPlayer = currentPos - target.position; fromPlayer.y = 0f;
         float distNow = fromPlayer.magnitude;
-        if (distNow > 0.05f && distNow < ring.innerRadius)
+
+        // A band, not a point — a waiter parked exactly on a radius twitches in
+        // and out as the player moves.
+        const float slack = 0.45f;
+        Vector3 desired = Vector3.zero;
+        float pace = 1f;
+
+        if (distNow > hold + slack)
         {
-            float crowding = Mathf.InverseLerp(ring.innerRadius, ring.innerRadius * 0.4f, distNow);
-            desired = Vector3.Lerp(desired, fromPlayer / distNow, crowding).normalized;
-            urgency = Mathf.Max(urgency, crowding);
+            desired = -fromPlayer / Mathf.Max(distNow, 0.001f);   // straight in
+        }
+        else if (distNow < hold - slack && distNow > 0.05f)
+        {
+            // Shoved inside the ring — knocked back, or spawned on top of the
+            // player. Back straight out. Directly away, because an arc would
+            // leave it in the player's face for another second or two.
+            desired = fromPlayer / distNow;
+            pace = 0.7f;
         }
 
-        // ==== WHY THIS DOES NOT NORMALISE BLINDLY ====
-        //
-        // The steering vector is the post direction plus the crowd's mutual
-        // repulsion, and when two enemies want overlapping ground those two very
-        // nearly cancel. Normalising a near-zero vector amplifies whatever noise
-        // is left, so the direction flipped every frame and the pair stood there
-        // shaking against each other — the vibration in the report.
-        //
-        // So: below a threshold the enemy simply does not move, and above it the
-        // direction is EASED rather than snapped, which also stops a waiter
-        // twitching as its orbit target slides past.
-        Vector3 steer = desired + repulsion * 0.6f;
-        if (steer.sqrMagnitude < 0.09f)
-        {
-            SetMovingAnim(false);
+        Vector3 slide = SeparationStep(repulsion);
 
-            // Standing at its post: watch the player.
+        if (desired == Vector3.zero)
+        {
+            // At its distance: stand and watch. Bodies may still un-stack, but
+            // that is a slide, not a walk, so the legs stay still.
+            SetMovingAnim(false);
+            _ringHeading = Vector3.zero;
+
+            if (slide != Vector3.zero)
+            {
+                Vector3 settle = currentPos + slide;
+                settle.y = SampleTerrainHeight(settle) + verticalOffset;
+                SetPositionSafe(settle);
+            }
+
             Vector3 idleToPlayer = target.position - currentPos; idleToPlayer.y = 0f;
             if (idleToPlayer.sqrMagnitude > 0.0001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation,
@@ -1979,41 +1997,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
         else
         {
-            Vector3 wanted = SteerAroundObstacles(currentPos, steer.normalized);
+            Vector3 wanted = SteerAroundObstacles(currentPos, desired);
             _ringHeading = _ringHeading == Vector3.zero
                 ? wanted
-                : Vector3.Slerp(_ringHeading, wanted, 6f * Time.deltaTime);
+                : Vector3.Slerp(_ringHeading, wanted, 9f * Time.deltaTime);
 
-            Vector3 step = _ringHeading.normalized * (actualMoveSpeed * Mathf.Lerp(0.35f, 0.95f, urgency));
-            Vector3 nextPos = currentPos + step * Time.deltaTime;
+            Vector3 heading = _ringHeading.sqrMagnitude > 0.0001f ? _ringHeading.normalized : wanted;
+            float speed = actualMoveSpeed * pace;
+
+            Vector3 nextPos = currentPos + heading * speed * Time.deltaTime + slide;
             nextPos.y = SampleTerrainHeight(nextPos) + verticalOffset;
             SetPositionSafe(nextPos);
 
-            // The legs match the ACTUAL pace: a waiter drifting the last half
-            // metre to its post walks, one crossing the ring runs.
-            SetMovingAnim(true, step.magnitude);
+            SetMovingAnim(true, speed);
 
-            // ==== LOOK WHERE YOU ARE GOING, MOSTLY ====
-            //
-            // Facing the player while circling is what a strafe animation is
-            // for, and the enemy animation set has none — so a waiter locked
-            // onto the player played a forward run while travelling sideways.
-            //
-            // The compromise: the faster it is actually moving, the more it
-            // turns into its own path, and as it settles at its post it comes
-            // back round to face the player. Crossing ground looks like
-            // running; holding station looks like watching you.
-            Vector3 toPlayer = target.position - currentPos; toPlayer.y = 0f;
-            if (toPlayer.sqrMagnitude > 0.0001f)
-            {
-                float travel = Mathf.Clamp01(step.magnitude / Mathf.Max(0.1f, actualMoveSpeed));
-                Vector3 look = Vector3.Slerp(toPlayer.normalized, _ringHeading.normalized,
-                                             Mathf.SmoothStep(0f, 0.85f, travel));
-                if (look.sqrMagnitude > 0.0001f)
-                    transform.rotation = Quaternion.Slerp(transform.rotation,
-                                                          Quaternion.LookRotation(look.normalized),
-                                                          8f * Time.deltaTime);
-            }
+            // Travel is along the line to the player in both directions now, so
+            // facing the way it moves and facing the player are the same thing
+            // when closing. Backing off is the exception — it keeps its eyes on
+            // the player and walks out backwards, which is what the retreat
+            // actually is.
+            Vector3 look = pace < 1f ? -heading : heading;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look), 9f * Time.deltaTime);
         }
 
         // A waiter still THREATENS. Every few seconds it lunges a step and

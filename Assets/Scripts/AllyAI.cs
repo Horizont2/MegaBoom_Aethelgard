@@ -310,6 +310,7 @@ public class AllyAI : MonoBehaviour, IDamageable
         float d = dir.magnitude;
         if (d < 0.001f) return;
         dir /= d;
+        dir = SteerAroundObstacles(dir, d);
         // Remembered for the locomotion blend — see SetMoving.
         _lastMoveDir = dir;
 
@@ -326,6 +327,84 @@ public class AllyAI : MonoBehaviour, IDamageable
         next.y = GroundY(next);
         transform.position = next;
     }
+
+    [Header("Obstacle avoidance")]
+    [Tooltip("How far ahead the ally looks for something in its way. Roughly a second of travel is right — further and it swerves around things it was never going to hit.")]
+    public float lookAhead = 2.2f;
+    [Tooltip("Radius of the probe. Should be a little wider than the ally's body so it does not clip a corner it technically missed.")]
+    public float bodyRadius = 0.45f;
+    [Tooltip("Layers the ally must walk around rather than into. Leave as-is unless the project's layers change.")]
+    public LayerMask obstacleMask = ~0;
+
+    private int _avoidSide;   // committed direction, so it does not dither
+
+    // ==== WALKING AROUND THINGS, NOT UP THEM ====
+    //
+    // MoveToward set a position and sampled the ground under it, which means a
+    // rock in the way was not an obstacle at all: the ally simply walked into
+    // its footprint and the ground sample lifted it up the side. From the
+    // player's seat the companion climbs scenery instead of going round it.
+    //
+    // A short probe ahead, and if it is blocked, fan out to either side and take
+    // the first clear heading. The chosen side is REMEMBERED: re-deciding every
+    // frame is how an avoider ends up oscillating in front of a wide obstacle,
+    // going left, right, left, and never past it.
+    private Vector3 SteerAroundObstacles(Vector3 dir, float distanceToGoal)
+    {
+        float probe = Mathf.Min(lookAhead, Mathf.Max(0.6f, distanceToGoal));
+        Vector3 origin = transform.position + Vector3.up * (bodyRadius + 0.15f);
+
+        if (!Blocked(origin, dir, probe)) { _avoidSide = 0; return dir; }
+
+        // Try the side already committed to first, so a partial success does not
+        // hand the lead back to the other side halfway around.
+        int first = _avoidSide != 0 ? _avoidSide : 1;
+        for (int pass = 0; pass < 2; pass++)
+        {
+            int side = pass == 0 ? first : -first;
+            for (float angle = 30f; angle <= 90f; angle += 30f)
+            {
+                Vector3 candidate = Quaternion.AngleAxis(angle * side, Vector3.up) * dir;
+                if (!Blocked(origin, candidate, probe)) { _avoidSide = side; return candidate; }
+            }
+        }
+
+        // Boxed in on every heading tried: slide along the wall rather than
+        // grinding into it, which at least keeps the ally moving.
+        _avoidSide = first;
+        return Quaternion.AngleAxis(90f * first, Vector3.up) * dir;
+    }
+
+    private bool Blocked(Vector3 origin, Vector3 dir, float distance)
+    {
+        int hits = Physics.SphereCastNonAlloc(origin, bodyRadius, dir, s_hits, distance, obstacleMask, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits; i++)
+        {
+            var c = s_hits[i].collider;
+            if (c == null) continue;
+            // Itself, the player, the terrain it is standing on, other creatures
+            // and anything it is meant to walk through are not obstacles — the
+            // crowd is handled by moving, not by pathing around it.
+            if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
+            if (c.CompareTag("Player")) continue;
+            if (c is TerrainCollider) continue;
+            if (c.GetComponentInParent<EnemyAI>() != null) continue;
+            if (c.GetComponentInParent<AllyAI>() != null) continue;
+            if (c.GetComponentInParent<ResourceDrop>() != null) continue;
+
+            // Only things actually tall enough to be in the way. A kerb, a root
+            // or a patch of debris is something to walk over, and swerving
+            // around ankle-height scenery looks far worse than stepping on it.
+            Bounds b = c.bounds;
+            if (b.size.y < 0.7f) continue;
+            if (b.max.y < transform.position.y + 0.5f) continue;
+
+            return true;
+        }
+        return false;
+    }
+
+    private static readonly RaycastHit[] s_hits = new RaycastHit[12];
 
     private void FaceToward(Vector3 p)
     {

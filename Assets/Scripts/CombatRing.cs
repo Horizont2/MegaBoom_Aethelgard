@@ -310,6 +310,35 @@ public class CombatRing : MonoBehaviour
     // Deterministic per enemy and continuous in time, so it can be called every
     // frame from the AI's own movement without any state being stored here — and
     // so two enemies never resolve to the same spot.
+    // How far back this enemy waits. Fixed for the life of the enemy: no time
+    // term, nothing that moves.
+    //
+    // ==== WHY THE POSTS BELOW ARE NO LONGER USED FOR WAITING ====
+    //
+    // PostFor's whole design was to keep waiters in motion so the ring would not
+    // read as a queue of statues. It steps each waiter 20-50 degrees around a
+    // 3.6-6.2m ring every few seconds, which at that radius is a four-to-five
+    // metre sideways walk, and it re-rolls the radius on every step too. Each
+    // enemy on its own timer.
+    //
+    // On paper that is a restless pack. On screen it is a crowd of enemies
+    // walking sideways past you for no visible reason, and it is the single
+    // largest source of the movement that has now been reported seven times.
+    // Every other fix — capping the crowd push, cutting the wander, easing the
+    // heading — was real, and none of them could touch this, because this is not
+    // noise in the steering: it is the AI deliberately walking somewhere else.
+    //
+    // The ring keeps the part that was doing the work — only two or three may
+    // press at once — and drops the choreography. A waiter now runs straight at
+    // the player and stops at its own distance. The variety comes from the
+    // distances differing, from arrivals being staggered, and from slots
+    // rotating, which is variety the player can actually read.
+    public float HoldDistanceFor(EnemyAI who)
+    {
+        int seed = who != null ? who.GetInstanceID() : 0;
+        return Mathf.Lerp(innerRadius, outerRadius, Frac(seed * 0.7548776662f));
+    }
+
     public Vector3 PostFor(EnemyAI who, Vector3 playerPos, float time)
     {
         int seed = who != null ? who.GetInstanceID() : 0;
