@@ -1045,7 +1045,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 // creature adjusting its footing every frame reads as jitter.
                 // Crowding no longer drags it out of the deadzone — the slide
                 // below handles that without pretending it is footwork.
-                bool needsFootwork = Mathf.Abs(off) >= 0.35f;
+                //
+                // Hysteresis, because a single threshold is not a deadzone when
+                // the PLAYER is the thing moving: strafing round an enemy walks
+                // the distance back and forth across 0.35m several times a
+                // second, and the legs started and stopped with it. It takes a
+                // real gap to set the feet going, and a smaller one to settle.
+                float startAt = _footworkActive ? 0.22f : 0.6f;
+                bool needsFootwork = Mathf.Abs(off) >= startAt;
+                _footworkActive = needsFootwork;
 
                 SetMovingAnim(needsFootwork, actualMoveSpeed * 0.45f);
 
@@ -1328,11 +1336,26 @@ public class EnemyAI : MonoBehaviour, IDamageable
         }
     }
 
+    private float _animSpeed;
+
     private void SetMovingAnim(bool moving, float speed)
     {
         if (animator == null || !animator.enabled) return;
         animator.SetBoolSafe("isMoving", moving);
-        animator.SetFloatSafe("Speed", moving ? speed : 0f);
+
+        // ==== EASE THE BLEND VALUE, DO NOT SNAP IT ====
+        //
+        // The branches move at different paces — a full charge, then footwork at
+        // 45%, then a standstill — and writing those numbers straight into Speed
+        // makes the locomotion tree JUMP between clips at every branch change.
+        // That is a pop, and it is what reads as the animation switching mid-run
+        // even when the enemy is doing something perfectly sensible.
+        //
+        // A blend tree exists to cross-fade; it just needs a value that travels.
+        float target = moving ? speed : 0f;
+        _animSpeed = Mathf.MoveTowards(_animSpeed, target,
+                                       Mathf.Max(2f, actualMoveSpeed * 3.5f) * Time.deltaTime);
+        animator.SetFloatSafe("Speed", _animSpeed);
     }
 
     // ==== isMoving IS ONLY HALF OF THE ANIMATOR ====
@@ -1918,6 +1941,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private Vector3 _ringHeading;
     // Same, for the straight chase.
     private Vector3 _chaseHeading;
+    // Latches that stop a threshold being crossed back and forth by the
+    // PLAYER's movement rather than the enemy's own decisions.
+    private bool _holdSettled;
+    private bool _footworkActive;
     private bool _reportedEngaged;
 
     // NO SLOT: CLOSE, THEN HOLD.
@@ -1954,23 +1981,48 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 fromPlayer = currentPos - target.position; fromPlayer.y = 0f;
         float distNow = fromPlayer.magnitude;
 
-        // A band, not a point — a waiter parked exactly on a radius twitches in
-        // and out as the player moves.
-        const float slack = 0.45f;
+        // ==== LOSING A SLOT MUST NOT MEAN WALKING AWAY ====
+        //
+        // THIS is the advancing-and-retreating, and it was never a steering
+        // problem. The ring hands slots around every few seconds so the same two
+        // enemies do not do all the fighting, which is right. What was wrong is
+        // what happened to the one that lost a slot: its hold distance is 3.6 to
+        // 6.2 metres and it was standing at about two, so it turned round,
+        // walked several metres out, waited out the cooldown, and ran straight
+        // back in. Every enemy, every few seconds, for the whole fight.
+        //
+        // The AI was not jittering. It was correctly executing a round trip
+        // nobody wanted, and every leg of it flipped the animation as well.
+        //
+        // So the hold distance is a target for enemies still ARRIVING. Anything
+        // already inside it holds its ground; only standing literally inside the
+        // player's swing is worth a step back.
+        float standFloor = Mathf.Max(attackRange * 1.15f, ring.innerRadius * 0.5f);
+
+        // Hysteresis on the outer edge too, so a settled waiter does not step
+        // forward every time the player drifts half a metre away.
+        float advanceAt = _holdSettled ? hold + 1.6f : hold + 0.45f;
+
         Vector3 desired = Vector3.zero;
         float pace = 1f;
 
-        if (distNow > hold + slack)
+        if (distNow > advanceAt)
         {
             desired = -fromPlayer / Mathf.Max(distNow, 0.001f);   // straight in
+            _holdSettled = false;
         }
-        else if (distNow < hold - slack && distNow > 0.05f)
+        else if (distNow < standFloor && distNow > 0.05f)
         {
-            // Shoved inside the ring — knocked back, or spawned on top of the
-            // player. Back straight out. Directly away, because an arc would
-            // leave it in the player's face for another second or two.
+            // Genuinely inside the player's reach — knocked back, or spawned on
+            // top of them. Step out, directly, because an arc would leave it in
+            // the player's face for another second or two.
             desired = fromPlayer / distNow;
-            pace = 0.7f;
+            pace = 0.75f;
+            _holdSettled = false;
+        }
+        else
+        {
+            _holdSettled = true;
         }
 
         Vector3 slide = SeparationStep(repulsion);
@@ -2011,13 +2063,15 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
             SetMovingAnim(true, speed);
 
-            // Travel is along the line to the player in both directions now, so
-            // facing the way it moves and facing the player are the same thing
-            // when closing. Backing off is the exception — it keeps its eyes on
-            // the player and walks out backwards, which is what the retreat
-            // actually is.
-            Vector3 look = pace < 1f ? -heading : heading;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look), 9f * Time.deltaTime);
+            // ALWAYS face the way it is travelling. Keeping its eyes on the
+            // player while stepping backwards meant a forward run animation
+            // playing while the body moved backwards — there is no backward
+            // walk in this animation set, and pretending otherwise is half of
+            // what "the animations switch to something strange" was.
+            //
+            // So a retreating enemy turns, walks out, and turns back when it
+            // stops. That is what the animation set can actually show.
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), 9f * Time.deltaTime);
         }
 
         // A waiter still THREATENS. Every few seconds it lunges a step and
