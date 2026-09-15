@@ -1001,7 +1001,7 @@ public class ShopManager : MonoBehaviour
             }
             else if (isBought)
             {
-                AudioManager.Instance?.PlayUI(AudioID.UI_Click);
+                AudioManager.Instance?.PlayUI(AudioID.Shop_Equip);
                 Equip();
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -1023,7 +1023,7 @@ public class ShopManager : MonoBehaviour
             }
             else if (isBought)
             {
-                AudioManager.Instance?.PlayUI(AudioID.UI_Click);
+                AudioManager.Instance?.PlayUI(AudioID.Shop_Equip);
                 dummyArmorManager?.EquipAndSaveArmor((ArmorSlot)selectedArmorData.category, selectedArmorData.prefabIndex);
             }
             else AudioManager.Instance?.PlayUI(AudioID.UI_Error);
@@ -1061,7 +1061,7 @@ public class ShopManager : MonoBehaviour
 
             if (level < selectedWeaponData.maxUpgradeLevel && myDiamonds >= selectedWeaponData.GetUpgradeCost(level))
             {
-                AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
+                AudioManager.Instance?.PlayUI(AudioID.Shop_Upgrade);
                 WriteDiamonds(myDiamonds - selectedWeaponData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("WeaponLevel_" + id, level + 1);
                 didUpgrade = true;
@@ -1075,7 +1075,7 @@ public class ShopManager : MonoBehaviour
 
             if (level < selectedArmorData.maxUpgradeLevel && myDiamonds >= selectedArmorData.GetUpgradeCost(level))
             {
-                AudioManager.Instance?.PlayUI(AudioID.UI_LevelUp);
+                AudioManager.Instance?.PlayUI(AudioID.Shop_Upgrade);
                 WriteDiamonds(myDiamonds - selectedArmorData.GetUpgradeCost(level));
                 PlayerPrefs.SetInt("ArmorLevel_" + id, level + 1);
                 didUpgrade = true;

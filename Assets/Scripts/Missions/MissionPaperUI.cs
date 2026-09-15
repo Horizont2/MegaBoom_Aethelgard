@@ -181,7 +181,7 @@ public class MissionPaperUI : MonoBehaviour
     {
         acceptButton.interactable = false;
 
-        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_QuestAccept);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.Board_PaperTake);
 
         transform.SetParent(transform.root);
         transform.SetAsLastSibling();

@@ -187,10 +187,26 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (staminaLocked) return false;
         if (stamina < 0f) stamina = MaxStaminaTotal;
-        if (stamina < amount) return false;
+        if (stamina < amount) { NoteStaminaRefused(); return false; }
         stamina -= amount;
         lastStaminaSpend = Time.time;
         return true;
+    }
+
+    // "You tried, and you could not." Throttled, because the refusal happens on
+    // a key the player is probably mashing, and an error tone per frame is
+    // worse feedback than none.
+    //
+    // No fallback is registered for this one: nothing played here before, so
+    // until the event is authored it stays silent rather than borrowing a sound
+    // that means something else.
+    private float _nextStaminaRefusalSfx;
+
+    private void NoteStaminaRefused()
+    {
+        if (Time.unscaledTime < _nextStaminaRefusalSfx) return;
+        _nextStaminaRefusalSfx = Time.unscaledTime + 0.6f;
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Stamina_Empty);
     }
 
     // Drains without refusing — used by continuous costs like holding a guard,
@@ -514,7 +530,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null && !isDead)
         {
             // Використовуємо 3D версію і передаємо позицію ніг гравця
-            AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+            AudioManager.Instance.PlaySFX3D(SurfaceAudio.FootstepFor(transform.position), transform.position);
             lastAnimFootstepTime = Time.unscaledTime;
         }
     }
@@ -547,7 +563,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             footstepDistanceAccum = 0f;
             if (AudioManager.Instance != null)
-                AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+                AudioManager.Instance.PlaySFX3D(SurfaceAudio.FootstepFor(transform.position), transform.position);
         }
     }
 

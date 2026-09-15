@@ -187,17 +187,17 @@ public class ResourceDrop : MonoBehaviour
             if (resourceType == ResourceType.Wood)
             {
                 ResourceManager.Instance.AddRunResources(amount, 0, 0);
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Pickup_Wood);
             }
             else if (resourceType == ResourceType.Stone)
             {
                 ResourceManager.Instance.AddRunResources(0, amount, 0);
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Pickup_Stone);
             }
             else if (resourceType == ResourceType.Food)
             {
                 ResourceManager.Instance.AddRunResources(0, 0, amount);
-                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectItem);
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Pickup_Food);
             }
             else if (resourceType == ResourceType.Diamond)
             {

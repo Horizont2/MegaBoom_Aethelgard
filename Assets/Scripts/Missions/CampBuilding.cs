@@ -912,6 +912,19 @@ public class CampBuilding : MonoBehaviour
             {
                 upgradeGlimmer.SetActive(true);
                 RestartGlimmerVFX();   // actually PLAY it — see below
+
+                // "You can afford this now." The glimmer appearing is the only
+                // notice the player gets that a building became upgradable, and
+                // it happens while they are usually looking somewhere else —
+                // walking back into camp with a full stash. A quiet chime from
+                // the building itself is what makes it noticeable without a
+                // popup. 3D and positional, so it also says WHICH building.
+                //
+                // Only after the camp has settled: on load every affordable
+                // building turns its glimmer on in the same frame, and a dozen
+                // chimes at once is an alarm, not a notification.
+                if (AudioManager.Instance != null && Time.timeSinceLevelLoad > 3f)
+                    AudioManager.Instance.PlaySFX3D(AudioID.Camp_UpgradeReady, BuildingAudioAnchor().position);
             }
             else if (!shouldShow && upgradeGlimmer.activeSelf)
             {

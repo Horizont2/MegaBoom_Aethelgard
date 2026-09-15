@@ -734,6 +734,8 @@ public class WorldGenerator : MonoBehaviour
             regionBiomeTypeCached = PlayerPrefs.GetInt("RegionBiomeType", 0);
         }
 
+        RegionIsWinter = IsWinterRegion;
+
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
@@ -1873,6 +1875,17 @@ public class WorldGenerator : MonoBehaviour
     // temperature noise like any other biome and must not be touched by any of
     // the winter-specific work below.
     private bool IsWinterRegion => isRegionMissionCached && regionBiomeTypeCached == 2;
+
+    // ==== READ BY THE FOOTSTEP PATH, SO IT IS STATIC ====
+    //
+    // SurfaceAudio needs to know whether the ground under the player is snow,
+    // and it is asked that question twice a second for the whole run. Searching
+    // the scene for a generator on every step to read one bool would be absurd,
+    // so the answer is published here once and read directly.
+    //
+    // A plain scene (the camp) never runs generation, so this stays false —
+    // which is correct: the camp is not a winter region.
+    public static bool RegionIsWinter { get; private set; }
 
     // ==== THE RIM THE BORDER MOUNTAINS ACTUALLY OCCUPY ====
     //

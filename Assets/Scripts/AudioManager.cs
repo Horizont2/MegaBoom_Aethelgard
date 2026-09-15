@@ -955,6 +955,38 @@ public class AudioManager : MonoBehaviour
         // grenade blast was silent while the throw SFX played fine. Fall
         // back to the punchy shockwave so the explosion is always audible.
         { AudioID.Explosion,          AudioID.Region_Shockwave },
+
+        // ==== WHAT PLAYED HERE BEFORE ====
+        //
+        // Twenty AudioIDs were declared, given a slot in the inspector, and
+        // never called from anywhere — so authoring their FMOD events would
+        // have produced silence. They are wired to their moments now, and each
+        // one that REPLACED an existing sound falls back to exactly that sound,
+        // so until the new events are authored the game is audibly unchanged.
+        //
+        // Moments that had NO sound before are deliberately absent from this
+        // map. Borrowing an unrelated sound for them would be a new noise, not
+        // a safety net: Stamina_Empty, Chest_Locked, Chest_VigilTick,
+        // Chest_VigilDone, Reward_Reveal, Camp_UpgradeReady and Env_IceCrack
+        // stay silent until somebody authors them, which is what they do today.
+        //
+        // Ambient_Blizzard is the one exception, and for the opposite reason: it
+        // takes the LARGEST share of the winter ambient pool, so leaving it
+        // silent would make winter regions quieter than they are now. It falls
+        // back to the wind that already plays there.
+        { AudioID.Pickup_Wood,          AudioID.Camp_CollectItem },
+        { AudioID.Pickup_Stone,         AudioID.Camp_CollectItem },
+        { AudioID.Pickup_Food,          AudioID.Camp_CollectItem },
+        { AudioID.Player_Footstep_Snow, AudioID.Player_Footstep },
+        { AudioID.Player_Footstep_Stone,AudioID.Player_Footstep },
+        { AudioID.Player_Footstep_Wood, AudioID.Player_Footstep },
+        { AudioID.Shop_Equip,           AudioID.UI_Click },
+        { AudioID.Shop_Upgrade,         AudioID.UI_LevelUp },
+        { AudioID.Board_PaperTake,      AudioID.UI_QuestAccept },
+        { AudioID.Chest_VigilStart,     AudioID.Env_ChestOpen },
+        { AudioID.Enemy_Unblockable,    AudioID.Enemy_Telegraph },
+        { AudioID.Env_TreeCrush,        AudioID.Env_StoneBreak },
+        { AudioID.Ambient_Blizzard,     AudioID.Ambient_Wind },
     };
 
     // Play a sound EXACTLY once, guaranteed to stop after `maxSeconds`, even if

@@ -514,8 +514,11 @@ public class ResourceNode : MonoBehaviour, IDamageable
                 // trunk clipped past still gets flattened by the crown coming
                 // down, and a thump the player can feel.
                 SweepCrush(pivotPoint, trunkLength, crushDamage, crushed, finalHit: true);
+                // The crown coming down. This borrowed the stone-break sound
+                // because nothing better existed; it has its own event now and
+                // falls back to that same stone break until it is authored.
                 if (AudioManager.Instance != null)
-                    AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, pivotPoint + fallDir * trunkLength * 0.6f);
+                    AudioManager.Instance.PlaySFX3D(AudioID.Env_TreeCrush, pivotPoint + fallDir * trunkLength * 0.6f);
                 // A directional thump along the way the trunk went, so the
                 // weight of it registers in the hands as well as the eyes.
                 if (crushed.Count > 0)

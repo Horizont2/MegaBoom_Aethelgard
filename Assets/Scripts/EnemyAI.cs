@@ -2209,6 +2209,13 @@ public class EnemyAI : MonoBehaviour, IDamageable
             // makes an attack from behind fair, because its mark pins to the
             // screen edge and tells the player which way to turn.
             ParryCue.Show(this, telegraph, PlayerBlock.ParryWindowSecondsFor(this), _thisSwingUnblockable);
+
+            // The swing no shield stops gets its own voice. The colour already
+            // says it, but colour is something the player has to be LOOKING at,
+            // and this one has to land even when they are watching a different
+            // enemy. Falls back to the ordinary telegraph until authored, so
+            // nothing is lost in the meantime.
+            if (_thisSwingUnblockable) PlayVocal(AudioID.Enemy_Unblockable);
         }
 
         if (isElite && playerTarget != null && aimedAtPlayer)

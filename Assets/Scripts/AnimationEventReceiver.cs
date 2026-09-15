@@ -49,7 +49,7 @@ public class AnimationEventReceiver : MonoBehaviour
 
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySFX3D(AudioID.Player_Footstep, transform.position);
+            AudioManager.Instance.PlaySFX3D(SurfaceAudio.FootstepFor(transform.position), transform.position);
         }
     }
 }

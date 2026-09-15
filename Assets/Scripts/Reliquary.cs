@@ -549,8 +549,22 @@ public class Reliquary : MonoBehaviour
         {
             if (dist <= _chest.interactRange)
             {
+                // Once per approach, not once per frame: the seal announces
+                // itself when the player walks up to it, and shuts up until
+                // they have walked away again.
+                if (!_announcedLocked)
+                {
+                    _announcedLocked = true;
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySFX3D(AudioID.Chest_Locked, transform.position);
+                }
+
                 ShowBar(LocalizationManager.Tr("RELIQUARY_LIGHT", Mathf.RoundToInt(need)), 0f);
                 if (Input.GetKeyDown(_chest.interactKey)) LightVigil();
+            }
+            else if (dist > _chest.interactRange * 1.6f)
+            {
+                _announcedLocked = false;
             }
             return;
         }
@@ -614,6 +628,16 @@ public class Reliquary : MonoBehaviour
                 : LocalizationManager.Tr("RELIQUARY_VIGIL_LOST"),
                 _progress);
 
+        // The hold counting down, once a second, and only while it is actually
+        // counting — standing off the seal stops the clock, and the sound has to
+        // stop with it or it lies about what is happening.
+        if (onGround && Time.time >= _nextTick)
+        {
+            _nextTick = Time.time + 1f;
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX3D(AudioID.Chest_VigilTick, transform.position);
+        }
+
         if (_progress >= 1f)
         {
             // Put it back before handing over: LootChest's own open sequence
@@ -628,8 +652,13 @@ public class Reliquary : MonoBehaviour
     {
         if (_spent) return;
         _spent = true;
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX3D(AudioID.Chest_VigilDone, transform.position);
         _chest.ForceOpen();   // payout rides on LootChest.LidOpened
     }
+
+    private bool _announcedLocked;
+    private float _nextTick;
 
     // Lighting the seal is what makes the site hostile. Everything nearby is told
     // where the player is standing, which is the honest version of "a wave
@@ -640,8 +669,9 @@ public class Reliquary : MonoBehaviour
         _vigilLit = true;
         _held = 0f;
         _nextWave = Time.time + 1.5f;   // the first one comes almost at once
+        _nextTick = Time.time + 1f;
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX3D(AudioID.Env_ChestOpen, transform.position);
+            AudioManager.Instance.PlaySFX3D(AudioID.Chest_VigilStart, transform.position);
         if (_beacon != null) _beacon.SetAgitated(true);
     }
 
@@ -749,6 +779,10 @@ public class Reliquary : MonoBehaviour
     // The lid is up. Everything the reward consists of happens now, in one beat.
     private void OnLidOpened()
     {
+        // The centre-screen beat. One sound for the whole payout, fired here
+        // rather than per item, because the reward reads as a single moment.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Reward_Reveal);
+
         // ==== THE RAREST THING IN THE GAME MUST NEVER PAY NOTHING IN SILENCE ====
         //
         // A Barrow is a nine-second vigil against a wave. Walking away from one

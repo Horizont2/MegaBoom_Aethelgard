@@ -43,6 +43,27 @@ public class AmbientSoundscape : MonoBehaviour
         new AmbientEntry { id = AudioID.Ambient_LeafRustle,      minDelay = 14f, maxDelay = 30f, weight = 2f },
     };
 
+    // ==== A WINTER REGION SOUNDS LIKE ONE ====
+    //
+    // The combat list is built for a temperate valley: crows, leaves in the
+    // trees, distant summer thunder. Played over snowfields it reads as the
+    // wrong recording, and the winter region has been visually reworked while
+    // its audio stayed put.
+    //
+    // Blizzard carries the weight here and leaves are gone entirely — there is
+    // nothing to rustle. Crows stay, thinned out: a lone bird over a dead
+    // landscape is worth more than a flock.
+    private readonly List<AmbientEntry> winterEntries = new List<AmbientEntry>
+    {
+        new AmbientEntry { id = AudioID.Ambient_Blizzard,        minDelay = 12f, maxDelay = 24f, weight = 3.5f },
+        new AmbientEntry { id = AudioID.Ambient_Wind,            minDelay = 10f, maxDelay = 20f, weight = 2.5f },
+        new AmbientEntry { id = AudioID.Ambient_Howl,            minDelay = 20f, maxDelay = 44f, weight = 2.5f },
+        new AmbientEntry { id = AudioID.Ambient_Crow,            minDelay = 24f, maxDelay = 50f, weight = 0.8f },
+        // A frozen lake shifting somewhere out of sight. Rare on purpose: it is
+        // the kind of sound that is unsettling once and irritating often.
+        new AmbientEntry { id = AudioID.Env_IceCrack,            minDelay = 34f, maxDelay = 75f, weight = 1f },
+    };
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
@@ -103,6 +124,7 @@ public class AmbientSoundscape : MonoBehaviour
         }
 
         List<AmbientEntry> pool = isCombatScene ? combatEntries : calmEntries;
+        if (isCombatScene && WorldGenerator.RegionIsWinter) pool = winterEntries;
 
         // Weighted pick; avoid replaying the immediately previous clip so the
         // soundscape doesn't ever feel repetitive.
