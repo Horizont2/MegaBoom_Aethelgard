@@ -40,6 +40,7 @@ public class ChestBeacon : MonoBehaviour
     public float fadeTime = 0.8f;
 
     private Material _mat;
+    private Material _moteMat;
     private MeshRenderer _shaft;
     private Light _light;
     private Transform _motes;
@@ -80,6 +81,23 @@ public class ChestBeacon : MonoBehaviour
         if (_mat.HasProperty("_Cull")) _mat.SetFloat("_Cull", 0f);
         SetTint(1f);
 
+        // ==== THE MOTES WERE LITERAL SQUARES ====
+        //
+        // They shared the shaft's material and sampled a 0.16-by-0.16 window of
+        // its gradient — a patch where the alpha runs from about 0.3 to 0.7 and
+        // never reaches zero. So each mote drew as a solid rectangle with a
+        // slight gradient across it, hard-edged against the sky. That is the
+        // Minecraft look, and it was the texture, not the geometry: the quads
+        // are already billboarded.
+        //
+        // Their own material, with a round falloff to fully transparent at the
+        // rim, so what floats out of the chest is a spark rather than a brick.
+        _moteMat = new Material(template);
+        _moteMat.mainTexture = MoteTexture();
+        if (_moteMat.HasProperty("_BaseMap")) _moteMat.SetTexture("_BaseMap", _moteMat.mainTexture);
+        if (_moteMat.HasProperty("_Cull")) _moteMat.SetFloat("_Cull", 0f);
+        OwnedMaterial.Attach(gameObject, _moteMat);
+
         var shaftGo = new GameObject("Shaft");
         shaftGo.transform.SetParent(transform, false);
         shaftGo.AddComponent<MeshFilter>().sharedMesh = ShaftMesh();
@@ -111,9 +129,10 @@ public class ChestBeacon : MonoBehaviour
             var mf = m.AddComponent<MeshFilter>();
             mf.sharedMesh = QuadMesh();
             var mr = m.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = _mat;
+            mr.sharedMaterial = _moteMat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             m.AddComponent<Mote>().Configure(baseRadius * 1.6f, height, i / 5f);
         }
 
@@ -227,9 +246,14 @@ public class ChestBeacon : MonoBehaviour
     {
         if (s_quad != null) return s_quad;
         s_quad = new Mesh { name = "BeaconMote" };
-        const float h = 0.06f;
+        // Slightly larger than before, because the sprite now fades to nothing
+        // well inside its own edge — the bright core is about the size the old
+        // hard square was.
+        const float h = 0.085f;
         s_quad.vertices = new[] { new Vector3(-h, -h, 0), new Vector3(h, -h, 0), new Vector3(-h, h, 0), new Vector3(h, h, 0) };
-        s_quad.uv = new[] { new Vector2(0.42f, 0.02f), new Vector2(0.58f, 0.02f), new Vector2(0.42f, 0.18f), new Vector2(0.58f, 0.18f) };
+        // The WHOLE texture, so the falloff at its rim is what the quad's edge
+        // shows. Sampling a window of a gradient is what made these rectangles.
+        s_quad.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f) };
         s_quad.triangles = new[] { 0, 2, 1, 2, 3, 1 };
         s_quad.RecalculateBounds();
         return s_quad;
@@ -238,6 +262,40 @@ public class ChestBeacon : MonoBehaviour
     // Bright at the bottom, gone at the top, soft at the vertical edges. Drawn
     // once and shared: the shaft's whole appearance is this gradient, so it is
     // worth the twenty lines and it costs no art dependency.
+    // A round spark: bright in the middle, gone at the rim. The falloff is
+    // squared so the core stays tight and the edge disappears into nothing
+    // rather than ending on a visible ring.
+    private static Texture2D s_moteTex;
+    private static Texture2D MoteTexture()
+    {
+        if (s_moteTex != null) return s_moteTex;
+        const int S = 48;
+        s_moteTex = new Texture2D(S, S, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+        var px = new Color[S * S];
+        float c = (S - 1) * 0.5f;
+        for (int y = 0; y < S; y++)
+        {
+            for (int x = 0; x < S; x++)
+            {
+                float dx = (x - c) / c, dy = (y - c) / c;
+                float r = Mathf.Sqrt(dx * dx + dy * dy);
+                // Zero at and beyond the rim, so the quad's corners are empty
+                // and no square can show however bright the tint gets.
+                float a = Mathf.Clamp01(1f - r);
+                a = a * a * (0.35f + 0.65f * a);
+                px[y * S + x] = new Color(1f, 1f, 1f, a);
+            }
+        }
+        s_moteTex.SetPixels(px);
+        s_moteTex.Apply();
+        return s_moteTex;
+    }
+
     private static Texture2D s_tex;
     private static Texture2D ShaftTexture()
     {
