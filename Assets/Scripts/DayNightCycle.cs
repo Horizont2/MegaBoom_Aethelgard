@@ -338,9 +338,26 @@ public class DayNightCycle : MonoBehaviour
             lift += winterNightTint * w;
         }
 
-        RenderSettings.ambientSkyColor = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend) + lift;
-        RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend) + lift;
-        RenderSettings.ambientGroundColor = Color.Lerp(Color.Lerp(groundColorNight, groundColorDay, dayMultiplier), new Color(0.08f, 0.1f, 0.12f), weatherBlend) + lift * 0.6f;
+        // ==== AMBIENT IS A SPHERICAL-HARMONICS REBUILD, NOT A FIELD WRITE ====
+        //
+        // Each of these three setters makes Unity re-derive the ambient probe.
+        // They were written every frame for colours that take a real-world
+        // minute to change perceptibly, so the rebuild happened about three
+        // thousand times for every visible step of the sunset.
+        //
+        // Written only when the colour has actually moved. The threshold is
+        // well below what an eye can see across one frame and well above the
+        // per-frame drift of a day cycle.
+        Color sky = Color.Lerp(Color.Lerp(skyColorNight, skyColorDay, dayMultiplier), new Color(0.2f, 0.22f, 0.27f), weatherBlend) + lift;
+        Color eq  = Color.Lerp(Color.Lerp(equatorColorNight, equatorColorDay, dayMultiplier), new Color(0.15f, 0.18f, 0.22f), weatherBlend) + lift;
+        Color grd = Color.Lerp(Color.Lerp(groundColorNight, groundColorDay, dayMultiplier), new Color(0.08f, 0.1f, 0.12f), weatherBlend) + lift * 0.6f;
+
+        if (Moved(sky, _lastAmbientSky) || Moved(eq, _lastAmbientEquator) || Moved(grd, _lastAmbientGround))
+        {
+            RenderSettings.ambientSkyColor = _lastAmbientSky = sky;
+            RenderSettings.ambientEquatorColor = _lastAmbientEquator = eq;
+            RenderSettings.ambientGroundColor = _lastAmbientGround = grd;
+        }
 
         UpdateVFXPositions();
 
@@ -474,6 +491,18 @@ public class DayNightCycle : MonoBehaviour
         }
         RenderSettings.skybox = newSkyboxMat;
     }
+
+    // Deliberately generous: an ambient step smaller than this is invisible,
+    // and a day cycle crosses it several times a second anyway.
+    private const float AmbientEpsilon = 0.004f;
+    private Color _lastAmbientSky = Color.clear;
+    private Color _lastAmbientEquator = Color.clear;
+    private Color _lastAmbientGround = Color.clear;
+
+    private static bool Moved(Color a, Color b) =>
+        Mathf.Abs(a.r - b.r) > AmbientEpsilon ||
+        Mathf.Abs(a.g - b.g) > AmbientEpsilon ||
+        Mathf.Abs(a.b - b.b) > AmbientEpsilon;
 
     private void UpdateVFXPositions()
     {

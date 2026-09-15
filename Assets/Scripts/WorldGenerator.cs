@@ -171,7 +171,21 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] cliffPrefabs;
     public GameObject[] waterfallPrefabs;
     [Range(30f, 60f)] public float cliffSteepnessThreshold = 40f;
-    public int maxGrassDensity = 8;
+    // ==== THE CAP THAT WAS NEVER APPLIED ====
+    //
+    // This was declared and then read nowhere in the whole file, while the
+    // detail map below was written at 150-255 — 255 being Unity's hard maximum
+    // instances per detail cell. So grass shipped at roughly thirty times the
+    // density this field claims, and no one could change it because the only
+    // dial in the inspector did nothing.
+    //
+    // It is applied now, and set to a number that keeps the meadows LOOKING
+    // full rather than to the 8 the field originally claimed: the goal is a
+    // dense map that renders, not a cheap one. Most of the real saving comes
+    // from detailObjectDistance instead, which thins grass in the distance
+    // where nobody can tell, and leaves the grass around the player untouched.
+    [Tooltip("Instances per terrain detail cell. Unity's ceiling is 255, and that is what this used to write. 96 still reads as thick meadow and costs about a third as much. Lower it if the region still runs heavy.")]
+    [Range(8, 255)] public int maxGrassDensity = 96;
 
     [Header("Dreamscape: New Ecosystem")]
     public GameObject[] waterPlantsPrefabs;
@@ -2298,6 +2312,11 @@ public class WorldGenerator : MonoBehaviour
                         density = Mathf.RoundToInt(Mathf.Lerp(150f, 255f, densityNoise));
                         if (layerMeadowNoise > 0.3f) density = 255;
                     }
+
+                    // The cap, finally applied. The variation above is kept —
+                    // it is what stops the field looking like carpet — it is
+                    // just scaled into a range the GPU can afford.
+                    density = Mathf.Min(density, maxGrassDensity);
 
                     detailMaps[layer][y, x] = locKeep >= 1f ? density : Mathf.RoundToInt(density * locKeep);
                 }

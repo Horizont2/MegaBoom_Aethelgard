@@ -552,7 +552,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void Start()
     {
         mainCamTransform = CameraCache.MainTransform;
-        dayNightCycle = FindFirstObjectByType<DayNightCycle>();
+        // ==== ONE SCENE SEARCH, NOT ONE PER ENEMY ====
+        //
+        // A full FindFirstObjectByType per spawn, and a wave spawns several at
+        // once — so arriving packs paid a scene-wide search each. There is
+        // exactly one DayNightCycle, so it is found once and shared. Re-found
+        // if it goes away, which is what a scene change looks like from here.
+        if (s_dayNight == null) s_dayNight = FindFirstObjectByType<DayNightCycle>();
+        dayNightCycle = s_dayNight;
         actualMoveSpeed = moveSpeed * Random.Range(0.8f, 1.2f);
 
         // Skeleton Mage: casts a flying magic orb instead of meleeing like a
@@ -1511,6 +1518,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private static float s_popupPrefRefresh = -1f;
 
     // int.MinValue = not resolved yet; 0 is a legitimate answer (no such layers).
+    private static DayNightCycle s_dayNight;
     private static int s_losBlockers = int.MinValue;
 
     private static float s_lastAggroBark = -10f;

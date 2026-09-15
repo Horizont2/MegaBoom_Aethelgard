@@ -2163,11 +2163,11 @@ Terrain:
   m_Enabled: 1
   serializedVersion: 6
   m_TerrainData: {fileID: 15600000, guid: 8d4c91d6964ec8a4fbe02d7b522a0ea8, type: 2}
-  m_TreeDistance: 2500
+  m_TreeDistance: 600
   m_TreeBillboardDistance: 30
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 25
-  m_DetailObjectDistance: 80
+  m_DetailObjectDistance: 45
   m_DetailObjectDensity: 0.8
   m_HeightmapPixelError: 20
   m_SplatMapDistance: 400

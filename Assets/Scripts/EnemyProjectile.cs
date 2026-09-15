@@ -63,7 +63,31 @@ public class EnemyProjectile : MonoBehaviour
         Vector3 stepVec = velocity * dt;
         float step = stepVec.magnitude;
 
-        if (step > 0.0001f && Physics.Raycast(pos, stepVec.normalized, out RaycastHit hit, step + 0.15f))
+        // ==== THE LAST UNMASKED PER-FRAME QUERY IN A GAMEPLAY SCRIPT ====
+        //
+        // This cast took no layer mask and no trigger override. With
+        // queriesHitTriggers on globally, every arrow tested every collider on
+        // every layer each frame of its flight — minimap volumes, foliage
+        // triggers and the terrain's ~2500 tree colliders included — and then
+        // walked a parent chain to find out it had hit scenery. Every other
+        // per-frame query in the project already passes a mask.
+        //
+        // Only three layers can ever matter to an arrow: the player, the world
+        // it stops against, and the enemies it must pass THROUGH (so the
+        // pass-through test below still gets its chance to run).
+        if (s_arrowMask == int.MinValue)
+        {
+            int m = 0;
+            foreach (var n in new[] { "Default", "Obstacles", "PlayerPhysics", "Player", "Damageable" })
+            {
+                int l = LayerMask.NameToLayer(n);
+                if (l >= 0) m |= 1 << l;
+            }
+            s_arrowMask = m != 0 ? m : ~0;
+        }
+
+        if (step > 0.0001f && Physics.Raycast(pos, stepVec.normalized, out RaycastHit hit, step + 0.15f,
+                                              s_arrowMask, QueryTriggerInteraction.Ignore))
         {
             PlayerController pc = hit.collider.GetComponentInParent<PlayerController>();
             if (pc != null)
@@ -79,9 +103,10 @@ public class EnemyProjectile : MonoBehaviour
                 return;
             }
 
-            // Pass through triggers and enemies (incl. the shooter); stop on world.
+            // Pass through enemies, including the shooter; stop on world.
+            // Triggers no longer need testing here — the cast ignores them.
             bool isEnemy = hit.collider.GetComponentInParent<EnemyAI>() != null;
-            if (!hit.collider.isTrigger && !isEnemy)
+            if (!isEnemy)
             {
                 Impact();
                 return;
@@ -93,6 +118,8 @@ public class EnemyProjectile : MonoBehaviour
         if (velocity.sqrMagnitude > 0.0001f)
             transform.rotation = Quaternion.LookRotation(velocity);
     }
+
+    private static int s_arrowMask = int.MinValue;
 
     private void Impact()
     {
