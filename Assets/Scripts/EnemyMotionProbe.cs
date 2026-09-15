@@ -75,6 +75,38 @@ public class EnemyMotionProbe : MonoBehaviour
 
     private float _stepMin = float.MaxValue, _stepMax;
 
+    private bool _hasMovingBool;
+    private bool _lastMoving;
+    private int _movingFlips;
+
+    // Which pairs it flips between, and how often. Small and fixed: a handful
+    // of states, so a list beats a dictionary and allocates nothing per frame.
+    private readonly System.Collections.Generic.List<string> _flipNames = new System.Collections.Generic.List<string>(8);
+    private readonly System.Collections.Generic.List<int> _flipCounts = new System.Collections.Generic.List<int>(8);
+
+    private void RecordFlip(int fromHash, int toHash)
+    {
+        string key = StateName(fromHash) + " -> " + StateName(toHash);
+        for (int i = 0; i < _flipNames.Count; i++)
+            if (_flipNames[i] == key) { _flipCounts[i]++; return; }
+        if (_flipNames.Count >= 12) return;
+        _flipNames.Add(key);
+        _flipCounts.Add(1);
+    }
+
+    // The controller's own state names, resolved by hash. Cheap because the set
+    // is tiny and the answer is looked up only when a flip happens.
+    private static readonly string[] s_known =
+        { "Idle_A", "Running_A", "Attack", "Hit_A", "Death_A", "Dizzy", "Bow_Attack" };
+
+    private static string StateName(int hash)
+    {
+        if (hash == 0) return "<start>";
+        foreach (var n in s_known)
+            if (Animator.StringToHash(n) == hash) return n;
+        return "<" + hash + ">";
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
@@ -104,6 +136,9 @@ public class EnemyMotionProbe : MonoBehaviour
             if (_ai == null) { _endAt = Time.time + 1f; return; }
 
             _anim = _ai.GetComponentInChildren<Animator>();
+            if (_anim != null)
+                foreach (var prm in _anim.parameters)
+                    if (prm.type == AnimatorControllerParameterType.Bool && prm.name == "isMoving") _hasMovingBool = true;
             _lastPos = _ai.transform.position;
             _lastHeading = _ai.transform.forward;
             _movingTime = 0f;
@@ -162,7 +197,26 @@ public class EnemyMotionProbe : MonoBehaviour
         if (_anim != null)
         {
             var st = _anim.GetCurrentAnimatorStateInfo(0);
-            if (st.shortNameHash != _lastStateHash) { _animStateChanges++; _lastStateHash = st.shortNameHash; }
+            if (st.shortNameHash != _lastStateHash)
+            {
+                _animStateChanges++;
+                // ==== NAME THE STATES, NOT JUST THE COUNT ====
+                //
+                // "The clip keeps switching" narrowed it to half the problem;
+                // WHICH two states it flips between names the cause outright.
+                // Running<->Idle is the isMoving bool flapping. Running<->Hit is
+                // the damage trigger. Running<->Attack is the swing. Each has a
+                // different fix and they are indistinguishable on screen.
+                RecordFlip(_lastStateHash, st.shortNameHash);
+                _lastStateHash = st.shortNameHash;
+            }
+
+            // The bool behind half of those flips, sampled as it actually reads.
+            if (_hasMovingBool)
+            {
+                bool m = _anim.GetBool("isMoving");
+                if (_lastMoving != m) { _movingFlips++; _lastMoving = m; }
+            }
 
             float sp = _anim.speed;
             _speedMin = Mathf.Min(_speedMin, sp);
@@ -203,6 +257,20 @@ public class EnemyMotionProbe : MonoBehaviour
         sb.AppendLine($"  world speed       : {(_stepMin < float.MaxValue ? _stepMin : 0f):F1} .. {_stepMax:F1} m/s");
         sb.AppendLine($"  animator state    : {_animStateChanges} change(s)  ({_animStateChanges / secs:F1}/s)");
         sb.AppendLine($"  animator.speed    : {(_speedMin < float.MaxValue ? _speedMin : 0f):F2} .. {_speedMax:F2}   jumps over 0.25: {_animSpeedJumps}");
+        sb.AppendLine($"  isMoving flips    : {_movingFlips}  ({_movingFlips / secs:F1}/s)   <- a steady chase should be 0");
+        if (_flipNames.Count > 0)
+        {
+            sb.AppendLine("  state flips, most frequent first:");
+            for (int pass = 0; pass < _flipNames.Count; pass++)
+            {
+                int best = -1, bestN = -1;
+                for (int i = 0; i < _flipNames.Count; i++)
+                    if (_flipCounts[i] > bestN) { bestN = _flipCounts[i]; best = i; }
+                if (best < 0 || bestN <= 0) break;
+                sb.AppendLine($"    {_flipCounts[best],4}x  {_flipNames[best]}");
+                _flipCounts[best] = -1;
+            }
+        }
         sb.AppendLine("  ---");
         sb.AppendLine("  Reading it: reversals high + animator state changes low  -> the PATH weaves, look at steering.");
         sb.AppendLine("              reversals low  + animator state changes high -> the CLIP keeps switching, look at triggers.");
@@ -212,6 +280,7 @@ public class EnemyMotionProbe : MonoBehaviour
 
         if (!repeat) return;
         _movingTime = 0f;
+        _flipNames.Clear(); _flipCounts.Clear(); _movingFlips = 0;
         _reversals = _bigTurns = _frames = _movedFrames = _animStateChanges = _animSpeedJumps = 0;
         _turnSum = _turnMax = 0f;
         _speedMin = _stepMin = float.MaxValue;
