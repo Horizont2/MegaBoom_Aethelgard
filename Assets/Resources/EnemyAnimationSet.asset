@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: EnemyAnimationSet
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimationSet
   idles:
-  - {fileID: -5624545281902316504, guid: 61af05f99c5703141b57b603590eabb4, type: 3}
   - {fileID: 345275505875579249, guid: 61af05f99c5703141b57b603590eabb4, type: 3}
   - {fileID: -8597891682817377953, guid: a49c0448750331d45814258ef9ff90f8, type: 3}
   idleBusiness:
@@ -37,11 +36,7 @@ MonoBehaviour:
   - {fileID: 5034251128425565466, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
   - {fileID: -8653722278162725603, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
   - {fileID: -929289162156707164, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
-  attacks2H:
-  - {fileID: -3183232228448455838, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
-  - {fileID: 6561345739285688216, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
-  - {fileID: -302032850544529770, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
-  - {fileID: 5005478036900451222, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
+  attacks2H: []
   attacksDualWield:
   - {fileID: 7499313430951911929, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
   - {fileID: 1231959210303231270, guid: 24caa6a3f04a19a46a81e0b70cbf6838, type: 3}
@@ -71,7 +66,6 @@ MonoBehaviour:
   - {fileID: -8346915788690770684, guid: a49c0448750331d45814258ef9ff90f8, type: 3}
   resurrect: {fileID: 4061070667553504992, guid: a49c0448750331d45814258ef9ff90f8, type: 3}
   bossAttacks:
-  - {fileID: -9223009570372283427, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
   - {fileID: -7026903285959738687, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
   - {fileID: 5509831886509256486, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
-  bossSlam: {fileID: -8053727146932420721, guid: 2efaaac2b6357bd4a8a2696ae880e704, type: 3}
+  bossSlam: {fileID: 0}
