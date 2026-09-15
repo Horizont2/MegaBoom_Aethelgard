@@ -12,7 +12,8 @@ GameObject:
   - component: {fileID: 7886865815106838322}
   - component: {fileID: 7886865815105707506}
   - component: {fileID: 1131906567782787059}
-  m_Layer: 0
+  - component: {fileID: 5622545338481034812}
+  m_Layer: 15
   m_Name: Prefab_Mushroom_04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -108,4 +109,28 @@ MonoBehaviour:
   animator: {fileID: 0}
   lights: []
   particles: []
+  colliders: []
+  disableCollidersWhenHidden: 1
   isCurrentlyVisible: 1
+--- !u!64 &5622545338481034812
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7886865815107961650}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: a152664cecaa1594894c183669d0ef80, type: 3}

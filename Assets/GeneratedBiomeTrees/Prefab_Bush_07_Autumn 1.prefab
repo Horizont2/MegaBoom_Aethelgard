@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2825793325942608266}
   - component: {fileID: 2669802351932413221}
   - component: {fileID: 1812292626186873573}
+  - component: {fileID: 8505081362456380660}
   m_Layer: 15
   m_Name: Bush_07_LOD0
   m_TagString: Untagged
@@ -90,6 +91,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &8505081362456380660
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3827835939377801926}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: c863742064cbcf541aa869622b3bf949, type: 3}
 --- !u!1 &4580650642985722021
 GameObject:
   m_ObjectHideFlags: 0
@@ -180,6 +203,7 @@ GameObject:
   - component: {fileID: 4301878898884372225}
   - component: {fileID: 3634670475419333095}
   - component: {fileID: 7145684768814995835}
+  - component: {fileID: 6479915658143915989}
   m_Layer: 15
   m_Name: Bush_07_LOD1
   m_TagString: Untagged
@@ -259,3 +283,25 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &6479915658143915989
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7635044664609654413}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300002, guid: c863742064cbcf541aa869622b3bf949, type: 3}

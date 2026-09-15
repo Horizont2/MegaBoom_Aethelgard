@@ -96,6 +96,7 @@ GameObject:
   - component: {fileID: 6577401050179516619}
   - component: {fileID: 6824132428209702196}
   - component: {fileID: 4968230110869268419}
+  - component: {fileID: 6188894598988169329}
   m_Layer: 15
   m_Name: Bush_05_LOD0
   m_TagString: Untagged
@@ -176,6 +177,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &6188894598988169329
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6301546241030731445}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: e22cfbfe4d0c4f24a82254e9b3d3564a, type: 3}
 --- !u!1 &7440839984135063331
 GameObject:
   m_ObjectHideFlags: 0
@@ -187,6 +210,7 @@ GameObject:
   - component: {fileID: 8353933603902161565}
   - component: {fileID: 8579595136927777868}
   - component: {fileID: 1101353600917990749}
+  - component: {fileID: 1774019067470285339}
   m_Layer: 15
   m_Name: Bush_05_LOD2
   m_TagString: Untagged
@@ -267,6 +291,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &1774019067470285339
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7440839984135063331}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300004, guid: e22cfbfe4d0c4f24a82254e9b3d3564a, type: 3}
 --- !u!1 &8577801389288690522
 GameObject:
   m_ObjectHideFlags: 0
@@ -278,6 +324,7 @@ GameObject:
   - component: {fileID: 5463965734449130596}
   - component: {fileID: 9103695630782264098}
   - component: {fileID: 879718388749476568}
+  - component: {fileID: 3650926239780443487}
   m_Layer: 15
   m_Name: Bush_05_LOD1
   m_TagString: Untagged
@@ -358,3 +405,25 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &3650926239780443487
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8577801389288690522}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300002, guid: e22cfbfe4d0c4f24a82254e9b3d3564a, type: 3}

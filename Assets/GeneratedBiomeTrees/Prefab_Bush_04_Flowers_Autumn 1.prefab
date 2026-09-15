@@ -90,6 +90,7 @@ GameObject:
   - component: {fileID: 6791765921685831364}
   - component: {fileID: 1955585279114056485}
   - component: {fileID: 1593581315887467546}
+  - component: {fileID: 1325445175557611798}
   m_Layer: 15
   m_Name: Bush_04_Flowers_LOD0
   m_TagString: Untagged
@@ -171,6 +172,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &1325445175557611798
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3275311669658355946}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: 6ce751d17b4c32047a2fe72bfd547482, type: 3}
 --- !u!1 &8654240176577296139
 GameObject:
   m_ObjectHideFlags: 0
@@ -182,6 +205,7 @@ GameObject:
   - component: {fileID: 6873726547068910282}
   - component: {fileID: 7622375093241747998}
   - component: {fileID: 6729104284051625341}
+  - component: {fileID: 8651852550332999340}
   m_Layer: 15
   m_Name: Bush_04_Flowers_LOD1
   m_TagString: Untagged
@@ -263,3 +287,25 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &8651852550332999340
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8654240176577296139}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300002, guid: 6ce751d17b4c32047a2fe72bfd547482, type: 3}
