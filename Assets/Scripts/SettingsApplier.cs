@@ -201,13 +201,20 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyShadowQuality()
     {
         int q = PlayerPrefs.GetInt("Settings_ShadowQuality", 3);
+        _shadowQuality = q;
+
         var p = Pipe;
         if (p != null)
         {
-            p.supportsMainLightShadows = q > 0;
-            p.supportsAdditionalLightShadows = q >= 2;
-            // Resolution and softness are the two that actually cost, and the
-            // two the legacy API could never reach.
+            // supportsMainLightShadows and supportsAdditionalLightShadows are
+            // read-only on the asset — they are authored, not driven. Turning
+            // shadows OFF is done by taking the distance to zero in
+            // ApplyShadowDistance, which reaches the same result through a
+            // property that can actually be written.
+            // Only properties verified to have a setter. additionalLights-
+            // ShadowmapResolution is deliberately left alone: it is the same
+            // family as the two read-only ones above and not worth a second
+            // compile error to find out.
             p.mainLightShadowmapResolution = q switch { 0 => 512, 1 => 512, 2 => 1024, _ => 2048 };
             p.shadowCascadeCount = q switch { 0 => 1, 1 => 1, 2 => 2, _ => 4 };
         }
@@ -218,7 +225,13 @@ public class SettingsApplier : MonoBehaviour
             1 => UnityEngine.ShadowQuality.HardOnly,
             _ => UnityEngine.ShadowQuality.All,
         };
+
+        // The distance depends on the quality tier, so re-apply it whenever the
+        // tier moves rather than only when the slider does.
+        ApplyShadowDistance();
     }
+
+    private static int _shadowQuality = -1;
 
     public static void ApplyShadowDistance()
     {
@@ -226,6 +239,13 @@ public class SettingsApplier : MonoBehaviour
         // down to 30 on weaker hardware, which is where the real saving is:
         // every caster inside the distance is redrawn once PER CASCADE.
         float d = PlayerPrefs.GetFloat("Settings_ShadowDistance", 100f);
+
+        // Shadow quality 0 means OFF, and zero distance is how that is
+        // expressed through a writable property: nothing is inside the range,
+        // so no caster is drawn into the map at all.
+        int q = _shadowQuality >= 0 ? _shadowQuality : PlayerPrefs.GetInt("Settings_ShadowQuality", 3);
+        if (q == 0) d = 0f;
+
         var p = Pipe;
         if (p != null) p.shadowDistance = d;
         QualitySettings.shadowDistance = d;
