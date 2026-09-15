@@ -150953,7 +150953,7 @@ MonoBehaviour:
   myBuilding: {fileID: 1740981224576427150}
   dropPoint: {fileID: 1902754005}
   spawnPoint: {fileID: 496262770}
-  searchRadius: 30
+  searchRadius: 100
   workDistance: 0.8
   dropDistance: 1
   timeBetweenHits: 1.2
