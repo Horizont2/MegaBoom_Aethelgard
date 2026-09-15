@@ -377,12 +377,57 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private void OnEnable()
     {
         ActiveEnemiesCount++;
-        // A pooled enemy comes back believing whatever it believed when it went
-        // away; if that was "engaged", it never re-registers with the ring and
-        // is invisible to the slot count for the rest of its life.
+
+        // ==== A POOLED ENEMY INHERITS ITS PREDECESSOR'S MIND ====
+        //
+        // This is why only SOME enemies walked badly. Reliquary guards, totem
+        // guards and anything placed in the scene are Instantiate'd, so they run
+        // Awake with fresh fields. The generator's horde comes from
+        // ObjectPoolManager, which re-enables an existing object — Awake and
+        // Start do NOT run again, and every private field keeps the value it
+        // held at the moment that enemy died.
+        //
+        // Three were being cleared here. The rest were not, and the steering
+        // ones are the reason:
+        //
+        //   _avoidDeflection is a ROTATION applied to every heading. Die while
+        //   rounding a rock and the next enemy out of the pool has 90 degrees
+        //   baked into its course from its first frame, until a solve happens to
+        //   clear it — and _avoidSide makes it commit to the old obstacle's side
+        //   while doing so.
+        //
+        //   _lastGaitPos is a world position. Respawn a hundred metres away and
+        //   the first frame measures a hundred-metre step, so animator.speed
+        //   pins to its ceiling and the legs blur.
+        //
+        //   knockbackVelocity survives too, so an enemy that died mid-knockback
+        //   comes back being shoved in the direction it fell.
+        //
+        // Everything that describes what this enemy was DOING is cleared. Stats
+        // and identity are not — those come from the prefab and the spawner.
         _reportedEngaged = false;
+
         _ringHeading = Vector3.zero;
         _chaseHeading = Vector3.zero;
+        _avoidDeflection = Quaternion.identity;
+        _avoidTarget = Quaternion.identity;
+        _avoidSide = 0;
+        _nextAvoidSolve = 0f;
+
+        _holdSettled = false;
+        _footworkActive = false;
+        _scriptedMove = false;
+        _feinting = false;
+
+        knockbackVelocity = Vector3.zero;
+        stunTimer = 0f;
+        isPreparingAttack = false;
+        _attackCo = null;
+
+        _lastGaitPos = transform.position;
+        _measuredSpeed = 0f;
+        _animSpeed = 0f;
+
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
