@@ -2871,12 +2871,17 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_LevelUp);
 
-        // The prefab has had a level-up effect assigned this whole time and
-        // nothing ever read the field, so levelling was a UI sound followed by a
-        // menu. A burst off the character is the "that happened to ME" beat the
-        // moment was missing, and it has to land before the menu opens.
-        SpawnFeelFX(levelUpVFX, attach: true, life: 2.5f);
-
+        // ==== THE LEVEL-UP ALREADY HAD AN EFFECT ====
+        //
+        // An earlier pass added a burst here off PlayerController.levelUpVFX, on
+        // the grounds that the field was assigned on the prefab and read by
+        // nothing. The field WAS dead — but the beat was not: LevelUpManager
+        // spawns playerUpgradeVFXPrefab when the menu opens, and has all along.
+        // So the fix added a second aura to a moment that already had one.
+        //
+        // The manager's effect is the one that ships. levelUpVFX stays unread,
+        // which is what it was, and the heal's own aura is still suppressed
+        // below so the moment is exactly one effect.
         RunSession.AddLevelUp(currentLevel);
 
         // Level-up rewards beyond the upgrade choice itself:
