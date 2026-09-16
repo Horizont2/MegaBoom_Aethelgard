@@ -199,9 +199,30 @@ public class WorldGenerator : MonoBehaviour
     [Range(8, 255)] public int maxGrassDensity = 200;
 
     [Header("Dreamscape: New Ecosystem")]
+    [Tooltip("Reeds and marsh plants along the waterline. Skipped entirely in a winter region — green reeds in a frozen lake undo the biome in one glance.")]
     public GameObject[] waterPlantsPrefabs;
+    [Tooltip("Bare trees. Half the trees in snow and desert cells become one of these once this is non-empty.")]
     public GameObject[] deadTreesPrefabs;
+
+    // ==== AMBIENT LIFE HAS TO BELONG TO ITS BIOME ====
+    //
+    // One flat array meant butterflies over a snowfield and dust devils in a
+    // wet forest, which is worse than nothing at all: a drifting effect that
+    // contradicts the ground under it reads as a bug rather than as atmosphere.
+    // Three sets, picked by the same localTemp the trees and the paint already
+    // branch on, so the air matches the place.
+    //
+    // Whatever goes in these has to be a particle prefab with a TEXTURED
+    // material. A particle material with no texture does not draw nothing —
+    // Unity substitutes a white pixel, and a billboarded quad over a solid pixel
+    // is a SQUARE. That is the "Minecraft ash" report, twice over, and it is why
+    // SoftParticleTexture exists for the effects this project builds in code.
+    [Tooltip("Ambient effects for temperate ground: butterflies, drifting fog, falling leaves.")]
     public GameObject[] ambientVFXPrefabs;
+    [Tooltip("Ambient effects for hot, dry cells. Leave empty to use the temperate set.")]
+    public GameObject[] ambientVFXDesert;
+    [Tooltip("Ambient effects for cold cells. Leave empty to use the temperate set.")]
+    public GameObject[] ambientVFXWinter;
 
     [Header("Dark Fantasy: Ecosystem Logic")]
     public float meadowScale = 3f;
@@ -3873,9 +3894,12 @@ public class WorldGenerator : MonoBehaviour
                 // Note: any ambient VFX we spawn here goes through the
                 // no-collider guard below so authored trigger volumes on
                 // VFX prefabs can't leak into runtime as invisible walls.
-                if (ambientVFXPrefabs != null && ambientVFXPrefabs.Length > 0 && randomSpawn > 0.985f)
+                GameObject[] vfxSet = isDesert && ambientVFXDesert != null && ambientVFXDesert.Length > 0 ? ambientVFXDesert
+                                    : isSnow && ambientVFXWinter != null && ambientVFXWinter.Length > 0 ? ambientVFXWinter
+                                    : ambientVFXPrefabs;
+                if (vfxSet != null && vfxSet.Length > 0 && randomSpawn > 0.985f)
                 {
-                    GameObject vfxPrefab = GetRandomPrefab(ambientVFXPrefabs);
+                    GameObject vfxPrefab = GetRandomPrefab(vfxSet);
                     GameObject vfxInst = Instantiate(vfxPrefab, new Vector3(worldX, worldY + 1.5f, worldZ), Quaternion.identity, treeContainer);
                     // Strip non-trigger colliders — ambient VFX shouldn't
                     // block movement even if the prefab was authored with

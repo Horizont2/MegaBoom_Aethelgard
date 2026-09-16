@@ -1909,6 +1909,10 @@ MonoBehaviour:
   deadEndAssets:
   - {fileID: 100000, guid: f76b41ce1e7c04448838dd8b9a2e6aa9, type: 3}
   - {fileID: 100000, guid: f69f28799b5cc6c4682e7ed9461457e1, type: 3}
+  - {fileID: 4023568738264474037, guid: 4b70a786868e3454abd45e3722daf949, type: 3}
+  - {fileID: 2108520984331156871, guid: abc6ec378eed0054981426f1ec67fe69, type: 3}
+  - {fileID: 4139279790599894358, guid: 1475476e89ff72449b07531346c665a1, type: 3}
+  - {fileID: 9060351450338965875, guid: 543a4caa223cb8b438c8cf1a3cc3b53c, type: 3}
   roadDecorSpawnChance: 0.4
   extraDeadEndRoads: 7
   deadEndMinSeparation: 60
@@ -1960,9 +1964,29 @@ MonoBehaviour:
   - {fileID: 8087146570348667094, guid: 1789e3f75681b0f4caaeb931b5738c84, type: 3}
   cliffSteepnessThreshold: 40
   maxGrassDensity: 200
-  waterPlantsPrefabs: []
-  deadTreesPrefabs: []
-  ambientVFXPrefabs: []
+  waterPlantsPrefabs:
+  - {fileID: 4763368041989940180, guid: 9aa1ebd2266f0fa489786f9dc7e73ef8, type: 3}
+  - {fileID: 4730359611221080716, guid: cd4f3d4d483a45a449a673764c29df88, type: 3}
+  - {fileID: 5222068761851187070, guid: 418e2421d73e25d4cae49958115aafea, type: 3}
+  - {fileID: 916887014011405087, guid: d421783df02613f419f42f64015b9390, type: 3}
+  deadTreesPrefabs:
+  - {fileID: 2809105836309699613, guid: 152257b5c99f8cd4b9c6b925e5ab2f36, type: 3}
+  - {fileID: 7006040512898528087, guid: 50c6b75a59436424ebe4d0fae94c29d6, type: 3}
+  - {fileID: 4350436972047838058, guid: c4dde710136585c41803b96a25de70a4, type: 3}
+  - {fileID: 5655507735613366596, guid: 52a82da841325674bb0124e42358246a, type: 3}
+  - {fileID: 1354862358720268131, guid: daf6fff187d74094c82bedfb9104f478, type: 3}
+  ambientVFXPrefabs:
+  - {fileID: 5902143773153862722, guid: f754b1f3e2461984596808535b8987f4, type: 3}
+  - {fileID: 5902143773153862722, guid: cfaa465ee22c61749af5574362fc4abd, type: 3}
+  - {fileID: 8543416099821764384, guid: 12f067f684a30b7498e0d9f47f68e04d, type: 3}
+  - {fileID: 8543416099821764384, guid: adb9b3d57089fba4eb8f492642139a2f, type: 3}
+  - {fileID: 2467110274612402409, guid: 6a079d104435a2e448ca336987d17d77, type: 3}
+  ambientVFXDesert:
+  - {fileID: 7096177191515348562, guid: 1313ff807d657894e8921f14c8587e09, type: 3}
+  - {fileID: 7096177191515348562, guid: b0e8a994c72a30044a43619cebcd3201, type: 3}
+  ambientVFXWinter:
+  - {fileID: 8543416099821764384, guid: 12f067f684a30b7498e0d9f47f68e04d, type: 3}
+  - {fileID: 949656474866299876, guid: a27040bba98857340b9b39e730e111bc, type: 3}
   meadowScale: 3
   meadowThreshold: 0.65
   veinScale: 8
@@ -2028,7 +2052,12 @@ MonoBehaviour:
   - {fileID: 4350436972047838058, guid: c4dde710136585c41803b96a25de70a4, type: 3}
   - {fileID: 5655507735613366596, guid: 52a82da841325674bb0124e42358246a, type: 3}
   - {fileID: 1354862358720268131, guid: daf6fff187d74094c82bedfb9104f478, type: 3}
-  bloomedTreeVariants: []
+  bloomedTreeVariants:
+  - {fileID: 1844897081636531020, guid: 2832e458df8616d459183adb0dfa9083, type: 3}
+  - {fileID: 1374899979308285549, guid: 32d3db38af308cc4a86540a04c1e129f, type: 3}
+  - {fileID: 3438365831924901988, guid: c847f36ff465f9d4687850c1982d3683, type: 3}
+  - {fileID: 427588332354682805, guid: 320a2153c306f124e9df52b52a0f4e19, type: 3}
+  - {fileID: 5194611686949037208, guid: 61bdbc13522514f4e9095e7fec63a76e, type: 3}
   cursedTreeBloomVFX: {fileID: 0}
   cursedTreeRotationOffset: {x: 0, y: 0, z: 0}
   useCursedTrees: 1
@@ -2092,7 +2121,13 @@ MonoBehaviour:
   - {fileID: 1871128528075666237, guid: eac652f44811d1b46b811d983099ee31, type: 3}
   - {fileID: 7514323389622038029, guid: 89664d2e1552089479a3e61205f19c13, type: 3}
   - {fileID: 5422831372402764909, guid: 6ec48fcecdab6aa43a1d05b8c3ab480b, type: 3}
-  groundClutterPrefabs: []
+  groundClutterPrefabs:
+  - {fileID: 6624202357647890923, guid: a0ccf2c36794d124db7b6373fef59ec2, type: 3}
+  - {fileID: 6847688587507874782, guid: b648ba5fab559a848a1e3828712fddda, type: 3}
+  - {fileID: 8682661938288837910, guid: ad66e0b3a45ad8a48b714557fd71bd73, type: 3}
+  - {fileID: 2590482203587296674, guid: c2ee4cecb7ad921409a71f6b767731f8, type: 3}
+  - {fileID: 4963432884132845175, guid: c763f292227f7e047be255d0303d0480, type: 3}
+  - {fileID: 524525119296586230, guid: 96fa356f2e19a974e977b8866d63a0ff, type: 3}
   giantTreeVFXForest: {fileID: 2467110274612402409, guid: 6a079d104435a2e448ca336987d17d77, type: 3}
   giantTreeVFXAutumn: {fileID: 2467110274612402409, guid: 401044a7359281b48ab1099c264d7b4b, type: 3}
   giantTreeVFXWinter: {fileID: 8276873220488390461, guid: ba5b9caf621520846a7613f88f27ea82, type: 3}
