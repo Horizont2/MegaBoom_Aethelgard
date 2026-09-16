@@ -63,8 +63,25 @@ public class WorldEncounterDirector : MonoBehaviour
     public float longPatrolRouteRadius = 38f;
 
     [Header("Watchtowers")]
-    [Tooltip("OFF by default while the feature is being tested. Tick to place watchtowers again.")]
-    public bool enableWatchtowers = false;
+    // ==== A FINISHED FEATURE SWITCHED OFF BY ONE BOOL ====
+    //
+    // Behind this flag: WatchtowerAlarm, a complete implementation with a
+    // sweeping searchlight, a readable pool on the ground, a 1.2s grace before
+    // it locks on and a decay afterwards; and RegionAlertDirector, a complete
+    // and budgeted response with one concurrent alert, a 30s expiry, a 25s
+    // cooldown and reinforcements that spawn 45m out and walk in. The prefab is
+    // assigned, the counts and separation are tuned, and EnsureAlertDirector
+    // already runs unconditionally.
+    //
+    // With it off, the only thing in the region that can raise an alarm is a
+    // horn patrol, which is a 30% roll on a patrol. That is the cheapest new
+    // content in the project because none of it has to be written.
+    //
+    // Turned on now that placement rejects water and cliffs — a tower is a tall
+    // thing on a foundation, and the first pass at this feature was judged on
+    // towers that had landed in a lake.
+    [Tooltip("Places watchtowers with a sweeping searchlight that raises a region alarm when it locks on to the player.")]
+    public bool enableWatchtowers = true;
     [Tooltip("Log every rejected tower position and why. Use with enableWatchtowers when none appear.")]
     public bool logWatchtowerPlacement = false;
     [Tooltip("Tower mesh. Assets/Locations/fbx2/MESH_ScoutTower is the one that matches the region kit.")]
@@ -218,7 +235,10 @@ public class WorldEncounterDirector : MonoBehaviour
 
         int placed = 0;
         int attempts = 0;
-        int maxAttempts = targetCount * 12;
+        // Raised from 12: two more rejections sit in this loop now, and a
+        // shortfall here is missing content rather than a hitch — a rejected
+        // candidate costs one SampleHeight and one GetSteepness.
+        int maxAttempts = targetCount * 22;
 
         while (placed < targetCount && attempts < maxAttempts)
         {
@@ -282,13 +302,16 @@ public class WorldEncounterDirector : MonoBehaviour
         var towerPositions = new List<Vector3>(watchtowerCount);
         int attempts = 0;
         int maxAttempts = watchtowerCount * 40;
-        int rejPlayer = 0, rejTotem = 0, rejTower = 0;
+        int rejPlayer = 0, rejTotem = 0, rejTower = 0, rejGround = 0;
 
         while (towerPositions.Count < watchtowerCount && attempts < maxAttempts)
         {
             attempts++;
             Vector3 candidate = SampleCandidatePosition();
             if (player != null && Vector3.Distance(candidate, player.position) < minDistanceFromPlayer) { rejPlayer++; continue; }
+            // A tower is a tall thing on a foundation; it has even less business
+            // in a lake than a campfire does.
+            if (!IsBuildableGround(candidate)) { rejGround++; continue; }
 
             bool tooCloseToTotem = false;
             for (int i = 0; i < totems.Length; i++)
@@ -315,7 +338,7 @@ public class WorldEncounterDirector : MonoBehaviour
         if (towerPositions.Count < watchtowerCount)
         {
             Debug.LogWarning($"[Watchtower] Raised only {towerPositions.Count}/{watchtowerCount} after {attempts} attempts " +
-                             $"(rejected: {rejPlayer} too near player, {rejTotem} too near a totem, {rejTower} too near another tower). " +
+                             $"(rejected: {rejPlayer} too near player, {rejTotem} too near a totem, {rejTower} too near another tower, {rejGround} unbuildable ground). " +
                              $"Lower watchtowerSeparation ({watchtowerSeparation}) or minDistanceFromPlayer ({minDistanceFromPlayer}) if the terrain is small.");
         }
         else if (logWatchtowerPlacement)
@@ -372,10 +395,47 @@ public class WorldEncounterDirector : MonoBehaviour
         return pos;
     }
 
+    // ==== THE GROUND HAS TO BE SOMEWHERE PEOPLE COULD STAND ====
+    //
+    // Placement checked three distances and nothing else: not the water level,
+    // not the slope. SampleCandidatePosition is a uniform Random.Range over the
+    // terrain bounds with a single SampleHeight, so any point in a lake or on a
+    // cliff face was a perfectly valid answer — and with eighty encounters per
+    // region, some of them always were.
+    //
+    // A camp half-submerged in a lake is not a difficulty problem, it is the
+    // player deciding the world is broken. Two cheap rejections, both reading
+    // numbers this project already exposes, shared by camps and towers alike.
+    private static WorldGenerator s_gen;
+
+    [Tooltip("Steepest ground, in degrees, that a camp or a tower may stand on. A group of standing figures on a steeper face reads as sliding off it.")]
+    public float maxPlacementSteepness = 22f;
+    [Tooltip("Clearance above the water surface. Measured above rather than at it, so nothing ends up camped in the shallows.")]
+    public float waterClearance = 1.5f;
+
+    private bool IsBuildableGround(Vector3 candidate)
+    {
+        if (s_gen == null) s_gen = Object.FindFirstObjectByType<WorldGenerator>();
+        if (s_gen != null && candidate.y < s_gen.AbsoluteWaterHeight + waterClearance) return false;
+
+        Terrain t = Terrain.activeTerrain;
+        if (t == null) return true;
+
+        Vector3 local = candidate - t.transform.position;
+        Vector3 size = t.terrainData.size;
+        if (size.x <= 0.01f || size.z <= 0.01f) return true;
+
+        float steep = t.terrainData.GetSteepness(Mathf.Clamp01(local.x / size.x),
+                                                 Mathf.Clamp01(local.z / size.z));
+        return steep <= maxPlacementSteepness;
+    }
+
     private bool IsValidPlacement(Vector3 candidate, RegionTotem[] totems)
     {
         if (player != null && Vector3.Distance(candidate, player.position) < minDistanceFromPlayer)
             return false;
+
+        if (!IsBuildableGround(candidate)) return false;
 
         for (int i = 0; i < totems.Length; i++)
         {

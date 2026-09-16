@@ -788,7 +788,58 @@ public class WorldGenerator : MonoBehaviour
         offsetZ = GetRandomRange(0f, 9999f);
 
         AdjustSettingsForBiome();
+        StartCoroutine(ApplyRegionSkyFromSeed());
         StartCoroutine(GenerateWorldRoutine());
+    }
+
+    [Header("Region sky")]
+    // ==== EVERY REGION OPENED AT TEN IN THE MORNING ====
+    //
+    // GameScene sets timeOfDay 10 with a 1200-second day, and the generator
+    // never touched the cycle. The only thing that could override it was
+    // SavedTimeOfDay, written by SmartSeasonManager, which is not in this scene.
+    // So every region the player has ever entered has opened at the same hour,
+    // in the same weather, on a map that is otherwise seeded.
+    //
+    // The pieces to fix that are all present: DayNightCycle is in the scene,
+    // ForceWeather is public, and EnemyAI.CheckNightBuff already makes enemies
+    // faster and harder at night — so an hour is a difficulty dial as well as a
+    // look. The generator just never turned it.
+    //
+    // Deliberately not locked afterwards. The region OPENS at its hour and in
+    // its weather, which is what the player registers on arrival, and the normal
+    // fifteen-second weather cycle carries on from there.
+    [Tooltip("Vary the opening hour and weather of a region with its seed. Off restores the flat 10:00 clear sky everywhere.")]
+    public bool seedRegionSky = true;
+    [Tooltip("Chance a region opens in a storm rather than clear. Storms are the harshest to fight in, so this stays well under half.")]
+    [Range(0f, 1f)] public float regionStormChance = 0.18f;
+    [Tooltip("Chance a region opens in rain or snow. Read after the storm roll.")]
+    [Range(0f, 1f)] public float regionPrecipitationChance = 0.22f;
+
+    private IEnumerator ApplyRegionSkyFromSeed()
+    {
+        if (!seedRegionSky || !isRegionMissionCached) yield break;
+
+        // One frame, so DayNightCycle.Start has already run and read whatever it
+        // was going to read. Otherwise script execution order decides whether
+        // this takes effect, which is not a thing to leave to chance.
+        yield return null;
+
+        var cycle = FindFirstObjectByType<DayNightCycle>();
+        if (cycle == null) yield break;
+
+        // Hours the region can open at. Deep night is left out on purpose: a
+        // player who cannot see the ground is not being given variety, and the
+        // night buff already makes dusk the harder draw.
+        float[] hours = { 6.5f, 8f, 10f, 13f, 16f, 18.5f, 20f };
+        cycle.timeOfDay = hours[prng.Next(hours.Length)];
+
+        float roll = GetRandomFloat();
+        if (roll < regionStormChance) cycle.ForceWeather(WeatherState.Storm);
+        else if (roll < regionStormChance + regionPrecipitationChance) cycle.ForceWeather(WeatherState.Precipitation);
+        else cycle.ForceWeather(WeatherState.Clear);
+
+        GameLog.Info($"[WorldGen] Region sky: {cycle.timeOfDay:0.0}h, {cycle.currentWeather}.");
     }
 
     private int _vsyncBeforeGen;
@@ -4804,13 +4855,94 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
+    [Header("Biome variation inside a region")]
+    // ==== A REGION WAS ONE TEMPERATURE FROM EDGE TO EDGE ====
+    //
+    // In a region mission this returned a single constant — 0.8 for desert, 0.2
+    // for winter, 0.5 otherwise — so every consumer saw the same number
+    // everywhere: the scatter pass, the texture paint, IsSummerZone, the border
+    // mountains. The Perlin field that gives free play its variety only ever ran
+    // outside region missions.
+    //
+    // So a forest region had no sandy dell and no frosted ridge, although the
+    // branch for each already exists at every one of those consumers and the
+    // assets are already assigned. The variety was one line away the whole time.
+    //
+    // The region's own character still dominates: the constant remains the
+    // centre and the noise rides on it at a fraction of the range, so a winter
+    // region is still unmistakably winter — it just has a sheltered pocket with
+    // some green in it, and the desert grows a cool hollow.
+    [Tooltip("How far the temperature may drift from a region's base value, plus and minus. 0 restores the old flat region. 0.15 gives a forest region the odd sandy dell and frosted ridge without stopping it reading as forest.")]
+    [Range(0f, 0.35f)] public float regionTemperatureVariation = 0.15f;
+    [Tooltip("Scale of that drift. Lower is broader: a couple of large zones rather than speckle. This deliberately differs from globalBiomeScale, which is tuned for a whole free-play map.")]
+    public float regionTemperatureScale = 1.6f;
+
+    // ==== DISTANCE FROM THE OBJECTIVE IS A CURRENCY, AND IT WAS SPENDING NOTHING ====
+    //
+    // Every roadside altar and every caged ally was identical. The generator set
+    // the guard prefabs and the ally prefab and nothing else, so guardCount 5,
+    // guardStatMult 1, diamondReward 10 / xpReward 20 on a cage, and
+    // bossHpMultiplier 1, diamondReward 25 / xpReward 40 on an altar, were the
+    // same on the one beside the totem and the one out past the ridge.
+    //
+    // Both components already apply their own multipliers — the generator simply
+    // never wrote them. And spawnedTotemPos is known by the time roads and
+    // events are placed, so the distance is free.
+    //
+    // Walking further out now means something concrete, which is the cheapest
+    // reason to choose a direction that a map can have.
+    [Header("Remote events")]
+    [Tooltip("Distance from the region objective at which an event counts as fully remote. Beyond this it does not get any harder or richer.")]
+    public float remotenessFullAt = 320f;
+    [Tooltip("Distance below which an event is treated as being right next to the objective.")]
+    public float remotenessStartAt = 70f;
+
+    // 0 next to the totem, 1 out at the far edge of the region.
+    private float RemotenessAt(Vector3 worldPos)
+    {
+        if (spawnedTotemPos == Vector3.zero) return 0f;
+        Vector3 a = worldPos; a.y = 0f;
+        Vector3 b = spawnedTotemPos; b.y = 0f;
+        float far = Mathf.Max(remotenessStartAt + 1f, remotenessFullAt);
+        return Mathf.Clamp01(Mathf.InverseLerp(remotenessStartAt, far, Vector3.Distance(a, b)));
+    }
+
+    private void ScaleEventByDistance(CagedAllyEvent ev, Vector3 worldPos)
+    {
+        if (ev == null) return;
+        float t = RemotenessAt(worldPos);
+        ev.guardCount     = Mathf.RoundToInt(Mathf.Lerp(3f, 7f, t));
+        ev.guardStatMult  = Mathf.Lerp(0.9f, 1.6f, t);
+        ev.diamondReward  = Mathf.RoundToInt(Mathf.Lerp(8f, 26f, t));
+        ev.xpReward       = Mathf.RoundToInt(Mathf.Lerp(15f, 55f, t));
+    }
+
+    private void ScaleEventByDistance(GameObject altarInstance, Vector3 worldPos)
+    {
+        if (altarInstance == null) return;
+        var altar = altarInstance.GetComponentInChildren<RoadsideAltar>(true);
+        if (altar == null) return;
+        float t = RemotenessAt(worldPos);
+        altar.bossHpMultiplier     = Mathf.Lerp(0.9f, 1.9f, t);
+        altar.bossDamageMultiplier = Mathf.Lerp(0.9f, 1.5f, t);
+        altar.diamondReward        = Mathf.RoundToInt(Mathf.Lerp(18f, 60f, t));
+        altar.xpReward             = Mathf.RoundToInt(Mathf.Lerp(30f, 110f, t));
+    }
+
     private float GetTemperature(float normX, float normZ)
     {
         if (isRegionMissionCached)
         {
-            if (regionBiomeTypeCached == 1) return 0.8f;
-            if (regionBiomeTypeCached == 2) return 0.2f;
-            return 0.5f;
+            float centre = regionBiomeTypeCached == 1 ? 0.8f
+                         : regionBiomeTypeCached == 2 ? 0.2f
+                         : 0.5f;
+            if (regionTemperatureVariation <= 0.001f) return centre;
+
+            // offsetX/offsetZ are seeded, so two regions of the same biome do not
+            // get their pockets in the same places.
+            float n = Mathf.PerlinNoise(normX * regionTemperatureScale + offsetX + 500f,
+                                        normZ * regionTemperatureScale + offsetZ + 500f);
+            return Mathf.Clamp01(centre + (n - 0.5f) * 2f * regionTemperatureVariation);
         }
         return Mathf.PerlinNoise(normX * globalBiomeScale + offsetX + 500f, normZ * globalBiomeScale + offsetZ + 500f);
     }
@@ -5448,6 +5580,7 @@ public class WorldGenerator : MonoBehaviour
                         CagedAllyEvent ev = go.AddComponent<CagedAllyEvent>();
                         ev.guardPrefabs = cagedAllyGuardPrefabs;
                         ev.allyPrefab = cagedAllyPrefab;
+                        ScaleEventByDistance(ev, endSpawn);
                         spawnedCagedAllies++;
                         forbiddenZones.Add(endSpawn);
                         eventSpots.Add(endSpawn);
@@ -5464,6 +5597,7 @@ public class WorldGenerator : MonoBehaviour
                         // Re-ground by the live mesh — the prefab collider is a
                         // small interaction box, so pivot-math alone buried the altar.
                         SnapAltarInstanceToGround(inst, endSpawn.y);
+                        ScaleEventByDistance(inst, inst.transform.position);
                         spawnedAltars++;
                         forbiddenZones.Add(inst.transform.position);
                         eventSpots.Add(inst.transform.position);
@@ -5607,6 +5741,7 @@ public class WorldGenerator : MonoBehaviour
                         CagedAllyEvent ev = cageGo.AddComponent<CagedAllyEvent>();
                         ev.guardPrefabs = cagedAllyGuardPrefabs;
                         ev.allyPrefab = cagedAllyPrefab;
+                        ScaleEventByDistance(ev, spawnPos);
                         spawnedCagedAllies++;
                         forbiddenZones.Add(spawnPos);
                         eventSpots.Add(spawnPos);
@@ -5619,6 +5754,7 @@ public class WorldGenerator : MonoBehaviour
                         Vector3 grounded = GroundPrefabToTerrain(prefab, spawnPos);
                         GameObject inst = Instantiate(prefab, grounded, Quaternion.LookRotation(-wTan), decorContainer);
                         SnapAltarInstanceToGround(inst, spawnPos.y);
+                        ScaleEventByDistance(inst, inst.transform.position);
                         spawnedAltars++;
                         forbiddenZones.Add(inst.transform.position);
                         eventSpots.Add(inst.transform.position);
