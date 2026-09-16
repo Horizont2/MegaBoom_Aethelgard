@@ -32,6 +32,17 @@ public class DamagePopup : MonoBehaviour
         camTransform = s_cachedCamTransform;
     }
 
+    // A third tier above crit, for the two openings the combat is built around:
+    // answering a telegraph, and coming round the back. Optional so every
+    // existing caller keeps working unchanged.
+    public void Setup(float damageAmount, bool isCrit, string bonusLabel)
+    {
+        _bonusLabel = bonusLabel;
+        Setup(damageAmount, isCrit);
+    }
+
+    private string _bonusLabel;
+
     public void Setup(float damageAmount, bool isCrit = false)
     {
         // Re-acquire camera ref if cleared by scene unload (safe for pooled instances)
@@ -47,6 +58,13 @@ public class DamagePopup : MonoBehaviour
 
         textMesh.text = "-" + Mathf.CeilToInt(damageAmount).ToString();
 
+        // Named first, above the number, so the eye reads WHAT happened before
+        // how much. Orange rather than the crit's yellow, because these are a
+        // different thing and looking like a lucky roll is exactly the confusion
+        // to avoid.
+        bool bonus = !string.IsNullOrEmpty(_bonusLabel);
+        if (bonus) textMesh.text = _bonusLabel + "\n" + textMesh.text;
+
         // ����������� ��� ������� �� ������
         if (isCrit)
         {
@@ -60,13 +78,20 @@ public class DamagePopup : MonoBehaviour
             textMesh.fontSize = normalSize;
         }
 
+        if (bonus)
+        {
+            textMesh.color = new Color(1f, 0.55f, 0.12f);
+            textMesh.fontSize = critSize * 1.1f;
+            textMesh.alignment = TMPro.TextAlignmentOptions.Center;
+        }
+
         // High-contrast accessibility: force pure-white text with a thick
         // black outline so numbers read against any background. Crits
         // stay yellow (still high-contrast) but also get the heavy
         // outline.
         if (GameplaySettings.HighContrast)
         {
-            if (!isCrit) textMesh.color = Color.white;
+            if (!isCrit && !bonus) textMesh.color = Color.white;
             textMesh.outlineWidth = 0.35f;
             textMesh.outlineColor = Color.black;
         }
@@ -82,7 +107,8 @@ public class DamagePopup : MonoBehaviour
         transform.localScale = Vector3.zero;
 
         // ��������� �������� ��������
-        StartCoroutine(AnimatePopupRoutine(isCrit));
+        StartCoroutine(AnimatePopupRoutine(isCrit || bonus));
+        _bonusLabel = null;   // pooled instances must not inherit the last label
     }
 
     private IEnumerator AnimatePopupRoutine(bool isCrit)

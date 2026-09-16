@@ -41,6 +41,9 @@ public class CameraFollow : MonoBehaviour
     public bool isCinematicMode = false;
 
     private float shakeTimer;
+    // What was asked for, kept so the decay envelope falls to nothing across the
+    // requested time rather than a hardcoded fifth of a second.
+    private float shakeDuration = 0.2f;
     private float currentShakeIntensity;
     private Vector3 shakeDirection;
     private float directionalShakeForce;
@@ -179,11 +182,27 @@ public class CameraFollow : MonoBehaviour
 
         if (shakeTimer > 0)
         {
-            finalPosition += Random.insideUnitSphere * currentShakeIntensity;
+            // ==== A SHAKE IS A BLOW, SO IT HAS TO DIE AWAY ====
+            //
+            // The random component ran at a CONSTANT amplitude for the whole
+            // duration and then stopped dead on a frame. That is not an impact,
+            // it is an engine idling and then switching off, and it is the
+            // character of every hit in the game.
+            //
+            // The directional push right below already decayed — it just used a
+            // hardcoded 0.2s instead of the shake's own length, so a 0.3s call
+            // (the crit) started ABOVE the force it asked for while a 0.1s call
+            // (a normal hit) never reached half of it. Both now fall from full
+            // to nothing across exactly the time that was requested, which is
+            // the only reading under which every call site means what it says.
+            float remaining = shakeDuration > 0.0001f
+                            ? Mathf.Clamp01(shakeTimer / shakeDuration)
+                            : 1f;
+
+            finalPosition += Random.insideUnitSphere * (currentShakeIntensity * remaining);
             if (directionalShakeForce > 0)
             {
-                float pushForce = directionalShakeForce * (shakeTimer / 0.2f);
-                finalPosition += shakeDirection * pushForce;
+                finalPosition += shakeDirection * (directionalShakeForce * remaining);
             }
             shakeTimer -= Time.unscaledDeltaTime;
         }
@@ -335,6 +354,7 @@ public class CameraFollow : MonoBehaviour
         // doesn't lurch for motion-sensitive players.
         float m = GameplaySettings.MotionScale;
         shakeTimer = duration;
+        shakeDuration = Mathf.Max(0.0001f, duration);
         currentShakeIntensity = intensity * m;
         directionalShakeForce = 0f;
     }
@@ -344,6 +364,7 @@ public class CameraFollow : MonoBehaviour
         if (PlayerPrefs.GetInt("Settings_ScreenShake", 1) != 1) return;
         float m = GameplaySettings.MotionScale;
         shakeTimer = duration;
+        shakeDuration = Mathf.Max(0.0001f, duration);
         shakeDirection = direction.normalized;
         directionalShakeForce = force * m;
         currentShakeIntensity = randomIntensity * m;

@@ -145,6 +145,7 @@ public class GlobalHUD : MonoBehaviour
         }
 
         UpdateLowHealthVignette();
+        UpdateStackReadout();
 
         // Pause key — Escape on keyboard, Start / Options on gamepad.
         if (InputCompat.PauseDown())
@@ -1495,6 +1496,92 @@ public class GlobalHUD : MonoBehaviour
             i++;
         }
     }
+
+    // ==== THE STACK MULTIPLIER HAD NO READOUT ANYWHERE ====
+    //
+    // PlayerController.CheckStack computes the count, picks the tier (x2 at 15
+    // enemies, x4 at 20, x5 at 30), really does multiply melee damage by it, and
+    // formats a coloured string into `stackText`. That field is null on the
+    // Player prefab AND explicitly overridden back to null in GameScene, which
+    // is the only gameplay scene — so the whole readout has been dead.
+    //
+    // Wading into a crowd is the game's central risk/reward proposition, and
+    // taking it currently quintuples the player's damage with nothing on screen
+    // to say so. The difference between "I am being mobbed" and "I am winning"
+    // is one number.
+    //
+    // Built here rather than authored because the HUD already builds the
+    // low-health vignette and the pickup container the same way, and because a
+    // runtime label cannot be overridden back to null by a scene.
+    private TextMeshProUGUI stackReadout;
+    private CanvasGroup stackReadoutGroup;
+
+    private void CreateStackReadoutIfNeeded()
+    {
+        if (stackReadout != null) return;
+        RectTransform hudRect = GetComponent<RectTransform>();
+        if (hudRect == null) return;
+
+        GameObject go = new GameObject("StackReadout");
+        RectTransform rt = go.AddComponent<RectTransform>();
+        rt.SetParent(hudRect, false);
+        // Centred, a little above the crosshair line: close enough to the fight
+        // to be read without looking away from it.
+        rt.anchorMin = new Vector2(0.5f, 0f);
+        rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
+        rt.anchoredPosition = new Vector2(0f, 210f);
+        rt.sizeDelta = new Vector2(520f, 60f);
+
+        stackReadoutGroup = go.AddComponent<CanvasGroup>();
+        stackReadoutGroup.alpha = 0f;
+        stackReadoutGroup.interactable = false;
+        stackReadoutGroup.blocksRaycasts = false;
+
+        stackReadout = go.AddComponent<TextMeshProUGUI>();
+        stackReadout.fontSize = 34f;
+        stackReadout.alignment = TextAlignmentOptions.Center;
+        stackReadout.raycastTarget = false;
+        stackReadout.enableWordWrapping = false;
+        stackReadout.color = Color.white;
+
+        // Handing it to the player means CheckStack keeps owning the wording and
+        // the colour tiers — one place decides what the stack says.
+        var pc = PlayerController.LocalInstance;
+        if (pc != null && pc.stackText == null) pc.stackText = stackReadout;
+    }
+
+    private void UpdateStackReadout()
+    {
+        var pc = PlayerController.LocalInstance;
+        if (pc == null) return;
+
+        CreateStackReadoutIfNeeded();
+        if (stackReadout == null || stackReadoutGroup == null) return;
+
+        // Re-claim after a scene change: LocalInstance is a new player, and its
+        // own stackText is null again.
+        if (pc.stackText == null) pc.stackText = stackReadout;
+
+        // Only while there is a crowd worth naming. "STACK: 0 | x1" parked on
+        // screen for the whole run is noise, and noise is what a HUD element
+        // stops being read as.
+        float want = pc.currentStack >= 5 ? 1f : 0f;
+        stackReadoutGroup.alpha = Mathf.MoveTowards(stackReadoutGroup.alpha, want, 4f * Time.unscaledDeltaTime);
+
+        // A tier change deserves to be felt, not just read. Scales down from a
+        // punch rather than growing into one, so the beat lands immediately.
+        if (pc.currentMultiplier != _lastStackTier)
+        {
+            _lastStackTier = pc.currentMultiplier;
+            _stackPunch = pc.currentMultiplier > 1 ? 1f : 0f;
+        }
+        _stackPunch = Mathf.MoveTowards(_stackPunch, 0f, 3f * Time.unscaledDeltaTime);
+        stackReadout.rectTransform.localScale = Vector3.one * (1f + _stackPunch * 0.35f);
+    }
+
+    private int _lastStackTier = 1;
+    private float _stackPunch;
 
     private void CreatePickupPopupContainerIfNeeded()
     {

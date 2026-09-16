@@ -301,6 +301,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     [Tooltip("Red spark burst when the player takes a hit.")]
     public GameObject hitVFX;
     // Stack-milestone edge tracking so the aura fires once on crossing, not every frame.
+    private int _lastStackMultiplier = 1;
     private bool stack15Fired = false;
     private bool stack30Fired = false;
 
@@ -903,6 +904,28 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (currentStack >= 30 && !stack30Fired) { stack30Fired = true; SpawnFeelFX(stack30VFX, attach: true, life: 3f); }
         else if (currentStack < 30) stack30Fired = false;
 
+        // ==== A TIER CHANGE WAS ENTIRELY SILENT ====
+        //
+        // Two of the three tiers had an aura and none of them had a sound, and
+        // the 20-enemy step to x4 — the single biggest jump in damage the game
+        // hands out — had nothing at all. The reward for standing in the middle
+        // of a crowd arrived as a particle system the player is far too busy to
+        // look at.
+        //
+        // A rising tier is worth hearing; a falling one is not, because losing
+        // the multiplier is already announced by everything around you dying.
+        if (currentMultiplier > _lastStackMultiplier)
+        {
+            if (currentStack >= 20 && currentStack < 30)
+                SpawnFeelFX(stack15VFX, attach: true, life: 2f);   // the tier nothing marked
+
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlaySFX(currentMultiplier >= 5 ? AudioID.Boss_Enrage : AudioID.Player_Crit);
+
+            CameraShakeUtil.TryShake(currentMultiplier >= 5 ? 0.35f : 0.2f, 0.18f);
+        }
+        _lastStackMultiplier = currentMultiplier;
+
         if (currentMultiplier > 1)
         {
             if (TutorialHints.Instance != null)
@@ -1289,6 +1312,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 if (hardLandingVFX != null) hardLandingVFX.Play();
                 if (cameraFollow != null) cameraFollow.TriggerShake(0.2f, 0.25f);
+                InputCompat.Rumble(0.6f, 0.2f, 0.16f);
             }
             else if (yVelocityBeforeMove < -5f)
             {
@@ -2245,6 +2269,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (dashParticles != null) dashParticles.Play();
         if (cameraFollow != null) cameraFollow.TriggerShake(0.15f, 0.2f);
+        // A push in the low motor, not a tick: a dash is a shove, not an impact.
+        if (!isPerfectDodge) InputCompat.Rumble(0.4f, 0.1f, 0.1f);
 
         if (direction == Vector3.zero) direction = transform.forward;
         else
@@ -2395,6 +2421,15 @@ public class PlayerController : MonoBehaviour, IDamageable
                     dmgForThis *= bonus;
                 }
 
+                // A punish outranks a backstab when both land: the interrupt is
+                // the bigger thing that happened, and two words over one enemy
+                // read as neither.
+                string bonusLabel = punished  ? LocalizationManager.Tr("PUNISH")
+                                  : backstab  ? LocalizationManager.Tr("BACKSTAB")
+                                  : null;
+                if (punished && AudioManager.Instance != null)
+                    AudioManager.Instance.PlaySFX(AudioID.Player_Crit);
+
                 DamageInfo hitInfo = new DamageInfo
                 {
                     Amount = dmgForThis,
@@ -2407,7 +2442,8 @@ public class PlayerController : MonoBehaviour, IDamageable
                     // adding it. Without the interrupt the bonus is just a
                     // number and the player never learns the window exists.
                     StunDuration = punished ? 1.1f : (isCriticalHit ? 1.0f : 0.4f),
-                    HitPoint = col.ClosestPoint(meleePoint.position)
+                    HitPoint = col.ClosestPoint(meleePoint.position),
+                    BonusLabel = bonusLabel
                 };
 
                 damageable.TakeDamage(hitInfo);
@@ -2452,6 +2488,17 @@ public class PlayerController : MonoBehaviour, IDamageable
             Vector3 recoilDir = -transform.forward;
             if (isCriticalHit) { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 1.5f, 0.3f, 0.2f); StartCoroutine(HitStopRoutine(0.12f)); }
             else { if (cameraFollow != null) cameraFollow.TriggerDirectionalShake(recoilDir, 0.5f, 0.1f, 0.05f); StartCoroutine(HitStopRoutine(0.04f)); }
+            // ==== ON A PAD THE SWORD NEVER HIT ANYTHING ====
+            //
+            // Rumble is a finished API that already honours the accessibility
+            // toggle, and it was called in three places in the entire project:
+            // perfect dodge, taking a hit, and the boss slam. Landing a blow —
+            // the thing the player does most — moved the camera and made a noise
+            // and did nothing in the hands. A short tick on a swing and a fatter
+            // one on a crit is the single biggest thing melee was missing on a
+            // controller.
+            if (isCriticalHit) InputCompat.Rumble(0.5f, 0.75f, 0.14f);
+            else               InputCompat.Rumble(0.18f, 0.35f, 0.06f);
         }
         else if (hitResource)
         {

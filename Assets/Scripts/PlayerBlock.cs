@@ -435,6 +435,8 @@ public class PlayerBlock : MonoBehaviour
                 AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Attack, at);
         }
         CameraShakeUtil.TryShake(0.25f, 0.09f);
+        // Dull and low: a blow absorbed by the shield, felt through the arm.
+        InputCompat.Rumble(0.45f, 0.1f, 0.09f);
         if (_anim != null) TriggerBlockHit();
     }
 
@@ -470,6 +472,10 @@ public class PlayerBlock : MonoBehaviour
         if (_anim != null) TriggerBlockHit();
         Vector3 dir = (attackerPos - transform.position); dir.y = 0f;
         CameraShakeUtil.TryDirectionalShake(dir.normalized, 1.1f, 0.22f, 0.25f);
+        // A fifth channel, and the one a player feels before they see anything.
+        // Sharp and high, deliberately unlike the dull thud of an ordinary
+        // block — that is the distinction the whole mechanic is trying to teach.
+        InputCompat.Rumble(0.25f, 0.9f, 0.13f);
         StartCoroutine(ParryTimeRoutine());
 
         Vector3 spark = at != Vector3.zero ? at : transform.position + Vector3.up * 1.2f;
@@ -557,6 +563,8 @@ public class PlayerBlock : MonoBehaviour
                 AudioManager.Instance.PlaySFX(AudioID.UI_Error);
         }
         CameraShakeUtil.TryShake(0.9f, 0.4f);
+        // The harshest thing that happens to the player, so both motors, hard.
+        InputCompat.Rumble(0.9f, 0.7f, 0.3f);
         if (_anim != null) SetBlockPose(false);
     }
 }

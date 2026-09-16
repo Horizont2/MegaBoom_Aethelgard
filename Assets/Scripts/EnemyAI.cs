@@ -2982,7 +2982,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         if (damagePopupPrefab != null && showPopups && ObjectPoolManager.Instance != null)
         {
             GameObject popup = ObjectPoolManager.Instance.SpawnFromPool(damagePopupPrefab, transform.position + Vector3.up, Quaternion.identity);
-            popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical);
+            popup.GetComponent<DamagePopup>()?.Setup(info.Amount, info.IsCritical, info.BonusLabel);
         }
 
         if (currentHealth <= 0)
@@ -3166,6 +3166,24 @@ public class EnemyAI : MonoBehaviour, IDamageable
                 AudioManager.Instance.PlaySFX(AudioID.Region_VictoryStinger);
                 CameraShakeUtil.TryShake(0.5f, 0.25f);
             }
+            // ==== AN ELITE DIED EXACTLY LIKE A MINION ====
+            //
+            // Half the roster is elite — Warrior, Mage and Necromancer all ship
+            // with isElite set, against Minion, Rogue and Archer which do not —
+            // and the ONLY difference an elite death made anywhere was the
+            // diamond count a few lines below. Same sound, same shatter, same
+            // nothing.
+            //
+            // These are the enemies with the unblockable swing and the orange
+            // telegraph, the ones a fight is actually about. Killing one should
+            // be the punctuation of that fight, not the same pop as a skeleton
+            // that walked into the sword.
+            else if (isElite)
+            {
+                AudioManager.Instance.PlaySFX3D(AudioID.Env_StoneBreak, transform.position);
+                CameraShakeUtil.TryShake(0.32f, 0.16f);
+                InputCompat.Rumble(0.55f, 0.35f, 0.18f);
+            }
         }
 
         if (deathVFXPrefab != null)
@@ -3223,7 +3241,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         // Guard the shatter: if it ever throws, the enemy must STILL die instead
         // of being stranded at 0 HP (that was the "enemy won't die" bug).
         bool shattered = false;
-        try { shattered = SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 2.2f); }
+        // An elite comes apart harder and into more pieces — the same beat the
+        // audio and the shake above are making, said once more in the geometry.
+        try { shattered = isElite || isBoss
+                        ? SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 4.5f, 3.5f, 22)
+                        : SkeletonShatter.Shatter(gameObject, transform.position + Vector3.up * 0.6f, 2.2f); }
         catch (System.Exception e) { Debug.LogWarning($"[EnemyAI] Shatter failed on {name}: {e.Message}"); shattered = false; }
 
         if (shattered)

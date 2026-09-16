@@ -2550,6 +2550,8 @@ public static class LocalizationManager
         Add5("STEP_HELMET_DONE_TITLE",      "Готово",                  "Listo",                     "Fertig",                     "Terminé",                      "Gotowe");
         Add5("STEP_HELMET_DONE_BODY",       "Эта броня теперь твоя в каждом забеге. Возвращайся в лагерь.","Esa armadura es tuya en cada partida. Vuelve al campamento.","Diese Rüstung gehört dir in jedem Lauf. Kehr ins Lager zurück.","Cette armure est à toi à chaque partie. Rentre au camp.","Ten pancerz jest twój w każdym biegu. Wracaj do obozu.");
         Add5("PARRY",                       "ПАРИРОВАНИЕ!",            "¡PARADA!",                  "PARIERT!",                   "PARADE !",                     "PARADA!");
+        Add5("PUNISH",                      "НАКАЗАНИЕ!",              "¡CASTIGO!",                 "BESTRAFT!",                  "PUNITION !",                   "KARA!");
+        Add5("BACKSTAB",                    "УДАР В СПИНУ!",           "¡POR LA ESPALDA!",          "RÜCKENSTICH!",               "DANS LE DOS !",                "CIOS W PLECY!");
         Add5("PRESS_ANY_KEY",               "Нажми любую клавишу, чтобы продолжить","Pulsa cualquier tecla para continuar","Beliebige Taste zum Fortfahren","Appuie sur une touche pour continuer","Naciśnij dowolny klawisz, by kontynuować");
         Add5("PROMPT_TALK_ELIAS",           "[E] Поговорить с Элиасом","[E] Hablar con Elias",      "[E] Mit Elias sprechen",     "[E] Parler à Elias",           "[E] Porozmawiaj z Eliasem");
         Add5("PROMPT_ENTER_SHOP",           "Нажми E чтобы зайти в магазин","Pulsa E para entrar a la tienda","E drücken für den Laden","Appuie sur E pour entrer","Naciśnij E by wejść do sklepu");
@@ -4031,6 +4033,8 @@ public static class LocalizationManager
 
         // === Combat ===
         Add("PARRY", "PARRY!", "ПАРИРУВАННЯ!");
+        Add("PUNISH", "PUNISH!", "ПОКАРАННЯ!");
+        Add("BACKSTAB", "BACKSTAB!", "УДАР У СПИНУ!");
 
         // === The guided first upgrade ===
         Add("ELIAS_HELMET_GIVE",
