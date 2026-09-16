@@ -43,7 +43,6 @@ public class RegionVictoryScreen : MonoBehaviour
     [Header("Timing")]
     [Tooltip("Fade to black.")]
     public float fadeIn = 0.6f;
-    [Tooltip("Gap between one award landing and the next arriving. The stagger IS the reward — three numbers appearing at once is a receipt, three arriving in turn is a tally.")]
     [Tooltip("Gap between award tiles appearing. A ripple across the line, not a queue — this used to be 0.42 with the tiles stacked vertically, which made four rewards a two-second recital.")]
     public float rowStagger = 0.06f;
     [Tooltip("How long each number takes to count up to its value.")]
