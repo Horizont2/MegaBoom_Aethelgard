@@ -33,17 +33,38 @@ public class NoticeBoardManager : MonoBehaviour
     // piece of state to fall out of sync with it.
     public static NoticeBoardManager Instance { get; private set; }
 
-    public bool HasMissionsToTake
+    // ==== A CLOSED BOARD IS NOT AN EMPTY BOARD ====
+    //
+    // This asked each paper for activeInHierarchy, which folds in every parent
+    // — and the papers live under boardCanvas, which Start deactivates on the
+    // line BEFORE it generates them. So from the moment the scene loaded until
+    // the player opened the board, every paper reported inactive and this said
+    // the board had nothing on it. The marker above the board is driven from
+    // here, which is why it only ever appeared once you were already standing
+    // at the board with it open — the one moment you do not need telling.
+    //
+    // CountAcceptablePapers asks the question properly: the paper's own
+    // activeSelf, and an accept button that has not been used yet.
+    public bool HasMissionsToTake => CountAcceptablePapers() > 0;
+
+    // Has the board restocked since the player last looked at it? A notice
+    // board's mark is a promise about NEW work, so it has to come back when new
+    // work arrives rather than being spent forever on the first visit.
+    public static bool HasUnseenRestock
     {
         get
         {
-            for (int i = activePapers.Count - 1; i >= 0; i--)
-            {
-                if (activePapers[i] == null) { activePapers.RemoveAt(i); continue; }
-                if (activePapers[i].activeInHierarchy) return true;
-            }
-            return false;
+            string last = PlayerPrefs.GetString("LastMissionRestockTime", "");
+            if (string.IsNullOrEmpty(last)) return true;   // never stocked = never seen
+            return PlayerPrefs.GetString("MissionBoard_SeenRestock", "") != last;
         }
+    }
+
+    private static void MarkRestockSeen()
+    {
+        PlayerPrefs.SetString("MissionBoard_SeenRestock",
+                              PlayerPrefs.GetString("LastMissionRestockTime", ""));
+        PlayerPrefs.Save();
     }
     private bool isPlayerNear = false;
     public bool isBoardOpen = false;
@@ -127,6 +148,11 @@ public class NoticeBoardManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.UI_Click);
 
         CheckAndGenerateMissions();
+
+        // After the restock, not before: opening the board means the player has
+        // seen whatever is on it NOW, and CheckAndGenerateMissions is where a
+        // new batch gets its timestamp.
+        MarkRestockSeen();
 
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
 
@@ -305,12 +331,57 @@ public class NoticeBoardManager : MonoBehaviour
             MissionData scaledMission = ScriptableObject.Instantiate(baseMission);
 
             int rawTarget = Mathf.RoundToInt(scaledMission.targetAmount * goalMultiplier);
-            scaledMission.targetAmount = Mathf.Clamp(RoundToNearestFive(rawTarget), 5, 400);
+            float payMultiplier = rewardMultiplier;
 
-            scaledMission.woodReward = RoundToNearestFive(scaledMission.woodReward * rewardMultiplier);
-            scaledMission.stoneReward = RoundToNearestFive(scaledMission.stoneReward * rewardMultiplier);
-            scaledMission.foodReward = RoundToNearestFive(scaledMission.foodReward * rewardMultiplier);
-            scaledMission.diamondReward = RoundToNearestFive(scaledMission.diamondReward * rewardMultiplier);
+            if (scaledMission.missionType == MissionType.BuildStructures)
+            {
+                // ==== NOT EVERY GOAL IS A COUNT OF FIFTY-SOMETHING ====
+                //
+                // This ran every target through RoundToNearestFive and then
+                // clamped it to a floor of 5. That is right for kills, crystals
+                // and seconds. It is ruinous for buildings, because
+                // RoundToNearestFive(1) and RoundToNearestFive(2) are both ZERO,
+                // and zero is then clamped UP to five.
+                //
+                // So all three authored build missions — Camp Expansion at 1,
+                // Engineering Mastery at 2, Master Architect at 3 — arrived on
+                // the board asking for the same five upgrades, while keeping
+                // their own rewards. Camp Expansion paid 170 for five upgrades
+                // and Master Architect paid 635 for the identical job.
+                //
+                // Build goals are small integers by design. They stay that way.
+                int want = Mathf.Clamp(rawTarget, 1, 6);
+
+                // And the camp can only be built so far. Thirty upgrades exist
+                // in a save; past that a build mission is one that can never be
+                // completed, and it would sit in an active slot forever and stop
+                // the board restocking. Offer what the camp can still serve, or
+                // nothing.
+                int left = CampBuilding.RemainingUpgrades;
+                if (left <= 0)
+                {
+                    i--;            // try a different mission in this slot
+                    continue;
+                }
+                scaledMission.targetAmount = Mathf.Min(want, left);
+
+                // Build costs climb steeply with level — a first upgrade is
+                // under a hundred resources, a fifth is near eight hundred —
+                // while rewardMultiplier tracks conquered regions, which says
+                // nothing about how expensive the next upgrade is. A camp that
+                // is nearly finished is asking for far more than a new one, so
+                // the pay follows the camp as well.
+                payMultiplier *= 1f + CampBuilding.UpgradesCompleted * 0.1f;
+            }
+            else
+            {
+                scaledMission.targetAmount = Mathf.Clamp(RoundToNearestFive(rawTarget), 5, 400);
+            }
+
+            scaledMission.woodReward = RoundToNearestFive(scaledMission.woodReward * payMultiplier);
+            scaledMission.stoneReward = RoundToNearestFive(scaledMission.stoneReward * payMultiplier);
+            scaledMission.foodReward = RoundToNearestFive(scaledMission.foodReward * payMultiplier);
+            scaledMission.diamondReward = RoundToNearestFive(scaledMission.diamondReward * payMultiplier);
 
             GameObject paperObj = Instantiate(missionPaperPrefab, paperLayoutGroup);
             MissionPaperUI paperUI = paperObj.GetComponent<MissionPaperUI>();

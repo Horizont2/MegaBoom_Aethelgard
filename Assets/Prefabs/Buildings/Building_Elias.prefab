@@ -281,7 +281,7 @@ MonoBehaviour:
   pickupPoint: {fileID: 0}
   pendingResourcesCount: 0
   hasStorageInCamp: 0
-  buildingID: Storage_01
+  buildingID: ScoutsLodge
   ghostModel: {fileID: 0}
   realModel: {fileID: 0}
   buildingIconSprite: {fileID: -1396327385, guid: 36f86e4917af9a649888a6f5eded386c, type: 3}

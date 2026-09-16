@@ -60,8 +60,47 @@ public class MissionManager : MonoBehaviour
         }
     }
 
+    // ==== A GOAL THE WORLD CAN NO LONGER SERVE ====
+    //
+    // Runs in the camp, before the sweep below, and only for BuildStructures —
+    // the one mission type whose supply is finite. A save has thirty upgrades in
+    // it and not one more.
+    //
+    // Older saves are already carrying missions that ask for five upgrades,
+    // because the board rounded every build target up to five regardless of what
+    // the mission was authored for. If the camp cannot serve what is left of the
+    // goal, that mission never completes, holds one of the three active slots
+    // forever, and the board will not restock while three are held — so a single
+    // bad mission takes the whole system down and there is no way to abandon it.
+    //
+    // Clamped down to what the camp can still do. If nothing at all remains, it
+    // is counted as met: the player did the work the mission was pointing at,
+    // and a permanent blocker is far worse than a reward paid a little early.
+    private void ReconcileBuildMissions()
+    {
+        int left = CampBuilding.RemainingUpgrades;
+
+        foreach (ActiveMission mission in activeMissions)
+        {
+            if (mission.isCompleted) continue;
+            if (mission.data == null || mission.data.missionType != MissionType.BuildStructures) continue;
+
+            int stillNeeded = mission.targetAmount - mission.currentProgress;
+            if (stillNeeded <= left) continue;      // reachable, leave it alone
+
+            mission.targetAmount = mission.currentProgress + Mathf.Max(0, left);
+
+            if (mission.uiElement != null)
+                mission.uiElement.UpdateProgress(mission.currentProgress, mission.targetAmount);
+
+            if (mission.currentProgress >= mission.targetAmount) CompleteMission(mission);
+        }
+    }
+
     private void ClearCompletedMissionsUI()
     {
+        ReconcileBuildMissions();
+
         for (int i = activeMissions.Count - 1; i >= 0; i--)
         {
             if (!(activeMissions[i].isCompleted || activeMissions[i].currentProgress >= activeMissions[i].targetAmount))

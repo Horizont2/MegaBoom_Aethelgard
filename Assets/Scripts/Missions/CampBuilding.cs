@@ -672,6 +672,51 @@ public class CampBuilding : MonoBehaviour
 
     public static int ForgeLevel => LevelOf(ForgeBuildingID);
 
+    // ==== HOW MUCH BUILDING IS ACTUALLY LEFT ====
+    //
+    // A "build N structures" mission is the only kind whose supply is finite.
+    // The camp has six buildings of five levels each, so a save has exactly
+    // thirty upgrades in it and not one more — and once they are spent, a board
+    // that hands out another build mission has handed out a mission that can
+    // never be completed. It then sits in one of the three active slots for the
+    // rest of the save, and since the board refuses to restock while three are
+    // active, it takes the whole mission system down with it.
+    //
+    // Counted from the live buildings rather than a hardcoded list, so adding a
+    // building to the camp needs no second edit here. Both are camp-scene
+    // objects, which is also where the notice board lives.
+    public static int RemainingUpgrades
+    {
+        get
+        {
+            int left = 0;
+            foreach (var b in Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (b == null || b.levels == null) continue;
+                left += Mathf.Max(0, b.levels.Length - LevelOf(b.buildingID));
+            }
+            return left;
+        }
+    }
+
+    /// Upgrades the player has already finished across the whole camp, 0..30.
+    /// Build costs climb steeply with level while the board's reward multiplier
+    /// tracks conquered regions, so this is what a build mission's pay should
+    /// actually follow.
+    public static int UpgradesCompleted
+    {
+        get
+        {
+            int done = 0;
+            foreach (var b in Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (b == null || b.levels == null) continue;
+                done += Mathf.Clamp(LevelOf(b.buildingID), 0, b.levels.Length);
+            }
+            return done;
+        }
+    }
+
     /// Additive damage bonus from the Forge: 0 at level 0, 0.15 at level 5.
     /// These are the same percentages the building's own panel advertises.
     public static float ForgeDamageBonus => ForgeLevel switch
