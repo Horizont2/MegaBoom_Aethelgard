@@ -299,11 +299,24 @@ public class EnemyPersonality : MonoBehaviour
     {
         if (_animator == null) return;
 
-        if (attacking || worldSpeed < 0.15f)
+        if (attacking)
         {
             // Straight to the tempo: an attack must play at its authored rate
             // or the contact frame stops matching the damage.
             _playRate = _tempo;
+            _animator.speed = _playRate;
+            return;
+        }
+
+        if (worldSpeed < 0.15f)
+        {
+            // Standing still. This used to SNAP to the tempo, and that snap was
+            // evaluated per frame against a noisy speed, so every dip below the
+            // threshold was a visible jump in how fast the legs were moving.
+            // The speed handed in is a decision now rather than a measurement,
+            // so crossings are real — but a stop still eases, because there is
+            // no reason for it not to and nothing here needs to be exact.
+            _playRate = Mathf.MoveTowards(_playRate, _tempo, 2.5f * Time.deltaTime);
             _animator.speed = _playRate;
             return;
         }

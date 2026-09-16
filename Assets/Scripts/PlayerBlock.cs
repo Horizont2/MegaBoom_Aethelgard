@@ -257,8 +257,14 @@ public class PlayerBlock : MonoBehaviour
     {
         if (_pc == null) return;
 
+        // Not while swimming. Attacking and throwing a grenade are already
+        // refused in the water — both hands are busy staying afloat — and a
+        // shield is the heaviest thing the player carries. Letting it come up
+        // out there also made the water a safe box to guard from, with no
+        // stamina economy attached, because nothing in it can be parried.
         bool wants = Input.GetKey(blockKey)
                      && !_pc.IsDead
+                     && !_pc.isSwimming
                      && !_pc.isControlBlocked
                      && Time.time >= _lockedUntil
                      && _pc.HasStamina(1f);

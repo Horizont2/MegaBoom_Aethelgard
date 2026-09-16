@@ -803,20 +803,41 @@ public class EnemyAI : MonoBehaviour, IDamageable
             float dt = Time.deltaTime;
             if (dt > 0f)
             {
-                Vector3 moved = transform.position - _lastGaitPos;
-                moved.y = 0f;
-                float actual = moved.magnitude / dt;
-
-                // Intent, not travel. Travel includes CharacterController
-                // depenetration, which measured up to 9.2 m/s on an enemy whose
-                // fastest requested step was 3.6 — and feeding that to the gait
-                // pinned animator.speed to both ends of its clamp twenty times
-                // in four seconds. Travel is still used as a floor so a blocked
-                // enemy does not moonwalk on the spot.
-                float forLegs = Mathf.Min(_intendedSpeed, actual);
-                _measuredSpeed = Mathf.Lerp(_measuredSpeed, forLegs, 1f - Mathf.Exp(-10f * dt));
+                // ==== THE LEGS FOLLOW THE DECISION, NOT THE PHYSICS ====
+                //
+                // This is the last place noise was still getting in, and it is
+                // why the run cycle kept changing character every frame.
+                //
+                // What was here: forLegs = Min(_intendedSpeed, actualTravel),
+                // where actualTravel is measured from transform.position and
+                // _intendedSpeed is written ONLY by SetPositionSafe and zeroed
+                // here every frame. Both halves of that minimum are unstable:
+                //
+                //   A chasing enemy does not call SetPositionSafe on every
+                //   frame. The footwork deadzone, a settled ring post, the
+                //   rotate-only attack branch and the separation slide all pass
+                //   without moving the transform, so _intendedSpeed reads 0 and
+                //   the legs are told the enemy stopped — on a frame where the
+                //   AI never decided any such thing.
+                //
+                //   And actualTravel collapses to nearly zero whenever the
+                //   CharacterController is blocked: pressed against another
+                //   body, climbing a slope, brushing a rock. The minimum takes
+                //   the lower of two noisy numbers, so it dives constantly.
+                //
+                // MatchLocomotion divides by the clip's authored speed, and
+                // below 0.15 it SNAPS animator.speed with no easing. So a dip
+                // lasting one frame is a visible change of gait, and the dips
+                // come several times a second. That is the reported "switches
+                // the run animation to some other one every frame" — the clip
+                // never changed at all, its playback rate did.
+                //
+                // SetMovingAnim already receives exactly the right number: every
+                // branch passes the pace it decided on. That is a decision, it
+                // is stable across a frame where nothing moved, and it is
+                // immune to depenetration. Use it.
+                _measuredSpeed = Mathf.Lerp(_measuredSpeed, _gaitIntent, 1f - Mathf.Exp(-10f * dt));
                 _lastGaitPos = transform.position;
-                _intendedSpeed = 0f;
                 // ==== DO NOT MATCH THE LEGS TO BEING THROWN ====
                 //
                 // _measuredSpeed is actual travel, and a knockback moves the
@@ -1645,7 +1666,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
     private float _animSpeed;
 
     [Tooltip("How long an enemy must actually be stationary before the animator is told it stopped. Below about 0.15s the run/idle pair flickers on every momentary pause in the AI.")]
-    public float stopSettleTime = 0.2f;
+    public float stopSettleTime = 0.35f;
 
     // ==== A BRIEF STOP IS NOT A STOP ====
     //
@@ -1661,15 +1682,31 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // never look delayed.
     private float _notMovingSince = -1f;
 
+    // The pace the AI decided on this frame, in metres per second, zero when it
+    // decided to stand. This is the gait input — see the note in Update.
+    private float _gaitIntent;
+
     private void SetMovingAnim(bool moving, float speed)
     {
         if (animator == null || !animator.enabled) return;
 
-        if (moving) _notMovingSince = -1f;
+        if (moving)
+        {
+            _notMovingSince = -1f;
+            _gaitIntent = speed;
+        }
         else
         {
             if (_notMovingSince < 0f) _notMovingSince = Time.time;
-            if (Time.time - _notMovingSince < stopSettleTime) moving = true;   // still counts as moving
+            if (Time.time - _notMovingSince < stopSettleTime)
+            {
+                // Held as moving by the settle window, so hold the pace too.
+                // Reporting zero here would drop animator.speed to its floor for
+                // the length of the hold and put the surge back in by the side
+                // door — the very thing the window exists to prevent.
+                moving = true;
+            }
+            else _gaitIntent = 0f;
         }
 
         animator.SetBoolSafe("isMoving", moving);
@@ -3466,10 +3503,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [System.NonSerialized] public string DbgLastHit = "-";   // what shoved it, if anything
     private int _dbgFrame = -1;
 
-    // Metres per second the movement code asked for this frame. Zero on a frame
-    // where nothing asked, which is what standing still means.
-    private float _intendedSpeed;
-
     private void SetPositionSafe(Writer who, Vector3 newPos)
     {
         if (_dbgFrame != Time.frameCount)
@@ -3483,19 +3516,6 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 d = newPos - transform.position; d.y = 0f;
         float step = d.magnitude / Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
         if (step > DbgBiggestStep) { DbgBiggestStep = step; DbgBiggestWriter = who; }
-
-        // ==== WHAT WAS ASKED FOR, NOT WHAT THE CONTROLLER DID ====
-        //
-        // The measurement that cracked this: no single write exceeded 3.6 m/s,
-        // yet the body reached 9.2. CharacterController.Move does not only
-        // travel the delta it is given — when it is overlapping something it
-        // DEPENETRATES, pushing further than asked. So actual travel is the
-        // request plus whatever physics added, and the gait matcher was being
-        // fed that total.
-        //
-        // The legs should follow what the enemy is TRYING to do. Being shoved
-        // out of a collision is not walking faster.
-        _intendedSpeed = step;
 
         // ==== REQUESTED VERSUS ACHIEVED ====
         //
