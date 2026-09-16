@@ -832,6 +832,11 @@ public class WorldGenerator : MonoBehaviour
             else { mapSeed = UnityEngine.Random.Range(0, 999999); PlayerPrefs.SetInt("MapSeed", mapSeed); PlayerPrefs.Save(); }
         }
 
+        // Materials are per-project assets, but a destroyed one leaves a dead key
+        // behind and this dictionary would otherwise grow across every region a
+        // session generates.
+        s_tintProp.Clear();
+
         prng = new System.Random(mapSeed);
         offsetX = GetRandomRange(0f, 9999f);
         offsetZ = GetRandomRange(0f, 9999f);
@@ -4413,24 +4418,64 @@ public class WorldGenerator : MonoBehaviour
                     continue;
                 }
 
-                propBlock.Clear();
-                rend.GetPropertyBlock(propBlock, i);
-
-                propBlock.SetColor("_Color", finalColor);
-                propBlock.SetColor("Color", finalColor);
-                propBlock.SetColor("_BaseColor", finalColor);
-                propBlock.SetColor("_Base_Color", finalColor);
-                propBlock.SetColor("_PrimaryColor", finalColor);
-                propBlock.SetColor("_TopColor", finalColor);
-                propBlock.SetColor("_BottomColor", finalColor);
-                propBlock.SetColor("_Tint", finalColor);
-                propBlock.SetColor("_TintColor", finalColor);
-                propBlock.SetColor("_FoliageColor", finalColor);
-                propBlock.SetColor("_LeafColor", finalColor);
-
-                rend.SetPropertyBlock(propBlock, i);
+                // ==== ELEVEN PROPERTIES IS TEN MORE THAN INSTANCING ALLOWS ====
+                //
+                // The idea above — colour through a property block so instancing
+                // can batch — is right, and it was being undone on the next line.
+                //
+                // GPU instancing only works for properties the shader DECLARES
+                // as per-instance. URP/Lit declares exactly one colour that way:
+                // _BaseColor. The other ten were a shotgun at shader names this
+                // project might use, and writing even one property the shader has
+                // not declared per-instance forces that renderer out of the
+                // instanced batch and into a draw of its own. So every rock and
+                // every forest tree — around 2900 objects — was being submitted
+                // individually, by the very code whose comment says it is there
+                // to batch them.
+                //
+                // One property, picked by asking the material what it actually
+                // has. Nothing about the picture changes: the shader was only
+                // ever reading one of these eleven names anyway, and the
+                // per-object hue and value jitter above is untouched.
+                //
+                // The name is resolved once per material, not per renderer —
+                // HasProperty is a native call and this loop runs about 6700
+                // times during generation.
+                int colourId = ResolveTintProperty(mat);
+                if (colourId != 0)
+                {
+                    propBlock.Clear();
+                    rend.GetPropertyBlock(propBlock, i);
+                    propBlock.SetColor(colourId, finalColor);
+                    rend.SetPropertyBlock(propBlock, i);
+                }
             }
         }
+    }
+
+    // Which colour property THIS material actually exposes, cached per material.
+    // _BaseColor first because it is the one URP/Lit declares per-instance, so
+    // writing it keeps the renderer inside its instanced batch; the rest are the
+    // fallbacks for the handful of pack shaders that name it differently.
+    private static readonly System.Collections.Generic.Dictionary<Material, int> s_tintProp
+        = new System.Collections.Generic.Dictionary<Material, int>(64);
+
+    private static readonly string[] TintNames =
+        { "_BaseColor", "_Color", "_Tint", "_TintColor", "_TopColor", "_FoliageColor", "_LeafColor" };
+
+    private static int ResolveTintProperty(Material mat)
+    {
+        if (s_tintProp.TryGetValue(mat, out int cached)) return cached;
+
+        int id = 0;
+        for (int i = 0; i < TintNames.Length; i++)
+        {
+            if (!mat.HasProperty(TintNames[i])) continue;
+            id = Shader.PropertyToID(TintNames[i]);
+            break;
+        }
+        s_tintProp[mat] = id;   // 0 is a real answer: this material takes no tint
+        return id;
     }
 
     private void ApplyBiomeTexture(GameObject obj, Texture2D biomeTexture)
