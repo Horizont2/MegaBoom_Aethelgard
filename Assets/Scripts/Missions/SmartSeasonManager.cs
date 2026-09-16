@@ -68,6 +68,12 @@ public class SmartSeasonManager : MonoBehaviour
 
     [Header("VFX & Particles")]
     public GameObject snowParticles;
+    // Same substitution the region's DayNightCycle takes, so one snow effect can
+    // be named once and used by both. If set, this prefab is spawned at startup
+    // in place of the scene's snowParticles object; everything downstream works
+    // on whatever snowParticles points at, so nothing else has to change.
+    [Tooltip("Optional. If set, this prefab is spawned at startup and used INSTEAD of the snowParticles object above.")]
+    public GameObject snowParticlesPrefab;
     public GameObject leavesParticles;
     public GameObject firefliesParticles;
     public GameObject dustParticles;
@@ -105,9 +111,24 @@ public class SmartSeasonManager : MonoBehaviour
         if (directionalLight != null) defaultSunIntensity = directionalLight.intensity;
 
         //  ешуЇмо VFX один раз
+        if (snowParticlesPrefab != null)
+        {
+            var spawnedSnow = Instantiate(snowParticlesPrefab, transform);
+            if (spawnedSnow.GetComponentInChildren<ParticleSystem>(true) != null)
+            {
+                if (snowParticles != null) snowParticles.SetActive(false);
+                snowParticles = spawnedSnow;
+            }
+            else
+            {
+                Debug.LogWarning("[SmartSeason] snowParticlesPrefab has no ParticleSystem - keeping the scene snow.", this);
+                Destroy(spawnedSnow);
+            }
+        }
+
         cachedWeatherVFX = new ParticleSystem[] {
             rainParticles != null ? rainParticles.GetComponent<ParticleSystem>() : null,
-            snowParticles != null ? snowParticles.GetComponent<ParticleSystem>() : null,
+            snowParticles != null ? snowParticles.GetComponentInChildren<ParticleSystem>(true) : null,
             dustParticles != null ? dustParticles.GetComponent<ParticleSystem>() : null
         };
 
@@ -293,7 +314,9 @@ public class SmartSeasonManager : MonoBehaviour
     private void SetParticlesActive(GameObject vfx, bool active)
     {
         if (vfx == null) return;
-        ParticleSystem ps = vfx.GetComponent<ParticleSystem>();
+        // GetComponentInChildren, not GetComponent: a snow prefab dropped in
+        // through snowParticlesPrefab usually keeps its system on a child.
+        ParticleSystem ps = vfx.GetComponentInChildren<ParticleSystem>(true);
 
         if (ps != null)
         {

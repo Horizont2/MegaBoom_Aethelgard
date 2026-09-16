@@ -51,6 +51,19 @@ public class DayNightCycle : MonoBehaviour
     [Tooltip("Peak scale of the god-ray effect at the height of golden hour.")]
     public float godRayMaxScale = 1f;
     public ParticleSystem snowVFX;
+    // ==== SWAPPING THE SNOW WITHOUT REBUILDING THE SCENE OBJECT ====
+    //
+    // The snowfall in the scene reads as a ragged disc rather than as weather.
+    // Assign a better snow prefab here and it replaces the scene one at
+    // startup: the old object is switched off, the prefab is instantiated in
+    // its place, and everything downstream — the emission-rate blend, the
+    // world-space volume, the follow-the-player reposition — keeps working,
+    // because they all operate on whatever snowVFX points at.
+    //
+    // A prefab rather than a second scene object so the same effect can be
+    // named once and used by both the region and the camp.
+    [Tooltip("Optional. If set, this prefab is spawned at startup and used INSTEAD of the snowVFX object above.")]
+    public GameObject snowVFXPrefab;
     public ParticleSystem dustVFX;
 
     [Header("Winter biome")]
@@ -160,6 +173,23 @@ public class DayNightCycle : MonoBehaviour
 
         if (lightningLight != null) lightningLight.intensity = 0f;
         if (moonLight != null) moonLight.color = new Color(0.6f, 0.7f, 1f);
+
+        if (snowVFXPrefab != null)
+        {
+            var spawned = Instantiate(snowVFXPrefab, transform);
+            var ps = spawned.GetComponentInChildren<ParticleSystem>(true);
+            if (ps != null)
+            {
+                if (snowVFX != null) snowVFX.gameObject.SetActive(false);
+                snowVFX = ps;
+                spawned.SetActive(true);
+            }
+            else
+            {
+                Debug.LogWarning("[DayNightCycle] snowVFXPrefab has no ParticleSystem — keeping the scene snow.", this);
+                Destroy(spawned);
+            }
+        }
 
         if (rainVFX != null) initialRainRate = rainVFX.emission.rateOverTimeMultiplier;
         if (snowVFX != null) initialSnowRate = snowVFX.emission.rateOverTimeMultiplier;

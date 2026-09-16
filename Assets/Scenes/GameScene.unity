@@ -2661,6 +2661,7 @@ MonoBehaviour:
   enableGodRays: 0
   godRayMaxScale: 1
   snowVFX: {fileID: 316599055}
+  snowVFXPrefab: {fileID: 8004617657265296746, guid: 4e27d46dd2beeeb42a0abeb6f95e391c, type: 3}
   dustVFX: {fileID: 0}
   winterLighting: 1
   winterMaxSunElevation: 34

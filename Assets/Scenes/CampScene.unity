@@ -15039,6 +15039,7 @@ MonoBehaviour:
   fogSpring: {r: 0.5, g: 0.6, b: 0.5, a: 1}
   fogRain: {r: 0.3, g: 0.35, b: 0.4, a: 1}
   snowParticles: {fileID: 701187569}
+  snowParticlesPrefab: {fileID: 8004617657265296746, guid: 4e27d46dd2beeeb42a0abeb6f95e391c, type: 3}
   leavesParticles: {fileID: 176890953}
   firefliesParticles: {fileID: 446232536}
   dustParticles: {fileID: 363672462}
