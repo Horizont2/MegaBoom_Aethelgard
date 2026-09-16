@@ -224,6 +224,26 @@ public class WorldGenerator : MonoBehaviour
     [Tooltip("Ambient effects for cold cells. Leave empty to use the temperate set.")]
     public GameObject[] ambientVFXWinter;
 
+    // ==== A BARREL IS NOT A PLACE ====
+    //
+    // barrel_large sat in poiPrefabs at the default weight of 1, alongside four
+    // real locations, against maxPOIs 120. The three reliquaries are capped at
+    // four placements between them, so the remaining ~116 were a coin flip
+    // between a camp and A SINGLE BARREL — roughly fifty-eight barrels, each one
+    // getting the full location treatment: a flattened pad, a registered
+    // location exclusion that bares the grass around it, and A ROAD ROUTED TO IT
+    // by the A* pass.
+    //
+    // Loose props belong in a scatter, which is what this is: placed on flat
+    // ground by the ordinary vegetation pass, so it already inherits the
+    // forbidden-zone rule that keeps everything 18m clear of a road, the
+    // steepness rejection and the water line.
+    [Header("Loose props")]
+    [Tooltip("Breakable and decorative props scattered over open ground — barrels, crates. NOT locations: nothing here gets a flattened pad or a road.")]
+    public GameObject[] scatterPropPrefabs;
+    [Tooltip("Chance per eligible open-ground cell. Deliberately tiny: this pass visits tens of thousands of cells.")]
+    [Range(0f, 0.02f)] public float scatterPropChance = 0.0035f;
+
     [Header("Dark Fantasy: Ecosystem Logic")]
     public float meadowScale = 3f;
     [Range(0f, 1f)] public float meadowThreshold = 0.65f;
@@ -3456,11 +3476,102 @@ public class WorldGenerator : MonoBehaviour
     {
         if (isRegionMissionCached)
         {
+            // Terracing stays OFF. It is implemented and it works, and it makes
+            // the hills look like stacked blocks — which is the one thing a
+            // stylised low-poly world cannot afford to look like.
             terraceCount = 0;
             if (regionBiomeTypeCached == 1) { peakSharpness = 2.2f; edgeMountainMultiplier = 3.0f; }
             else if (regionBiomeTypeCached == 2) { peakSharpness = 3.5f; edgeMountainMultiplier = 3.5f; }
             else { peakSharpness = 3.0f; edgeMountainMultiplier = 3.0f; }
+
+            ApplyRegionArchetype();
         }
+    }
+
+    public enum RegionArchetype { Typical, Drowned, OldGrowth, Scoured, OpenDowns }
+
+    [Header("Region archetype")]
+    // ==== EVERY REGION WAS THE SAME WALK IN THREE COLOURS ====
+    //
+    // This method used to touch exactly three numbers, all of them by biome, so
+    // two forest regions differed only by the terrain noise offset. Meanwhile
+    // nine serialized knobs that genuinely change the SHAPE of a map sat at one
+    // value forever: river count, lake size, the forest/meadow/vein thresholds,
+    // the tree and rock budgets, the giant-tree cap, peak sharpness.
+    //
+    // An archetype drawn from the region seed pushes them together, as a set, so
+    // the difference reads as a place rather than as noise. Everything is
+    // expressed against the values authored in the scene — the inspector stays
+    // the baseline and this moves around it — and everything is clamped, because
+    // a generator knob that runs away does not produce variety, it produces a
+    // map nobody can walk across.
+    //
+    // Deliberately NOT included: terraceCount, which makes the land look like
+    // Minecraft, and skyboxMaterial, which is the region's whole identity in one
+    // field and belongs to art direction rather than to a dice roll.
+    [Tooltip("Draw a terrain archetype from the region seed. Off leaves every region on the values authored in this inspector.")]
+    public bool seedRegionArchetype = true;
+    [Tooltip("Share of regions that stay exactly as authored. Not every region should announce a theme.")]
+    [Range(0f, 1f)] public float typicalRegionChance = 0.3f;
+
+    public RegionArchetype LastArchetype { get; private set; } = RegionArchetype.Typical;
+
+    private void ApplyRegionArchetype()
+    {
+        if (!seedRegionArchetype) return;
+
+        if (GetRandomFloat() < typicalRegionChance) { LastArchetype = RegionArchetype.Typical; return; }
+
+        var pick = (RegionArchetype)GetRandomRangeInt(1, 5);   // Drowned..OpenDowns
+        LastArchetype = pick;
+
+        switch (pick)
+        {
+            // Water everywhere. More rivers and a bigger lake mean more ground
+            // the roads have to route around, so the map reads as broken up
+            // rather than open — and the extra meadow keeps the gaps walkable.
+            case RegionArchetype.Drowned:
+                riverCount = Mathf.Clamp(riverCount + 2, 1, 5);
+                lakeRadius *= 1.55f;
+                meadowThreshold = Mathf.Clamp(meadowThreshold - 0.10f, 0.3f, 0.9f);
+                forestThreshold = Mathf.Clamp(forestThreshold + 0.05f, 0.2f, 0.7f);
+                break;
+
+            // Deep forest. The giant-tree cap goes up but the SPACING does not
+            // move: that rule is the only thing stopping their alpha-tested
+            // canopies stacking, and stacking them was measured at 1-5 FPS.
+            case RegionArchetype.OldGrowth:
+                forestThreshold = Mathf.Clamp(forestThreshold - 0.11f, 0.2f, 0.7f);
+                maxGiantTrees = Mathf.Clamp(Mathf.RoundToInt(maxGiantTrees * 1.5f), 10, 60);
+                maxTrees = Mathf.Clamp(Mathf.RoundToInt(maxTrees * 1.15f), 500, 4000);
+                meadowThreshold = Mathf.Clamp(meadowThreshold + 0.08f, 0.3f, 0.9f);
+                break;
+
+            // Stripped and stony. Fewer trees, far more rock, one thin river,
+            // sharper ridges — the region you can see across.
+            case RegionArchetype.Scoured:
+                forestThreshold = Mathf.Clamp(forestThreshold + 0.15f, 0.2f, 0.7f);
+                veinThreshold = Mathf.Clamp(veinThreshold - 0.18f, 0.4f, 0.95f);
+                riverCount = Mathf.Clamp(riverCount - 1, 1, 5);
+                maxRocks = Mathf.Clamp(Mathf.RoundToInt(maxRocks * 1.7f), 100, 2000);
+                maxGiantTrees = Mathf.Clamp(Mathf.RoundToInt(maxGiantTrees * 0.4f), 5, 60);
+                peakSharpness = Mathf.Clamp(peakSharpness + 0.45f, 1f, 5f);
+                break;
+
+            // Wide open grass. Long sightlines, which makes a camp or a tower
+            // something you spot from a ridge rather than walk into.
+            case RegionArchetype.OpenDowns:
+                meadowThreshold = Mathf.Clamp(meadowThreshold - 0.18f, 0.3f, 0.9f);
+                forestThreshold = Mathf.Clamp(forestThreshold + 0.10f, 0.2f, 0.7f);
+                maxGiantTrees = Mathf.Clamp(Mathf.RoundToInt(maxGiantTrees * 0.45f), 5, 60);
+                lakeRadius *= 0.8f;
+                peakSharpness = Mathf.Clamp(peakSharpness - 0.35f, 1f, 5f);
+                break;
+        }
+
+        GameLog.Info($"[WorldGen] Region archetype: {pick} — rivers {riverCount}, lake {lakeRadius:0.#}, " +
+                     $"forest {forestThreshold:0.##}, meadow {meadowThreshold:0.##}, vein {veinThreshold:0.##}, " +
+                     $"trees {maxTrees}, rocks {maxRocks}, giants {maxGiantTrees}, peak {peakSharpness:0.##}.");
     }
 
     private void SpawnWaterPlane()
@@ -4081,6 +4192,26 @@ public class WorldGenerator : MonoBehaviour
                 }
                 else if (density < 0.3f || isMeadow)
                 {
+                    // Loose props on open ground. Ahead of the rock branch so a
+                    // vein cell can still be a vein cell, and gated on a real
+                    // roll rather than on randomSpawn, which the branches around
+                    // it are already carving up.
+                    if (scatterPropPrefabs != null && scatterPropPrefabs.Length > 0
+                        && steepness <= 14f && GetRandomFloat() < scatterPropChance)
+                    {
+                        GameObject propPrefab = GetRandomPrefab(scatterPropPrefabs);
+                        if (propPrefab != null)
+                        {
+                            // Upright, not slope-aligned: a barrel lying at
+                            // fourteen degrees reads as placed by a bug. Only
+                            // the yaw varies.
+                            GameObject prop = Instantiate(propPrefab,
+                                new Vector3(worldX, worldY, worldZ),
+                                Quaternion.Euler(0f, GetRandomRange(0f, 360f), 0f), rockContainer);
+                            prop.transform.localScale *= GetRandomRange(0.9f, 1.15f);
+                        }
+                    }
+
                     if (isVein && currentRockCount < maxRocks && randomSpawn > 0.7f)
                     {
                         GameObject rockBase = GetRandomPrefab(baseRocks);

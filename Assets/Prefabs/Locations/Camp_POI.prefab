@@ -133,7 +133,7 @@ MonoBehaviour:
   maxAllowedSlope: 10
   spawnWeight: 1
   regionAppearChance: 1
-  maxPerRegion: 0
+  maxPerRegion: 30
 --- !u!1 &9212952561292515356
 GameObject:
   m_ObjectHideFlags: 0
