@@ -15,6 +15,90 @@ public class EnemyProjectile : MonoBehaviour
     [Tooltip("Arrows embed in the player (true); magic orbs / bolts burst on impact (false).")]
     public bool stickOnHit = true;
 
+    // ==== AN ARROW YOU CANNOT SEE IS NOT A TELEGRAPH ====
+    //
+    // An arrow is a thin dark stick moving at eighteen metres a second against
+    // meadow, wood and rock. The archer's wind-up is signalled properly — a
+    // colour pulse and a ThreatUI marker — but the SHOT itself, the part the
+    // player has to physically dodge, was effectively invisible until it landed.
+    // Losing health to something you never saw is the least fair thing a game
+    // can do.
+    //
+    // A thin bright streak off the head fixes that for almost nothing: a trail
+    // is one strip of geometry and it is already how the mage orb reads.
+    //
+    // Deliberately NOT a light. Lights on projectiles are the expensive mistake
+    // — the renderer is Forward+ and every moving light rebuilds tile lists —
+    // and the orb's own lights had to be capped for exactly that reason.
+    [Header("Flight streak")]
+    [Tooltip("Draw a thin streak behind the head so the shot is readable in flight. Off restores the bare arrow.")]
+    public bool flightTrail = true;
+    [Tooltip("Colour at the head. The tail fades to fully transparent on its own.")]
+    public Color trailColor = new Color(1f, 0.82f, 0.45f, 0.9f);
+    [Tooltip("Seconds of streak. Short — a long one reads as a laser rather than as an arrow.")]
+    public float trailTime = 0.16f;
+    [Tooltip("Width at the head, in metres. Thin on purpose: this is a hint of motion, not a comet.")]
+    public float trailWidth = 0.075f;
+
+    private TrailRenderer _trail;
+
+    // ==== THE TRAIL MATERIAL HAS TO BE SHARED ====
+    //
+    // A Material built per arrow would leak one per shot, and a TrailRenderer
+    // assigned through `.material` instead of `.sharedMaterial` instantiates its
+    // own copy on top of that. One, cached, for every arrow ever fired.
+    //
+    // Unlit, because a streak that takes lighting goes dark in exactly the
+    // conditions it is most needed in. No texture is required: a trail is a
+    // ribbon whose shape comes from its width curve and whose fade comes from
+    // its colour gradient, so the missing-texture white square that bites
+    // billboarded particles cannot happen here.
+    private static Material s_trailMat;
+
+    private static Material TrailMaterial()
+    {
+        if (s_trailMat != null) return s_trailMat;
+        Shader sh = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                 ?? Shader.Find("Universal Render Pipeline/Unlit")
+                 ?? Shader.Find("Sprites/Default");
+        s_trailMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave, name = "ArrowStreak" };
+        if (s_trailMat.HasProperty("_Surface")) s_trailMat.SetFloat("_Surface", 1f);   // transparent
+        if (s_trailMat.HasProperty("_Blend")) s_trailMat.SetFloat("_Blend", 1f);       // additive
+        s_trailMat.renderQueue = 3000;
+        return s_trailMat;
+    }
+
+    private void EnsureTrail()
+    {
+        if (!flightTrail) return;
+        if (_trail == null) _trail = GetComponent<TrailRenderer>();
+        if (_trail == null) _trail = gameObject.AddComponent<TrailRenderer>();
+
+        _trail.time = trailTime;
+        _trail.startWidth = trailWidth;
+        _trail.endWidth = 0f;               // tapers to a point, so it reads as speed
+        _trail.numCapVertices = 2;
+        _trail.minVertexDistance = 0.08f;   // fewer verts on a fast, straight flight
+        _trail.autodestruct = false;
+        _trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        _trail.receiveShadows = false;
+        _trail.alignment = LineAlignment.View;
+        _trail.sharedMaterial = TrailMaterial();
+        _trail.startColor = trailColor;
+        _trail.endColor = new Color(trailColor.r, trailColor.g, trailColor.b, 0f);
+        _trail.Clear();
+        _trail.emitting = true;
+    }
+
+    private void StopTrail()
+    {
+        if (_trail == null) return;
+        // Stop EMITTING rather than disabling: the streak already in the air
+        // gets to fade out over trailTime instead of vanishing on the frame the
+        // arrow lands, which is what makes an impact read as an impact.
+        _trail.emitting = false;
+    }
+
     private Vector3 velocity;
     private float gravity;
     private float damage;
@@ -57,6 +141,7 @@ public class EnemyProjectile : MonoBehaviour
         launched = true;
         if (velocity.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(velocity);
         _expiresAt = Time.time + lifetime;
+        EnsureTrail();
     }
 
     private float _expiresAt = float.MaxValue;
@@ -77,6 +162,7 @@ public class EnemyProjectile : MonoBehaviour
         gravity = 0f;
         owner = null;
         _expiresAt = float.MaxValue;
+        if (_trail != null) { _trail.emitting = false; _trail.Clear(); }
         transform.SetParent(null, true);
         transform.localScale = _spawnScale == Vector3.zero ? transform.localScale : _spawnScale;
     }
@@ -196,6 +282,7 @@ public class EnemyProjectile : MonoBehaviour
         if (hitVFXPrefab != null) Instantiate(hitVFXPrefab, transform.position, transform.rotation);
         if (playHitSfx && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
+        StopTrail();
         Retreat();
     }
 
@@ -204,6 +291,7 @@ public class EnemyProjectile : MonoBehaviour
     private void StickInto(Transform body, Vector3 point)
     {
         launched = false;   // stop integrating / raycasting
+        StopTrail();
         if (playHitSfx && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
 

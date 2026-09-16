@@ -2374,7 +2374,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
             reused.transform.localScale = Vector3.one * magicOrbSize;
             reused.SetActive(true);
             var rep = reused.GetComponent<EnemyProjectile>();
-            if (rep != null) rep.ResetForReuse();
+            if (rep != null) { rep.ResetForReuse(); rep.flightTrail = false; }
             var rtrail = reused.GetComponent<TrailRenderer>();
             if (rtrail != null) rtrail.Clear();   // or it draws a streak from where it died
             var rlight = reused.GetComponent<Light>();
@@ -2436,6 +2436,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         var ep = orb.AddComponent<EnemyProjectile>();
         ep.lifetime = 5f;
         ep.playHitSfx = true;
+        // The orb builds its OWN trail, in its own colour, a few lines above.
+        // EnemyProjectile's flight streak would find that TrailRenderer and
+        // overwrite it with the arrow's thin gold one.
+        ep.flightTrail = false;
         return orb;
     }
 
