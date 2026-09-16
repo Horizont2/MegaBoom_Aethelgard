@@ -349,10 +349,21 @@ public class EnemyPersonality : MonoBehaviour
     {
         if (_override == null) return;
         if (running != _walking) return;   // already in the gait being asked for
-        _walking = !running;
 
+        // ==== THE FLAG AND THE CLIP HAVE TO AGREE ====
+        //
+        // _walking was flipped BEFORE this guard, so an archetype whose animation
+        // set has no run clip — or no run state key — ended up flagged as running
+        // with the walk clip still loaded. MatchLocomotion then divides the real
+        // travel speed by runClipSpeed (4.2) instead of walkClipSpeed (1.4), so a
+        // walk cycle plays at about 1.1x while the body moves at chase speed, and
+        // the feet slide badly.
+        //
+        // Nothing is claimed until something is actually applied.
         AnimationClip want = running ? _runClip : _walkClip;
         if (want == null || string.IsNullOrEmpty(_runKey)) return;
+
+        _walking = !running;
         _override[_runKey] = want;
     }
 

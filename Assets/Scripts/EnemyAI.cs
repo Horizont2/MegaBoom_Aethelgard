@@ -427,6 +427,28 @@ public class EnemyAI : MonoBehaviour, IDamageable
         _lastGaitPos = transform.position;
         _measuredSpeed = 0f;
         _animSpeed = 0f;
+        _notMovingSince = -1f;
+
+        // ==== AND THE MIND IT INHERITS INCLUDES WHO IT WAS FIGHTING ====
+        //
+        // isAggroed, isSearching and the post were not on the list above, and
+        // all three are state, not identity.
+        //
+        // isAggroed survived pooling, so whether a fresh enemy came out of the
+        // pool already aggroed depended entirely on how its predecessor happened
+        // to die. That decided its gait clip and its animator playback rate from
+        // the first frame, which is why two identical skeletons out of the same
+        // spawner could move differently.
+        //
+        // homeCaptured is worse: the post is a WORLD POSITION from the previous
+        // life. An enemy that respawns across the map is instantly outside its
+        // own leash, so UpdateChasePerception calls BeginSearch on the first
+        // check and hands it to the search roamer before it has taken a step.
+        isAggroed = false;
+        isSearching = false;
+        sightLostTimer = 0f;
+        homeCaptured = false;
+        _searchLeg = 0;
 
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
@@ -1009,6 +1031,44 @@ public class EnemyAI : MonoBehaviour, IDamageable
             UpdatePassiveBehavior();
             return;
         }
+
+        // ==== AN ENEMY THAT IS ALREADY CHASING IS AGGROED ====
+        //
+        // THIS is the difference between the reliquary guards and everything
+        // else, and it is the whole reported bug.
+        //
+        // isAggroed is only ever set by Aggro(), and Aggro() is called from
+        // exactly three places: UpdatePassiveBehavior spotting the player,
+        // TakeDamage, and EnemyEncounterGroup.AlertAll. All six enemy prefabs
+        // ship with startPassive = 0, so the radial horde, boss adds, mage
+        // summons and anything dropped into a scene by hand never run
+        // UpdatePassiveBehavior at all — they fall straight through to the chase
+        // below and run at the player with isAggroed still FALSE, for the entire
+        // fight, unless somebody hits them.
+        //
+        // Nothing downstream survives that lie:
+        //
+        //   Update calls personality.SetGait(isAggroed && !isSearching), so the
+        //   WALK clip is loaded into the run state while the body travels at
+        //   full chase speed.
+        //
+        //   MatchLocomotion then normalises against walkClipSpeed instead of
+        //   runClipSpeed, so worldSpeed / reference pins to its 2.2x ceiling —
+        //   a walk cycle played at more than double rate, which is the "some
+        //   strange animation while running" half of the report.
+        //
+        //   And the moment the player finally lands a hit, TakeDamage calls
+        //   Aggro(), SetGait(true) swaps the run clip in and the playback rate
+        //   drops back to about 1.0. That swap is an AnimatorOverrideController
+        //   rebuild mid-stride: the visible switch, mid-run, with no state
+        //   change to explain it.
+        //
+        // The reliquary guards are set startPassive = true, so they aggro
+        // through the proper door, and they are the one group that looks right.
+        //
+        // Reaching this line means this enemy is not passive, or has already
+        // engaged. Either way it is chasing, so say so.
+        if (!isAggroed && target != null) Aggro();
 
         // Chasing: decide whether the chase is still justified. Only encounter
         // enemies can give up; the radial horde stays relentless.
@@ -1629,18 +1689,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
         animator.SetFloatSafe("Speed", _animSpeed);
     }
 
-    // ==== isMoving IS ONLY HALF OF THE ANIMATOR ====
+    // ==== WHERE THE PACE ACTUALLY COMES FROM ====
     //
-    // The locomotion tree blends on Speed; isMoving only decides whether to be
-    // in it at all. Every combat branch used to write the bool directly and
-    // leave Speed at whatever the last PATROL tick put there — passiveSpeed,
-    // which is 40% of a walk. So an enemy charging at full speed played a
-    // stroll, and the pose changed as it crossed between branches even though
-    // its travel speed had not changed at all. That is the "switches to some
-    // strange animation while running" report, and no amount of steering work
-    // was ever going to fix it.
+    // Correcting an earlier note here, which claimed a locomotion blend tree.
+    // EnemyAnimator has no blend tree and no Speed parameter at all: its only
+    // locomotion parameter is the isMoving bool, Running_A and Idle_A are plain
+    // clip states, and the only transitions between them are isMoving true and
+    // isMoving false. SetFloatSafe checks the parameter exists, so the Speed
+    // write below is a no-op today — kept because it is correct if a tree is
+    // ever added, and because writing pace from one place is the right shape.
     //
-    // Everything now goes through here, and here always sets both.
+    // The pace an enemy actually shows comes from two things instead:
+    //   which clip EnemyPersonality has loaded into the run state (walk or run,
+    //   chosen by SetGait from isAggroed), and
+    //   animator.speed, set by MatchLocomotion as travel speed over that clip's
+    //   authored speed.
+    // Both of those are driven by isAggroed, which is why an enemy chasing with
+    // isAggroed false looked so wrong — see the note in UpdateBehavior.
+    //
+    // Everything still goes through here, and here always sets both.
     private void SetMovingAnim(bool moving) => SetMovingAnim(moving, moving ? actualMoveSpeed : 0f);
 
     // ==== SEPARATION IS A NUDGE, NOT A DIRECTION ====
