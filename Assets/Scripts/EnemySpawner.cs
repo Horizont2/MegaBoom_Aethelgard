@@ -501,6 +501,42 @@ public class EnemySpawner : MonoBehaviour
     {
         if (enemy == null) return;
         var ai = enemy.GetComponent<EnemyAI>();
-        if (ai != null) ai.PlayRiseFromGround();
+        if (ai == null) return;
+
+        // ==== COME IN THROUGH THE SAME DOOR THE GUARDS USE ====
+        //
+        // The one group of enemies that has never had an animation problem is
+        // the reliquary guardians, and the thing that makes them different is
+        // not their prefab — it is the same six prefabs — it is HOW they enter
+        // the world. A guard is startPassive, so it runs UpdatePassiveBehavior,
+        // spots the player, and goes through Aggro(). Aggro() is what sets
+        // isAggroed, which is what SetGait reads, which is what decides the
+        // clip in the run state.
+        //
+        // A spawner enemy had startPassive false on the prefab, so it fell
+        // straight into the chase with isAggroed false and only turned it on
+        // later, from somewhere else — and every one of those late flips is a
+        // clip swap through the AnimatorOverrideController, which rebuilds the
+        // controller mid-stride.
+        //
+        // These spawn within the player's aggro range anyway, so passive lasts
+        // a frame or two at most. It is the ORDER that matters, not the delay:
+        // the enemy is standing still while it rises, notices the player, and
+        // starts running — one gait change, at the moment the animation is
+        // already changing.
+        ai.startPassive = true;
+        ai.roamWhilePassive = false;   // it is rising out of the ground, not strolling
+        ai.anchorPoint = enemy.transform.position;
+        ai.anchorTransform = null;
+        // Passive has to END, immediately. These spawn between minSpawnRadius
+        // and maxSpawnRadius, and the default aggro range is shorter than the
+        // far end of that — so without this an enemy that came up at twenty
+        // metres would stand at its post until the player happened to walk two
+        // metres closer, which is not a horde. The point of the passive step is
+        // the ORDER it puts the gait change in, not any delay.
+        ai.aggroRange = Mathf.Max(ai.aggroRange, maxSpawnRadius + 10f);
+        ai.CapturePost();
+
+        ai.PlayRiseFromGround();
     }
 }

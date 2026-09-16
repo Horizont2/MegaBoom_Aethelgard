@@ -458,6 +458,11 @@ public class EnemyAI : MonoBehaviour, IDamageable
         isSpawning = false;
         _riseCo = null;
 
+        // The gait lives on EnemyPersonality, whose Awake runs once per object
+        // ever — so its clip claim and its playback rate survive the pool too.
+        // See the note on ResetForPool.
+        if (personality != null) personality.ResetForPool();
+
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
@@ -498,6 +503,27 @@ public class EnemyAI : MonoBehaviour, IDamageable
     [HideInInspector] public EnemyEncounterGroup parentGroup;
     [HideInInspector] public bool roamWhilePassive = true;
     [HideInInspector] public bool faceAnchorWhenIdle = false;
+
+    // ==== WHERE IT STANDS AND WHAT IT LOOKS AT ARE TWO DIFFERENT PLACES ====
+    //
+    // anchorPoint is both: the passive mover walks TO it, and faceAnchorWhenIdle
+    // turns toward it. That is fine for a camp guard, whose anchor is its own
+    // spot by the fire. It is wrong for a ring of guards around something, and
+    // it is why the reliquary's seven guardians ended up in a heap: the Reliquary
+    // placed them evenly around a ring and then set every one of their anchors to
+    // the CHEST, so each of them walked to the middle and stood on the others.
+    //
+    // A guard posted in a ring needs its post as the anchor and the thing it
+    // guards as its facing. Unset, this changes nothing.
+    [HideInInspector] public bool hasFaceTarget = false;
+    [HideInInspector] public Vector3 faceTarget;
+
+    public void SetFaceTarget(Vector3 worldPoint)
+    {
+        faceTarget = worldPoint;
+        hasFaceTarget = true;
+        faceAnchorWhenIdle = true;
+    }
     private bool isAggroed = false;
     private Vector3 currentRoamTarget;
     private float nextRoamPickTime;
@@ -1680,7 +1706,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
         {
             if (faceAnchorWhenIdle)
             {
-                Vector3 lookAt = anchor - transform.position;
+                Vector3 lookAt = (hasFaceTarget ? faceTarget : anchor) - transform.position;
                 lookAt.y = 0f;
                 if (lookAt.sqrMagnitude > 0.01f)
                 {

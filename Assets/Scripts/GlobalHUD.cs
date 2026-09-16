@@ -530,6 +530,7 @@ public class GlobalHUD : MonoBehaviour
         {
             objectiveBarVisible = true;
             DropBossBar(true);
+            NudgeTimerForObjective(true);
         }
     }
 
@@ -539,6 +540,7 @@ public class GlobalHUD : MonoBehaviour
         objectiveBarVisible = false;
         if (objectiveBarGroup != null) objectiveBarGroup.alpha = 0f;
         DropBossBar(false);
+        NudgeTimerForObjective(false);
     }
 
     private bool EnsureObjectiveBar()
@@ -627,8 +629,34 @@ public class GlobalHUD : MonoBehaviour
     private RectTransform timerRectForBoss;
     private Vector2 timerBasePosForBoss;
     private bool timerLiftedForBoss;
+    // ==== TWO BANNERS, ONE TIMER, AND ONLY ONE OF THEM MOVED IT ====
+    //
+    // The run timer sits exactly where the top banners appear. The BOSS bar
+    // lifted it out of the way; the OBJECTIVE bar — the reliquary vigil, the
+    // one the player stares at for twenty-six seconds — never did, so the hold
+    // UI landed straight on top of the clock.
+    //
+    // Both ask for the lift now, through one flag each, and the timer only
+    // comes back down when NEITHER wants it up. Refcounting matters here:
+    // lighting a vigil during a boss fight and then killing the boss would
+    // otherwise drop the timer back under the vigil bar.
+    private bool _liftForBoss, _liftForObjective;
+
+    private void NudgeTimerForObjective(bool up)
+    {
+        _liftForObjective = up;
+        ApplyTimerLift();
+    }
+
     private void NudgeTimerForBoss(bool up)
     {
+        _liftForBoss = up;
+        ApplyTimerLift();
+    }
+
+    private void ApplyTimerLift()
+    {
+        bool up = _liftForBoss || _liftForObjective;
         if (GameManager.Instance == null || GameManager.Instance.timerText == null) return;
         var rt = GameManager.Instance.timerText.rectTransform;
         if (rt == null) return;

@@ -89,6 +89,40 @@ public class EnemyPersonality : MonoBehaviour
     // Per-enemy tempo, applied on top of the gait match rather than instead of it.
     private float _tempo = 1f;
 
+    // ==== A POOLED ENEMY KEEPS ITS OLD GAIT AND ITS OLD PLAYBACK RATE ====
+    //
+    // Awake runs once per object, ever. Everything below it — the override
+    // controller, _walking, _playRate, animator.speed — therefore survives a
+    // trip through the pool, and comes back describing the enemy that died
+    // rather than the one that just spawned.
+    //
+    // _walking is the worst of the three, because it is not a number that eases
+    // back, it is a claim about which CLIP is loaded. If it disagrees with the
+    // override controller by even one respawn, the first SetGait of the new life
+    // swaps the clip in the run state — and swapping a clip through the override
+    // controller indexer rebuilds the controller, mid-stride. That is a run
+    // animation turning into a different animation, which is exactly the report,
+    // and it only happens to pooled enemies.
+    //
+    // Called from EnemyAI.OnEnable, so a reused body starts its gait from a
+    // known state instead of inheriting one.
+    public void ResetForPool()
+    {
+        if (_animator == null) return;
+        _playRate = _tempo;
+        _animator.speed = _playRate;
+
+        // Put the run state back to the WALK clip and say so, which is the state
+        // Apply() leaves a fresh enemy in. SetGait then does its own swap when
+        // the AI first reports the gait, from a flag that matches reality.
+        if (_override != null && !string.IsNullOrEmpty(_runKey))
+        {
+            AnimationClip calm = _walkClip ?? _runClip;
+            if (calm != null) _override[_runKey] = calm;
+        }
+        _walking = true;
+    }
+
     private void Awake()
     {
         if (!Enabled) { enabled = false; return; }

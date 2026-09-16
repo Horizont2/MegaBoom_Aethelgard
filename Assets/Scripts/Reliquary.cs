@@ -336,6 +336,16 @@ public class Reliquary : MonoBehaviour
 
         if (ring <= 0.1f) ring = 4f;
 
+        // A ring has to be big enough for the people standing on it. Seven
+        // guards on a four-metre ring is one every three and a half metres of
+        // arc — close enough that the crowd separation starts shoving them the
+        // moment they land, which reads as a huddle even once they each have
+        // their own post. Grown to keep at least this much space between
+        // neighbours, and never shrunk below what was asked for.
+        const float SPACING = 2.6f;
+        if (count > 1)
+            ring = Mathf.Max(ring, (count * SPACING) / (2f * Mathf.PI));
+
         for (int i = 0; i < count; i++)
         {
             var prefab = set.guardianPrefabs[Random.Range(0, set.guardianPrefabs.Length)];
@@ -349,8 +359,19 @@ public class Reliquary : MonoBehaviour
             if (ai == null) continue;
             ai.startPassive = true;
             ai.roamWhilePassive = false;      // a guard stands; it does not mill about
-            ai.faceAnchorWhenIdle = true;
-            ai.anchorPoint = transform.position;   // facing the thing they guard
+            // ==== ITS POST IS ITS POST, NOT THE CHEST ====
+            //
+            // anchorPoint was the reliquary itself, and the passive mover WALKS
+            // to the anchor when roamWhilePassive is off — so every guard placed
+            // neatly around the ring immediately marched into the middle and
+            // stood on top of the others. The ring was correct; the destination
+            // was undoing it on the first frame.
+            //
+            // The anchor is now each guard's own spot on the ring, and the chest
+            // is what it turns to face.
+            ai.anchorPoint = p;
+            ai.anchorTransform = null;
+            ai.SetFaceTarget(transform.position);
             ai.roamRadius = 0.2f;
             ai.aggroRange = 13f;
             // Guardians never give up and never leave. Their whole job is to be
@@ -535,8 +556,28 @@ public class Reliquary : MonoBehaviour
         {
             if (dist <= _chest.interactRange)
             {
-                ShowBar(LocalizationManager.Tr("RELIQUARY_PROMPT"), 0f);
+                // ==== A ONE-PRESS CHEST DOES NOT NEED A HEADLINE ====
+                //
+                // This used the objective bar — the full banner across the top
+                // of the screen with a progress track under it — to say "press
+                // E". The bar is for something with a DURATION and a state worth
+                // watching; a wayside chest has neither, its progress is
+                // permanently 0, and putting the game's loudest UI element on
+                // the commonest interaction in the world makes every chest feel
+                // like an event and drowns the ones that are.
+                //
+                // The ordinary interact prompt is what every other press-E in
+                // the game uses. Barrows and shrines keep the bar, which is
+                // where it earns its place.
+                if (GlobalHUD.Instance != null)
+                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("RELIQUARY_PROMPT"));
+                _promptShown = true;
                 if (Input.GetKeyDown(_chest.interactKey)) Break();
+            }
+            else if (_promptShown)
+            {
+                _promptShown = false;
+                if (GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
             }
             return;
         }
@@ -739,6 +780,9 @@ public class Reliquary : MonoBehaviour
     }
 
     private float _barShownAt = -1f;
+    // Wayside chests use the ordinary interact prompt, which has no auto-hide of
+    // its own — so we have to take it down when the player walks away.
+    private bool _promptShown;
 
     private void LateUpdate()
     {
@@ -750,6 +794,13 @@ public class Reliquary : MonoBehaviour
         if (Time.unscaledTime - _barShownAt < 0.25f) return;
         _barShownAt = -1f;
         if (GlobalHUD.Instance != null) GlobalHUD.Instance.HideObjectiveBar();
+    }
+
+    private void OnDisable()
+    {
+        // Never leave our prompt on screen behind us.
+        if (_promptShown && GlobalHUD.Instance != null) GlobalHUD.Instance.HidePrompt();
+        _promptShown = false;
     }
 
     private int LivingGuardians()

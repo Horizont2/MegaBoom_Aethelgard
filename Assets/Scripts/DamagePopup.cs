@@ -81,7 +81,10 @@ public class DamagePopup : MonoBehaviour
         if (bonus)
         {
             textMesh.color = new Color(1f, 0.55f, 0.12f);
-            textMesh.fontSize = critSize * 1.1f;
+            // Was critSize * 1.1. A two-line popup at more than crit size takes
+            // up too much of the screen at the exact moment the player is
+            // reading the fight, and the word does the work without the size.
+            textMesh.fontSize = critSize * 0.8f;
             textMesh.alignment = TMPro.TextAlignmentOptions.Center;
         }
 

@@ -2786,7 +2786,19 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_CollectGem);
 
         if (GlobalHUD.Instance != null)
-            GlobalHUD.Instance.ShowPickupPopup($"+{finalAmount} {LocalizationManager.Tr("Diamond")}", new Color(0.85f, 0.55f, 1f));
+            // ==== A PILE OF DIAMONDS IS ONE LINE, NOT TWELVE ====
+            //
+            // The one-shot popup spawns a fresh line per call and stacks them
+            // upward, and diamonds arrive in handfuls — an elite drops two to
+            // four, a chest scatters more. Twelve lines climbing the corner in
+            // one second is the log "flying up", and the feed caps at eight and
+            // evicts the oldest, so most of them were never read anyway.
+            //
+            // ShowResourceGain coalesces by label into a single growing line,
+            // which is what wood and stone have always done. The label matches
+            // ResourceManager.AddDiamonds, so a chest's purse and the diamonds
+            // the player walks over add into the SAME line.
+            GlobalHUD.Instance.ShowResourceGain(finalAmount, LocalizationManager.Tr("Diamonds"), new Color(0.85f, 0.55f, 1f));
 
         UpdateHUD();
         if (MissionManager.Instance != null) MissionManager.Instance.AddProgress(MissionType.CollectCrystals, finalAmount);
@@ -2937,7 +2949,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (actuallyHealed >= 5f && !isCampMode)
         {
             if (GlobalHUD.Instance != null)
-                GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(actuallyHealed)} HP", new Color(0.55f, 1f, 0.55f));
+                // Heals arrive in bursts too — lifesteal, a kill-heal and a
+                // level-up top-up can land in the same second. One growing line.
+                GlobalHUD.Instance.ShowResourceGain(Mathf.CeilToInt(actuallyHealed), "HP", new Color(0.55f, 1f, 0.55f));
             // Same threshold as the popup — trickle heals stay quiet so
             // lifesteal doesn't turn into a heal spam channel.
             if (AudioManager.Instance != null)

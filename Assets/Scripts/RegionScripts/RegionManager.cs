@@ -1126,12 +1126,12 @@ public class RegionManager : MonoBehaviour
     {
         if (GlobalHUD.Instance == null || region == null) return;
         if (region.woodReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.woodReward} {LocalizationManager.Tr("Wood")}", new Color(0.85f, 0.6f, 0.35f));
+            GlobalHUD.Instance.ShowResourceGain(region.woodReward, LocalizationManager.Tr("Wood"), new Color(0.85f, 0.6f, 0.35f));
         if (region.stoneReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.stoneReward} {LocalizationManager.Tr("Stone")}", new Color(0.8f, 0.8f, 0.85f));
+            GlobalHUD.Instance.ShowResourceGain(region.stoneReward, LocalizationManager.Tr("Stone"), new Color(0.8f, 0.8f, 0.85f));
         if (region.foodReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.foodReward} {LocalizationManager.Tr("Food")}", new Color(0.7f, 0.95f, 0.5f));
+            GlobalHUD.Instance.ShowResourceGain(region.foodReward, LocalizationManager.Tr("Food"), new Color(0.7f, 0.95f, 0.5f));
         if (region.diamondReward > 0)
-            GlobalHUD.Instance.ShowPickupPopup($"+{region.diamondReward} {LocalizationManager.Tr("Diamonds")}", new Color(0.63f, 0.88f, 1f));
+            GlobalHUD.Instance.ShowResourceGain(region.diamondReward, LocalizationManager.Tr("Diamonds"), new Color(0.63f, 0.88f, 1f));
     }
 }
