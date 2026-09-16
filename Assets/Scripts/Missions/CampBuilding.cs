@@ -690,7 +690,7 @@ public class CampBuilding : MonoBehaviour
         get
         {
             int left = 0;
-            foreach (var b in Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var b in UnityEngine.Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (b == null || b.levels == null) continue;
                 left += Mathf.Max(0, b.levels.Length - LevelOf(b.buildingID));
@@ -708,7 +708,7 @@ public class CampBuilding : MonoBehaviour
         get
         {
             int done = 0;
-            foreach (var b in Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var b in UnityEngine.Object.FindObjectsByType<CampBuilding>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (b == null || b.levels == null) continue;
                 done += Mathf.Clamp(LevelOf(b.buildingID), 0, b.levels.Length);
