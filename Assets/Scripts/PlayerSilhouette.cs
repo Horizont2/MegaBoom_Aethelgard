@@ -221,12 +221,23 @@ public class PlayerSilhouette : MonoBehaviour
             if (c == null) continue;
             // The player's own hitboxes sit on a Damageable layer too.
             if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
-            // ==== THE GROUND IS NOT A BUSH ====
+            // ==== THE GROUND IS NOT A BUSH, BUT A PAINTED BUSH IS ALSO THE TERRAIN ====
             //
-            // The terrain's layer is in the mask (see ProbeMask), and the
-            // TerrainCollider is on that same object. Without this, standing in
-            // a dip with the camera low would ghost the player through the hill.
-            if (c is TerrainCollider) continue;
+            // Rejecting every TerrainCollider outright was my first attempt and
+            // it was wrong: Unity reports a painted TREE's collider through the
+            // TerrainCollider as well, so throwing those away discards exactly
+            // the bushes this mask was widened to catch.
+            //
+            // Height separates them cleanly instead. A bush standing between the
+            // camera and the player is struck around chest height; the ground is
+            // struck at or below the player's feet, because the camera looks
+            // DOWN at them. So a terrain hit below the ankles is the hill, and
+            // anything above it is something growing out of the hill.
+            //
+            // This also holds whichever way the collider is reported, which
+            // matters because that detail is a Unity implementation choice this
+            // code should not be betting on.
+            if (c is TerrainCollider && s_probe[i].point.y < transform.position.y + 0.35f) continue;
             return true;
         }
         return false;

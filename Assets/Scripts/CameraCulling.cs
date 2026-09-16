@@ -16,7 +16,45 @@ public class CameraCulling : MonoBehaviour
 
     private Camera cam;
 
-    private void Start() { Apply(); }
+    // ==== THIS WAS IN NO SCENE AT ALL ====
+    //
+    // WorldGenerator.TagAsNature moves every collider-less rock, bush, log, water
+    // plant and scatter prop onto the Nature layer, and its tooltip says out loud
+    // that it does so "so CameraCulling's per-layer distance actually applies".
+    // A GUID search across every .unity and .prefab returns nothing: the
+    // component was never placed, nothing ever called AddComponent for it, and
+    // Camera.layerCullDistances was therefore never set. All of that clutter has
+    // been rendering to the camera's 900m far plane.
+    //
+    // Self-installing on the main camera closes that, and means it cannot be
+    // lost again by a scene edit.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void InstallOnMainCamera()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += (_, __) => Attach();
+        Attach();
+    }
+
+    private static void Attach()
+    {
+        var cam = Camera.main;
+        if (cam == null) return;
+        var cc = cam.GetComponent<CameraCulling>();
+        if (cc == null) cc = cam.gameObject.AddComponent<CameraCulling>();
+        cc.ApplyFromSettings();
+    }
+
+    // The distance is a PRESET lever, which is the whole point: Ultra keeps a
+    // generous leash and only the lower presets tighten it. Nothing about what
+    // Ultra renders changes.
+    public void ApplyFromSettings()
+    {
+        int q = Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail", 3), 0, 3);
+        natureRenderDistance = q switch { 0 => 110f, 1 => 170f, 2 => 260f, _ => 400f };
+        Apply();
+    }
+
+    private void Start() { ApplyFromSettings(); }
 
     // Public so a settings change can re-apply it without a scene reload.
     public void Apply()

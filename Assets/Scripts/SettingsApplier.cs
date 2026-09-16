@@ -290,6 +290,19 @@ public class SettingsApplier : MonoBehaviour
         // ApplyQualityLevel runs before this in ApplyAll and SetQualityLevel
         // resets lodBias to the preset value, so this must stay downstream of it.
         QualitySettings.lodBias = q switch { 0 => 1f, 1 => 1.8f, 2 => 2.8f, _ => 4f };
+
+        // Per-layer cull distance for small ground clutter. See CameraCulling:
+        // the component was in no scene at all, so the Nature layer the generator
+        // fills with rocks, logs and water plants was rendering to the camera's
+        // 900m far plane. Ultra gets a generous 400m and is unchanged in what it
+        // draws; the lower presets are where this actually saves anything.
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            var cc = cam.GetComponent<CameraCulling>();
+            if (cc == null) cc = cam.gameObject.AddComponent<CameraCulling>();
+            cc.ApplyFromSettings();
+        }
     }
 
     public static void ApplyRenderScale()
