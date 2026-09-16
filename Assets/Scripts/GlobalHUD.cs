@@ -1485,15 +1485,44 @@ public class GlobalHUD : MonoBehaviour
 
     private static readonly List<string> s_toastKeyScratch = new List<string>(8);
 
-    private void RestackResourceToasts()
+    // ==== TWO STACKS WERE SHARING ONE COLUMN ====
+    //
+    // The bottom-left feed is written by two systems that knew nothing about
+    // each other, both parented to pickupPopupContainer and both stepping 36px
+    // from Y = 0: the coalescing resource toasts counted UPWARD (i * 36), and
+    // the one-shot pickup popups counted DOWNWARD ((n-1-i) * 36). Every row
+    // therefore had two claimants, and a chest that pays supplies AND diamonds
+    // AND xp in the same second printed them on top of one another. Whichever
+    // lost looked like it had never been logged at all — which is the report:
+    // some reliquary chests seem to log nothing.
+    //
+    // One layout function for the whole feed, called by both. Resource toasts
+    // sit at the bottom because they persist and grow in place; one-shot
+    // popups ride above them.
+    private void RestackResourceToasts() => RestackHudFeed();
+    private void RestackPickupPopups() => RestackHudFeed();
+
+    private const float FEED_ROW_HEIGHT = 36f;
+
+    private void RestackHudFeed()
     {
-        int i = 0;
+        for (int i = activePickupPopups.Count - 1; i >= 0; i--)
+            if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
+
+        int row = 0;
         foreach (var kv in resourceToasts)
         {
             var t = kv.Value;
             if (t == null || t.rt == null) continue;
-            t.rt.anchoredPosition = new Vector2(0f, i * 36f);
-            i++;
+            t.rt.anchoredPosition = new Vector2(0f, row * FEED_ROW_HEIGHT);
+            row++;
+        }
+        for (int i = 0; i < activePickupPopups.Count; i++)
+        {
+            var rt = activePickupPopups[i];
+            if (rt == null) continue;
+            rt.anchoredPosition = new Vector2(0f, row * FEED_ROW_HEIGHT);
+            row++;
         }
     }
 
@@ -1714,25 +1743,7 @@ public class GlobalHUD : MonoBehaviour
         TickResourceToasts();
     }
 
-    private void RestackPickupPopups()
-    {
-        // Compact null / destroyed entries first, then position by the
-        // DENSE index. The old version divided by activePickupPopups.Count
-        // which included nulls — as popups died their surviving siblings
-        // stayed pinned at their old dense-count Y, producing the "stacks
-        // in one spot and doesn't move" visual bug the player reported.
-        for (int i = activePickupPopups.Count - 1; i >= 0; i--)
-            if (activePickupPopups[i] == null) activePickupPopups.RemoveAt(i);
 
-        int n = activePickupPopups.Count;
-        for (int i = 0; i < n; i++)
-        {
-            RectTransform rt = activePickupPopups[i];
-            if (rt == null) continue;
-            float targetY = (n - 1 - i) * 36f;
-            rt.anchoredPosition = new Vector2(0f, targetY);
-        }
-    }
 
     private void ClearAllPickupPopups()
     {

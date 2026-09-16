@@ -2686,6 +2686,7 @@ public class WorldGenerator : MonoBehaviour
 
         GameObject camp = Instantiate(totemPrefab, finalSpawnPos, finalRot);
         camp.transform.SetParent(this.transform);
+        var scPreCheck = camp.GetComponent<SelfContainedLocation>();
 
         // Belt-and-braces: re-snap the INSTANTIATED totem by its real
         // combined renderer bounds. The bottomOfCollider math only knows
@@ -2696,7 +2697,11 @@ public class WorldGenerator : MonoBehaviour
         // manual root BoxCollider (finalY above), so measuring the live mesh
         // bounds would drag their own terrain/props into the calc and lift the
         // whole thing off the ground.
-        if (!isSelfContained)
+        // The skip exists because a location's OWN terrain would drag the mesh
+        // bounds down and lift the whole thing off the pad. With no terrain of
+        // its own that reasoning is gone, and skipping is what leaves it
+        // floating on a root BoxCollider that no longer describes its floor.
+        if (!isSelfContained || !HasOwnGround(camp, scPreCheck))
             SnapInstanceToGround(camp, groundYAfterFlatten + locationYOffset);
 
         // Water alignment: shift the whole location so its own water sits on the
@@ -2749,7 +2754,21 @@ public class WorldGenerator : MonoBehaviour
         // SelfContainedLocation component AND its own ground collider.
         var selfContained = camp.GetComponent<SelfContainedLocation>();
         if (selfContained != null && selfContained.cutTerrainHole)
-            CutHoleForLocation(camp, selfContained, rootBox, flatRadius);
+        {
+            if (HasOwnGround(camp, selfContained))
+            {
+                CutHoleForLocation(camp, selfContained, rootBox, flatRadius);
+            }
+            else
+            {
+                // Loud, because the alternative is a hole in the world with
+                // nothing under it and no clue why.
+                Debug.LogWarning($"[WorldGenerator] '{camp.name}' has cutTerrainHole ON but no ground of its own " +
+                                 "(groundReference is empty and no child is named terrain/ground/landscape). " +
+                                 "Skipping the hole — cutting one would leave a gap in the world with nothing to fill it, " +
+                                 "and the player would fall through. Either assign groundReference or turn cutTerrainHole off.", camp);
+            }
+        }
 
         // Optional extra capture LOCATIONS: additional totems at spread-out
         // clearings so a region has several points to capture (bonus side
@@ -2803,7 +2822,8 @@ public class WorldGenerator : MonoBehaviour
             locationExclusions.Add(new Vector4(extraTotem.transform.position.x, extraTotem.transform.position.y, extraTotem.transform.position.z, flatRadius + 6f));
 
             var esc = extraTotem.GetComponent<SelfContainedLocation>();
-            if (esc != null && esc.cutTerrainHole)
+            // Same guard as the main location: no ground of its own, no hole.
+            if (esc != null && esc.cutTerrainHole && HasOwnGround(extraTotem, esc))
                 CutHoleForLocation(extraTotem, esc, totemPrefab.GetComponent<BoxCollider>(), flatRadius);
             spawned++;
         }
@@ -2999,6 +3019,30 @@ public class WorldGenerator : MonoBehaviour
         // still can't be cut wider than the location's own ground.
         float holeR = sc.footprintRadius > 0.1f ? sc.footprintRadius : flatRadius;
         PunchTerrainHole(instance.transform.position, Mathf.Max(holeR * 0.35f, holeR - inset));
+    }
+
+    // ==== "SELF-CONTAINED" HAS TO MEAN IT STILL BRINGS ITS OWN GROUND ====
+    //
+    // Two behaviours branch on the SelfContainedLocation component merely
+    // existing: the procedural terrain is punched out under the footprint, and
+    // the instance is grounded by its root BoxCollider alone rather than by its
+    // live mesh bounds. Both are correct ONLY while the location really carries
+    // its own floor.
+    //
+    // Location_Castle has since had its own terrain and water removed, and its
+    // groundReference and waterReference are both null — but cutTerrainHole is
+    // still on. So the generator cut a hole in the world under the castle with
+    // nothing left to fill it, which is the terrain tearing at the castle's
+    // edge; and it kept skipping the mesh-based grounding, which is the castle
+    // landing in the air.
+    //
+    // Asking the real question fixes both, and it fixes them for any location
+    // that is edited the same way later.
+    private bool HasOwnGround(GameObject instance, SelfContainedLocation sc)
+    {
+        if (sc == null || instance == null) return false;
+        if (sc.groundReference != null) return true;
+        return FindGroundChild(instance.transform) != null;
     }
 
     private static readonly string[] GroundChildNames = { "terrain", "ground", "landscape" };

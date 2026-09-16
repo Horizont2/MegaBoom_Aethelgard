@@ -86,9 +86,32 @@ public class TrailerSequenceDirector : MonoBehaviour
 
         ParkUnusedActICameras();
 
-        // Park EVERY Part 2 rig (earlier tool runs could leave duplicates behind).
-        foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig")) g.SetActive(false);
-        if (part2Rig != null) part2Rig.SetActive(false);
+        // ==== ACTIVATING A TERRAIN MID-TRAILER IS THE HANG ====
+        //
+        // The Part 2 rig was switched off here and switched back on at the
+        // hand-over, right after the statue breaks. That rig contains a Terrain,
+        // and ACTIVATING a terrain makes Unity rebuild its tree and detail
+        // render data synchronously — a multi-second stall landing exactly on
+        // the cut, which from the outside is indistinguishable from the engine
+        // hanging. TrailerShotChain already learned this and says so at length
+        // at the top of that file; this director was still doing it.
+        //
+        // So the rig comes up ONCE, here, during the opening black where a
+        // stall costs nothing, and stays up. Its CAMERAS are what get parked —
+        // the set itself sits far from Part 1 and outside the live frustum, so
+        // leaving it standing costs nothing to render.
+        //
+        // Duplicate rigs from earlier tool runs are still deactivated outright:
+        // those are not going to be filmed and paying for their terrain would be
+        // the same mistake for no reason.
+        foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig"))
+            if (g != part2Rig) g.SetActive(false);
+
+        if (part2Rig != null)
+        {
+            part2Rig.SetActive(true);
+            ParkRigCameras(part2Rig);
+        }
 
         // Seasons are OURS from the start and HELD at summer, so the world never
         // changes while the Part 1 cameras are still filming the ride.
@@ -204,6 +227,23 @@ public class TrailerSequenceDirector : MonoBehaviour
     // and which therefore sit at the world origin, inside the ground. Rather than
     // keep guessing which one wins, everything that is not the camera this phase
     // is supposed to be on gets switched off.
+    // Park a rig's cameras without deactivating the rig, so its terrain, trees
+    // and detail layers are already built and paid for long before the cut.
+    // Audio listeners go with them: a second live listener is a real bug, and
+    // the reason the rig used to be switched off wholesale.
+    private void ParkRigCameras(GameObject rig)
+    {
+        if (rig == null) return;
+        foreach (var cam in rig.GetComponentsInChildren<CinemachineCamera>(true)) cam.gameObject.SetActive(false);
+        foreach (var lis in rig.GetComponentsInChildren<AudioListener>(true)) lis.enabled = false;
+    }
+
+    private void WakeRigCameras(GameObject rig)
+    {
+        if (rig == null) return;
+        foreach (var cam in rig.GetComponentsInChildren<CinemachineCamera>(true)) cam.gameObject.SetActive(true);
+    }
+
     private void SoloCameras(params GameObject[] keepRoots)
     {
         int off = 0;
@@ -355,7 +395,10 @@ public class TrailerSequenceDirector : MonoBehaviour
         if (_crane != null) _crane.gameObject.SetActive(false);
         if (part2Rig != null)
         {
-            part2Rig.SetActive(true);
+            // No SetActive here any more — see the note in Start. The rig has
+            // been standing since the opening black; all that happens on the cut
+            // is that its cameras wake up.
+            WakeRigCameras(part2Rig);
             // Only Part 2's own cameras exist from here on.
             SoloCameras(part2Rig);
             SnapPart2Cameras();

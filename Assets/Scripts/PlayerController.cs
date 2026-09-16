@@ -2760,8 +2760,18 @@ public class PlayerController : MonoBehaviour, IDamageable
         float scaled = amount * xpGainMultiplier;
         currentXP += scaled;
 
+        // ==== A CHEST SCATTERS CRYSTALS, NOT ONE CRYSTAL ====
+        //
+        // This used the one-shot popup, so a reliquary paying out eight or ten
+        // crystals spawned eight or ten separate lines within a second. The feed
+        // caps at eight and destroys the oldest to make room, so most of them
+        // were evicted before they could be read — which is why xp from a good
+        // chest looked like it had not been logged at all.
+        //
+        // ShowResourceGain coalesces by label, exactly as wood and diamonds
+        // already do: a burst becomes one "+N XP" line that grows.
         if (GlobalHUD.Instance != null && scaled > 0f)
-            GlobalHUD.Instance.ShowPickupPopup($"+{Mathf.CeilToInt(scaled)} XP", new Color(0.4f, 0.85f, 1f));
+            GlobalHUD.Instance.ShowResourceGain(Mathf.CeilToInt(scaled), "XP", new Color(0.4f, 0.85f, 1f));
 
         // Loop in case a single huge gain crosses multiple thresholds.
         while (currentXP >= xpToNextLevel) LevelUp();
