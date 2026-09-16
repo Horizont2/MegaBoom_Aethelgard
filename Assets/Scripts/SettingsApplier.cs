@@ -71,9 +71,7 @@ public class SettingsApplier : MonoBehaviour
         ApplyShadowDistance();
         ApplyFoliageDetail();
         ApplyRenderScale();
-        ApplyMotionBlur();
-        ApplyDepthOfField();
-        ApplyBloom();
+        ApplyPostFX();          // master switch; re-runs the three below
         ApplyAmbientOcclusion();
         ApplyVolumetrics();
         ApplyFOV();
@@ -201,6 +199,19 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyShadowQuality()
     {
         int q = PlayerPrefs.GetInt("Settings_ShadowQuality", 3);
+
+        // ==== "DYNAMIC SHADOWS" WAS A TOGGLE THAT REMEMBERED ITSELF ====
+        //
+        // Settings_DynamicShadows was written and read by SettingsUI and by
+        // nothing else in the project: the switch moved, the value was saved,
+        // and no shadow was ever cast differently because of it.
+        //
+        // It is the master for the whole shadow group now. Off means quality 0,
+        // which ApplyShadowDistance already turns into a shadow distance of zero
+        // — the one route to "no shadows" that this URP version actually lets a
+        // script take, since supportsMainLightShadows is read-only.
+        if (PlayerPrefs.GetInt("Settings_DynamicShadows", 1) == 0) q = 0;
+
         _shadowQuality = q;
 
         var p = Pipe;
@@ -260,7 +271,21 @@ public class SettingsApplier : MonoBehaviour
     // richness of the top preset.
     public static void ApplyFoliageDetail()
     {
-        int q = Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail", 3), 0, 3);
+        // ==== A LEVER THE PLAYER COULD NOT REACH ====
+        //
+        // Settings_FoliageDetail is read here, and now by CameraCulling too, but
+        // a search of the whole project finds NOTHING that writes it — the
+        // settings screen has no control bound to it. So the grass density, the
+        // detail draw distance, the LOD bias and the clutter cull distance were
+        // all pinned at the Ultra default and no preset could move them, which
+        // is a large part of why lowering quality gained so little.
+        //
+        // Until a control exists for it, it follows the overall quality level,
+        // which the player CAN move. An explicit value still wins if one is ever
+        // written, so adding the slider later needs no change here.
+        int q = PlayerPrefs.HasKey("Settings_FoliageDetail")
+              ? Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail"), 0, 3)
+              : Mathf.Clamp(PlayerPrefs.GetInt("Settings_QualityLevel", 1), 0, 3);
         float dist    = q switch { 0 => 25f,  1 => 40f,  2 => 60f,  _ => 80f };
         float density = q switch { 0 => 0.35f, 1 => 0.55f, 2 => 0.7f, _ => 0.8f };
 
@@ -312,9 +337,95 @@ public class SettingsApplier : MonoBehaviour
         if (asset != null) asset.renderScale = rs;
     }
 
-    public static void ApplyMotionBlur() => Shader.SetGlobalFloat("_Settings_MotionBlur", PlayerPrefs.GetInt("Settings_MotionBlur", 0));
-    public static void ApplyDepthOfField() => Shader.SetGlobalFloat("_Settings_DOF", PlayerPrefs.GetInt("Settings_DepthOfField", 0));
-    public static void ApplyBloom() => Shader.SetGlobalFloat("_Settings_Bloom", PlayerPrefs.GetInt("Settings_Bloom", 1));
+    // ==== FIVE SWITCHES THAT MOVED A NUMBER NOTHING READ ====
+    //
+    // Bloom, motion blur, depth of field, AO and volumetrics each wrote a
+    // shader global — _Settings_Bloom and friends. A search across every
+    // .shader, .shadergraph, .hlsl, .cginc and .cs in the project finds NO
+    // reader for any of the five. So all five were cosmetic switches: the
+    // toggle moved, the value was saved and reloaded, and the picture did not
+    // change.
+    //
+    // Post-processing in URP lives on a Volume Profile, and this project has
+    // one — Settings/SampleSceneProfile, which GameScene's volume uses and which
+    // carries real Bloom, MotionBlur, DepthOfField and Vignette overrides. That
+    // is what the switches have to reach.
+    //
+    // Toggling `active` on an override is the correct lever: an inactive
+    // override is skipped by the stack entirely, so the effect costs nothing
+    // rather than running at zero intensity.
+    //
+    // The profile is a shared ASSET, so these writes persist into the project
+    // in the editor. That is the same bargain SettingsApplier already makes with
+    // the URP asset for MSAA and shadows, and it is why every one of these is
+    // written on every ApplyAll rather than only on change — whatever the last
+    // session left behind is corrected at startup.
+    private static VolumeProfile _profile;
+
+    private static VolumeProfile Profile
+    {
+        get
+        {
+            if (_profile != null) return _profile;
+            var v = Object.FindFirstObjectByType<Volume>();
+            // isGlobal first, then whatever exists — a local volume is better
+            // than nothing and the scene has only one.
+            if (v == null) return null;
+            _profile = v.sharedProfile != null ? v.sharedProfile : v.profile;
+            return _profile;
+        }
+    }
+
+    private static void SetOverrideActive<T>(bool on) where T : VolumeComponent
+    {
+        var prof = Profile;
+        if (prof == null) return;
+        if (prof.TryGet(out T comp) && comp != null) comp.active = on;
+    }
+
+    public static void ApplyMotionBlur()
+    {
+        bool on = PlayerPrefs.GetInt("Settings_MotionBlur", 0) == 1 && PostFXAllowed;
+        Shader.SetGlobalFloat("_Settings_MotionBlur", on ? 1 : 0);
+        SetOverrideActive<UnityEngine.Rendering.Universal.MotionBlur>(on);
+    }
+
+    public static void ApplyDepthOfField()
+    {
+        bool on = PlayerPrefs.GetInt("Settings_DepthOfField", 0) == 1 && PostFXAllowed;
+        Shader.SetGlobalFloat("_Settings_DOF", on ? 1 : 0);
+        SetOverrideActive<UnityEngine.Rendering.Universal.DepthOfField>(on);
+    }
+
+    public static void ApplyBloom()
+    {
+        bool on = PlayerPrefs.GetInt("Settings_Bloom", 1) == 1 && PostFXAllowed;
+        Shader.SetGlobalFloat("_Settings_Bloom", on ? 1 : 0);
+        SetOverrideActive<UnityEngine.Rendering.Universal.Bloom>(on);
+    }
+
+    // ==== THE MASTER POST-FX SWITCH WAS PURE UI STATE ====
+    //
+    // Settings_PostFX was written and read by SettingsUI and by nothing else in
+    // the project — the toggle remembered its own position and meant nothing.
+    // It is the master now: off, and every post effect above is skipped
+    // regardless of its own switch, which is what a player turning post
+    // processing off is asking for.
+    private static bool PostFXAllowed => PlayerPrefs.GetInt("Settings_PostFX", 1) == 1;
+
+    public static void ApplyPostFX()
+    {
+        bool on = PostFXAllowed;
+        // Vignette and colour grading are cheap and are part of the look rather
+        // than an effect the player is choosing, so they follow the master
+        // switch only.
+        SetOverrideActive<UnityEngine.Rendering.Universal.Vignette>(on);
+        // Re-run the individual ones so turning the master back on restores
+        // exactly what the player had chosen underneath it.
+        ApplyBloom();
+        ApplyMotionBlur();
+        ApplyDepthOfField();
+    }
     // ==== THE AO SLIDER MOVED A SHADER GLOBAL NOTHING READ THE COST OF ====
     //
     // Screen-space ambient occlusion in URP is a RENDERER FEATURE, not a quality

@@ -49,7 +49,12 @@ public class CameraCulling : MonoBehaviour
     // Ultra renders changes.
     public void ApplyFromSettings()
     {
-        int q = Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail", 3), 0, 3);
+        // Same fallback as SettingsApplier.ApplyFoliageDetail: nothing in the
+        // project writes Settings_FoliageDetail yet, so follow the quality level
+        // the player can actually move until a control exists for it.
+        int q = PlayerPrefs.HasKey("Settings_FoliageDetail")
+              ? Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail"), 0, 3)
+              : Mathf.Clamp(PlayerPrefs.GetInt("Settings_QualityLevel", 1), 0, 3);
         natureRenderDistance = q switch { 0 => 110f, 1 => 170f, 2 => 260f, _ => 400f };
         Apply();
     }
