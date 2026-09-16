@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 public class EnemyAI : MonoBehaviour, IDamageable
 {
@@ -488,6 +489,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         s_playerController = null;
         s_terrain = null;
         s_terrainOriginY = 0f;
+        // The pooled orbs do not survive a scene change, and a stack of
+        // destroyed references would hand BuildMagicOrb nulls forever.
+        s_orbPool.Clear();
+        s_liveOrbLights = 0;
     }
 
     [HideInInspector] public bool startPassive = false;
@@ -2286,6 +2291,10 @@ public class EnemyAI : MonoBehaviour, IDamageable
         GameObject orb = BuildMagicOrb(spawn);
         var ep = orb.GetComponent<EnemyProjectile>();
         ep.stickOnHit = false;   // burst, don't embed like an arrow
+        // Closes the loop: when the orb is finished it hands itself back here
+        // instead of being destroyed. Set every launch, because a reused body
+        // may have come from a caster that has since died.
+        ep.Retire = RetireOrb;
         Vector3 dir = (aimPoint - spawn).normalized;
         if (dir.sqrMagnitude < 0.0001f) dir = transform.forward;
         ep.Launch(dir, Mathf.Max(9f, projectileSpeed), damage, gameObject);
@@ -2312,8 +2321,68 @@ public class EnemyAI : MonoBehaviour, IDamageable
         return mat;
     }
 
+    // ==== FIVE COMPONENT OPERATIONS AND A PRIMITIVE MESH, PER SHOT ====
+    //
+    // Every cast built a sphere primitive, destroyed its collider, added a
+    // real-time point Light, added a TrailRenderer and added an EnemyProjectile,
+    // and EnemyProjectile then destroyed the whole thing a few seconds later.
+    // At a handful of casters firing every couple of seconds that is a steady
+    // create/destroy churn for an object that is IDENTICAL every time except
+    // for where it starts.
+    //
+    // A shared stack of finished orbs removes all of it. No prefab asset is
+    // needed, which matters because the orb is defined here in code and an
+    // asset would be a second place to keep the numbers in step.
+    //
+    // Static, so casters share one pool rather than each hoarding their own,
+    // and cleared on scene change because the objects in it do not survive one.
+    private static readonly Stack<GameObject> s_orbPool = new Stack<GameObject>(16);
+
+    // Forward+ rebuilds its tile light lists when lights move, so a dozen orbs
+    // in flight is a dozen moving point lights every frame. The orbs past this
+    // many keep their glow material and their trail and simply do not carry a
+    // light of their own — which at that many in the air is indistinguishable.
+    private const int MAX_ORB_LIGHTS = 4;
+    private static int s_liveOrbLights;
+
+    // Give a finished orb back. Deactivated rather than destroyed, its light
+    // released so the next one in the air can have it, and the trail cleared so
+    // it does not reappear mid-flight from wherever this one ended.
+    private static void RetireOrb(GameObject orb)
+    {
+        if (orb == null) return;
+        var lt = orb.GetComponent<Light>();
+        if (lt != null && lt.enabled) { lt.enabled = false; s_liveOrbLights = Mathf.Max(0, s_liveOrbLights - 1); }
+        var tr = orb.GetComponent<TrailRenderer>();
+        if (tr != null) tr.Clear();
+        orb.transform.SetParent(null, true);
+        orb.SetActive(false);
+        // A cap on the pool itself: a raid that fires hundreds should not leave
+        // hundreds of dormant spheres in memory for the rest of the run.
+        if (s_orbPool.Count >= 24) { Destroy(orb); return; }
+        s_orbPool.Push(orb);
+    }
+
     private GameObject BuildMagicOrb(Vector3 pos)
     {
+        // A finished orb is a complete orb: reuse it whole.
+        while (s_orbPool.Count > 0)
+        {
+            var reused = s_orbPool.Pop();
+            if (reused == null) continue;   // destroyed by a scene change
+            reused.transform.position = pos;
+            reused.transform.localScale = Vector3.one * magicOrbSize;
+            reused.SetActive(true);
+            var rep = reused.GetComponent<EnemyProjectile>();
+            if (rep != null) rep.ResetForReuse();
+            var rtrail = reused.GetComponent<TrailRenderer>();
+            if (rtrail != null) rtrail.Clear();   // or it draws a streak from where it died
+            var rlight = reused.GetComponent<Light>();
+            if (rlight != null) rlight.enabled = s_liveOrbLights < MAX_ORB_LIGHTS;
+            if (rlight != null && rlight.enabled) s_liveOrbLights++;
+            return reused;
+        }
+
         var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         orb.name = "MageOrb";
         orb.transform.position = pos;
@@ -2344,6 +2413,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         light.color = magicOrbColor;
         light.range = 6f * (magicOrbSize / 0.5f);
         light.intensity = 3.2f;
+        // No shadows, ever. A moving shadow-casting point light is one of the
+        // most expensive things a projectile can carry, and nothing about a
+        // glowing ball needs to cast one.
+        light.shadows = LightShadows.None;
+        light.enabled = s_liveOrbLights < MAX_ORB_LIGHTS;
+        if (light.enabled) s_liveOrbLights++;
 
         var trail = orb.AddComponent<TrailRenderer>();
         trail.time = 0.32f;

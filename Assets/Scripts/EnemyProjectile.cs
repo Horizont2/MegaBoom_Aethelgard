@@ -28,8 +28,16 @@ public class EnemyProjectile : MonoBehaviour
         // oddly). Movement is driven purely by our own integration below.
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
-        // Hard backstop: never let a mis-fired arrow hang forever.
-        Destroy(gameObject, Mathf.Max(lifetime, 0.5f) + 1f);
+        // ==== TWO SCHEDULED DESTROYS FOR ONE ARROW ====
+        //
+        // Awake registered a backstop Destroy and LaunchBallistic registered
+        // another, so every shot queued two native destroy callbacks against the
+        // same object. Harmless in effect — the second finds nothing — but it is
+        // twice the bookkeeping per shot, and it makes the object impossible to
+        // RECYCLE, because a scheduled Destroy cannot be cancelled.
+        //
+        // One timer, run in Update, which a pooled projectile can simply reset.
+        _expiresAt = Time.time + Mathf.Max(lifetime, 0.5f) + 1f;
     }
 
     // Straight-line shot (kept for compatibility / non-arcing bolts).
@@ -48,11 +56,44 @@ public class EnemyProjectile : MonoBehaviour
         owner = source;
         launched = true;
         if (velocity.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(velocity);
-        Destroy(gameObject, lifetime);
+        _expiresAt = Time.time + lifetime;
+    }
+
+    private float _expiresAt = float.MaxValue;
+
+    // Set by whoever owns a RECYCLED projectile. When present it is called
+    // instead of Destroy, so the object goes back to its owner's pool rather
+    // than to the garbage collector. Null for ordinary prefab arrows, which are
+    // destroyed exactly as before.
+    public System.Action<GameObject> Retire;
+
+    // Put a reused body back into a launchable state. Everything a previous
+    // flight could have left behind is cleared here; a pooled object that keeps
+    // one stale field is the hardest kind of bug to find later.
+    public void ResetForReuse()
+    {
+        launched = false;
+        velocity = Vector3.zero;
+        gravity = 0f;
+        owner = null;
+        _expiresAt = float.MaxValue;
+        transform.SetParent(null, true);
+        transform.localScale = _spawnScale == Vector3.zero ? transform.localScale : _spawnScale;
+    }
+
+    private Vector3 _spawnScale;
+
+    private void Start() { if (_spawnScale == Vector3.zero) _spawnScale = transform.localScale; }
+
+    private void Retreat()
+    {
+        if (Retire != null) { Retire(gameObject); return; }
+        Destroy(gameObject);
     }
 
     private void Update()
     {
+        if (Time.time >= _expiresAt) { Retreat(); return; }
         if (!launched) return;
 
         float dt = Time.deltaTime;
@@ -98,7 +139,36 @@ public class EnemyProjectile : MonoBehaviour
                     PushDirection = velocity.normalized,
                     SourceName = "Archer"
                 });
-                if (stickOnHit) StickInto(hit.collider.transform, hit.point);
+
+                // ==== AN ARROW THE SHIELD STOPPED BELONGS TO THE SHIELD ====
+                //
+                // This buried every arrow in whatever collider the cast found,
+                // which for a player behind a raised guard is still the
+                // CharacterController — so a shot the shield had just absorbed
+                // ended up sticking out of the player's chest. That reads as the
+                // block having failed, which is the exact opposite of what
+                // happened, and it undermines the one defensive move the game
+                // most wants the player to trust.
+                //
+                // PlayerBlock records what it did and on which frame, so asking
+                // immediately after TakeDamage gets this hit's answer and never a
+                // stale one.
+                Transform stickTo = hit.collider.transform;
+                var blk = PlayerBlock.Instance;
+                if (blk != null && blk.LastResultFrame == Time.frameCount
+                    && (blk.LastResult == PlayerBlock.Result.Blocked
+                        || blk.LastResult == PlayerBlock.Result.Parried))
+                {
+                    // A parried arrow should not stick at all — it is knocked
+                    // away, and leaving it planted in the shield turns the game's
+                    // best defensive moment into a pincushion.
+                    if (blk.LastResult == PlayerBlock.Result.Parried) { Impact(); return; }
+
+                    Transform shield = blk.ShieldTransform;
+                    if (shield != null) stickTo = shield;
+                }
+
+                if (stickOnHit) StickInto(stickTo, hit.point);
                 else Impact();
                 return;
             }
@@ -126,7 +196,7 @@ public class EnemyProjectile : MonoBehaviour
         if (hitVFXPrefab != null) Instantiate(hitVFXPrefab, transform.position, transform.rotation);
         if (playHitSfx && AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX3D(AudioID.Arrow_Hit, transform.position);
-        Destroy(gameObject);
+        Retreat();
     }
 
     // Embed the arrow in the player's body and leave it there for a few seconds
@@ -152,6 +222,9 @@ public class EnemyProjectile : MonoBehaviour
         var col = GetComponent<Collider>();
         if (col != null) col.enabled = false;
 
-        Destroy(gameObject, 4f);   // linger, then drop off
+        // Linger, then drop off. Through the same timer as everything else, so a
+        // recycled body is returned to its pool rather than destroyed out from
+        // under it.
+        _expiresAt = Time.time + 4f;
     }
 }

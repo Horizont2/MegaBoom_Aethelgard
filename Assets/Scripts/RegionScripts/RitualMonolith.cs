@@ -147,7 +147,7 @@ public class RitualMonolith : MonoBehaviour
             // Compared against the health at the START of this channel rather
             // than frame to frame, so a lifesteal tick or a level-up heal in the
             // middle cannot mask real damage taken a moment earlier.
-            if (_pc != null && _pc.CurrentHealth <= _healthAtChannelStart - channelBreakDamage)
+            if (_pc != null && _pc.currentHealth <= _healthAtChannelStart - channelBreakDamage)
             {
                 BreakChannel();
                 return;
@@ -216,7 +216,7 @@ public class RitualMonolith : MonoBehaviour
     {
         _channelling = b;
         _progress = 0f;
-        _healthAtChannelStart = _pc != null ? _pc.CurrentHealth : float.MaxValue;
+        _healthAtChannelStart = _pc != null ? _pc.currentHealth : float.MaxValue;
     }
 
     private void CancelChannel(bool showBar)

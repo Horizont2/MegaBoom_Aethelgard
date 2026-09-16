@@ -313,18 +313,46 @@ public class PlayerBlock : MonoBehaviour
 
     public enum Result { NotBlocked, Blocked, Parried, GuardBreak }
 
+    // ==== WHAT THE GUARD DID, FOR ANYTHING THAT NEEDS TO REACT TO IT ====
+    //
+    // Resolve returns its answer to PlayerController and nowhere else, so
+    // anything further out — an arrow deciding where to bury itself, a VFX
+    // deciding where to spark — had no way to ask. Recorded with the frame it
+    // happened on, because a caller that reads this WITHOUT having just caused a
+    // hit would otherwise get whatever the last one was.
+    public Result LastResult { get; private set; }
+    public int LastResultFrame { get; private set; } = -1;
+
+    // The shield model in the player's hand, if one is equipped. Cached lazily
+    // because ShieldLoadout rebuilds it whenever the loadout changes.
+    public Transform ShieldTransform
+    {
+        get
+        {
+            var loadout = GetComponent<ShieldLoadout>();
+            return loadout != null ? loadout.ShieldModel : null;
+        }
+    }
+
+    private Result Record(Result r)
+    {
+        LastResult = r;
+        LastResultFrame = Time.frameCount;
+        return r;
+    }
+
     // Called by PlayerController.TakeDamage BEFORE any health is touched.
     public Result Resolve(ref DamageInfo info, Vector3 attackerPos, EnemyAI attacker)
     {
-        if (!IsBlocking) return Result.NotBlocked;
-        if (info.Unblockable) return Result.NotBlocked;
+        if (!IsBlocking) return Record(Result.NotBlocked);
+        if (info.Unblockable) return Record(Result.NotBlocked);
 
         // FROM THE FRONT ONLY. A shield is a direction, not a status effect.
         Vector3 toAttacker = attackerPos - transform.position; toAttacker.y = 0f;
         if (toAttacker.sqrMagnitude > 0.001f)
         {
             float angle = Vector3.Angle(transform.forward, toAttacker.normalized);
-            if (angle > EffectiveAngle * 0.5f) return Result.NotBlocked;
+            if (angle > EffectiveAngle * 0.5f) return Record(Result.NotBlocked);
         }
 
         bool perfect = Time.time - _raisedAt <= ParryWindowFor(attacker);
@@ -337,7 +365,7 @@ public class PlayerBlock : MonoBehaviour
             _pc.RefundStamina(parryRefund);
             PunishAttacker(attacker, parriedStagger, vulnerable: true);
             PlayParryFeedback(info.HitPoint, attackerPos);
-            return Result.Parried;
+            return Record(Result.Parried);
         }
 
         float cost = (blockCostBase + info.Amount * blockCostPerDamage) * Mathf.Max(0.1f, _shield.staminaMultiplier);
@@ -368,7 +396,7 @@ public class PlayerBlock : MonoBehaviour
             // whoever happens to be swinging next.
             if (CombatRing.Instance != null) CombatRing.Instance.Hesitate(guardBreakHesitation);
 
-            return Result.GuardBreak;
+            return Record(Result.GuardBreak);
         }
 
         _pc.DrainStamina(cost);
@@ -394,7 +422,7 @@ public class PlayerBlock : MonoBehaviour
 
         PunishAttacker(attacker, blockedStagger, vulnerable: false);
         PlayBlockFeedback(info.HitPoint);
-        return Result.Blocked;
+        return Record(Result.Blocked);
     }
 
     // The attacker pays for being blocked, and pays far more for being parried.

@@ -35,6 +35,11 @@ public class ShieldLoadout : MonoBehaviour
 
     private GameObject _current;
 
+    // The shield model actually in the player's hand right now, or null when
+    // they are bare. Rebuilt by Refresh whenever the loadout changes, so callers
+    // must ask each time rather than caching it.
+    public Transform ShieldModel => _current != null ? _current.transform : null;
+
     private void Start() => Refresh();
 
     public void Refresh()
