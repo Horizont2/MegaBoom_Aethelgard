@@ -12014,6 +12014,7 @@ GameObject:
   - component: {fileID: 4637086544979659799}
   - component: {fileID: 4521917599584407488}
   - component: {fileID: 3765782706965647456}
+  - component: {fileID: 4820001110000001}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -34551,3 +34552,25 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 104750483815739857, guid: 41494896fc96c9748b81d3356632794e, type: 3}
   m_PrefabInstance: {fileID: 6212149640494345843}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &4820001110000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2945078721770132420}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 231a8a3513dfc5e4088fdf9c768d72da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  silhouetteMaterial: {fileID: 0}
+  silhouetteColour: {r: 0.35, g: 0.72, b: 1, a: 0.75}
+  fadeSpeed: 9
+  foliageLayers:
+    serializedVersion: 2
+    m_Bits: 32768
+  probeRadius: 0.55
+  cameraNearIgnore: 0.4
+  playerNearIgnore: 0.5
+  checksPerSecond: 25
