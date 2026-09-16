@@ -61,6 +61,37 @@ public class PlayerSilhouette : MonoBehaviour
     private float _nextValidate;
 
     private static readonly RaycastHit[] s_probe = new RaycastHit[12];
+
+    // ==== PAINTED FOLIAGE IS NOT ON THE FOLIAGE LAYER ====
+    //
+    // This probed foliageLayers alone, which is the Nature layer the generator
+    // puts spawned decoration on. That is right for a bush that exists as a
+    // GameObject — and most bushes do not.
+    //
+    // WorldGenerator paints its bushes onto the terrain as tree instances when
+    // useTerrainVegetationPainting is on, which it is in GameScene. A painted
+    // instance has no GameObject at all: whatever collider it gets belongs to
+    // the TERRAIN, and therefore sits on the terrain's layer. So the probe could
+    // never see the commonest bush in the game, and the effect only appeared
+    // where painting was unavailable and the generator fell back to real objects
+    // — which is exactly the difference between ordinary generation and a region
+    // capture that was reported.
+    //
+    // Adding the terrain's layer makes the painted ones visible to the probe.
+    // The TerrainCollider itself is rejected in the loop, so the ground still
+    // cannot trigger the ghost.
+    private int _probeMask = 0;
+    private int ProbeMask
+    {
+        get
+        {
+            if (_probeMask != 0) return _probeMask;
+            _probeMask = foliageLayers;
+            Terrain t = Terrain.activeTerrain;
+            if (t != null) _probeMask |= 1 << t.gameObject.layer;
+            return _probeMask;
+        }
+    }
     private static readonly int s_colorId = Shader.PropertyToID("_Color");
 
     private void OnEnable()
@@ -183,13 +214,19 @@ public class PlayerSilhouette : MonoBehaviour
         // ignoring them here would mean the probe could never see the one thing
         // this whole effect exists for. Trees are solid and hit either way.
         int n = Physics.SphereCastNonAlloc(from + dir * cameraNearIgnore, probeRadius, dir,
-                                           s_probe, span, foliageLayers, QueryTriggerInteraction.Collide);
+                                           s_probe, span, ProbeMask, QueryTriggerInteraction.Collide);
         for (int i = 0; i < n; i++)
         {
             var c = s_probe[i].collider;
             if (c == null) continue;
             // The player's own hitboxes sit on a Damageable layer too.
             if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
+            // ==== THE GROUND IS NOT A BUSH ====
+            //
+            // The terrain's layer is in the mask (see ProbeMask), and the
+            // TerrainCollider is on that same object. Without this, standing in
+            // a dip with the camera low would ghost the player through the hill.
+            if (c is TerrainCollider) continue;
             return true;
         }
         return false;

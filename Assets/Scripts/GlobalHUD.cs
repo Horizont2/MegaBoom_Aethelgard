@@ -1633,12 +1633,30 @@ public class GlobalHUD : MonoBehaviour
             _lastStackTier = pc.currentMultiplier;
             _stackPunch = pc.currentMultiplier > 1 ? 1f : 0f;
         }
-        _stackPunch = Mathf.MoveTowards(_stackPunch, 0f, 3f * Time.unscaledDeltaTime);
-        stackReadout.rectTransform.localScale = Vector3.one * (1f + _stackPunch * 0.35f);
+        // ==== WRITING localScale DIRTIES THE WHOLE CANVAS ====
+        //
+        // This ran unconditionally, every frame, including the minutes at a time
+        // when _stackPunch has been exactly zero. Assigning localScale on a
+        // RectTransform under a Canvas marks that canvas dirty and forces a
+        // batch rebuild, and HUD_Canvas carries 42 CanvasRenderers — so a punch
+        // animation that is idle almost all of the time was rebuilding 42
+        // graphics sixty times a second.
+        //
+        // Guarded on the value actually changing. _lastPunch is needed as well
+        // as _stackPunch so the frame that lands ON zero still gets written and
+        // the scale is left at exactly 1 rather than a hair above it.
+        float punch = Mathf.MoveTowards(_stackPunch, 0f, 3f * Time.unscaledDeltaTime);
+        if (!Mathf.Approximately(punch, _stackPunch) || !Mathf.Approximately(punch, _lastAppliedPunch))
+        {
+            _stackPunch = punch;
+            _lastAppliedPunch = punch;
+            stackReadout.rectTransform.localScale = Vector3.one * (1f + punch * 0.35f);
+        }
     }
 
     private int _lastStackTier = 1;
     private float _stackPunch;
+    private float _lastAppliedPunch = -1f;
 
     private void CreatePickupPopupContainerIfNeeded()
     {

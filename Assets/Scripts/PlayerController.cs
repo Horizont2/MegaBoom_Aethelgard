@@ -888,7 +888,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (stackCheckTimer > 0f) return;
         stackCheckTimer = 0.25f;
 
-        int count = Physics.OverlapSphereNonAlloc(transform.position, stackRadius, s_overlapBuffer, 1 << 9);
+        int count = Physics.OverlapSphereNonAlloc(transform.position, stackRadius, s_overlapBuffer, 1 << 9, QueryTriggerInteraction.Ignore);
         currentStack = 0;
         for (int i = 0; i < count; i++) { if (s_overlapBuffer[i].CompareTag("Enemy")) currentStack++; }
 
@@ -1056,7 +1056,20 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private Transform GetClosestEnemyForFocus(float maxDist, float maxAngle)
     {
-        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, maxDist, s_overlapBuffer);
+        // ==== THIS WAS UNMASKED, AND THAT IS A TARGETING BUG ====
+        //
+        // No layer mask means ~0 — every layer — and with the project's
+        // m_QueriesHitTriggers on, every trigger volume too. The loop then
+        // filtered by tag, so the work was thrown away; but s_overlapBuffer is
+        // 64 entries, and standing in a wood there are easily 64 tree, bush,
+        // prop and trigger colliders inside the search radius. Once the buffer
+        // is full the enemy the player is trying to face is simply not in it, so
+        // the soft-lock quietly stops finding targets in exactly the terrain
+        // where it matters most.
+        //
+        // Damageable (layer 9) is the same mask CheckStack already uses.
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, maxDist, s_overlapBuffer,
+                                                     1 << 9, QueryTriggerInteraction.Ignore);
         Transform bestTarget = null;
         float minDist = float.MaxValue;
 

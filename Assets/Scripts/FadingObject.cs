@@ -112,7 +112,11 @@ public class FadingObject : MonoBehaviour
                     r.sharedMaterials = transMats;
                 }
 
-                foreach (Material mat in r.sharedMaterials)
+                // sharedMaterials allocates a fresh Material[] on EVERY read,
+                // and this read it again immediately after the assignment above
+                // — two array allocations per renderer per frame while a tree is
+                // mid-fade. transMats is the same array.
+                foreach (Material mat in transMats)
                 {
                     if (mat == null) continue;
 
@@ -176,10 +180,35 @@ public class FadingObject : MonoBehaviour
         transparentMaterials.Clear();
     }
 
+    // ==== camera.name IS A NATIVE GETTER, AND IT ALLOCATES ====
+    //
+    // CameraOcclusion adds a FadingObject to every tree the camera has ever
+    // passed behind and never removes it — the component goes dormant instead
+    // of being destroyed. Each one subscribes to beginCameraRendering AND
+    // endCameraRendering, and both cameras raise both events, so the multicast
+    // delegate dispatches four handlers per object per frame. N only ever grows.
+    //
+    // Each handler compared camera.name against a string literal, and a Camera
+    // name getter marshals a fresh managed string out of native on every call.
+    // At a couple of hundred faders that is on the order of a thousand string
+    // allocations a frame, purely to answer "is this the minimap".
+    //
+    // Resolved once and compared by reference afterwards. A null result simply
+    // means there is no minimap camera, which is the correct answer in the camp.
+    private static Camera s_minimapCam;
+
+    private static bool IsMinimap(Camera cam)
+    {
+        if (cam == null) return false;
+        if (s_minimapCam != null) return cam == s_minimapCam;
+        if (cam.name == "MinimapCamera") { s_minimapCam = cam; return true; }
+        return false;
+    }
+
     private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         // ����� ��� �� MinimapCamera ����� ��������, ��������� ������ ���������� �������� ��������
-        if (camera.name == "MinimapCamera" && currentAlpha < 1f)
+        if (IsMinimap(camera) && currentAlpha < 1f)
         {
             RestoreOriginalMaterials();
         }
@@ -188,7 +217,7 @@ public class FadingObject : MonoBehaviour
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         // ϲ��� ���� �� ���� �����������, ��������� ������ ������������ ���� �����
-        if (camera.name == "MinimapCamera" && currentAlpha < 1f && isInitialized)
+        if (IsMinimap(camera) && currentAlpha < 1f && isInitialized)
         {
             foreach (Renderer r in renderers)
             {

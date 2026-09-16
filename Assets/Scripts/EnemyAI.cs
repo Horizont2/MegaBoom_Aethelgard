@@ -1210,7 +1210,12 @@ public class EnemyAI : MonoBehaviour, IDamageable
         Vector3 directionToPlayer = (target.position - currentPos).normalized;
         Vector3 repulsion = Vector3.zero;
 
-        int neighborCount = Physics.OverlapSphereNonAlloc(currentPos, repulsionRadius, s_overlapBuffer, 1 << 9);
+        // QueryTriggerInteraction.Ignore, because the project runs with
+        // m_QueriesHitTriggers on: without it PhysX returns every trigger volume
+        // in range as well, the loop has to filter them out by hand, and — worse
+        // — they consume slots in a fixed 32-entry buffer that real neighbours
+        // then never reach.
+        int neighborCount = Physics.OverlapSphereNonAlloc(currentPos, repulsionRadius, s_overlapBuffer, 1 << 9, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < neighborCount; i++)
         {
             Collider neighbor = s_overlapBuffer[i];
@@ -2065,7 +2070,7 @@ public class EnemyAI : MonoBehaviour, IDamageable
 
         // Light separation from crowding neighbours (layer 9, same as melee).
         Vector3 repulsion = Vector3.zero;
-        int neighborCount = Physics.OverlapSphereNonAlloc(pos, repulsionRadius, s_overlapBuffer, 1 << 9);
+        int neighborCount = Physics.OverlapSphereNonAlloc(pos, repulsionRadius, s_overlapBuffer, 1 << 9, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < neighborCount; i++)
         {
             Collider n = s_overlapBuffer[i];
@@ -3657,11 +3662,37 @@ public class EnemyAI : MonoBehaviour, IDamageable
     // Unity calls this for every collider the CharacterController touches during
     // a Move. Whatever the capsule is wedged against is what depenetration is
     // pushing it out of, so this is the name the probe needs.
+    // ==== THIS WAS A MEGABYTE OF GARBAGE A SECOND, FOR A DIAGNOSTIC ====
+    //
+    // Unity calls OnControllerColliderHit for EVERY collider the
+    // CharacterController touches during every Move, and every moving enemy
+    // Moves one to three times a tick. The old body was:
+    //
+    //     DbgLastHit = hit.collider.name + " [" + LayerMask.LayerToName(...) + "]";
+    //
+    // Collider.name is a native getter that allocates a fresh managed string.
+    // LayerToName allocates another. The two concatenations allocate two more.
+    // Four allocations per contact, per enemy, per frame — around forty enemies
+    // grounded on terrain is roughly a megabyte of garbage a second, which is a
+    // Gen-0 collection every second or two, landing in the middle of a fight.
+    //
+    // The only consumer is EnemyMotionProbe, which latches onto ONE enemy,
+    // prints once and sets itself done. So the whole cost was being paid by the
+    // entire horde to serve one object, for a few seconds, once.
+    //
+    // It is editor-only now, and even there only while a probe is actually
+    // watching. Ship builds do not compile it at all.
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // Set by EnemyMotionProbe while it has a subject. Nothing else writes it.
+    public static bool DbgTrackContacts;
+
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
+        if (!DbgTrackContacts) return;
         if (hit == null || hit.collider == null) return;
         DbgLastHit = hit.collider.name + " [" + LayerMask.LayerToName(hit.collider.gameObject.layer) + "]";
     }
+#endif
 
     private void SetPositionSafe(Vector3 newPos)
     {

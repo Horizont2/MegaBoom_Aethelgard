@@ -24,6 +24,10 @@ public class GrenadeUI : MonoBehaviour
         if (cooldownOverlay != null) cooldownOverlay.fillAmount = 0f;
     }
 
+    private int _lastShownSeconds = int.MinValue;
+    private static readonly string[] SecondsText =
+        { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12" };
+
     private void Update()
     {
         if (player == null)
@@ -51,7 +55,25 @@ public class GrenadeUI : MonoBehaviour
             if (cooldownText != null)
             {
                 cooldownText.enabled = true;
-                cooldownText.text = Mathf.CeilToInt(fillTime).ToString();
+                // ==== THE NUMBER CHANGES ONCE A SECOND, NOT SIXTY TIMES ====
+                //
+                // int.ToString() allocates a fresh string on every call, and
+                // assigning TMP text marks the canvas dirty and forces a batch
+                // rebuild - HUD_Canvas carries 42 CanvasRenderers. Both were
+                // happening every frame of every cooldown, to write the same
+                // digit that was already on screen.
+                //
+                // The lookup table keeps even the once-a-second change
+                // allocation-free. Anything past it falls back to ToString,
+                // which for a grenade cooldown is a case that does not arise.
+                int secs = Mathf.CeilToInt(fillTime);
+                if (secs != _lastShownSeconds)
+                {
+                    _lastShownSeconds = secs;
+                    cooldownText.text = (secs >= 0 && secs < SecondsText.Length)
+                                      ? SecondsText[secs]
+                                      : secs.ToString();
+                }
             }
         }
         else
@@ -62,6 +84,8 @@ public class GrenadeUI : MonoBehaviour
 
                 if (cooldownOverlay != null) cooldownOverlay.fillAmount = 0f;
                 if (cooldownText != null) cooldownText.enabled = false;
+                // Forget the last digit so the next cooldown writes its first frame.
+                _lastShownSeconds = int.MinValue;
 
                 if (grenadeIcon != null)
                 {
