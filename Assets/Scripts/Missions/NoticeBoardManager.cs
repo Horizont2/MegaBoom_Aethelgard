@@ -47,6 +47,9 @@ public class NoticeBoardManager : MonoBehaviour
     // activeSelf, and an accept button that has not been used yet.
     public bool HasMissionsToTake => CountAcceptablePapers() > 0;
 
+    [Tooltip("Upgrades the camp must still have BEYOND a build mission's goal before the board will offer that mission. Stops 'build 5 structures' appearing when the camp is nearly finished.")]
+    public int buildMissionReserve = 4;
+
     // Has the board restocked since the player last looked at it? A notice
     // board's mark is a promise about NEW work, so it has to come back when new
     // work arrives rather than being spent forever on the first visit.
@@ -357,13 +360,26 @@ public class NoticeBoardManager : MonoBehaviour
                 // completed, and it would sit in an active slot forever and stop
                 // the board restocking. Offer what the camp can still serve, or
                 // nothing.
+                // ==== AND IT MUST NOT LAND ON THE LAST SCRAPS ====
+                //
+                // `left > 0` was not enough. RemainingUpgrades counts LEVELS,
+                // not buildings, so a camp with one unbuilt building still
+                // reports five — and the board would hand out a full build
+                // mission against the very last thing the player had left to
+                // do. Reading "build five structures" with one plot empty is
+                // nonsense from the player's seat, and if they cannot afford
+                // that last building the mission holds an active slot with no
+                // way to drop it.
+                //
+                // A reserve on top of the goal means the board only asks for
+                // building work while the camp genuinely has building work.
                 int left = CampBuilding.RemainingUpgrades;
-                if (left <= 0)
+                if (left < want + buildMissionReserve)
                 {
                     i--;            // try a different mission in this slot
                     continue;
                 }
-                scaledMission.targetAmount = Mathf.Min(want, left);
+                scaledMission.targetAmount = want;
 
                 // Build costs climb steeply with level — a first upgrade is
                 // under a hundred resources, a fifth is near eight hundred —

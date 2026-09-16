@@ -163,16 +163,28 @@ public class WorldMapArmyMarker : MonoBehaviour
         UpdateMarker(rt, c);
     }
 
-    // The figurine used to take the sprite of the FIRST unit it happened to
-    // find, and its loop then broke on `img.sprite != null` — which is true from
-    // the prefab's own sprite before anything is assigned, so for a mixed army
-    // the icon was effectively arbitrary. It now picks the sprite of the most
-    // numerous unit type, which is what the army actually reads as.
+    // ==== CHANGING THE PREFAB'S ICON DID NOTHING ====
     //
-    // It also no longer silently clobbers the prefab's sprite: if no unit type
-    // supplies one, whatever the artist put on the prefab stays.
+    // This overwrites the marker's sprite at runtime with the most numerous
+    // unit type's mapFigurineSprite, and all three mercenary assets under
+    // RegionData point at MapUI/mapmarker. So whatever icon is on
+    // ArmyMarkerPrefab — currently MapUI/maparmyicon — was replaced on the
+    // frame the marker was created, every time, and editing the prefab looked
+    // like it had no effect at all.
+    //
+    // Which sprite SHOULD win is a design call, not a bug, so it is a switch
+    // rather than a deletion. Off by default: the prefab is the obvious place
+    // to set an army icon, it is where somebody just set one, and the three
+    // unit assets currently all name the same sprite anyway, so the per-unit
+    // path is not distinguishing anything today. Turn it on once the unit types
+    // have figurines that actually differ.
+    [Tooltip("ON: the marker takes the figurine of whichever unit type the army has most of. OFF: the marker keeps the sprite set on ArmyMarkerPrefab. Off by default — see the note in ApplyArmySprite.")]
+    public bool useUnitFigurine = false;
+
     private void ApplyArmySprite(GameObject go, MercenaryCampaign c)
     {
+        if (!useUnitFigurine) return;
+
         var img = go.GetComponent<Image>();
         if (img == null || MercenaryRoster.Instance == null || c.armyUIDs == null) return;
 

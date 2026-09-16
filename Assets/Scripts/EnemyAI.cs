@@ -450,6 +450,14 @@ public class EnemyAI : MonoBehaviour, IDamageable
         homeCaptured = false;
         _searchLeg = 0;
 
+        // The safety net for any instance already poisoned by the old
+        // spawner-owned rise, and for a rise interrupted by anything else.
+        // isCinematicFrozen is the single flag that can stop UpdateBehavior
+        // dead, so it has no business surviving a trip through the pool.
+        isCinematicFrozen = false;
+        isSpawning = false;
+        _riseCo = null;
+
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += OnActiveSceneChanged;
     }
 
@@ -782,6 +790,73 @@ public class EnemyAI : MonoBehaviour, IDamageable
         isSpawning = false;
 
         SetMovingAnim(false);
+    }
+
+    // ==== THE RISE-FROM-GROUND WAS RUNNING ON THE SPAWNER ====
+    //
+    // This is the whole reason spawner skeletons moved differently from every
+    // other enemy in the game, and why the reliquary guards — which are plain
+    // Instantiate and never rise — have always looked right.
+    //
+    // EnemySpawner.RiseFromGroundRoutine set isCinematicFrozen, lerped
+    // transform.position directly for 1.5 seconds, and cleared the flag in an
+    // `if (enemy != null && enemy.activeInHierarchy)` at the end. Three
+    // consequences, all of them only possible on a pooled enemy:
+    //
+    //   The coroutine belonged to the SPAWNER. Returning the enemy to the pool
+    //   mid-rise does not stop it, so the guarded clear at the end simply never
+    //   ran and isCinematicFrozen stayed true on that object forever. OnEnable
+    //   did not reset it either. UpdateBehavior's first line is
+    //   `if (isCinematicFrozen || isSpawning) return` with SetMovingAnim(true)
+    //   forced above it — so a poisoned instance came back out of the pool
+    //   permanently "moving" and permanently unable to steer.
+    //
+    //   Worse, a fast pool turnaround left TWO of these alive for the same
+    //   GameObject, each lerping transform.position toward its own finalPos,
+    //   1.5 seconds out of phase. Two writers dragging one body between two
+    //   targets every frame is exactly the reported zigzag.
+    //
+    //   And it wrote transform.position raw, bypassing the CharacterController
+    //   and SetPositionSafe, so nothing else in the file could even see it.
+    //
+    // Run from the enemy, it dies with the object the instant it is pooled.
+    // try/finally guarantees the flag comes back down — Unity disposes
+    // coroutines on stop and on destroy, so the finally runs either way. And a
+    // second call cannot start while one is live.
+    private Coroutine _riseCo;
+
+    public void PlayRiseFromGround(float depth = 2.5f, float duration = 1.5f)
+    {
+        if (isDead || !gameObject.activeInHierarchy) return;
+        if (_riseCo != null) return;   // one rise at a time, per object
+        _riseCo = StartCoroutine(RiseFromGroundRoutine(depth, duration));
+    }
+
+    private IEnumerator RiseFromGroundRoutine(float depth, float duration)
+    {
+        Vector3 finalPos = transform.position;
+        Vector3 from = finalPos - new Vector3(0f, depth, 0f);
+
+        isCinematicFrozen = true;
+        try
+        {
+            transform.position = from;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                t = t * t * (3f - 2f * t);
+                transform.position = Vector3.Lerp(from, finalPos, t);
+                yield return null;
+            }
+            transform.position = finalPos;
+        }
+        finally
+        {
+            isCinematicFrozen = false;
+            _riseCo = null;
+        }
     }
 
     private void Update()

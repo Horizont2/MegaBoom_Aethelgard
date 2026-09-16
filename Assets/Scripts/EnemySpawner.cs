@@ -444,7 +444,7 @@ public class EnemySpawner : MonoBehaviour
             }
         }
 
-        StartCoroutine(RiseFromGroundRoutine(e));
+        StartRise(e);
     }
 
     private void SpawnOneAt(Vector3 spawnPos, float minutesSurvived)
@@ -480,33 +480,27 @@ public class EnemySpawner : MonoBehaviour
         // distant spawns don't clutter the mix.
         if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX3D(AudioID.Enemy_Spawn, spawnPos);
 
-        StartCoroutine(RiseFromGroundRoutine(newEnemy));
+        StartRise(newEnemy);
     }
 
-    private IEnumerator RiseFromGroundRoutine(GameObject enemy)
+    // ==== THE RISE BELONGS TO THE ENEMY, NOT TO THE SPAWNER ====
+    //
+    // This used to be a coroutine on the spawner that set the enemy's
+    // isCinematicFrozen, lerped its transform for 1.5s, and cleared the flag
+    // only if the object was still active at the end. A coroutine on the
+    // spawner does not stop when the enemy is pooled, so that clear was skipped
+    // whenever an enemy died or was culled mid-rise, and the flag rode back out
+    // of the pool on the next spawn — where UpdateBehavior's first line returns
+    // on it. A quick pool turnaround could also leave two of them alive for one
+    // GameObject, each dragging the body toward a different target.
+    //
+    // EnemyAI.PlayRiseFromGround owns it now: it dies with the object, its
+    // finally always lowers the flag, and it refuses to start twice. See the
+    // note there.
+    private void StartRise(GameObject enemy)
     {
-        EnemyAI ai = enemy.GetComponent<EnemyAI>();
-        if (ai != null) ai.isCinematicFrozen = true;
-
-        Vector3 finalPos = enemy.transform.position;
-        enemy.transform.position = finalPos - new Vector3(0, 2.5f, 0);
-
-        float duration = 1.5f;
-        float elapsed = 0f;
-
-        while (elapsed < duration && enemy != null && enemy.activeInHierarchy)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            t = t * t * (3f - 2f * t);
-            enemy.transform.position = Vector3.Lerp(finalPos - new Vector3(0, 2.5f, 0), finalPos, t);
-            yield return null;
-        }
-
-        if (enemy != null && enemy.activeInHierarchy)
-        {
-            enemy.transform.position = finalPos;
-            if (ai != null) ai.isCinematicFrozen = false;
-        }
+        if (enemy == null) return;
+        var ai = enemy.GetComponent<EnemyAI>();
+        if (ai != null) ai.PlayRiseFromGround();
     }
 }
