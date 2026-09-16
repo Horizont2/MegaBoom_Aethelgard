@@ -44,7 +44,8 @@ public class RegionVictoryScreen : MonoBehaviour
     [Tooltip("Fade to black.")]
     public float fadeIn = 0.6f;
     [Tooltip("Gap between one award landing and the next arriving. The stagger IS the reward — three numbers appearing at once is a receipt, three arriving in turn is a tally.")]
-    public float rowStagger = 0.42f;
+    [Tooltip("Gap between award tiles appearing. A ripple across the line, not a queue — this used to be 0.42 with the tiles stacked vertically, which made four rewards a two-second recital.")]
+    public float rowStagger = 0.06f;
     [Tooltip("How long each number takes to count up to its value.")]
     public float countUp = 0.55f;
     [Tooltip("Hard limit before the screen gives up waiting for a key and continues on its own. The player must never be stuck here, whatever happens.")]
@@ -255,12 +256,22 @@ public class RegionVictoryScreen : MonoBehaviour
 
         // Lay the rows out first, invisible, so the block is centred as a whole
         // rather than growing downward and dragging the eye with it.
-        const float rowHeight = 92f;
-        float top = (awards.Count - 1) * rowHeight * 0.5f;
+        // ==== ONE LINE, NOT A LIST READ OUT TO YOU ====
+        //
+        // The awards were stacked vertically and revealed one at a time on a
+        // 0.42s stagger, then given 0.55s to finish counting. Four rewards is
+        // therefore a 0.6s fade plus about two and a quarter seconds of waiting
+        // before the player is even allowed to press a key — for four numbers
+        // they can read in one glance.
+        //
+        // A capture screen should land, not recite. They sit side by side now
+        // and arrive together.
+        const float tileWidth = 190f;
+        float left = -(awards.Count - 1) * tileWidth * 0.5f;
         for (int i = 0; i < awards.Count; i++)
         {
             var a = awards[i];
-            var row = BuildRow(a, new Vector2(0f, top - i * rowHeight));
+            var row = BuildRow(a, new Vector2(left + i * tileWidth, 0f));
             row.target = a.amount;
             _built.Add(row);
         }
@@ -277,11 +288,14 @@ public class RegionVictoryScreen : MonoBehaviour
         }
         _group.alpha = 1f;
 
-        // AWARDS, one at a time.
+        // AWARDS, together. The stagger is a ripple across the line rather than
+        // a queue — enough that the eye sees them arrive, far too short to wait
+        // through. One sound for the lot, because four identical chimes in a row
+        // is not four times as satisfying as one.
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.Camp_CollectItem);
         for (int i = 0; i < _built.Count; i++)
         {
             StartCoroutine(RevealRow(_built[i]));
-            if (AudioManager.Instance != null) AudioManager.Instance.PlayUI(AudioID.Camp_CollectItem);
             float wait = 0f;
             while (wait < rowStagger) { wait += Time.unscaledDeltaTime; yield return null; }
         }
@@ -329,11 +343,13 @@ public class RegionVictoryScreen : MonoBehaviour
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = pos;
-        rt.sizeDelta = new Vector2(560f, 80f);
+        rt.sizeDelta = new Vector2(180f, 170f);
 
         var group = go.AddComponent<CanvasGroup>();
         group.alpha = 0f;
 
+        // A tile, read top to bottom: what it is, then how much. Side by side
+        // these scan as one line of loot rather than as a list of statements.
         var icon = MakeImage("Icon", rt);
         icon.sprite = a.icon;
         icon.preserveAspect = true;
@@ -342,37 +358,37 @@ public class RegionVictoryScreen : MonoBehaviour
         // still carry the information, and an empty Image renders as a white box.
         icon.enabled = a.icon != null;
         var irt = icon.rectTransform;
-        irt.anchorMin = irt.anchorMax = new Vector2(0f, 0.5f);
-        irt.pivot = new Vector2(0f, 0.5f);
-        irt.anchoredPosition = new Vector2(-280f, 0f);
-        irt.sizeDelta = new Vector2(64f, 64f);
-
-        var label = new GameObject("Label", typeof(RectTransform)).GetComponent<RectTransform>();
-        label.SetParent(rt, false);
-        label.anchorMin = label.anchorMax = new Vector2(0f, 0.5f);
-        label.pivot = new Vector2(0f, 0.5f);
-        label.anchoredPosition = new Vector2(-190f, 0f);
-        label.sizeDelta = new Vector2(320f, 60f);
-        var lt = label.gameObject.AddComponent<TextMeshProUGUI>();
-        lt.text = a.label;
-        lt.fontSize = 34f;
-        lt.alignment = TextAlignmentOptions.Left;
-        lt.color = new Color(0.86f, 0.86f, 0.84f);
-        lt.raycastTarget = false;
+        irt.anchorMin = irt.anchorMax = new Vector2(0.5f, 1f);
+        irt.pivot = new Vector2(0.5f, 1f);
+        irt.anchoredPosition = new Vector2(0f, -6f);
+        irt.sizeDelta = new Vector2(68f, 68f);
 
         var amount = new GameObject("Amount", typeof(RectTransform)).GetComponent<RectTransform>();
         amount.SetParent(rt, false);
-        amount.anchorMin = amount.anchorMax = new Vector2(1f, 0.5f);
-        amount.pivot = new Vector2(1f, 0.5f);
-        amount.anchoredPosition = new Vector2(-10f, 0f);
-        amount.sizeDelta = new Vector2(220f, 60f);
+        amount.anchorMin = amount.anchorMax = new Vector2(0.5f, 1f);
+        amount.pivot = new Vector2(0.5f, 1f);
+        amount.anchoredPosition = new Vector2(0f, -82f);
+        amount.sizeDelta = new Vector2(176f, 52f);
         var at = amount.gameObject.AddComponent<TextMeshProUGUI>();
         at.text = "0";
-        at.fontSize = 40f;
+        at.fontSize = 44f;
         at.fontStyle = FontStyles.Bold;
-        at.alignment = TextAlignmentOptions.Right;
+        at.alignment = TextAlignmentOptions.Center;
         at.color = a.tint;
         at.raycastTarget = false;
+
+        var label = new GameObject("Label", typeof(RectTransform)).GetComponent<RectTransform>();
+        label.SetParent(rt, false);
+        label.anchorMin = label.anchorMax = new Vector2(0.5f, 1f);
+        label.pivot = new Vector2(0.5f, 1f);
+        label.anchoredPosition = new Vector2(0f, -134f);
+        label.sizeDelta = new Vector2(176f, 34f);
+        var lt = label.gameObject.AddComponent<TextMeshProUGUI>();
+        lt.text = a.label;
+        lt.fontSize = 24f;
+        lt.alignment = TextAlignmentOptions.Center;
+        lt.color = new Color(0.78f, 0.78f, 0.76f);
+        lt.raycastTarget = false;
 
         return new Row { group = group, rt = rt, icon = icon, amount = at };
     }
@@ -383,7 +399,9 @@ public class RegionVictoryScreen : MonoBehaviour
         // rather than appearing: a number that ticks reads as something being
         // handed over, and one that is simply there reads as a receipt.
         Vector2 home = row.rt.anchoredPosition;
-        Vector2 from = home + new Vector2(-70f, 0f);
+        // Up from below now that the tiles sit side by side. Sliding in from the
+        // left made every tile cross its neighbour on the way to its place.
+        Vector2 from = home + new Vector2(0f, -40f);
 
         float t = 0f;
         const float slide = 0.3f;

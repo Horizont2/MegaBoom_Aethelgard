@@ -899,15 +899,25 @@ public class Reliquary : MonoBehaviour
                 // A Barrow that produced no armour pays a real purse instead and
                 // SAYS SO. The consolation has to be visible or the encounter
                 // reads as broken rather than unlucky.
+                // ==== ONE REVEAL PER CHEST, NOT A QUEUE OF THEM ====
+                //
+                // This showed its own centre-screen reveal for the consolation
+                // purse and then RevealHaul showed a second one for the
+                // supplies, and reveals QUEUE — so opening one chest played two
+                // full beats back to back, each with its own fade, hold and
+                // fade. That is the "rewards appear one after another and it
+                // takes a long time" report.
+                //
+                // The diamonds join the haul's icon row instead. Everything the
+                // chest paid out is then one line the player reads at a glance,
+                // and the Barrow's consolation still SAYS what it is, because
+                // the title carries it.
                 if (grade == Grade.Barrow)
                 {
                     gems = Mathf.RoundToInt(gems * 2.5f);
-                    var set2 = ReliquarySet.Load();
-                    RewardReveal.Show(set2 != null ? set2.diamondIcon : null,
-                        LocalizationManager.Tr("BARROW_NO_ARMOUR_TITLE"),
-                        LocalizationManager.Tr("BARROW_NO_ARMOUR_BODY", gems),
-                        new Color(0.72f, 0.85f, 1f), 3.2f);
+                    barrowConsolationGems = gems;
                 }
+                revealGems = gems;
                 rm.AddDiamonds(gems);
             }
             rm.UpdateUI();
@@ -924,9 +934,18 @@ public class Reliquary : MonoBehaviour
     // handful. Putting the biggest thing in the chest in the middle of the
     // screen, with the icon and the rays, makes the size of the find land — and
     // because the reveal queues, an armour drop still gets its own beat first.
+    // Diamonds paid by this chest, handed to the reveal so the whole payout is
+    // one line. Reset as soon as it is read: a reliquary is opened once, but the
+    // component outlives the open.
+    private int revealGems;
+    private int barrowConsolationGems;
+
     private void RevealHaul(ReliquarySet set, int fortune, int wood, int stone, int food)
     {
-        if (wood + stone + food <= 0) return;
+        int gems = revealGems, consolation = barrowConsolationGems;
+        revealGems = 0; barrowConsolationGems = 0;
+
+        if (wood + stone + food + gems <= 0) return;
 
         // ==== ANNOUNCE WHAT THE PLAYER ACTUALLY GETS ====
         //
@@ -940,7 +959,7 @@ public class Reliquary : MonoBehaviour
         wood = Deliverable(rm, "Wood", rm != null ? rm.runWood : 0, wood);
         stone = Deliverable(rm, "Stone", rm != null ? rm.runStone : 0, stone);
         food = Deliverable(rm, "Food", rm != null ? rm.runFood : 0, food);
-        if (wood + stone + food <= 0)
+        if (wood + stone + food <= 0 && gems <= 0)
         {
             // Everything the chest held was refused by a full backpack. Saying
             // so is far better than a reveal that reads as a reward.
@@ -961,7 +980,8 @@ public class Reliquary : MonoBehaviour
         float fS = stone / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Stone") : 50);
         float fF = food / (float)Mathf.Max(1, rm != null ? rm.GetRunMax("Food") : 30);
 
-        Sprite icon = fW >= fS && fW >= fF ? (set != null ? set.woodIcon : null)
+        Sprite icon = wood + stone + food <= 0 ? (set != null ? set.diamondIcon : null)
+                    : fW >= fS && fW >= fF ? (set != null ? set.woodIcon : null)
                     : fS >= fF ? (set != null ? set.stoneIcon : null)
                     : (set != null ? set.foodIcon : null);
 
@@ -977,27 +997,38 @@ public class Reliquary : MonoBehaviour
                              "only. ReliquarySet.woodIcon/stoneIcon/foodIcon are empty; run " +
                              "Tools > Exploration > Build Reliquary Set.", this);
 
-        var parts = new List<string>(3);
+        var parts = new List<string>(4);
         if (wood > 0) parts.Add($"{wood} {LocalizationManager.Tr("Wood")}");
         if (stone > 0) parts.Add($"{stone} {LocalizationManager.Tr("Stone")}");
         if (food > 0) parts.Add($"{food} {LocalizationManager.Tr("Food")}");
+        if (gems > 0) parts.Add($"{gems} {LocalizationManager.Tr("Diamonds")}");
 
         // Longer than an armour reveal, and longer the more there is to read.
         // Three quantities take real time to parse, and a hoard the player never
         // managed to read is a hoard that may as well have been a handful.
         Debug.Log($"[Reliquary] {grade} haul: wood {wood}, stone {stone}, food {food} " +
                   $"(fortune {fortune}) — showing the reward reveal.");
-        var row = new List<(Sprite, int)>(3);
+        var row = new List<(Sprite, int)>(4);
         if (wood > 0 && set != null && set.woodIcon != null) row.Add((set.woodIcon, wood));
         if (stone > 0 && set != null && set.stoneIcon != null) row.Add((set.stoneIcon, stone));
         if (food > 0 && set != null && set.foodIcon != null) row.Add((set.foodIcon, food));
+        if (gems > 0 && set != null && set.diamondIcon != null) row.Add((set.diamondIcon, gems));
+
+        // A Barrow that produced no armour pays a purse instead, and that has to
+        // be SAID or the encounter reads as broken rather than unlucky. It used
+        // to get a whole reveal of its own; now it takes the title of the one
+        // reveal this chest plays, and the purse is already in the row below it.
+        string title = consolation > 0
+                     ? LocalizationManager.Tr("BARROW_NO_ARMOUR_TITLE")
+                     : LocalizationManager.Tr(FortuneTitleKey(fortune));
+        Color accent = consolation > 0 ? new Color(0.72f, 0.85f, 1f) : FortuneColour(fortune);
 
         RewardReveal.ShowHaul(icon,
-            LocalizationManager.Tr(FortuneTitleKey(fortune)),
+            title,
             row.Count > 1 ? null : string.Join("   ·   ", parts),
-            FortuneColour(fortune),
+            accent,
             row,
-            3.0f + parts.Count * 0.45f + (fortune >= 2 ? 0.6f : 0f));
+            2.4f + parts.Count * 0.3f + (fortune >= 2 ? 0.5f : 0f));
     }
 
     // How much of `want` will actually land, given what the backpack already
