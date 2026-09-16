@@ -2550,6 +2550,28 @@ public static class LocalizationManager
         Add5("STEP_HELMET_DONE_TITLE",      "Готово",                  "Listo",                     "Fertig",                     "Terminé",                      "Gotowe");
         Add5("STEP_HELMET_DONE_BODY",       "Эта броня теперь твоя в каждом забеге. Возвращайся в лагерь.","Esa armadura es tuya en cada partida. Vuelve al campamento.","Diese Rüstung gehört dir in jedem Lauf. Kehr ins Lager zurück.","Cette armure est à toi à chaque partie. Rentre au camp.","Ten pancerz jest twój w każdym biegu. Wracaj do obozu.");
         Add5("PARRY",                       "ПАРИРОВАНИЕ!",            "¡PARADA!",                  "PARIERT!",                   "PARADE !",                     "PARADA!");
+        Add5("RITUAL_PROMPT", "Удерживай [E], чтобы зажечь жаровню  (осталось {0})", "Mantén [E] para encender el brasero  (quedan {0})", "Halte [E], um das Kohlebecken zu entzünden  (noch {0})", "Maintiens [E] pour allumer le brasier  (reste {0})", "Przytrzymaj [E], by zapalić palenisko  (zostało {0})");
+        Add5("RITUAL_CHANNEL", "ЗАЖИГАЕШЬ ЖАРОВНЮ", "ENCENDIENDO EL BRASERO", "KOHLEBECKEN ENTZÜNDEN", "ALLUMAGE DU BRASIER", "ZAPALANIE PALENISKA");
+        Add5("RITUAL_BROKEN", "ПЛАМЯ ПОГАСЛО", "LA LLAMA SE APAGA", "DIE FLAMME ERLISCHT", "LA FLAMME S'ÉTEINT", "PŁOMIEŃ GAŚNIE");
+        Add5("RITUAL_LIT", "ЖАРОВНЯ {0} ИЗ {1}", "BRASERO {0} DE {1}", "KOHLEBECKEN {0} VON {1}", "BRASIER {0} SUR {1}", "PALENISKO {0} Z {1}");
+        Add5("RITUAL_CLEANSED_TITLE", "ПРОКЛЯТИЕ СПАЛО", "LA MALDICIÓN SE ROMPE", "DER FLUCH BRICHT", "LA MALÉDICTION SE BRISE", "KLĄTWA PRYSŁA");
+        Add5("RITUAL_CLEANSED_BODY", "Монолит затих.  +{0} алмазов", "El monolito calla.  +{0} diamantes", "Der Monolith verstummt.  +{0} Diamanten", "Le monolithe se tait.  +{0} diamants", "Monolit milknie.  +{0} diamentów");
+        Add5("ALTAR_FATE_PROMPT", "[E] Пожертвовать алтарю {0} алмазов", "[E] Ofrecer {0} diamantes al altar", "[E] Dem Altar {0} Diamanten opfern", "[E] Offrir {0} diamants à l'autel", "[E] Ofiaruj ołtarzowi {0} diamentów");
+        Add5("ALTAR_FATE_TOO_POOR", "Алтарь просит {0} алмазов", "El altar pide {0} diamantes", "Der Altar verlangt {0} Diamanten", "L'autel demande {0} diamants", "Ołtarz żąda {0} diamentów");
+        Add5("ALTAR_FATE_MOCKERY_TITLE", "БОГИ СМЕЮТСЯ", "LOS DIOSES RÍEN", "DIE GÖTTER LACHEN", "LES DIEUX RIENT", "BOGOWIE SIĘ ŚMIEJĄ");
+        Add5("ALTAR_FATE_MOCKERY_BODY", "Кости и пепел. Больше ничего.", "Huesos y ceniza. Nada más.", "Knochen und Asche. Sonst nichts.", "Des os et de la cendre. Rien d'autre.", "Kości i popiół. Nic więcej.");
+        Add5("ALTAR_FATE_CURSE_TITLE", "СКВЕРНА", "CORRUPCIÓN", "VERDERBNIS", "SOUILLURE", "SKAZA");
+        Add5("ALTAR_FATE_CURSE_BODY", "Ноги наливаются свинцом на {0} с.", "Tus piernas pesan durante {0} s.", "Deine Beine sind {0} s lang Blei.", "Tes jambes pèsent du plomb pendant {0} s.", "Nogi ciążą przez {0} s.");
+        Add5("ALTAR_FATE_AMBUSH_TITLE", "ЛОВУШКА", "UNA TRAMPA", "EINE FALLE", "UN PIÈGE", "PUŁAPKA");
+        Add5("ALTAR_FATE_AMBUSH_BODY", "Что-то ждало внутри камня.", "Algo esperaba dentro de la piedra.", "Etwas wartete im Stein.", "Quelque chose attendait dans la pierre.", "Coś czekało w kamieniu.");
+        Add5("ALTAR_FATE_ALMS_TITLE", "МИЛОСТЫНЯ", "LIMOSNA", "ALMOSEN", "AUMÔNE", "JAŁMUŻNA");
+        Add5("ALTAR_FATE_ALMS_BODY", "Половина возвращается.  +{0}", "Vuelve la mitad.  +{0}", "Die Hälfte kommt zurück.  +{0}", "La moitié revient.  +{0}", "Połowa wraca.  +{0}");
+        Add5("ALTAR_FATE_GIFT_TITLE", "ДАР ДРЕВНИХ", "DON DE LOS ANTIGUOS", "GABE DER ALTEN", "DON DES ANCIENS", "DAR PRADAWNYCH");
+        Add5("ALTAR_FATE_GIFT_BODY", "Выбери силу.", "Elige un poder.", "Wähle eine Kraft.", "Choisis un pouvoir.", "Wybierz moc.");
+        Add5("ALTAR_FATE_WRATH_TITLE", "ГНЕВ КОРОЛЯ", "IRA DEL REY", "ZORN DES KÖNIGS", "COURROUX DU ROI", "GNIEW KRÓLA");
+        Add5("ALTAR_FATE_WRATH_BODY", "Двойной урон на {0} с.", "Daño doble durante {0} s.", "Doppelter Schaden für {0} s.", "Dégâts doublés pendant {0} s.", "Podwójne obrażenia przez {0} s.");
+        Add5("ALTAR_FATE_MAGNET_TITLE", "АНОМАЛИЯ", "ANOMALÍA", "ANOMALIE", "ANOMALIE", "ANOMALIA");
+        Add5("ALTAR_FATE_MAGNET_BODY", "Весь регион летит к тебе.", "Toda la región viene a ti.", "Die ganze Region kommt zu dir.", "Toute la région vient à toi.", "Cały region leci do ciebie.");
         Add5("PUNISH",                      "НАКАЗАНИЕ!",              "¡CASTIGO!",                 "BESTRAFT!",                  "PUNITION !",                   "KARA!");
         Add5("BACKSTAB",                    "УДАР В СПИНУ!",           "¡POR LA ESPALDA!",          "RÜCKENSTICH!",               "DANS LE DOS !",                "CIOS W PLECY!");
         Add5("PRESS_ANY_KEY",               "Нажми любую клавишу, чтобы продолжить","Pulsa cualquier tecla para continuar","Beliebige Taste zum Fortfahren","Appuie sur une touche pour continuer","Naciśnij dowolny klawisz, by kontynuować");
@@ -4033,6 +4055,30 @@ public static class LocalizationManager
 
         // === Combat ===
         Add("PARRY", "PARRY!", "ПАРИРУВАННЯ!");
+
+        // === Ritual of Cleansing / Altar of Fate ===
+        Add("RITUAL_PROMPT", "Hold [E] to light the brazier  ({0} left)", "Утримуй [E], щоб запалити жаровню  (лишилось {0})");
+        Add("RITUAL_CHANNEL", "LIGHTING THE BRAZIER", "ЗАПАЛЮЄШ ЖАРОВНЮ");
+        Add("RITUAL_BROKEN", "THE FLAME GUTTERS", "ПОЛУМ'Я ЗГАСЛО");
+        Add("RITUAL_LIT", "BRAZIER {0} OF {1}", "ЖАРОВНЯ {0} З {1}");
+        Add("RITUAL_CLEANSED_TITLE", "THE CURSE BREAKS", "ПРОКЛЯТТЯ СПАЛО");
+        Add("RITUAL_CLEANSED_BODY", "The monolith goes quiet.  +{0} diamonds", "Моноліт затих.  +{0} діамантів");
+        Add("ALTAR_FATE_PROMPT", "[E] Offer {0} diamonds to the altar", "[E] Пожертвувати вівтарю {0} діамантів");
+        Add("ALTAR_FATE_TOO_POOR", "The altar wants {0} diamonds", "Вівтар просить {0} діамантів");
+        Add("ALTAR_FATE_MOCKERY_TITLE", "THE GODS LAUGH", "БОГИ СМІЮТЬСЯ");
+        Add("ALTAR_FATE_MOCKERY_BODY", "Bones and ash. Nothing more.", "Кістки й попіл. Більше нічого.");
+        Add("ALTAR_FATE_CURSE_TITLE", "TAINTED", "СКВЕРНА");
+        Add("ALTAR_FATE_CURSE_BODY", "Your legs are lead for {0} seconds.", "Ноги наливаються свинцем на {0} с.");
+        Add("ALTAR_FATE_AMBUSH_TITLE", "A TRAP", "ПАСТКА");
+        Add("ALTAR_FATE_AMBUSH_BODY", "Something was waiting inside the stone.", "Щось чекало всередині каменю.");
+        Add("ALTAR_FATE_ALMS_TITLE", "ALMS", "МИЛОСТИНЯ");
+        Add("ALTAR_FATE_ALMS_BODY", "Half of it comes back.  +{0}", "Половина повертається.  +{0}");
+        Add("ALTAR_FATE_GIFT_TITLE", "GIFT OF THE ANCIENTS", "ДАР ДРЕВНІХ");
+        Add("ALTAR_FATE_GIFT_BODY", "Choose a power.", "Обери силу.");
+        Add("ALTAR_FATE_WRATH_TITLE", "WRATH OF THE KING", "ГНІВ КОРОЛЯ");
+        Add("ALTAR_FATE_WRATH_BODY", "Double damage for {0} seconds.", "Подвійний урон на {0} с.");
+        Add("ALTAR_FATE_MAGNET_TITLE", "ANOMALY", "АНОМАЛІЯ");
+        Add("ALTAR_FATE_MAGNET_BODY", "The whole region comes to you.", "Увесь регіон летить до тебе.");
         Add("PUNISH", "PUNISH!", "ПОКАРАННЯ!");
         Add("BACKSTAB", "BACKSTAB!", "УДАР У СПИНУ!");
 
