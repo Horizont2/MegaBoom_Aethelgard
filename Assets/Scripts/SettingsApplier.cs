@@ -270,6 +270,26 @@ public class SettingsApplier : MonoBehaviour
             t.detailObjectDistance = dist;
             t.detailObjectDensity = density;
         }
+
+        // ==== THE BUSHES WERE ON THEIR LOWEST LOD AT WALKING DISTANCE ====
+        //
+        // Bush01's LOD chain switches at screenRelativeHeight 0.16 / 0.08 / 0.03
+        // / 0.015. For a bush about a metre tall at 75 degrees of FOV, 0.16 of
+        // screen height is roughly four metres — so the full-detail mesh was only
+        // ever visible if the player was practically standing in the shrub, and
+        // by ten metres it was already two levels down. That is what "bad LODs
+        // even when the player is close" is.
+        //
+        // lodBias scales every threshold at once, which is the right dial: it
+        // costs nothing to author and it moves the whole chain outward together.
+        // It was also backwards in the presets — Performance carried 2 and Ultra
+        // carried 1, so the cheap preset was drawing MORE detail than the
+        // expensive one. Ultra now holds the good mesh out to roughly sixteen
+        // metres on a bush and proportionally further on a tree.
+        //
+        // ApplyQualityLevel runs before this in ApplyAll and SetQualityLevel
+        // resets lodBias to the preset value, so this must stay downstream of it.
+        QualitySettings.lodBias = q switch { 0 => 1f, 1 => 1.8f, 2 => 2.8f, _ => 4f };
     }
 
     public static void ApplyRenderScale()

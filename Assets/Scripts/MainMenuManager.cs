@@ -74,6 +74,10 @@ public class MainMenuManager : MonoBehaviour
     private void OnDestroy()
     {
         LocalizationManager.OnLanguageChanged -= CheckContinueStatus;
+        // The dim is a root object now, so it is no longer swept away with the
+        // menu's canvas. If the scene changes mid-confirm it has to go with us,
+        // or the next scene opens behind a black sheet nothing can dismiss.
+        if (quitDimOverlay != null) Destroy(quitDimOverlay);
     }
 
     // Wire the optional New Game / Credits / Quit buttons + confirm
@@ -364,7 +368,7 @@ public class MainMenuManager : MonoBehaviour
     // Two-tap Quit confirm — no modal dialog. First tap dims the whole
     // menu except the Quit button and swaps the button label to a
     // "really quit?" prompt. Second tap on that same button quits.
-    // Any click outside the button OR a 5s timeout reverts the state.
+    // Escape or a click anywhere else cancels.
     //
     // The scene's Quit button is wired to this method via UnityEvent,
     // and this method is the ONLY entry point (see also OnQuitClicked
@@ -373,7 +377,10 @@ public class MainMenuManager : MonoBehaviour
     private string quitOriginalLabel = null;
     private TextMeshProUGUI quitLabelTMP = null;
     private GameObject quitDimOverlay = null;
-    private Coroutine quitConfirmTimeout;
+    // The button actually armed, which is not always `quitButton` — QuitGame
+    // falls back to the focused button when the field was never dragged in.
+    // Restoring the wrong one left the armed button permanently non-interactive.
+    private Button quitArmedButton = null;
     // Isolate the Quit button on its own render layer while confirming
     // so a dim overlay parented to the root canvas can't visually
     // swallow it. We add a Canvas + GraphicRaycaster to the button on
@@ -413,12 +420,27 @@ public class MainMenuManager : MonoBehaviour
             quitLabelTMP.text = LocalizationManager.Tr("MENU_CONFIRM_QUIT");
         }
 
+        quitArmedButton = btn;
         IsolateQuitButton(btn);
-        BuildQuitDimOverlay(btn);
+        BuildQuitDimOverlay();
         quitConfirming = true;
+    }
 
-        if (quitConfirmTimeout != null) StopCoroutine(quitConfirmTimeout);
-        quitConfirmTimeout = StartCoroutine(RestoreQuitButtonAfter(5f));
+    // ==== ESCAPE IS THE CANCEL ====
+    //
+    // The arm used to revert on its own after five seconds, which is long
+    // enough to read the prompt and short enough to have already expired by the
+    // time the player decides — so the second tap quietly did nothing, or worse,
+    // re-armed. A confirmation should wait for an answer. It now waits, and
+    // Escape says no, which is what every other dialog in the game does.
+    private void Update()
+    {
+        if (!quitConfirming) return;
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            PlayClickSound();
+            RestoreQuitButton();
+        }
     }
 
     // Give the Quit button its own Canvas with a higher sortingOrder
@@ -445,20 +467,26 @@ public class MainMenuManager : MonoBehaviour
             quitButtonRaycaster = btn.gameObject.AddComponent<GraphicRaycaster>();
     }
 
-    private void BuildQuitDimOverlay(Button hostBtn)
+    // ==== THE DIM HAS TO OUTRANK EVERY CANVAS, NOT JUST ONE ====
+    //
+    // This used to be parented under the Quit button's own root canvas. A menu
+    // is not one canvas — the settings panel, the credits panel and the HUD-like
+    // overlays each have their own — and a nested canvas only sorts reliably
+    // against its own root. Anything drawn on another canvas above it stayed
+    // fully bright while the rest of the screen went dark, which is exactly the
+    // "not everything dims" report.
+    //
+    // It is now a top-level Screen Space Overlay canvas of its own. Overlay
+    // canvases sort globally by sortingOrder, so 32000 is over every panel in
+    // the menu and under the isolated Quit button at 32500 — which is the one
+    // thing that must stay lit, because it is where the answer is given.
+    private void BuildQuitDimOverlay()
     {
         if (quitDimOverlay != null) Destroy(quitDimOverlay);
-        var root = hostBtn.GetComponentInParent<Canvas>();
-        if (root == null) return;
 
-        // Overlay lives on its OWN top-level canvas so its sortingOrder
-        // is well-defined relative to the isolated Quit-button canvas.
-        // Anchored to the root canvas so the RectTransform math is in
-        // the same coordinate space as everything else.
         quitDimOverlay = new GameObject("[QuitDim]", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(Image));
-        quitDimOverlay.transform.SetParent(root.transform, false);
         var overlayCanvas = quitDimOverlay.GetComponent<Canvas>();
-        overlayCanvas.overrideSorting = true;
+        overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         overlayCanvas.sortingOrder = 32000; // below isolated Quit button (32500)
 
         var rt = quitDimOverlay.GetComponent<RectTransform>();
@@ -467,7 +495,7 @@ public class MainMenuManager : MonoBehaviour
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
         var img = quitDimOverlay.GetComponent<Image>();
-        img.color = new Color(0f, 0f, 0f, 0.72f);
+        img.color = new Color(0f, 0f, 0f, 0.82f);
         img.raycastTarget = true;
 
         // A click anywhere on the overlay = cancel.
@@ -476,16 +504,9 @@ public class MainMenuManager : MonoBehaviour
         overlayBtn.onClick.AddListener(RestoreQuitButton);
     }
 
-    private System.Collections.IEnumerator RestoreQuitButtonAfter(float seconds)
-    {
-        yield return new WaitForSecondsRealtime(seconds);
-        RestoreQuitButton();
-    }
-
     private void RestoreQuitButton()
     {
         quitConfirming = false;
-        if (quitConfirmTimeout != null) { StopCoroutine(quitConfirmTimeout); quitConfirmTimeout = null; }
         if (quitLabelTMP != null && quitOriginalLabel != null) quitLabelTMP.text = quitOriginalLabel;
         quitLabelTMP = null;
         quitOriginalLabel = null;
@@ -496,7 +517,8 @@ public class MainMenuManager : MonoBehaviour
         // started in — no leaked components on the prefab.
         if (quitButtonRaycaster != null) { Destroy(quitButtonRaycaster); quitButtonRaycaster = null; }
         if (quitButtonCanvas != null) { Destroy(quitButtonCanvas); quitButtonCanvas = null; }
-        if (quitButton != null) quitButton.interactable = quitButtonWasInteractable;
+        if (quitArmedButton != null) quitArmedButton.interactable = quitButtonWasInteractable;
+        quitArmedButton = null;
     }
 
     private void QuitGameConfirmed()
