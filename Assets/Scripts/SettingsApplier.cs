@@ -315,7 +315,85 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyMotionBlur() => Shader.SetGlobalFloat("_Settings_MotionBlur", PlayerPrefs.GetInt("Settings_MotionBlur", 0));
     public static void ApplyDepthOfField() => Shader.SetGlobalFloat("_Settings_DOF", PlayerPrefs.GetInt("Settings_DepthOfField", 0));
     public static void ApplyBloom() => Shader.SetGlobalFloat("_Settings_Bloom", PlayerPrefs.GetInt("Settings_Bloom", 1));
-    public static void ApplyAmbientOcclusion() => Shader.SetGlobalFloat("_Settings_AO", PlayerPrefs.GetInt("Settings_AO", 1));
+    // ==== THE AO SLIDER MOVED A SHADER GLOBAL NOTHING READ THE COST OF ====
+    //
+    // Screen-space ambient occlusion in URP is a RENDERER FEATURE, not a quality
+    // setting and not a shader keyword. Writing _Settings_AO tells the shaders
+    // something, but the feature keeps running at exactly the cost it was
+    // authored at whatever the player picks — and it is authored expensively:
+    // full resolution (Downsample 0) with the high-quality bilateral blur
+    // (BlurQuality 0), which is several full-screen passes every frame.
+    //
+    // Worse, Source is Depth with AfterOpaque off, so URP must produce AO BEFORE
+    // opaques are lit and enqueues a depth prepass — every opaque renderer in
+    // the scene is submitted a second time. So the Performance preset has been
+    // paying Ultra's AO bill in full, twice over.
+    //
+    // Ultra keeps exactly what is authored. Only the lower presets move.
+    public static void ApplyAmbientOcclusion()
+    {
+        // Settings_AO has always been an on/off and existing saves hold 0 or 1;
+        // reinterpreting it as a 0..3 scale would silently demote everyone who
+        // had AO on to the lowest tier. The quality lives in its own key.
+        bool on = PlayerPrefs.GetInt("Settings_AO", 1) == 1;
+        int q = on ? Mathf.Clamp(PlayerPrefs.GetInt("Settings_AOQuality", 3), 1, 3) : 0;
+        Shader.SetGlobalFloat("_Settings_AO", on ? 1 : 0);
+
+        var feature = FindRendererFeature("ScreenSpaceAmbientOcclusion");
+        if (feature == null) return;
+
+        // Off entirely at the bottom — which also removes the depth prepass,
+        // since nothing else in this renderer asks for it.
+        SetFeatureActive(feature, q > 0);
+        if (q <= 0) return;
+
+        // The two knobs worth moving, reached by reflection because URP does not
+        // expose the settings object publicly and hard-referencing its internal
+        // type would break on a package upgrade.
+        var settings = feature.GetType()
+            .GetField("m_Settings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?.GetValue(feature);
+        if (settings == null) return;
+
+        SetMember(settings, "Downsample", q < 3);          // Ultra full-res, everything else half
+        SetMember(settings, "BlurQuality", q <= 1 ? 2 : 0); // Low blur at the bottom, high above
+    }
+
+    private static ScriptableRendererFeature FindRendererFeature(string nameContains)
+    {
+        var pipe = Pipe;
+        if (pipe == null) return null;
+        // rendererDataList is internal; the public indexer is scriptableRenderer,
+        // which does not expose the features. Reflection is the supported-enough
+        // route and it fails softly.
+        var f = typeof(UniversalRenderPipelineAsset).GetField("m_RendererDataList",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (f?.GetValue(pipe) is not ScriptableRendererData[] datas) return null;
+        foreach (var d in datas)
+        {
+            if (d == null) continue;
+            foreach (var feat in d.rendererFeatures)
+                if (feat != null && feat.GetType().Name.Contains(nameContains)) return feat;
+        }
+        return null;
+    }
+
+    private static void SetFeatureActive(ScriptableRendererFeature feature, bool on)
+    {
+        if (feature == null || feature.isActive == on) return;
+        feature.SetActive(on);
+    }
+
+    private static void SetMember(object target, string name, object value)
+    {
+        var t = target.GetType();
+        var fi = t.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                | System.Reflection.BindingFlags.NonPublic);
+        if (fi != null) { fi.SetValue(target, System.Convert.ChangeType(value, fi.FieldType)); return; }
+        var pi = t.GetProperty(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                   | System.Reflection.BindingFlags.NonPublic);
+        if (pi != null && pi.CanWrite) pi.SetValue(target, System.Convert.ChangeType(value, pi.PropertyType));
+    }
     public static void ApplyVolumetrics() => Shader.SetGlobalFloat("_Settings_Volumetrics", PlayerPrefs.GetInt("Settings_Volumetrics", 0));
 
     // ============================================================
