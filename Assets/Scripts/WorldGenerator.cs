@@ -201,8 +201,12 @@ public class WorldGenerator : MonoBehaviour
     [Header("Dreamscape: New Ecosystem")]
     [Tooltip("Reeds and marsh plants along the waterline. Skipped entirely in a winter region — green reeds in a frozen lake undo the biome in one glance.")]
     public GameObject[] waterPlantsPrefabs;
-    [Tooltip("Bare trees. Half the trees in snow and desert cells become one of these once this is non-empty.")]
+    [Tooltip("Size range for those plants. Pack reeds are authored for a hand-dressed pond, so at 1.0 they stand as tall as the player.")]
+    public Vector2 waterPlantScale = new Vector2(0.35f, 0.6f);
+    [Tooltip("Bare trees. Used by the cursed-region pass; see deadTreesInOrdinaryBiomes for whether plain snow and desert ground gets them too.")]
     public GameObject[] deadTreesPrefabs;
+    [Tooltip("OFF: bare trees appear only through the cursed-region pass, which is the capture story. ON: half of every snow and desert tree is a husk, which reads as a graveyard rather than as a climate.")]
+    public bool deadTreesInOrdinaryBiomes = false;
 
     // ==== AMBIENT LIFE HAS TO BELONG TO ITS BIOME ====
     //
@@ -223,6 +227,10 @@ public class WorldGenerator : MonoBehaviour
     public GameObject[] ambientVFXDesert;
     [Tooltip("Ambient effects for cold cells. Leave empty to use the temperate set.")]
     public GameObject[] ambientVFXWinter;
+    [Tooltip("Chance per eligible open cell. Tiny on purpose: this pass visits tens of thousands of cells, and atmosphere you meet constantly stops being atmosphere.")]
+    [Range(0f, 0.01f)] public float ambientVFXChance = 0.0012f;
+    [Tooltip("Random size range. Pack VFX are authored for a hand-dressed set, so at 1.0 a single fog card can swallow a clearing.")]
+    public Vector2 ambientVFXScale = new Vector2(0.35f, 0.6f);
 
     // ==== A BARREL IS NOT A PLACE ====
     //
@@ -3509,8 +3517,12 @@ public class WorldGenerator : MonoBehaviour
     // Deliberately NOT included: terraceCount, which makes the land look like
     // Minecraft, and skyboxMaterial, which is the region's whole identity in one
     // field and belongs to art direction rather than to a dice roll.
-    [Tooltip("Draw a terrain archetype from the region seed. Off leaves every region on the values authored in this inspector.")]
-    public bool seedRegionArchetype = true;
+    // Switched OFF after play: the archetypes worked, and the map they produced
+    // was not the map this game had been tuned around. Left in, fully written
+    // and clamped, because the knobs are right even if the decision to turn
+    // them was not — tick it to get the varied terrain back.
+    [Tooltip("Draw a terrain archetype from the region seed. OFF: every region uses the values authored in this inspector, which is the generation this project was tuned on.")]
+    public bool seedRegionArchetype = false;
     [Tooltip("Share of regions that stay exactly as authored. Not every region should announce a theme.")]
     [Range(0f, 1f)] public float typicalRegionChance = 0.3f;
 
@@ -3983,8 +3995,10 @@ public class WorldGenerator : MonoBehaviour
                     if (waterPlantsPrefabs != null && waterPlantsPrefabs.Length > 0 && GetRandomFloat() > 0.4f)
                     {
                         GameObject wpPrefab = GetRandomPrefab(waterPlantsPrefabs);
-                        GameObject obj = Instantiate(wpPrefab, new Vector3(worldX, absWaterHeight, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), bushContainer);
-                        obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.75f, 1.45f));
+                        GameObject obj = Instantiate(wpPrefab, new Vector3(worldX, absWaterHeight, worldZ), UprightYaw(wpPrefab, GetRandomRange(0f, 360f)), bushContainer);
+                        // Reeds come out of the pack sized for a hand-dressed
+                        // pond and read as head-high hedges on a lakeshore.
+                        obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(waterPlantScale.x, waterPlantScale.y));
                         DisableShadowCasting(obj);
                     }
                     continue;
@@ -4005,18 +4019,44 @@ public class WorldGenerator : MonoBehaviour
                 // Note: any ambient VFX we spawn here goes through the
                 // no-collider guard below so authored trigger volumes on
                 // VFX prefabs can't leak into runtime as invisible walls.
+                // ==== FOG HANGING IN THE AIR OVER A ROCK ====
+                //
+                // Three things were wrong with this and they compounded.
+                //
+                // It spawned at worldY + 1.5, so every effect floated a metre
+                // and a half off the ground — which on a boulder or a slope
+                // reads as a sheet of smoke hovering over the rock for no
+                // reason. Fog belongs ON the ground.
+                //
+                // It fired at randomSpawn > 0.985, which is one in every
+                // sixty-seven cells of a pass that visits tens of thousands.
+                // Atmosphere is something you notice once in a while; at that
+                // rate it is wallpaper.
+                //
+                // And it took the prefab at its authored scale. A fog card is
+                // built for a set dressed by hand, not for something scattered
+                // across a whole region, so each one arrived enormous.
+                //
+                // Now: ground level, its own rarity knob well under a tenth of
+                // what it was, a size range, and only on open low-lying ground —
+                // fog and butterflies want a clearing or a hollow, not a cliff
+                // face or the inside of a wood.
+                bool vfxGroundOk = steepness <= 16f
+                                   && normalizedHeight < 0.55f
+                                   && (isMeadow || density < forestThreshold);
                 GameObject[] vfxSet = isDesert && ambientVFXDesert != null && ambientVFXDesert.Length > 0 ? ambientVFXDesert
                                     : isSnow && ambientVFXWinter != null && ambientVFXWinter.Length > 0 ? ambientVFXWinter
                                     : ambientVFXPrefabs;
-                if (vfxSet != null && vfxSet.Length > 0 && randomSpawn > 0.985f)
+                if (vfxSet != null && vfxSet.Length > 0 && vfxGroundOk && GetRandomFloat() < ambientVFXChance)
                 {
                     GameObject vfxPrefab = GetRandomPrefab(vfxSet);
-                    GameObject vfxInst = Instantiate(vfxPrefab, new Vector3(worldX, worldY + 1.5f, worldZ), Quaternion.identity, treeContainer);
+                    GameObject vfxInst = Instantiate(vfxPrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0f, GetRandomRange(0f, 360f), 0f), treeContainer);
                     // Strip non-trigger colliders — ambient VFX shouldn't
                     // block movement even if the prefab was authored with
                     // an interaction volume.
                     if (vfxInst != null)
                     {
+                        vfxInst.transform.localScale *= GetRandomRange(ambientVFXScale.x, ambientVFXScale.y);
                         foreach (var col in vfxInst.GetComponentsInChildren<Collider>(true))
                             if (col != null && !col.isTrigger) Destroy(col);
                     }
@@ -4042,7 +4082,7 @@ public class WorldGenerator : MonoBehaviour
                     if (currentTreeCount < maxTrees && giantTreeAllowed && density > forestThreshold + 0.2f && randomSpawn > 0.85f)
                     {
                         GameObject giantTreePrefab = GetRandomPrefab(giantTrees);
-                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                        GameObject obj = Instantiate(giantTreePrefab, new Vector3(worldX, worldY, worldZ), UprightYaw(giantTreePrefab, GetRandomRange(0f, 360f)), treeContainer);
                         obj.transform.localScale = Vector3.Scale(obj.transform.localScale, RandomDecorScale(0.95f, 1.6f, 0.1f));
 
                         // Bias the prefab's LODGroup so it drops to the cheaper LODs
@@ -4109,7 +4149,7 @@ public class WorldGenerator : MonoBehaviour
                             GameObject deadPrefab = cursedDeadTrees[ci];
                             if (deadPrefab != null)
                             {
-                                Quaternion huskRot = Quaternion.Euler(0, GetRandomRange(0f, 360f), 0) * Quaternion.Euler(cursedTreeRotationOffset);
+                                Quaternion huskRot = UprightYaw(deadPrefab, GetRandomRange(0f, 360f)) * Quaternion.Euler(cursedTreeRotationOffset);
                                 GameObject husk = Instantiate(deadPrefab, new Vector3(worldX, worldY, worldZ), huskRot, treeContainer);
                                 husk.transform.localScale = Vector3.Scale(husk.transform.localScale, RandomDecorScale(0.7f, 1.4f));
 
@@ -4131,7 +4171,19 @@ public class WorldGenerator : MonoBehaviour
                         }
                         else
                         {
-                            bool useDeadTree = (isSnow || isDesert) && GetRandomFloat() > 0.5f && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
+                            // ==== BARE TREES ARE A STORY BEAT, NOT A CLIMATE ====
+                            //
+                            // Half of every snow and desert tree became a dead
+                            // husk the moment deadTreesPrefabs was non-empty,
+                            // which turned two of the three biomes into a
+                            // graveyard. The same five prefabs are the CURSED
+                            // set, and that is where they belong: withered
+                            // ground is what the region is under, and the
+                            // victory flythrough is the moment it stops being.
+                            bool useDeadTree = deadTreesInOrdinaryBiomes
+                                               && (isSnow || isDesert)
+                                               && GetRandomFloat() > 0.5f
+                                               && deadTreesPrefabs != null && deadTreesPrefabs.Length > 0;
                             // Pick the biome-appropriate REAL prefab (dedicated biome trees
                             // if assigned, else the forest set).
                             GameObject treePrefab = PickTreePrefabForBiome(currentBaseTreeMat, useDeadTree);
@@ -4157,7 +4209,7 @@ public class WorldGenerator : MonoBehaviour
                             {
                                 // Object tree: farmable (keeps ResourceNode + collider), or
                                 // the fallback when painting is unavailable / off-terrain.
-                                GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), Quaternion.Euler(0, GetRandomRange(0f, 360f), 0), treeContainer);
+                                GameObject obj = Instantiate(treePrefab, new Vector3(worldX, worldY, worldZ), UprightYaw(treePrefab, GetRandomRange(0f, 360f)), treeContainer);
                                 obj.transform.localScale = Vector3.Scale(obj.transform.localScale, tScale);
 
                                 if (!useDeadTree)
@@ -4207,7 +4259,7 @@ public class WorldGenerator : MonoBehaviour
                             // the yaw varies.
                             GameObject prop = Instantiate(propPrefab,
                                 new Vector3(worldX, worldY, worldZ),
-                                Quaternion.Euler(0f, GetRandomRange(0f, 360f), 0f), rockContainer);
+                                UprightYaw(propPrefab, GetRandomRange(0f, 360f)), rockContainer);
                             prop.transform.localScale *= GetRandomRange(0.9f, 1.15f);
                         }
                     }
@@ -5028,7 +5080,10 @@ public class WorldGenerator : MonoBehaviour
     // region is still unmistakably winter — it just has a sheltered pocket with
     // some green in it, and the desert grows a cool hollow.
     [Tooltip("How far the temperature may drift from a region's base value, plus and minus. 0 restores the old flat region. 0.15 gives a forest region the odd sandy dell and frosted ridge without stopping it reading as forest.")]
-    [Range(0f, 0.35f)] public float regionTemperatureVariation = 0.15f;
+    // Zero restores the flat per-biome temperature the old generator used. Same
+    // story as the archetypes: the pockets it produced were real, and they were
+    // not the map that had been tuned.
+    [Range(0f, 0.35f)] public float regionTemperatureVariation = 0f;
     [Tooltip("Scale of that drift. Lower is broader: a couple of large zones rather than speckle. This deliberately differs from globalBiomeScale, which is tuned for a whole free-play map.")]
     public float regionTemperatureScale = 1.6f;
 
@@ -5082,6 +5137,24 @@ public class WorldGenerator : MonoBehaviour
         altar.bossDamageMultiplier = Mathf.Lerp(0.9f, 1.5f, t);
         altar.diamondReward        = Mathf.RoundToInt(Mathf.Lerp(18f, 60f, t));
         altar.xpReward             = Mathf.RoundToInt(Mathf.Lerp(30f, 110f, t));
+    }
+
+    // ==== A PREFAB'S OWN ROTATION IS OFTEN LOAD-BEARING ====
+    //
+    // Instantiate(prefab, pos, rotation) REPLACES the prefab's root rotation.
+    // That is fine while every prefab is authored upright, and wrong the moment
+    // one is not: DeadTree_3 and DeadTree_5 carry a -90 degree correction about
+    // X, because their source models are authored Z-up, and the prefab is what
+    // stands them back up. Handing Instantiate a plain yaw threw that away and
+    // those two spawned flat on their backs.
+    //
+    // Spinning the prefab's OWN rotation about world Y keeps whatever correction
+    // it carries and still gives every instance a different facing. Anything
+    // already authored upright is unaffected, since its rotation is identity.
+    private static Quaternion UprightYaw(GameObject prefab, float yawDegrees)
+    {
+        Quaternion baseRot = prefab != null ? prefab.transform.rotation : Quaternion.identity;
+        return Quaternion.Euler(0f, yawDegrees, 0f) * baseRot;
     }
 
     private float GetTemperature(float normX, float normZ)

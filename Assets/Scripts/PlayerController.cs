@@ -2861,7 +2861,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         // - heal a chunk of HP so the player isn't punished for leveling mid-fight
         // - drip-feed diamonds so progression always tangibly rewards XP
         // - milestone gifts at L5/L10/L15/... — bigger heal + diamond cache
+        _suppressHealVFX = true;
         Heal(maxHealth * 0.4f);
+        _suppressHealVFX = false;
         int diamondReward = 3 + currentLevel;
         bool milestone = currentLevel % 5 == 0;
         if (milestone)
@@ -2899,6 +2901,20 @@ public class PlayerController : MonoBehaviour, IDamageable
         attackCooldown = Mathf.Max(MIN_ATTACK_COOLDOWN, attackCooldown * 0.91f);
     }
 
+    // ==== THREE AURAS ON ONE BEAT IS NOT THREE TIMES THE BEAT ====
+    //
+    // A level-up spawns the level-up burst, then heals 40% of max HP, and Heal
+    // spawns its own green aura for anything over five points — and a milestone
+    // level tops the bar up a second time on top of that. So the one moment
+    // that should read as a single clean flash was stacking two or three
+    // overlapping auras on the player, which is why it looked like a mess
+    // rather than like a reward.
+    //
+    // The level-up owns its own visual. The heal still happens, still pops its
+    // number and still plays its sound — it just does not bring a second aura
+    // to a party that already has one.
+    private bool _suppressHealVFX;
+
     public void Heal(float amount)
     {
         if (amount <= 0f || isDead) return;
@@ -2916,7 +2932,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             // lifesteal doesn't turn into a heal spam channel.
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlaySFX(AudioID.Player_Heal);
-            SpawnFeelFX(healVFX, attach: true, life: 1.6f);
+            if (!_suppressHealVFX) SpawnFeelFX(healVFX, attach: true, life: 1.6f);
         }
         UpdateHUD();
     }
