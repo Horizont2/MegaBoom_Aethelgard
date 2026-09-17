@@ -12,7 +12,10 @@ public class CorruptionAnchor : MonoBehaviour, IDamageable
     public GameObject hitVFXPrefab;
     public GameObject destroyVFXPrefab;
 
-    public System.Action<CorruptionAnchor> onDestroyed;
+    // Not serialized: Unity walks public fields to build the class layout and
+    // a delegate has no serialized form, which makes the editor and the player
+    // describe different classes. See the note in EnemyProjectile.Retire.
+    [System.NonSerialized] public System.Action<CorruptionAnchor> onDestroyed;
 
     [Header("Look")]
     [Tooltip("Corrupt crystal tint.")]

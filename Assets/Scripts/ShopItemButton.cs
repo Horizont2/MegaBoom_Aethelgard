@@ -74,8 +74,11 @@ public class ShopItemButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     // Fires when the pointer enters this card. ShopManager listens to power
     // the delta-stat hover preview.
-    public System.Action<ShopItemButton> OnHoverEnter;
-    public System.Action<ShopItemButton> OnHoverExit;
+    // Not serialized: Unity walks public fields to build the class layout and
+    // a delegate has no serialized form, which makes the editor and the player
+    // describe different classes. See the note in EnemyProjectile.Retire.
+    [System.NonSerialized] public System.Action<ShopItemButton> OnHoverEnter;
+    [System.NonSerialized] public System.Action<ShopItemButton> OnHoverExit;
 
     // Data-bag so hover callbacks can read what this button represents
     // without ShopManager keeping its own parallel lookup. Set by ShopManager

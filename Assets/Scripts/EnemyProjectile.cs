@@ -150,7 +150,17 @@ public class EnemyProjectile : MonoBehaviour
     // instead of Destroy, so the object goes back to its owner's pool rather
     // than to the garbage collector. Null for ordinary prefab arrows, which are
     // destroyed exactly as before.
-    public System.Action<GameObject> Retire;
+    // ==== A PUBLIC DELEGATE ON A MonoBehaviour BREAKS THE BUILD ====
+    //
+    // Unity walks every PUBLIC field of a MonoBehaviour when it builds the
+    // script's serialization layout. System.Action is not serializable, so the
+    // editor and the player disagree about what this class contains — which
+    // surfaces as "script class layout is incompatible between the editor and
+    // the player" and a build failure naming the fields on either side of it,
+    // not this one.
+    //
+    // NonSerialized states the intent and takes it out of the layout entirely.
+    [System.NonSerialized] public System.Action<GameObject> Retire;
 
     // Put a reused body back into a launchable state. Everything a previous
     // flight could have left behind is cleared here; a pooled object that keeps

@@ -3761,17 +3761,25 @@ public class EnemyAI : MonoBehaviour, IDamageable
     //
     // It is editor-only now, and even there only while a probe is actually
     // watching. Ship builds do not compile it at all.
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    // Set by EnemyMotionProbe while it has a subject. Nothing else writes it.
+    // ==== THE FIELD IS UNCONDITIONAL, ONLY THE WORK IS NOT ====
+    //
+    // Putting a member behind #if means the editor assembly and a release
+    // player assembly describe DIFFERENT classes, which is the other half of
+    // "script class layout is incompatible between the editor and the player".
+    // A static bool costs nothing to keep in both.
+    //
+    // Set by EnemyMotionProbe while it has a subject. Nothing else writes it,
+    // and in a release build nothing ever sets it true.
     public static bool DbgTrackContacts;
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         if (!DbgTrackContacts) return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (hit == null || hit.collider == null) return;
         DbgLastHit = hit.collider.name + " [" + LayerMask.LayerToName(hit.collider.gameObject.layer) + "]";
-    }
 #endif
+    }
 
     private void SetPositionSafe(Vector3 newPos)
     {

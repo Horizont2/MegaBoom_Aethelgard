@@ -166,9 +166,7 @@ public class EnemyMotionProbe : MonoBehaviour
 
             // Only NOW does the horde start paying for contact strings, and only
             // in an editor or development build. See EnemyAI.DbgTrackContacts.
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             EnemyAI.DbgTrackContacts = true;
-#endif
 
             _anim = _ai.GetComponentInChildren<Animator>();
             if (_anim != null)
@@ -297,9 +295,7 @@ public class EnemyMotionProbe : MonoBehaviour
     private void Report()
     {
         _done = true;
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         EnemyAI.DbgTrackContacts = false;   // stop charging the horde for it
-#endif
         float secs = Mathf.Max(0.001f, _movingTime);
 
         // The verdict first: the console shows two lines collapsed, and the
