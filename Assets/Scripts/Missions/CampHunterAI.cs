@@ -68,7 +68,7 @@ public class CampHunterAI : MonoBehaviour
     {
         NPCGait.Sync(agent, anim, agent != null ? agent.speed : NPCGait.DEFAULT_SPEED);
         if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
-            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius, nightGatherPoint));
     }
 
     private void LateUpdate() => NPCGait.GroundSnap(transform);

@@ -65,7 +65,7 @@ public class CampWorkerAI : MonoBehaviour
         // Sitting bool at the fire — CampWorkerAI USED TO DECLARE the
         // field but never write it, so the sit anim never played. Fixed.
         if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
-            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius, nightGatherPoint));
     }
 
     private void LateUpdate() => NPCGait.GroundSnap(transform);

@@ -52,7 +52,7 @@ public class StorageWorkerAI : MonoBehaviour
     {
         NPCGait.Sync(agent, anim, agent != null ? agent.speed : NPCGait.DEFAULT_SPEED);
         if (anim != null && !string.IsNullOrEmpty(sittingAnimBool))
-            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius));
+            anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius, nightGatherPoint));
     }
 
     // Agent-aware: never fight the NavMeshAgent for the transform (that was the
@@ -99,7 +99,38 @@ public class StorageWorkerAI : MonoBehaviour
         }
 
         FindBuildings();
+        ResolveDropPoint();
         StartCoroutine(LogisticsRoutine());
+    }
+
+    // ==== A NULL DROP POINT MADE HIM HAUL TO WHERE HE ALREADY STOOD ====
+    //
+    // Every leg of the round trip falls back to transform.position when its
+    // target is missing, and for the DELIVERY leg that means SetDestination to
+    // the spot he is standing on. WaitArrival returns immediately, the agent is
+    // stopped, the Pickup animation plays, and the loop starts again - so the
+    // storage worker stands in one place playing an animation instead of doing
+    // his job, which is exactly the report.
+    //
+    // The vault is findable: it is the one CampBuilding with isStorageVault set,
+    // and FindBuildings already walks every one of them. Using its pickupPoint,
+    // or the building itself, gives him somewhere real to carry things to.
+    private void ResolveDropPoint()
+    {
+        if (storageDropPoint != null) return;
+
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsSortMode.None))
+        {
+            if (b == null || !b.isStorageVault) continue;
+            storageDropPoint = b.pickupPoint != null ? b.pickupPoint : b.transform;
+            Debug.LogWarning($"[StorageWorkerAI] '{name}' had no storageDropPoint wired, so every delivery was a walk to " +
+                             $"where he already stood. Falling back to the storage vault '{b.name}'. " +
+                             "Drag the vault's drop transform into the field to place it properly.", this);
+            return;
+        }
+
+        Debug.LogError($"[StorageWorkerAI] '{name}' has no storageDropPoint AND there is no storage vault in the scene. " +
+                       "He has nowhere to deliver to and will idle. Build or place a vault, or wire the field.", this);
     }
 
     // Rescanned every loop, not just once at Start: buildings raised or upgraded
@@ -250,7 +281,19 @@ public class StorageWorkerAI : MonoBehaviour
 
                     // 3. ������ �� ����� (� �������� ������� ������� ��� ����� ������!)
                     agent.isStopped = false;
-                    Vector3 rawDropPos = storageDropPoint != null ? storageDropPoint.position : transform.position;
+                    // Re-resolved each trip: the vault may have been BUILT since
+                    // the last one, and a worker that resolved to nothing at
+                    // startup would otherwise idle for the whole session.
+                    if (storageDropPoint == null) ResolveDropPoint();
+                    if (storageDropPoint == null)
+                    {
+                        // Nowhere to take it. Put the load down rather than
+                        // miming a delivery on the spot.
+                        if (carryVisual != null) carryVisual.SetActive(false);
+                        yield return new WaitForSeconds(3f);
+                        continue;
+                    }
+                    Vector3 rawDropPos = storageDropPoint.position;
                     Vector3 dropTargetPos = rawDropPos;
 
                     NavMeshHit dropHit;

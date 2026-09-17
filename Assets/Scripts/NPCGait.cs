@@ -177,10 +177,31 @@ public static class NPCGait
 
     // Convenience — combined "at deep night, standing still, near a rest
     // spot" test used by the sitting-bool checks in every AI.
-    public static bool ShouldSit(NavMeshAgent agent, float arriveRadius = 1.6f)
+    // ==== "STOPPED AT NIGHT" IS NOT "SITTING BY THE FIRE" ====
+    //
+    // The test was: it is deep night, the agent is not moving, and it has
+    // little path left. That is true of an NPC sitting at the campfire — and
+    // equally true of a lumberjack STANDING AT A TREE with its agent stopped
+    // mid-chop, which is why the woodcutter sat down while swinging an axe.
+    //
+    // The worker's own routine checks the clock once per task, and a chopping
+    // cycle is many seconds long, so night falling mid-chop leaves it working
+    // while this says "sit". The animator won that argument every frame.
+    //
+    // A seat makes the question the right one: sit only when actually AT the
+    // place you were sent to sit. Callers that have no seat keep the old
+    // behaviour, since for them "stopped at night" really is all there is.
+    public static bool ShouldSit(NavMeshAgent agent, float arriveRadius = 1.6f, Transform seat = null)
     {
         if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return false;
         if (!CampSchedule.IsDeepNight()) return false;
-        return agent.velocity.sqrMagnitude < 0.0025f && agent.remainingDistance < arriveRadius;
+        if (agent.velocity.sqrMagnitude >= 0.0025f || agent.remainingDistance >= arriveRadius) return false;
+
+        if (seat == null) return true;
+        Vector3 d = agent.transform.position - seat.position; d.y = 0f;
+        // A little slack over the arrive radius: the agent stops at its
+        // stoppingDistance, which is short of the seat by design.
+        float reach = arriveRadius + 1.5f;
+        return d.sqrMagnitude <= reach * reach;
     }
 }
