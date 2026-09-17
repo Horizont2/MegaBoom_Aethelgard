@@ -44,7 +44,8 @@ public static class NPCGait
                                  float speed = DEFAULT_SPEED,
                                  float acceleration = DEFAULT_ACCEL,
                                  float angularSpeed = DEFAULT_ANGULAR,
-                                 float stoppingDistance = DEFAULT_STOP_DIST)
+                                 float stoppingDistance = DEFAULT_STOP_DIST,
+                                 ObstacleAvoidanceType avoidance = ObstacleAvoidanceType.LowQualityObstacleAvoidance)
     {
         if (agent == null) return;
         agent.speed = speed;
@@ -55,6 +56,19 @@ public static class NPCGait
         // baseOffset 0 pins the agent flat on the NavMesh — grass detail
         // colliders otherwise nudge it up per-frame and it hovers.
         agent.baseOffset = 0f;
+
+        // ==== AVOIDANCE QUALITY IS A PER-AGENT CPU BUDGET ====
+        //
+        // Every camp agent was left on the prefab default, HighQualityObstacle-
+        // Avoidance: the most expensive tier, sampling the largest velocity-
+        // obstacle set against every neighbour, on the main thread's navigation
+        // job every frame — for NPCs that walk fixed routes across an empty
+        // camp and almost never have to dodge anything.
+        //
+        // Low quality still avoids; it just tests fewer candidate velocities.
+        // Callers that genuinely crowd (army units in a melee) pass a higher
+        // tier explicitly.
+        agent.obstacleAvoidanceType = avoidance;
     }
 
     // Call from Update(). Feeds the animator the same params the player
@@ -114,6 +128,29 @@ public static class NPCGait
     // edges and small NavMesh height variations aren't clobbered.
     private static readonly RaycastHit[] s_groundHits = new RaycastHit[8];
 
+    // ==== NOT EVERY COLLIDER IS A FLOOR ====
+    //
+    // The snap ray was cast against ~0 — every layer in the project — with an
+    // eight-hit buffer. In the camp that means 809 birches' worth of Nature
+    // colliders, loot, water and UI volumes all competing for those eight
+    // slots, so the cast was both the most expensive form of the query and the
+    // one most likely to miss the actual floor by overflowing.
+    //
+    // Nobody stands on a tree, a coin or the water plane. Keep the layers that
+    // can genuinely be ground (Default, IgnorePlayer, PlayerPhysics, Obstacles,
+    // InvisibleWall and anything unnamed) and drop the rest.
+    private const int GROUND_MASK = ~((1 << 1)  | // TransparentFX
+                                      (1 << 2)  | // Ignore Raycast
+                                      (1 << 4)  | // Water
+                                      (1 << 5)  | // UI
+                                      (1 << 6)  | // Player
+                                      (1 << 9)  | // Damageable
+                                      (1 << 10) | // MinimapOnly
+                                      (1 << 12) | // LootPhysics
+                                      (1 << 14) | // NPC
+                                      (1 << 15) | // Nature
+                                      (1 << 16)); // MinimapGraphics
+
     // Agent-aware overload. Writing transform.position every frame while a
     // NavMeshAgent is driving that same transform desyncs the agent from its
     // internal position: the agent corrects, the snap fights back, and the NPC
@@ -136,7 +173,7 @@ public static class NPCGait
         // buried the NPC underground — most visible during the low ground-sit.
         float groundY;
         Vector3 origin = t.position + Vector3.up * 3f;
-        int n = Physics.RaycastNonAlloc(origin, Vector3.down, s_groundHits, 8f, ~0, QueryTriggerInteraction.Ignore);
+        int n = Physics.RaycastNonAlloc(origin, Vector3.down, s_groundHits, 8f, GROUND_MASK, QueryTriggerInteraction.Ignore);
         float best = float.NegativeInfinity; bool found = false;
         for (int i = 0; i < n; i++)
         {

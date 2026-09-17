@@ -50,7 +50,11 @@ public class BarracksUnitAI : MonoBehaviour
                               speed: agentSpeed,
                               acceleration: agentAcceleration,
                               angularSpeed: agentAngularSpeed,
-                              stoppingDistance: agentStoppingDistance);
+                              stoppingDistance: agentStoppingDistance,
+                              // Army units march and fight shoulder to shoulder,
+                              // so they get the middle avoidance tier rather than
+                              // the camp NPCs' low one.
+                              avoidance: UnityEngine.AI.ObstacleAvoidanceType.MedQualityObstacleAvoidance);
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(transform.position, out hit, 4f, NavMesh.AllAreas))

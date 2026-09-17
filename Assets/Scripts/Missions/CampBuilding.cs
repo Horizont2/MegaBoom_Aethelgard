@@ -103,6 +103,39 @@ public class CampBuilding : MonoBehaviour
     private string ppKey_IsUpgrading;
     private string ppKey_UpgradeStart;
 
+    // The [F] prompt, built once per language rather than once per frame.
+    private string _promptCache;
+    private int _promptLang = -1;
+
+    // ==== TWO PLAYERPREFS READS A FRAME, NINE BUILDINGS OVER ====
+    //
+    // PlayerPrefs.GetInt is a native call that hashes the key string on
+    // every lookup, and Update read the finished/upgrading flags (plus the
+    // start-time STRING while building) every single frame on each of the
+    // nine camp buildings. None of those values can change more than once
+    // per build, and a build takes minutes.
+    //
+    // Polled five times a second instead, and force-refreshed the moment
+    // this component writes one of them, so nothing reacts late to its own
+    // change.
+    private bool _flagFinished;
+    private bool _flagUpgrading;
+    private long _flagStartBin;
+    private bool _flagStartValid;
+    private float _flagsPollAt = -1f;
+    private const float FLAG_POLL = 0.2f;
+
+    private void RefreshUpgradeFlags(bool force = false)
+    {
+        if (!force && Time.unscaledTime < _flagsPollAt) return;
+        _flagsPollAt = Time.unscaledTime + FLAG_POLL;
+
+        _flagFinished = PlayerPrefs.GetInt(ppKey_UpgradeFinished, 0) == 1;
+        _flagUpgrading = PlayerPrefs.GetInt(ppKey_IsUpgrading, 0) == 1;
+        _flagStartValid = _flagUpgrading &&
+                          long.TryParse(PlayerPrefs.GetString(ppKey_UpgradeStart, ""), out _flagStartBin);
+    }
+
     // ==== productionValue MEANS DIFFERENT THINGS TO DIFFERENT BUILDINGS ====
     //
     // This branch used to be "storage vault, or else produce" — so every
@@ -309,25 +342,26 @@ public class CampBuilding : MonoBehaviour
 
             // 3. Перевірка завершення апгрейду — cached key path avoids
             //    "UpgradeFinished_" + buildingID string concat every frame.
-            if (PlayerPrefs.GetInt(ppKey_UpgradeFinished, 0) == 1)
+            RefreshUpgradeFlags();
+            if (_flagFinished)
             {
                 PlayerPrefs.SetInt(ppKey_UpgradeFinished, 0);
+                RefreshUpgradeFlags(true);
                 StartCoroutine(CompleteUpgradeSequence(currentLevel + 1));
                 return;
             }
 
             // 4. Активний процес апгрейду (анімація побудови)
-            if (PlayerPrefs.GetInt(ppKey_IsUpgrading, 0) == 1)
+            if (_flagUpgrading)
             {
                 if (isPanelOpen) ClosePanel();
 
                 if (buildDustVFX != null && !buildDustVFX.isPlaying) StartDustEffect();
                 if (upgradeGlimmer != null && upgradeGlimmer.activeSelf) upgradeGlimmer.SetActive(false);
 
-                string startTimeStr = PlayerPrefs.GetString(ppKey_UpgradeStart, "");
-                if (long.TryParse(startTimeStr, out long startTimeBin))
+                if (_flagStartValid)
                 {
-                    DateTime startTime = DateTime.FromBinary(startTimeBin);
+                    DateTime startTime = DateTime.FromBinary(_flagStartBin);
                     float elapsed = (float)(DateTime.UtcNow - startTime).TotalSeconds;
 
                     if (levels != null && currentLevel < levels.Length)
@@ -357,6 +391,7 @@ public class CampBuilding : MonoBehaviour
                                 PlayerPrefs.SetInt(ppKey_UpgradeFinished, 1);
                                 PlayerPrefs.SetInt(ppKey_IsUpgrading, 0);
                                 PlayerPrefs.Save();
+                                RefreshUpgradeFlags(true);
                             }
                         }
                         else
@@ -365,6 +400,7 @@ public class CampBuilding : MonoBehaviour
                             PlayerPrefs.SetInt(ppKey_UpgradeFinished, 1);
                             PlayerPrefs.SetInt(ppKey_IsUpgrading, 0);
                             PlayerPrefs.Save();
+                            RefreshUpgradeFlags(true);
                         }
                     }
                 }
@@ -407,11 +443,29 @@ public class CampBuilding : MonoBehaviour
             if (!playerInRange) return;
 
             // 7. Показ підказки [F]
-            if (!isPanelOpen && PlayerPrefs.GetInt(ppKey_IsUpgrading, 0) == 0)
+            if (!isPanelOpen && !_flagUpgrading)
             {
                 if (GlobalHUD.Instance != null)
                 {
-                    GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_INSPECT_BUILDING", LocalizationManager.Tr(buildingName)));
+                    // ==== A FORMATTED STRING, EVERY FRAME, NINE TIMES OVER ====
+                    //
+                    // Tr(key, args) allocates a params object[] AND a
+                    // string.Format result on every call, and ShowPrompt then
+                    // runs the gamepad glyph pass - a chain of Regex.Replace on
+                    // a connected controller - before its own early-out can
+                    // discard any of it. All of that ran every frame the player
+                    // stood near a building, on each of the nine CampBuilding
+                    // instances in the camp.
+                    //
+                    // The text only changes when the building name or the
+                    // language does, and neither changes per frame.
+                    if (_promptCache == null || _promptLang != LocalizationManager.CurrentLanguage)
+                    {
+                        _promptLang = LocalizationManager.CurrentLanguage;
+                        _promptCache = LocalizationManager.Tr("PROMPT_INSPECT_BUILDING",
+                                                              LocalizationManager.Tr(buildingName));
+                    }
+                    GlobalHUD.Instance.ShowPrompt(_promptCache);
                 }
             }
 
@@ -462,6 +516,7 @@ public class CampBuilding : MonoBehaviour
                         PlayerPrefs.SetString("UpgradeStart_" + buildingID, startTimeBinary.ToString());
                         PlayerPrefs.SetInt("IsUpgrading_" + buildingID, 1);
                         PlayerPrefs.Save();
+                        RefreshUpgradeFlags(true);
 
                         StartDustEffect();
                         // 3D-positioned looping SFX so the sound sits at the

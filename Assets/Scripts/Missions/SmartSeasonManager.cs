@@ -94,6 +94,55 @@ public class SmartSeasonManager : MonoBehaviour
     // ОПТИМІЗАЦІЯ: Кешовані масиви для уникнення Garbage Collection
     private ParticleSystem[] cachedWeatherVFX;
     private List<Renderer> cachedFoliageRenderers = new List<Renderer>();
+
+    // ==== THE SEASON TURN WAS A STRING FESTIVAL ====
+    //
+    // UpdateFoliageMaterials ran over 3,236 renderers and, for each material
+    // slot, asked for BOTH the GameObject's name and the Material's name to
+    // decide whether that slot was bark or leaf. Object.name is a native call
+    // that allocates a fresh managed string every time, so one season change
+    // meant thousands of throwaway strings and a visible hitch - repeated
+    // every three minutes, forever, always reaching the same answer.
+    //
+    // The answer cannot change, so it is worked out once, when the renderer is
+    // first cached: which slots are foliage. The turn itself is then a plain
+    // material assignment. The set is only there so RegisterDynamicFoliage
+    // stops doing a linear List.Contains over three thousand entries per
+    // renderer it adds.
+    private List<int[]> cachedFoliageSlots = new List<int[]>();
+    private HashSet<Renderer> cachedFoliageSeen = new HashSet<Renderer>();
+
+    private int[] FoliageSlots(Renderer rend)
+    {
+        if (rend == null) return null;
+        Material[] mats = rend.sharedMaterials;
+        if (mats == null || mats.Length == 0) return null;
+        if (IsWoodOrTrunk(rend.gameObject.name)) return null;
+
+        List<int> slots = null;
+        for (int i = 0; i < mats.Length; i++)
+        {
+            if (mats[i] == null) continue;
+            if (IsWoodOrTrunk(mats[i].name)) continue;
+            if (slots == null) slots = new List<int>(mats.Length);
+            slots.Add(i);
+        }
+        return slots == null ? null : slots.ToArray();
+    }
+
+    // True only when this renderer was new AND has something to re-skin.
+    private bool AddFoliage(Renderer rend)
+    {
+        if (rend == null) return false;
+        if (!cachedFoliageSeen.Add(rend)) return false;
+
+        int[] slots = FoliageSlots(rend);
+        if (slots == null) return false;
+
+        cachedFoliageRenderers.Add(rend);
+        cachedFoliageSlots.Add(slots);
+        return true;
+    }
     private List<Terrain> cachedTerrains = new List<Terrain>();
     private Camera mainCam;
 
@@ -150,7 +199,7 @@ public class SmartSeasonManager : MonoBehaviour
             {
                 if (rend is ParticleSystemRenderer) continue;
                 if (IsVFX(rend.gameObject.name)) continue;
-                cachedFoliageRenderers.Add(rend);
+                AddFoliage(rend);
             }
         }
     }
@@ -179,16 +228,20 @@ public class SmartSeasonManager : MonoBehaviour
 
         if (targetMat == null || cachedFoliageRenderers.Count == 0) return;
 
-        foreach (Renderer rend in cachedFoliageRenderers)
+        for (int r = 0; r < cachedFoliageRenderers.Count; r++)
         {
+            Renderer rend = cachedFoliageRenderers[r];
             if (rend == null) continue;
+
+            int[] slots = cachedFoliageSlots[r];
             Material[] mats = rend.sharedMaterials;
             bool changed = false;
 
-            for (int i = 0; i < mats.Length; i++)
+            for (int s = 0; s < slots.Length; s++)
             {
-                if (mats[i] == null) continue;
-                if (IsWoodOrTrunk(rend.gameObject.name) || IsWoodOrTrunk(mats[i].name)) continue;
+                int i = slots[s];
+                if (i >= mats.Length) continue;
+                if (mats[i] == targetMat) continue;
 
                 mats[i] = targetMat;
                 changed = true;
@@ -437,11 +490,7 @@ public class SmartSeasonManager : MonoBehaviour
             if (rend is ParticleSystemRenderer) continue;
             if (IsVFX(rend.gameObject.name)) continue;
 
-            if (!cachedFoliageRenderers.Contains(rend))
-            {
-                cachedFoliageRenderers.Add(rend);
-                needsUpdate = true;
-            }
+            if (AddFoliage(rend)) needsUpdate = true;
         }
 
         // Якщо додали нові дерева, одразу перефарбовуємо їх під поточний сезон

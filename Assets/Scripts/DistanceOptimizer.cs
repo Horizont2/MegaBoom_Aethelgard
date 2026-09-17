@@ -25,6 +25,31 @@ public class DistanceOptimizer : MonoBehaviour
     private float sqrEnableDist;
     private float sqrDisableDist;
 
+    // ==== THIS SYSTEM HAS NEVER ACTUALLY RUN IN THE CAMP ====
+    //
+    // A duplicate ObjectPoolManager on this same GameObject destroyed the whole
+    // object at Awake (see the note in ObjectPoolManager), so Instance stayed
+    // null, OptimizedObject never registered with it, and nothing was culled.
+    //
+    // Now that it runs, the authored 100/115m would visibly pop trees and props
+    // in a 219x166m camp - a system switching on for the first time must not
+    // announce itself by making the scenery blink. So the distances follow the
+    // quality preset, and Ultra's are long enough to be effectively off.
+    //
+    // Ultra keeps everything it draws today. The saving is on the lower presets,
+    // which is the whole point of the lever.
+    public void ApplyFromSettings()
+    {
+        int q = PlayerPrefs.HasKey("Settings_FoliageDetail")
+              ? Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail"), 0, 3)
+              : Mathf.Clamp(PlayerPrefs.GetInt("Settings_QualityLevel", 1), 0, 3);
+
+        enableDistance  = q switch { 0 => 130f, 1 => 190f, 2 => 280f, _ => 600f };
+        disableDistance = enableDistance + 25f;   // hysteresis, so nothing flickers on the boundary
+        sqrEnableDist = enableDistance * enableDistance;
+        sqrDisableDist = disableDistance * disableDistance;
+    }
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -36,6 +61,8 @@ public class DistanceOptimizer : MonoBehaviour
 
     private void Start()
     {
+        ApplyFromSettings();
+
         FindPlayerIfNeeded();
         StartCoroutine(OptimizationRoutine());
     }

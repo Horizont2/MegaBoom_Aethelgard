@@ -71,9 +71,15 @@ public class CampDirector : MonoBehaviour
         foreach (Transform t in all)
         {
             if (t == null) continue;
-            string n = t.name.ToLowerInvariant();
-            bool isFire = n.Contains("campfire") || n.Contains("bonfire")
-                          || (n.Contains("fire") && (n.Contains("pit") || n.Contains("camp")));
+            // ToLowerInvariant allocated a fresh string for EVERY transform in
+            // the camp - tens of thousands of throwaway strings in one frame of
+            // Start, all so a handful of names could be matched. Ordinal
+            // case-insensitive IndexOf compares in place and allocates nothing,
+            // and the cheap "fire" test rejects almost every object up front.
+            string n = t.name;
+            if (n.IndexOf("fire", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+            bool isFire = Has(n, "campfire") || Has(n, "bonfire")
+                          || (Has(n, "pit") || Has(n, "camp"));
             if (!isFire) continue;
             if (t.GetComponent<CampfireAudio>() != null) continue;
             t.gameObject.AddComponent<CampfireAudio>();
@@ -81,6 +87,9 @@ public class CampDirector : MonoBehaviour
         }
         if (wired > 0) GameLog.Info($"[CampDirector] Wired campfire crackle onto {wired} fire object(s).");
     }
+
+    private static bool Has(string s, string part) =>
+        s.IndexOf(part, System.StringComparison.OrdinalIgnoreCase) >= 0;
 
     private void StartCampTutorial()
     {

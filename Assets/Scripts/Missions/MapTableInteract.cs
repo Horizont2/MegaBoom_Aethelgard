@@ -31,6 +31,21 @@ public class MapTableInteract : MonoBehaviour
     private Quaternion savedCamRot;
     private Coroutine activeSequence;
 
+    // Cached so opening the map is not a GetComponent. Null is fine and simply
+    // means the group is not on a Canvas, in which case nothing is toggled.
+    private Canvas _mapCanvas;
+    private bool _mapCanvasResolved;
+
+    private void SetMapCanvasEnabled(bool on)
+    {
+        if (!_mapCanvasResolved)
+        {
+            _mapCanvasResolved = true;
+            if (mapCanvasGroup != null) _mapCanvas = mapCanvasGroup.GetComponent<Canvas>();
+        }
+        if (_mapCanvas != null) _mapCanvas.enabled = on;
+    }
+
     private IEnumerator Start()
     {
         IsMapActive = false;
@@ -40,6 +55,24 @@ public class MapTableInteract : MonoBehaviour
             mapCanvasGroup.interactable = false;
             mapCanvasGroup.blocksRaycasts = false;
             mapCanvasGroup.gameObject.SetActive(true);
+
+            // ==== AN INVISIBLE CANVAS IS STILL A CANVAS ====
+            //
+            // Alpha 0 is not culling. UGUI has no alpha-zero early-out, so the
+            // map's 192 CanvasRenderers — 168 Images and 67 labels, including
+            // full-screen backdrops — were still being laid out, batched and
+            // blended every frame of every camp session, behind a nine-thousand
+            // sorting order, for a screen nobody was looking at.
+            //
+            // And it was not idle: MapInteractiveViewer writes the map rect's
+            // scale and position every frame, and twenty-four RegionUI instances
+            // lerp a colour driven by Mathf.Sin — which never converges — so the
+            // canvas was marked dirty and rebuilt on every single frame.
+            //
+            // Disabling the Canvas COMPONENT stops the rebuild and the draw
+            // while leaving every object alive, so nothing's Awake, state or
+            // coroutine changes. Re-enabled the moment the map opens.
+            SetMapCanvasEnabled(false);
         }
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -103,6 +136,9 @@ public class MapTableInteract : MonoBehaviour
 
     private IEnumerator OpenMapSequence()
     {
+        // Back on before the fade, so the first frame of the open already has
+        // something to draw.
+        SetMapCanvasEnabled(true);
         IsMapActive = true;
         isTransitioning = true;
         isMapOpen = true;
@@ -243,6 +279,9 @@ public class MapTableInteract : MonoBehaviour
         if (playerController != null) playerController.enabled = true;
 
         if (playerInRange && GlobalHUD.Instance != null) GlobalHUD.Instance.ShowPrompt(LocalizationManager.Tr("PROMPT_OPEN_MAP"));
+        // Off again, now that the fade has finished and it is genuinely
+        // invisible. See the note in Start.
+        SetMapCanvasEnabled(false);
         isTransitioning = false;
     }
 

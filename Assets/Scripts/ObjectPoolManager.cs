@@ -10,10 +10,24 @@ public class ObjectPoolManager : MonoBehaviour
     // НОВЕ: Словник для зберігання папок-контейнерів
     private Dictionary<string, Transform> poolParents = new Dictionary<string, Transform>();
 
+    // ==== Destroy(gameObject) KILLED WHATEVER ELSE WAS ON THAT OBJECT ====
+    //
+    // A singleton that loses the race should give up ITSELF, not take its host
+    // down with it. CampScene has an ObjectPoolManager on GameManager AND one on
+    // the DistanceOptimizer object, so at scene load one of those two entire
+    // GameObjects was destroyed - along with every other component on it.
+    //
+    // The DistanceOptimizer is the one that loses by scene-root order, which is
+    // why the camp's whole distance-culling system never ran: OptimizedObject
+    // checks DistanceOptimizer.Instance before registering, Instance was null,
+    // and none of the 800-odd trees or props was ever culled. If the order had
+    // gone the other way it would have taken the GameManager instead.
+    //
+    // Destroy(this) removes the duplicate component and leaves the object alone.
     private void Awake()
     {
         if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        else Destroy(this);
     }
 
     public GameObject SpawnFromPool(GameObject prefab, Vector3 position, Quaternion rotation)

@@ -55,7 +55,21 @@ public class CameraCulling : MonoBehaviour
         int q = PlayerPrefs.HasKey("Settings_FoliageDetail")
               ? Mathf.Clamp(PlayerPrefs.GetInt("Settings_FoliageDetail"), 0, 3)
               : Mathf.Clamp(PlayerPrefs.GetInt("Settings_QualityLevel", 1), 0, 3);
-        natureRenderDistance = q switch { 0 => 110f, 1 => 170f, 2 => 260f, _ => 400f };
+        // ==== THE CAMP'S TREES ARE ON THIS LAYER TOO ====
+        //
+        // The comment at the top of this file says only tiny props are on
+        // Nature, so the distance can be generous. That is true of the generated
+        // region, where TagAsNature only moves collider-less clutter. It is NOT
+        // true of the camp: all 800-odd birch trees there sit on layer 15, and
+        // the camp is 219 x 166 metres — so 110m at Performance would cut the
+        // tree line in half and 170m would clip its corners.
+        //
+        // A hand-built hub gets distances that clear it. Only the procedural
+        // region, where this really is only ground clutter, gets the short ones.
+        bool handBuiltScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "GameScene";
+        natureRenderDistance = handBuiltScene
+            ? q switch { 0 => 260f, 1 => 320f, 2 => 420f, _ => 600f }
+            : q switch { 0 => 110f, 1 => 170f, 2 => 260f, _ => 400f };
         Apply();
     }
 
