@@ -31,8 +31,12 @@ public class CursedTree : MonoBehaviour
     private static float s_waveDuration = 8f;
     private static float s_waveMaxRadius = 300f;
 
-    private void OnEnable() { if (!Active.Contains(this)) Active.Add(this); }
-    private void OnDisable() { Active.Remove(this); }
+    // A List.Contains over a registry that holds well over a thousand trees,
+    // run once per tree as the region streams in, is a quadratic register. A
+    // flag answers the same question in one comparison.
+    private bool _registered;
+    private void OnEnable() { if (!_registered) { _registered = true; Active.Add(this); } }
+    private void OnDisable() { if (_registered) { _registered = false; Active.Remove(this); } }
 
     // Called by WorldGenerator right after spawning the husk.
     public void Configure(GameObject bloomed, Material mat, Color foliage, bool applyMat, bool applyColor, GameObject burstVfx)
@@ -54,10 +58,11 @@ public class CursedTree : MonoBehaviour
         s_waveStartTime = Time.time;
         s_waveDuration = Mathf.Max(0.5f, duration);
         s_waveMaxRadius = Mathf.Max(10f, maxRadius);
+        BloomWaveDriver.Ensure();
     }
 
     // Reset between regions so a new region's trees don't insta-bloom.
-    public static void ResetWave() { s_waveActive = false; }
+    public static void ResetWave() { s_waveActive = false; BloomWaveDriver.Stop(); }
 
     // Bloom every cursed tree within `radius` of `center` RIGHT NOW. The victory
     // flythrough calls this each frame with the camera position so the trees the
@@ -76,14 +81,64 @@ public class CursedTree : MonoBehaviour
         }
     }
 
-    private void Update()
+    // ==== FOURTEEN HUNDRED UPDATES TO ASK ONE STATIC BOOL ====
+    //
+    // Every cursed tree had an Update whose first line was `if (bloomed ||
+    // !s_waveActive) return;`. A region generates up to 2500 trees with a 55%
+    // chance of being cursed, so roughly fourteen hundred MonoBehaviours were
+    // woken by the engine every single frame of every run to read the same
+    // static bool and go straight back to sleep — and the answer is false for
+    // the entire run except during the eight-second victory flight.
+    //
+    // Unity's Update dispatch is not free: it is a native-to-managed call per
+    // component per frame, and at this count that is a measurable slice of the
+    // frame spent on nothing at all.
+    //
+    // The wave is a single global event, so ONE driver runs it, walking the
+    // registry these trees already maintain. It exists only while a wave is
+    // actually sweeping and destroys itself when the last tree has bloomed.
+    private class BloomWaveDriver : MonoBehaviour
     {
-        if (bloomed || !s_waveActive) return;
-        float t = Mathf.Clamp01((Time.time - s_waveStartTime) / s_waveDuration);
-        float radius = t * s_waveMaxRadius;
-        Vector3 d = transform.position - s_waveCenter; d.y = 0f;
-        if (d.sqrMagnitude <= radius * radius)
-            StartCoroutine(BloomRoutine());
+        private static BloomWaveDriver s_driver;
+
+        public static void Ensure()
+        {
+            if (s_driver != null) return;
+            var go = new GameObject("~CursedTreeBloomWave");
+            go.hideFlags = HideFlags.HideAndDontSave;
+            s_driver = go.AddComponent<BloomWaveDriver>();
+        }
+
+        public static void Stop()
+        {
+            if (s_driver == null) return;
+            Destroy(s_driver.gameObject);
+            s_driver = null;
+        }
+
+        private void Update()
+        {
+            if (!s_waveActive) { Stop(); return; }
+
+            float t = Mathf.Clamp01((Time.time - s_waveStartTime) / s_waveDuration);
+            float radius = t * s_waveMaxRadius;
+            float r2 = radius * radius;
+
+            int remaining = 0;
+            for (int i = Active.Count - 1; i >= 0; i--)
+            {
+                CursedTree tree = Active[i];
+                if (tree == null) continue;
+                if (tree.bloomed) continue;
+                remaining++;
+
+                Vector3 d = tree.transform.position - s_waveCenter; d.y = 0f;
+                if (d.sqrMagnitude <= r2) tree.StartCoroutine(tree.BloomRoutine());
+            }
+
+            // The wave has passed its full radius and nothing is left to reach.
+            if (remaining == 0 && t >= 1f) Stop();
+        }
     }
 
     private IEnumerator BloomRoutine()

@@ -227,7 +227,27 @@ public class SettingsApplier : MonoBehaviour
             // family as the two read-only ones above and not worth a second
             // compile error to find out.
             p.mainLightShadowmapResolution = q switch { 0 => 512, 1 => 512, 2 => 1024, _ => 2048 };
-            p.shadowCascadeCount = q switch { 0 => 1, 1 => 1, 2 => 2, _ => 4 };
+
+            // ==== THE FOURTH CASCADE PAID FOR ALMOST NOTHING ====
+            //
+            // A cascade is a full re-render of every shadow caster inside the
+            // shadow distance — four cascades means the region's trees, rocks
+            // and buildings are drawn into the shadow map FOUR TIMES a frame,
+            // on top of being drawn for the camera.
+            //
+            // URP packs three and four cascades into the same 2x2 atlas, so
+            // both give a near cascade of identical resolution: the fourth buys
+            // only a slightly finer split at the far end of 100 metres, where
+            // the shadows are a few pixels across. Dropping to three removes a
+            // quarter of the entire shadow pass and takes almost nothing off
+            // what Ultra looks like.
+            p.shadowCascadeCount = q switch { 0 => 1, 1 => 1, 2 => 2, _ => 3 };
+
+            // Soft-shadow filtering tier: High only above Medium. The field is
+            // private on the asset, so it goes through the same soft-failing
+            // reflection the SSAO feature uses — if a URP version renames it,
+            // nothing breaks, the tier simply stays where it was authored.
+            SetMember(p, "m_SoftShadowQuality", q switch { 0 => 0, 1 => 0, 2 => 1, _ => 2 });
         }
 
         QualitySettings.shadows = q switch
@@ -500,10 +520,19 @@ public class SettingsApplier : MonoBehaviour
         var t = target.GetType();
         var fi = t.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
                                 | System.Reflection.BindingFlags.NonPublic);
-        if (fi != null) { fi.SetValue(target, System.Convert.ChangeType(value, fi.FieldType)); return; }
+        if (fi != null) { fi.SetValue(target, Coerce(value, fi.FieldType)); return; }
         var pi = t.GetProperty(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
                                    | System.Reflection.BindingFlags.NonPublic);
-        if (pi != null && pi.CanWrite) pi.SetValue(target, System.Convert.ChangeType(value, pi.PropertyType));
+        if (pi != null && pi.CanWrite) pi.SetValue(target, Coerce(value, pi.PropertyType));
+    }
+
+    // Convert.ChangeType THROWS on an enum target, and several of the members
+    // worth reaching this way (soft-shadow tier, SSAO quality) are enums. Ask
+    // for the enum explicitly and let everything else take the old path.
+    private static object Coerce(object value, System.Type targetType)
+    {
+        if (targetType.IsEnum) return System.Enum.ToObject(targetType, System.Convert.ToInt32(value));
+        return System.Convert.ChangeType(value, targetType);
     }
     public static void ApplyVolumetrics() => Shader.SetGlobalFloat("_Settings_Volumetrics", PlayerPrefs.GetInt("Settings_Volumetrics", 0));
 
