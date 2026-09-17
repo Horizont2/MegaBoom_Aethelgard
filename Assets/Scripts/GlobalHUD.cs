@@ -144,6 +144,27 @@ public class GlobalHUD : MonoBehaviour
             }
         }
 
+        if (boss2Group != null && boss2Group.alpha > 0f)
+        {
+            PositionSecondBossBar();
+            if (boss2Fill != null)
+            {
+                boss2Fill.fillAmount = Mathf.Lerp(boss2Fill.fillAmount, targetBoss2HpRatio, Time.deltaTime * 10f);
+                if (Mathf.Abs(boss2Fill.fillAmount - targetBoss2HpRatio) < 0.005f)
+                    boss2Fill.fillAmount = targetBoss2HpRatio;
+            }
+            if (boss2Catchup != null)
+            {
+                if (boss2Catchup.fillAmount > targetBoss2HpRatio)
+                {
+                    boss2Catchup.fillAmount = Mathf.Lerp(boss2Catchup.fillAmount, targetBoss2HpRatio, Time.deltaTime * 2.5f);
+                    if (Mathf.Abs(boss2Catchup.fillAmount - targetBoss2HpRatio) < 0.005f)
+                        boss2Catchup.fillAmount = targetBoss2HpRatio;
+                }
+                else boss2Catchup.fillAmount = targetBoss2HpRatio;
+            }
+        }
+
         UpdateLowHealthVignette();
         UpdateStackReadout();
 
@@ -450,6 +471,128 @@ public class GlobalHUD : MonoBehaviour
         }
     }
 
+    // ==== TWO OVERLORDS, ONE HEALTH BAR ====
+    //
+    // There has only ever been one boss bar, one targetBossHpRatio and one
+    // label. A region that summons two bosses at the same totem — and one
+    // does — had them both writing that single bar: the second boss's
+    // ShowBossUI overwrote the first one's name and health, and from then on
+    // whichever of them was damaged last owned the bar. The player was left
+    // watching one bar jump between two fights.
+    //
+    // Each boss now claims a SLOT, keyed on the boss itself. The first takes
+    // the canonical spot; a second gets a bar of the same shape directly
+    // below. When the top one dies its slot is not left empty — the survivor
+    // is promoted into it, so a single remaining boss is always read where the
+    // player's eye already is.
+    [SerializeField] private float secondBossBarDrop = 78f;
+
+    private CanvasGroup boss2Group;
+    private Image boss2Fill, boss2Catchup;
+    private TextMeshProUGUI boss2Label;
+    private float targetBoss2HpRatio = 1f;
+
+    private UnityEngine.Object bossOwner1, bossOwner2;
+    // Remembered so a pause can put back exactly what was on screen.
+    private bool bossBarShown, boss2BarShown;
+
+    public void ShowBossUI(UnityEngine.Object owner, string bossName, float currentHp, float maxHp)
+    {
+        // A destroyed owner compares equal to null, so a slot whose boss is
+        // already gone is free again without anyone having to release it.
+        bool slot1Free = bossOwner1 == null || bossOwner1 == owner || !bossBarShown;
+
+        if (!slot1Free && owner != null && EnsureSecondBossBar())
+        {
+            bossOwner2 = owner;
+            boss2BarShown = true;
+            boss2Group.alpha = 1f;
+            if (boss2Label != null) boss2Label.text = bossName;
+            targetBoss2HpRatio = Mathf.Clamp01(maxHp > 0f ? currentHp / maxHp : 1f);
+            if (boss2Fill != null) boss2Fill.fillAmount = targetBoss2HpRatio;
+            if (boss2Catchup != null) boss2Catchup.fillAmount = targetBoss2HpRatio;
+            PositionSecondBossBar();
+            return;
+        }
+
+        bossOwner1 = owner;
+        ShowBossUI(bossName, currentHp, maxHp);
+    }
+
+    public void UpdateBossHealth(UnityEngine.Object owner, float currentHp, float maxHp)
+    {
+        if (owner != null && owner == bossOwner2)
+        {
+            targetBoss2HpRatio = maxHp > 0f ? currentHp / maxHp : 0f;
+            return;
+        }
+        targetBossHpRatio = maxHp > 0f ? currentHp / maxHp : 0f;
+    }
+
+    public void HideBossUI(UnityEngine.Object owner)
+    {
+        if (owner != null && owner == bossOwner2)
+        {
+            bossOwner2 = null;
+            boss2BarShown = false;
+            if (boss2Group != null) boss2Group.alpha = 0f;
+            return;
+        }
+
+        bossOwner1 = null;
+
+        // Promote the survivor rather than leaving a hole where the first bar
+        // was and a lone bar hanging underneath it.
+        if (boss2BarShown && bossOwner2 != null)
+        {
+            bossOwner1 = bossOwner2;
+            targetBossHpRatio = targetBoss2HpRatio;
+            if (bossNameText != null && boss2Label != null) bossNameText.text = boss2Label.text;
+            if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
+            if (bossHpCatchupFill != null) bossHpCatchupFill.fillAmount = targetBossHpRatio;
+
+            bossOwner2 = null;
+            boss2BarShown = false;
+            if (boss2Group != null) boss2Group.alpha = 0f;
+            return;
+        }
+
+        HideBossUI();
+    }
+
+    private bool EnsureSecondBossBar()
+    {
+        if (boss2Group != null) return true;
+        if (bossUIGroup == null) return false;
+
+        var clone = Instantiate(bossUIGroup.gameObject, bossUIGroup.transform.parent);
+        clone.name = "BossUI_Second";
+        clone.SetActive(true);
+
+        boss2Group = clone.GetComponent<CanvasGroup>();
+        if (boss2Group == null) boss2Group = clone.AddComponent<CanvasGroup>();
+        boss2Group.ignoreParentGroups = true;
+        boss2Group.blocksRaycasts = false;
+        boss2Group.interactable = false;
+        boss2Group.alpha = 0f;
+
+        boss2Fill = MirrorIn(clone.transform, bossUIGroup.transform, bossHpFill != null ? bossHpFill.transform : null)?.GetComponent<Image>();
+        boss2Label = MirrorIn(clone.transform, bossUIGroup.transform, bossNameText != null ? bossNameText.transform : null)?.GetComponent<TextMeshProUGUI>();
+        boss2Catchup = MirrorIn(clone.transform, bossUIGroup.transform, bossHpCatchupFill != null ? bossHpCatchupFill.transform : null)?.GetComponent<Image>();
+        return true;
+    }
+
+    // Kept relative to the first bar every frame it is up, so it follows
+    // whatever DropBossBar does when the objective bar comes and goes.
+    private void PositionSecondBossBar()
+    {
+        if (boss2Group == null || bossUIGroup == null) return;
+        var a = bossUIGroup.transform as RectTransform;
+        var b = boss2Group.transform as RectTransform;
+        if (a == null || b == null) return;
+        b.anchoredPosition = a.anchoredPosition + new Vector2(0f, -secondBossBarDrop);
+    }
+
     public void ShowBossUI(string bossName, float currentHp, float maxHp)
     {
         if (bossUIGroup == null)
@@ -491,6 +634,7 @@ public class GlobalHUD : MonoBehaviour
         targetBossHpRatio = Mathf.Clamp01(maxHp > 0f ? currentHp / maxHp : 1f);
         if (bossHpFill != null) bossHpFill.fillAmount = targetBossHpRatio;
         if (bossHpCatchupFill != null) bossHpCatchupFill.fillAmount = targetBossHpRatio;
+        bossBarShown = true;
     }
 
     public void UpdateBossHealth(float currentHp, float maxHp) { targetBossHpRatio = currentHp / maxHp; }
@@ -618,6 +762,8 @@ public class GlobalHUD : MonoBehaviour
     public void HideBossUI()
     {
         NudgeTimerForBoss(false);
+        bossBarShown = false;
+        bossOwner1 = null;
         if (bossUIGroup == null) return;
         if (bossUIFadeRoutine != null) StopCoroutine(bossUIFadeRoutine);
         bossUIFadeRoutine = StartCoroutine(FadeBossUIRoutine(0f));
@@ -690,6 +836,14 @@ public class GlobalHUD : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         StartCoroutine(SyncCameraAndVolumeRoutine());
+
+        // This HUD outlives the scene, so a boss left mid-fight by a scene
+        // change would otherwise keep its slot claimed into the next one.
+        bossOwner1 = null;
+        bossOwner2 = null;
+        bossBarShown = false;
+        boss2BarShown = false;
+        if (boss2Group != null) boss2Group.alpha = 0f;
 
         bool isTutorial = (scene.name == "Lvl_1");
         bool showGameplayUI = (scene.name != "Menu" && scene.name != "ShopScene");
@@ -1043,6 +1197,14 @@ public class GlobalHUD : MonoBehaviour
                 objectsHiddenByPause.Add(bossUIGroup.gameObject);
                 bossUIGroup.gameObject.SetActive(false);
             }
+            // The cloned bars are siblings of the boss bar, not members of
+            // gameplayPanels, so nothing here had ever hidden them — they sat on
+            // top of the pause menu. Restored by RestoreBossBarsAfterPause and
+            // by ShowObjectiveBar respectively.
+            if (boss2Group != null && boss2Group.gameObject.activeSelf)
+                boss2Group.gameObject.SetActive(false);
+            if (objectiveBarGroup != null && objectiveBarGroup.gameObject.activeSelf)
+                objectiveBarGroup.gameObject.SetActive(false);
             if (lowHealthVignette != null && lowHealthVignette.gameObject.activeSelf)
             {
                 objectsHiddenByPause.Add(lowHealthVignette.gameObject);
@@ -1075,6 +1237,22 @@ public class GlobalHUD : MonoBehaviour
         }
         else
         {
+            // ==== THE BOSS BAR CAME BACK LAST, AND SOMETIMES NOT AT ALL ====
+            //
+            // Restoring the boss bar sat at the BOTTOM of this block, behind a
+            // PlayerController lookup and five ForceShowParentPanel calls — and
+            // the whole method is invoked inside a `try { } catch { }` that
+            // swallows everything. Any one of those steps throwing (a destroyed
+            // hpFill, a missing player) skipped every line after it, and the
+            // boss bar stayed off for the rest of the fight while the pause menu
+            // reported no error at all.
+            //
+            // It now goes back FIRST, before anything that can throw, and it is
+            // restored the way ShowBossUI presents it — parents on, children on,
+            // alpha up — rather than by re-enabling one GameObject and hoping
+            // the rest of the state survived.
+            RestoreBossBarsAfterPause();
+
             // ЖОРСТКИЙ FAILSAFE: Завжди вмикаємо UI назад, ігноруючи списки "що було вимкнено"
             if (gameplayPanels != null)
             {
@@ -1108,6 +1286,45 @@ public class GlobalHUD : MonoBehaviour
             if (widgetContainer != null) widgetContainer.gameObject.SetActive(true);
 
             objectsHiddenByPause.Clear();
+        }
+    }
+
+    private void RestoreBossBarsAfterPause()
+    {
+        if (bossUIGroup != null)
+        {
+            // Always put the object back — an invisible bar costs nothing and a
+            // missing one costs the fight. Only the alpha is conditional.
+            Transform t = bossUIGroup.transform;
+            while (t != null)
+            {
+                if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+                t = t.parent;
+            }
+            for (int i = 0; i < bossUIGroup.transform.childCount; i++)
+                bossUIGroup.transform.GetChild(i).gameObject.SetActive(true);
+
+            bossUIGroup.ignoreParentGroups = true;
+            if (bossBarShown)
+            {
+                if (bossUIFadeRoutine != null) { StopCoroutine(bossUIFadeRoutine); bossUIFadeRoutine = null; }
+                bossUIGroup.alpha = 1f;
+            }
+        }
+
+        if (boss2Group != null)
+        {
+            if (!boss2Group.gameObject.activeSelf) boss2Group.gameObject.SetActive(true);
+            boss2Group.ignoreParentGroups = true;
+            boss2Group.alpha = boss2BarShown ? 1f : 0f;
+            if (boss2BarShown) PositionSecondBossBar();
+        }
+
+        if (objectiveBarGroup != null)
+        {
+            if (!objectiveBarGroup.gameObject.activeSelf) objectiveBarGroup.gameObject.SetActive(true);
+            objectiveBarGroup.ignoreParentGroups = true;
+            objectiveBarGroup.alpha = objectiveBarVisible ? 1f : 0f;
         }
     }
 

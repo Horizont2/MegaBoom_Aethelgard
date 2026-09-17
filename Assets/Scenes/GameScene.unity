@@ -17416,7 +17416,7 @@ MonoBehaviour:
   - {fileID: 7222315261462194013, guid: 16dba44f4007f494eba84c5d550de4e1, type: 3}
   patrolGroupSize: 3
   campGroupSize: 4
-  encounterCount: 40
+  encounterCount: 26
   minSeparation: 28
   minDistanceFromPlayer: 35
   minDistanceFromTotems: 20
@@ -17428,7 +17428,7 @@ MonoBehaviour:
   patrolRouteRadius: 12
   aggroRange: 14
   roamRadius: 3.5
-  densityMultiplier: 2
+  densityMultiplier: 1.35
   encounterActivationDistance: 95
   hornPatrolRatio: 0.3
   longPatrolRatio: 0.35

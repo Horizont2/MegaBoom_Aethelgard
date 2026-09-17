@@ -25,8 +25,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: be82deb97b96fa54db570672e30cca62, type: 2}
   isNewlyUnlocked: 0
   recommendedPower: 400
-  enemyHpMultiplier: 1.75
-  enemyDamageMultiplier: 1.35
+  enemyHpMultiplier: 1.6
+  enemyDamageMultiplier: 1.19
   combatMode: 0
   enemyStrength: 340
   autoBattleDiamondReward: 110

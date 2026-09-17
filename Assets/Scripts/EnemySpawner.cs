@@ -116,6 +116,84 @@ public class EnemySpawner : MonoBehaviour
     private WorldGenerator worldGen;
     private readonly List<GameObject> availableEnemiesCache = new List<GameObject>(16);
 
+    // ==== A SURVIVAL CURVE WAS RUNNING A LIBERATION ====
+    //
+    // Every ambient enemy was scaled by +40% health and +15% damage PER MINUTE
+    // of the run clock, with no ceiling and no reference to which region the
+    // player was in. That curve belongs to the survival level, where the whole
+    // point is that the tenth minute is not the first one.
+    //
+    // A region liberation is not a timed survival: it is explored. Twelve
+    // minutes of walking to a totem is ordinary, and it produced skeletons with
+    // FIVE TIMES the health hitting for two and a half times the damage - a
+    // 17-damage trash mob landing 42. The region's own difficulty, meanwhile,
+    // was not consulted at all, so the twenty-fourth region's ambient guards
+    // were as weak as the first's at minute zero and as absurd as each other by
+    // minute ten. The clock, not the content, was the difficulty.
+    //
+    // On a region mission the enemies now take their strength from the REGION
+    // (its authored hp/damage multipliers and the player's power against its
+    // recommended power) with only a small, capped drift for time. Survival
+    // keeps the curve that was written for it.
+    private float _regionHpMult = 1f;
+    private float _regionDmgMult = 1f;
+
+    // Capped so a long region never becomes a different game. Health is allowed
+    // more room than damage: a tougher enemy is a longer fight, a harder-hitting
+    // one is a shorter life.
+    private const float REGION_TIME_HP_PER_MIN = 0.05f;
+    private const float REGION_TIME_HP_CAP = 1.6f;
+    private const float REGION_TIME_DMG_PER_MIN = 0.02f;
+    private const float REGION_TIME_DMG_CAP = 1.24f;
+
+    // True once a region was actually found, so a GameManager that comes up
+    // after this spawner does not leave every enemy on the neutral multiplier
+    // for the whole run.
+    private bool _regionScalingResolved;
+
+    private void ResolveRegionScaling()
+    {
+        _regionHpMult = 1f;
+        _regionDmgMult = 1f;
+        if (!_isRegionMission) { _regionScalingResolved = true; return; }
+
+        RegionData region = GameManager.Instance != null ? GameManager.Instance.currentRegion : null;
+        if (region == null) region = MissionInitializer.PendingMissionRegion;
+        if (region == null) return;
+        _regionScalingResolved = true;
+
+        int playerPower = PowerSystemManager.Instance != null
+                        ? PowerSystemManager.Instance.CalculatePlayerPower() : 100;
+        float diff = PowerSystemManager.CalculateDifficultyMultiplier(playerPower, region.recommendedPower);
+
+        _regionHpMult = region.enemyHpMultiplier * diff;
+        _regionDmgMult = region.enemyDamageMultiplier * diff;
+    }
+
+    // The one place ambient enemy strength is decided, so the two spawn paths
+    // cannot drift apart again.
+    private void ApplyScaling(EnemyAI ai, float minutesSurvived)
+    {
+        if (ai == null) return;
+        if (!_regionScalingResolved) ResolveRegionScaling();
+
+        if (_isRegionMission)
+        {
+            float hpTime = Mathf.Min(1f + minutesSurvived * REGION_TIME_HP_PER_MIN, REGION_TIME_HP_CAP);
+            float dmgTime = Mathf.Min(1f + minutesSurvived * REGION_TIME_DMG_PER_MIN, REGION_TIME_DMG_CAP);
+            ai.maxHealth *= _regionHpMult * hpTime;
+            ai.damage *= _regionDmgMult * dmgTime;
+        }
+        else
+        {
+            ai.maxHealth *= (1f + minutesSurvived * 0.4f);
+            ai.damage *= (1f + minutesSurvived * 0.15f);
+        }
+
+        ai.moveSpeed *= Mathf.Min(1.5f, 1f + minutesSurvived * 0.05f);
+        ai.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
+    }
+
     private void Start()
     {
         IsSpawningBlocked = false;
@@ -131,6 +209,8 @@ public class EnemySpawner : MonoBehaviour
             || (GameManager.Instance != null && GameManager.Instance.currentRegion != null)
             || MissionInitializer.PendingMissionRegion != null;
 
+        ResolveRegionScaling();
+
         // Regions felt empty — the guards who "defend" it were rarely seen. On a
         // region mission, push the density up at runtime (overrides the serialized
         // pacing so it works regardless of the prefab values). Max/Min keep any
@@ -143,8 +223,13 @@ public class EnemySpawner : MonoBehaviour
             // never got a quiet moment, and a fight with no gaps in it stops
             // registering as a fight at all. Note these are the numbers BEFORE
             // AmbientThrottle, which the director then scales down again.
-            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 38);
-            startCap        = Mathf.Max(startCap, 12);
+            // Lowered from 38/12. These were set when the region's only enemies
+            // were the ambient ones; the encounter director now places patrols,
+            // camps and towers as well, and the two together left the player
+            // with nothing but contact. The director's own count came down at
+            // the same time — neither number means anything on its own.
+            maxEnemiesOnMap = Mathf.Max(maxEnemiesOnMap, 28);
+            startCap        = Mathf.Max(startCap, 9);
             capRampMinutes  = Mathf.Min(capRampMinutes, 7f);
             gracePeriod     = Mathf.Min(gracePeriod, 24f);
             relaxCapFactor  = Mathf.Max(relaxCapFactor, 0.45f); // RELAX is meant to BE a rest
@@ -429,10 +514,7 @@ public class EnemySpawner : MonoBehaviour
         EnemyAI ai = e.GetComponent<EnemyAI>();
         if (ai != null)
         {
-            ai.maxHealth *= (1f + minutesSurvived * 0.4f);
-            ai.damage *= (1f + minutesSurvived * 0.15f);
-            ai.moveSpeed *= Mathf.Min(1.5f, 1f + minutesSurvived * 0.05f);
-            ai.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
+            ApplyScaling(ai, minutesSurvived);
 
             // Dust burst at the emerge point.
             if (ai.spawnVFXPrefab != null)
@@ -468,13 +550,7 @@ public class EnemySpawner : MonoBehaviour
             newEnemy = Instantiate(selectedPrefab, spawnPos, Quaternion.identity);
 
         EnemyAI enemyScript = newEnemy.GetComponent<EnemyAI>();
-        if (enemyScript != null)
-        {
-            enemyScript.maxHealth *= (1f + minutesSurvived * 0.4f);
-            enemyScript.damage *= (1f + minutesSurvived * 0.15f);
-            enemyScript.moveSpeed *= Mathf.Min(1.5f, 1f + minutesSurvived * 0.05f);
-            enemyScript.xpRewardMultiplier = 1f + (minutesSurvived * 0.2f);
-        }
+        ApplyScaling(enemyScript, minutesSurvived);
 
         // Rise-from-ground spawn cue, played 3D so it distance-attenuates and
         // distant spawns don't clutter the mix.

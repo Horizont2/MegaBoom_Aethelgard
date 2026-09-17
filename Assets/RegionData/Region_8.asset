@@ -26,15 +26,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 439db7e6ed15b494da6d83fbf9ebc625, type: 2}
   isNewlyUnlocked: 0
   recommendedPower: 480
-  enemyHpMultiplier: 1.2
-  enemyDamageMultiplier: 1.3
+  enemyHpMultiplier: 1.16
+  enemyDamageMultiplier: 1.17
   combatMode: 0
   enemyStrength: 480
   autoBattleDiamondReward: 160
   regionTotemPrefab: {fileID: 701240076730928711, guid: 332b763a8c2c5c54198df110a0504e91, type: 3}
   locationYOffset: 0
   regionBossPrefabs:
-  - {fileID: 8299824053145540121, guid: 566386cdff57847489df448d42981283, type: 3}
+  - {fileID: 2058852120935944091, guid: 566386cdff57847489df448d42981283, type: 3}
   extraCaptureLocations: 0
   woodReward: 130
   stoneReward: 200

@@ -196,7 +196,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         // навіть якщо функція викликається з різних місць
         if (!hasShownBossUI && GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.ShowBossUI(LocalizationManager.Tr(bossName), currentHealth, maxHealth);
+            GlobalHUD.Instance.ShowBossUI(this, LocalizationManager.Tr(bossName), currentHealth, maxHealth);
             hasShownBossUI = true;
 
             if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Boss_Roar);
@@ -713,7 +713,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
         currentHealth -= info.Amount;
         if (currentHealth < 0) currentHealth = 0;
 
-        if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(currentHealth, maxHealth);
+        if (GlobalHUD.Instance != null) GlobalHUD.Instance.UpdateBossHealth(this, currentHealth, maxHealth);
 
         if (useEnrage && !isEnraged && !isDead && currentHealth <= maxHealth * enrageThreshold)
             EnterEnrage();
@@ -945,7 +945,7 @@ public class TutorialBossAI : MonoBehaviour, IDamageable
 
         if (GlobalHUD.Instance != null)
         {
-            GlobalHUD.Instance.HideBossUI();
+            GlobalHUD.Instance.HideBossUI(this);
             GlobalHUD.Instance.ShowCinematicBars();
         }
 

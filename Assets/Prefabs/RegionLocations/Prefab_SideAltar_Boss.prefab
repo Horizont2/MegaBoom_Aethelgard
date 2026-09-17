@@ -299,9 +299,9 @@ MonoBehaviour:
   anchorRadius: 13
   anchorHealth: 120
   anchorGuardPrefabs: []
-  guardsPerAnchor: 3
-  purifyDuration: 32
-  reinforceInterval: 6.5
+  guardsPerAnchor: 2
+  purifyDuration: 26
+  reinforceInterval: 8
   reinforcementPrefabs: []
   allyPrefab: {fileID: 0}
   healWorldOnCapture: 1

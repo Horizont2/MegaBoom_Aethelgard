@@ -24252,9 +24252,9 @@ MonoBehaviour:
   anchorRadius: 13
   anchorHealth: 120
   anchorGuardPrefabs: []
-  guardsPerAnchor: 3
-  purifyDuration: 32
-  reinforceInterval: 6.5
+  guardsPerAnchor: 2
+  purifyDuration: 26
+  reinforceInterval: 8
   reinforcementPrefabs: []
   allyPrefab: {fileID: 0}
   healWorldOnCapture: 1
@@ -24265,7 +24265,7 @@ MonoBehaviour:
   isActivated: 0
   preGateApproachRadius: 32
   spawnIdleGarrison: 1
-  idleGarrisonCount: 4
+  idleGarrisonCount: 3
   idleGarrisonRadius: 9
 --- !u!64 &6135284607533228155
 MeshCollider:

@@ -101,12 +101,12 @@ public class RegionTotem : MonoBehaviour
     public float anchorHealth = 120f;
     [Tooltip("Guards spawned around EACH anchor. Falls back to weak/medium pools if empty.")]
     public GameObject[] anchorGuardPrefabs;
-    public int guardsPerAnchor = 3;
+    public int guardsPerAnchor = 2;
     [Header("Phase 2 — Channel / Hold")]
     [Tooltip("Seconds the totem channels while you survive reinforcements.")]
-    public float purifyDuration = 32f;
+    public float purifyDuration = 26f;
     [Tooltip("Seconds between reinforcement waves during the channel.")]
-    public float reinforceInterval = 6.5f;
+    public float reinforceInterval = 8f;
     [Tooltip("Reinforcements that pour in from the compass during the channel. Falls back to weak/medium pools.")]
     public GameObject[] reinforcementPrefabs;
     [Header("Free the Ally (optional)")]
@@ -190,6 +190,9 @@ public class RegionTotem : MonoBehaviour
     }
 
     private List<GameObject> activeEnemies = new List<GameObject>();
+    // The ones the capture is actually ABOUT, tracked apart from the fodder.
+    private List<GameObject> activeBosses = new List<GameObject>();
+    private int _bossesSummoned;
     private Transform player;
 
     private void Start()
@@ -620,11 +623,27 @@ public class RegionTotem : MonoBehaviour
     // Region bosses run on the same EnemyAI as the fodder, so nothing told them
     // they were a boss and they fought with the generic skeleton audio. Flag the
     // ones we spawn FROM a boss pool, so no prefab has to be ticked by hand.
+    // ==== A BOSS IS ALREADY ITS OWN DIFFICULTY CURVE ====
+    //
+    // Bosses have a hand-authored health ladder of their own (500 / 800 / 1500),
+    // TutorialBossAI then multiplies health by 1.6 and damage by 1.15 on top,
+    // and the region multiplier was being applied at full strength over both. In
+    // the last regions that stacked to five figures of health on a single
+    // overlord — a fight decided by how long the player could keep swinging
+    // rather than by anything the boss did.
+    //
+    // Only the part of the multiplier ABOVE neutral is softened, so a player who
+    // out-geared the region keeps every bit of the discount they earned.
+    private static float SoftenForBoss(float mult)
+    {
+        return mult >= 1f ? 1f + (mult - 1f) * 0.55f : mult;
+    }
+
     private void SpawnBoss(GameObject prefab, float hpMult, float dmgMult)
     {
         if (prefab == null) return;
         s_markNextAsBoss = true;
-        SpawnEntity(prefab, hpMult, dmgMult);
+        SpawnEntity(prefab, SoftenForBoss(hpMult), SoftenForBoss(dmgMult));
         s_markNextAsBoss = false;
     }
 
@@ -638,6 +657,8 @@ public class RegionTotem : MonoBehaviour
         {
             var spawnedBoss = entity.GetComponent<EnemyAI>();
             if (spawnedBoss != null) spawnedBoss.isBoss = true;
+            activeBosses.Add(entity);
+            _bossesSummoned++;
         }
         activeEnemies.Add(entity);
 
@@ -733,8 +754,18 @@ public class RegionTotem : MonoBehaviour
             {
                 nextWave = elapsed + reinforceInterval;
                 float frac = elapsed / purifyDuration;
-                int count = Mathf.RoundToInt(Mathf.Lerp(3f, 7f, frac));
-                float ramp = Mathf.Lerp(0.75f, 1.5f, frac);
+                // ==== THE CHANNEL WAS TWENTY-SIX MANDATORY KILLS ====
+                //
+                // Five or six waves of three-to-seven, every one of which had to
+                // die before the totem could be purified, on top of the anchor
+                // guards and the final wave and the boss. Forty enemies for one
+                // capture point, and some regions have two.
+                //
+                // Fewer, arriving a little further apart: the hold still has to
+                // be fought through, but it is a fight with shape in it rather
+                // than a queue.
+                int count = Mathf.RoundToInt(Mathf.Lerp(2f, 5f, frac));
+                float ramp = Mathf.Lerp(0.75f, 1.35f, frac);
                 StartCoroutine(ReinforcementWave(reinforcePool, count, hpMult * ramp, dmgMult));
             }
             yield return null;
@@ -745,7 +776,7 @@ public class RegionTotem : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.NotifyCombat(25f);
         CameraShakeUtil.TryShake(0.5f, 0.18f);
 
-        for (int i = 0; i < 5 && reinforcePool != null && reinforcePool.Length > 0; i++)
+        for (int i = 0; i < 3 && reinforcePool != null && reinforcePool.Length > 0; i++)
         {
             SpawnEntity(reinforcePool[Random.Range(0, reinforcePool.Length)], hpMult, dmgMult);
             yield return new WaitForSeconds(0.15f);
@@ -938,8 +969,23 @@ public class RegionTotem : MonoBehaviour
         while (true)
         {
             activeEnemies.RemoveAll(item => item == null);
+            activeBosses.RemoveAll(item => item == null);
 
-            if (activeEnemies.Count == 0)
+            // ==== THE OVERLORD IS THE OBJECTIVE, NOT THE LAST STRAGGLER ====
+            //
+            // Purification waited for EVERY summoned unit to die — anchor
+            // guards, five or six reinforcement waves, the final wave and the
+            // boss, forty-odd bodies. The boss usually fell somewhere in the
+            // middle of that, and what followed was not a fight but a sweep:
+            // hunting two reinforcements who had wandered to the far side of
+            // the arena, with the objective text still reading SLAY THE
+            // OVERLORD over a corpse.
+            //
+            // Where a boss was summoned, the boss decides it. Where none was
+            // (a swarm totem), clearing the field still does.
+            bool cleared = _bossesSummoned > 0 ? activeBosses.Count == 0 : activeEnemies.Count == 0;
+
+            if (cleared)
             {
                 yield return new WaitForSeconds(3f);
                 LocalPurify();
@@ -952,6 +998,18 @@ public class RegionTotem : MonoBehaviour
     private void LocalPurify()
     {
         isPurified = true;
+
+        // Wave members were summoned with canDeAggro off so none could wander
+        // away and leave the region uncompletable. That reason expires the
+        // moment the totem is taken: survivors are released, so anything still
+        // standing can lose the player and go back to roaming instead of
+        // trailing them across a cleansed region for the rest of the run.
+        for (int i = 0; i < activeEnemies.Count; i++)
+        {
+            if (activeEnemies[i] == null) continue;
+            var ai = activeEnemies[i].GetComponent<EnemyAI>();
+            if (ai != null) ai.canDeAggro = true;
+        }
 
         if (activationShieldVFX != null) activationShieldVFX.Stop();
         if (idleCorruptionVFX != null) idleCorruptionVFX.Stop();

@@ -85,9 +85,22 @@ public class PowerSystemManager : MonoBehaviour
         // attempt. A fresh save has power 50, and every region asked for more
         // than that, so this ceiling was where new players actually lived rather
         // than being the rare punishment for wandering somewhere too early.
+        // ==== THE REWARD FOR OUT-GEARING A REGION WAS FOUR PER CENT ====
+        //
+        // The two halves of this curve were not the same shape. Falling short
+        // cost 0.7% per point; getting ahead paid 0.3%. A player who had gone
+        // and earned fourteen points of power over the recommendation - which
+        // is what the region screen tells them to do - bought themselves a 4%
+        // discount, which is nothing, and the region still played as though
+        // they had come in exactly at the line.
+        //
+        // Getting ahead now pays 0.6% a point: the same fourteen points read as
+        // 8%, a hundred points as the full floor. Coming in under still costs
+        // more than getting ahead pays, which is the part that was right - the
+        // recommendation has to mean something in the direction that matters.
         float power = (delta < 0)
             ? Mathf.Clamp(1f + (-delta) * 0.007f, 1f, 1.55f)
-            : Mathf.Clamp(1f - delta * 0.003f, 0.7f, 1f);
+            : Mathf.Clamp(1f - delta * 0.006f, 0.62f, 1f);
         // Stack the player's chosen difficulty on top of the power-based
         // curve so the Settings_Difficulty dropdown actually does
         // something. Default = Normal (1×).
