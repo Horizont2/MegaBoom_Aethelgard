@@ -10277,7 +10277,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: BKPureNature.PureVolumetricFog::BKPureNature.PureVolumetricFog
   settingsVersion: 1
   terrains:
-  - {fileID: 0}
+  - {fileID: 240858631}
   findActiveTerrainsAutomatically: 1
   horizontalPadding: 40
   bottomPadding: 20
@@ -10319,7 +10319,7 @@ MonoBehaviour:
   sunStrength: 1
   sunScattering: 0.5
   anisotropy: 0.01
-  directionalLight: {fileID: 0}
+  directionalLight: {fileID: 410087040}
   rayJitterStrength: 1
   noiseMipBias: 0.5
   noiseFilterScale: 0.7
