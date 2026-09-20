@@ -1,0 +1,162 @@
+// Bakes four sun-horizon heights per texel from the composite terrain height
+// texture. The dispatch may cover a band of rows so a rebuild can be spread
+// over several frames.
+
+#pragma kernel CSBuildTerrainShadowMap
+
+Texture2D<float> _HeightmapTex;
+SamplerState sampler_HeightmapTex;
+RWTexture2D<float4> _TerrainShadowMapWrite;
+
+int _ShadowOutputResolution;
+int _RowOffset;
+int _TerrainShadowMapSteps;
+float _ShadowDistanceWorld;
+float _SunAngularRadiusRadians;
+float3 _LightDirectionWS;
+float3 _TerrainSize;
+
+float SampleHeightWorld(float2 uv)
+{
+    float height01 = _HeightmapTex.SampleLevel(sampler_HeightmapTex, saturate(uv), 0);
+    // Texels without terrain never block the sun.
+    return max(height01, 0.0) * _TerrainSize.y;
+}
+
+float2 Rotate2D(float2 value, float angle)
+{
+    float s;
+    float c;
+    sincos(angle, s, c);
+    return float2(value.x * c - value.y * s, value.x * s + value.y * c);
+}
+
+void GetSunRay(int rayIndex, float2 baseHorizontalDirection, float baseElevation,
+    out float2 horizontalDirection, out float lightSlope, out float phaseOffset)
+{
+    float azimuthMultiplier;
+    float elevationMultiplier;
+
+    if (rayIndex == 0)
+    {
+        azimuthMultiplier = -1.0;
+        elevationMultiplier = -0.45;
+        phaseOffset = 0.17;
+    }
+    else if (rayIndex == 1)
+    {
+        azimuthMultiplier = 1.0;
+        elevationMultiplier = -0.45;
+        phaseOffset = 0.63;
+    }
+    else if (rayIndex == 2)
+    {
+        azimuthMultiplier = -0.35;
+        elevationMultiplier = 0.45;
+        phaseOffset = 0.39;
+    }
+    else
+    {
+        azimuthMultiplier = 0.35;
+        elevationMultiplier = 0.45;
+        phaseOffset = 0.87;
+    }
+
+    float angularRadius = max(_SunAngularRadiusRadians, 0.0);
+    horizontalDirection = Rotate2D(baseHorizontalDirection, angularRadius * azimuthMultiplier);
+    float elevation = clamp(
+        baseElevation + angularRadius * elevationMultiplier,
+        radians(0.25),
+        radians(89.0));
+    lightSlope = tan(elevation);
+}
+
+float TraceHorizonHeight(
+    float2 uv,
+    float2 horizontalDirection,
+    float lightSlope,
+    float phaseOffset)
+{
+    int stepCount = clamp(_TerrainShadowMapSteps, 8, 256);
+    float maximumDistance = max(_ShadowDistanceWorld, 1.0);
+    // Local ground must not shadow a point that can see the sun above flat terrain.
+    float maximumBlockingHeight = 0.0;
+    float2 inverseTerrainXZ = 1.0 / max(_TerrainSize.xz, float2(0.001, 0.001));
+
+    [loop]
+    for (int i = 1; i <= 256; i++)
+    {
+        if (i > stepCount)
+            break;
+
+        // A per-ray phase offset fills gaps in the world-space trace.
+        float sampleIndex = clamp((float)i - 0.5 + (phaseOffset - 0.5) * 0.65, 0.25, (float)stepCount);
+        float normalizedDistance = sampleIndex / (float)stepCount;
+
+        // Bias samples toward the receiver while retaining distant ridge coverage.
+        float warpedDistance = lerp(
+            normalizedDistance,
+            normalizedDistance * normalizedDistance,
+            0.65);
+        float distanceWorld = maximumDistance * warpedDistance;
+        float2 sampleUV = uv + horizontalDirection * distanceWorld * inverseTerrainXZ;
+
+        if (sampleUV.x < 0.0 || sampleUV.y < 0.0 || sampleUV.x > 1.0 || sampleUV.y > 1.0)
+            break;
+
+        float terrainHeight = SampleHeightWorld(sampleUV);
+        maximumBlockingHeight = max(
+            maximumBlockingHeight,
+            terrainHeight - lightSlope * distanceWorld);
+    }
+
+    return maximumBlockingHeight;
+}
+
+[numthreads(8, 8, 1)]
+void CSBuildTerrainShadowMap(uint3 id : SV_DispatchThreadID)
+{
+    uint2 pixel = uint2(id.x, id.y + (uint)_RowOffset);
+    if (pixel.x >= (uint)_ShadowOutputResolution || pixel.y >= (uint)_ShadowOutputResolution)
+        return;
+
+    float outputSize = max((float)_ShadowOutputResolution, 1.0);
+    float2 uv = (float2(pixel) + 0.5) / outputSize;
+    float centerHeight = SampleHeightWorld(uv);
+    float3 lightDirection = normalize(_LightDirectionWS);
+    float horizontalLength = length(lightDirection.xz);
+
+    if (horizontalLength < 0.0001 || lightDirection.y <= 0.0001)
+    {
+        float normalizedCenterHeight = saturate(centerHeight / max(_TerrainSize.y, 0.001));
+        _TerrainShadowMapWrite[pixel] = float4(normalizedCenterHeight, normalizedCenterHeight, normalizedCenterHeight, normalizedCenterHeight);
+        return;
+    }
+
+    float2 baseHorizontalDirection = lightDirection.xz / horizontalLength;
+    float baseElevation = atan2(lightDirection.y, horizontalLength);
+    float4 horizonHeights;
+
+    [unroll]
+    for (int rayIndex = 0; rayIndex < 4; rayIndex++)
+    {
+        float2 horizontalDirection;
+        float lightSlope;
+        float phaseOffset;
+        GetSunRay(
+            rayIndex,
+            baseHorizontalDirection,
+            baseElevation,
+            horizontalDirection,
+            lightSlope,
+            phaseOffset);
+
+        horizonHeights[rayIndex] = TraceHorizonHeight(
+            uv,
+            horizontalDirection,
+            lightSlope,
+            phaseOffset);
+    }
+
+    _TerrainShadowMapWrite[pixel] = saturate(horizonHeights / max(_TerrainSize.y, 0.001));
+}

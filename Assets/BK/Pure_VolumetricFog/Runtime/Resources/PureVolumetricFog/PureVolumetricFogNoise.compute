@@ -1,0 +1,92 @@
+// Generates the tiling three-channel fog noise texture. Each channel is a
+// periodic value-noise FBM with its own seed, range-expanded so large fog
+// banks survive ray integration.
+
+#pragma kernel CSGenerateNoise
+
+RWTexture2D<float4> _NoiseWrite;
+int _NoiseResolution;
+int _NoiseSeed;
+
+float Hash01(int x, int y, int seed)
+{
+    uint h = (uint)seed;
+    h ^= (uint)x * 374761393u;
+    h = (h << 13) | (h >> 19);
+    h ^= (uint)y * 668265263u;
+    h *= 2246822519u;
+    h ^= h >> 15;
+    h *= 3266489917u;
+    h ^= h >> 16;
+    return (float)(h & 0x00FFFFFFu) / 16777215.0;
+}
+
+// cells is always a power of two, so wrapping is a mask (also correct for negatives).
+int Mod(int value, int cells)
+{
+    return value & (cells - 1);
+}
+
+float Smooth01(float value)
+{
+    return value * value * (3.0 - 2.0 * value);
+}
+
+float PeriodicValueNoise(float u, float v, int cells, int seed)
+{
+    float x = u * cells;
+    float y = v * cells;
+    int x0 = (int)floor(x);
+    int y0 = (int)floor(y);
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+
+    float tx = Smooth01(x - x0);
+    float ty = Smooth01(y - y0);
+
+    float a = Hash01(Mod(x0, cells), Mod(y0, cells), seed);
+    float b = Hash01(Mod(x1, cells), Mod(y0, cells), seed);
+    float c = Hash01(Mod(x0, cells), Mod(y1, cells), seed);
+    float d = Hash01(Mod(x1, cells), Mod(y1, cells), seed);
+
+    return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+}
+
+float PeriodicFbm(float u, float v, int seed)
+{
+    float value = 0.0;
+    float amplitude = 0.55;
+    float total = 0.0;
+    int cells = 4;
+
+    [unroll]
+    for (int octave = 0; octave < 5; octave++)
+    {
+        value += PeriodicValueNoise(u, v, cells, seed + octave * 1013) * amplitude;
+        total += amplitude;
+        amplitude *= 0.52;
+        cells *= 2;
+    }
+
+    return total > 0.0 ? value / total : 0.0;
+}
+
+float ExpandNoiseRange(float value)
+{
+    // FBM averages several octaves and naturally clusters around 0.5.
+    return saturate((value - 0.5) * 1.85 + 0.5);
+}
+
+[numthreads(8, 8, 1)]
+void CSGenerateNoise(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_NoiseResolution || id.y >= (uint)_NoiseResolution)
+        return;
+
+    float u = id.x / (float)_NoiseResolution;
+    float v = id.y / (float)_NoiseResolution;
+    float a = ExpandNoiseRange(PeriodicFbm(u, v, _NoiseSeed));
+    float b = ExpandNoiseRange(PeriodicFbm(u, v, _NoiseSeed + 9176));
+    float c = ExpandNoiseRange(PeriodicFbm(u, v, _NoiseSeed - 4319));
+    _NoiseWrite[id.xy] = float4(a, b, c, 1.0);
+}

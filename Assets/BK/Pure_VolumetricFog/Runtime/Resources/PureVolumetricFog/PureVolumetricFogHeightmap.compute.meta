@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1faa6a115cfb4c7a877e8c013066b3fa
+ComputeShaderImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Runtime/Resources/PureVolumetricFog/PureVolumetricFogHeightmap.compute
+  uploadId: 997188

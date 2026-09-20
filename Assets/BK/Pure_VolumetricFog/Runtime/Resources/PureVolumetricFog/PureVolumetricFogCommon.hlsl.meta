@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 588e4a36f5d2c744e99e3d0b04152f78
+ShaderIncludeImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Runtime/Resources/PureVolumetricFog/PureVolumetricFogCommon.hlsl
+  uploadId: 997188

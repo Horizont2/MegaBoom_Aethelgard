@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 8292a4cd878e470396f331e3b050943c
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Runtime/Resources/PureVolumetricFog/PureVolumetricFogComposite.shader
+  uploadId: 997188

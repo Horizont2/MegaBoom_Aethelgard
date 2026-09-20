@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7cd0e7515458423ca1fc1ca853407b30
+ComputeShaderImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Runtime/Resources/PureVolumetricFog/PureVolumetricFogNoise.compute
+  uploadId: 997188

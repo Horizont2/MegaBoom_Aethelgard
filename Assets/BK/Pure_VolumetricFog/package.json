@@ -1,0 +1,21 @@
+{
+  "name": "com.bk.purevolumetricfog",
+  "version": "1.0.0",
+  "displayName": "Pure Volumetric Fog",
+  "description": "Raymarched volumetric ground fog that follows one or more Unity Terrains, with volumetric sun shadows from URP's main-light shadow map or a precomputed terrain horizon map. Unity 6, URP only.",
+  "unity": "6000.0",
+  "author": {
+    "name": "BK"
+  },
+  "keywords": [
+    "fog",
+    "volumetric",
+    "terrain",
+    "ground fog",
+    "raymarching",
+    "urp"
+  ],
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "17.0.0"
+  }
+}

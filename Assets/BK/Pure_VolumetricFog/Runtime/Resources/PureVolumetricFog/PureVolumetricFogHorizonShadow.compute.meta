@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f6382021d802d3446b8b16d55637189a
+ComputeShaderImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Runtime/Resources/PureVolumetricFog/PureVolumetricFogHorizonShadow.compute
+  uploadId: 997188

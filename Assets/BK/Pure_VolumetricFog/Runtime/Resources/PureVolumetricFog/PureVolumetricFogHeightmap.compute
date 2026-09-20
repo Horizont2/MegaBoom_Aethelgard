@@ -1,0 +1,53 @@
+// Builds one height texture covering the union bounds of all source terrains.
+// Each texel stores the terrain height normalized to the union height range,
+// or -1 where no terrain covers the texel.
+
+#pragma kernel CSClear
+#pragma kernel CSCompositeTile
+
+#include "UnityCG.cginc"
+
+RWTexture2D<float> _CompositeWrite;
+int2 _CompositeResolution;
+
+Texture2D<float4> _TileHeightmap;
+SamplerState sampler_TileHeightmap;
+int _TileHeightmapResolution;
+// Composite pixel rectangle covered by the tile (inclusive min, exclusive max).
+int2 _TilePixelMin;
+int2 _TilePixelMax;
+// Maps a composite UV to the tile's world-normalized UV: tileUV = uv * scale + offset.
+float2 _TileUVScale;
+float2 _TileUVOffset;
+// Converts an encoded tile height sample to the union-normalized range:
+// height01 = encoded * _TileHeightScale + _TileHeightOffset.
+float _TileHeightScale;
+float _TileHeightOffset;
+
+[numthreads(8, 8, 1)]
+void CSClear(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_CompositeResolution.x || id.y >= (uint)_CompositeResolution.y)
+        return;
+    _CompositeWrite[id.xy] = -1.0;
+}
+
+[numthreads(8, 8, 1)]
+void CSCompositeTile(uint3 id : SV_DispatchThreadID)
+{
+    int2 pixel = _TilePixelMin + (int2)id.xy;
+    if (pixel.x >= _TilePixelMax.x || pixel.y >= _TilePixelMax.y ||
+        pixel.x >= _CompositeResolution.x || pixel.y >= _CompositeResolution.y)
+        return;
+
+    float2 compositeUV = (float2(pixel) + 0.5) / float2(_CompositeResolution);
+    float2 tileUV = compositeUV * _TileUVScale + _TileUVOffset;
+    if (any(tileUV < 0.0) || any(tileUV > 1.0))
+        return;
+
+    // Terrain heightmap texel i is the vertex at world fraction i / (res - 1).
+    float resolution = max((float)_TileHeightmapResolution, 2.0);
+    float2 textureUV = (tileUV * (resolution - 1.0) + 0.5) / resolution;
+    float encoded = UnpackHeightmap(_TileHeightmap.SampleLevel(sampler_TileHeightmap, textureUV, 0));
+    _CompositeWrite[pixel] = saturate(encoded * _TileHeightScale + _TileHeightOffset);
+}

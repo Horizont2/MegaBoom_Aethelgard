@@ -752,7 +752,7 @@ Transform:
   m_GameObject: {fileID: 4198843849923204017}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 24.136719}
   m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -833,6 +833,8 @@ MonoBehaviour:
   particles:
   - {fileID: 4639509076422919597}
   - {fileID: 6867747440997005975}
+  colliders: []
+  disableCollidersWhenHidden: 1
   isCurrentlyVisible: 1
 --- !u!114 &1781140670817748473
 MonoBehaviour:
@@ -855,14 +857,33 @@ MonoBehaviour:
   attackCooldown: 3
   attackTelegraphTime: 1.2
   bossWeapon: {fileID: 5934978669388820802}
+  useSlamAttack: 1
+  slamIndicatorPrefab: {fileID: 0}
+  slamRadius: 4.5
+  slamDamageMult: 1.4
+  slamChance: 0.4
+  useEnrage: 1
+  enrageThreshold: 0.35
+  enrageAddPrefabs: []
+  enrageAddCount: 3
+  staggerRingColor: {r: 1, g: 0.65, b: 0.1, a: 0.8}
+  staggerRingRadius: 3.5
+  useCharge: 1
+  chargeSpeed: 13
+  chargeDamageMult: 1.25
+  chargeMaxDistance: 13
+  useCleave: 1
+  cleaveRadius: 4
+  cleaveDamageMult: 1.15
+  cleaveChance: 0.28
   useSummon: 1
   summonPrefabs:
   - {fileID: 4198843849923204017, guid: 3ec02a62dc643804ab363c06a0d9de90, type: 3}
   summonCount: 4
+  summonCooldown: 15
+  maxActiveAdds: 12
   summonAnimTrigger: Attack
   summonSpawnVFX: {fileID: 6126188424833946103, guid: a58aa9a78f2b45b45bb0f3e2e1e3ad3c, type: 3}
-  staggerRingColor: {r: 1, g: 0.65, b: 0.1, a: 0.8}
-  staggerRingRadius: 3.5
   xpCrystalPrefab: {fileID: 1804220971777951050, guid: e473ce5eaea0af640819aff3e1be0f06, type: 3}
   diamondPrefab: {fileID: 193217237094147862, guid: f5af8257bbde9d545a97042ba02b1c30, type: 3}
   damagePopupPrefab: {fileID: 2253435216451658149, guid: 5b744f29cb75ed84a869ee92bd84278b, type: 3}
@@ -871,6 +892,9 @@ MonoBehaviour:
   xpCrystalsToDrop: 40
   diamondsToDrop: 10
   isInvincible: 0
+  gloryKillImpactOffset: 0.55
+  gloryKillFreezeDuration: 0.12
+  gloryKillAftermathDuration: 0.9
 --- !u!1 &4229068581261606948
 GameObject:
   m_ObjectHideFlags: 0

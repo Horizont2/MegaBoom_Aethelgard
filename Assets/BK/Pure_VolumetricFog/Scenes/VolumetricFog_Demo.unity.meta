@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6d8607371d3116f46bc15e4b16e50274
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Scenes/VolumetricFog_Demo.unity
+  uploadId: 997188

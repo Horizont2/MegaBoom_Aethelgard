@@ -14,7 +14,7 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 1
+  m_Fog: 0
   m_FogColor: {r: 0.78787464, g: 0.87338376, b: 0.90188676, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.01
@@ -1074,7 +1074,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
   m_RenderShadows: 0
-  m_RequiresDepthTextureOption: 2
+  m_RequiresDepthTextureOption: 1
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
   m_Cameras: []
@@ -10066,6 +10066,7 @@ GameObject:
   - component: {fileID: 330585548}
   - component: {fileID: 330585549}
   - component: {fileID: 330585550}
+  - component: {fileID: 330585551}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -10262,6 +10263,74 @@ MonoBehaviour:
   m_EditorClassIdentifier: FMODUnity::FMODUnity.StudioListener
   nonRigidbodyVelocity: 0
   attenuationObject: {fileID: 0}
+--- !u!114 &330585551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a8a4f589d342f24fbade49a21a154f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: BKPureNature.PureVolumetricFog::BKPureNature.PureVolumetricFog
+  settingsVersion: 1
+  terrains:
+  - {fileID: 0}
+  findActiveTerrainsAutomatically: 1
+  horizontalPadding: 40
+  bottomPadding: 20
+  topPadding: 160
+  terrainEdgeFade: 0
+  terrainFollow: 0.9
+  rebuildWhenTerrainChanges: 1
+  density: 0.015
+  groundFogHeight: 60
+  topSoftness: 0.1
+  noiseTextureResolution: 64
+  noiseSeed: 1337
+  largeNoiseScale: 800
+  detailNoiseScale: 120
+  noiseAmount: 0
+  noiseFloor: 0
+  noiseContrast: 1.5
+  noiseStrength: 3
+  noiseCoverage: 0.5
+  noiseHeightDistortion: 0
+  verticalNoiseShear: 0.004
+  windDirection: {x: 0.28734788, y: 0.95782626}
+  windSpeed: 20
+  debugView: 0
+  useSceneDepth: 1
+  depthBias: 0
+  maximumRaySteps: 28
+  minimumRaySteps: 7
+  targetStepLength: 105
+  maximumFogDistance: 4500
+  nearFadeDistance: 100
+  farFadeStart: 0
+  fogColor: {r: 0.63, g: 0.7, b: 0.76, a: 1}
+  followSceneFogColor: 1
+  ambientColor: {r: 0.5, g: 0.55, b: 0.6, a: 1}
+  followSceneAmbientColor: 1
+  ambientStrength: 1
+  ambientShadowStrength: 0.7
+  sunStrength: 1
+  sunScattering: 0.5
+  anisotropy: 0.01
+  directionalLight: {fileID: 0}
+  rayJitterStrength: 1
+  noiseMipBias: 0.5
+  noiseFilterScale: 0.7
+  rayStepSmoothing: 1
+  enableVolumetricShadows: 1
+  terrainCastsFogShadows: 1
+  useUnityRealtimeShadows: 1
+  shadowStrength: 0.7
+  shadowDistance: 900
+  terrainShadowBias: 0
+  fogSelfShadowStrength: 2.25
 --- !u!1 &343362065
 GameObject:
   m_ObjectHideFlags: 0
@@ -12841,7 +12910,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &919215057
 Transform:
   m_ObjectHideFlags: 0
@@ -21286,7 +21355,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1932491939
 Transform:
   m_ObjectHideFlags: 0

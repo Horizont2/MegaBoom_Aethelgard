@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 113db9350e828e0429815b856c67a4ba
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 15600000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Scenes/VolumetricFog_Terrain.asset
+  uploadId: 997188

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cbd5a2167a8344fd9ab2c0e59154a964
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408118
+  packageName: Pure Volumetric Fog
+  packageVersion: 1.0
+  assetPath: Assets/BK/Pure_VolumetricFog/Editor/BKPureNature.PureVolumetricFog.Editor.asmdef
+  uploadId: 997188
