@@ -11825,12 +11825,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   isCampMode: 0
   isControlBlocked: 0
+  isCinematicInvincible: 0
+  attackMoveSpeedMult: 0.45
+  attackCommitTime: 0.45
+  hitFlinchDuration: 0.08
+  hitFlinchCooldown: 0.7
   weaponPrefabs:
   - {fileID: 919132149155446097, guid: 1b7c5ebd1e164cc4cb2698c1f9995749, type: 3}
   - {fileID: 4722655034226915781, guid: 8528f67867808024094886c081baccc0, type: 3}
   - {fileID: 7009237522966617082, guid: 2ef440fda02775e4aafd89e90690bb2d, type: 3}
   - {fileID: 5548968681433392241, guid: d9ebcf06070c13044a82cab96c409270, type: 3}
   - {fileID: 7705683734966450536, guid: 4f6e37ac6643cd14e84eb94f9516c131, type: 3}
+  weaponHandRotations: []
   noclipSpeed: 30
   moveSpeed: 6
   rotationSpeed: 15
@@ -11855,11 +11861,17 @@ MonoBehaviour:
   throwPoint: {fileID: 0}
   trajectoryLine: {fileID: 0}
   linePoints: 30
-  timeBetweenPoints: 0.1
-  minThrowForce: 5
-  maxThrowForce: 30
-  chargeRate: 15
-  upwardAngle: 0.5
+  maxThrowDistance: 18
+  grenadeExplosionRadius: 6
+  grenadeThrowSpeed: 20
+  grenadeCooldown: 5
+  lastGrenadeTime: -100
+  aimSlowMotion: 0.25
+  aimAssistRadius: 3.5
+  runDustParticles: {fileID: 0}
+  hardLandingVFX: {fileID: 0}
+  hardLandingVelocityThreshold: -12
+  hitSparkVFXPrefab: {fileID: 0}
   damageFlashImage: {fileID: 0}
   hpFill: {fileID: 0}
   xpFill: {fileID: 0}
@@ -11873,14 +11885,37 @@ MonoBehaviour:
   dashSpeed: 25
   dashDuration: 0.4
   dashCooldown: 2
+  maxStamina: 100
+  staminaRegen: 22
+  staminaRegenDelay: 0.8
+  dashStaminaCost: 25
+  bonusStamina: 0
   globalDamageMultiplier: 1
   globalCritChance: 0.05
   damageReduction: 0
+  critDamageMultiplier: 2.5
+  lifeStealFraction: 0
+  dodgeChance: 0
+  thornDamageFraction: 0
+  killHealAmount: 0
+  xpGainMultiplier: 1
+  diamondBonusMultiplier: 1
   stackRadius: 7
   stackText: {fileID: 0}
   criticalDamagePerSec: 5
   currentStack: 0
   currentMultiplier: 1
+  perfectDodgeSlowMoScale: 0.4
+  perfectDodgeDuration: 1.5
+  perfectDodgeVFX: {fileID: 0}
+  levelUpVFX: {fileID: 0}
+  stack15VFX: {fileID: 0}
+  stack30VFX: {fileID: 0}
+  healVFX: {fileID: 0}
+  hitVFX: {fileID: 0}
+  isNextAttackGuaranteedCrit: 0
+  isSwimming: 0
+  swimVerticalVelocity: 0
 --- !u!54 &655461266166395312
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -21720,6 +21755,37 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.00000008009374, y: 0.8289515, z: 0.18054582}
     m_Extent: {x: 0.024249343, y: 0.04899022, z: 0.040204585}
   m_DirtyAABB: 0
+--- !u!1 &5758388332805832645
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5397426642421126344}
+  m_Layer: 0
+  m_Name: ShieldSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5397426642421126344
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5758388332805832645}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.3113346, y: -0.037479635, z: -0.9279732, w: 0.20132516}
+  m_LocalPosition: {x: -0.032, y: 0.388, z: -0.015}
+  m_LocalScale: {x: 0.5000001, y: 0.5000003, z: 0.5000003}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4975797141849580067}
+  m_LocalEulerAnglesHint: {x: -11.24, y: 35.011, z: -159.074}
 --- !u!1 &5815521922651154506
 GameObject:
   m_ObjectHideFlags: 0
@@ -26688,6 +26754,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3258232638385485549}
+  - {fileID: 5397426642421126344}
   m_Father: {fileID: 9160013410233629749}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7148160812983033597

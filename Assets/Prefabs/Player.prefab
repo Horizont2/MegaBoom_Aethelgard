@@ -12376,6 +12376,28 @@ MonoBehaviour:
   maxPelvisDrop: 0.6
   maxIkWeight: 1
   smoothSpeed: 15
+--- !u!114 &4820001110000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2945078721770132420}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 231a8a3513dfc5e4088fdf9c768d72da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  silhouetteMaterial: {fileID: 0}
+  silhouetteColour: {r: 0.35, g: 0.72, b: 1, a: 0.75}
+  fadeSpeed: 9
+  foliageLayers:
+    serializedVersion: 2
+    m_Bits: 32768
+  probeRadius: 0.55
+  cameraNearIgnore: 0.4
+  playerNearIgnore: 0.5
+  checksPerSecond: 25
 --- !u!1 &2953466781697178271
 GameObject:
   m_ObjectHideFlags: 0
@@ -30850,7 +30872,7 @@ Transform:
   m_GameObject: {fileID: 8087436968505309921}
   serializedVersion: 2
   m_LocalRotation: {x: -0.3113346, y: -0.037479635, z: -0.9279732, w: 0.20132516}
-  m_LocalPosition: {x: -0.022, y: 0.101, z: 0.036}
+  m_LocalPosition: {x: -0.005, y: 0.101, z: 0.036}
   m_LocalScale: {x: 0.5000001, y: 0.5000003, z: 0.5000003}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -34552,25 +34574,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 104750483815739857, guid: 41494896fc96c9748b81d3356632794e, type: 3}
   m_PrefabInstance: {fileID: 6212149640494345843}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &4820001110000001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2945078721770132420}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 231a8a3513dfc5e4088fdf9c768d72da, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  silhouetteMaterial: {fileID: 0}
-  silhouetteColour: {r: 0.35, g: 0.72, b: 1, a: 0.75}
-  fadeSpeed: 9
-  foliageLayers:
-    serializedVersion: 2
-    m_Bits: 32768
-  probeRadius: 0.55
-  cameraNearIgnore: 0.4
-  playerNearIgnore: 0.5
-  checksPerSecond: 25
