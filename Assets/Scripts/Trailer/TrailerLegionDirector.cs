@@ -138,6 +138,12 @@ public class TrailerLegionDirector : MonoBehaviour
     [Tooltip("Optional dust the marching army drags with it. Parented to the boss and left running.")]
     public GameObject marchDustPrefab;
 
+    [Header("Weather")]
+    [Tooltip("Rain, parented to the camera so it travels with the shot. Assets/VFX Brady Games/Particle Effect/Heavy Rain.prefab is in the project and its material is already on a URP particle shader.")]
+    public GameObject rainPrefab;
+    [Tooltip("How far above the lens the rain volume sits. It has to be high enough that drops are already falling when they enter frame.")]
+    public float rainHeight = 9f;
+
     [Header("Audio")]
     [Tooltip("Play the trailer score and the march bed. Every event is guarded, so a project with these unassigned is silent rather than broken.")]
     public bool playAudio = true;
@@ -190,7 +196,7 @@ public class TrailerLegionDirector : MonoBehaviour
     private Camera cam;
     private float rigIntensity;
     private Color rigColor;
-    private int windHandle = -1, marchHandle = -1;
+    private int windHandle = -1, marchHandle = -1, rainHandle = -1;
 
     // ==== THE CAST IS ACTING IN A FILM, NOT PLAYING THE GAME ====
     //
@@ -234,6 +240,7 @@ public class TrailerLegionDirector : MonoBehaviour
         ApplyLightingRig();
         SpawnLegion();
         SpawnMarchDust();
+        SpawnRain();
         StartAudioBed();
 
         // Nothing was ever telling the boss he was walking.
@@ -415,8 +422,9 @@ public class TrailerLegionDirector : MonoBehaviour
         // wobble mid-stroke and make the cut look like a jump.
         driftSeed = Random.Range(0f, 100f);
         DriveCamera(0f, true);
+        ClearRain();
 
-        if (shotIndex == 1) Sfx(AudioID.Trailer_WarHorn);
+        if (shotIndex == 1) OnReveal();
     }
 
     // ======================================================================
@@ -515,6 +523,29 @@ public class TrailerLegionDirector : MonoBehaviour
         }
     }
 
+    private ParticleSystem[] rainSystems;
+
+    private void SpawnRain()
+    {
+        if (rainPrefab == null || mainCamera == null) return;
+        var rain = Instantiate(rainPrefab, mainCamera.position + Vector3.up * rainHeight, Quaternion.identity, mainCamera);
+        rain.transform.localPosition = new Vector3(0f, rainHeight, 0f);
+        // Level, whatever the camera is doing. A rain volume that inherits a
+        // dutch angle rains sideways.
+        rain.transform.rotation = Quaternion.identity;
+        rainSystems = rain.GetComponentsInChildren<ParticleSystem>(true);
+    }
+
+    // A world-space rain volume attached to a camera that CUTS leaves every
+    // live drop smeared across the new shot. Clearing it on the cut costs one
+    // frame of rain and saves the cut.
+    private void ClearRain()
+    {
+        if (rainSystems == null) return;
+        for (int i = 0; i < rainSystems.Length; i++)
+            if (rainSystems[i] != null) rainSystems[i].Clear(true);
+    }
+
     private void SpawnMarchDust()
     {
         if (marchDustPrefab == null || bossTransform == null) return;
@@ -595,7 +626,7 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         if (mainDirectionalLight == null) yield break;
 
-        Sfx(AudioID.Trailer_RiserToStrike);
+        Cue(AudioID.Trailer_RiserToStrike, AudioID.Enemy_Telegraph);
 
         // Real lightning is not one flash. It is two or three inside a tenth of
         // a second, which is the difference between a light being switched on
@@ -620,25 +651,54 @@ public class TrailerLegionDirector : MonoBehaviour
         // more cheaply than that.
         float delay = Mathf.Max(0.12f, thunderDelay * Mathf.Pow(0.62f, index));
         yield return new WaitForSeconds(delay);
-        Sfx(AudioID.Trailer_ThunderClose);
+        Cue(AudioID.Trailer_ThunderClose, AudioID.Env_Thunder);
     }
 
     // ======================================================================
     //  Audio
     // ======================================================================
 
-    private void Sfx(string id)
+    // ==== EVERY TRAILER EVENT IN THE PROJECT IS EMPTY ====
+    //
+    // All seventeen Trailer_* SoundGroups are declared, registered in the sound
+    // dictionary, and have no FMOD event assigned - so the whole vocabulary the
+    // episode was written against is silent, and will stay silent until someone
+    // authors those events in the FMOD project. Meanwhile there are seventy-
+    // seven events that DO exist, several of which are close enough to carry
+    // the beat today.
+    //
+    // So every cue is a pair: the event it WANTS, and something real behind it.
+    // The episode has a full soundtrack now, and the moment a proper trailer
+    // event is authored it takes over on its own with no code change. A cue
+    // whose fallback is also missing is silent rather than an error.
+    private string Pick(string primary, string fallback)
     {
-        if (!playAudio || AudioManager.Instance == null) return;
-        if (!AudioManager.Instance.HasEvent(id)) return;
-        AudioManager.Instance.PlaySFX(id);
+        var am = AudioManager.Instance;
+        if (am == null) return null;
+        if (!string.IsNullOrEmpty(primary) && am.HasEvent(primary)) return primary;
+        if (!string.IsNullOrEmpty(fallback) && am.HasEvent(fallback)) return fallback;
+        return null;
     }
 
-    private void Sfx3D(string id, Vector3 at)
+    private void Cue(string primary, string fallback = null)
     {
-        if (!playAudio || AudioManager.Instance == null) return;
-        if (!AudioManager.Instance.HasEvent(id)) return;
-        AudioManager.Instance.PlaySFX3D(id, at);
+        if (!playAudio) return;
+        string id = Pick(primary, fallback);
+        if (id != null) AudioManager.Instance.PlaySFX(id);
+    }
+
+    private void Cue3D(string primary, string fallback, Vector3 at)
+    {
+        if (!playAudio) return;
+        string id = Pick(primary, fallback);
+        if (id != null) AudioManager.Instance.PlaySFX3D(id, at);
+    }
+
+    private int Loop(string primary, string fallback, Transform follow)
+    {
+        if (!playAudio || follow == null) return -1;
+        string id = Pick(primary, fallback);
+        return id != null ? AudioManager.Instance.PlayLoopingSFX3D(id, follow) : -1;
     }
 
     // ==== THE EPISODE HAD NO SOUND AT ALL ====
@@ -656,20 +716,94 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         if (!playAudio || AudioManager.Instance == null || mainCamera == null) return;
 
-        if (AudioManager.Instance.HasEvent(AudioID.Trailer_Music))
-            AudioManager.Instance.PlayMusic(AudioID.Trailer_Music);
+        string music = Pick(AudioID.Trailer_Music, AudioID.Music_Battle);
+        if (music != null)
+        {
+            AudioManager.Instance.PlayMusic(music);
+            // The score opens held DOWN. Shot one is meant to be a field, some
+            // rain and something walking towards you; a full trailer cue over
+            // it announces that this is a trailer and removes the only thing
+            // the shot has, which is not knowing yet. It comes up on the cut.
+            AudioManager.Instance.DuckMusicInstance(0.22f, 0.01f);
+        }
 
-        if (AudioManager.Instance.HasEvent(AudioID.Trailer_WindDesolate))
-            windHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Trailer_WindDesolate, mainCamera);
+        windHandle = Loop(AudioID.Trailer_WindDesolate, AudioID.Ambient_Wind, mainCamera);
+        rainHandle = Loop(AudioID.Ambient_Rain, AudioID.Env_Thunder, mainCamera);
 
-        if (AudioManager.Instance.HasEvent(AudioID.Trailer_MarchLoop) && bossTransform != null)
-            marchHandle = AudioManager.Instance.PlayLoopingSFX3D(AudioID.Trailer_MarchLoop, bossTransform);
+        // A single crow over the empty field, before anything else happens.
+        // It is the cheapest way to say "this place was already dead".
+        StartCoroutine(DelayedCue(0.55f, AudioID.Trailer_Crows, AudioID.Ambient_Crow));
+    }
+
+    private IEnumerator DelayedCue(float delay, string primary, string fallback)
+    {
+        yield return new WaitForSeconds(delay);
+        Cue(primary, fallback);
+    }
+
+    // The reveal cut. Everything that was being held back arrives at once.
+    private void OnReveal()
+    {
+        Cue(AudioID.Trailer_WarHorn, AudioID.Boss_Roar);
+        Cue(AudioID.Trailer_HordeGrowl, AudioID.Enemy_Agro);
+        if (playAudio && AudioManager.Instance != null) AudioManager.Instance.UnduckMusicInstance(1.2f);
+        marchAudible = true;
+    }
+
+    // ==== A MARCH IS NOT A LOOP ====
+    //
+    // Trailer_MarchLoop does not exist, and a single looping stomp under three
+    // hundred men would be the wrong answer even if it did: it plays from one
+    // point, it repeats on a fixed period, and the ear finds the seam in about
+    // four seconds.
+    //
+    // Footfalls are scattered through the formation instead - a handful a
+    // second, each from a DIFFERENT soldier's actual position. It is
+    // spatialised, it never repeats, it gets denser as the camera closes on
+    // them because the near ranks are louder, and it costs nothing to author.
+    private bool marchAudible;
+    private float marchStepTimer;
+
+    private void UpdateMarchFootfalls(float dt)
+    {
+        if (!marchAudible || !isArmyMarching || legion.Count == 0) return;
+        if (!playAudio || AudioManager.Instance == null) return;
+
+        marchStepTimer -= dt;
+        if (marchStepTimer > 0f) return;
+        marchStepTimer = Random.Range(0.11f, 0.2f);
+
+        var s = legion[Random.Range(0, legion.Count)];
+        if (s.t == null) return;
+        Cue3D(AudioID.Trailer_MarchLoop, AudioID.Enemy_Footstep, s.t.position);
+
+        // And, rarely, bone on bone from somewhere in the mass.
+        if (Random.value < 0.12f)
+        {
+            var b = legion[Random.Range(0, legion.Count)];
+            if (b.t != null) Cue3D(AudioID.Trailer_BoneRattle, AudioID.Enemy_Spawn, b.t.position);
+        }
+    }
+
+    // Clears the field for the climax: the march stops being audible, the beds
+    // fade, and the music goes to nothing. Deliberately NOT StopAudioBed - the
+    // handles are released here on purpose so the impact has nothing under it.
+    private void DropOut()
+    {
+        marchAudible = false;
+        if (!playAudio || AudioManager.Instance == null) return;
+
+        AudioManager.Instance.DuckMusicInstance(0f, 0.18f);
+        if (windHandle != -1) { AudioManager.Instance.StopLoopingSFX(windHandle, 0.3f); windHandle = -1; }
+        if (rainHandle != -1) { AudioManager.Instance.StopLoopingSFX(rainHandle, 0.3f); rainHandle = -1; }
     }
 
     private void StopAudioBed()
     {
         if (AudioManager.Instance == null) return;
+        marchAudible = false;
         if (windHandle != -1) { AudioManager.Instance.StopLoopingSFX(windHandle, 0.5f); windHandle = -1; }
+        if (rainHandle != -1) { AudioManager.Instance.StopLoopingSFX(rainHandle, 0.5f); rainHandle = -1; }
         if (marchHandle != -1) { AudioManager.Instance.StopLoopingSFX(marchHandle, 0.5f); marchHandle = -1; }
     }
 
@@ -717,7 +851,7 @@ public class TrailerLegionDirector : MonoBehaviour
                 stepImpulse = stepShakeIntensity;
                 if (bossTransform != null)
                 {
-                    Sfx3D(AudioID.Trailer_BossStep, bossTransform.position);
+                    Cue3D(AudioID.Trailer_BossStep, AudioID.Enemy_Footstep, bossTransform.position);
                     if (stepDustPrefab != null)
                         Destroy(Instantiate(stepDustPrefab, bossTransform.position, Quaternion.identity), 4f);
                 }
@@ -733,6 +867,8 @@ public class TrailerLegionDirector : MonoBehaviour
             StartCoroutine(LightningStrike(nextLightning));
             nextLightning++;
         }
+
+        UpdateMarchFootfalls(dt);
 
         if (cameraDriven)
         {
@@ -815,6 +951,19 @@ public class TrailerLegionDirector : MonoBehaviour
             bossAnimator.SetTriggerSafe("Throw");
         }
 
+        // ==== THE LOUDEST THING AVAILABLE IS SILENCE ====
+        //
+        // Everything has been building - score, rain, wind, three hundred pairs
+        // of feet - and the temptation at the climax is to add to it. The
+        // opposite is stronger. The bed drops out as his arm goes back, a riser
+        // fills the gap, and then the riser stops too: the axe crosses the last
+        // ten metres in near-total silence, and the impact lands in a vacuum.
+        //
+        // It costs nothing, it needs no new audio authored, and it is the
+        // difference between an ending that is loud and one that hits.
+        DropOut();
+        Cue(AudioID.Trailer_RiserToStrike, AudioID.Enemy_Telegraph);
+
         StartCoroutine(StopArmyWithInertia());
 
         // Slow motion is a ramp, not a switch. Snapping timeScale from 1 to
@@ -834,7 +983,7 @@ public class TrailerLegionDirector : MonoBehaviour
 
         yield return StartCoroutine(RampTimeScale(1f, 0.08f));
 
-        Sfx(AudioID.Trailer_Whoosh);
+        Cue(AudioID.Trailer_Whoosh, AudioID.Cinematic_Whoosh);
         if (bossWeapon != null) bossWeapon.parent = null;
         StartCoroutine(WeaponFlightRoutine());
     }
@@ -864,7 +1013,7 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(0.3f);
         isArmyMarching = false;
-        Sfx(AudioID.Trailer_BoneRattle);
+        Cue(AudioID.Trailer_BoneRattle, AudioID.Enemy_Spawn);
 
         float t = 0f;
         const float settle = 0.32f;
@@ -962,7 +1111,8 @@ public class TrailerLegionDirector : MonoBehaviour
         // ROTATIONAL kick. A translation alone reads as the camera being
         // nudged; a camera that is struck rolls.
         Time.timeScale = 0f;
-        Sfx(AudioID.Trailer_Impact);
+Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
+        Cue(AudioID.Env_StoneBreak, null);
 
         if (mainCamera != null)
         {
