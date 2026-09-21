@@ -155,6 +155,31 @@ public class TrailerLegionDirector : MonoBehaviour
     [Tooltip("Child emitters whose name contains this are switched off. The rain prefab ships with a 'Splash' system that bursts a droplet wherever a drop lands - authored for a shot looking at a puddle, and at a legion's distance it is just speckle over the whole frame.")]
     public string rainSplashFilter = "Splash";
 
+    [Header("Animator (EnemyAnimator.controller)")]
+    // ==== IT WAS PLAYING A STATE AND A TRIGGER THAT DO NOT EXIST ====
+    //
+    // The shared EnemyAnimator has exactly these parameters - isMoving, Die,
+    // Attack, Hit, Stagger, IsRanged, Aim - and these states: Idle_A,
+    // Running_A, Attack, Bow_Attack, Hit_A, Death_A, Dizzy.
+    //
+    // There is no "Walk" state, so Animator.Play("Walk") on three hundred
+    // minions did nothing at all and the entire legion slid forward standing in
+    // Idle_A. And there is no "Throw" trigger, so the boss's throw never fired
+    // either - which is the other half of why he was walking in his idle: not
+    // only was nothing telling him to move, the one thing he was told to do was
+    // addressed to a parameter the controller has never had.
+    //
+    // Names are fields because a rig swap should be an inspector edit, not a
+    // hunt through a crowd script for a hard-coded string.
+    [Tooltip("The bool that moves the shared enemy animator out of its idle.")]
+    public string movingBool = "isMoving";
+    [Tooltip("The locomotion STATE, played directly so each rank can be given its own phase in the cycle.")]
+    public string walkState = "Running_A";
+    [Tooltip("Preferred throw trigger. Falls back below when the controller has no such parameter.")]
+    public string throwTrigger = "Throw";
+    [Tooltip("What the boss does instead when there is no throw animation. EnemyAnimator only has Attack.")]
+    public string throwFallbackTrigger = "Attack";
+
     [Header("Audio")]
     [Tooltip("Play the trailer score and the march bed. Every event is guarded, so a project with these unassigned is silent rather than broken.")]
     public bool playAudio = true;
@@ -227,13 +252,27 @@ public class TrailerLegionDirector : MonoBehaviour
     private static void StripGameplay(GameObject go)
     {
         if (go == null) return;
-        foreach (var b in go.GetComponentsInChildren<TutorialBossAI>(true)) if (b != null) b.enabled = false;
-        foreach (var e in go.GetComponentsInChildren<EnemyAI>(true)) if (e != null) e.enabled = false;
-        foreach (var a in go.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true)) if (a != null) a.enabled = false;
+
+        // ==== DISABLING AN AI IS NOT THE SAME AS REMOVING IT ====
+        //
+        // This used to set `enabled = false` on EnemyAI and TutorialBossAI, and
+        // that is why the aggro barks and the minimap dots survived it. Awake
+        // and OnEnable have ALREADY RUN by the time an instantiated object can
+        // be touched - the minimap renderer is created in there - and a
+        // coroutine started in one of them keeps running after its component is
+        // disabled. Disabling only stops Update.
+        //
+        // TrailerPuppet has solved this properly for a while: DestroyImmediate,
+        // so the component is gone before its Start can register anything, plus
+        // the two entries every reimplementation forgets - the runtime
+        // MinimapOnly renderer and the world-space health canvas. Borrowing it
+        // rather than writing a fourth version of the same list.
+        TrailerPuppet.Strip(go);
+
+        // Not in that list, because puppets there have no controller: three
+        // hundred bodies standing in each other's laps shove each other out of
+        // formation if anything is solid.
         foreach (var c in go.GetComponentsInChildren<CharacterController>(true)) if (c != null) c.enabled = false;
-        // Three hundred bodies standing in each other's laps will push each
-        // other out of formation if anything is solid.
-        foreach (var col in go.GetComponentsInChildren<Collider>(true)) if (col != null) col.enabled = false;
     }
 
     // Awake, not Start: a component that is disabled before the first frame
@@ -248,6 +287,7 @@ public class TrailerLegionDirector : MonoBehaviour
         cam = mainCamera != null ? mainCamera.GetComponent<Camera>() : null;
         if (shots == null || shots.Length == 0) shots = BuildDefaultShots();
 
+        HideMinimapLayers();
         ApplyLightingRig();
         SpawnLegion();
         SpawnMarchDust();
@@ -255,7 +295,11 @@ public class TrailerLegionDirector : MonoBehaviour
         StartAudioBed();
 
         // Nothing was ever telling the boss he was walking.
-        if (bossAnimator != null) bossAnimator.SetBoolSafe("isMoving", true);
+        if (bossAnimator != null)
+        {
+            bossAnimator.SetBoolSafe(movingBool, true);
+            if (!string.IsNullOrEmpty(walkState)) bossAnimator.Play(walkState, 0, Random.value);
+        }
 
         driftSeed = Random.Range(0f, 100f);
         // Frame the first shot before anything renders, so the episode does not
@@ -263,6 +307,28 @@ public class TrailerLegionDirector : MonoBehaviour
         DriveCamera(0f, true);
 
         StartCoroutine(CinematicRoutine());
+    }
+
+    // ==== THE MINIMAP DRAWS INTO ANY CAMERA THAT WILL HAVE IT ====
+    //
+    // Enemy markers are not a component that can be removed per prefab - they
+    // are a RENDER LAYER. EnemyAI builds a dedicated renderer on MinimapOnly at
+    // runtime, and the boss prefab carries a MiniMapIcon child on that layer as
+    // well. Stripping them off each body works, and it only works for bodies
+    // this director happens to create.
+    //
+    // The camera is the single place that settles it: a cinematic camera has no
+    // business rendering the minimap's layers at all, so it stops being asked
+    // to. Anything added to the scene later is covered for free.
+    private void HideMinimapLayers()
+    {
+        if (cam == null) return;
+        int only = LayerMask.NameToLayer("MinimapOnly");
+        int gfx = LayerMask.NameToLayer("MinimapGraphics");
+        int mask = cam.cullingMask;
+        if (only >= 0) mask &= ~(1 << only);
+        if (gfx >= 0) mask &= ~(1 << gfx);
+        cam.cullingMask = mask;
     }
 
     private void OnDisable()
@@ -521,7 +587,8 @@ public class TrailerLegionDirector : MonoBehaviour
                     // together and successive ranks lag.
                     float phase = (rank * 0.16f + Random.Range(-0.04f, 0.04f)) % 1f;
                     if (phase < 0f) phase += 1f;
-                    s.anim.Play("Walk", 0, phase);
+                    s.anim.SetBoolSafe(movingBool, true);
+                    if (!string.IsNullOrEmpty(walkState)) s.anim.Play(walkState, 0, phase);
                     s.anim.speed = sc;
                 }
 
@@ -1045,8 +1112,8 @@ public class TrailerLegionDirector : MonoBehaviour
         isBossMarching = false;
         if (bossAnimator != null)
         {
-            bossAnimator.SetBoolSafe("isMoving", false);
-            bossAnimator.SetTriggerSafe("Throw");
+            bossAnimator.SetBoolSafe(movingBool, false);
+            TriggerThrow(bossAnimator);
         }
 
         // ==== THE LOUDEST THING AVAILABLE IS SILENCE ====
@@ -1084,6 +1151,26 @@ public class TrailerLegionDirector : MonoBehaviour
         Cue(AudioID.Trailer_Whoosh, AudioID.Cinematic_Whoosh);
         if (bossWeapon != null) bossWeapon.parent = null;
         StartCoroutine(WeaponFlightRoutine());
+    }
+
+    // Prefer a real throw animation; take a swing if the controller has none.
+    // SetTriggerSafe alone would have silently done nothing, which is exactly
+    // what it was doing.
+    private void TriggerThrow(Animator a)
+    {
+        if (a == null) return;
+        if (HasParam(a, throwTrigger)) { a.SetTrigger(throwTrigger); return; }
+        if (HasParam(a, throwFallbackTrigger)) { a.SetTrigger(throwFallbackTrigger); return; }
+        Debug.LogWarning($"[TrailerLegion] The boss animator has neither '{throwTrigger}' nor " +
+                         $"'{throwFallbackTrigger}', so he releases the axe without an animation.", this);
+    }
+
+    private static bool HasParam(Animator a, string name)
+    {
+        if (a == null || string.IsNullOrEmpty(name) || a.runtimeAnimatorController == null) return false;
+        var ps = a.parameters;
+        for (int i = 0; i < ps.Length; i++) if (ps[i].name == name) return true;
+        return false;
     }
 
     private IEnumerator RampTimeScale(float target, float duration)

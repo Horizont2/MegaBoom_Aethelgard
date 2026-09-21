@@ -67,8 +67,19 @@ public class TrailerPuppet : MonoBehaviour
     // canvas on — so a "destroyed" AI would still spend one frame doing all the
     // things this method exists to prevent, on a puppet that is about to be
     // filmed. Removing it immediately means that Start never runs at all.
-    private static void Strip(GameObject go)
+    // Public so a director that drives its own crowd can borrow it without
+    // reimplementing the list - and every reimplementation of this list has so
+    // far missed the same two entries, the runtime minimap renderer and the
+    // health canvas, which are exactly the two that show up on camera.
+    public static void Strip(GameObject go)
     {
+        if (go == null) return;
+
+        // A boss carries a different brain, and its Start is the one that puts
+        // the BOSS HEALTH BAR on screen - over the trailer.
+        foreach (var boss in go.GetComponentsInChildren<TutorialBossAI>(true))
+            if (boss != null) DestroyImmediate(boss);
+
         // Read what the AI knows before taking it away.
         GameObject healthCanvas = null;
         var ai = go.GetComponent<EnemyAI>();
