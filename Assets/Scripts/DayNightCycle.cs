@@ -91,6 +91,22 @@ public class DayNightCycle : MonoBehaviour
 
     private bool IsWinter => winterLighting && currentBiome == 2;
 
+    [Header("Volumetric fog")]
+    [Tooltip("When a Pure Volumetric Fog is in the scene, switch Unity's built-in fog OFF so the two do not render on top of each other. The volumetric fog still takes its colour from the day/night cycle. Uncheck to go back to both.")]
+    public bool suppressBuiltInFogWhenVolumetric = true;
+
+    private bool _volumetricFogActive;
+
+    // Found by name so this compiles whether or not the fog package is in the
+    // project — it lives in its own assembly, and a hard reference would make
+    // DayNightCycle fail to build for anyone who removes it.
+    private static bool VolumetricFogPresent()
+    {
+        System.Type t = System.Type.GetType("BKPureNature.PureVolumetricFog, BKPureNature.PureVolumetricFog");
+        if (t == null) return false;
+        return Object.FindFirstObjectByType(t) != null;
+    }
+
     [Header("Night readability")]
     [Tooltip("How much of the light a storm leaves at MIDDAY. 0.2 = a dark, heavy storm.")]
     [Range(0.05f, 1f)] public float stormDimAtDay = 0.2f;
@@ -165,10 +181,30 @@ public class DayNightCycle : MonoBehaviour
         if (currentScene != "Lvl_1" && PlayerPrefs.HasKey("SavedTimeOfDay"))
             timeOfDay = PlayerPrefs.GetFloat("SavedTimeOfDay") * 24f;
 
-        RenderSettings.fog = true;
+        // ==== TWO FOGS IN ONE SCENE ====
+        //
+        // The scene now carries Pure Volumetric Fog, which raymarches its own
+        // ground fog and — with Follow Scene Fog Colour on — takes its base
+        // colour from RenderSettings.fogColor. That is the right setup, and the
+        // day/night tinting below drives it for free.
+        //
+        // What is NOT right is this line, which also switches Unity's built-in
+        // linear fog ON. Both then render: a flat distance haze laid over the
+        // volumetric pass, washing out exactly the depth and the shafts the
+        // volumetric fog exists to produce, and thickening the far distance
+        // twice over. (The winter fogDensity boost further down has been dead
+        // this whole time for the same reason — FogMode.Linear ignores density.)
+        //
+        // The colour keeps being written either way; only the built-in RENDER
+        // is stood down, and only when a volumetric fog is actually present.
+        _volumetricFogActive = suppressBuiltInFogWhenVolumetric && VolumetricFogPresent();
+        RenderSettings.fog = !_volumetricFogActive;
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogStartDistance = fogStartDistance;
         RenderSettings.fogEndDistance = fogEndDistance;
+        if (_volumetricFogActive)
+            Debug.Log("[DayNightCycle] Pure Volumetric Fog found — the built-in linear fog is off so the two do " +
+                      "not stack. Uncheck 'Suppress Built In Fog When Volumetric' to get the old behaviour back.");
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
         if (lightningLight != null) lightningLight.intensity = 0f;

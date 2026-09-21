@@ -10292,7 +10292,7 @@ MonoBehaviour:
   noiseSeed: 1337
   largeNoiseScale: 800
   detailNoiseScale: 120
-  noiseAmount: 0
+  noiseAmount: 0.4
   noiseFloor: 0
   noiseContrast: 1.5
   noiseStrength: 3
@@ -10307,8 +10307,8 @@ MonoBehaviour:
   maximumRaySteps: 28
   minimumRaySteps: 7
   targetStepLength: 105
-  maximumFogDistance: 4500
-  nearFadeDistance: 100
+  maximumFogDistance: 1200
+  nearFadeDistance: 25
   farFadeStart: 0
   fogColor: {r: 0.63, g: 0.7, b: 0.76, a: 1}
   followSceneFogColor: 1
@@ -10318,7 +10318,7 @@ MonoBehaviour:
   ambientShadowStrength: 0.7
   sunStrength: 1
   sunScattering: 0.5
-  anisotropy: 0.01
+  anisotropy: 0.45
   directionalLight: {fileID: 410087040}
   rayJitterStrength: 1
   noiseMipBias: 0.5
@@ -10328,7 +10328,7 @@ MonoBehaviour:
   terrainCastsFogShadows: 1
   useUnityRealtimeShadows: 1
   shadowStrength: 0.7
-  shadowDistance: 900
+  shadowDistance: 250
   terrainShadowBias: 0
   fogSelfShadowStrength: 2.25
 --- !u!1 &343362065
