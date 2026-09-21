@@ -339,6 +339,7 @@ MonoBehaviour:
   impactFadeColor: {r: 0, g: 0, b: 0, a: 1}
   impactFadeDuration: 0.14
   holdBlackDuration: 0.35
+  mapCurse: {fileID: 1900100032}
   onEpisodeFinished:
     m_PersistentCalls:
       m_Calls: []
@@ -2118,10 +2119,57 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 7489123634373202801, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
   m_PrefabInstance: {fileID: 1544163601}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1900100030
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900100031}
+  - component: {fileID: 1900100032}
+  m_Layer: 0
+  m_Name: MapCurse
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1900100031
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900100030}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1900100032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900100030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbc0b81add4d40fd96e90541a334c29d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mapSprite: {fileID: 21300000, guid: 2ad1867a81085a14fa46c3d36907a88e, type: 3}
+  curseSmokePrefab: {fileID: 2886950366143268859, guid: 253510ecf8d65454aa4d811cffb5a8f8, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 1900100031}
   - {fileID: 1900100003}
   - {fileID: 30491524}
   - {fileID: 442585518}

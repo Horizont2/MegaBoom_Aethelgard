@@ -294,6 +294,9 @@ public class TrailerLegionDirector : MonoBehaviour
     public float holdBlackDuration = 0.35f;
     public UnityEngine.Events.UnityEvent onEpisodeFinished;
 
+    [Tooltip("Optional closing beat: the map of Aethelgard, and the curse taking all of it. Runs after the axe hits the lens. Leave empty and the episode ends on the smash to black exactly as before.")]
+    public TrailerMapCurse mapCurse;
+
     // ---- runtime ------------------------------------------------------------
 
     private class Soldier
@@ -1949,6 +1952,35 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
         StopAudioBed();
 
         yield return new WaitForSecondsRealtime(holdBlackDuration);
+
+        // ==== AND THEN THE MAP ====
+        //
+        // Everything below happens behind the same black the smash left up: the
+        // map is built, the lens is placed square on it, and the roll it still
+        // carries from being hit is set. Only then does the veil lift, so the
+        // shot OPENS on a map that is already standing there. The alternative is
+        // a frame or two of one arriving, which is the one thing that would read
+        // as a menu being opened rather than as a reveal.
+        if (mapCurse != null && mapCurse.Prepare(mainCamera))
+        {
+            yield return StartCoroutine(LiftVeil());
+            yield return StartCoroutine(mapCurse.Run(mainCamera));
+
+            // Back to black on the way out, so whatever follows this episode
+            // starts from the same place the march did.
+            EnsureVeil();
+            float f = 0f;
+            while (f < 1f && veil != null)
+            {
+                f += Time.unscaledDeltaTime / Mathf.Max(0.01f, blackoutOut);
+                veil.alpha = Mathf.Clamp01(f);
+                yield return null;
+            }
+            if (veil != null) veil.alpha = 1f;
+            mapCurse.Cleanup();
+            yield return new WaitForSecondsRealtime(holdBlackDuration);
+        }
+
         onEpisodeFinished?.Invoke();
     }
 
