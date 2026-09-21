@@ -59,6 +59,29 @@ public class TrailerMapCurse : MonoBehaviour
     [Tooltip("Seconds held on the fully cursed map before the episode ends.")]
     public float holdAfter = 1.4f;
 
+    [Header("Where it is filmed")]
+    // ==== THE MAP CANNOT BE FILMED WHERE THE MARCH IS ====
+    //
+    // The first version built the plane in front of wherever the camera was
+    // standing - which, at the end of the march, is in the middle of three
+    // hundred skeletons, on a night field, inside a volumetric fog volume that
+    // is thirty-four metres tall and deliberately thick enough to swallow
+    // ranks at fifty metres. The map came out buried: fogged, dark, with bodies
+    // in front of it.
+    //
+    // None of that is fixable by moving the plane a bit further forward. It is
+    // a different shot and it needs a different place: the whole beat is staged
+    // far above the terrain, outside the fog volume and away from everything
+    // else in the scene, with the camera clearing to flat colour so not one
+    // pixel of the march can appear behind it. A void, in other words, which is
+    // exactly what a map floating in front of you should be standing in.
+    [Tooltip("Where the beat is staged, in world space. Well above the terrain and outside the fog volume - nothing else is up there.")]
+    public Vector3 stagePosition = new Vector3(0f, 4000f, 0f);
+    [Tooltip("What the lens clears to behind the map. Flat, so nothing of the scene can show through.")]
+    public Color voidColor = new Color(0.02f, 0.02f, 0.03f, 1f);
+    [Tooltip("Switch the volumetric fog off for the beat. The stage is outside its volume anyway; this is the belt to that pair of braces.")]
+    public bool disableVolumetricFog = true;
+
     [Header("Audio")]
     public bool playAudio = true;
 
@@ -66,6 +89,14 @@ public class TrailerMapCurse : MonoBehaviour
     private Image mapImage;
     private Canvas canvas;
     private readonly List<GameObject> spawned = new List<GameObject>();
+
+    // Everything borrowed from the camera for the beat, put back in Cleanup.
+    private CameraClearFlags prevClear;
+    private Color prevBackground;
+    private float prevFov;
+    private Camera cachedCam;
+    private Behaviour fogComponent;
+    private readonly List<ParticleSystem> pausedOnCamera = new List<ParticleSystem>();
 
     // Built and framed while the screen is still black, so the shot opens on a
     // map that is already there rather than on one arriving.
@@ -104,23 +135,53 @@ public class TrailerMapCurse : MonoBehaviour
         irt.anchorMax = Vector2.one;
         irt.offsetMin = irt.offsetMax = Vector2.zero;
 
-        // Square on to the lens. A map seen at an angle is a table; a map seen
-        // square is a statement.
-        Vector3 forward = cam.forward;
-        forward.y = 0f;
-        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
-        forward.Normalize();
-
-        mapRect.position = cam.position + forward * startDistance;
+        // Staged in the void, at a fixed orientation. Deliberately independent
+        // of where the camera was standing when the axe landed - that position
+        // is in the middle of the legion and has nothing to offer this shot.
+        Vector3 forward = Vector3.forward;
+        mapRect.position = stagePosition;
         mapRect.rotation = Quaternion.LookRotation(forward, Vector3.up);
 
-        // The lens is level and square on the map from the first frame; the
-        // roll below is the only thing left over from being hit.
-        cam.position = mapRect.position - forward * startDistance;
+        // Square on to the lens. A map seen at an angle is a table; a map seen
+        // square is a statement. The roll is the only thing left over from
+        // being hit, and it bleeds out over the approach.
+        cam.position = stagePosition - forward * startDistance;
         cam.rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, 0f, settleRoll);
 
-        var c = cam.GetComponent<Camera>();
-        if (c != null) c.fieldOfView = fieldOfView;
+        cachedCam = cam.GetComponent<Camera>();
+        if (cachedCam != null)
+        {
+            prevFov = cachedCam.fieldOfView;
+            prevClear = cachedCam.clearFlags;
+            prevBackground = cachedCam.backgroundColor;
+
+            cachedCam.fieldOfView = fieldOfView;
+            cachedCam.clearFlags = CameraClearFlags.SolidColor;
+            cachedCam.backgroundColor = voidColor;
+        }
+
+        // The rain is parented to the camera, so without this it follows the
+        // lens into the void and rains on the map.
+        pausedOnCamera.Clear();
+        foreach (var ps in cam.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (ps == null || !ps.gameObject.activeSelf) continue;
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ps.gameObject.SetActive(false);
+            pausedOnCamera.Add(ps);
+        }
+
+        // Found by name so this compiles with or without the fog package.
+        if (disableVolumetricFog)
+        {
+            System.Type ft = System.Type.GetType("BKPureNature.PureVolumetricFog, BKPureNature.PureVolumetricFog");
+            if (ft != null)
+            {
+                fogComponent = cam.GetComponent(ft) as Behaviour;
+                if (fogComponent == null) fogComponent = FindFirstObjectByType(ft) as Behaviour;
+                if (fogComponent != null) fogComponent.enabled = false;
+            }
+        }
 
         return true;
     }
@@ -235,6 +296,21 @@ public class TrailerMapCurse : MonoBehaviour
         canvas = null;
         mapRect = null;
         mapImage = null;
+
+        // Hand the camera back exactly as it was borrowed. The episode may not
+        // be the last thing this scene ever plays.
+        if (cachedCam != null)
+        {
+            cachedCam.fieldOfView = prevFov;
+            cachedCam.clearFlags = prevClear;
+            cachedCam.backgroundColor = prevBackground;
+            cachedCam = null;
+        }
+        for (int i = 0; i < pausedOnCamera.Count; i++)
+            if (pausedOnCamera[i] != null) pausedOnCamera[i].gameObject.SetActive(true);
+        pausedOnCamera.Clear();
+
+        if (fogComponent != null) { fogComponent.enabled = true; fogComponent = null; }
     }
 
     private void Cue(string primary, string fallback)
