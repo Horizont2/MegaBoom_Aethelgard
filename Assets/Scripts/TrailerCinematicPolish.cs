@@ -196,12 +196,29 @@ public class TrailerCinematicPolish : MonoBehaviour
         _ramp = null;
     }
 
+    // The project's own fixed step, captured before anything scales it. Hard-coding
+    // 0.02 here put the step back to Unity's default rather than to whatever the
+    // project is actually set to, every time a ramp ended.
+    private static float s_baseFixedDelta = -1f;
+
+    // How far the fixed step may be shortened. A time ramp wants physics to stay
+    // smooth while the world slows down, but the naive version scaled the step by
+    // timeScale directly: at 0.32 that is a 0.0064 second step — a hundred and
+    // fifty physics ticks a second. Land that on the one frame the statue bursts
+    // and drops twenty rigid bodies into the scene and PhysX cannot finish a tick
+    // inside a frame, so Unity runs more ticks to catch up, and that is a spiral
+    // the editor does not come out of. Half the step is all the smoothness this
+    // is really buying.
+    private const float MinScaleForPhysics = 0.5f;
+
     private static void SetScale(float s)
     {
+        if (s_baseFixedDelta <= 0f) s_baseFixedDelta = Time.fixedDeltaTime;
+
         Time.timeScale = s;
         // Keep physics stepping in proportion, or a slow beat also makes physics
-        // coarse and the fall visibly stutters.
-        Time.fixedDeltaTime = 0.02f * Mathf.Max(0.05f, s);
+        // coarse and the fall visibly stutters — but never faster than twice.
+        Time.fixedDeltaTime = s_baseFixedDelta * Mathf.Clamp(s, MinScaleForPhysics, 1f);
     }
 
     // ── Post punch ───────────────────────────────────────────────────────
@@ -231,25 +248,49 @@ public class TrailerCinematicPolish : MonoBehaviour
     public void ImpactPunch(float strength = 1f, float duration = 0.45f)
     {
         ResolvePost();
-        StartCoroutine(PunchRoutine(strength, duration));
+
+        // ==== PUNCHES OVERLAP, AND THEY USED TO RATCHET ====
+        //
+        // Every fracture fires one of these, so during the build there are always
+        // two or three running at once. Each used to read the vignette's CURRENT
+        // value as its rest point and restore it on the way out — so a punch that
+        // started while another was at its peak took that peak as "rest" and left
+        // it there. Ten cracks in, the vignette is pinned near 1 and the frame is
+        // a black tunnel that never opens again.
+        //
+        // The rest value is now captured ONCE, and overlapping punches share one
+        // routine: a new punch raises the level, it decays from wherever it is.
+        if (!_punchRestCaptured)
+        {
+            _punchRestCaptured = true;
+            _vignetteRest = _vignette != null ? _vignette.intensity.value : 0f;
+            _caRest = _ca != null ? _ca.intensity.value : 0f;
+        }
+
+        _punchLevel = Mathf.Max(_punchLevel, strength);
+        _punchDecay = 1f / Mathf.Max(0.05f, duration);
+        if (_punch == null) _punch = StartCoroutine(PunchRoutine());
     }
 
-    private IEnumerator PunchRoutine(float strength, float duration)
-    {
-        float v0 = _vignette != null ? _vignette.intensity.value : 0f;
-        float c0 = _ca != null ? _ca.intensity.value : 0f;
+    private Coroutine _punch;
+    private bool _punchRestCaptured;
+    private float _vignetteRest, _caRest, _punchLevel, _punchDecay;
 
-        float t = 0f;
-        while (t < duration)
+    private IEnumerator PunchRoutine()
+    {
+        while (_punchLevel > 0.001f)
         {
-            t += Time.unscaledDeltaTime;
-            float k = 1f - Mathf.Clamp01(t / duration);
-            float e = k * k;                    // sharp attack, soft tail
-            if (_vignette != null) _vignette.intensity.Override(Mathf.Clamp01(v0 + 0.32f * strength * e));
-            if (_ca != null) _ca.intensity.Override(Mathf.Clamp01(c0 + 0.55f * strength * e));
+            float e = _punchLevel * _punchLevel;          // sharp attack, soft tail
+            if (_vignette != null) _vignette.intensity.Override(Mathf.Clamp01(_vignetteRest + 0.32f * e));
+            if (_ca != null) _ca.intensity.Override(Mathf.Clamp01(_caRest + 0.55f * e));
+
             yield return null;
+            _punchLevel -= _punchDecay * Time.unscaledDeltaTime;
         }
-        if (_vignette != null) _vignette.intensity.Override(v0);
-        if (_ca != null) _ca.intensity.Override(c0);
+
+        _punchLevel = 0f;
+        if (_vignette != null) _vignette.intensity.Override(_vignetteRest);
+        if (_ca != null) _ca.intensity.Override(_caRest);
+        _punch = null;
     }
 }

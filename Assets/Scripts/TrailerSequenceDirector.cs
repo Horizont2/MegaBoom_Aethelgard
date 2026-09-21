@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Splines;
@@ -51,11 +52,32 @@ public class TrailerSequenceDirector : MonoBehaviour
     [Tooltip("Slow drift in yaw across the reveal, in degrees. A crane that only goes straight up looks mechanical; a few degrees of turn makes it feel operated.")]
     public float craneYawDrift = 7f;
 
+    [Header("Where the shot ends")]
+    // ==== THE RIDE IS ONE SHOT, NOT TWO ====
+    //
+    // This director was written to play the whole trailer end to end, so after
+    // the crane reveal it cut to spline_p3 and ran PART 2 — the rider thrown,
+    // the fall, the skeletons. That is a separate beat with its own cut, and
+    // nobody watching "the ride through the forest" asked for it: the shot is
+    // the gallop and the crane lifting off it, and it should hand over there.
+    //
+    // With this on, Part 2 is not merely skipped at the end — its rig is never
+    // brought up at all, so the terrain it carries is never activated and the
+    // cost that used to buy the hand-off is not paid either.
+    [Tooltip("End the shot on the crane reveal instead of cutting to Part 2 (the fall and the skeletons). Set by the Lore Trailer launcher for the ride shot.")]
+    public bool endAfterCrane;
+    [Tooltip("Seconds the crane holds on the region after the rise finishes, before the shot fades out. Only used when End After Crane is on.")]
+    public float craneHoldSeconds = 1.6f;
+    [Tooltip("Seconds of fade to black that close the shot. Only used when End After Crane is on.")]
+    public float craneOutFade = 1.2f;
+
+    public bool IsFinished { get; private set; }
+
     [Header("Horse hand-off")]
     [Tooltip("Seconds into the time-lapse after which the horse is hidden and moved to spline_p3. Without this he visibly pops across the map while the crane is watching.")]
     public float hideHorseAfter = 2.2f;
 
-    private enum Phase { Part1, Timelapse, Part2 }
+    private enum Phase { Part1, Timelapse, Part2, Ending }
     private Phase _phase = Phase.Part1;
     private float _tlT;
     private CinemachineCamera _crane;
@@ -104,13 +126,23 @@ public class TrailerSequenceDirector : MonoBehaviour
         // Duplicate rigs from earlier tool runs are still deactivated outright:
         // those are not going to be filmed and paying for their terrain would be
         // the same mistake for no reason.
-        foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig"))
-            if (g != part2Rig) g.SetActive(false);
-
-        if (part2Rig != null)
+        if (endAfterCrane)
         {
-            part2Rig.SetActive(true);
-            ParkRigCameras(part2Rig);
+            // Nothing from Part 2 is filmed, so nothing from Part 2 is paid for.
+            foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig")) g.SetActive(false);
+            part2Rig = null;
+            part2Spline = null;
+        }
+        else
+        {
+            foreach (var g in TrailerFind.AllByName("LoreTrailer_Part2_Rig"))
+                if (g != part2Rig) g.SetActive(false);
+
+            if (part2Rig != null)
+            {
+                part2Rig.SetActive(true);
+                ParkRigCameras(part2Rig);
+            }
         }
 
         // Seasons are OURS from the start and HELD at summer, so the world never
@@ -209,14 +241,43 @@ public class TrailerSequenceDirector : MonoBehaviour
                 if (!_horseParked && _tlT >= hideHorseAfter) ParkHorseForPart2();
                 float f = timelapseSeconds > 0.01f ? Mathf.Clamp01(_tlT / timelapseSeconds) : 1f;
                 DriveTimelapse(f);
-                if (f >= 1f) BeginPart2();
+                if (f >= 1f) { if (endAfterCrane) BeginCraneOut(); else BeginPart2(); }
                 break;
 
             case Phase.Part2:
                 if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
                 if (terrainSeason != null) terrainSeason.ApplyU(1f);
                 break;
+
+            case Phase.Ending:
+                // Hold the framing the rise ended on. Without this the crane is
+                // simply left wherever the last DriveTimelapse call put it and
+                // any damping drifts it off the composition during the hold.
+                PlaceCrane(1f);
+                break;
         }
+    }
+
+    // The shot's own ending, for when there is no Part 2 to cut to: hold the
+    // region for a beat so the reveal lands, then fade out. A reveal that cuts
+    // the instant the crane stops reads as the footage running out.
+    private void BeginCraneOut()
+    {
+        _phase = Phase.Ending;
+        if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
+        if (terrainSeason != null) terrainSeason.ApplyU(1f);
+        StartCoroutine(CraneOutRoutine());
+    }
+
+    private IEnumerator CraneOutRoutine()
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, craneHoldSeconds));
+
+        var polish = TrailerCinematicPolish.Instance;
+        if (polish != null) polish.FadeToBlack(craneOutFade);
+
+        yield return new WaitForSecondsRealtime(craneOutFade);
+        IsFinished = true;
     }
 
     // Names the camera the brain is live on, each time it changes. Whatever is

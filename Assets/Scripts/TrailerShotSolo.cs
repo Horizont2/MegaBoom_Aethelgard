@@ -36,6 +36,7 @@ public static class TrailerShotSolo
     private const string ActIRig = "LoreTrailer_Rig";
     private const string Part2Rig = "LoreTrailer_Part2_Rig";
     private const string SceneSun = "Directional Light";
+    private const string RoadDressing = "Trailer_RoadDressing";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Apply()
@@ -87,6 +88,12 @@ public static class TrailerShotSolo
         OffAll(ActIRig);
         OffAll(Part2Rig);
         Off(SceneSun);                       // the rig carries its own Moonlight
+
+        // The road set: torches, fires, and nine Skeleton_Minions that lie buried
+        // waiting for a rider. None of it is in this frame, and with the horse
+        // switched off each of those skeletons hunts for a Player tag on every
+        // Update for a chase that is never going to start.
+        Off(RoadDressing);
 
         var ride = Object.FindFirstObjectByType<TrailerHorseRide>(FindObjectsInactive.Include);
         if (ride != null) ride.gameObject.SetActive(false);
@@ -154,6 +161,15 @@ public static class TrailerShotSolo
 
         GameObject seq = TrailerFind.ByName(Sequencer);
         if (seq != null) seq.SetActive(true);
+
+        // This shot is the gallop and the crane that lifts off it. The director
+        // would otherwise cut from the reveal into Part 2 — the rider thrown, the
+        // fall, the skeletons — which is a different beat with its own cut and
+        // has no business inside "the ride through the forest". Told here rather
+        // than saved into the scene, so the full-trailer path still exists.
+        var director = seq != null ? seq.GetComponent<TrailerSequenceDirector>() : null;
+        if (director == null) director = Object.FindFirstObjectByType<TrailerSequenceDirector>(FindObjectsInactive.Include);
+        if (director != null) director.endAfterCrane = true;
 
         // TrailerSequenceDirector owns the rigs from here: it wakes them, parks
         // their cameras and cuts between them itself. Nothing else touches them.

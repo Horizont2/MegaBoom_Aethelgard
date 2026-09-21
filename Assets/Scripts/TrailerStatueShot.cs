@@ -86,8 +86,10 @@ public class TrailerStatueShot : MonoBehaviour
 
     [Header("Fracture")]
     [Range(1, 8)] public int seedCracks = 4;
-    [Tooltip("Hard ceiling on fissures. Each one carries a realtime point light, and past a dozen they stop adding anything visible while the shadow atlas starts thrashing.")]
+    [Tooltip("Hard ceiling on SEED fissures — the ones that carry a realtime point light and a shaft. Each one costs a light, and past a dozen they stop adding anything visible while the shadow atlas starts thrashing.")]
     [Range(2, 24)] public int maxCracks = 10;
+    [Tooltip("Hard ceiling on ALL fissures, branches included.\n\nBranches used to ignore maxCracks entirely: three forks per crack, two generations deep, so ten seeds became a hundred and thirty line renderers on a transform that moves every frame — which is the freeze at the end of the shot. Detail past roughly thirty reads as a smear anyway.")]
+    [Range(4, 64)] public int maxTotalCracks = 30;
     [Tooltip("Seconds between fracture advances at the start. Cracks accelerate as pressure builds.")]
     public float stepIntervalStart = 0.16f;
     public float stepIntervalEnd = 0.035f;
@@ -222,9 +224,56 @@ public class TrailerStatueShot : MonoBehaviour
         pushSeconds = establish + buildDuration;
         resolvedEndDistance = ResolveEndDistance();
 
+        ResolveSurfaceMask();
+        HoldStatueKinematic();
+
         BuildMaterials();
         BuildStatueDust();
         if (autoPlay) Play();
+    }
+
+    // Every raycast that walks the stone — the crack advance, the branch catch,
+    // the seed search — only ever wants to hit the STATUE, and used to be fired
+    // against ~0. On a terrain full of trees and rocks that is a full scene query
+    // per step per crack for an answer that is thrown away unless it landed on
+    // the statue. Narrowed to whichever layers the statue's own colliders sit on.
+    private int surfaceMask = ~0;
+
+    private void ResolveSurfaceMask()
+    {
+        int mask = 0;
+        foreach (var c in statue.GetComponentsInChildren<Collider>(true))
+            if (c != null) mask |= 1 << c.gameObject.layer;
+        if (mask != 0) surfaceMask = mask;
+    }
+
+    // ==== A STATIC COLLIDER THAT MOVES EVERY FRAME IS THE EXPENSIVE KIND ====
+    //
+    // UpdateStatue writes statue.position on every frame of the shot, and the
+    // statue carries a NON-CONVEX MeshCollider. To PhysX a collider with no
+    // Rigidbody is part of the static world, and moving one makes it re-insert
+    // that actor into the static broadphase — for a concave mesh, every frame,
+    // while the crack walk is querying against it.
+    //
+    // A kinematic Rigidbody says "this moves, expect it to": the collider goes
+    // into the dynamic tree, where being moved is free. Nothing else changes —
+    // kinematic bodies ignore gravity and forces, and a non-convex mesh collider
+    // is legal on one.
+    private Rigidbody tremorBody;
+    private bool tremorBodyIsOurs;
+
+    private void HoldStatueKinematic()
+    {
+        Collider col = statue.GetComponentInChildren<Collider>(true);
+        if (col == null) return;
+
+        tremorBody = col.GetComponentInParent<Rigidbody>();
+        if (tremorBody != null) return;              // it already has one; leave it alone
+
+        tremorBody = col.gameObject.AddComponent<Rigidbody>();
+        tremorBody.isKinematic = true;
+        tremorBody.useGravity = false;
+        tremorBodyIsOurs = true;
     }
 
     // Where the push should STOP.
@@ -504,6 +553,7 @@ public class TrailerStatueShot : MonoBehaviour
         // black. Fading again would fade black to black and hold the shot open
         // for no reason.
         IsFinished = true;
+        TearDown();
     }
 
     // ======================= camera =======================
@@ -604,10 +654,21 @@ public class TrailerStatueShot : MonoBehaviour
         }
     }
 
+    // A seed is a fissure that gets its own light and its own shaft. Counted
+    // apart from `cracks`, which now also holds the branches — without that the
+    // branches would eat the seed budget and the stone would stop opening new
+    // fissures after the first two or three forked.
+    private int seedCount;
+
     private void SeedCrack()
     {
+        if (seedCount >= maxCracks) return;
         if (!FindSurfacePoint(out Vector3 pos, out Vector3 nrm)) return;
+
+        int before = cracks.Count;
         SpawnCrack(pos, nrm, 0);
+        if (cracks.Count == before) return;      // total cap reached; no shaft without a crack
+        seedCount++;
 
         var shaft = BuildShaft(pos, nrm);
         shafts.Add(shaft);
@@ -618,12 +679,35 @@ public class TrailerStatueShot : MonoBehaviour
             AudioManager.Instance.PlaySFX3D(crackSound, pos);
     }
 
+    // ==== THE CAP HAS TO BE HERE, NOT ONLY ON THE REFILL ====
+    //
+    // maxCracks was only ever tested where StepCracks re-seeds an arrested
+    // fissure. BRANCHING went around it: every crack may fork three times and
+    // each fork may fork three times again, so ten seeds became 10 + 30 + 90 =
+    // a hundred and thirty live fractures, and nothing anywhere said no.
+    //
+    // That is the freeze at the end of the shot, and it explains its shape —
+    // it arrives gradually and gets worse, because the cost is proportional to
+    // how many cracks exist and they keep multiplying until the burst. Each one
+    // is a GameObject with a view-aligned LineRenderer that rebuilds its mesh
+    // every frame, parented to a statue whose transform moves every frame; and
+    // every StepCracks call walks the whole list and raycasts once or twice per
+    // live crack — at the shortest step interval that is thousands of raycasts a
+    // second against the statue's NON-CONVEX MeshCollider, which PhysX has to
+    // refit each time the statue trembles.
+    //
+    // Capping it here bounds all of that at once. A dozen fissures is already
+    // more than the frame can show — past that they overlap into a smear and
+    // cost real milliseconds to say nothing new.
     private void SpawnCrack(Vector3 pos, Vector3 nrm, int generation)
     {
+        if (cracks.Count >= maxTotalCracks) return;
+
         var go = new GameObject($"Crack_{cracks.Count}");
         var c = go.AddComponent<TrailerStatueCrack>();
         c.generation = generation;
         c.glowColor = lightColor;
+        c.surfaceMask = surfaceMask;
         c.Init(statue, pos, nrm, crackMat, OnCrackStep);
         cracks.Add(c);
     }
@@ -652,8 +736,8 @@ public class TrailerStatueShot : MonoBehaviour
         // step and each new crack brings its own point light: the shot was ending
         // up with over a hundred realtime lights, which blows the shadow atlas and
         // is most of why the whole editor crawled. A dozen fissures is already
-        // more than the frame can show.
-        if (live == 0 && tension < 0.95f && cracks.Count < maxCracks) SeedCrack();
+        // more than the frame can show. SeedCrack tests the cap itself now.
+        if (live == 0 && tension < 0.95f) SeedCrack();
     }
 
     // Chips fly from wherever the fracture is actually advancing, so the debris
@@ -681,7 +765,7 @@ public class TrailerStatueShot : MonoBehaviour
                                        center.z + Mathf.Sin(ang * Mathf.Deg2Rad) * radius);
             Vector3 dir = new Vector3(center.x - from.x, 0f, center.z - from.z).normalized;
 
-            if (Physics.Raycast(from, dir, out RaycastHit hit, radius * 2.5f, ~0, QueryTriggerInteraction.Ignore)
+            if (Physics.Raycast(from, dir, out RaycastHit hit, radius * 2.5f, surfaceMask, QueryTriggerInteraction.Ignore)
                 && hit.transform.IsChildOf(statue))
             {
                 pos = hit.point + hit.normal * 0.02f;
@@ -959,18 +1043,45 @@ public class TrailerStatueShot : MonoBehaviour
             GameObject chunk = Instantiate(prefab, from, Random.rotation, transform);
             chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
 
-            // Imported rock meshes carry no collider, so without this every chunk
-            // falls straight through the ground instead of tumbling and settling.
+            // ==== A SPHERE, NOT A COOKED CONVEX HULL ====
+            //
+            // This used to add a MeshCollider and set convex on the rock's own
+            // mesh. Two things wrong with that, and both of them land on the
+            // single frame the statue bursts:
+            //
+            //   The LProck meshes are imported with Read/Write OFF, so PhysX
+            //   cannot cook a hull from them at all. Every chunk logged an error
+            //   and ended up with NO collider — it fell through the world, which
+            //   is the opposite of what the code was trying to buy.
+            //
+            //   Even where it works, cooking twenty-odd convex hulls in one frame
+            //   is a hitch by itself, and it happens while the time ramp has the
+            //   fixed step running fast and the chunks are born touching the
+            //   statue's non-convex MeshCollider.
+            //
+            // A sphere off the renderer bounds tumbles and settles convincingly
+            // for the second of screen time any of this gets, costs nothing to
+            // create, and needs no readable mesh.
             if (chunk.GetComponentInChildren<Collider>() == null)
             {
                 var mf = chunk.GetComponentInChildren<MeshFilter>();
+                var host = mf != null ? mf.gameObject : chunk;
+                var sc = host.AddComponent<SphereCollider>();
+                // Mesh.bounds is local-space metadata and is available even on a
+                // mesh with Read/Write off, which is exactly the case the old
+                // code could not handle. SphereCollider.radius is local too, so
+                // the two agree without any transform work.
                 if (mf != null && mf.sharedMesh != null)
                 {
-                    var mc = mf.gameObject.AddComponent<MeshCollider>();
-                    mc.sharedMesh = mf.sharedMesh;
-                    mc.convex = true;
+                    sc.center = mf.sharedMesh.bounds.center;
+                    sc.radius = Mathf.Max(0.02f, mf.sharedMesh.bounds.extents.magnitude * 0.6f);
                 }
             }
+
+            // They are born ON the crack tips, which is ON the statue's collider.
+            // Without this every chunk starts deeply interpenetrating a concave
+            // mesh and PhysX spends the burst frame pushing them out of it.
+            IgnoreStatue(chunk);
 
             // NOT '??'. The null-coalescing operator compares against real null
             // and bypasses UnityEngine.Object's == overload, so a destroyed or
@@ -983,13 +1094,73 @@ public class TrailerStatueShot : MonoBehaviour
             rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;
             rb.angularVelocity = Random.insideUnitSphere * 8f;
 
+            debris.Add(chunk);
             Destroy(chunk, 7f);
         }
+    }
+
+    private readonly List<GameObject> debris = new List<GameObject>();
+
+    private void IgnoreStatue(GameObject chunk)
+    {
+        if (statueColliders == null)
+        {
+            statueColliders = statue.GetComponentsInChildren<Collider>(true);
+        }
+        if (statueColliders.Length == 0) return;
+
+        foreach (var mine in chunk.GetComponentsInChildren<Collider>(true))
+        {
+            if (mine == null) continue;
+            foreach (var theirs in statueColliders)
+                if (theirs != null) Physics.IgnoreCollision(mine, theirs, true);
+        }
+    }
+
+    private Collider[] statueColliders;
+
+    // ==== THE SHOT HAS TO STOP COSTING SOMETHING WHEN IT ENDS ====
+    //
+    // Nothing here used to be switched off. The screen went black on the pierce
+    // and the coroutine returned, and behind that black the shot carried on
+    // burning: ten realtime point lights, thirty view-aligned line renderers
+    // rebuilding their meshes every frame on a statue that never stops
+    // trembling, a dozen particle systems still emitting, and the debris still
+    // being simulated. You cannot see any of it, so the only symptom is that the
+    // editor never recovers — which reads as a freeze that starts when the
+    // statue breaks and never goes away.
+    private void TearDown()
+    {
+        for (int i = 0; i < shafts.Count; i++)
+        {
+            Shaft s = shafts[i];
+            if (s == null) continue;
+            if (s.glow != null) Destroy(s.glow.gameObject);
+            if (s.line != null) Destroy(s.line.gameObject);
+            if (s.motes != null) { s.motes.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(s.motes.gameObject); }
+        }
+        shafts.Clear();
+
+        for (int i = 0; i < cracks.Count; i++)
+            if (cracks[i] != null) Destroy(cracks[i].gameObject);
+        cracks.Clear();
+
+        if (sheetDust != null) { sheetDust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(sheetDust.gameObject); }
+        if (chipBurst != null) { chipBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(chipBurst.gameObject); }
+
+        for (int i = 0; i < debris.Count; i++)
+            if (debris[i] != null) Destroy(debris[i]);
+        debris.Clear();
+
+        // Put the stone back where it was found and let it be static again.
+        if (statue != null) statue.position = statueHome;
+        if (tremorBodyIsOurs && tremorBody != null) { Destroy(tremorBody); tremorBody = null; tremorBodyIsOurs = false; }
     }
 
     private void OnDestroy()
     {
         if (rayMat != null) Destroy(rayMat);
         if (crackMat != null) Destroy(crackMat);
+        if (tremorBodyIsOurs && tremorBody != null) Destroy(tremorBody);
     }
 }

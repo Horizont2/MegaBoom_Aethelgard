@@ -29,6 +29,8 @@ public class TrailerStatueCrack : MonoBehaviour
     [Range(0f, 1f)] public float branchChance = 0.13f;
     public int maxBranches = 3;
     public int generation = 0;
+    [Tooltip("Layers the surface walk may hit. Set by TrailerStatueShot to the statue's own layers — querying the whole scene costs a full raycast through terrain and trees for an answer that is discarded unless it landed on the statue.")]
+    public int surfaceMask = ~0;
 
     [Header("Look")]
     public float widthAtMouth = 0.075f;
@@ -117,7 +119,7 @@ public class TrailerStatueCrack : MonoBehaviour
         // old normal. Without this the line leaves the stone the moment the
         // surface curves.
         Vector3 from = candidate + normal * 0.35f;
-        if (Physics.Raycast(from, -normal, out RaycastHit hit, 0.9f, ~0, QueryTriggerInteraction.Ignore)
+        if (Physics.Raycast(from, -normal, out RaycastHit hit, 0.9f, surfaceMask, QueryTriggerInteraction.Ignore)
             && hit.transform.IsChildOf(statue))
         {
             tip = hit.point + hit.normal * 0.015f;
@@ -130,7 +132,7 @@ public class TrailerStatueCrack : MonoBehaviour
             // and stops there, which is what real fractures do at an edge.
             Vector3 axis = new Vector3(statue.position.x, candidate.y, statue.position.z);
             Vector3 inward = (axis - candidate).normalized;
-            if (Physics.Raycast(candidate - inward * 0.6f, inward, out RaycastHit edge, 1.4f, ~0, QueryTriggerInteraction.Ignore)
+            if (Physics.Raycast(candidate - inward * 0.6f, inward, out RaycastHit edge, 1.4f, surfaceMask, QueryTriggerInteraction.Ignore)
                 && edge.transform.IsChildOf(statue))
             {
                 tip = edge.point + edge.normal * 0.015f;
