@@ -56,6 +56,8 @@ public static class TrailerShotSolo
         // back on, which WeatherController and DayNightCycle both do.
         RenderSettings.fog = false;
 
+        StopCulling();
+
         if (shot == StatueShot) SoloStatue();
         else if (shot == RideShot) SoloRide();
         else return;
@@ -76,6 +78,69 @@ public static class TrailerShotSolo
 #else
         return string.Empty;
 #endif
+    }
+
+    // ==== NOTHING IN A CINEMATIC GETS SWITCHED OFF BY A DISTANCE CHECK ====
+    //
+    // Evacuation_Horse carries an OptimizedObject, and that component does not
+    // hide a renderer — it disables the renderers, the Animator, the lights and
+    // the colliders together the moment DistanceOptimizer decides the thing is
+    // far away. In gameplay that is exactly right; in a shot where the camera
+    // deliberately cranes fifty metres off the rider it deletes the subject of
+    // the reveal, which is the rider vanishing mid-shot.
+    //
+    // A trailer camera goes wherever the shot wants, so the distance systems
+    // have no say here at all. Switched off rather than retuned: there is no
+    // distance that is correct for a camera that is allowed to be anywhere.
+    private static void StopCulling()
+    {
+        int off = 0;
+        foreach (var o in Object.FindObjectsByType<OptimizedObject>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (o == null) continue;
+            // Put back anything it has already hidden before standing it down —
+            // disabling the component does not undo what it did.
+            o.SetVisibility(true);
+            o.enabled = false;
+            off++;
+        }
+
+        var dist = Object.FindFirstObjectByType<DistanceOptimizer>(FindObjectsInactive.Include);
+        if (dist != null) dist.enabled = false;
+
+        // Fades foliage that stands between the camera and the player. Harmless
+        // here only because nothing in this scene is tagged Player; the moment
+        // something is, it starts dissolving trees in front of the gallop.
+        var occl = Object.FindFirstObjectByType<CameraOcclusion>(FindObjectsInactive.Include);
+        if (occl != null) occl.enabled = false;
+
+        KeepHeroDrawn();
+
+        if (off > 0) Debug.Log("[TrailerShotSolo] Distance culling off for " + off + " object(s) — a trailer camera is allowed to be anywhere.");
+    }
+
+    // ==== THE OTHER WAY A CHARACTER DISAPPEARS ====
+    //
+    // A SkinnedMeshRenderer with Update When Offscreen off does not measure its
+    // own bounds — it transforms the mesh's authored bounds by the root bone and
+    // frustum-tests that box. For a rider that is not where he is: he is posed
+    // sitting on a mount that is itself being driven along a spline, with root
+    // motion off, so the box and the body do not agree. From a crane fifty
+    // metres up he occupies a handful of pixels and a box that is slightly out
+    // is the difference between drawn and not drawn — the character blinks out
+    // of a shot in which he is plainly visible.
+    //
+    // Switched on for the trailer only, and only here. It costs a bounds
+    // recalculation per ENABLED renderer per frame, which on a modular rig is a
+    // few — the two hundred disabled armour variants cost nothing and are set
+    // anyway, so a costume change cannot reintroduce the problem mid-shot.
+    private static void KeepHeroDrawn()
+    {
+        GameObject hero = GameObject.FindGameObjectWithTag("Player");
+        if (hero == null) return;
+
+        foreach (var smr in hero.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            if (smr != null) smr.updateWhenOffscreen = true;
     }
 
     // ===================== shot 1 — the statue breaks open =====================

@@ -238,7 +238,15 @@ public class TrailerSequenceDirector : MonoBehaviour
                 ReportLiveCamera();
                 // Once he has galloped away, hide him and move him onto spline_p3
                 // OFF CAMERA, so he never pops across the map mid-shot.
-                if (!_horseParked && _tlT >= hideHorseAfter) ParkHorseForPart2();
+                //
+                // Only when there IS a Part 2. Hiding him exists to cover a
+                // teleport; with the shot ending on the crane there is no
+                // teleport to cover, and hiding him two seconds into a
+                // seven-second rise simply deletes the rider out of the middle of
+                // the reveal. He keeps riding instead — TrailerHorseRide overruns
+                // past the last knot, so he gallops out of frame rather than
+                // stopping on the spot.
+                if (!endAfterCrane && !_horseParked && _tlT >= hideHorseAfter) ParkHorseForPart2();
                 float f = timelapseSeconds > 0.01f ? Mathf.Clamp01(_tlT / timelapseSeconds) : 1f;
                 DriveTimelapse(f);
                 if (f >= 1f) { if (endAfterCrane) BeginCraneOut(); else BeginPart2(); }
