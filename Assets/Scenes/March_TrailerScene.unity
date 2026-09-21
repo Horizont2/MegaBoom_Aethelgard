@@ -334,8 +334,8 @@ MonoBehaviour:
   stepShakeIntensity: 0.3
   stepFrequency: 1.5
   mainDirectionalLight: {fileID: 854525243}
-  mainLightColor: {r: 0.2, g: 0.3, b: 0.5, a: 1}
-  mainLightIntensity: 0.5
+  mainLightColor: {r: 0.46, g: 0.58, b: 0.85, a: 1}
+  mainLightIntensity: 0.9
   lightningColor: {r: 0.8, g: 0.9, b: 1, a: 1}
   skeletonPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
   skeletonCount: 300
@@ -566,18 +566,18 @@ MonoBehaviour:
   findActiveTerrainsAutomatically: 1
   horizontalPadding: 40
   bottomPadding: 20
-  topPadding: 160
+  topPadding: 40
   terrainEdgeFade: 0
   terrainFollow: 0.9
   rebuildWhenTerrainChanges: 1
-  density: 0.3
-  groundFogHeight: 60
-  topSoftness: 0.1
+  density: 0.08
+  groundFogHeight: 3.2
+  topSoftness: 0.45
   noiseTextureResolution: 64
   noiseSeed: 1337
-  largeNoiseScale: 800
-  detailNoiseScale: 120
-  noiseAmount: 0
+  largeNoiseScale: 70
+  detailNoiseScale: 22
+  noiseAmount: 0.5
   noiseFloor: 0
   noiseContrast: 1.5
   noiseStrength: 3
@@ -585,15 +585,15 @@ MonoBehaviour:
   noiseHeightDistortion: 0
   verticalNoiseShear: 0.004
   windDirection: {x: 0.28734788, y: 0.95782626}
-  windSpeed: 20
+  windSpeed: 6
   debugView: 0
   useSceneDepth: 1
   depthBias: 0
-  maximumRaySteps: 28
+  maximumRaySteps: 48
   minimumRaySteps: 7
-  targetStepLength: 105
-  maximumFogDistance: 4500
-  nearFadeDistance: 150
+  targetStepLength: 12
+  maximumFogDistance: 300
+  nearFadeDistance: 8
   farFadeStart: 0
   fogColor: {r: 0.63, g: 0.7, b: 0.76, a: 1}
   followSceneFogColor: 1
@@ -602,8 +602,8 @@ MonoBehaviour:
   ambientStrength: 1
   ambientShadowStrength: 0.7
   sunStrength: 1
-  sunScattering: 0.5
-  anisotropy: 0.01
+  sunScattering: 0.85
+  anisotropy: 0.55
   directionalLight: {fileID: 854525243}
   rayJitterStrength: 1
   noiseMipBias: 0.5
@@ -613,7 +613,7 @@ MonoBehaviour:
   terrainCastsFogShadows: 1
   useUnityRealtimeShadows: 1
   shadowStrength: 0.7
-  shadowDistance: 900
+  shadowDistance: 120
   terrainShadowBias: 0
   fogSelfShadowStrength: 2.25
 --- !u!1 &854525241
