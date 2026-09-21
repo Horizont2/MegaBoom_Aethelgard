@@ -291,6 +291,8 @@ public class TrailerLegionDirector : MonoBehaviour
     public bool smashToBlack = true;
     public Color impactFadeColor = Color.black;
     public float impactFadeDuration = 0.14f;
+    [Tooltip("How long the white flash takes to wipe off onto the map. Short - it is a cut with a frame of light on it, not a dissolve.")]
+    public float flashOutSeconds = 0.22f;
     public float holdBlackDuration = 0.35f;
     public UnityEngine.Events.UnityEvent onEpisodeFinished;
 
@@ -319,6 +321,7 @@ public class TrailerLegionDirector : MonoBehaviour
     }
     private readonly List<Riser> risers = new List<Riser>(64);
     private CanvasGroup veil;
+    private UnityEngine.UI.Image veilImage;
     private Shot overrideShot;
 
     private bool isBossMarching = true;
@@ -1066,6 +1069,9 @@ public class TrailerLegionDirector : MonoBehaviour
         if (playAudio && AudioManager.Instance != null) AudioManager.Instance.DuckMusicInstance(0.6f, 0.8f);
 
         EnsureVeil();
+        // The same veil serves three jobs in this episode and the last one
+        // leaves it white. Always state the colour rather than inherit it.
+        if (veilImage != null) veilImage.color = impactFadeColor;
 
         float t = 0f;
         while (t < 1f)
@@ -1103,6 +1109,21 @@ public class TrailerLegionDirector : MonoBehaviour
         // --- visible again from here ---
 
         yield return new WaitForSecondsRealtime(blackoutHold);
+    }
+
+    private IEnumerator FadeVeilTo(float alpha, float seconds)
+    {
+        EnsureVeil();
+        if (veil == null) yield break;
+        float start = veil.alpha;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / Mathf.Max(0.01f, seconds);
+            veil.alpha = Mathf.Lerp(start, alpha, Mathf.Clamp01(t));
+            yield return null;
+        }
+        veil.alpha = alpha;
     }
 
     private IEnumerator LiftVeil()
@@ -1918,66 +1939,64 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
 
         yield return new WaitForSecondsRealtime(0.08f);
 
-        // ==== SMASH TO BLACK ====
+        // ==== THE MAP ARRIVES ON A FLASH, NOT OUT OF A FADE ====
         //
-        // The old ending panned up to an empty sky over six tenths of a second.
-        // A slow, perfectly controlled move immediately after a weapon hits the
-        // lens tells the audience nothing actually happened, and it ends the
-        // episode on a shot of nothing, which is a hard place to cut from.
+        // Fading up from black onto a picture is a slideshow: there is no
+        // motion carried across the join, so the eye reads it as the image
+        // being CHANGED rather than as the camera having gone somewhere. It is
+        // the single cheapest-looking transition there is, and it was what this
+        // did.
         //
-        // The axe filling the frame IS the wipe. Take the screen on contact and
-        // hold it; the next episode starts from black, which is a cut rather
-        // than a transition that has to be watched.
-        if (smashToBlack)
-        {
-            EnsureVeil();
-            float f = 0f;
-            while (f < 1f && veil != null)
-            {
-                f += Time.unscaledDeltaTime / Mathf.Max(0.01f, impactFadeDuration);
-                veil.alpha = Mathf.Clamp01(f);
-                yield return null;
-            }
-            if (veil != null) veil.alpha = 1f;
-        }
-
-        // Only once the screen is covered does anything get put back, so the
-        // audience never sees the light snap or the camera reset.
-        Time.timeScale = 1f;
-        if (mainDirectionalLight != null)
-        {
-            mainDirectionalLight.color = rigColor;
-            mainDirectionalLight.intensity = rigIntensity;
-        }
-        StopAudioBed();
-
-        yield return new WaitForSecondsRealtime(holdBlackDuration);
-
-        // ==== AND THEN THE MAP ====
-        //
-        // Everything below happens behind the same black the smash left up: the
-        // map is built, the lens is placed square on it, and the roll it still
-        // carries from being hit is set. Only then does the veil lift, so the
-        // shot OPENS on a map that is already standing there. The alternative is
-        // a frame or two of one arriving, which is the one thing that would read
-        // as a menu being opened rather than as a reveal.
+        // The impact already blows the key light out. Cutting on that blowout
+        // is the most invisible cut available - so the veil goes WHITE for an
+        // instant and wipes off onto a map that is already there with the lens
+        // already moving, and the roll left over from the axe is still bleeding
+        // out of the frame as it does. Flash, and you are somewhere else.
         if (mapCurse != null && mapCurse.Prepare(mainCamera))
         {
-            yield return StartCoroutine(LiftVeil());
+            EnsureVeil();
+            if (veilImage != null) veilImage.color = Color.white;
+            if (veil != null) veil.alpha = 1f;
+
+            Time.timeScale = 1f;
+            if (mainDirectionalLight != null)
+            {
+                mainDirectionalLight.color = rigColor;
+                mainDirectionalLight.intensity = rigIntensity;
+            }
+            StopAudioBed();
+
+            // Wipes off WHILE the map beat is already running, so the first
+            // thing the audience sees is a camera in motion.
+            StartCoroutine(FadeVeilTo(0f, flashOutSeconds));
             yield return StartCoroutine(mapCurse.Run(mainCamera));
 
-            // Back to black on the way out, so whatever follows this episode
-            // starts from the same place the march did.
-            EnsureVeil();
-            float f = 0f;
-            while (f < 1f && veil != null)
-            {
-                f += Time.unscaledDeltaTime / Mathf.Max(0.01f, blackoutOut);
-                veil.alpha = Mathf.Clamp01(f);
-                yield return null;
-            }
-            if (veil != null) veil.alpha = 1f;
+            if (veilImage != null) veilImage.color = impactFadeColor;
+            yield return StartCoroutine(FadeVeilTo(1f, blackoutOut));
             mapCurse.Cleanup();
+            yield return new WaitForSecondsRealtime(holdBlackDuration);
+        }
+        else
+        {
+            // ==== SMASH TO BLACK ====
+            //
+            // No map beat, so the axe filling the frame IS the wipe: take the
+            // screen on contact and hold it. The next episode then starts from
+            // black, which is a cut rather than a transition to be watched.
+            if (smashToBlack)
+            {
+                EnsureVeil();
+                if (veilImage != null) veilImage.color = impactFadeColor;
+                yield return StartCoroutine(FadeVeilTo(1f, impactFadeDuration));
+            }
+
+            Time.timeScale = 1f;
+            if (mainDirectionalLight != null)
+            {
+                mainDirectionalLight.color = rigColor;
+                mainDirectionalLight.intensity = rigIntensity;
+            }
+            StopAudioBed();
             yield return new WaitForSecondsRealtime(holdBlackDuration);
         }
 
@@ -2009,6 +2028,7 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
         imgGo.transform.SetParent(go.transform, false);
         var img = imgGo.AddComponent<UnityEngine.UI.Image>();
         img.color = impactFadeColor;
+        veilImage = img;
         img.raycastTarget = false;
         var rt = img.rectTransform;
         rt.anchorMin = Vector2.zero;

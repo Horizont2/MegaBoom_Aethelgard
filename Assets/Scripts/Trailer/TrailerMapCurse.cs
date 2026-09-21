@@ -44,20 +44,62 @@ public class TrailerMapCurse : MonoBehaviour
     public float settleRoll = 7f;
     public float fieldOfView = 40f;
 
-    [Header("The curse")]
+    [Header("The curse - it GROWS, it does not spread")]
+    // ==== A RING OF SMOKE IS NOT A CURSE, IT IS A DISC ====
+    //
+    // The first version walked emitters outward along a growing ring. That
+    // covers the map evenly and it is worthless: a disc of smoke has no
+    // direction, no structure and nothing to follow. Corruption reaching across
+    // a land is not a cloud expanding, it is something GROWING through it -
+    // roots, veins, frost on a window, lightning in slow motion. All of those
+    // are the same shape, and it is the shape the eye is waiting for.
+    //
+    // So it grows. A handful of roots leave the origin at even angles, each
+    // wanders as it advances, each periodically SPLITS into two, and the
+    // children are thinner than the parent and split again. Evenly covered
+    // because the roots start evenly and the splitting keeps filling the gaps -
+    // but arrived at by growth, so there is always a moving tip to watch and
+    // always a structure behind it that was not there a second ago.
     [Tooltip("Where it starts, in map space. (0,0) is the bottom-left corner of the art, (1,1) the top-right.")]
     public Vector2 curseOrigin = new Vector2(0.62f, 0.56f);
     public float holdBeforeCurse = 0.5f;
-    public float curseSeconds = 4.2f;
-    [Tooltip("Dark smoke that crawls outward. Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Smoke ground.prefab is in the project and on a URP particle shader.")]
+    [Tooltip("Seconds for the growth to reach the edges of the map.")]
+    public float curseSeconds = 4.6f;
+
+    [Tooltip("Roots leaving the origin. Spaced evenly around it, which is what makes the coverage even without it looking like a circle.")]
+    [Range(2, 12)] public int rootBranches = 5;
+    [Tooltip("How far a tip advances per step, as a fraction of the map's width. Smaller is smoother and costs more segments.")]
+    [Range(0.004f, 0.05f)] public float stepLength = 0.014f;
+    [Tooltip("Degrees a tip may wander per step. Zero grows spokes; too much grows a scribble.")]
+    public float wander = 22f;
+    [Tooltip("How strongly a tip is pulled back to growing AWAY from the origin. Without it the wander curls branches back on themselves and the growth never reaches the edges.")]
+    [Range(0f, 1f)] public float outwardBias = 0.35f;
+    [Tooltip("Steps between splits. Each split makes two thinner children.")]
+    public int splitEvery = 9;
+    [Tooltip("Degrees either side of the parent that children leave at.")]
+    public float splitAngle = 26f;
+    [Tooltip("How many times a branch may split before its line ends. Each generation is thinner.")]
+    [Range(1, 8)] public int maxGenerations = 5;
+    [Tooltip("Ceiling on live branches, so a bad combination of the numbers above cannot run away.")]
+    [Range(16, 512)] public int maxBranches = 200;
+
+    [Tooltip("Width of a root, in map units (the map is 1000 across).")]
+    public float rootWidth = 7f;
+    [Tooltip("Fraction of its parent's width each generation keeps.")]
+    [Range(0.3f, 0.95f)] public float widthFalloff = 0.68f;
+    public Color curseColor = new Color(0.16f, 0.03f, 0.2f, 1f);
+    [Tooltip("Colour at the growing tips, so the front of the growth glows and the old growth does not.")]
+    public Color curseTipColor = new Color(0.62f, 0.12f, 0.75f, 1f);
+
+    [Tooltip("Optional puff left behind at a split. Sparse on purpose - the growth is the effect, smoke is seasoning.")]
     public GameObject curseSmokePrefab;
-    [Tooltip("How many emitters are walked outward. They are placed on a growing ring, not spawned at random, so the spread has a front rather than a sprinkle.")]
-    [Range(4, 48)] public int curseEmitters = 18;
-    [Range(0.05f, 3f)] public float curseSmokeScale = 0.9f;
-    [Tooltip("What the land turns into. The map does not go black — a map you cannot read says nothing.")]
-    public Color cursedTint = new Color(0.34f, 0.24f, 0.32f, 1f);
+    [Range(0.05f, 3f)] public float curseSmokeScale = 0.55f;
+    [Range(0f, 1f)] public float smokeOnSplitChance = 0.35f;
+
+    [Tooltip("What the land turns into underneath. The map does not go black - a map you cannot read says nothing.")]
+    public Color cursedTint = new Color(0.42f, 0.32f, 0.40f, 1f);
     [Tooltip("Seconds held on the fully cursed map before the episode ends.")]
-    public float holdAfter = 1.4f;
+    public float holdAfter = 1.6f;
 
     [Header("Where it is filmed")]
     // ==== THE MAP CANNOT BE FILMED WHERE THE MARCH IS ====
@@ -81,6 +123,9 @@ public class TrailerMapCurse : MonoBehaviour
     public Color voidColor = new Color(0.02f, 0.02f, 0.03f, 1f);
     [Tooltip("Switch the volumetric fog off for the beat. The stage is outside its volume anyway; this is the belt to that pair of braces.")]
     public bool disableVolumetricFog = true;
+    [Tooltip("Slow motes drifting between the lens and the map. A flat void is what makes a floating object look cheap - the map has to be standing IN something, even if that something is only dust catching the light.")]
+    public GameObject voidMotesPrefab;
+    [Range(0.1f, 6f)] public float voidMotesScale = 2.4f;
 
     [Header("Audio")]
     public bool playAudio = true;
@@ -186,94 +231,236 @@ public class TrailerMapCurse : MonoBehaviour
         return true;
     }
 
+    // One growing tendril. Lines are parented to the map so they travel with
+    // it, and grown in LOCAL map space so all the numbers above can be written
+    // against the art rather than against the world.
+    private class Branch
+    {
+        public LineRenderer line;
+        public List<Vector3> pts = new List<Vector3>(64);
+        public Vector2 tip;
+        public float angle;
+        public int generation;
+        public int stepsSinceSplit;
+        public bool alive = true;
+        public float width;
+    }
+
+    private readonly List<Branch> branches = new List<Branch>(64);
+    private Material lineMaterial;
+
     public IEnumerator Run(Transform cam)
     {
         if (mapRect == null || cam == null) yield break;
 
-        Vector3 toMap = mapRect.position - cam.position;
-        Vector3 dir = toMap.normalized;
+        Vector3 dir = (mapRect.position - cam.position).normalized;
         Vector3 from = mapRect.position - dir * startDistance;
         Vector3 to = mapRect.position - dir * endDistance;
         Quaternion level = Quaternion.LookRotation(dir, Vector3.up);
 
-        Cue(AudioID.Trailer_Dread, AudioID.Enemy_Telegraph);
+        // A small lateral arc on the way in. A lens that travels dead straight
+        // down its own axis has no parallax, and no parallax is most of what
+        // makes a push-in read as an image being scaled rather than as a camera
+        // moving through a space.
+        Vector3 side = Vector3.Cross(Vector3.up, dir).normalized;
+        float arc = mapWorldWidth * 0.09f;
 
-        // APPROACH. Eased at both ends: a lens that arrives at constant speed
-        // and stops dead reads as a dolly rail, which is the one thing a
-        // portentous shot must not look like.
+        Cue(AudioID.Trailer_Dread, AudioID.Enemy_Telegraph);
+        SpawnMotes(cam);
+
         float t = 0f;
         while (t < 1f)
         {
             t += Time.unscaledDeltaTime / Mathf.Max(0.01f, approachSeconds);
             float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
-            cam.position = Vector3.LerpUnclamped(from, to, k);
+            cam.position = Vector3.LerpUnclamped(from, to, k) + side * (Mathf.Sin(k * Mathf.PI) * arc);
             // The roll bleeds out as it settles, so the last thing the impact
-            // did to the camera is still visible for a moment and then is not.
-            cam.rotation = level * Quaternion.Euler(0f, 0f, Mathf.Lerp(settleRoll, 0f, k));
+            // did to the camera is visible for a moment and then is not - which
+            // is what carries the hit through into this shot.
+            cam.rotation = Quaternion.LookRotation((mapRect.position - cam.position).normalized, Vector3.up)
+                         * Quaternion.Euler(0f, 0f, Mathf.Lerp(settleRoll, 0f, k));
             yield return null;
         }
         cam.position = to;
-        cam.rotation = level;
+        cam.rotation = Quaternion.LookRotation((mapRect.position - cam.position).normalized, Vector3.up);
 
         float wait = 0f;
         while (wait < holdBeforeCurse) { wait += Time.unscaledDeltaTime; yield return null; }
 
-        // THE CURSE. Emitters are walked outward along a growing ring rather
-        // than scattered at random, so the spread has a FRONT - an edge the eye
-        // can follow across the land - instead of looking like smoke being
-        // sprinkled over a picture.
+        yield return StartCoroutine(GrowCurse());
+
+        float after = 0f;
+        while (after < holdAfter) { after += Time.unscaledDeltaTime; yield return null; }
+    }
+
+    private IEnumerator GrowCurse()
+    {
         Cue(AudioID.Trailer_RiserToStrike, AudioID.Enemy_Telegraph);
 
-        Vector2 half = mapRect.sizeDelta * 0.5f;
-        Vector3 originLocal = new Vector3((curseOrigin.x - 0.5f) * mapRect.sizeDelta.x,
-                                          (curseOrigin.y - 0.5f) * mapRect.sizeDelta.y, 0f);
-        float maxRadius = Mathf.Sqrt(half.x * half.x + half.y * half.y);
+        Vector2 size = mapRect.sizeDelta;
+        Vector2 origin = new Vector2((curseOrigin.x - 0.5f) * size.x, (curseOrigin.y - 0.5f) * size.y);
+        float step = stepLength * size.x;
+        float reach = Mathf.Sqrt(size.x * size.x + size.y * size.y) * 0.5f;
 
-        int placed = 0;
-        Color clean = Color.white;
-
-        t = 0f;
-        while (t < 1f)
+        branches.Clear();
+        for (int i = 0; i < rootBranches; i++)
         {
-            t += Time.unscaledDeltaTime / Mathf.Max(0.01f, curseSeconds);
-            float k = Mathf.Clamp01(t);
+            // Even angles, offset so the first root is never axis-aligned - a
+            // tendril running dead horizontally reads as a drawn line.
+            float a = (360f / rootBranches) * i + 17f;
+            branches.Add(NewBranch(origin, a, 0, rootWidth));
+        }
 
-            // Place the next emitters as the front passes their radius. Squared
-            // so the ring slows as it widens, the way something spreading over
-            // a surface does rather than something being inflated.
-            int want = Mathf.RoundToInt(curseEmitters * k);
-            while (placed < want && placed < curseEmitters)
+        Color clean = mapImage != null ? mapImage.color : Color.white;
+
+        // Steps are driven off the CLOCK rather than off frames, so the growth
+        // takes curseSeconds on any machine instead of being fast on a good one.
+        int stepsToEdge = Mathf.Max(8, Mathf.CeilToInt(reach / Mathf.Max(0.01f, step)));
+        float stepInterval = curseSeconds / stepsToEdge;
+        float acc = 0f;
+        float elapsed = 0f;
+
+        while (elapsed < curseSeconds)
+        {
+            float dt = Time.unscaledDeltaTime;
+            elapsed += dt;
+            acc += dt;
+
+            while (acc >= stepInterval)
             {
-                float frac = (placed + 1) / (float)curseEmitters;
-                float radius = Mathf.Sqrt(frac) * maxRadius;
-                // Golden angle, so successive emitters never line up into a
-                // spiral the eye can pick out.
-                float ang = placed * 2.39996f;
-                Vector3 local = originLocal + new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * radius;
-                SpawnSmoke(mapRect.TransformPoint(local));
-                placed++;
+                acc -= stepInterval;
+                Advance(origin, step, size);
             }
 
-            // The land itself goes over, behind the smoke.
-            if (mapImage != null) mapImage.color = Color.Lerp(clean, cursedTint, Mathf.SmoothStep(0f, 1f, k));
+            if (mapImage != null)
+                mapImage.color = Color.Lerp(clean, cursedTint, Mathf.SmoothStep(0f, 1f, elapsed / curseSeconds));
 
             yield return null;
         }
 
         if (mapImage != null) mapImage.color = cursedTint;
+    }
 
-        float after = 0f;
-        while (after < holdAfter) { after += Time.unscaledDeltaTime; yield return null; }
+    private Branch NewBranch(Vector2 at, float angle, int generation, float width)
+    {
+        var go = new GameObject("Tendril");
+        go.transform.SetParent(mapRect, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
+
+        var lr = go.AddComponent<LineRenderer>();
+        lr.useWorldSpace = false;
+        lr.alignment = LineAlignment.TransformZ;   // flat on the map, not billboarded
+        lr.numCapVertices = 2;
+        lr.numCornerVertices = 2;
+        lr.material = LineMaterial();
+        lr.textureMode = LineTextureMode.Stretch;
+        lr.widthMultiplier = width;
+        lr.startColor = curseColor;
+        lr.endColor = curseTipColor;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows = false;
+        lr.positionCount = 0;
+
+        var b = new Branch { line = lr, tip = at, angle = angle, generation = generation, width = width };
+        // Slightly proud of the map so it never z-fights the art.
+        b.pts.Add(new Vector3(at.x, at.y, -0.6f));
+        lr.positionCount = 1;
+        lr.SetPosition(0, b.pts[0]);
+        return b;
+    }
+
+    private void Advance(Vector2 origin, float step, Vector2 size)
+    {
+        float halfX = size.x * 0.5f, halfY = size.y * 0.5f;
+        int live = branches.Count;
+
+        for (int i = 0; i < live; i++)
+        {
+            var b = branches[i];
+            if (!b.alive) continue;
+
+            // Wander, then pulled back toward growing away from the origin so
+            // the growth reaches the edges instead of curling into a knot.
+            b.angle += Random.Range(-wander, wander);
+            if (outwardBias > 0.001f)
+            {
+                Vector2 out2 = b.tip - origin;
+                if (out2.sqrMagnitude > 1f)
+                {
+                    float outward = Mathf.Atan2(out2.y, out2.x) * Mathf.Rad2Deg;
+                    b.angle = Mathf.LerpAngle(b.angle, outward, outwardBias);
+                }
+            }
+
+            float r = b.angle * Mathf.Deg2Rad;
+            b.tip += new Vector2(Mathf.Cos(r), Mathf.Sin(r)) * step;
+
+            // Off the art - the tendril stops at the coast.
+            if (b.tip.x < -halfX || b.tip.x > halfX || b.tip.y < -halfY || b.tip.y > halfY)
+            {
+                b.alive = false;
+                continue;
+            }
+
+            b.pts.Add(new Vector3(b.tip.x, b.tip.y, -0.6f));
+            b.line.positionCount = b.pts.Count;
+            b.line.SetPosition(b.pts.Count - 1, b.pts[b.pts.Count - 1]);
+
+            b.stepsSinceSplit++;
+            if (b.stepsSinceSplit >= splitEvery
+                && b.generation < maxGenerations
+                && branches.Count < maxBranches)
+            {
+                b.stepsSinceSplit = 0;
+                float childWidth = b.width * widthFalloff;
+
+                // Two children, one either side, and the parent carries on
+                // between them. Three-way forks are what make a growth read as
+                // a plant rather than as a crack.
+                branches.Add(NewBranch(b.tip, b.angle + splitAngle, b.generation + 1, childWidth));
+                branches.Add(NewBranch(b.tip, b.angle - splitAngle, b.generation + 1, childWidth));
+                b.width = childWidth;
+                b.line.widthMultiplier = childWidth;
+
+                if (curseSmokePrefab != null && Random.value < smokeOnSplitChance)
+                    SpawnSmoke(mapRect.TransformPoint(new Vector3(b.tip.x, b.tip.y, -0.6f)));
+            }
+        }
+    }
+
+    private Material LineMaterial()
+    {
+        if (lineMaterial != null) return lineMaterial;
+        // Sprites/Default is what the project already uses for its runtime
+        // LineRenderers, so it is known to render correctly here.
+        Shader sh = Shader.Find("Sprites/Default");
+        if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+        lineMaterial = new Material(sh);
+        return lineMaterial;
+    }
+
+    private void SpawnMotes(Transform cam)
+    {
+        if (voidMotesPrefab == null || cam == null) return;
+        var motes = Instantiate(voidMotesPrefab, cam.position + cam.forward * (endDistance * 0.55f), Quaternion.identity, transform);
+        motes.transform.localScale = Vector3.one * Mathf.Max(0.01f, voidMotesScale);
+        foreach (var ps in motes.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (ps == null) continue;
+            var main = ps.main;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            main.useUnscaledTime = true;
+        }
+        spawned.Add(motes);
     }
 
     private void SpawnSmoke(Vector3 worldPos)
     {
         if (curseSmokePrefab == null) return;
 
-        // Just off the surface, facing out of the map, so the smoke rolls
-        // ACROSS the land rather than away from the camera.
-        Vector3 pos = worldPos + mapRect.forward * -0.2f;
-        var fx = Instantiate(curseSmokePrefab, pos, Quaternion.LookRotation(-mapRect.forward, Vector3.up));
+        var fx = Instantiate(curseSmokePrefab, worldPos, Quaternion.LookRotation(-mapRect.forward, Vector3.up));
         fx.transform.localScale = Vector3.one * Mathf.Max(0.01f, curseSmokeScale);
 
         foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
@@ -281,7 +468,6 @@ public class TrailerMapCurse : MonoBehaviour
             if (ps == null) continue;
             var main = ps.main;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
-            // Unscaled, because the whole ending runs with the world stopped.
             main.useUnscaledTime = true;
         }
 
@@ -292,6 +478,8 @@ public class TrailerMapCurse : MonoBehaviour
     {
         for (int i = 0; i < spawned.Count; i++) if (spawned[i] != null) Destroy(spawned[i]);
         spawned.Clear();
+        branches.Clear();
+        if (lineMaterial != null) { Destroy(lineMaterial); lineMaterial = null; }
         if (canvas != null) Destroy(canvas.gameObject);
         canvas = null;
         mapRect = null;

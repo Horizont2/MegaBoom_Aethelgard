@@ -2165,6 +2165,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapSprite: {fileID: 21300000, guid: 2ad1867a81085a14fa46c3d36907a88e, type: 3}
   curseSmokePrefab: {fileID: 2886950366143268859, guid: 253510ecf8d65454aa4d811cffb5a8f8, type: 3}
+  voidMotesPrefab: {fileID: 3789122199548263463, guid: 2d8c2dfad6d208641b2b0a3b26af5960, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
