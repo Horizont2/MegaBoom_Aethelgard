@@ -393,7 +393,79 @@ public class DayNightCycle : MonoBehaviour
 
         SmoothVFX(rainVFX, initialRainRate, currentBiome == 0 ? weatherBlend : 0f);
         SmoothVFX(dustVFX, initialDustRate, currentBiome == 1 ? weatherBlend : 0f);
-        SmoothVFX(snowVFX, initialSnowRate, currentBiome == 2 ? weatherBlend : 0f);
+        // ==== SNOW BELONGS TO THE GROUND, NOT ONLY TO THE REGION ====
+        //
+        // Snow fell only when the WHOLE region was flagged winter (a PlayerPrefs
+        // value set once on entry) AND the weather had turned. But the generated
+        // map mixes biomes inside one region - there are snowfields in regions
+        // that are not winter regions - so the player could walk out of a meadow
+        // into ankle-deep snow under a clear sky with nothing falling, which
+        // reads as the effect being broken.
+        //
+        // The ground under the player now has a say. Standing on snow gives a
+        // steady light fall on its own; bad weather still drives it harder, and
+        // a winter region still behaves exactly as before.
+        UpdateGroundSnow();
+        float snowAmount = currentBiome == 2 ? weatherBlend : 0f;
+        if (snowFollowsGround) snowAmount = Mathf.Max(snowAmount, _snowGroundBlend);
+        SmoothVFX(snowVFX, initialSnowRate, snowAmount);
+    }
+
+    // ---- snow that follows the ground -------------------------------------
+    [Header("Snow follows the ground")]
+    [Tooltip("Fall snow whenever the player is standing on snowy terrain, even in a region that is not flagged winter. The generated map mixes biomes, so a snowfield with a clear sky over it reads as a bug.")]
+    public bool snowFollowsGround = true;
+    [Tooltip("How heavily it falls on snowy ground when the weather is otherwise clear.")]
+    [Range(0f, 1f)] public float groundSnowBaseBlend = 0.45f;
+    [Tooltip("Seconds between ground samples. The answer only changes when the player crosses a biome edge.")]
+    public float groundSnowSampleInterval = 0.5f;
+    [Tooltip("Index of the snow terrain layer. WorldGenerator paints grass 0, sand 1, snow 2, rock 3, road 4.")]
+    public int snowTerrainLayer = 2;
+
+    private float _snowGroundBlend;     // smoothed 0..1
+    private float _snowSampleTimer;
+    private bool _onSnowGround;
+
+    private void UpdateGroundSnow()
+    {
+        if (!snowFollowsGround) { _snowGroundBlend = 0f; return; }
+
+        _snowSampleTimer -= Time.deltaTime;
+        if (_snowSampleTimer <= 0f)
+        {
+            _snowSampleTimer = Mathf.Max(0.1f, groundSnowSampleInterval);
+            _onSnowGround = StandingOnSnow();
+        }
+
+        // Eased rather than switched, so crossing the edge of a snowfield is a
+        // fall that starts rather than one that appears.
+        float target = _onSnowGround ? Mathf.Max(groundSnowBaseBlend, weatherBlend) : 0f;
+        _snowGroundBlend = Mathf.MoveTowards(_snowGroundBlend, target, Time.deltaTime * 0.5f);
+    }
+
+    private bool StandingOnSnow()
+    {
+        Terrain t = Terrain.activeTerrain;
+        if (t == null || t.terrainData == null) return false;
+        if (mainCam == null) mainCam = Camera.main;
+        if (mainCam == null) return false;
+
+        TerrainData td = t.terrainData;
+        if (snowTerrainLayer < 0 || snowTerrainLayer >= td.alphamapLayers) return false;
+
+        Vector3 p = mainCam.transform.position;
+        Vector3 origin = t.transform.position;
+        int mx = Mathf.RoundToInt(((p.x - origin.x) / td.size.x) * td.alphamapWidth);
+        int mz = Mathf.RoundToInt(((p.z - origin.z) / td.size.z) * td.alphamapHeight);
+        if (mx < 0 || mz < 0 || mx >= td.alphamapWidth || mz >= td.alphamapHeight) return false;
+
+        float[,,] maps = td.GetAlphamaps(mx, mz, 1, 1);
+        // Snow has to be the DOMINANT surface, not merely present — a dusting
+        // blended into a meadow is not a snowfield.
+        float snow = maps[0, 0, snowTerrainLayer];
+        for (int i = 0; i < td.alphamapLayers; i++)
+            if (i != snowTerrainLayer && maps[0, 0, i] > snow) return false;
+        return snow > 0.4f;
     }
 
     private void SmoothVFX(ParticleSystem ps, float baseRate, float blend)

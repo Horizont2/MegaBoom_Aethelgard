@@ -519,11 +519,31 @@ public class PlayerController : MonoBehaviour, IDamageable
         else StartCoroutine(FireCampHints());
     }
 
+    // ==== WALKING DOWNHILL IS NOT BEING IN THE AIR ====
+    //
+    // Both footstep paths asked CharacterController.isGrounded and took a false
+    // at face value. Descending a slope, the controller loses contact several
+    // times a SECOND - it steps off each micro-ledge and falls the couple of
+    // centimetres to the next one - so on any downhill the animation-event
+    // footsteps were dropped and the distance fallback had its accumulator
+    // wiped before it could ever reach a stride. The player walked down a hill
+    // in silence.
+    //
+    // Movement already keeps lastGroundedRealTime for exactly this reason (the
+    // coyote window the animator uses). Footsteps get a slightly longer grace,
+    // because a step off a ledge is not a jump and a real fall is far longer
+    // than a third of a second.
+    private const float FOOTSTEP_GROUND_GRACE = 0.35f;
+
+    private bool FootstepGrounded =>
+        characterController != null &&
+        (characterController.isGrounded || Time.unscaledTime - lastGroundedRealTime < FOOTSTEP_GROUND_GRACE);
+
     public void TriggerFootstepDust()
     {
         if (characterController == null) return;
         Vector3 horizontalVel = new Vector3(characterController.velocity.x, 0, characterController.velocity.z);
-        if (!characterController.isGrounded || horizontalVel.sqrMagnitude <= 0.1f) return;
+        if (!FootstepGrounded || horizontalVel.sqrMagnitude <= 0.1f) return;
 
         if (runDustParticles != null) runDustParticles.Emit(1);
 
@@ -546,7 +566,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     private void UpdateFootstepFallback(bool grounded)
     {
         // ФІКС: Прибрано isCampMode з умови переривання
-        if (!grounded || isDead) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
+        if (isDead) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
+        // Only a REAL departure from the ground resets the stride. See
+        // FootstepGrounded: a slope descent is not one.
+        if (!grounded && !FootstepGrounded) { footstepDistanceAccum = 0f; footstepLastPos = transform.position; return; }
         if (Time.timeScale <= 0.01f) return;
 
         if (Time.unscaledTime - lastAnimFootstepTime < 1.0f) { footstepLastPos = transform.position; return; }

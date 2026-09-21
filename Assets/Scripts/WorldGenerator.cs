@@ -4794,6 +4794,45 @@ public class WorldGenerator : MonoBehaviour
             }
             if (isOverlap) continue;
 
+            // ==== A POI MUST NOT LAND ON THE REGION'S OWN LOCATION ====
+            //
+            // POIs were tested for overlap against other PLANNED POIs and
+            // nothing else. The region's arena — which the Totem phase has
+            // already placed, flattened and grounded before this phase runs —
+            // was invisible to the test, so a chest site or a reliquary could be
+            // planned straight on top of it.
+            //
+            // And a POI does not merely sit there: phase 3 calls
+            // FlattenTerrainRobust on its own footprint. That re-levels the
+            // ground UNDER a location that was grounded to the old heights a
+            // phase earlier, and the location is left standing in the air. That
+            // is the "location sometimes spawns floating" report, and it is why
+            // it only happened sometimes — it needed a POI to roll onto it.
+            //
+            // locationExclusions already carries every placed location's
+            // footprint (the region totem, the extra capture points), so the
+            // test is the same one the grass and scatter passes use, with the
+            // POI's own flatten radius and a margin on top.
+            bool onPlacedLocation = false;
+            for (int li = 0; li < locationExclusions.Count; li++)
+            {
+                Vector4 e = locationExclusions[li];
+                float dx = centerPos.x - e.x;
+                float dz = centerPos.z - e.z;
+                float need = e.w + settings.flattenRadius + 14f;
+                if (dx * dx + dz * dz < need * need) { onPlacedLocation = true; break; }
+            }
+            // Belt and braces for a location whose footprint never made it into
+            // the list: the totem position itself is always known by now.
+            if (!onPlacedLocation && spawnedTotemPos != Vector3.zero)
+            {
+                float dx = centerPos.x - spawnedTotemPos.x;
+                float dz = centerPos.z - spawnedTotemPos.z;
+                float need = settings.flattenRadius + 45f;
+                if (dx * dx + dz * dz < need * need) onPlacedLocation = true;
+            }
+            if (onPlacedLocation) continue;
+
             // AREA VARIANCE SCAN: Перевіряємо перепад висот під радіусом конкретного префабу.
             // DENSE FOOTPRINT SAMPLING: the old 5-probe cross (center + 4 cardinals
             // at the rim) left big gaps — a large location straddling a lake in a
