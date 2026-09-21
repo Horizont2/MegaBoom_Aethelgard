@@ -28,77 +28,77 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public class TrailerMapCurse : MonoBehaviour
 {
+    // One piece of the map: a sprite with the rectangle it occupied on the map
+    // background. Twenty-five of them rebuild the whole thing - the land, and
+    // the twenty-four region shapes that give it its detail - without any of
+    // the machinery that drives them on the live map screen.
+    [System.Serializable]
+    public class MapPiece
+    {
+        public string label;
+        public Sprite sprite;
+        public Vector2 anchoredPosition;
+        public Vector2 size;
+        public Color color = Color.white;
+    }
+
     [Header("The map")]
-    [Tooltip("Assets/MapUI/Map_Background.png — the same art the map table uses, without the screen around it.")]
-    public Sprite mapSprite;
-    [Tooltip("How wide the map stands in the world, in metres. Only the ratio to the distances below matters.")]
-    public float mapWorldWidth = 30f;
+    [Tooltip("The background first, then the region shapes. Baked from the live map so the layout matches exactly.")]
+    public MapPiece[] mapPieces;
+    [Tooltip("Size of the rect the pieces are laid out in. Must match the map background they were measured against, or nothing lines up.")]
+    public Vector2 mapCanvasSize = new Vector2(1800f, 1783.6f);
+    [Tooltip("How wide the map stands in the world, in metres. Only its ratio to the distances below matters.")]
+    public float mapWorldWidth = 34f;
+    [Tooltip("Opacity of the region shapes. On the live map they sit at zero and fade in as regions are taken; here they are the detail that makes it a map rather than a picture of parchment.")]
+    [Range(0f, 1f)] public float shapeAlpha = 0.85f;
+
+    [Header("Vignette")]
+    public bool useVignette = true;
+    [Range(0f, 1f)] public float vignetteIntensity = 0.45f;
+    [Range(0.01f, 1f)] public float vignetteSmoothness = 0.4f;
+    public Color vignetteColor = Color.black;
 
     [Header("The approach")]
     [Tooltip("Where the lens starts. Far enough that the map reads as an object in front of you rather than as a screen.")]
-    public float startDistance = 46f;
-    [Tooltip("Where it ends. At a 40 degree lens this is inside the map's own width, so it fills the frame.")]
-    public float endDistance = 17f;
-    public float approachSeconds = 3.2f;
-    [Tooltip("Degrees of roll the lens still carries from the impact, easing out to level as it settles.")]
-    public float settleRoll = 7f;
+    public float startDistance = 48f;
+    [Tooltip("Where it ends. Inside the map's own width at this lens, so it fills the frame.")]
+    public float endDistance = 19f;
+    public float approachSeconds = 3.4f;
     public float fieldOfView = 40f;
 
-    [Header("The curse - it GROWS, it does not spread")]
-    // ==== A RING OF SMOKE IS NOT A CURSE, IT IS A DISC ====
+    [Header("The curse - the fog rolls in")]
+    // ==== THE PROJECT ALREADY HAD THE RIGHT SHADER ====
     //
-    // The first version walked emitters outward along a growing ring. That
-    // covers the map evenly and it is worthless: a disc of smoke has no
-    // direction, no structure and nothing to follow. Corruption reaching across
-    // a land is not a cloud expanding, it is something GROWING through it -
-    // roots, veins, frost on a window, lightning in slow motion. All of those
-    // are the same shape, and it is the shape the eye is waiting for.
+    // Assets/MapUI/SG_FlowingFog.shadergraph, with MAT_FlowingFog on top of it,
+    // is the fog the map screen has always used for unexplored ground. Growing
+    // tendrils across the map with LineRenderers was inventing a second visual
+    // language for the same idea, in a trailer whose whole job is to look like
+    // the game.
     //
-    // So it grows. A handful of roots leave the origin at even angles, each
-    // wanders as it advances, each periodically SPLITS into two, and the
-    // children are thinner than the parent and split again. Evenly covered
-    // because the roots start evenly and the splitting keeps filling the gaps -
-    // but arrived at by growth, so there is always a moving tip to watch and
-    // always a structure behind it that was not there a second ago.
-    [Tooltip("Where it starts, in map space. (0,0) is the bottom-left corner of the art, (1,1) the top-right.")]
-    public Vector2 curseOrigin = new Vector2(0.62f, 0.56f);
-    public float holdBeforeCurse = 0.5f;
-    [Tooltip("Seconds for the growth to reach the edges of the map.")]
-    public float curseSeconds = 4.6f;
-
-    [Tooltip("Roots leaving the origin. Spaced evenly around it, which is what makes the coverage even without it looking like a circle.")]
-    [Range(2, 12)] public int rootBranches = 5;
-    [Tooltip("How far a tip advances per step, as a fraction of the map's width. Smaller is smoother and costs more segments.")]
-    [Range(0.004f, 0.05f)] public float stepLength = 0.014f;
-    [Tooltip("Degrees a tip may wander per step. Zero grows spokes; too much grows a scribble.")]
-    public float wander = 22f;
-    [Tooltip("How strongly a tip is pulled back to growing AWAY from the origin. Without it the wander curls branches back on themselves and the growth never reaches the edges.")]
-    [Range(0f, 1f)] public float outwardBias = 0.35f;
-    [Tooltip("Steps between splits. Each split makes two thinner children.")]
-    public int splitEvery = 9;
-    [Tooltip("Degrees either side of the parent that children leave at.")]
-    public float splitAngle = 26f;
-    [Tooltip("How many times a branch may split before its line ends. Each generation is thinner.")]
-    [Range(1, 8)] public int maxGenerations = 5;
-    [Tooltip("Ceiling on live branches, so a bad combination of the numbers above cannot run away.")]
-    [Range(16, 512)] public int maxBranches = 200;
-
-    [Tooltip("Width of a root, in map units (the map is 1000 across).")]
-    public float rootWidth = 7f;
-    [Tooltip("Fraction of its parent's width each generation keeps.")]
-    [Range(0.3f, 0.95f)] public float widthFalloff = 0.68f;
-    public Color curseColor = new Color(0.16f, 0.03f, 0.2f, 1f);
-    [Tooltip("Colour at the growing tips, so the front of the growth glows and the old growth does not.")]
-    public Color curseTipColor = new Color(0.62f, 0.12f, 0.75f, 1f);
-
-    [Tooltip("Optional puff left behind at a split. Sparse on purpose - the growth is the effect, smoke is seasoning.")]
-    public GameObject curseSmokePrefab;
-    [Range(0.05f, 3f)] public float curseSmokeScale = 0.55f;
-    [Range(0f, 1f)] public float smokeOnSplitChance = 0.35f;
+    // So the curse is that fog, as one sheet, larger than the map, flying in
+    // from beyond the top-left corner until it has covered everything. Three
+    // layers at different speeds and scales rather than one, because a single
+    // flat sheet sliding across reads as a sheet sliding across; three moving
+    // at different rates reads as weather.
+    [Tooltip("MAT_FlowingFog - the material the map screen already uses for unexplored ground.")]
+    public Material fogMaterial;
+    [Tooltip("FogOfWar.png, or whichever of the storm sheets you prefer.")]
+    public Sprite fogSprite;
+    [Tooltip("Seconds from the first wisp entering frame to the map being covered.")]
+    public float fogSweepSeconds = 4.6f;
+    public float holdBeforeCurse = 0.6f;
+    [Tooltip("Direction it arrives from, in map space. (-1, 1) is beyond the top-left corner.")]
+    public Vector2 fogFrom = new Vector2(-1f, 1f);
+    [Tooltip("How much wider than the map each sheet is. It has to overshoot or its own edge crosses the frame.")]
+    [Range(1.2f, 4f)] public float fogOversize = 2.2f;
+    [Tooltip("Layers. Each is slower, larger and fainter than the one in front of it.")]
+    [Range(1, 5)] public int fogLayers = 3;
+    public Color fogTint = new Color(0.55f, 0.42f, 0.68f, 1f);
+    [Range(0f, 1f)] public float fogOpacity = 0.92f;
 
     [Tooltip("What the land turns into underneath. The map does not go black - a map you cannot read says nothing.")]
-    public Color cursedTint = new Color(0.42f, 0.32f, 0.40f, 1f);
-    [Tooltip("Seconds held on the fully cursed map before the episode ends.")]
+    public Color cursedTint = new Color(0.46f, 0.36f, 0.44f, 1f);
+    [Tooltip("Seconds held on the covered map before the episode ends.")]
     public float holdAfter = 1.6f;
 
     [Header("Where it is filmed")]
@@ -143,14 +143,18 @@ public class TrailerMapCurse : MonoBehaviour
     private Behaviour fogComponent;
     private readonly List<ParticleSystem> pausedOnCamera = new List<ParticleSystem>();
 
-    // Built and framed while the screen is still black, so the shot opens on a
+    private readonly List<Image> shapeImages = new List<Image>(24);
+    private readonly List<Image> fogSheets = new List<Image>(4);
+    private GameObject vignetteVolume;
+
+    // Built and framed while the screen is still white, so the shot opens on a
     // map that is already there rather than on one arriving.
     public bool Prepare(Transform cam)
     {
         if (cam == null) return false;
-        if (mapSprite == null)
+        if (mapPieces == null || mapPieces.Length == 0)
         {
-            Debug.LogWarning("[TrailerMapCurse] No map sprite assigned, so the closing beat is skipped.", this);
+            Debug.LogWarning("[TrailerMapCurse] No map pieces assigned, so the closing beat is skipped.", this);
             return false;
         }
 
@@ -161,37 +165,62 @@ public class TrailerMapCurse : MonoBehaviour
         canvas.renderMode = RenderMode.WorldSpace;
 
         mapRect = canvas.GetComponent<RectTransform>();
-
-        // Sized from the sprite's own aspect, so swapping the art does not need
-        // the numbers here touched.
-        float aspect = mapSprite.rect.height / Mathf.Max(1f, mapSprite.rect.width);
-        mapRect.sizeDelta = new Vector2(1000f, 1000f * aspect);
-        float scale = mapWorldWidth / 1000f;
+        mapRect.sizeDelta = mapCanvasSize;
+        float scale = mapWorldWidth / Mathf.Max(1f, mapCanvasSize.x);
         mapRect.localScale = new Vector3(scale, scale, scale);
 
-        var imgGo = new GameObject("Map", typeof(RectTransform));
-        imgGo.transform.SetParent(mapRect, false);
-        mapImage = imgGo.AddComponent<Image>();
-        mapImage.sprite = mapSprite;
-        mapImage.raycastTarget = false;
-        mapImage.color = Color.white;
-        var irt = mapImage.rectTransform;
-        irt.anchorMin = Vector2.zero;
-        irt.anchorMax = Vector2.one;
-        irt.offsetMin = irt.offsetMax = Vector2.zero;
+        // The land, then every region shape on top of it, each at the rectangle
+        // it occupies on the real map. The first piece is the background and
+        // keeps its own colour; the rest are detail and share one opacity.
+        shapeImages.Clear();
+        for (int i = 0; i < mapPieces.Length; i++)
+        {
+            var piece = mapPieces[i];
+            if (piece == null || piece.sprite == null) continue;
 
-        // Staged in the void, at a fixed orientation. Deliberately independent
-        // of where the camera was standing when the axe landed - that position
-        // is in the middle of the legion and has nothing to offer this shot.
+            var pgo = new GameObject(string.IsNullOrEmpty(piece.label) ? "Piece" : piece.label, typeof(RectTransform));
+            var prt = pgo.GetComponent<RectTransform>();
+            prt.SetParent(mapRect, false);
+            prt.anchorMin = prt.anchorMax = prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.anchoredPosition = piece.anchoredPosition;
+            prt.sizeDelta = piece.size;
+            prt.localPosition = new Vector3(prt.localPosition.x, prt.localPosition.y, -i * 0.01f);
+
+            var img = pgo.AddComponent<Image>();
+            img.sprite = piece.sprite;
+            img.raycastTarget = false;
+            img.preserveAspect = false;
+
+            if (i == 0)
+            {
+                mapImage = img;
+                img.color = piece.color;
+            }
+            else
+            {
+                Color c = piece.color;
+                c.a = shapeAlpha;
+                img.color = c;
+                shapeImages.Add(img);
+            }
+        }
+
+        if (mapImage == null)
+        {
+            Debug.LogWarning("[TrailerMapCurse] The first map piece has no sprite - it is meant to be the map " +
+                             "background.", this);
+        }
+
+        // Staged in the void, square on to the lens, and LEVEL. There is no
+        // settling roll any more: a map that rotates into alignment as the shot
+        // opens reads as a card being turned over, which is the one thing a map
+        // that has always been there must not do.
         Vector3 forward = Vector3.forward;
         mapRect.position = stagePosition;
         mapRect.rotation = Quaternion.LookRotation(forward, Vector3.up);
 
-        // Square on to the lens. A map seen at an angle is a table; a map seen
-        // square is a statement. The roll is the only thing left over from
-        // being hit, and it bleeds out over the approach.
         cam.position = stagePosition - forward * startDistance;
-        cam.rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, 0f, settleRoll);
+        cam.rotation = Quaternion.LookRotation(forward, Vector3.up);
 
         cachedCam = cam.GetComponent<Camera>();
         if (cachedCam != null)
@@ -204,6 +233,8 @@ public class TrailerMapCurse : MonoBehaviour
             cachedCam.clearFlags = CameraClearFlags.SolidColor;
             cachedCam.backgroundColor = voidColor;
         }
+
+        BuildVignette();
 
         // The rain is parented to the camera, so without this it follows the
         // lens into the void and rains on the map.
@@ -231,23 +262,31 @@ public class TrailerMapCurse : MonoBehaviour
         return true;
     }
 
-    // One growing tendril. Lines are parented to the map so they travel with
-    // it, and grown in LOCAL map space so all the numbers above can be written
-    // against the art rather than against the world.
-    private class Branch
+    // Its own volume rather than the scene's, so nothing that was authored on
+    // the Global Volume is touched and there is nothing to put back beyond
+    // destroying this.
+    private void BuildVignette()
     {
-        public LineRenderer line;
-        public List<Vector3> pts = new List<Vector3>(64);
-        public Vector2 tip;
-        public float angle;
-        public int generation;
-        public int stepsSinceSplit;
-        public bool alive = true;
-        public float width;
-    }
+        if (!useVignette) return;
 
-    private readonly List<Branch> branches = new List<Branch>(64);
-    private Material lineMaterial;
+        vignetteVolume = new GameObject("[TrailerMapVignette]");
+        vignetteVolume.transform.SetParent(transform, false);
+
+        var v = vignetteVolume.AddComponent<UnityEngine.Rendering.Volume>();
+        v.isGlobal = true;
+        v.priority = 100f;   // over whatever the scene already has
+
+        var profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+        v.profile = profile;
+
+        var vig = profile.Add<UnityEngine.Rendering.Universal.Vignette>(true);
+        vig.intensity.overrideState = true;
+        vig.intensity.value = vignetteIntensity;
+        vig.smoothness.overrideState = true;
+        vig.smoothness.value = vignetteSmoothness;
+        vig.color.overrideState = true;
+        vig.color.value = vignetteColor;
+    }
 
     public IEnumerator Run(Transform cam)
     {
@@ -256,14 +295,14 @@ public class TrailerMapCurse : MonoBehaviour
         Vector3 dir = (mapRect.position - cam.position).normalized;
         Vector3 from = mapRect.position - dir * startDistance;
         Vector3 to = mapRect.position - dir * endDistance;
-        Quaternion level = Quaternion.LookRotation(dir, Vector3.up);
 
-        // A small lateral arc on the way in. A lens that travels dead straight
-        // down its own axis has no parallax, and no parallax is most of what
-        // makes a push-in read as an image being scaled rather than as a camera
-        // moving through a space.
+        // A small lateral arc on the way in. A lens travelling dead straight
+        // down its own axis produces no parallax, and no parallax is most of
+        // what makes a push-in read as an image being scaled rather than as a
+        // camera moving through a space. It is a DRIFT, not a rotation - the
+        // map never turns to face anything, because it was already facing us.
         Vector3 side = Vector3.Cross(Vector3.up, dir).normalized;
-        float arc = mapWorldWidth * 0.09f;
+        float arc = mapWorldWidth * 0.07f;
 
         Cue(AudioID.Trailer_Dread, AudioID.Enemy_Telegraph);
         SpawnMotes(cam);
@@ -274,11 +313,7 @@ public class TrailerMapCurse : MonoBehaviour
             t += Time.unscaledDeltaTime / Mathf.Max(0.01f, approachSeconds);
             float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
             cam.position = Vector3.LerpUnclamped(from, to, k) + side * (Mathf.Sin(k * Mathf.PI) * arc);
-            // The roll bleeds out as it settles, so the last thing the impact
-            // did to the camera is visible for a moment and then is not - which
-            // is what carries the hit through into this shot.
-            cam.rotation = Quaternion.LookRotation((mapRect.position - cam.position).normalized, Vector3.up)
-                         * Quaternion.Euler(0f, 0f, Mathf.Lerp(settleRoll, 0f, k));
+            cam.rotation = Quaternion.LookRotation((mapRect.position - cam.position).normalized, Vector3.up);
             yield return null;
         }
         cam.position = to;
@@ -287,158 +322,97 @@ public class TrailerMapCurse : MonoBehaviour
         float wait = 0f;
         while (wait < holdBeforeCurse) { wait += Time.unscaledDeltaTime; yield return null; }
 
-        yield return StartCoroutine(GrowCurse());
+        yield return StartCoroutine(RollTheFogIn());
 
         float after = 0f;
         while (after < holdAfter) { after += Time.unscaledDeltaTime; yield return null; }
     }
 
-    private IEnumerator GrowCurse()
+    private IEnumerator RollTheFogIn()
     {
         Cue(AudioID.Trailer_RiserToStrike, AudioID.Enemy_Telegraph);
 
-        Vector2 size = mapRect.sizeDelta;
-        Vector2 origin = new Vector2((curseOrigin.x - 0.5f) * size.x, (curseOrigin.y - 0.5f) * size.y);
-        float step = stepLength * size.x;
-        float reach = Mathf.Sqrt(size.x * size.x + size.y * size.y) * 0.5f;
+        Vector2 sheet = mapCanvasSize * fogOversize;
+        Vector2 enter = fogFrom.sqrMagnitude < 0.001f ? new Vector2(-1f, 1f) : fogFrom.normalized;
 
-        branches.Clear();
-        for (int i = 0; i < rootBranches; i++)
+        // Far enough out that not one pixel of a sheet is in frame at the start,
+        // whatever its size and whatever the lens is doing.
+        float travel = sheet.magnitude;
+
+        fogSheets.Clear();
+        var starts = new List<Vector2>();
+        for (int i = 0; i < fogLayers; i++)
         {
-            // Even angles, offset so the first root is never axis-aligned - a
-            // tendril running dead horizontally reads as a drawn line.
-            float a = (360f / rootBranches) * i + 17f;
-            branches.Add(NewBranch(origin, a, 0, rootWidth));
+            float depth = i / Mathf.Max(1f, fogLayers - 1f);   // 0 = nearest
+
+            var go = new GameObject("Fog_" + i, typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(mapRect, false);
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            // Each layer a little larger than the one in front, so their edges
+            // never cross the frame together.
+            rt.sizeDelta = sheet * (1f + depth * 0.35f);
+            // In front of every map piece.
+            rt.localPosition = new Vector3(0f, 0f, -2f - i * 0.05f);
+
+            var img = go.AddComponent<Image>();
+            img.sprite = fogSprite;
+            img.raycastTarget = false;
+            if (fogMaterial != null) img.material = fogMaterial;
+
+            Color c = fogTint;
+            // The layers behind are fainter, which is what gives the bank depth
+            // instead of making it one opaque wall.
+            c.a = 0f;
+            img.color = c;
+
+            Vector2 start = -enter * travel * (1f + depth * 0.25f);
+            rt.anchoredPosition = start;
+            starts.Add(start);
+            fogSheets.Add(img);
         }
 
-        Color clean = mapImage != null ? mapImage.color : Color.white;
+        Color cleanMap = mapImage != null ? mapImage.color : Color.white;
+        var cleanShapes = new List<Color>(shapeImages.Count);
+        for (int i = 0; i < shapeImages.Count; i++) cleanShapes.Add(shapeImages[i].color);
 
-        // Steps are driven off the CLOCK rather than off frames, so the growth
-        // takes curseSeconds on any machine instead of being fast on a good one.
-        int stepsToEdge = Mathf.Max(8, Mathf.CeilToInt(reach / Mathf.Max(0.01f, step)));
-        float stepInterval = curseSeconds / stepsToEdge;
-        float acc = 0f;
         float elapsed = 0f;
-
-        while (elapsed < curseSeconds)
+        while (elapsed < fogSweepSeconds)
         {
-            float dt = Time.unscaledDeltaTime;
-            elapsed += dt;
-            acc += dt;
+            elapsed += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(elapsed / fogSweepSeconds);
 
-            while (acc >= stepInterval)
+            for (int i = 0; i < fogSheets.Count; i++)
             {
-                acc -= stepInterval;
-                Advance(origin, step, size);
+                float depth = i / Mathf.Max(1f, fogLayers - 1f);
+                // Layers behind move slower and arrive later, so the bank rolls
+                // rather than slides.
+                float lag = depth * 0.22f;
+                float kk = Mathf.Clamp01((k - lag) / Mathf.Max(0.05f, 1f - lag));
+                float eased = Mathf.SmoothStep(0f, 1f, kk);
+
+                var rt = fogSheets[i].rectTransform;
+                rt.anchoredPosition = Vector2.LerpUnclamped(starts[i], Vector2.zero, eased);
+
+                Color c = fogTint;
+                c.a = fogOpacity * (1f - depth * 0.45f) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(kk * 2f));
+                fogSheets[i].color = c;
             }
 
-            if (mapImage != null)
-                mapImage.color = Color.Lerp(clean, cursedTint, Mathf.SmoothStep(0f, 1f, elapsed / curseSeconds));
+            // The land goes over underneath the bank, so what is still visible
+            // through the gaps is already cursed.
+            float tint = Mathf.SmoothStep(0f, 1f, k);
+            if (mapImage != null) mapImage.color = Color.Lerp(cleanMap, cursedTint, tint);
+            for (int i = 0; i < shapeImages.Count; i++)
+            {
+                Color target = cursedTint; target.a = cleanShapes[i].a;
+                shapeImages[i].color = Color.Lerp(cleanShapes[i], target, tint);
+            }
 
             yield return null;
         }
 
         if (mapImage != null) mapImage.color = cursedTint;
-    }
-
-    private Branch NewBranch(Vector2 at, float angle, int generation, float width)
-    {
-        var go = new GameObject("Tendril");
-        go.transform.SetParent(mapRect, false);
-        go.transform.localPosition = Vector3.zero;
-        go.transform.localRotation = Quaternion.identity;
-        go.transform.localScale = Vector3.one;
-
-        var lr = go.AddComponent<LineRenderer>();
-        lr.useWorldSpace = false;
-        lr.alignment = LineAlignment.TransformZ;   // flat on the map, not billboarded
-        lr.numCapVertices = 2;
-        lr.numCornerVertices = 2;
-        lr.material = LineMaterial();
-        lr.textureMode = LineTextureMode.Stretch;
-        lr.widthMultiplier = width;
-        lr.startColor = curseColor;
-        lr.endColor = curseTipColor;
-        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        lr.receiveShadows = false;
-        lr.positionCount = 0;
-
-        var b = new Branch { line = lr, tip = at, angle = angle, generation = generation, width = width };
-        // Slightly proud of the map so it never z-fights the art.
-        b.pts.Add(new Vector3(at.x, at.y, -0.6f));
-        lr.positionCount = 1;
-        lr.SetPosition(0, b.pts[0]);
-        return b;
-    }
-
-    private void Advance(Vector2 origin, float step, Vector2 size)
-    {
-        float halfX = size.x * 0.5f, halfY = size.y * 0.5f;
-        int live = branches.Count;
-
-        for (int i = 0; i < live; i++)
-        {
-            var b = branches[i];
-            if (!b.alive) continue;
-
-            // Wander, then pulled back toward growing away from the origin so
-            // the growth reaches the edges instead of curling into a knot.
-            b.angle += Random.Range(-wander, wander);
-            if (outwardBias > 0.001f)
-            {
-                Vector2 out2 = b.tip - origin;
-                if (out2.sqrMagnitude > 1f)
-                {
-                    float outward = Mathf.Atan2(out2.y, out2.x) * Mathf.Rad2Deg;
-                    b.angle = Mathf.LerpAngle(b.angle, outward, outwardBias);
-                }
-            }
-
-            float r = b.angle * Mathf.Deg2Rad;
-            b.tip += new Vector2(Mathf.Cos(r), Mathf.Sin(r)) * step;
-
-            // Off the art - the tendril stops at the coast.
-            if (b.tip.x < -halfX || b.tip.x > halfX || b.tip.y < -halfY || b.tip.y > halfY)
-            {
-                b.alive = false;
-                continue;
-            }
-
-            b.pts.Add(new Vector3(b.tip.x, b.tip.y, -0.6f));
-            b.line.positionCount = b.pts.Count;
-            b.line.SetPosition(b.pts.Count - 1, b.pts[b.pts.Count - 1]);
-
-            b.stepsSinceSplit++;
-            if (b.stepsSinceSplit >= splitEvery
-                && b.generation < maxGenerations
-                && branches.Count < maxBranches)
-            {
-                b.stepsSinceSplit = 0;
-                float childWidth = b.width * widthFalloff;
-
-                // Two children, one either side, and the parent carries on
-                // between them. Three-way forks are what make a growth read as
-                // a plant rather than as a crack.
-                branches.Add(NewBranch(b.tip, b.angle + splitAngle, b.generation + 1, childWidth));
-                branches.Add(NewBranch(b.tip, b.angle - splitAngle, b.generation + 1, childWidth));
-                b.width = childWidth;
-                b.line.widthMultiplier = childWidth;
-
-                if (curseSmokePrefab != null && Random.value < smokeOnSplitChance)
-                    SpawnSmoke(mapRect.TransformPoint(new Vector3(b.tip.x, b.tip.y, -0.6f)));
-            }
-        }
-    }
-
-    private Material LineMaterial()
-    {
-        if (lineMaterial != null) return lineMaterial;
-        // Sprites/Default is what the project already uses for its runtime
-        // LineRenderers, so it is known to render correctly here.
-        Shader sh = Shader.Find("Sprites/Default");
-        if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
-        lineMaterial = new Material(sh);
-        return lineMaterial;
     }
 
     private void SpawnMotes(Transform cam)
@@ -456,30 +430,13 @@ public class TrailerMapCurse : MonoBehaviour
         spawned.Add(motes);
     }
 
-    private void SpawnSmoke(Vector3 worldPos)
-    {
-        if (curseSmokePrefab == null) return;
-
-        var fx = Instantiate(curseSmokePrefab, worldPos, Quaternion.LookRotation(-mapRect.forward, Vector3.up));
-        fx.transform.localScale = Vector3.one * Mathf.Max(0.01f, curseSmokeScale);
-
-        foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
-        {
-            if (ps == null) continue;
-            var main = ps.main;
-            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
-            main.useUnscaledTime = true;
-        }
-
-        spawned.Add(fx);
-    }
-
     public void Cleanup()
     {
         for (int i = 0; i < spawned.Count; i++) if (spawned[i] != null) Destroy(spawned[i]);
         spawned.Clear();
-        branches.Clear();
-        if (lineMaterial != null) { Destroy(lineMaterial); lineMaterial = null; }
+        shapeImages.Clear();
+        fogSheets.Clear();
+        if (vignetteVolume != null) { Destroy(vignetteVolume); vignetteVolume = null; }
         if (canvas != null) Destroy(canvas.gameObject);
         canvas = null;
         mapRect = null;
