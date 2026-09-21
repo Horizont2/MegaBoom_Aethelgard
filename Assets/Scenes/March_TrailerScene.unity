@@ -261,7 +261,7 @@ MonoBehaviour:
   lightningColor: {r: 0.8, g: 0.9, b: 1, a: 1}
   lightningIntensity: 14
   thunderDelay: 0.9
-  stepShakeIntensity: 0.3
+  stepShakeIntensity: 0.05
   stepFrequency: 1.5
   stepDustPrefab: {fileID: 8230022441722461589, guid: 41494896fc96c9748b81d3356632794e, type: 3}
   stepDustScale: 0.3

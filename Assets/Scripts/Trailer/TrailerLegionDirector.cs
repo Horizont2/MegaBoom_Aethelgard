@@ -130,7 +130,27 @@ public class TrailerLegionDirector : MonoBehaviour
     public float thunderDelay = 0.9f;
 
     [Header("Footfalls")]
-    public float stepShakeIntensity = 0.3f;
+    // ==== 0.72 METRES ON A CAMERA 0.85 METRES UP ====
+    //
+    // This was 0.3 against a shot response of 2.4, which is nearly three
+    // quarters of a metre of vertical travel on a lens that is standing less
+    // than a metre off the grass. The camera fell almost to the ground and
+    // sprang back, every three quarters of a second. That is not a shake, it is
+    // a trapdoor.
+    //
+    // It is metres of drop now, at response 1, and a boot landing moves a
+    // camera by centimetres. There is a hard ceiling underneath it too, so no
+    // combination of the two numbers can produce a lurch again.
+    [Tooltip("Metres the camera drops on the boss's footfall, at a shot response of 1. A real impact moves a camera a few centimetres.")]
+    public float stepShakeIntensity = 0.05f;
+    [Tooltip("Hard ceiling on the drop, whatever the intensity and the shot's response multiply out to.")]
+    public float maxShakeDrop = 0.13f;
+    [Tooltip("Degrees of pitch per metre of drop. A jolted camera TILTS - pure vertical translation reads as an elevator, and it is the part that makes people queasy.")]
+    public float stepShakePitch = 7f;
+    [Tooltip("Spring stiffness of the recovery. Higher settles faster.")]
+    public float shakeStiffness = 320f;
+    [Tooltip("Damping ratio. Below 1 gives a little overshoot on the way back, which is what makes it read as weight rather than as a lerp.")]
+    [Range(0.2f, 1.4f)] public float shakeDamping = 0.7f;
     [Tooltip("Seconds between the boss's steps, scaled by march speed.")]
     public float stepFrequency = 1.5f;
     [Tooltip("Optional puff spawned under the boss on each footfall.")]
@@ -225,7 +245,10 @@ public class TrailerLegionDirector : MonoBehaviour
     private float shotElapsed;
     private float episodeElapsed;
     private float stepTimer;
-    private float stepImpulse;
+    private float shakeOffset;     // current drop, metres (negative = down)
+    private float shakeVel;
+    private float groundY;         // smoothed ground under the lens
+    private bool groundYValid;
     private float driftSeed;
     private int nextLightning;
 
@@ -437,12 +460,24 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         BossAxes(out Vector3 fwd, out Vector3 right);
         Vector3 p = bossTransform.position + fwd * o.z + right * o.x;
+
+        // ==== THE GROUND IS ALSO A SOURCE OF BOB ====
+        //
+        // The lens is re-grounded at its OWN xz every frame while travelling at
+        // two metres a second, so on anything but a billiard table it rides
+        // every bump in the field. Horizontal tracking wants to be tight;
+        // vertical wants to be lazy. Smoothing the ground height on its own,
+        // far slower than the position, keeps the framing locked while the
+        // terrain stops being felt.
         float ground = GetTerrainHeight(p);
+        if (!groundYValid) { groundY = ground; groundYValid = true; }
+        else groundY = Mathf.Lerp(groundY, ground, 1f - Mathf.Exp(-3.5f * Mathf.Max(0.0001f, Time.deltaTime)));
+
         // Clearance floor: see minGroundClearance. A shot authored at thirty
         // centimetres will still clip the ground the moment the field is not
         // perfectly flat, and a camera that clips the ground looks exactly like
         // a camera that has fallen through it.
-        p.y = ground + Mathf.Max(o.y, minGroundClearance);
+        p.y = groundY + Mathf.Max(o.y, minGroundClearance);
         return p;
     }
 
@@ -476,16 +511,28 @@ public class TrailerLegionDirector : MonoBehaviour
             Mathf.PerlinNoise(37.7f, driftSeed + tt * 0.83f) - 0.5f,
             0f) * (s.handheld * 2f);
 
-        // The footfall drops the camera and it recovers. See stepImpulse.
-        Vector3 shake = new Vector3(0f, -stepImpulse * s.shakeResponse, 0f);
+        // The footfall drops the camera and it recovers. See the spring above.
+        float drop = Mathf.Clamp(shakeOffset * s.shakeResponse, -maxShakeDrop, maxShakeDrop);
+        Vector3 want = basePos + drift + new Vector3(0f, drop, 0f);
 
-        Vector3 want = basePos + drift + shake;
+        // ==== AND NEVER THROUGH THE FLOOR ====
+        //
+        // The clearance floor was applied to the BASE position and the shake was
+        // added afterwards, so the jolt could put the lens under the grass on
+        // its way down - which is most of what made it read as a jump rather
+        // than as a knock.
+        float clearance = GetTerrainHeight(want) + minGroundClearance;
+        if (want.y < clearance) want.y = clearance;
         // A cut is instant; within a shot the camera is smoothed a little so
         // the terrain grounding does not read as a stair-step.
         mainCamera.position = snap ? want : Vector3.Lerp(mainCamera.position, want, 1f - Mathf.Exp(-12f * dt));
 
         Quaternion aim = Quaternion.LookRotation((look - mainCamera.position).normalized, Vector3.up);
-        if (Mathf.Abs(s.roll) > 0.001f) aim *= Quaternion.Euler(0f, 0f, s.roll);
+        // The tilt that comes with the knock. Small, and it does most of the
+        // work: a camera that only moves vertically reads as an elevator.
+        float pitch = -drop * stepShakePitch;
+        if (Mathf.Abs(s.roll) > 0.001f || Mathf.Abs(pitch) > 0.001f)
+            aim *= Quaternion.Euler(pitch, 0f, s.roll);
         mainCamera.rotation = snap ? aim : Quaternion.Slerp(mainCamera.rotation, aim, 1f - Mathf.Exp(-14f * dt));
 
         if (cam != null) cam.fieldOfView = Mathf.LerpUnclamped(s.startFOV, s.endFOV, k);
@@ -498,6 +545,9 @@ public class TrailerLegionDirector : MonoBehaviour
         // A fresh drift phase, so the new shot does not inherit the old one's
         // wobble mid-stroke and make the cut look like a jump.
         driftSeed = Random.Range(0f, 100f);
+        groundYValid = false;   // the new shot starts on its own ground, not the last one's
+        shakeOffset = 0f;
+        shakeVel = 0f;
         DriveCamera(0f, true);
         ClearRain();
 
@@ -1009,7 +1059,11 @@ public class TrailerLegionDirector : MonoBehaviour
             if (stepTimer >= stepFrequency)
             {
                 stepTimer = 0f;
-                stepImpulse = stepShakeIntensity;
+                // A kick to the spring's VELOCITY, not a jump to a position.
+                // Snapping the offset to full amplitude and decaying it back was
+                // a teleport on the frame it fired, with a straight-line return
+                // behind it - no attack, no settle, nothing that reads as mass.
+                shakeVel -= stepShakeIntensity * Mathf.Sqrt(Mathf.Max(1f, shakeStiffness));
                 if (bossTransform != null)
                 {
                     Cue3D(AudioID.Trailer_BossStep, AudioID.Enemy_Footstep, bossTransform.position);
@@ -1022,7 +1076,20 @@ public class TrailerLegionDirector : MonoBehaviour
                 }
             }
         }
-        stepImpulse = Mathf.MoveTowards(stepImpulse, 0f, dt * Mathf.Max(0.01f, stepShakeIntensity) * 5f);
+        // Damped spring back to rest. Integrated in fixed sub-steps so a frame
+        // spike cannot make a stiff spring explode.
+        {
+            float k = Mathf.Max(1f, shakeStiffness);
+            float c = 2f * Mathf.Sqrt(k) * shakeDamping;
+            int steps = Mathf.Clamp(Mathf.CeilToInt(dt / 0.008f), 1, 8);
+            float h = dt / steps;
+            for (int i = 0; i < steps; i++)
+            {
+                shakeVel += (-k * shakeOffset - c * shakeVel) * h;
+                shakeOffset += shakeVel * h;
+            }
+            shakeOffset = Mathf.Clamp(shakeOffset, -maxShakeDrop, maxShakeDrop);
+        }
 
         // Lightning runs on the EPISODE clock, not on a shot, so a strike can
         // land across a cut - which is exactly when it is most effective.
