@@ -214,6 +214,25 @@ public class MercenaryCampaignManager : MonoBehaviour
             AchievementSystem.Unlock("STRATEGIST");
 
         foreach (int uid in result.lostUnitUIDs) roster.KillUnit(uid);
+
+        // ==== NOBODY MARCHES HOME FROM A DEFEAT ====
+        //
+        // The campaign always ran a return leg, win or lose, and only announced
+        // the outcome when that leg finished. On a defeat that meant the player
+        // watched an army they no longer had walk back across the map and then
+        // learned, at the end of it, that the region was never taken. Now that
+        // losing costs the whole company (see BattleResolver), there is nothing
+        // left to make the trip.
+        //
+        // Collapsing the return to nothing puts the campaign into Done on this
+        // same tick, so the defeat is reported the moment the battle is decided
+        // rather than a march later.
+        if (!c.won)
+        {
+            c.returnDuration = 0f;
+            SaveCampaigns();
+        }
+
         OnCampaignResolved?.Invoke(c);
     }
 

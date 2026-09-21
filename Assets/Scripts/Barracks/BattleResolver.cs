@@ -171,10 +171,13 @@ public static class BattleResolver
         // disagree in the first place.
         float winChance = WinChance(armyScore, enemyStrength, tactic);
         float winShare  = Mathf.Clamp01(baseShare * TacticCasualtyMultiplier(tactic, true));
-        float lossShare = Mathf.Clamp01((baseShare + 0.35f) * TacticCasualtyMultiplier(tactic, false));
         int total = army.Count;
         int lowEnd  = Mathf.Clamp(Mathf.FloorToInt(winShare * total - 0.5f), 0, total);
-        int highEnd = Mathf.Clamp(Mathf.CeilToInt(lossShare * total + 0.5f), lowEnd, total);
+        // The worst case is no longer "a big share of them". A defeat takes the
+        // company, so the panel has to say the company — a range that tops out
+        // below the army size would be understating the stake the player is
+        // being asked to accept.
+        int highEnd = total;
         r.expectedCasualtyLow = lowEnd;
         r.expectedCasualtyHigh = highEnd;
 
@@ -213,24 +216,56 @@ public static class BattleResolver
             return r;
         }
 
-        // Win check: the shared curve, plus a small RNG bias so battles near
-        // the middle of it stay unpredictable and a preview never reads as a
-        // promise. See WinChance for why the old inline formula is gone.
+        // ==== THE NUMBER ON THE SCREEN IS THE NUMBER ====
+        //
+        // The roll used to be `base + (rng - 0.5) * 0.2`, so a player shown 76%
+        // was actually being rolled against somewhere between 66% and 86%. In
+        // expectation that is the same odds, and the stated reason — that a
+        // preview should not read as a promise — was fair while a defeat only
+        // cost a few soldiers.
+        //
+        // It is not fair any more. A lost campaign now costs the entire army
+        // (see below), which makes the displayed percentage the single most
+        // important number in the barracks. A number that important has to be
+        // the one the dice are actually rolled against.
         float baseWinChance = WinChance(armyScore, enemyStrength, tactic);
         float roll = (float)rng.NextDouble();
-        float bias = ((float)rng.NextDouble() - 0.5f) * 0.2f;
-        r.won = roll < Mathf.Clamp01(baseWinChance + bias);
-
-        // Casualty math — win/loss-aware tactic multiplier so Ambush truly
-        // punishes a lost gamble and Siege stays cheap either way.
-        float ratio = (float)enemyStrength / armyScore;
-        float baseShare = Mathf.Clamp01(ratio * 0.6f);
-        if (!r.won) baseShare = Mathf.Clamp(baseShare + 0.35f, 0f, 1f); // losing hurts more
-        float tacticMult = TacticCasualtyMultiplier(tactic, r.won);
-        float finalShare = Mathf.Clamp01(baseShare * tacticMult);
+        r.won = roll < Mathf.Clamp01(baseWinChance);
 
         int total = army.Count;
-        int deaths = Mathf.RoundToInt(finalShare * total);
+        int deaths;
+
+        if (!r.won)
+        {
+            // ==== A DEFEAT IS NOT A BAD AFTERNOON ====
+            //
+            // Casualties were a share of the army scaled by the strength ratio,
+            // so a strong army that lost anyway shed a fraction of itself —
+            // and with a low-casualty tactic, or a small company, the rounding
+            // could take NOBODY. The player watched their whole army march
+            // home intact and then found the region still in enemy hands, with
+            // nothing on screen explaining how both of those could be true.
+            //
+            // They did not take the region because they were beaten. Being
+            // beaten now means the army does not come back. It makes the
+            // outcome legible at a glance, it makes the odds worth reading,
+            // and it makes sending a company somewhere a decision rather than
+            // a free roll.
+            deaths = total;
+        }
+        else
+        {
+            // Casualty math on a WIN — win/loss-aware tactic multiplier so
+            // Siege stays cheap and Ambush pays for its edge.
+            float ratio = (float)enemyStrength / armyScore;
+            float baseShare = Mathf.Clamp01(ratio * 0.6f);
+            float tacticMult = TacticCasualtyMultiplier(tactic, true);
+            float finalShare = Mathf.Clamp01(baseShare * tacticMult);
+            deaths = Mathf.RoundToInt(finalShare * total);
+            // A victory always leaves somebody to carry the news home;
+            // otherwise a "win" is indistinguishable from a defeat.
+            deaths = Mathf.Min(deaths, Mathf.Max(0, total - 1));
+        }
 
         // Pick which specific UIDs died — shuffle army by seeded RNG so it's
         // reproducible, then take the first `deaths` entries.
