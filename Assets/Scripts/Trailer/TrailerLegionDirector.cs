@@ -330,9 +330,54 @@ public class TrailerLegionDirector : MonoBehaviour
         if (bossTransform != null) StripGameplay(bossTransform.gameObject);
     }
 
+    // ==== A REFERENCE THAT POINTS AT THE PREFAB IS NOT A REFERENCE TO THE BOSS ====
+    //
+    // bossAnimator was serialized as {fileID, guid, type: 3} - the form that
+    // addresses a component INSIDE THE PREFAB ASSET ON DISK, not the instance
+    // standing in the scene. (bossTransform right next to it was a plain scene
+    // id, which is what the correct form looks like.)
+    //
+    // Nothing errors. SetBool and Play happily write to the asset's animator,
+    // the skeleton on screen never hears a word of it, and the boss walks his
+    // whole march in Idle_A and then declines to throw - which is exactly what
+    // it did, twice, through two rounds of looking for the fault in the
+    // controller instead.
+    //
+    // A component that belongs to no loaded scene cannot be the one being
+    // filmed, and that is cheap to notice. Noticed once, at startup, loudly.
+    private void ResolveBossAnimator()
+    {
+        if (bossTransform == null) return;
+
+        bool wrong = bossAnimator == null
+                  || !bossAnimator.gameObject.scene.IsValid()
+                  || !bossAnimator.transform.IsChildOf(bossTransform);
+
+        if (!wrong) return;
+
+        Animator found = bossTransform.GetComponentInChildren<Animator>(true);
+        Debug.LogWarning(bossAnimator == null
+            ? "[TrailerLegion] bossAnimator was not assigned."
+            : "[TrailerLegion] bossAnimator does not belong to the boss in this scene - it is almost certainly a " +
+              "reference to the PREFAB ASSET rather than to the instance. Every animator write was going nowhere.", this);
+
+        if (found != null)
+        {
+            bossAnimator = found;
+            Debug.LogWarning($"[TrailerLegion] Using '{found.name}' on the boss instead. Re-drag the field in the " +
+                             "inspector to make this permanent.", this);
+        }
+        else
+        {
+            Debug.LogError("[TrailerLegion] ...and the boss has no Animator anywhere in its hierarchy, so he will " +
+                           "neither walk nor throw.", this);
+        }
+    }
+
     private void Start()
     {
         cam = mainCamera != null ? mainCamera.GetComponent<Camera>() : null;
+        ResolveBossAnimator();
         if (shots == null || shots.Length == 0) shots = BuildDefaultShots();
 
         HideMinimapLayers();
