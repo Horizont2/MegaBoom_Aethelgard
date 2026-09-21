@@ -83,6 +83,48 @@ public class TrailerLegionDirector : MonoBehaviour
     [Tooltip("Played in order, with a hard cut between each. Leave empty and the three authored shots are built at startup.")]
     public Shot[] shots;
 
+    [Header("Rise intro (plays before the march)")]
+    // ==== THEY COME OUT OF THE GROUND, THEN THEY WALK ====
+    //
+    // A separate beat in front of the march, in the same scene: the field is
+    // empty, the crust breaks, an army claws its way out, and a blackout hands
+    // over to the march already on its feet.
+    //
+    // The risers are DELIBERATELY FEW. Three hundred of them rising and three
+    // hundred more spawning for the march is six hundred instantiations and
+    // twice the VFX for no visible gain - a low, close shot of breaking ground
+    // only ever shows the forty in front of the lens. What sells "an army" here
+    // is the boss coming up last and nearest, not a headcount nobody can see.
+    [Tooltip("Play the rising beat before the march. Off, the episode starts at the march exactly as before.")]
+    public bool playRiseIntro = true;
+    [Tooltip("Off, the built-in low shot of the breaking ground is used and the field below is ignored. Tick it once you have framed your own.")]
+    public bool useAuthoredRiseShot = false;
+    [Tooltip("Your own framing for the rise. Only read when the box above is ticked - Unity never leaves a serialized class field null, so 'empty means built-in' cannot be detected any other way.")]
+    public Shot riseShot;
+    [Tooltip("How many break the crust. This is a close shot - forty is a wall of them.")]
+    public int riseCount = 44;
+    [Tooltip("Radius around the boss they come up in.")]
+    public float riseSpread = 9f;
+    [Tooltip("How far under the ground each one starts.")]
+    public float riseDepth = 2.3f;
+    [Tooltip("Seconds for one skeleton to come up.")]
+    public float riseDuration = 2.1f;
+    [Tooltip("Seconds across which the whole field breaks. They must not all arrive together, or it reads as one object being raised on a lift.")]
+    public float riseWindow = 2.6f;
+    [Tooltip("The resurrect state on the shared enemy animator. It is an orphan state with no transitions, which is exactly why playing it by name is safe - nothing will transition away from it.")]
+    public string riseState = "Skeletons_Death_Resurrect";
+    [Tooltip("Seconds they stand still, risen, before the blackout.")]
+    public float riseHold = 1.1f;
+    [Tooltip("Dirt thrown up as each one breaks through. Falls back to the footfall puff.")]
+    public GameObject riseDustPrefab;
+
+    [Header("Blackout between the rise and the march")]
+    [Tooltip("Fire a lightning strike on the blackout, so the screen is taken by a flash rather than by a fade. Far more cinematic, and it hides the hand-over completely.")]
+    public bool blackoutOnLightning = true;
+    public float blackoutIn = 0.09f;
+    public float blackoutHold = 0.45f;
+    public float blackoutOut = 0.4f;
+
     [Header("The legion")]
     public GameObject skeletonPrefab;
     public int skeletonCount = 300;
@@ -262,6 +304,18 @@ public class TrailerLegionDirector : MonoBehaviour
 
     private readonly List<Soldier> legion = new List<Soldier>(320);
 
+    private class Riser
+    {
+        public Transform t;
+        public Animator anim;
+        public float startAt;
+        public float fromY, toY;
+        public bool started;
+    }
+    private readonly List<Riser> risers = new List<Riser>(64);
+    private CanvasGroup veil;
+    private Shot overrideShot;
+
     private bool isBossMarching = true;
     private bool isArmyMarching = true;
     private bool cameraDriven = true;
@@ -379,24 +433,40 @@ public class TrailerLegionDirector : MonoBehaviour
         cam = mainCamera != null ? mainCamera.GetComponent<Camera>() : null;
         ResolveBossAnimator();
         if (shots == null || shots.Length == 0) shots = BuildDefaultShots();
+        if (!useAuthoredRiseShot || riseShot == null) riseShot = BuildDefaultRiseShot();
 
         HideMinimapLayers();
         ApplyLightingRig();
-        SpawnLegion();
+
+        // The legion is NOT spawned yet when there is a rise beat - it arrives
+        // under the blackout, so nothing of the hand-over is ever on screen.
+        if (playRiseIntro) SpawnRisers();
+        else SpawnLegion();
+
         SpawnMarchDust();
         SpawnRain();
         StartAudioBed();
 
         InstallThrowClip();
 
-        // Nothing was ever telling the boss he was walking.
-        if (bossAnimator != null)
+        if (playRiseIntro)
+        {
+            // He is in the ground too, and he comes up last.
+            isBossMarching = false;
+            isArmyMarching = false;
+        }
+        else if (bossAnimator != null)
         {
             bossAnimator.SetBoolSafe(movingBool, true);
             if (!string.IsNullOrEmpty(walkState)) bossAnimator.Play(walkState, 0, Random.value);
         }
 
         driftSeed = Random.Range(0f, 100f);
+        // The rise drives the camera from its own coroutine, so Update must not
+        // also advance it - two drivers double the shot clock.
+        cameraDriven = !playRiseIntro;
+        if (playRiseIntro) overrideShot = riseShot;
+
         // Frame the first shot before anything renders, so the episode does not
         // open on one frame of wherever the camera happened to be parked.
         DriveCamera(0f, true);
@@ -512,6 +582,30 @@ public class TrailerLegionDirector : MonoBehaviour
         return new[] { ground, legionShot, challenge };
     }
 
+    // Down at the crust, close, on a longish lens so the ground fills the frame
+    // and there is no horizon to tell you how many of them there are. The
+    // camera creeps IN as they come up, so the last thing to arrive - the boss
+    // - arrives into a tighter frame than the first.
+    private Shot BuildDefaultRiseShot()
+    {
+        return new Shot
+        {
+            label = "0 - Rising",
+            duration = 5.8f,
+            startOffset = new Vector3(2.8f, 1.25f, 8.5f),
+            endOffset = new Vector3(1.7f, 0.95f, 6.4f),
+            lookOffset = new Vector3(0f, 0.45f, -1.2f),
+            startFOV = 41f,
+            endFOV = 36f,
+            roll = -2f,
+            handheld = 0.08f,
+            // The boss breaking through kicks the lens by hand (CameraKick);
+            // there are no footfalls in this beat to respond to.
+            shakeResponse = 1f,
+            ease = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f),
+        };
+    }
+
     // The boss's frame. +Z is where he is going, +X is his right.
     private void BossAxes(out Vector3 fwd, out Vector3 right)
     {
@@ -568,7 +662,7 @@ public class TrailerLegionDirector : MonoBehaviour
         if (mainCamera == null || bossTransform == null || shots == null || shots.Length == 0) return;
         if (shotIndex >= shots.Length) shotIndex = shots.Length - 1;
 
-        Shot s = shots[shotIndex];
+        Shot s = overrideShot ?? shots[shotIndex];
         float u = s.duration > 0.001f ? Mathf.Clamp01(shotElapsed / s.duration) : 1f;
         float k = s.ease != null ? s.ease.Evaluate(u) : u;
 
@@ -618,6 +712,7 @@ public class TrailerLegionDirector : MonoBehaviour
         // wobble mid-stroke and make the cut look like a jump.
         driftSeed = Random.Range(0f, 100f);
         groundYValid = false;   // the new shot starts on its own ground, not the last one's
+
         shakeOffset = 0f;
         shakeVel = 0f;
         DriveCamera(0f, true);
@@ -768,6 +863,231 @@ public class TrailerLegionDirector : MonoBehaviour
         if (rainSystems == null) return;
         for (int i = 0; i < rainSystems.Length; i++)
             if (rainSystems[i] != null) rainSystems[i].Clear(true);
+    }
+
+    // A disc of skeletons buried around the boss, plus the boss himself. They
+    // are placed at their final xz and simply start below the ground; nothing
+    // moves horizontally, so nothing can drift out of frame on the way up.
+    private void SpawnRisers()
+    {
+        risers.Clear();
+        if (skeletonPrefab == null || bossTransform == null) return;
+
+        BossAxes(out Vector3 fwd, out Vector3 right);
+
+        for (int i = 0; i < riseCount; i++)
+        {
+            // Square-rooted radius so they spread EVENLY over the disc. A plain
+            // random radius bunches everything at the centre, which is exactly
+            // where the camera is looking.
+            float ang = Random.value * Mathf.PI * 2f;
+            float rad = Mathf.Sqrt(Random.value) * riseSpread;
+            Vector3 pos = bossTransform.position + right * (Mathf.Cos(ang) * rad) + fwd * (Mathf.Sin(ang) * rad);
+            float ground = GetTerrainHeight(pos);
+
+            Quaternion rot = bossTransform.rotation * Quaternion.Euler(0f, Random.Range(-yawJitter * 3f, yawJitter * 3f), 0f);
+            GameObject go = Instantiate(skeletonPrefab, new Vector3(pos.x, ground - riseDepth, pos.z), rot);
+            StripGameplay(go);
+            go.transform.localScale *= Random.Range(scaleJitter.x, scaleJitter.y);
+
+            var r = new Riser
+            {
+                t = go.transform,
+                anim = go.GetComponent<Animator>(),
+                // The near ones come up LAST, so the wave travels toward the
+                // lens rather than away from it.
+                startAt = Random.Range(0f, riseWindow),
+                fromY = ground - riseDepth,
+                toY = ground,
+            };
+            if (r.anim != null) r.anim.speed = 0f;   // held until its moment
+            risers.Add(r);
+        }
+
+        // And the boss, deepest and last.
+        Vector3 bp = bossTransform.position;
+        bossGroundY = GetTerrainHeight(bp);
+        bossTransform.position = new Vector3(bp.x, bossGroundY - riseDepth * 1.25f, bp.z);
+        if (bossAnimator != null) { bossAnimator.speed = 0f; }
+    }
+
+    private float bossGroundY;
+
+    private IEnumerator RiseSequence()
+    {
+        overrideShot = riseShot;
+        shotElapsed = 0f;
+        groundYValid = false;
+        DriveCamera(0f, true);
+
+        // The camera move is stretched to cover the beat rather than the beat
+        // being cut to fit the camera: tune riseWindow / riseDuration / riseHold
+        // and the framing follows, instead of drifting out of step with them.
+        float total = riseWindow + riseDuration + riseHold;
+        overrideShot.duration = Mathf.Max(0.5f, total);
+
+        float bossStart = riseWindow * 0.82f;   // he is the last thing up
+        bool bossStarted = false;
+        float lastRiseSfx = -1f;
+        float elapsed = 0f;
+
+        while (elapsed < riseWindow + riseDuration)
+        {
+            float dt = Time.deltaTime;
+            elapsed += dt;
+            shotElapsed += dt;
+
+            for (int i = 0; i < risers.Count; i++)
+            {
+                var r = risers[i];
+                if (r.t == null) continue;
+
+                if (!r.started)
+                {
+                    if (elapsed < r.startAt) continue;
+                    r.started = true;
+                    if (r.anim != null)
+                    {
+                        r.anim.speed = 1f;
+                        if (!string.IsNullOrEmpty(riseState)) r.anim.Play(riseState, 0, 0f);
+                    }
+                    SpawnRiseDust(new Vector3(r.t.position.x, r.toY, r.t.position.z));
+
+                    // Rate-limited: forty of these inside three seconds is a
+                    // wall of identical one-shots, not an event.
+                    if (elapsed - lastRiseSfx > 0.14f)
+                    {
+                        lastRiseSfx = elapsed;
+                        Cue3D(AudioID.Trailer_BoneRise, AudioID.Enemy_Spawn, r.t.position);
+                    }
+                }
+
+                float k = Mathf.Clamp01((elapsed - r.startAt) / Mathf.Max(0.05f, riseDuration));
+                // Slow to break the crust, then out in a rush - the opposite of
+                // a lift, which is what a linear lerp looks like.
+                float eased = k * k * (3f - 2f * k);
+                eased = Mathf.Pow(eased, 0.7f);
+                Vector3 p = r.t.position;
+                p.y = Mathf.Lerp(r.fromY, r.toY, eased);
+                r.t.position = p;
+            }
+
+            if (!bossStarted && elapsed >= bossStart)
+            {
+                bossStarted = true;
+                if (bossAnimator != null)
+                {
+                    bossAnimator.speed = 1f;
+                    if (!string.IsNullOrEmpty(riseState)) bossAnimator.Play(riseState, 0, 0f);
+                }
+                SpawnRiseDust(new Vector3(bossTransform.position.x, bossGroundY, bossTransform.position.z));
+                Cue3D(AudioID.Trailer_BoneRise, AudioID.Enemy_Spawn, bossTransform.position);
+                CameraKick();
+            }
+            if (bossStarted && bossTransform != null)
+            {
+                float bk = Mathf.Clamp01((elapsed - bossStart) / Mathf.Max(0.05f, riseDuration * 1.35f));
+                float be = Mathf.Pow(bk * bk * (3f - 2f * bk), 0.7f);
+                Vector3 bp = bossTransform.position;
+                bp.y = Mathf.Lerp(bossGroundY - riseDepth * 1.25f, bossGroundY, be);
+                bossTransform.position = bp;
+            }
+
+            DriveCamera(dt);
+            yield return null;
+        }
+
+        // Standing. Let it sit - a beat of an army that has just stopped moving
+        // is what makes the blackout land.
+        float hold = 0f;
+        while (hold < riseHold)
+        {
+            hold += Time.deltaTime;
+            shotElapsed += Time.deltaTime;
+            DriveCamera(Time.deltaTime);
+            yield return null;
+        }
+    }
+
+    private void SpawnRiseDust(Vector3 at)
+    {
+        GameObject prefab = riseDustPrefab != null ? riseDustPrefab : stepDustPrefab;
+        if (prefab == null) return;
+        var puff = Instantiate(prefab, at, Quaternion.identity);
+        ScaleEffect(puff, stepDustScale * 1.35f, stepDustDensity);
+        Destroy(puff, stepDustLifetime);
+    }
+
+    // A jolt on the spring the footfalls already use, so the boss breaking
+    // through shakes the lens the same way his steps will.
+    private void CameraKick()
+    {
+        shakeVel -= stepShakeIntensity * 2.2f * Mathf.Sqrt(Mathf.Max(1f, shakeStiffness));
+    }
+
+    // ==== THE HAND-OVER HAPPENS BEHIND A FLASH ====
+    //
+    // A cut from a field of risen skeletons to a marching column is a cut
+    // between two versions of the same subject, and those are the ones an
+    // audience notices. So it is not a cut: lightning takes the screen, the
+    // blackout lands on the flash, and everything - destroying the risers,
+    // building the formation, putting the boss back on his feet - happens while
+    // there is nothing to see. The march then opens FROM black, which reads as
+    // a new shot rather than as a change of contents.
+    private IEnumerator BlackoutHandover()
+    {
+        if (blackoutOnLightning) StartCoroutine(LightningStrike(0));
+        EnsureVeil();
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / Mathf.Max(0.01f, blackoutIn);
+            if (veil != null) veil.alpha = Mathf.Clamp01(t);
+            yield return null;
+        }
+        if (veil != null) veil.alpha = 1f;
+
+        // --- nothing below this line is visible ---
+        for (int i = 0; i < risers.Count; i++)
+            if (risers[i].t != null) Destroy(risers[i].t.gameObject);
+        risers.Clear();
+
+        if (bossTransform != null)
+        {
+            Vector3 bp = bossTransform.position;
+            bossTransform.position = new Vector3(bp.x, bossGroundY, bp.z);
+        }
+        if (bossAnimator != null)
+        {
+            bossAnimator.speed = 1f;
+            bossAnimator.SetBoolSafe(movingBool, true);
+            if (!string.IsNullOrEmpty(walkState)) bossAnimator.Play(walkState, 0, Random.value);
+        }
+
+        SpawnLegion();
+        isBossMarching = true;
+        isArmyMarching = true;
+        overrideShot = null;
+        stepTimer = 0f;
+        shakeOffset = 0f;
+        shakeVel = 0f;
+        // --- visible again from here ---
+
+        yield return new WaitForSecondsRealtime(blackoutHold);
+    }
+
+    private IEnumerator LiftVeil()
+    {
+        if (veil == null) yield break;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / Mathf.Max(0.01f, blackoutOut);
+            veil.alpha = 1f - Mathf.Clamp01(t);
+            yield return null;
+        }
+        veil.alpha = 0f;
     }
 
     private void SpawnMarchDust()
@@ -1234,6 +1554,17 @@ public class TrailerLegionDirector : MonoBehaviour
 
     private IEnumerator CinematicRoutine()
     {
+        if (playRiseIntro)
+        {
+            yield return StartCoroutine(RiseSequence());
+            yield return StartCoroutine(BlackoutHandover());
+            cameraDriven = true;
+            // The march opens FROM black: the veil lifts over the first seconds
+            // of shot one rather than before it, so the cut and the first move
+            // are the same gesture.
+            StartCoroutine(LiftVeil());
+        }
+
         // Walk the shot list. The cuts ARE the structure, so they live here
         // rather than being implied by a pile of WaitForSeconds elsewhere.
         for (int i = 0; i < shots.Length; i++)
@@ -1561,18 +1892,17 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
         // The axe filling the frame IS the wipe. Take the screen on contact and
         // hold it; the next episode starts from black, which is a cut rather
         // than a transition that has to be watched.
-        CanvasGroup veil = smashToBlack ? BuildImpactVeil() : null;
-
-        if (veil != null)
+        if (smashToBlack)
         {
+            EnsureVeil();
             float f = 0f;
-            while (f < 1f)
+            while (f < 1f && veil != null)
             {
                 f += Time.unscaledDeltaTime / Mathf.Max(0.01f, impactFadeDuration);
                 veil.alpha = Mathf.Clamp01(f);
                 yield return null;
             }
-            veil.alpha = 1f;
+            if (veil != null) veil.alpha = 1f;
         }
 
         // Only once the screen is covered does anything get put back, so the
@@ -1591,6 +1921,13 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
 
     // Built in code so the episode carries its own transition and cannot be
     // broken by somebody rearranging the scene's canvases.
+    // One veil for the whole episode: the blackout between the rise and the
+    // march, and the smash at the end, are the same piece of black.
+    private void EnsureVeil()
+    {
+        if (veil == null) veil = BuildImpactVeil();
+    }
+
     private CanvasGroup BuildImpactVeil()
     {
         var go = new GameObject("[TrailerImpactVeil]");
