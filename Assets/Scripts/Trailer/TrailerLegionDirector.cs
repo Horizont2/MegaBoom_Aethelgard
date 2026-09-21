@@ -115,6 +115,8 @@ public class TrailerLegionDirector : MonoBehaviour
     public string riseState = "Skeletons_Death_Resurrect";
     [Tooltip("Seconds they stand still, risen, before the blackout.")]
     public float riseHold = 1.1f;
+    [Tooltip("What they settle into once they are up. The resurrect state is an orphan with no exit transition, so without this they HOLD ITS LAST FRAME - forty statues, perfectly still, for the whole hold.")]
+    public string idleState = "Idle_A";
     [Tooltip("Dirt thrown up as each one breaks through. Falls back to the footfall puff.")]
     public GameObject riseDustPrefab;
 
@@ -997,6 +999,20 @@ public class TrailerLegionDirector : MonoBehaviour
             yield return null;
         }
 
+        // ==== AND THEN THEY BREATHE ====
+        //
+        // The resurrect state has no exit transition - that is why playing it by
+        // name is safe - but it also means the clip ENDS and holds its final
+        // frame. Forty skeletons frozen mid-pose for the whole hold is the one
+        // thing that would give away that they are props. Crossfaded into idle,
+        // they settle instead.
+        for (int i = 0; i < risers.Count; i++)
+        {
+            var a = risers[i].anim;
+            if (a != null && !string.IsNullOrEmpty(idleState)) a.CrossFade(idleState, 0.3f);
+        }
+        if (bossAnimator != null && !string.IsNullOrEmpty(idleState)) bossAnimator.CrossFade(idleState, 0.35f);
+
         // Standing. Let it sit - a beat of an army that has just stopped moving
         // is what makes the blackout land.
         float hold = 0f;
@@ -1036,7 +1052,16 @@ public class TrailerLegionDirector : MonoBehaviour
     // a new shot rather than as a change of contents.
     private IEnumerator BlackoutHandover()
     {
-        if (blackoutOnLightning) StartCoroutine(LightningStrike(0));
+        // A high index on purpose: the thunder delay shortens with it, so the
+        // strike that takes the screen cracks almost on the flash rather than
+        // rumbling in a second later, over black, from nowhere.
+        if (blackoutOnLightning) StartCoroutine(LightningStrike(3));
+
+        // The score has been held down since the first frame. It comes up HALF
+        // way here and the rest at the reveal - one lift across nine seconds
+        // reads as the track simply starting late; two reads as a build.
+        if (playAudio && AudioManager.Instance != null) AudioManager.Instance.DuckMusicInstance(0.6f, 0.8f);
+
         EnsureVeil();
 
         float t = 0f;
@@ -1569,8 +1594,16 @@ public class TrailerLegionDirector : MonoBehaviour
         // rather than being implied by a pile of WaitForSeconds elsewhere.
         for (int i = 0; i < shots.Length; i++)
         {
-            if (i > 0) CutTo(i);
-            else { shotIndex = 0; shotElapsed = 0f; }
+            // ==== INCLUDING THE FIRST ONE ====
+            //
+            // Shot zero used to only set the index, on the reasoning that Start
+            // had already framed it. That stopped being true the moment a rise
+            // beat went in front of the march: the camera is now parked down in
+            // the grass at the end of a completely different shot, and without a
+            // snap it LERPS across to the march's opening frame - visibly,
+            // because the veil is lifting over exactly those frames. It also
+            // carried the rise's smoothed ground and drift phase across with it.
+            CutTo(i);
 
             float d = Mathf.Max(0.1f, shots[i].duration);
             while (shotElapsed < d) yield return null;
