@@ -529,12 +529,44 @@ public class ShopManager : MonoBehaviour
         // Shields live in the other hand, so "equipped" for them is a different
         // key. Reading SelectedWeaponID here would show the player's sword as
         // the equipped shield, or nothing as equipped at all.
+        // ==== THE FREE SHIELD IS WORN, NOT MERELY OWNED ====
+        //
+        // This read SelectedShieldID with a default of -1, so a player who had
+        // never opened the shield tab had no shield marked equipped — while in
+        // the world they were already carrying the free one, because
+        // ShieldLoadout falls back to it. The shop showed EQUIP on a shield
+        // that was already in their hand.
+        //
+        // Resolved through the same rule the game uses, so the two can never
+        // disagree again.
         int equippedWepID = cat == ItemCategory.Shield
-            ? PlayerPrefs.GetInt(ShieldLoadout.PP_SELECTED, -1)
+            ? ResolveEquippedShieldID()
             : PlayerPrefs.GetInt("SelectedWeaponID", 0);
-        foreach (var w in weapons)
+
+        // ==== THE LIST CAME OUT IN WHATEVER ORDER THE ASSETS LOADED ====
+        //
+        // Shields have a clear ladder — the free Wayfarer's Round, then 420,
+        // 780, 1150 diamonds — and it was invisible, because the grid was built
+        // by walking the index in load order. Sorted by price, then by power,
+        // then by name, so cheapest-first reads as the progression it is and two
+        // items at the same price still have a stable order rather than shuffling
+        // between sessions.
+        var inCategory = new List<WeaponData>();
+        foreach (var w in weapons) if (w != null && w.category == cat) inCategory.Add(w);
+        if (cat == ItemCategory.Shield)
         {
-            if (w.category != cat) continue;
+            inCategory.Sort((a, b) =>
+            {
+                int c = a.price.CompareTo(b.price);
+                if (c != 0) return c;
+                c = a.basePower.CompareTo(b.basePower);
+                if (c != 0) return c;
+                return string.Compare(a.weaponName, b.weaponName, System.StringComparison.Ordinal);
+            });
+        }
+
+        foreach (var w in inCategory)
+        {
 
             bool owned = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
             if (!PassesFilter(w.weaponName, owned)) continue;
@@ -863,6 +895,24 @@ public class ShopManager : MonoBehaviour
         if (stat2DeltaText != null) stat2DeltaText.text = "";
         if (stat3DeltaText != null) stat3DeltaText.text = "";
         if (powerDeltaText != null) powerDeltaText.text = "";
+    }
+
+    // The shop's copy of ShieldLoadout.EquippedShield's rule: an explicit
+    // choice if there is one, otherwise the cheapest free shield, which the
+    // player is already carrying. Kept read-only here — the shop must not
+    // decide the loadout just because somebody opened a tab.
+    private int ResolveEquippedShieldID()
+    {
+        int id = PlayerPrefs.GetInt(ShieldLoadout.PP_SELECTED, -1);
+        if (id >= 0) return id;
+
+        WeaponData free = null;
+        foreach (var w in weapons)
+        {
+            if (w == null || w.category != ItemCategory.Shield || w.price != 0) continue;
+            if (free == null || w.basePower < free.basePower) free = w;
+        }
+        return free != null ? free.weaponID : -1;
     }
 
     private WeaponData FindEquippedWeaponInCategory(ItemCategory cat)
@@ -1490,8 +1540,39 @@ public class ShopManager : MonoBehaviour
         LerpBar(3, powerFill, Mathf.Clamp01(pow / 1000f));
     }
 
+    // ==== AUTOLOCALIZE WAS PUTTING "HP" AND "SPEED" BACK ====
+    //
+    // AutoLocalize attaches itself to every root canvas after a scene load,
+    // snapshots the AUTHORED text of every label under it, and re-applies that
+    // snapshot on enable and on every language change. The stat captions are
+    // written by code — PARRY WINDOW, STAMINA COST, GUARD ARC for a shield —
+    // so on the first frame the snapshot won and the shield captions were
+    // replaced by the generic weapon ones, which is exactly the reported
+    // "the stat text changes itself on the first frame".
+    //
+    // AutoLocalize already has the escape hatch for this: a NoAutoLocalize
+    // component on the label or an ancestor. The four captions get one, and the
+    // walker is asked to re-capture so an instance that already ran forgets
+    // them.
+    private bool _statLabelsProtected;
+
+    private void ProtectDynamicStatLabels()
+    {
+        if (_statLabelsProtected) return;
+        _statLabelsProtected = true;
+
+        MarkNoAutoLocalize(stat1Label);
+        MarkNoAutoLocalize(stat2Label);
+        MarkNoAutoLocalize(stat3Label);
+        MarkNoAutoLocalize(powerLabel);
+
+        foreach (var al in FindObjectsByType<AutoLocalize>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (al != null) al.Recapture();
+    }
+
     private void CacheWeaponStatLabels()
     {
+        ProtectDynamicStatLabels();
         if (_weaponStatLabels != null) return;
         _weaponStatLabels = new[]
         {
@@ -1503,10 +1584,14 @@ public class ShopManager : MonoBehaviour
 
     private void RestoreWeaponStatLabels()
     {
+        // Run back through Tr: with AutoLocalize no longer allowed near these
+        // labels, nothing else would retranslate them when the language
+        // changes, and Tr returns its input unchanged for a string that is
+        // already translated or has no entry.
         if (_weaponStatLabels == null) return;
-        if (stat1Label) stat1Label.text = _weaponStatLabels[0];
-        if (stat2Label) stat2Label.text = _weaponStatLabels[1];
-        if (stat3Label) stat3Label.text = _weaponStatLabels[2];
+        if (stat1Label) stat1Label.text = LocalizationManager.Tr(_weaponStatLabels[0]);
+        if (stat2Label) stat2Label.text = LocalizationManager.Tr(_weaponStatLabels[1]);
+        if (stat3Label) stat3Label.text = LocalizationManager.Tr(_weaponStatLabels[2]);
     }
 
     private Coroutine[] statBarLerps = new Coroutine[4];
@@ -1653,8 +1738,27 @@ public class ShopManager : MonoBehaviour
         if (currentWeaponModel != null) DestroyImmediate(currentWeaponModel);
         if (currentHeroModel == null || w.shopPrefab == null) return;
 
+        // ==== A SHIELD IS NOT HELD IN THE SWORD HAND ====
+        //
+        // Every item went to WeaponSocket, so the shop stood the hero holding
+        // his shield out in his right fist like a weapon. Shields resolve the
+        // OFF hand first, by the same names ShieldLoadout uses in the world, so
+        // the mannequin matches what the player will actually be carrying.
+        Transform socket = null;
+        if (w.category == ItemCategory.Shield)
+        {
+            socket = FindDeepChild(currentHeroModel.transform, "ShieldSocket")
+                  ?? FindDeepChild(currentHeroModel.transform, "handslot.l")
+                  ?? FindDeepChild(currentHeroModel.transform, "hand_l")
+                  ?? FindDeepChild(currentHeroModel.transform, "LeftHand")
+                  ?? FindDeepChild(currentHeroModel.transform, "mixamorig:LeftHand");
+            if (socket == null)
+                Debug.LogWarning("[Shop] No ShieldSocket or left-hand bone on the shop hero — the shield will be " +
+                                 "shown in the weapon hand. Add an empty 'ShieldSocket' under the left hand.", this);
+        }
+
         // Բ��: ������ ��� ��������� ����� ������!
-        Transform socket = FindDeepChild(currentHeroModel.transform, "WeaponSocket");
+        if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "WeaponSocket");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "handslot.r");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_r");
         if (socket == null) socket = FindDeepChild(currentHeroModel.transform, "hand_R");
