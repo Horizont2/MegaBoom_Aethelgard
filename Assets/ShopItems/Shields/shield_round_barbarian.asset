@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponID: 903
   weaponName: Ironhide Slab
   category: 6
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 4af9facb2a7e18246825439737b18274, type: 3}
   description: A wall with a strap. Nearly impossible to parry with, nearly impossible
     to flank.
   price: 1150

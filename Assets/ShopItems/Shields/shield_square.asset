@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponID: 901
   weaponName: Warden's Kite
   category: 6
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 965e1b7009582194f9c499fe6eb9ce32, type: 3}
   description: The soldier's answer. No strength anywhere, no weakness either.
   price: 420
   shopPrefab: {fileID: 919132149155446097, guid: 90032089eaac3f34cafececd6f07a1ea, type: 3}

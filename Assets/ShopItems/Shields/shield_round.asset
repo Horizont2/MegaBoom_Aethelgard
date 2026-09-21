@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponID: 900
   weaponName: Wayfarer's Round
   category: 6
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: b743c2061014eda49855e2bd19c530b7, type: 3}
   description: Light limewood. Quick to bring up and cheap to hold, but it covers
     little.
   price: 0

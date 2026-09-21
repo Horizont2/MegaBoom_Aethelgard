@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponID: 902
   weaponName: Spiked Bulwark
   category: 6
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 36ca75721d5d04b459fad38c8f2daab0, type: 3}
   description: Studded with iron. Every blow you catch bites the hand that threw
     it.
   price: 780
