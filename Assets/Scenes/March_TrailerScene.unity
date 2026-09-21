@@ -229,7 +229,62 @@ MonoBehaviour:
   bossTransform: {fileID: 1544163602}
   bossAnimator: {fileID: 7489123634373202801, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
   bossWeapon: {fileID: 1273752790}
-  introTiltCurve:
+  shots: []
+  skeletonPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
+  skeletonCount: 300
+  filesPerRank: 11
+  fileSpacing: 1.7
+  rankSpacing: 1.9
+  wedgeWidening: 0.45
+  depthStretch: 0.07
+  positionJitter: 0.45
+  yawJitter: 7
+  scaleJitter: {x: 0.93, y: 1.07}
+  speedJitter: 0.05
+  marchSpeed: 2
+  frontRankOffset: -3.5
+  applyLightingRig: 1
+  mainDirectionalLight: {fileID: 854525243}
+  mainLightColor: {r: 0.46, g: 0.58, b: 0.85, a: 1}
+  mainLightIntensity: 0.9
+  moonElevation: 11
+  moonAzimuthOffset: 28
+  ambientSky: {r: 0.1, g: 0.13, b: 0.2, a: 1}
+  ambientEquator: {r: 0.07, g: 0.08, b: 0.12, a: 1}
+  ambientGround: {r: 0.03, g: 0.03, b: 0.04, a: 1}
+  fogTint: {r: 0.3, g: 0.36, b: 0.46, a: 1}
+  lightningTimes:
+  - 1.7
+  - 5.4
+  - 9.2
+  - 12.1
+  lightningColor: {r: 0.8, g: 0.9, b: 1, a: 1}
+  lightningIntensity: 14
+  thunderDelay: 0.9
+  stepShakeIntensity: 0.3
+  stepFrequency: 1.5
+  stepDustPrefab: {fileID: 8230022441722461589, guid: 41494896fc96c9748b81d3356632794e, type: 3}
+  stepDustScale: 0.3
+  stepDustDensity: 0.3
+  stepDustLifetime: 2.2
+  marchDustPrefab: {fileID: 3789122199548263463, guid: 2d8c2dfad6d208641b2b0a3b26af5960, type: 3}
+  marchDustScale: 1.4
+  marchDustDensity: 0.5
+  rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
+  rainHeight: 9
+  rainSplashFilter: Splash
+  movingBool: isMoving
+  walkState: Running_A
+  throwTrigger: Throw
+  throwFallbackTrigger: Attack
+  playAudio: 1
+  animationWindupTime: 0.8
+  weaponFlightDuration: 0.4
+  weaponArcHeight: 1.5
+  throwOvershoot: 1.6
+  impactScaleMultiplier: 4.2
+  throwSpins: 2.25
+  weaponFlightCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
@@ -277,81 +332,16 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  weaponFlightCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  impactPanCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  initialCameraDistance: 25
-  cameraHeight: 1.2
-  cameraDollySpeed: 1
-  bossLookOffset: {x: 0, y: 3, z: 0}
-  tiltUpDuration: 2.5
   cinematicZoomFOV: 40
-  stepShakeIntensity: 0.3
-  stepFrequency: 1.5
-  mainDirectionalLight: {fileID: 854525243}
-  mainLightColor: {r: 0.46, g: 0.58, b: 0.85, a: 1}
-  mainLightIntensity: 0.9
-  lightningColor: {r: 0.8, g: 0.9, b: 1, a: 1}
-  rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
-  stepDustPrefab: {fileID: 8230022441722461589, guid: 41494896fc96c9748b81d3356632794e, type: 3}
-  marchDustPrefab: {fileID: 3789122199548263463, guid: 2d8c2dfad6d208641b2b0a3b26af5960, type: 3}
-  skeletonPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
-  skeletonCount: 300
-  spawnWidth: 20
-  spawnDistanceMin: -2
-  spawnDistanceMax: -20
-  marchSpeed: 2
-  timeUntilThrow: 8
-  animationWindupTime: 0.8
-  weaponFlightDuration: 0.4
-  cameraImpactDuration: 0.6
-  weaponArcHeight: 1.5
-  weaponScaleMultiplier: 1.8
+  smashToBlack: 1
+  impactFadeColor: {r: 0, g: 0, b: 0, a: 1}
+  impactFadeDuration: 0.14
+  holdBlackDuration: 0.35
+  onEpisodeFinished:
+    m_PersistentCalls:
+      m_Calls: []
+  minGroundClearance: 0.7
+  implausibleDrop: 60
 --- !u!1 &442585513
 GameObject:
   m_ObjectHideFlags: 0
@@ -636,7 +626,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &854525242
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1007,21 +997,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1900100003
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1900100001}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: 0.000000007450581, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1900100002
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2106,6 +2081,21 @@ MonoBehaviour:
         Data3: 0
         Data4: 0
       Path: 
+--- !u!4 &1900100003
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900100001}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.000000007450581, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
