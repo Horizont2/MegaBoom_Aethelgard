@@ -570,12 +570,12 @@ MonoBehaviour:
   terrainEdgeFade: 0
   terrainFollow: 0.9
   rebuildWhenTerrainChanges: 1
-  density: 0.08
-  groundFogHeight: 3.2
-  topSoftness: 0.45
+  density: 0.28
+  groundFogHeight: 34
+  topSoftness: 0.35
   noiseTextureResolution: 64
   noiseSeed: 1337
-  largeNoiseScale: 70
+  largeNoiseScale: 60
   detailNoiseScale: 22
   noiseAmount: 0.5
   noiseFloor: 0
@@ -593,7 +593,7 @@ MonoBehaviour:
   minimumRaySteps: 7
   targetStepLength: 12
   maximumFogDistance: 300
-  nearFadeDistance: 8
+  nearFadeDistance: 6
   farFadeStart: 0
   fogColor: {r: 0.63, g: 0.7, b: 0.76, a: 1}
   followSceneFogColor: 1

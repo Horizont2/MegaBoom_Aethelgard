@@ -192,6 +192,40 @@ public class TrailerLegionDirector : MonoBehaviour
     private Color rigColor;
     private int windHandle = -1, marchHandle = -1;
 
+    // ==== THE CAST IS ACTING IN A FILM, NOT PLAYING THE GAME ====
+    //
+    // The boss prefab carries TutorialBossAI and the trailer minion still
+    // carries EnemyAI, and both were left running.
+    //
+    // TutorialBossAI looks for a player, finds none, and writes isMoving=false
+    // to the animator every frame - which is precisely why the boss walked the
+    // whole episode playing his IDLE. Worse, its Start calls ActivateBoss,
+    // which puts the boss HEALTH BAR on screen over the trailer. And EnemyAI on
+    // three hundred minions is three hundred searches for a player that does
+    // not exist, three hundred CharacterControllers shoving each other apart,
+    // and a spawn-rise coroutine that can leave them frozen mid-emerge.
+    //
+    // None of them are fighting anybody. They are extras: the director moves
+    // them and the director animates them.
+    private static void StripGameplay(GameObject go)
+    {
+        if (go == null) return;
+        foreach (var b in go.GetComponentsInChildren<TutorialBossAI>(true)) if (b != null) b.enabled = false;
+        foreach (var e in go.GetComponentsInChildren<EnemyAI>(true)) if (e != null) e.enabled = false;
+        foreach (var a in go.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true)) if (a != null) a.enabled = false;
+        foreach (var c in go.GetComponentsInChildren<CharacterController>(true)) if (c != null) c.enabled = false;
+        // Three hundred bodies standing in each other's laps will push each
+        // other out of formation if anything is solid.
+        foreach (var col in go.GetComponentsInChildren<Collider>(true)) if (col != null) col.enabled = false;
+    }
+
+    // Awake, not Start: a component that is disabled before the first frame
+    // never gets its own Start, which is how ActivateBoss is headed off.
+    private void Awake()
+    {
+        if (bossTransform != null) StripGameplay(bossTransform.gameObject);
+    }
+
     private void Start()
     {
         cam = mainCamera != null ? mainCamera.GetComponent<Camera>() : null;
@@ -201,6 +235,9 @@ public class TrailerLegionDirector : MonoBehaviour
         SpawnLegion();
         SpawnMarchDust();
         StartAudioBed();
+
+        // Nothing was ever telling the boss he was walking.
+        if (bossAnimator != null) bossAnimator.SetBoolSafe("isMoving", true);
 
         driftSeed = Random.Range(0f, 100f);
         // Frame the first shot before anything renders, so the episode does not
@@ -238,9 +275,9 @@ public class TrailerLegionDirector : MonoBehaviour
         {
             label = "1 - Ground",
             duration = 3.2f,
-            startOffset = new Vector3(1.2f, 0.32f, 15f),
-            endOffset = new Vector3(0.9f, 0.40f, 13.2f),
-            lookOffset = new Vector3(0f, 0.55f, 0f),
+            startOffset = new Vector3(1.2f, 0.85f, 15f),
+            endOffset = new Vector3(0.9f, 0.95f, 13.2f),
+            lookOffset = new Vector3(0f, 0.7f, 0f),
             startFOV = 34f,
             endFOV = 32f,
             roll = -1.5f,
@@ -306,6 +343,9 @@ public class TrailerLegionDirector : MonoBehaviour
         right = new Vector3(fwd.z, 0f, -fwd.x);
     }
 
+    [Tooltip("The camera is never allowed closer than this to the ground. A lens a few centimetres up clips through the surface on the first bump, which reads as the camera falling under the terrain.")]
+    public float minGroundClearance = 0.7f;
+
     // A camera position: grounded, then lifted by the offset's Y. Grounding it
     // is what keeps a low shot low over a rolling field instead of burying the
     // lens on the next rise.
@@ -313,7 +353,12 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         BossAxes(out Vector3 fwd, out Vector3 right);
         Vector3 p = bossTransform.position + fwd * o.z + right * o.x;
-        p.y = GetTerrainHeight(p) + o.y;
+        float ground = GetTerrainHeight(p);
+        // Clearance floor: see minGroundClearance. A shot authored at thirty
+        // centimetres will still clip the ground the moment the field is not
+        // perfectly flat, and a camera that clips the ground looks exactly like
+        // a camera that has fallen through it.
+        p.y = ground + Mathf.Max(o.y, minGroundClearance);
         return p;
     }
 
@@ -435,6 +480,7 @@ public class TrailerLegionDirector : MonoBehaviour
 
                 Quaternion rot = bossTransform.rotation * Quaternion.Euler(0f, Random.Range(-yawJitter, yawJitter), 0f);
                 GameObject go = Instantiate(skeletonPrefab, pos, rot);
+                StripGameplay(go);
 
                 float sc = Random.Range(scaleJitter.x, scaleJitter.y);
                 go.transform.localScale *= sc;
@@ -702,12 +748,45 @@ public class TrailerLegionDirector : MonoBehaviour
         obj.position = pos;
     }
 
+    // ==== A SAMPLE TAKEN OFF THE EDGE OF THE TERRAIN RETURNS ZERO ====
+    //
+    // Terrain.SampleHeight does not clamp to the terrain's bounds, and the wide
+    // shot places the camera fifty-four metres in front of the boss - far
+    // enough to leave the map near an edge. Off the terrain it returns zero, so
+    // with this terrain sitting at the origin and its surface a hundred and
+    // fifty metres up, the camera was placed a hundred and fifty metres BELOW
+    // the ground, on the exact frame of a cut. That is the camera jumping under
+    // the terrain.
+    //
+    // The boss is always standing on the ground, so his own height is a
+    // reference for what a plausible answer looks like. A sample that disagrees
+    // with him by more than a cliff's worth is not a hill, it is a miss.
     private float GetTerrainHeight(Vector3 position)
     {
-        if (Terrain.activeTerrain != null)
-            return Terrain.activeTerrain.SampleHeight(position) + Terrain.activeTerrain.transform.position.y;
-        return position.y;
+        Terrain terrain = Terrain.activeTerrain;
+        if (terrain == null) return bossTransform != null ? bossTransform.position.y : position.y;
+
+        float h = terrain.SampleHeight(position) + terrain.transform.position.y;
+
+        if (bossTransform != null && Mathf.Abs(h - bossTransform.position.y) > implausibleDrop)
+        {
+            if (!_warnedOffTerrain)
+            {
+                _warnedOffTerrain = true;
+                Debug.LogWarning($"[TrailerLegion] A ground sample at {position} came back {h:F1} while the boss is " +
+                                 $"standing at {bossTransform.position.y:F1}. That point is almost certainly off the " +
+                                 "terrain - pull the shot offsets in, or make the terrain bigger. Using the boss's " +
+                                 "height instead so the camera does not drop through the world.", this);
+            }
+            return bossTransform.position.y;
+        }
+        return h;
     }
+
+    [Tooltip("A ground sample this far from the boss's own feet is treated as a miss rather than as terrain. Raise it only if the episode genuinely marches across a cliff.")]
+    public float implausibleDrop = 60f;
+
+    private bool _warnedOffTerrain;
 
     // ======================================================================
     //  The episode
@@ -730,7 +809,11 @@ public class TrailerLegionDirector : MonoBehaviour
         // it ended - from here the throw owns it.
         cameraDriven = false;
         isBossMarching = false;
-        if (bossAnimator != null) bossAnimator.SetTrigger("Throw");
+        if (bossAnimator != null)
+        {
+            bossAnimator.SetBoolSafe("isMoving", false);
+            bossAnimator.SetTriggerSafe("Throw");
+        }
 
         StartCoroutine(StopArmyWithInertia());
 
