@@ -921,6 +921,26 @@ public class CampBuilding : MonoBehaviour
         PlayerPrefs.SetInt("SaveBld_" + buildingID, currentLevel);
         PlayerPrefs.Save();
 
+        // ==== THE BUILD MISSION WAS CREDITED IN THE WRONG PLACE ====
+        //
+        // BuildStructures progress was reported from the LOAD path, which reads
+        // UpgradeFinished_<id> when the camp scene comes up and ticks the
+        // mission if it finds the flag still set. But Update() consumes that
+        // same flag the moment the build timer runs out — it clears it and
+        // starts this sequence — so in the ordinary case, where the player is
+        // standing in the camp watching their building go up, the flag is
+        // already zero by the time anything reads it for missions. The load
+        // path then found nothing on the next visit either, because it had been
+        // cleared in the previous session.
+        //
+        // The result: "build 1 building" could never be completed by building a
+        // building. This IS the completion, so the credit belongs here. The
+        // load path stays as the fallback for a build that finished while the
+        // camp scene was unloaded; the two are mutually exclusive, because
+        // whichever one sees the flag clears it.
+        if (MissionManager.Instance != null)
+            MissionManager.Instance.AddProgress(MissionType.BuildStructures, 1);
+
         // Achievement hooks per specific building milestone.
         if (!string.IsNullOrEmpty(buildingID))
         {

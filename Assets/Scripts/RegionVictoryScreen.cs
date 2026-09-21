@@ -109,23 +109,55 @@ public class RegionVictoryScreen : MonoBehaviour
 
     public static void Show(string title, string subtitle, List<Award> awards, Action onDone)
     {
-        if (Instance == null)
+        // ==== THE DOOR IS NOT ALLOWED TO DEPEND ON THE DECORATION ====
+        //
+        // Everything below builds a picture. The caller is blocking the
+        // player's control and waiting on `onDone` to send them back to camp,
+        // so any failure in here has to end with onDone being called anyway —
+        // otherwise a screen that cannot be built becomes a region that cannot
+        // be left, which is the single worst bug this game has had.
+        try
         {
-            var prefab = Resources.Load<GameObject>(PrefabResource);
-            GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[RegionVictory]");
-            go.name = "[RegionVictory]";
-            DontDestroyOnLoad(go);
-            if (go.GetComponent<RegionVictoryScreen>() == null) go.AddComponent<RegionVictoryScreen>();
+            if (Instance == null)
+            {
+                var prefab = Resources.Load<GameObject>(PrefabResource);
+                GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("[RegionVictory]");
+                go.name = "[RegionVictory]";
+                DontDestroyOnLoad(go);
+                if (go.GetComponent<RegionVictoryScreen>() == null) go.AddComponent<RegionVictoryScreen>();
+            }
+
+            if (Instance == null)
+            {
+                Debug.LogError("[Victory] The screen object was created but its component never registered — " +
+                               "Awake must have thrown. Skipping the presentation.");
+                onDone?.Invoke();
+                return;
+            }
+
+            // A previous show may have left the object inactive, and
+            // StartCoroutine on an inactive object throws rather than warning.
+            if (!Instance.gameObject.activeSelf) Instance.gameObject.SetActive(true);
+
+            Instance.Play(title, subtitle, awards ?? new List<Award>(), onDone);
         }
-        if (Instance != null) Instance.Play(title, subtitle, awards, onDone);
+        catch (Exception e)
+        {
+            Debug.LogError("[Victory] Could not present the victory screen. " + e);
+            onDone?.Invoke();
+        }
     }
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        // Registered BEFORE Build, so a Build that throws still leaves Show a
+        // handle to work with and a clear error, rather than a null Instance
+        // and no explanation.
         Instance = this;
-        Build();
-        _group.alpha = 0f;
+        try { Build(); }
+        catch (Exception e) { Debug.LogError("[Victory] Building the screen threw. " + e); }
+        if (_group != null) _group.alpha = 0f;
     }
 
     private void OnDestroy()
@@ -244,6 +276,18 @@ public class RegionVictoryScreen : MonoBehaviour
         IsShowing = true;
         _accepting = false;
 
+        // Build left something out — most likely TMP or the Canvas failed to
+        // come up. Say so once, loudly, and release the caller instead of
+        // NRE-ing on the next line and leaving them blocked forever.
+        if (_group == null || _title == null || _subtitle == null || _continue == null || _rows == null)
+        {
+            Debug.LogError("[Victory] The screen is missing its parts (group/title/subtitle/continue/rows) — " +
+                           "nothing can be drawn. Releasing the player to camp.");
+            IsShowing = false;
+            _onDone?.Invoke();
+            yield break;
+        }
+
         foreach (var r in _built) if (r != null && r.rt != null) Destroy(r.rt.gameObject);
         _built.Clear();
 
@@ -270,9 +314,16 @@ public class RegionVictoryScreen : MonoBehaviour
         for (int i = 0; i < awards.Count; i++)
         {
             var a = awards[i];
-            var row = BuildRow(a, new Vector2(left + i * tileWidth, 0f));
-            row.target = a.amount;
-            _built.Add(row);
+            // One award tile failing to build is not a reason to lose the whole
+            // screen — and losing the whole screen is not a reason to lose the
+            // way home. Each tile stands or falls on its own.
+            try
+            {
+                var row = BuildRow(a, new Vector2(left + i * tileWidth, 0f));
+                row.target = a.amount;
+                _built.Add(row);
+            }
+            catch (Exception e) { Debug.LogError($"[Victory] Award tile '{a.label}' failed to build. " + e); }
         }
 
         // FADE IN. Everything on unscaled time — the game may well be paused or
@@ -286,6 +337,25 @@ public class RegionVictoryScreen : MonoBehaviour
             yield return null;
         }
         _group.alpha = 1f;
+
+        // ==== DID IT ACTUALLY DRAW? ====
+        //
+        // The screen has "not appeared" more than once while every line of this
+        // routine ran perfectly, because alpha 1 on a CanvasGroup means nothing
+        // if the Canvas itself is off, the object is inactive, or the canvas
+        // ended up behind something. Check the three things that can be checked
+        // and put the reason in the log, so the next report comes with a cause
+        // attached instead of "it froze".
+        var vcanvas = GetComponent<Canvas>();
+        if (vcanvas == null || !vcanvas.enabled || !vcanvas.isActiveAndEnabled)
+        {
+            Debug.LogError("[Victory] Faded in, but the Canvas is missing or disabled — the player is looking at " +
+                           "the frozen region. Forcing it on.");
+            if (vcanvas == null) vcanvas = gameObject.AddComponent<Canvas>();
+            vcanvas.enabled = true;
+            vcanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            vcanvas.sortingOrder = 5000;
+        }
 
         // AWARDS, together. The stagger is a ripple across the line rather than
         // a queue — enough that the eye sees them arrive, far too short to wait

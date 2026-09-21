@@ -5688,36 +5688,73 @@ public class WorldGenerator : MonoBehaviour
         // shift), so where the road drops sharply that Y is the higher road-top
         // level and the altar floated over the lower ground. Grounding to the
         // terrain actually beneath the altar fixes the "totem in the air" bug.
-        if (terrain != null)
-        {
-            Vector3 p = go.transform.position;
-            float gCenter = terrain.SampleHeight(p) + transform.position.y;
-            // Also probe a small ring so a base straddling a sharp edge rests on
-            // the LOWER ground (never left hanging over the drop).
-            float gLow = gCenter;
-            for (int a = 0; a < 4; a++)
-            {
-                float ang = a * Mathf.PI * 0.5f;
-                Vector3 probe = p + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 2.5f;
-                float g = terrain.SampleHeight(probe) + transform.position.y;
-                if (g < gLow) gLow = g;
-            }
-            targetGroundY = gLow;
-        }
-
+        // Measure the model FIRST, because how far out the ground has to be
+        // probed depends on how wide the thing standing on it is.
         float lowestY = float.MaxValue;
         bool any = false;
+        Bounds foot = default;
         foreach (var mr in go.GetComponentsInChildren<MeshRenderer>(false))
         {
             if (mr == null || !mr.enabled) continue;
             lowestY = Mathf.Min(lowestY, mr.bounds.min.y);
+            if (!any) foot = mr.bounds; else foot.Encapsulate(mr.bounds);
             any = true;
         }
         foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>(false))
         {
             if (smr == null || !smr.enabled) continue;
             lowestY = Mathf.Min(lowestY, smr.bounds.min.y);
+            if (!any) foot = smr.bounds; else foot.Encapsulate(smr.bounds);
             any = true;
+        }
+
+        if (terrain != null)
+        {
+            Vector3 p = go.transform.position;
+            float gLow = terrain.SampleHeight(p) + transform.position.y;
+
+            // ==== A FIXED 2.5m RING CANNOT GROUND A SIX-METRE ALTAR ====
+            //
+            // The probe went out two and a half metres in four directions no
+            // matter how big the model was. On flat ground that is plenty; on a
+            // slope it means the ground is only ever sampled under the MIDDLE
+            // of the base, so the whole downhill half of a wide altar is left
+            // hanging in the air — which is exactly where these were floating.
+            //
+            // Probe the model's own footprint instead, in eight directions plus
+            // its four XZ corners, and take the lowest ground any part of it
+            // stands over. A base slightly buried on the uphill side reads as
+            // set into the hill; one floating on the downhill side reads as a
+            // bug.
+            float radius = 2.5f;
+            if (any)
+            {
+                Vector3 ext = foot.extents;
+                radius = Mathf.Clamp(Mathf.Max(ext.x, ext.z), 2.5f, 14f);
+            }
+
+            for (int a = 0; a < 8; a++)
+            {
+                float ang = a * Mathf.PI * 0.25f;
+                Vector3 probe = p + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * radius;
+                float g = terrain.SampleHeight(probe) + transform.position.y;
+                if (g < gLow) gLow = g;
+            }
+
+            if (any)
+            {
+                Vector3 c = foot.center;
+                Vector3 e = foot.extents;
+                for (int sx = -1; sx <= 1; sx += 2)
+                    for (int sz = -1; sz <= 1; sz += 2)
+                    {
+                        Vector3 probe = new Vector3(c.x + sx * e.x, 0f, c.z + sz * e.z);
+                        float g = terrain.SampleHeight(probe) + transform.position.y;
+                        if (g < gLow) gLow = g;
+                    }
+            }
+
+            targetGroundY = gLow;
         }
         // No solid renderers found (all nested under inactive roots or the
         // prefab is collider-only) — leave the caller's grounded Y as-is.

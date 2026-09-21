@@ -197,7 +197,12 @@ public class RegionManager : MonoBehaviour
             // escalates to a hard scene load rather than firing once and giving
             // up, so a false positive would cut a legitimate cutscene short —
             // worth erring on the generous side.
-            RegionExitWatchdog.Arm(100f);
+            // 100 seconds, then two polite retries six seconds apart, then a
+            // hard load: the player was looking at a frozen region for nearly
+            // two minutes before the net caught them, which is long past the
+            // point where anyone would have quit. 30s, and the escalation is
+            // quicker behind it.
+            RegionExitWatchdog.Arm(30f);
             StartCoroutine(FinalRegionPurificationRoutine(purifiedTotem.transform.position));
         }
     }
@@ -247,7 +252,7 @@ public class RegionManager : MonoBehaviour
             // So it now VERIFIES — it keeps watching until the scene actually
             // changes, and escalates if the polite route is not working.
             _attempts++;
-            _nextAttempt = Time.unscaledTime + 6f;
+            _nextAttempt = Time.unscaledTime + 4f;
 
             // Whatever stalled may well have been a zero timeScale.
             if (Time.timeScale < 0.01f) Time.timeScale = 1f;
@@ -375,26 +380,64 @@ public class RegionManager : MonoBehaviour
 
         // BANK IT FIRST. Not after the screen, not on the way out — here, where
         // nothing can be skipped past it.
-        GrantRegionRewards();
+        //
+        // ==== AND NOTHING HERE MAY KILL THE COROUTINE ====
+        //
+        // This is the failure that survived three rewrites. An exception thrown
+        // anywhere in this method does not log a stack trace against the region
+        // and move on — it ENDS the coroutine on the spot, and every line after
+        // it never runs. By this point control is already blocked, the HUD is
+        // already hidden and the enemies are already frozen, so what the player
+        // gets is a scene that has stopped responding with no screen and no way
+        // out. GrantRegionRewards reaches into ResourceManager's UI, which
+        // belongs to the CAMP scene and may be half-destroyed out here; that is
+        // exactly the kind of NRE this has to survive.
+        try { GrantRegionRewards(); }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[RegionManager] Granting the region reward threw — the region is still marked " +
+                           "conquered and the player still goes home. " + e);
+        }
 
         // A breath before the black, so the killing blow reads before the UI
         // arrives. Unscaled: a level-up card or the pause menu must not stop it.
         float t = 0f;
         while (t < 0.7f) { t += Time.unscaledDeltaTime; yield return null; }
 
-        var awards = RegionVictoryScreen.AwardsFor(currentRegion);
         bool leaving = false;
-        RegionVictoryScreen.Show(
-            LocalizationManager.Tr("REGION CONQUERED"),
-            LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
-            awards,
-            () => leaving = true);
+        try
+        {
+            var awards = RegionVictoryScreen.AwardsFor(currentRegion);
+            RegionVictoryScreen.Show(
+                LocalizationManager.Tr("REGION CONQUERED"),
+                LocalizationManager.Tr("THE CURSE HAS BEEN LIFTED"),
+                awards,
+                () => leaving = true);
+        }
+        catch (System.Exception e)
+        {
+            // The presentation is the one part of this that is allowed to fail.
+            // If it cannot be built, the player does not stand in a dead region
+            // waiting for a screen that is never coming — they go home now.
+            Debug.LogError("[RegionManager] The victory screen could not be shown. Going straight to camp. " + e);
+            leaving = true;
+        }
 
         // The screen has its own watchdog; this one guards against the screen
         // itself never being built. Two independent timers, because "the player
         // cannot leave the region" is the one failure this must not have again.
+        //
+        // Sixty seconds was far too generous for a safety net. The screen's own
+        // watchdog releases at 45s, so this only ever runs when the screen is
+        // NOT there — and a player looking at a frozen region does not wait a
+        // minute to find out whether the game is broken, they quit. Eighteen
+        // seconds is long enough to read four numbers and short enough that the
+        // failure is a hiccup rather than a hang.
         float guard = 0f;
-        while (!leaving && guard < 60f) { guard += Time.unscaledDeltaTime; yield return null; }
+        while (!leaving && guard < 18f) { guard += Time.unscaledDeltaTime; yield return null; }
+        if (!leaving)
+            Debug.LogError("[RegionManager] The victory screen never reported done in 18s — it was probably " +
+                           "never built or never drew. Loading CampScene anyway.");
 
         EnemyAI.GlobalFreeze = false;
         CinematicActive = false;

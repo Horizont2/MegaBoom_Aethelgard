@@ -325,7 +325,49 @@ public class MapPanelUI : MonoBehaviour
         }
     }
 
+    // ==== THE CONFIRM STATE MUST NOT BE ABLE TO LATCH ====
+    //
+    // Every previous bug on this button has had the same shape: something
+    // partway through the handler threw, the lines that put the panel back
+    // never ran, and the panel was left reading CONFIRM UPGRADE with
+    // isConfirmingUpgrade stuck true. From there a single click is a purchase,
+    // with nothing on screen saying so.
+    //
+    // So the exit is a finally, not a line at the bottom of a branch. Whatever
+    // happens in the body - success, refusal, or an exception nobody predicted
+    // - the panel comes back to a known state and the button reads what it
+    // does.
     private void OnUpgradeButtonClicked()
+    {
+        bool wasConfirming = isConfirmingUpgrade;
+        try { UpgradeClickBody(); }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[MapPanelUI] The upgrade click threw. The panel is being reset so the button cannot " +
+                           "stay latched on CONFIRM. " + e);
+            isConfirmingUpgrade = false;
+        }
+        finally
+        {
+            // Entering the confirm state is the ONE outcome that is meant to
+            // leave the button changed. Everything else ends here.
+            if (!(isConfirmingUpgrade && !wasConfirming)) ResetUpgradeButtonState();
+        }
+    }
+
+    // Puts the upgrade button, its label and the travel button back to their
+    // resting state and re-reads the region, so the next level's cost is on
+    // screen before the player can click again.
+    private void ResetUpgradeButtonState()
+    {
+        isConfirmingUpgrade = false;
+        ToggleUpgradeFocus(false);
+        if (actionButton != null) actionButton.interactable = true;
+        if (upgradeButtonText != null) upgradeButtonText.text = LocalizationManager.Tr("UPGRADE");
+        if (currentRegion != null) PopulateData();
+    }
+
+    private void UpgradeClickBody()
     {
         if (currentRegion == null || ResourceManager.Instance == null) { CancelUpgradeConfirm(); return; }
 
@@ -367,19 +409,39 @@ public class MapPanelUI : MonoBehaviour
                 }
                 else
                 {
-                    if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
-                    if (upgradeSuccessVFX != null) upgradeSuccessVFX.Play();
-                    StartCoroutine(ShakePanel());
-
+                    // ==== SPEND FIRST, DECORATE AFTER ====
+                    //
+                    // The order here was: play a sound, play a particle system,
+                    // start a shake coroutine, THEN spend and save, THEN put the
+                    // button back. Everything before the spend is presentation,
+                    // and every one of those lines can throw — an unassigned
+                    // particle system on a fresh prefab, a missing audio event, a
+                    // null panelRect. When one did, the state below it never ran:
+                    // the button was left reading CONFIRM with isConfirmingUpgrade
+                    // latched true, so the very next click went straight down the
+                    // confirm branch again and spent another level's worth of
+                    // resources. That is the "upgrades the same level forever,
+                    // wasting resources" report.
+                    //
+                    // The transaction happens first and unconditionally. The
+                    // fireworks are wrapped, because a missing particle system
+                    // must never cost the player a level.
                     ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
-                    PlayerPrefs.SetInt("RegionLevel_" + currentRegion.regionID, currentLevel + 1);
+                    int newLevel = currentLevel + 1;
+                    PlayerPrefs.SetInt("RegionLevel_" + currentRegion.regionID, newLevel);
                     PlayerPrefs.Save();
 
-                    isConfirmingUpgrade = false;
-                    ToggleUpgradeFocus(false);
-                    PopulateData();
-
-                    if (MapProgressionManager.Instance != null) MapProgressionManager.Instance.RefreshMapState();
+                    try
+                    {
+                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
+                        if (upgradeSuccessVFX != null) upgradeSuccessVFX.Play();
+                        StartCoroutine(ShakePanel());
+                        if (MapProgressionManager.Instance != null) MapProgressionManager.Instance.RefreshMapState();
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError("[MapPanelUI] The upgrade went through but its presentation threw. " + e);
+                    }
                 }
             }
             else
@@ -398,12 +460,9 @@ public class MapPanelUI : MonoBehaviour
     private void CancelUpgradeConfirm()
     {
         if (!isConfirmingUpgrade) return;
-        isConfirmingUpgrade = false;
-        ToggleUpgradeFocus(false);
-        if (actionButton != null) actionButton.interactable = true;
         // PopulateData dereferences currentRegion, and one caller reaches here
-        // precisely because it is null.
-        if (currentRegion != null) PopulateData();
+        // precisely because it is null — ResetUpgradeButtonState guards it.
+        ResetUpgradeButtonState();
     }
 
     private void ToggleUpgradeFocus(bool isFocused)

@@ -1025,7 +1025,18 @@ public class RegionTotem : MonoBehaviour
         // The world visibly HEALS around the captured totem: a purification burst
         // sweeps out, the corrupt fog lifts to a lighter/warmer tone, and the
         // battle music releases back to calm.
-        if (healWorldOnCapture) StartCoroutine(WorldHealRoutine());
+        //
+        // ==== A ROADSIDE ALTAR IS NOT A REGION ====
+        //
+        // This ran on EVERY totem, and a standalone roadside altar is a totem.
+        // So clearing a side objective in a dead-end lifted the region's storm
+        // fog to the cleansed colour and released the battle score — the whole
+        // world visibly reacting as though the curse had been broken, while the
+        // region's actual totems still stood corrupted. The player is told the
+        // region is won, then finds out it is not.
+        //
+        // The world only heals for the totems the region is actually about.
+        if (healWorldOnCapture && !isStandalone) StartCoroutine(WorldHealRoutine());
 
         // A late attempt, in case the manager appeared after this totem's Start —
         // the arena prefab it lives on is placed by world generation, so the two
