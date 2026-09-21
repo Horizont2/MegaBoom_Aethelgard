@@ -279,11 +279,11 @@ MonoBehaviour:
   throwFallbackTrigger: Attack
   playAudio: 1
   animationWindupTime: 0.8
-  weaponFlightDuration: 0.4
+  weaponFlightDuration: 0.8
   weaponArcHeight: 1.5
   throwOvershoot: 1.6
   impactScaleMultiplier: 4.2
-  throwSpins: 2.25
+  throwSpins: 2
   weaponFlightCurve:
     serializedVersion: 2
     m_Curve:
