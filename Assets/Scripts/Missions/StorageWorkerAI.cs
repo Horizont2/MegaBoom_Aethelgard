@@ -192,7 +192,7 @@ public class StorageWorkerAI : MonoBehaviour
             NavMeshHit hit;
             if (NavMesh.SamplePosition(destPos, out hit, 4f, NavMesh.AllAreas))
                 agent.SetDestination(hit.position);
-            yield return StartCoroutine(WaitArrival());
+            yield return StartCoroutine(WalkTo(destPos));
             agent.isStopped = true;
         }
         // Face the fire smoothly — ~1s turn-in-place, not an instant snap.
@@ -260,7 +260,7 @@ public class StorageWorkerAI : MonoBehaviour
                     }
 
                     agent.SetDestination(targetPos);
-                    yield return StartCoroutine(WaitArrival());
+                    yield return StartCoroutine(WalkTo(targetPos));
 
                     agent.isStopped = true;
                     // Face the crate on the XZ plane. transform.LookAt on a point
@@ -303,7 +303,7 @@ public class StorageWorkerAI : MonoBehaviour
                     }
 
                     agent.SetDestination(dropTargetPos);
-                    yield return StartCoroutine(WaitArrival());
+                    yield return StartCoroutine(WalkTo(dropTargetPos));
 
                     // 4. �������
                     agent.isStopped = true;
@@ -337,8 +337,73 @@ public class StorageWorkerAI : MonoBehaviour
         }
     }
 
+    // ==== "GIVE UP" AND "ARRIVED" WERE THE SAME ANSWER ====
+    //
+    // WaitArrival simply ended, and the caller carried on regardless: it turned
+    // to face the crate, played the pickup animation and took the resources.
+    // But three of its four exits are FAILURES - a partial path, three seconds
+    // without progress, and the twenty-second timeout - so a worker who could
+    // not reach a building mimed the whole trip where he stood and the crate
+    // emptied itself from across the camp. That is the "carries resources
+    // without reaching the pickup point, walking on the spot" report exactly.
+    //
+    // A coroutine cannot return a value, so the verdict lands here.
+    private bool _arrived;
+
+    // Where the NavMesh cannot carry him, walk the leg by hand rather than
+    // pretend. The proper fix is a camp NavMesh that covers the whole floor -
+    // the warning below says so - but the camp must not silently teleport
+    // resources while it is missing.
+    private IEnumerator WalkTo(Vector3 target)
+    {
+        yield return StartCoroutine(WaitArrival());
+        if (!_arrived) yield return StartCoroutine(WalkDirectly(target));
+    }
+
+    private IEnumerator WalkDirectly(Vector3 target)
+    {
+        float speed = agent != null ? Mathf.Max(0.5f, agent.speed) : NPCGait.DEFAULT_SPEED;
+        bool hadAgent = agent != null && agent.enabled;
+        if (hadAgent) agent.enabled = false;
+
+        float guard = 0f;
+        while (guard < 25f)
+        {
+            guard += Time.deltaTime;
+
+            Vector3 to = target - transform.position; to.y = 0f;
+            float dist = to.magnitude;
+            if (dist <= 0.7f) break;
+
+            Vector3 dir = to / dist;
+            transform.position += dir * speed * Time.deltaTime;
+            NPCGait.GroundSnap(transform, 0.05f);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation,
+                                    Quaternion.LookRotation(dir, Vector3.up), 360f * Time.deltaTime);
+
+            if (anim != null)
+            {
+                anim.SetBoolSafe("IsGrounded", true);
+                anim.SetFloatSafe("Speed", speed);
+            }
+            yield return null;
+        }
+
+        if (anim != null) anim.SetFloatSafe("Speed", 0f);
+
+        if (hadAgent && agent != null)
+        {
+            agent.enabled = true;
+            NavMeshHit back;
+            if (NavMesh.SamplePosition(transform.position, out back, 6f, NavMesh.AllAreas))
+                agent.Warp(back.position);
+        }
+        _arrived = true;
+    }
+
     private IEnumerator WaitArrival()
     {
+        _arrived = false;
         // ���� ����� Unity 1 ����, ��� �� 100% ����� ������ ���������� �����
         yield return null;
 
@@ -365,7 +430,7 @@ public class StorageWorkerAI : MonoBehaviour
                     break;
                 }
 
-                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) break;
+                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) { _arrived = true; break; }
 
                 // Stuck detection: if he has not actually moved for 3s, stop
                 // waiting rather than burning the whole timeout on it.

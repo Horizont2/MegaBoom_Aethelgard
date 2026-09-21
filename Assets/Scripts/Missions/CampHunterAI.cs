@@ -258,10 +258,23 @@ public class CampHunterAI : MonoBehaviour
 
             yield return StartCoroutine(WaitForDestination());
 
-            // �����������: ��������� ������� ������� � ������� ������ ����� (agent.destination), � �� � ��������� ��'�����
-            if (Vector3.Distance(transform.position, agent.destination) > 2.5f)
+            // He is as close to the forest as the NavMesh allows. Hunting from
+            // a few metres short of the authored point reads as hunting;
+            // restarting the whole routine because he is 2.5m out does not - it
+            // sends him back to the lodge to do it all again, which is what this
+            // did every cycle, for the whole session.
+            //
+            // Only a hunter who never got near the tree line has genuinely
+            // failed, and even then he waits before retrying rather than
+            // spinning the routine.
+            float toForest = Vector3.Distance(transform.position, agent.destination);
+            if (toForest > 12f)
             {
-                Debug.LogWarning("[Hunter AI] �� ��� ���� �� ���. ������� ��� ���� �� ��������. ������� ���� ������.");
+                Debug.LogWarning($"[Hunter AI] Could not get near the forest edge ({toForest:F1}m short). The camp " +
+                                 "NavMesh probably does not reach it - bake it so it covers the tree line. Waiting " +
+                                 "rather than restarting the routine on a loop.");
+                agent.isStopped = true;
+                yield return new WaitForSeconds(6f);
                 continue;
             }
 
@@ -321,11 +334,22 @@ public class CampHunterAI : MonoBehaviour
                     continue;
                 }
 
-                // ���� ���� ��������
-                if (agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial)
-                {
-                    break;
-                }
+                // ==== A PARTIAL PATH IS NOT A REASON TO STAND STILL ====
+                //
+                // This broke out of the wait the instant the path came back
+                // PARTIAL - on the first frame, before the hunter had taken a
+                // single step. The caller then measured how far he was from the
+                // forest, found he had not moved, and `continue`d back to the
+                // top of the routine: walk to the lodge, play Work, wait, set
+                // off for the forest, bail on frame one, repeat. Forever. That
+                // is the hunter standing at his lodge playing an animation and
+                // never going hunting.
+                //
+                // Partial only means the NavMesh does not reach ALL the way. He
+                // can still walk as far as it does, so wait for that and let the
+                // caller decide from there. Only a genuinely invalid path is
+                // worth abandoning immediately.
+                if (agent.pathStatus == NavMeshPathStatus.PathInvalid) break;
 
                 // ���� �� �����
                 if (agent.remainingDistance <= agent.stoppingDistance + 0.5f)
