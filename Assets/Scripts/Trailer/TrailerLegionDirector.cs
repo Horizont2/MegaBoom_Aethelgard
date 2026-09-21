@@ -205,6 +205,31 @@ public class TrailerLegionDirector : MonoBehaviour
     public bool playAudio = true;
 
     [Header("The throw")]
+    // ==== A THROW ANIMATION WITHOUT TOUCHING THE SHARED CONTROLLER ====
+    //
+    // EnemyAnimator.controller has no throw - its states are Idle_A, Running_A,
+    // Attack, Bow_Attack, Hit_A, Death_A, Dizzy - and it is the controller
+    // EVERY enemy in the game runs on. Adding a state and a trigger to it to
+    // serve one shot in one trailer puts the whole game's combat animation on
+    // the line for a cutscene.
+    //
+    // It does not need to be touched. The skeleton rig is Humanoid and the
+    // Attack state plays a humanoid clip, so a humanoid throw retargets onto it
+    // for free - and an AnimatorOverrideController swaps that one clip for this
+    // one boss, at runtime, in this scene only. Nothing on disk changes and no
+    // other enemy is affected.
+    [Tooltip("The throw. Any HUMANOID clip retargets onto the skeleton - Assets/MainCharacters/Animations/Throw.anim is in the project and is 1.37s. Leave empty to just take a swing with Attack.")]
+    public AnimationClip throwClip;
+    [Tooltip("Name of the clip currently on the Attack state, which is the one the throw replaces. Matched case-insensitively, with a fallback to the first non-bow clip containing 'Attack'.")]
+    public string attackClipName = "Melee_1H_Attack_Stab";
+    [Tooltip("The Attack STATE's name, watched so the weapon leaves on the right frame.")]
+    public string attackStateName = "Attack";
+    [Tooltip("How far through the throw the axe leaves his hand. 0.45 is about where an overarm release sits - tune it against the clip, not against a stopwatch.")]
+    [Range(0f, 1f)] public float releaseAtNormalizedTime = 0.45f;
+    [Tooltip("Play the throw at full speed while the WORLD is in slow motion. The arm comes through crisply against a slowed field, which is the whole point of the slow-mo; left off, the windup is stretched to several seconds of real time and reads as a freeze.")]
+    public bool throwOnUnscaledTime = true;
+
+    [Tooltip("No longer the release timing - the animation decides that now. This is the ceiling on how long to wait for it before releasing anyway.")]
     public float animationWindupTime = 0.8f;
     public float weaponFlightDuration = 0.4f;
     public float weaponArcHeight = 1.5f;
@@ -316,6 +341,8 @@ public class TrailerLegionDirector : MonoBehaviour
         SpawnMarchDust();
         SpawnRain();
         StartAudioBed();
+
+        InstallThrowClip();
 
         // Nothing was ever telling the boss he was walking.
         if (bossAnimator != null)
@@ -1204,7 +1231,7 @@ public class TrailerLegionDirector : MonoBehaviour
         // frame instead of a held breath.
         StartCoroutine(RampTimeScale(0.15f, 0.12f));
         StartCoroutine(SmoothZoomRoutine(cinematicZoomFOV, animationWindupTime));
-        yield return new WaitForSecondsRealtime(animationWindupTime);
+        yield return StartCoroutine(WaitForRelease());
 
         // Release flinch - the camera recoils a touch as the arm comes through.
         if (mainCamera != null)
@@ -1218,6 +1245,102 @@ public class TrailerLegionDirector : MonoBehaviour
         Cue(AudioID.Trailer_Whoosh, AudioID.Cinematic_Whoosh);
         if (bossWeapon != null) bossWeapon.parent = null;
         StartCoroutine(WeaponFlightRoutine());
+    }
+
+    private void InstallThrowClip()
+    {
+        if (throwClip == null || bossAnimator == null) return;
+
+        RuntimeAnimatorController rac = bossAnimator.runtimeAnimatorController;
+        if (rac == null)
+        {
+            Debug.LogWarning("[TrailerLegion] The boss has no animator controller, so the throw clip cannot be " +
+                             "installed.", this);
+            return;
+        }
+
+        // Wrap whatever is there. If it is already an override controller, keep
+        // its existing overrides and add to them.
+        var ov = rac as AnimatorOverrideController ?? new AnimatorOverrideController(rac);
+
+        var pairs = new List<KeyValuePair<AnimationClip, AnimationClip>>();
+        ov.GetOverrides(pairs);
+
+        AnimationClip target = null;
+        // Exact name first.
+        for (int i = 0; i < pairs.Count && target == null; i++)
+        {
+            var orig = pairs[i].Key;
+            if (orig != null && string.Equals(orig.name, attackClipName, System.StringComparison.OrdinalIgnoreCase))
+                target = orig;
+        }
+        // Then the first melee attack clip, so a renamed asset does not silently
+        // leave the boss swinging instead of throwing.
+        for (int i = 0; i < pairs.Count && target == null; i++)
+        {
+            var orig = pairs[i].Key;
+            if (orig == null) continue;
+            if (orig.name.IndexOf("Attack", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+            if (orig.name.IndexOf("Bow", System.StringComparison.OrdinalIgnoreCase) >= 0) continue;
+            target = orig;
+        }
+
+        if (target == null)
+        {
+            Debug.LogWarning($"[TrailerLegion] No clip named '{attackClipName}' on the boss's controller and no " +
+                             "other melee attack clip to replace, so he will swing rather than throw.", this);
+            return;
+        }
+
+        ov[target] = throwClip;
+        bossAnimator.runtimeAnimatorController = ov;
+        Debug.Log($"[TrailerLegion] Throw installed: '{target.name}' -> '{throwClip.name}' on this boss only.");
+    }
+
+    // Holds until the throw animation reaches the frame the hand opens, so the
+    // axe leaves WITH the arm instead of after a fixed stopwatch that had no
+    // relationship to the animation at all - and none at all in slow motion,
+    // where 0.8 seconds of real time was about a tenth of a second of arm.
+    private IEnumerator WaitForRelease()
+    {
+        if (bossAnimator == null)
+        {
+            yield return new WaitForSecondsRealtime(animationWindupTime);
+            yield break;
+        }
+
+        AnimatorUpdateMode previous = bossAnimator.updateMode;
+        if (throwOnUnscaledTime) bossAnimator.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+        // Generous ceiling: a missing state or a clip that never arrives must
+        // not strand the episode a frame before its climax.
+        float guard = 0f;
+        float limit = Mathf.Max(0.3f, animationWindupTime) * 4f;
+        bool entered = false;
+
+        while (guard < limit)
+        {
+            guard += Time.unscaledDeltaTime;
+            var st = bossAnimator.GetCurrentAnimatorStateInfo(0);
+            if (st.IsName(attackStateName))
+            {
+                entered = true;
+                if (st.normalizedTime >= releaseAtNormalizedTime) break;
+            }
+            else if (entered)
+            {
+                // It has already been through and moved on; do not wait out the
+                // rest of the ceiling.
+                break;
+            }
+            yield return null;
+        }
+
+        if (!entered)
+            Debug.LogWarning($"[TrailerLegion] The animator never entered '{attackStateName}', so the release is on " +
+                             "the timeout rather than on the animation. Check the state name.", this);
+
+        if (throwOnUnscaledTime) bossAnimator.updateMode = previous;
     }
 
     // Prefer a real throw animation; take a swing if the controller has none.

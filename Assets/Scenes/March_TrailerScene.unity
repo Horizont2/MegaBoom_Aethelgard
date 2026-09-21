@@ -230,6 +230,7 @@ MonoBehaviour:
   bossAnimator: {fileID: 7489123634373202801, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
   bossWeapon: {fileID: 1273752790}
   shots: []
+  throwClip: {fileID: 7400000, guid: f7245f139ce7310458405016e81f7509, type: 2}
   skeletonPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
   skeletonCount: 300
   filesPerRank: 11
