@@ -152,6 +152,8 @@ public class TrailerLegionDirector : MonoBehaviour
     public GameObject rainPrefab;
     [Tooltip("How far above the lens the rain volume sits. It has to be high enough that drops are already falling when they enter frame.")]
     public float rainHeight = 9f;
+    [Tooltip("Child emitters whose name contains this are switched off. The rain prefab ships with a 'Splash' system that bursts a droplet wherever a drop lands - authored for a shot looking at a puddle, and at a legion's distance it is just speckle over the whole frame.")]
+    public string rainSplashFilter = "Splash";
 
     [Header("Audio")]
     [Tooltip("Play the trailer score and the march bed. Every event is guarded, so a project with these unassigned is silent rather than broken.")]
@@ -542,6 +544,30 @@ public class TrailerLegionDirector : MonoBehaviour
         // Level, whatever the camera is doing. A rain volume that inherits a
         // dutch angle rains sideways.
         rain.transform.rotation = Quaternion.identity;
+
+        // ==== THE SPLASH IS AUTHORED FOR A DIFFERENT SHOT ====
+        //
+        // The prefab is two emitters: the fall, and a 'Splash' that bursts a
+        // droplet wherever a drop lands. That second one is written for a
+        // camera looking down at wet ground a couple of metres away. Out here,
+        // with the volume strapped to a camera that is fifteen metres up on the
+        // wide, it is a field of speckle across the whole frame with nothing
+        // for the eye to attach it to.
+        //
+        // Killed by name rather than by index, so re-ordering the prefab or
+        // swapping in a different rain does not silently start removing the
+        // wrong emitter.
+        if (!string.IsNullOrEmpty(rainSplashFilter))
+        {
+            foreach (var ps in rain.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (ps == null || ps.gameObject == rain) continue;
+                if (ps.name.IndexOf(rainSplashFilter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                ps.gameObject.SetActive(false);
+            }
+        }
+
         rainSystems = rain.GetComponentsInChildren<ParticleSystem>(true);
     }
 
@@ -788,11 +814,7 @@ public class TrailerLegionDirector : MonoBehaviour
         }
 
         windHandle = Loop(AudioID.Trailer_WindDesolate, AudioID.Ambient_Wind, mainCamera);
-        // A storm bed, not a rain bed - the visible rain is off, and Ambient_Rain
-        // resolves to the AMB_Thunder event in this project anyway, so naming it
-        // for what it actually plays keeps the next person from hunting for
-        // raindrops that are not there.
-        rainHandle = Loop(AudioID.Env_Thunder, AudioID.Ambient_DistantThunder, mainCamera);
+        rainHandle = Loop(AudioID.Ambient_Rain, AudioID.Env_Thunder, mainCamera);
 
         // A single crow over the empty field, before anything else happens.
         // It is the cheapest way to say "this place was already dead".

@@ -337,7 +337,7 @@ MonoBehaviour:
   mainLightColor: {r: 0.46, g: 0.58, b: 0.85, a: 1}
   mainLightIntensity: 0.9
   lightningColor: {r: 0.8, g: 0.9, b: 1, a: 1}
-  rainPrefab: {fileID: 0}
+  rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
   stepDustPrefab: {fileID: 8230022441722461589, guid: 41494896fc96c9748b81d3356632794e, type: 3}
   marchDustPrefab: {fileID: 3789122199548263463, guid: 2d8c2dfad6d208641b2b0a3b26af5960, type: 3}
   skeletonPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
