@@ -135,8 +135,17 @@ public class TrailerLegionDirector : MonoBehaviour
     public float stepFrequency = 1.5f;
     [Tooltip("Optional puff spawned under the boss on each footfall.")]
     public GameObject stepDustPrefab;
+    [Tooltip("Size of the footfall puff. These prefabs are authored for a spell going off, not for a boot, so they arrive several times too big.")]
+    [Range(0.05f, 2f)] public float stepDustScale = 0.3f;
+    [Tooltip("Fraction of the prefab's authored particle count. A puff under one foot does not need a spell's worth of smoke.")]
+    [Range(0.05f, 2f)] public float stepDustDensity = 0.3f;
+    [Tooltip("Seconds before a footfall puff is cleaned up. It was four, and with a step every three quarters of a second that is five of them on screen at once.")]
+    public float stepDustLifetime = 2.2f;
+
     [Tooltip("Optional dust the marching army drags with it. Parented to the boss and left running.")]
     public GameObject marchDustPrefab;
+    [Range(0.05f, 4f)] public float marchDustScale = 1.4f;
+    [Range(0.05f, 2f)] public float marchDustDensity = 0.5f;
 
     [Header("Weather")]
     [Tooltip("Rain, parented to the camera so it travels with the shot. Assets/VFX Brady Games/Particle Effect/Heavy Rain.prefab is in the project and its material is already on a URP particle shader.")]
@@ -551,6 +560,57 @@ public class TrailerLegionDirector : MonoBehaviour
         if (marchDustPrefab == null || bossTransform == null) return;
         var dust = Instantiate(marchDustPrefab, bossTransform.position, Quaternion.identity, bossTransform);
         dust.transform.localPosition = new Vector3(0f, 0f, -8f);
+        ScaleEffect(dust, marchDustScale, marchDustDensity);
+    }
+
+    // ==== A VFX PACK'S PUFF IS SIZED FOR A SPELL ====
+    //
+    // These prefabs are authored to read as magic going off, so dropped under a
+    // boot at their authored size they are a smokescreen: too large, too many,
+    // and lasting long enough that five of them overlap between footfalls.
+    //
+    // Transform scale alone does not do it. A ParticleSystem defaults to Local
+    // scaling mode, which ignores its PARENTS' scale entirely - so scaling the
+    // root of a prefab whose emitters are children changes nothing, which is
+    // the usual reason "I scaled it down and it did not get smaller". Every
+    // system is switched to Hierarchy first, and the particle count is scaled
+    // separately, because a smaller puff made of the same number of particles
+    // is just a denser puff.
+    private static void ScaleEffect(GameObject go, float scale, float density)
+    {
+        if (go == null) return;
+        go.transform.localScale = Vector3.one * Mathf.Max(0.01f, scale);
+
+        foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (ps == null) continue;
+
+            var main = ps.main;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+
+            var em = ps.emission;
+            em.rateOverTimeMultiplier *= density;
+            em.rateOverDistanceMultiplier *= density;
+
+            // Bursts carry their count separately from the rate, and a puff of
+            // this kind is usually ALL burst - leaving them alone is why
+            // turning the rate down often does nothing at all.
+            int n = em.burstCount;
+            if (n > 0)
+            {
+                var bursts = new ParticleSystem.Burst[n];
+                em.GetBursts(bursts);
+                for (int i = 0; i < n; i++)
+                {
+                    var b = bursts[i];
+                    b.count = new ParticleSystem.MinMaxCurve(
+                        Mathf.Max(1f, b.count.constantMin * density),
+                        Mathf.Max(1f, b.count.constantMax * density));
+                    bursts[i] = b;
+                }
+                em.SetBursts(bursts);
+            }
+        }
     }
 
     // ======================================================================
@@ -728,7 +788,11 @@ public class TrailerLegionDirector : MonoBehaviour
         }
 
         windHandle = Loop(AudioID.Trailer_WindDesolate, AudioID.Ambient_Wind, mainCamera);
-        rainHandle = Loop(AudioID.Ambient_Rain, AudioID.Env_Thunder, mainCamera);
+        // A storm bed, not a rain bed - the visible rain is off, and Ambient_Rain
+        // resolves to the AMB_Thunder event in this project anyway, so naming it
+        // for what it actually plays keeps the next person from hunting for
+        // raindrops that are not there.
+        rainHandle = Loop(AudioID.Env_Thunder, AudioID.Ambient_DistantThunder, mainCamera);
 
         // A single crow over the empty field, before anything else happens.
         // It is the cheapest way to say "this place was already dead".
@@ -745,7 +809,12 @@ public class TrailerLegionDirector : MonoBehaviour
     private void OnReveal()
     {
         Cue(AudioID.Trailer_WarHorn, AudioID.Boss_Roar);
-        Cue(AudioID.Trailer_HordeGrowl, AudioID.Enemy_Agro);
+        // No horde growl. Its fallback was the enemy AGGRO cue - a gameplay
+        // sound that says "something has noticed you", which is the opposite of
+        // what a legion that has been walking since before the shot started
+        // should sound like. It stays out until a real Trailer_HordeGrowl
+        // exists to put here.
+        Cue(AudioID.Trailer_HordeGrowl, null);
         if (playAudio && AudioManager.Instance != null) AudioManager.Instance.UnduckMusicInstance(1.2f);
         marchAudible = true;
     }
@@ -781,7 +850,10 @@ public class TrailerLegionDirector : MonoBehaviour
         if (Random.value < 0.12f)
         {
             var b = legion[Random.Range(0, legion.Count)];
-            if (b.t != null) Cue3D(AudioID.Trailer_BoneRattle, AudioID.Enemy_Spawn, b.t.position);
+            // Also no fallback here. Enemy_Spawn is a rise-from-the-ground
+            // growl, and firing it out of the formation several times a second
+            // turned the march into a pack of animals.
+            if (b.t != null) Cue3D(AudioID.Trailer_BoneRattle, null, b.t.position);
         }
     }
 
@@ -853,7 +925,11 @@ public class TrailerLegionDirector : MonoBehaviour
                 {
                     Cue3D(AudioID.Trailer_BossStep, AudioID.Enemy_Footstep, bossTransform.position);
                     if (stepDustPrefab != null)
-                        Destroy(Instantiate(stepDustPrefab, bossTransform.position, Quaternion.identity), 4f);
+                    {
+                        var puff = Instantiate(stepDustPrefab, bossTransform.position, Quaternion.identity);
+                        ScaleEffect(puff, stepDustScale, stepDustDensity);
+                        Destroy(puff, stepDustLifetime);
+                    }
                 }
             }
         }
@@ -1013,7 +1089,7 @@ public class TrailerLegionDirector : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(0.3f);
         isArmyMarching = false;
-        Cue(AudioID.Trailer_BoneRattle, AudioID.Enemy_Spawn);
+        Cue(AudioID.Trailer_BoneRattle, null);
 
         float t = 0f;
         const float settle = 0.32f;
