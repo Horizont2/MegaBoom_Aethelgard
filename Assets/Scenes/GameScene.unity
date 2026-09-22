@@ -22352,8 +22352,8 @@ MonoBehaviour:
   endFill: 0.72
   minClearance: 1.15
   terrainMargin: 45
-  arcDegrees: 18
-  driftDegreesPerSecond: 0.6
+  arcDegrees: 3
+  driftDegreesPerSecond: 0.12
   startHeight: 3
   endHeightFactor: 0.5
   maxClearLift: 26
@@ -22367,11 +22367,16 @@ MonoBehaviour:
   strikeBehind: 1.4
   lightningColour: {r: 0.82, g: 0.88, b: 1, a: 1}
   lightningIntensity: 16
+  flashLift: 1.4
+  flashAfterglow: 0.45
   torchPrefab: {fileID: 1850256477050470, guid: 3599666ad7adbe14d964d5a8c7b8d845, type: 3}
   approachTorches: 16
-  torchNearest: 0.85
+  torchNearest: 1.25
   torchArcWidth: 1.1
   torchStandUpX: -90
+  torchGlow: 1
+  torchGlowSize: 2.6
+  torchGlowStrength: 1.5
   torchesGiveLight: 1
   torchLight: {r: 1, g: 0.58, b: 0.24, a: 1}
   torchLightRange: 26

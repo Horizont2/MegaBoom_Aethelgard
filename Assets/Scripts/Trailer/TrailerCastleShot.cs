@@ -114,10 +114,23 @@ public class TrailerCastleShot : MonoBehaviour
     public float minClearance = 1.15f;
     [Tooltip("Metres the camera is kept INSIDE the terrain's edge. Past it there is no world, and a trailer frame with the engine's nothing in the corner of it is unusable.")]
     public float terrainMargin = 45f;
-    [Tooltip("Degrees the camera travels AROUND the castle. This is the parallax; kept small because the reveal, not the travel, is the event.")]
-    public float arcDegrees = 18f;
-    [Tooltip("Degrees per second of continuing arc through the whole shot, so the frame is never locked off.")]
-    public float driftDegreesPerSecond = 0.6f;
+    // ==== IT GOES FORWARD, AND THE TORCHES SUPPLY THE PARALLAX ====
+    //
+    // Eighteen degrees of arc across five seconds, at a hundred metres out, is
+    // six metres a second of LATERAL travel — the camera swinging left across
+    // the field while it closes. That is not a reveal, it is a pan, and it was
+    // the thing wrecking the end of the shot.
+    //
+    // The arc existed because a straight dolly with nothing near the lens reads
+    // as a zoom. But there IS something near the lens here: the torch line runs
+    // from behind the camera all the way to the gate, so a straight push
+    // travels THROUGH it and every fire sweeps past the frame edge. That is
+    // parallax, from a camera that never stops pointing at the castle — which
+    // is the shot that was wanted in the first place.
+    [Tooltip("Degrees the camera travels around the castle. Near zero on purpose: this shot goes FORWARD. The parallax comes from passing the torches, not from swinging past the subject.")]
+    public float arcDegrees = 3f;
+    [Tooltip("Degrees per second of continuing drift, so the frame is never quite locked off. Tiny — at a hundred metres a degree is already two metres of travel.")]
+    public float driftDegreesPerSecond = 0.12f;
     public float startHeight = 3f;
     [Tooltip("Height at the end, as a fraction of the castle's own height. Below one: finishing above the towers looks down on them and loses the silhouette the whole shot is built on.")]
     public float endHeightFactor = 0.5f;
@@ -140,6 +153,11 @@ public class TrailerCastleShot : MonoBehaviour
     public float strikeBehind = 1.4f;
     public Color lightningColour = new Color(0.82f, 0.88f, 1f);
     public float lightningIntensity = 16f;
+    [Range(0f, 3f)]
+    [Tooltip("How far past its own colour the fog is pushed on a flash. This is the strike: the volume goes bright and every solid thing in it becomes a silhouette cut out of it.")]
+    public float flashLift = 1.4f;
+    [Tooltip("Seconds the air keeps glowing after the last flicker. Cutting straight back is what makes a flash read as a switch rather than as lightning.")]
+    public float flashAfterglow = 0.45f;
 
     [Header("Torches")]
     // ==== THEY WERE INVISIBLE, AND THE ARITHMETIC SAYS WHY ====
@@ -157,8 +175,8 @@ public class TrailerCastleShot : MonoBehaviour
     [Tooltip("The game's own torch. In fog, warm points ARE the depth — without something to occlude at known distances the fog is a flat grey card.")]
     public GameObject torchPrefab;
     public int approachTorches = 16;
-    [Tooltip("Where the NEAREST torch sits, as a fraction of the camera's opening distance. High, so the first ones are right by the lens.")]
-    [Range(0.2f, 1f)] public float torchNearest = 0.85f;
+    [Tooltip("Where the NEAREST torch sits, as a fraction of the camera's opening distance. Above one, so the line starts BEHIND the lens and the camera emerges from among the fires rather than driving up to them.")]
+    [Range(0.2f, 1.6f)] public float torchNearest = 1.25f;
     [Tooltip("How wide the two rows spread, as a multiple of the castle's radius.")]
     public float torchArcWidth = 1.1f;
     [Tooltip("This torch prefab's mesh is authored LYING DOWN and needs minus ninety on X to stand.")]
@@ -169,7 +187,26 @@ public class TrailerCastleShot : MonoBehaviour
     // volumetric fog is not a light, it is a visible cone of glowing air, and
     // that glow at a known distance is the whole mechanism by which fog reads as
     // depth rather than as a grey card.
-    [Tooltip("Add a point light to each torch. Without it the flame lights nothing and the fog has nothing to carry.")]
+    // ==== THE FOG ONLY SCATTERS ONE LIGHT, AND IT IS THE SUN ====
+    //
+    // Pure Volumetric Fog's shader takes a single directional light — its own
+    // GetDirectionalLight returns the assigned one or RenderSettings.sun and
+    // there is nothing else in the march. Point lights do not exist to it.
+    //
+    // So a torch's point light can never glow THROUGH this fog. It lights
+    // surfaces, and on open ground at night there are no surfaces near it — so
+    // the fires were, correctly and invisibly, lighting nothing. No amount of
+    // intensity was going to fix that.
+    //
+    // The halo has to be GEOMETRY. A camera-facing additive quad is a fake, and
+    // it is the same fake every engine uses for exactly this, and — because it
+    // is geometry — the fog attenuates it with distance all by itself. Which is
+    // the depth cue the torches were there for.
+    [Tooltip("Draw a glow billboard at each flame. This is what is actually visible: the point light below only lights nearby stonework, and the fog cannot carry it at all.")]
+    public bool torchGlow = true;
+    public float torchGlowSize = 2.6f;
+    [Range(0f, 3f)] public float torchGlowStrength = 1.5f;
+    [Tooltip("Add a point light too, for the stonework and the snow right by each flame. It does nothing for the fog.")]
     public bool torchesGiveLight = true;
     public Color torchLight = new Color(1f, 0.58f, 0.24f);
     public float torchLightRange = 26f;
@@ -292,6 +329,11 @@ public class TrailerCastleShot : MonoBehaviour
     {
         armed = Armed();
         if (!armed) { enabled = false; return; }
+
+        // Said out loud, because "did the shot arm, or is this an ordinary run
+        // of the game?" is otherwise invisible until something is missing.
+        Debug.Log("[TrailerCastleShot] Armed for this run only — the key has been consumed, so the next entry into " +
+                  "GameScene is an ordinary one. Launch it again from Tools > Lore Trailer.");
 
         // The only moment this is any use: it is what the generator reads in its
         // Start to decide which location to build the world around.
@@ -690,8 +732,80 @@ public class TrailerCastleShot : MonoBehaviour
                 flamePhase.Add(Random.Range(0f, 10f));
             }
 
+            if (torchGlow) BuildGlow(p + Vector3.up * 1.6f);
+
             torches.Add(go.transform);
         }
+    }
+
+    private readonly List<Transform> glows = new List<Transform>();
+    private static Material s_glowMat;
+
+    private void BuildGlow(Vector3 at)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        go.name = "Glow";
+        Destroy(go.GetComponent<Collider>());
+        // Parented to the director, not to the torch: the prop is rotated ninety
+        // degrees to stand up and may be scaled, and a halo whose local scale
+        // has to be read through that is a halo whose size is a guess.
+        go.transform.SetParent(transform, true);
+        go.transform.position = at;
+        go.transform.localScale = Vector3.one * torchGlowSize;
+
+        var r = go.GetComponent<MeshRenderer>();
+        r.sharedMaterial = GlowMaterial();
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        glows.Add(go.transform);
+    }
+
+    // Additive, unlit, and soft-edged. A quad with no texture is a hard-edged
+    // square, which is the whole reason script-built glows look like paper.
+    private Material GlowMaterial()
+    {
+        if (s_glowMat != null) return s_glowMat;
+
+        Shader sh = Shader.Find("Universal Render Pipeline/Unlit");
+        if (sh == null) sh = Shader.Find("Sprites/Default");
+        s_glowMat = new Material(sh) { name = "M_TorchGlow (runtime)" };
+
+        Color c = torchLight * torchGlowStrength;
+        c.a = 1f;
+        if (s_glowMat.HasProperty("_BaseMap")) s_glowMat.SetTexture("_BaseMap", SoftDot());
+        if (s_glowMat.HasProperty("_MainTex")) s_glowMat.SetTexture("_MainTex", SoftDot());
+        if (s_glowMat.HasProperty("_BaseColor")) s_glowMat.SetColor("_BaseColor", c);
+        if (s_glowMat.HasProperty("_Color")) s_glowMat.SetColor("_Color", c);
+        if (s_glowMat.HasProperty("_Surface")) s_glowMat.SetFloat("_Surface", 1f);
+        s_glowMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        s_glowMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);   // additive
+        s_glowMat.SetInt("_ZWrite", 0);
+        s_glowMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        s_glowMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        return s_glowMat;
+    }
+
+    private static Texture2D s_softDot;
+
+    private static Texture2D SoftDot()
+    {
+        if (s_softDot != null) return s_softDot;
+
+        const int N = 64;
+        s_softDot = new Texture2D(N, N, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color32[N * N];
+        float c = (N - 1) * 0.5f;
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
+            // Squared falloff: a linear ramp still shows a visible disc edge.
+            float a = Mathf.Clamp01(1f - d); a *= a;
+            px[y * N + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+        }
+        s_softDot.SetPixels32(px);
+        s_softDot.Apply(true);
+        return s_softDot;
     }
 
     // Perlin rather than random, and at a different rate per torch, so the line
@@ -706,6 +820,18 @@ public class TrailerCastleShot : MonoBehaviour
             if (flames[i] == null) continue;
             float n = Mathf.PerlinNoise(flamePhase[i], t * 2.3f) - 0.5f;
             flames[i].intensity = torchLightIntensity * (1f + n * 2f * torchFlicker);
+        }
+
+        // The halos face the lens and breathe with the same noise. Scaled rather
+        // than faded, because an additive quad that changes opacity reads as a
+        // light being dimmed and one that changes size reads as a flame.
+        if (cam == null) return;
+        for (int i = 0; i < glows.Count; i++)
+        {
+            if (glows[i] == null) continue;
+            glows[i].rotation = cam.transform.rotation;
+            float n = Mathf.PerlinNoise(i * 3.7f, t * 2.1f) - 0.5f;
+            glows[i].localScale = Vector3.one * (torchGlowSize * (1f + n * 2f * torchFlicker * 0.6f));
         }
     }
 
@@ -1021,10 +1147,29 @@ public class TrailerCastleShot : MonoBehaviour
         }
 
         Light key = keyLight != null ? keyLight : RenderSettings.sun;
-        if (key == null) yield break;
 
-        Color c0 = key.color;
-        float i0 = key.intensity;
+        // ==== IN FOG, A FLASH IS THE AIR LIGHTING UP ====
+        //
+        // Flashing the directional light alone brightens the surfaces it reaches
+        // and almost nothing else, because those surfaces are behind a hundred
+        // metres of fog. What a real strike does to a fogged valley is light the
+        // FOG — the whole volume goes white for a frame and every solid thing in
+        // it becomes a silhouette cut out of that white.
+        //
+        // This fog only ever scatters one directional light, so it will not do
+        // that on its own. But its colour is a field, and driving that IS the
+        // effect: the volume goes bright, the castle is a shape in front of it,
+        // and the torches are suddenly nothing. Then it is gone.
+        Color fogWas = fogColour;
+        Color skyWas = RenderSettings.ambientSkyColor;
+        Color eqWas = RenderSettings.ambientEquatorColor;
+        Color grdWas = RenderSettings.ambientGroundColor;
+        Color keyWas = key != null ? key.color : Color.white;
+        float keyI0 = key != null ? key.intensity : 0f;
+
+        // The sun is swung to come from BEHIND the castle for the flash, so what
+        // little it does reach edges the walls rather than washing their faces.
+        Quaternion rotWas = key != null ? key.transform.rotation : Quaternion.identity;
 
         // Real lightning is not one flash. It is two or three inside a tenth of a
         // second, which is the difference between a light being switched on and
@@ -1032,16 +1177,52 @@ public class TrailerCastleShot : MonoBehaviour
         int flickers = Random.Range(2, 4);
         for (int i = 0; i < flickers; i++)
         {
-            key.color = lightningColour;
-            key.intensity = lightningIntensity * Random.Range(0.6f, 1f);
+            float f = Random.Range(0.6f, 1f);
+
+            if (key != null)
+            {
+                key.transform.rotation = Quaternion.LookRotation(approach) * Quaternion.Euler(22f, 0f, 0f);
+                key.color = lightningColour;
+                key.intensity = lightningIntensity * f;
+            }
+            SetFogColour(Color.Lerp(fogWas, lightningColour, 0.85f * f) * (1f + flashLift * f));
+            RenderSettings.ambientSkyColor = Color.Lerp(skyWas, lightningColour, 0.8f * f);
+            RenderSettings.ambientEquatorColor = Color.Lerp(eqWas, lightningColour, 0.6f * f);
+            RenderSettings.ambientGroundColor = Color.Lerp(grdWas, lightningColour, 0.35f * f);
+
             yield return new WaitForSecondsRealtime(Random.Range(0.03f, 0.07f));
-            key.color = c0;
-            key.intensity = i0;
+
+            if (key != null) { key.color = keyWas; key.intensity = keyI0; key.transform.rotation = rotWas; }
+            SetFogColour(fogWas);
+            RenderSettings.ambientSkyColor = skyWas;
+            RenderSettings.ambientEquatorColor = eqWas;
+            RenderSettings.ambientGroundColor = grdWas;
+
             yield return new WaitForSecondsRealtime(Random.Range(0.02f, 0.06f));
         }
 
-        key.color = c0;
-        key.intensity = i0;
+        // A strike leaves the air glowing for a moment after the last flicker.
+        // Cutting straight back is what makes a flash read as a switch.
+        float t = 0f;
+        while (t < flashAfterglow)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = 1f - Mathf.Clamp01(t / Mathf.Max(0.01f, flashAfterglow));
+            SetFogColour(Color.Lerp(fogWas, lightningColour, 0.30f * k * k));
+            yield return null;
+        }
+
+        if (key != null) { key.color = keyWas; key.intensity = keyI0; key.transform.rotation = rotWas; }
+        SetFogColour(fogWas);
+        RenderSettings.ambientSkyColor = skyWas;
+        RenderSettings.ambientEquatorColor = eqWas;
+        RenderSettings.ambientGroundColor = grdWas;
+    }
+
+    private void SetFogColour(Color c)
+    {
+        if (fog == null || fColour == null) return;
+        fColour.SetValue(fog, c);
     }
 
     // ---- title card --------------------------------------------------------------
