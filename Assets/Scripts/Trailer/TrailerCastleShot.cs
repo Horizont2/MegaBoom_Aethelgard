@@ -61,79 +61,106 @@ public class TrailerCastleShot : MonoBehaviour
     [Tooltip("Take the player out of the shot entirely. The generated world spawns him; this removes him.")]
     public bool removeHero = true;
 
-    [Header("The crane")]
-    // ==== A DOLLY IN A STRAIGHT LINE IS A ZOOM ====
+    [Header("The shot")]
+    // ==== THE CASTLE IS HIDDEN, AND THE STORM SHOWS IT TO YOU ====
     //
-    // The first version travelled straight down one axis with eight degrees of
-    // yaw on it, and that is not a camera move — nothing in frame changes its
-    // relationship to anything else, so the brain reads the whole thing as the
-    // picture getting bigger. Which is exactly what it looked like.
+    // The first build craned in on a castle that was simply there, which is a
+    // reveal of something already revealed. This one keeps it BURIED: for most
+    // of the shot the snow and the fog are so thick that all the frame holds is
+    // a faint mass and a line of fires. Then the sky opens — and for a fifth of
+    // a second at a time the lightning puts the whole silhouette on the screen
+    // and takes it away again. Only at the end does the camera move at all, and
+    // only enough for the castle to come forward out of the fog.
     //
-    // What makes a move read as a MOVE is parallax: near things must slide
-    // against far things. That needs lateral travel, so the camera ARCS — forty
-    // odd degrees around the hill while it rises and closes. The towers separate
-    // from each other, the torch line sweeps through the foreground, and the
-    // castle turns to show a second face. Every one of those is the shot telling
-    // you the camera is somewhere, which a zoom cannot do at any focal length.
-    //
-    // Three timed sections, and it needs all three:
-    //   SETTLE  a beat where almost nothing happens. The castle is a shape in
-    //           the fog and you are given time to notice it before being shown
-    //           it. Openings that start moving have nothing to open ON.
-    //   CRANE   the arc, the rise, the push, the lens.
-    //   HOLD    it never quite stops. A camera that halts dead announces that a
-    //           move was being executed.
-    [Tooltip("Seconds held nearly still at the start, on the silhouette, before the crane begins.")]
-    public float settleSeconds = 2.2f;
-    [Tooltip("Metres from the castle's centre the shot opens at, as a multiple of the castle's own radius.")]
-    public float startDistance = 3.4f;
-    [Tooltip("And where the push ends. Smaller is closer.")]
-    public float endDistance = 1.8f;
-    [Tooltip("Degrees the camera travels AROUND the castle across the move. This is the parallax, and it is the difference between a camera move and a zoom.")]
-    public float arcDegrees = 46f;
-    [Tooltip("Degrees per second of continuing arc during the settle and the hold, so the frame is never truly locked off.")]
-    public float driftDegreesPerSecond = 0.7f;
-    public float startHeight = 2.2f;
-    [Tooltip("Height at the end, as a fraction of the castle's own height. Deliberately below one: finishing ABOVE the towers looks down on them and loses the silhouette the whole shot is built on. Just under the crown, looking up, is the frame.")]
-    public float endHeightFactor = 0.62f;
-    [Tooltip("Metres the lens may be lifted to clear the hill. The castle sits on a twenty-two metre plateau the generator raises for it, so from the valley the crane can be looking straight at a slope — this walks the camera up until the crown is actually visible.")]
-    public float maxClearLift = 26f;
-    public float startFov = 58f;
-    public float endFov = 40f;
-    [Tooltip("Seconds the crane itself takes. Slow — this is the one shot in the trailer that is allowed to breathe.")]
-    public float craneSeconds = 12f;
-    [Tooltip("How fast the aim catches up to where it should be. Low numbers let the framing float, which is what separates an operated camera from a solved one.")]
-    public float aimDamping = 1.6f;
-    public float handheld = 0.02f;
+    // Four beats:
+    //   HIDDEN  nothing but the torches. The audience is told where to look
+    //           before being given anything to look at.
+    //   STORM   strikes behind the walls. Each one is a whole castle, briefly.
+    //   REVEAL  a modest push, the fog opens, and it stays.
+    //   HOLD    it never quite stops.
+    [Tooltip("Seconds buried in the snow, with only the fires to show where it is.")]
+    public float hiddenSeconds = 4f;
+    [Tooltip("Seconds of storm, in which the lightning is the only thing that shows the castle at all.")]
+    public float stormSeconds = 5.5f;
+    [Tooltip("Seconds of the push in which the fog finally opens.")]
+    public float revealSeconds = 5f;
     [Tooltip("Seconds held on the final framing before the fade.")]
-    public float holdSeconds = 2.4f;
+    public float holdSeconds = 2.6f;
     public float outFade = 1.8f;
 
+    [Header("The crane")]
+    // A dolly in a straight line is a zoom: nothing in frame changes its
+    // relationship to anything else, so the brain reads it as the picture
+    // getting bigger. What makes a move read as a MOVE is parallax, which needs
+    // lateral travel — so the camera arcs. Modestly, here: this shot is about
+    // the castle arriving, not about the camera going somewhere.
+    [Tooltip("Metres from the castle's centre the shot opens at, as a multiple of the castle's own radius. Small on purpose — the old 3.4 put the lens beyond the edge of the generated terrain, which is where the void starts.")]
+    public float startDistance = 2.4f;
+    [Tooltip("And where the push ends.")]
+    public float endDistance = 1.5f;
+    [Tooltip("Metres the camera is kept INSIDE the terrain's edge. Past it there is no world, and a trailer frame with the engine's nothing in the corner of it is unusable.")]
+    public float terrainMargin = 45f;
+    [Tooltip("Degrees the camera travels AROUND the castle. This is the parallax; kept small because the reveal, not the travel, is the event.")]
+    public float arcDegrees = 18f;
+    [Tooltip("Degrees per second of continuing arc through the whole shot, so the frame is never locked off.")]
+    public float driftDegreesPerSecond = 0.6f;
+    public float startHeight = 3f;
+    [Tooltip("Height at the end, as a fraction of the castle's own height. Below one: finishing above the towers looks down on them and loses the silhouette the whole shot is built on.")]
+    public float endHeightFactor = 0.5f;
+    [Tooltip("Metres the lens may be lifted to clear the hill the generator raises under the castle.")]
+    public float maxClearLift = 26f;
+    public float startFov = 52f;
+    public float endFov = 38f;
+    [Tooltip("How fast the aim catches up. Low numbers let the framing float, which is what separates an operated camera from a solved one.")]
+    public float aimDamping = 1.6f;
+    public float handheld = 0.02f;
+
+    [Header("Lightning")]
+    [Tooltip("The scene's key light, taken white for each strike. Left empty the render settings' sun is used.")]
+    public Light keyLight;
+    [Tooltip("How many fall during the storm beat.")]
+    public int strikes = 4;
+    [Tooltip("Metres BEHIND the castle each bolt lands, as a multiple of its radius. Behind, not among — a bolt inside the walls lights stonework; a bolt behind them makes the whole castle a silhouette, which is the only thing worth seeing through this much fog.")]
+    public float strikeBehind = 1.4f;
+    public Color lightningColour = new Color(0.82f, 0.88f, 1f);
+    public float lightningIntensity = 16f;
+
     [Header("Torches")]
+    // ==== THEY WERE INVISIBLE, AND THE ARITHMETIC SAYS WHY ====
+    //
+    // They were strung from the castle wall out to the OPENING camera distance,
+    // so most of them sat sixty to a hundred metres away — and at the fog density
+    // this shot runs, a sixty metre sightline passes about a tenth of the light
+    // through. A torch that faint, three pixels across, is nothing.
+    //
+    // They start near the lens now and march away from it, so the closest few
+    // are barely fogged at all and read as fire; the far ones dissolve into the
+    // murk, which is the point — that dissolve IS the depth cue. And the lights
+    // are much stronger, because in this shot they are the only warm thing in
+    // the frame and they are competing with a snowstorm.
     [Tooltip("The game's own torch. In fog, warm points ARE the depth — without something to occlude at known distances the fog is a flat grey card.")]
     public GameObject torchPrefab;
-    [Tooltip("Set in an arc across the approach, between the lens and the castle, so every one of them is in frame.")]
-    public int approachTorches = 14;
-    [Tooltip("How wide the arc spreads, as a multiple of the castle's radius.")]
-    public float torchArcWidth = 1.6f;
+    public int approachTorches = 16;
+    [Tooltip("Where the NEAREST torch sits, as a fraction of the camera's opening distance. High, so the first ones are right by the lens.")]
+    [Range(0.2f, 1f)] public float torchNearest = 0.85f;
+    [Tooltip("How wide the two rows spread, as a multiple of the castle's radius.")]
+    public float torchArcWidth = 1.1f;
     [Tooltip("This torch prefab's mesh is authored LYING DOWN and needs minus ninety on X to stand.")]
     public float torchStandUpX = -90f;
-    // ==== THE TORCH PREFAB HAS NO LIGHT ON IT ====
-    //
-    // It is a mesh and a flame particle, nothing else. In daylight that is fine.
-    // In the one shot of this trailer that is ABOUT volumetric fog it is a small
-    // orange sprite that illuminates nothing — and a light in volumetric fog is
-    // not a light, it is a visible cone of glowing air. That glow at a known
-    // distance is the entire mechanism by which fog reads as depth rather than
-    // as a grey card.
+    // The torch prefab is a mesh and a flame particle, nothing else — no Light
+    // anywhere on it. In the one shot of this trailer that is ABOUT volumetric
+    // fog, a torch that illuminates nothing is a small orange sprite. A light in
+    // volumetric fog is not a light, it is a visible cone of glowing air, and
+    // that glow at a known distance is the whole mechanism by which fog reads as
+    // depth rather than as a grey card.
     [Tooltip("Add a point light to each torch. Without it the flame lights nothing and the fog has nothing to carry.")]
     public bool torchesGiveLight = true;
-    public Color torchLight = new Color(1f, 0.62f, 0.28f);
-    public float torchLightRange = 14f;
-    public float torchLightIntensity = 3.2f;
+    public Color torchLight = new Color(1f, 0.58f, 0.24f);
+    public float torchLightRange = 26f;
+    public float torchLightIntensity = 9f;
     [Range(0f, 0.6f)]
-    [Tooltip("How much the flames breathe, as a fraction of their intensity. Small: a torch that pulses hard reads as a bad effect, and a whole line of them pulsing together reads as a light rig.")]
-    public float torchFlicker = 0.18f;
+    [Tooltip("How much the flames breathe. Small: a torch that pulses hard reads as a bad effect, and a whole line of them pulsing together reads as a light rig.")]
+    public float torchFlicker = 0.2f;
 
     [Header("Environment")]
     [Tooltip("Stop the day/night cycle and hold the hour the shot is lit for. Left running it walks the sun through the take.")]
@@ -147,16 +174,20 @@ public class TrailerCastleShot : MonoBehaviour
     public Color ambientGround = new Color(0.06f, 0.06f, 0.08f);
 
     [Header("Fog")]
-    [Tooltip("Extinction per metre at the START, when the castle is meant to be a rumour. Read against the opening distance: at three castle-radii out that is a long way through it.")]
-    public float fogDensityStart = 0.055f;
-    [Tooltip("And at the end, once the crane is above it. The fog does not clear — it is left below.")]
-    public float fogDensityEnd = 0.022f;
-    public float fogHeightStart = 30f;
-    public float fogHeightEnd = 40f;
+    // Held THICK for the first two beats and opened only in the reveal. It used
+    // to thin steadily from the first frame, which meant the castle was always
+    // arriving and never hidden — and a reveal of something already visible is
+    // not a reveal.
+    [Tooltip("Extinction per metre while it is buried. Thick enough that a hundred metres of it is a wall, which is what makes the lightning worth anything.")]
+    public float fogDensityHidden = 0.085f;
+    [Tooltip("And once it has come forward. It never fully clears — this is the castle emerging, not the weather ending.")]
+    public float fogDensityRevealed = 0.03f;
+    public float fogHeightHidden = 34f;
+    public float fogHeightRevealed = 30f;
     [Range(0f, 1f)]
     [Tooltip("The least density the noise may leave. At zero it carves clear holes, and a hole in the one shot that is ABOUT fog reads as the fog switching off.")]
-    public float fogNoiseFloor = 0.5f;
-    public Color fogColour = new Color(0.55f, 0.60f, 0.70f);
+    public float fogNoiseFloor = 0.55f;
+    public Color fogColour = new Color(0.58f, 0.63f, 0.72f);
 
     [Header("Weather")]
     // ==== REGION 24 IS A WINTER REGION ====
@@ -336,6 +367,8 @@ public class TrailerCastleShot : MonoBehaviour
         TakeCamera();
         ChooseApproach();
         SetEnvironment();
+        BuildLightning();
+        ReleaseLightning();
         PlaceTorches();
         RemoveHero();
 
@@ -345,28 +378,29 @@ public class TrailerCastleShot : MonoBehaviour
         Loop(windBed);
         Loop(dreadBed);
 
-        // ---- 4. SETTLE. A shape in the fog, and time to notice it. ----
-        float drift = 0f;
-        float st = 0f;
-        while (st < settleSeconds)
-        {
-            st += Time.unscaledDeltaTime;
-            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
-            PlaceCamera(0f, drift);
-            ApplyFog(0f);
-            FlickerTorches();
-            yield return null;
-        }
+        // ---- 4. HIDDEN. Nothing but the fires. ----
+        yield return Beat(hiddenSeconds, 0f, 0f);
 
-        // ---- 5. CRANE. The arc, the rise, the push. ----
+        // ---- 5. STORM. Each bolt is a whole castle, briefly. ----
+        Cue(crowsCue);
+        StartCoroutine(StormBeat());
+        yield return Beat(stormSeconds, 0f, 0f);
+
+        // ---- 6. REVEAL. The push, and the fog opens. ----
+        //
+        // The beds drop out first and there is most of a second of nothing. A
+        // sting on top of a bed that is already running is just louder; the
+        // silence is what makes it arrive.
+        DropOut();
+        yield return new WaitForSecondsRealtime(silenceBefore);
+        Cue(revealSting);
+        Loop(windBed);
+
         float t = 0f;
-        bool crowed = false, hushed = false, revealed = false;
-        float hushAt = Mathf.Clamp01(revealAt) * craneSeconds - silenceBefore;
-
-        while (t < craneSeconds)
+        while (t < revealSeconds)
         {
             t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / Mathf.Max(0.01f, craneSeconds));
+            float k = Mathf.Clamp01(t / Mathf.Max(0.01f, revealSeconds));
 
             // Smootherstep: zero velocity AND zero acceleration at both ends, so
             // the move never announces its start or its stop.
@@ -376,20 +410,10 @@ public class TrailerCastleShot : MonoBehaviour
             PlaceCamera(e, drift);
             ApplyFog(e);
             FlickerTorches();
-
-            // One cry, early, while there is still nothing to look at. Nothing
-            // says abandoned faster, and it wants to be well clear of the sting.
-            if (!crowed && k > 0.22f) { crowed = true; Cue(crowsCue); }
-
-            // The beds drop out, and for the best part of a second there is
-            // nothing at all. Then the castle is there.
-            if (!hushed && t >= hushAt) { hushed = true; DropOut(); }
-            if (!revealed && k >= revealAt) { revealed = true; Cue(revealSting); Loop(windBed); }
-
             yield return null;
         }
 
-        // ---- 6. HOLD. It never quite stops. ----
+        // ---- 7. HOLD. It never quite stops. ----
         float hold = 0f;
         while (hold < holdSeconds)
         {
@@ -406,6 +430,25 @@ public class TrailerCastleShot : MonoBehaviour
 
         if (showTitle) yield return StartCoroutine(TitleCard());
         IsFinished = true;
+    }
+
+    // A stretch in which the camera does not travel: it only keeps its drift, so
+    // the frame breathes without going anywhere. Used for the two beats before
+    // the reveal, which are about waiting rather than about moving.
+    private float drift;
+
+    private IEnumerator Beat(float seconds, float e, float fogK)
+    {
+        float t = 0f;
+        while (t < seconds)
+        {
+            t += Time.unscaledDeltaTime;
+            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
+            PlaceCamera(e, drift);
+            ApplyFog(fogK);
+            FlickerTorches();
+            yield return null;
+        }
     }
 
     // ---- the set ---------------------------------------------------------------
@@ -510,6 +553,27 @@ public class TrailerCastleShot : MonoBehaviour
             }
         }
 
+        // ==== THE TOTEM FIRES A COLUMN OF LIGHT INTO THE SKY ====
+        //
+        // Location_Castle carries three RegionTotems, and a totem's job in the
+        // game is to be visible from anywhere on the map — so each one throws a
+        // sky beam. Three pillars of particles rising out of the towers is a
+        // gameplay marker, and it is the loudest thing in a frame that is
+        // otherwise a silhouette in a snowstorm.
+        foreach (var totem in Object.FindObjectsByType<RegionTotem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (totem == null) continue;
+            if (totem.skyBeamVFX != null)
+            {
+                totem.skyBeamVFX.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                totem.skyBeamVFX.gameObject.SetActive(false);
+            }
+            // The component too: its Update re-enables the beam on its own cues,
+            // and nothing about a capture objective belongs in this shot.
+            totem.enabled = false;
+            killed++;
+        }
+
         if (hideHUD)
         {
             // Every screen-space canvas in the scene, which is the HUD, the
@@ -562,10 +626,11 @@ public class TrailerCastleShot : MonoBehaviour
         {
             float k = approachTorches > 1 ? i / (float)(approachTorches - 1) : 0.5f;
 
-            // Two rows, alternating, marching in from the opening distance to the
-            // castle wall — so they pass the lens on both sides and converge.
-            float along = Mathf.Lerp(castleRadius * startDistance, castleRadius * 1.05f, k);
-            float outward = (i % 2 == 0 ? 1f : -1f) * torchArcWidth * castleRadius * 0.5f * (1f - k * 0.55f);
+            // Two rows, alternating, running from just in front of the lens all
+            // the way in to the wall — so the near ones pass the camera on both
+            // sides and the far ones converge on the gate.
+            float along = Mathf.Lerp(castleRadius * startDistance * torchNearest, castleRadius * 1.05f, k);
+            float outward = (i % 2 == 0 ? 1f : -1f) * torchArcWidth * castleRadius * 0.5f * (1f - k * 0.6f);
 
             Vector3 across = new Vector3(approach.z, 0f, -approach.x);
             Vector3 p = castleBounds.center + approach * along + across * outward;
@@ -681,11 +746,11 @@ public class TrailerCastleShot : MonoBehaviour
             if (fColour != null) fColour.SetValue(fog, fogColour);
         }
 
-        // It does not clear as the camera rises. It is LEFT BELOW — the layer
-        // gets taller while the density drops, so the valley stays full and the
-        // crane climbs out of it.
-        if (fDensity != null) fDensity.SetValue(fog, Mathf.Lerp(fogDensityStart, fogDensityEnd, k));
-        if (fHeight != null) fHeight.SetValue(fog, Mathf.Lerp(fogHeightStart, fogHeightEnd, k));
+        // Held at the hidden value for the first two beats — k is zero through
+        // both — and opened only across the reveal. It never reaches clear: this
+        // is the castle coming forward, not the weather ending.
+        if (fDensity != null) fDensity.SetValue(fog, Mathf.Lerp(fogDensityHidden, fogDensityRevealed, k));
+        if (fHeight != null) fHeight.SetValue(fog, Mathf.Lerp(fogHeightHidden, fogHeightRevealed, k));
     }
 
     private FieldInfo Field(string name)
@@ -708,9 +773,52 @@ public class TrailerCastleShot : MonoBehaviour
         Vector3 dir = Quaternion.Euler(0f, yaw, 0f) * approach;
 
         Vector3 p = castleBounds.center + dir * dist;
+        p = KeepOnTerrain(p);
         float high = Mathf.Lerp(startHeight, castleBounds.size.y * endHeightFactor, e);
         p.y = Ground(p) + high;
         return LiftClear(p);
+    }
+
+    // ==== PAST THE TERRAIN THERE IS NO WORLD ====
+    //
+    // The castle can land anywhere the generator likes, including near the rim,
+    // and the opening framing was three and a bit castle-radii out — which on a
+    // rim placement is beyond the edge of the heightmap. There is nothing out
+    // there: no ground, no fog volume, no skybox behind the border mountains,
+    // just the engine's clear colour in the corner of a trailer frame.
+    //
+    // So the lens is pulled back inside, with a margin. Pulled rather than
+    // clamped per-axis, because clamping X and Z independently slides the camera
+    // along the edge and quietly changes the angle the whole shot was composed
+    // on; moving it back along its own line toward the castle keeps the
+    // composition and only loses a little distance.
+    private Vector3 KeepOnTerrain(Vector3 p)
+    {
+        Terrain t = Terrain.activeTerrain;
+        if (t == null || t.terrainData == null) return p;
+
+        Vector3 o = t.transform.position;
+        Vector3 size = t.terrainData.size;
+        float minX = o.x + terrainMargin, maxX = o.x + size.x - terrainMargin;
+        float minZ = o.z + terrainMargin, maxZ = o.z + size.z - terrainMargin;
+
+        if (p.x >= minX && p.x <= maxX && p.z >= minZ && p.z <= maxZ) return p;
+
+        Vector3 centre = castleBounds.center;
+        Vector3 away = p - centre; away.y = 0f;
+        float full = away.magnitude;
+        if (full < 0.01f) return p;
+
+        // Walk in along the same line until it is inside, in a few steps. Cheap,
+        // exact enough, and it cannot change the bearing.
+        Vector3 dir = away / full;
+        for (float d = full; d > castleRadius * 1.1f; d -= 2f)
+        {
+            Vector3 q = centre + dir * d;
+            if (q.x >= minX && q.x <= maxX && q.z >= minZ && q.z <= maxZ)
+                return new Vector3(q.x, p.y, q.z);
+        }
+        return p;
     }
 
     // ==== THE HILL IS BETWEEN THE LENS AND THE CASTLE ====
@@ -781,6 +889,96 @@ public class TrailerCastleShot : MonoBehaviour
         cam.transform.position = p + shake;
         cam.transform.rotation = Quaternion.LookRotation((aimNow - p).normalized);
         cam.fieldOfView = Mathf.Lerp(startFov, endFov, e);
+    }
+
+    // ---- the storm ---------------------------------------------------------------
+
+    private TrailerLightningStrike bolt;
+    private LineRenderer boltLine;
+
+    // Built during the wait for the world, parked as a millimetre of line two
+    // metres in front of the lens: inside the frustum, sub-pixel, so its material
+    // is compiled long before the first strike. TrailerLightningStrike keeps its
+    // renderer off until it fires, which would otherwise make that first bolt a
+    // cold draw — the same synchronous shader compile that used to lock the
+    // editor on the statue's debris.
+    private void BuildLightning()
+    {
+        if (cam == null) return;
+
+        var go = new GameObject("Castle_Lightning");
+        go.transform.SetParent(cam.transform, false);
+
+        // The LineRenderer first: TrailerLightningStrike requires one, and its
+        // Awake — which runs the instant AddComponent returns — configures it.
+        boltLine = go.AddComponent<LineRenderer>();
+        bolt = go.AddComponent<TrailerLightningStrike>();
+        bolt.thunderId = AudioID.Trailer_ThunderClose;
+        bolt.height = Mathf.Max(60f, castleBounds.size.y * 2.5f);
+
+        boltLine.useWorldSpace = false;
+        boltLine.positionCount = 2;
+        boltLine.SetPosition(0, new Vector3(0f, 0f, 2f));
+        boltLine.SetPosition(1, new Vector3(0f, 0.001f, 2f));
+        boltLine.widthMultiplier = 0.0004f;
+        boltLine.enabled = true;
+    }
+
+    private void ReleaseLightning()
+    {
+        if (bolt == null) return;
+        boltLine.enabled = false;
+        boltLine.useWorldSpace = true;
+        boltLine.widthMultiplier = bolt.boltWidth;
+        bolt.transform.SetParent(null, true);
+    }
+
+    // Bolts spaced across the storm beat, each one BEHIND the walls so the whole
+    // castle becomes a silhouette for a fifth of a second and then is gone again.
+    // Irregular on purpose: a storm on a metronome is a strobe.
+    private IEnumerator StormBeat()
+    {
+        int n = Mathf.Max(1, strikes);
+        for (int i = 0; i < n; i++)
+        {
+            float wait = stormSeconds / n * Random.Range(0.55f, 1.35f);
+            yield return new WaitForSecondsRealtime(wait);
+            StartCoroutine(Strike());
+        }
+    }
+
+    private IEnumerator Strike()
+    {
+        if (bolt != null)
+        {
+            Vector3 at = castleBounds.center - approach * (castleRadius * strikeBehind)
+                       + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)) * castleRadius * 0.6f;
+            at.y = Ground(at);
+            bolt.Strike(at);
+        }
+
+        Light key = keyLight != null ? keyLight : RenderSettings.sun;
+        if (key == null) yield break;
+
+        Color c0 = key.color;
+        float i0 = key.intensity;
+
+        // Real lightning is not one flash. It is two or three inside a tenth of a
+        // second, which is the difference between a light being switched on and
+        // something happening in the sky.
+        int flickers = Random.Range(2, 4);
+        for (int i = 0; i < flickers; i++)
+        {
+            key.color = lightningColour;
+            key.intensity = lightningIntensity * Random.Range(0.6f, 1f);
+            yield return new WaitForSecondsRealtime(Random.Range(0.03f, 0.07f));
+            key.color = c0;
+            key.intensity = i0;
+            yield return new WaitForSecondsRealtime(Random.Range(0.02f, 0.06f));
+        }
+
+        key.color = c0;
+        key.intensity = i0;
     }
 
     // ---- title card --------------------------------------------------------------

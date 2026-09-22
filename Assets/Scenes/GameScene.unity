@@ -22343,30 +22343,38 @@ MonoBehaviour:
   - CagedAllyEvent
   hideHUD: 1
   removeHero: 1
-  settleSeconds: 2.2
-  startDistance: 3.4
-  endDistance: 1.8
-  arcDegrees: 46
-  driftDegreesPerSecond: 0.7
-  startHeight: 2.2
-  endHeightFactor: 0.62
+  hiddenSeconds: 4
+  stormSeconds: 5.5
+  revealSeconds: 5
+  holdSeconds: 2.6
+  outFade: 1.8
+  startDistance: 2.4
+  endDistance: 1.5
+  terrainMargin: 45
+  arcDegrees: 18
+  driftDegreesPerSecond: 0.6
+  startHeight: 3
+  endHeightFactor: 0.5
   maxClearLift: 26
-  startFov: 58
-  endFov: 40
-  craneSeconds: 12
+  startFov: 52
+  endFov: 38
   aimDamping: 1.6
   handheld: 0.02
-  holdSeconds: 2.4
-  outFade: 1.8
+  keyLight: {fileID: 0}
+  strikes: 4
+  strikeBehind: 1.4
+  lightningColour: {r: 0.82, g: 0.88, b: 1, a: 1}
+  lightningIntensity: 16
   torchPrefab: {fileID: 1850256477050470, guid: 3599666ad7adbe14d964d5a8c7b8d845, type: 3}
-  approachTorches: 14
-  torchArcWidth: 1.6
+  approachTorches: 16
+  torchNearest: 0.85
+  torchArcWidth: 1.1
   torchStandUpX: -90
   torchesGiveLight: 1
-  torchLight: {r: 1, g: 0.62, b: 0.28, a: 1}
-  torchLightRange: 14
-  torchLightIntensity: 3.2
-  torchFlicker: 0.18
+  torchLight: {r: 1, g: 0.58, b: 0.24, a: 1}
+  torchLightRange: 26
+  torchLightIntensity: 9
+  torchFlicker: 0.2
   holdTimeOfDay: 1
   sunElevation: 8
   sunColour: {r: 0.72, g: 0.78, b: 1, a: 1}
@@ -22374,12 +22382,12 @@ MonoBehaviour:
   ambientSky: {r: 0.2, g: 0.24, b: 0.32, a: 1}
   ambientEquator: {r: 0.14, g: 0.16, b: 0.22, a: 1}
   ambientGround: {r: 0.06, g: 0.06, b: 0.08, a: 1}
-  fogDensityStart: 0.055
-  fogDensityEnd: 0.022
-  fogHeightStart: 30
-  fogHeightEnd: 40
-  fogNoiseFloor: 0.5
-  fogColour: {r: 0.55, g: 0.6, b: 0.7, a: 1}
+  fogDensityHidden: 0.085
+  fogDensityRevealed: 0.03
+  fogHeightHidden: 34
+  fogHeightRevealed: 30
+  fogNoiseFloor: 0.55
+  fogColour: {r: 0.58, g: 0.63, b: 0.72, a: 1}
   applyRegionBiome: 1
   windBed: Trailer/Wind Desolate
   dreadBed: Trailer/Dread Bed
