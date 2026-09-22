@@ -2,17 +2,18 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Plays ONE shot out of Trailer_Lvl_1, instead of all of them at once.
+// Plays ONE shot out of a trailer scene, instead of all of them at once.
 //
 // ==== WHY THIS EXISTS ====
 //
-// Trailer_Lvl_1 holds two finished shots that were built at different times and
-// never taught about each other: the statue breaking open (LoreTrailer_Statue_Rig,
-// TrailerStatueShot with autoPlay on) and the ride through the forest
-// (TrailerSequencer, TrailerSequenceDirector). Both of them run their own opening
-// in Start, so pressing Play starts BOTH — two cameras fighting over the brain,
-// two AudioListeners, two directional lights, and a day/night cycle spinning the
-// sun through a shot that was lit for one fixed night.
+// Each trailer scene holds more than one finished shot, built at different times
+// and never taught about each other. Trailer_Lvl_1 has the statue breaking open
+// (LoreTrailer_Statue_Rig) and the ride through the forest (TrailerSequencer);
+// March_TrailerScene has the legion marching (TrailerLegionDirector) and the two
+// armies meeting (TrailerClash). Every one of them runs its own opening in
+// Start, so pressing Play starts BOTH shots in whichever scene is open — two
+// cameras fighting over the brain, two AudioListeners, two directional lights,
+// and a day/night cycle spinning the sun through a shot lit for one fixed night.
 //
 // So the launcher names the shot it wants, and everything belonging to the other
 // one is switched off here, in AfterSceneLoad — which runs after every Awake but
@@ -27,9 +28,12 @@ public static class TrailerShotSolo
     public const string SessionKey = "Trailer.SoloShot";
     public const string StatueShot = "statue";
     public const string RideShot = "ride";
+    public const string MarchShot = "march";
+    public const string ClashShot = "clash";
 
-    // The only scene this is allowed to touch.
+    // The only two scenes this is allowed to touch.
     public const string TrailerScene = "Trailer_Lvl_1";
+    public const string MarchScene = "March_TrailerScene";
 
     private const string StatueRig = "LoreTrailer_Statue_Rig";
     private const string Sequencer = "TrailerSequencer";
@@ -49,7 +53,8 @@ public static class TrailerShotSolo
         // below is survivable in a gameplay scene: it switches the sun off, stops
         // the day/night cycle and leaves exactly one camera rendering. So the
         // scene has to say it is the trailer before any of it happens.
-        if (SceneManager.GetActiveScene().name != TrailerScene) return;
+        string scene = SceneManager.GetActiveScene().name;
+        if (scene != TrailerScene && scene != MarchScene) return;
 
         // The two fogs would stack. The scene asset already has the built-in one
         // off; this is here so the shot is right even if something switched it
@@ -60,6 +65,8 @@ public static class TrailerShotSolo
 
         if (shot == StatueShot) SoloStatue();
         else if (shot == RideShot) SoloRide();
+        else if (shot == MarchShot) SoloMarch();
+        else if (shot == ClashShot) SoloClash();
         else return;
 
         Debug.Log("[TrailerShotSolo] Playing the '" + shot + "' shot alone. Everything belonging to the other shot " +
@@ -269,6 +276,33 @@ public static class TrailerShotSolo
         var fog = Fog();
         var season = Object.FindFirstObjectByType<TrailerSeasonRide>(FindObjectsInactive.Include);
         if (fog != null && season != null && season.sun != null) Set(fog, "directionalLight", season.sun);
+    }
+
+    // ===================== shot 3 — the legion marches =====================
+    //
+    // The march scene now holds two shots, and both of them open themselves, so
+    // the same rule applies here as in Trailer_Lvl_1: whichever one is not
+    // wanted is switched off before its Start can take the camera.
+    private static void SoloMarch()
+    {
+        Off("TrailerClash");
+
+        var legion = Object.FindFirstObjectByType<TrailerLegionDirector>(FindObjectsInactive.Include);
+        if (legion != null) legion.enabled = true;
+    }
+
+    // ===================== shot 4 — the two armies meet =====================
+    private static void SoloClash()
+    {
+        // The legion director lives ON the terrain object, so it is the COMPONENT
+        // that goes, not the GameObject — switching off the terrain would take
+        // the ground out from under both armies.
+        var legion = Object.FindFirstObjectByType<TrailerLegionDirector>(FindObjectsInactive.Include);
+        if (legion != null) legion.enabled = false;
+
+        GameObject clash = TrailerFind.ByName("TrailerClash");
+        if (clash != null) clash.SetActive(true);
+        else Debug.LogWarning("[TrailerShotSolo] No 'TrailerClash' object in this scene.");
     }
 
     // ===================== helpers =====================

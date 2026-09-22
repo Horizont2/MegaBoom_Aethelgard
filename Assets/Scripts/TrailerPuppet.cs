@@ -174,6 +174,43 @@ public class TrailerPuppet : MonoBehaviour
         }
     }
 
+    // ---- driven from outside -------------------------------------------------
+    //
+    // A crowd whose members each integrate their own position drifts: rounding,
+    // frame timing and ground snapping all accumulate differently per unit, and
+    // two lines that are supposed to MEET at a named moment arrive at slightly
+    // different times and slightly different places. For a shot whose whole
+    // point is the instant of contact, the director places every unit from one
+    // number instead, and these are what it uses.
+
+    // Position and facing, straight from the director. Grounding is left to the
+    // caller so a crowd can stagger it across frames.
+    public void Place(Vector3 position, Vector3 forward, bool ground)
+    {
+        _walking = false;
+        transform.position = position;
+        forward.y = 0f;
+        if (forward.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(forward.normalized);
+        if (ground) SnapToGround();
+    }
+
+    public void Ground() { SnapToGround(); }
+
+    // The gait only — no movement. Written across BOTH vocabularies on purpose:
+    // the skeletons run on a bool called isMoving, the hero rig on a Speed float
+    // feeding a locomotion blend tree, and the Safe helpers make writing a
+    // parameter a controller does not have a no-op rather than a warning. So one
+    // puppet class drives both armies and neither needs to know about the other.
+    public void SetGait(float speed)
+    {
+        _walking = false;
+        SetBoolSafe("isMoving", speed > 0.05f);
+        SetBoolSafe("IsGrounded", true);
+        SetFloatSafe("Speed", speed);
+        SetFloatSafe("MoveZ", speed);
+        SetFloatSafe("MoveX", 0f);
+    }
+
     private void SnapToGround()
     {
         Vector3 p = transform.position;
@@ -206,6 +243,12 @@ public class TrailerPuppet : MonoBehaviour
     {
         if (_animator == null || !HasParam(param, AnimatorControllerParameterType.Bool)) return;
         _animator.SetBool(param, value);
+    }
+
+    private void SetFloatSafe(string param, float value)
+    {
+        if (_animator == null || !HasParam(param, AnimatorControllerParameterType.Float)) return;
+        _animator.SetFloat(param, value);
     }
 
     private bool HasParam(string param, AnimatorControllerParameterType type)

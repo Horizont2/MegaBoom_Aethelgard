@@ -2118,6 +2118,89 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 7489123634373202801, guid: 8ae7c7da82ddcbb4b8a2880d591d798a, type: 3}
   m_PrefabInstance: {fileID: 1544163601}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1900200010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900200011}
+  - component: {fileID: 1900200012}
+  m_Layer: 0
+  m_Name: TrailerClash
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1900200011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900200010}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 761.56, y: 150.02, z: 248.14}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1900200012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900200010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 197994c3178e4376b7269f292b05c371, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrailerClashDirector
+  clashCentre: {fileID: 0}
+  advanceAxis: {x: 0.4198, y: 0, z: -0.9076}
+  playerPrefab: {fileID: 2945078721770132420, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
+  playerLead: 3.4
+  allyPrefabs:
+  - {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
+  - {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
+  - {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
+  allyCount: 48
+  allyRanks: 6
+  enemyPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
+  enemyCount: 96
+  enemyRanks: 8
+  fileSpacing: 1.6
+  rankSpacing: 1.9
+  positionJitter: 0.4
+  startGap: 62
+  holdSeconds: 2.4
+  walkSpeed: 1.7
+  chargeSpeed: 5.4
+  chargeAtGap: 30
+  chargeRampSeconds: 1.1
+  impactGap: 2.6
+  shotCamera: {fileID: 442585517}
+  cameraSide: 30
+  cameraHeight: 5.5
+  cameraFov: 32
+  cameraCreep: 3.5
+  handheld: 0.022
+  aimHeight: 1.6
+  rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
+  rainHeight: 12
+  holdBlack: 0.7
+  windBed: Trailer/Wind Desolate
+  hornCue: Trailer/War Horn
+  marchLoop: Trailer/March Loop
+  rattleCue: Trailer/Bone Rattle
+  impactCue: Enemy/Shockwave
+  autoPlay: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -2129,3 +2212,4 @@ SceneRoots:
   - {fileID: 1167969298}
   - {fileID: 869460790}
   - {fileID: 854525244}
+  - {fileID: 1900200011}
