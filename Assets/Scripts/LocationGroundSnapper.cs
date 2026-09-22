@@ -60,25 +60,44 @@ public class LocationGroundSnapper : MonoBehaviour
         WorldGenerator.OnWorldGenerationComplete -= Run;
 
         // PHASE 1 — descend the WHOLE location until the root BoxCollider bottom
-        // rests on the terrain (highest ground point under its footprint, so it
-        // never sinks into a rise). Requires a BoxCollider on this root.
+        // rests on the terrain under its footprint, high enough that it never
+        // sinks into a rise. Requires a BoxCollider on this root.
         BoxCollider box = GetComponent<BoxCollider>();
         if (box != null)
         {
             Bounds b = box.bounds;
             float boxBottom = b.min.y;
-            float highestGround = float.NegativeInfinity;
+
+            var samples = new List<float>();
             for (int ix = 0; ix <= 4; ix++)
             {
                 for (int iz = 0; iz <= 4; iz++)
                 {
                     Vector3 p = new Vector3(Mathf.Lerp(b.min.x, b.max.x, ix / 4f), b.max.y + 1f,
                                             Mathf.Lerp(b.min.z, b.max.z, iz / 4f));
-                    if (TryGround(p, out float g) && g > highestGround) highestGround = g;
+                    if (TryGround(p, out float g)) samples.Add(g);
                 }
             }
-            if (highestGround > float.NegativeInfinity)
-                transform.position += new Vector3(0f, highestGround - boxBottom, 0f);
+
+            // ==== A HIGH SAMPLE, NOT THE HIGHEST ONE ====
+            //
+            // This took the maximum, on the reasoning that a location must never
+            // sink into a rise. True, and it also hands the whole building to a
+            // single sample: anything that levels a pad inside the footprint
+            // after the location was grounded — a reliquary flattening fourteen
+            // metres of terrain in the courtyard — raises exactly one of the
+            // twenty-five, and the entire location goes up with it.
+            //
+            // The ninetieth percentile keeps the intent and drops the outlier.
+            // Three of twenty-five samples may sit above the chosen height, so a
+            // genuine slope still lifts the location, while one anomalous pad
+            // cannot.
+            if (samples.Count > 0)
+            {
+                samples.Sort();
+                int at = Mathf.Clamp(Mathf.FloorToInt((samples.Count - 1) * 0.9f), 0, samples.Count - 1);
+                transform.position += new Vector3(0f, samples[at] - boxBottom, 0f);
+            }
         }
 
         // PHASE 2 — EVERY PIECE, not every direct child.
@@ -161,6 +180,16 @@ public class LocationGroundSnapper : MonoBehaviour
         return false;
     }
 
+    // Every point of interest the generator places is parented under one
+    // container, which makes the whole family one test rather than a list of
+    // component types that grows every time a new kind is added.
+    private static bool IsUnderPOIContainer(Transform t)
+    {
+        for (Transform p = t; p != null; p = p.parent)
+            if (p.name == "POIContainer") return true;
+        return false;
+    }
+
     private bool NameExcluded(string n)
     {
         if (excludeNameContains == null) return false;
@@ -207,6 +236,21 @@ public class LocationGroundSnapper : MonoBehaviour
         {
             if (h.collider == null) continue;
             if (h.collider.transform.IsChildOf(transform)) continue;   // never our own pieces
+
+            // ==== A SHRINE IS NOT GROUND ====
+            //
+            // Reliquary decor keeps solid colliders on purpose — the stones are
+            // cover to fight behind — and the points of interest are the same.
+            // So a site that landed inside this location answers the downward
+            // ray, and the name test below is generous enough to let the wrong
+            // kind of prop through: a road tile is called PP_Floor_Tile, and
+            // "floor" is on the list.
+            //
+            // They are never the floor of a location. Ruled out by what they
+            // ARE rather than by what they are called, so a rename cannot bring
+            // the bug back.
+            if (h.collider.GetComponentInParent<Reliquary>() != null) continue;
+            if (IsUnderPOIContainer(h.collider.transform)) continue;
 
             bool isGround = h.collider.GetComponentInParent<Terrain>() != null;
             if (!isGround)

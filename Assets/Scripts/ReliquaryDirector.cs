@@ -63,6 +63,8 @@ public class ReliquaryDirector : MonoBehaviour
     public float edgeMargin = 90f;
     [Tooltip("Metres a site must sit above the water line. Keeps shrines out of lakes AND off the shoreline, where the banners would stand in the shallows.")]
     public float waterClearance = 2.5f;
+    [Tooltip("Metres of clearance outside a location's own footprint. A site inside one flattens a pad in the middle of somebody's courtyard and leaves the whole location standing in the air.")]
+    public float locationClearance = 12f;
     [Tooltip("Level the ground under the site. Without it a shrine on any slope has half its stones buried and the chest floating.")]
     public bool flattenGround = true;
 
@@ -334,6 +336,26 @@ public class ReliquaryDirector : MonoBehaviour
         // stand in the shallows.
         var gen = FindFirstObjectByType<WorldGenerator>();
         if (gen != null && p.y < gen.AbsoluteWaterHeight + waterClearance) return false;
+
+        // ==== NOT ON SOMEBODY ELSE'S GROUND ====
+        //
+        // The clearance sphere below is the only other test against built
+        // things, and it is far too small to notice a location: it is a couple
+        // of metres wide, while a castle is tens across. Drop a site in a
+        // courtyard or on a plaza and the sphere finds nothing — the walls are
+        // metres away, and a self-contained location sits in a terrain HOLE, so
+        // there is not even ground under the point to hit.
+        //
+        // Then LevelGround flattens seven to fourteen metres of terrain right
+        // there, under a location that was already grounded to the old height,
+        // and LocationGroundSnapper lifts the whole thing onto the new pad. That
+        // is the location floating in the air, and the chest standing in the
+        // middle of its yard is the clue.
+        //
+        // NOT RELAXED BY `ease`, for the same reason as the edge margin above:
+        // relaxing it is precisely how a site ends up in the one place it must
+        // never be. Everything else gives instead.
+        if (gen != null && gen.IsInsideLocationFootprint(p, locationClearance)) return false;
 
         // Room for the banners, and flat enough that a shrine does not end up
         // half-buried in a slope.

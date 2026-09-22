@@ -3071,6 +3071,30 @@ public class WorldGenerator : MonoBehaviour
         return r;
     }
 
+    // ==== THE LIST WAS RIGHT; ONE SYSTEM NEVER ASKED IT ====
+    //
+    // The note above says reliquaries end up standing on the approach road, and
+    // the exclusion radius was widened to stop that. It only ever stopped the
+    // POIs, because SpawnPOIsRoutine is the only thing that reads the list.
+    // ReliquaryDirector picks its own sites and had no way to see it — it is not
+    // even in this class — so it kept dropping shrines inside locations, and
+    // every one of those flattens a seven to fourteen metre pad under itself.
+    //
+    // Published, so the one system that was placing blind can stop.
+    /// <summary>True when a world point falls inside any placed location's footprint.</summary>
+    public bool IsInsideLocationFootprint(Vector3 worldPos, float extraClearance = 0f)
+    {
+        for (int i = 0; i < locationExclusions.Count; i++)
+        {
+            Vector4 e = locationExclusions[i];
+            float dx = worldPos.x - e.x;
+            float dz = worldPos.z - e.z;
+            float r = e.w + extraClearance;
+            if (dx * dx + dz * dz < r * r) return true;
+        }
+        return false;
+    }
+
     private bool HasOwnGround(GameObject instance, SelfContainedLocation sc)
     {
         if (sc == null || instance == null) return false;
