@@ -43,6 +43,25 @@ public class TrailerPuppet : MonoBehaviour
     [Tooltip("Metres above the sampled ground. Most skeleton prefabs have their pivot at the feet, so 0 is right.")]
     public float groundOffset = 0f;
 
+    // ==== WHY THE GROUND IS SAMPLED AND NOT RAYCAST ====
+    //
+    // This used to fire a raycast against EVERY layer and take the first hit.
+    // On a dressed terrain the first hit is very often not the ground: grass
+    // meshes, bushes, rock props and Unity's own tree colliders all sit in the
+    // way, and each is a different height. A figure walking across them lands on
+    // the terrain one frame and on a shrub the next, which on screen is a crowd
+    // of soldiers bouncing as though the field were a trampoline.
+    //
+    // Terrain.SampleHeight reads the heightmap directly. It cannot hit anything
+    // that is not the ground, it is continuous rather than per-collider so the
+    // walk is smooth, and it is a fraction of the cost of a physics query —
+    // which matters when a hundred and seventy of these ground themselves every
+    // few frames.
+    [Tooltip("Read the terrain heightmap instead of raycasting. Off falls back to a raycast, for scenes whose ground is a mesh rather than a Terrain.")]
+    public bool preferTerrain = true;
+    [Tooltip("Layers the fallback raycast may hit. Leaving this at Everything is what puts a soldier on top of a bush.")]
+    public LayerMask groundMask = ~0;
+
     // Build a puppet from an enemy prefab: instantiate it, then take out
     // everything that would make it a participant rather than a prop.
     public static TrailerPuppet Spawn(GameObject prefab, Vector3 pos, Quaternion rot, Transform parent)
@@ -214,26 +233,30 @@ public class TrailerPuppet : MonoBehaviour
     private void SnapToGround()
     {
         Vector3 p = transform.position;
-        if (Physics.Raycast(p + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 200f, ~0, QueryTriggerInteraction.Ignore))
+
+        if (preferTerrain)
+        {
+            Terrain[] all = Terrain.activeTerrains;
+            if (all != null)
+            {
+                foreach (var t in all)
+                {
+                    if (t == null || t.terrainData == null) continue;
+                    Vector3 o = t.transform.position;
+                    Vector3 s = t.terrainData.size;
+                    if (p.x < o.x || p.x > o.x + s.x || p.z < o.z || p.z > o.z + s.z) continue;
+
+                    p.y = t.SampleHeight(p) + o.y + groundOffset;
+                    transform.position = p;
+                    return;
+                }
+            }
+        }
+
+        if (Physics.Raycast(p + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 200f, groundMask, QueryTriggerInteraction.Ignore))
         {
             p.y = hit.point.y + groundOffset;
             transform.position = p;
-            return;
-        }
-
-        Terrain[] all = Terrain.activeTerrains;
-        if (all == null) return;
-        foreach (var t in all)
-        {
-            if (t == null || t.terrainData == null) continue;
-            Vector3 o = t.transform.position;
-            Vector3 s = t.terrainData.size;
-            if (p.x >= o.x && p.x <= o.x + s.x && p.z >= o.z && p.z <= o.z + s.z)
-            {
-                p.y = t.SampleHeight(p) + o.y + groundOffset;
-                transform.position = p;
-                return;
-            }
         }
     }
 

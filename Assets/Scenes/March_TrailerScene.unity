@@ -2180,17 +2180,22 @@ MonoBehaviour:
   fileSpacing: 1.6
   rankSpacing: 1.9
   positionJitter: 0.4
+  straggle: 2.6
   startGap: 32
   holdSeconds: 2
   chargeSpeed: 3.6
   accelSeconds: 0.9
   gaitScale: 1
   impactGap: 3.2
+  slowMoAtGap: 8
+  slowMoFactor: 0.35
   shotCamera: {fileID: 442585517}
   cameraSide: 34
+  cameraCreep: 14
   cameraHeight: 3.2
+  cameraEndHeight: 2
   cameraFov: 52
-  cameraCreep: 5
+  cameraEndFov: 44
   handheld: 0.03
   aimHeight: 2.4
   arrowPrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
@@ -2206,9 +2211,10 @@ MonoBehaviour:
   arrowTrailColor: {r: 1, g: 0.82, b: 0.45, a: 0.9}
   arrowTrailTime: 0.18
   arrowTrailWidth: 0.075
-  clashFogDensity: 0.05
-  clashFogHeight: 20
-  fogEaseSeconds: 1.4
+  clashFogDensity: 0.1
+  clashFogHeight: 26
+  clashNoiseFloor: 0.4
+  fogEaseSeconds: 3
   rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
   rainHeight: 12
   holdBlack: 0.7

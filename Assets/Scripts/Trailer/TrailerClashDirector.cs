@@ -95,6 +95,8 @@ public class TrailerClashDirector : MonoBehaviour
     public float rankSpacing = 1.9f;
     [Tooltip("Metres of scatter on each unit's place in the grid. Zero is a chessboard; this is what makes it an army.")]
     public float positionJitter = 0.4f;
+    [Tooltip("Metres the slowest stragglers fall behind once the line is at full pace. The formation is neat while it stands and ragged while it runs, which is what stops a charge reading as one rigid block sliding across the field.")]
+    public float straggle = 2.6f;
     [Tooltip("Metres between the two FRONT ranks when the shot opens. Read it together with the lens: at 48 degrees from 24 metres out the frame holds about thirty-eight metres, so a gap much wider than this opens on two crowds nobody can see.")]
     public float startGap = 32f;
 
@@ -116,16 +118,39 @@ public class TrailerClashDirector : MonoBehaviour
     [Tooltip("The gap at which the frame goes black. Not zero — the cut lands BEFORE anyone interpenetrates, because nothing here is animated to collide.")]
     public float impactGap = 3.2f;
 
+    [Tooltip("The gap at which the world starts slowing. The last few metres held long is the oldest trick there is and it works: it is the breath before the hit, and it buys the camera time to finish its push.")]
+    public float slowMoAtGap = 8f;
+    [Range(0.15f, 1f)]
+    [Tooltip("How far down the closing speed is pulled by the time they touch.")]
+    public float slowMoFactor = 0.35f;
+
     [Header("Camera")]
     public Camera shotCamera;
     [Tooltip("Metres to the side of the line the armies close along. The lens sits in the gap BETWEEN them and watches across it, so both armies enter from opposite edges of frame.")]
+    // ==== THE FRAMING IS A MOVE, NOT A POSITION ====
+    //
+    // A single wide has to choose between "you can see there are two armies" and
+    // "the men are big enough to matter", and picking either one loses the other
+    // — which is why the first pass read as two small crowds a long way off.
+    //
+    // It does not have to choose. The shot OPENS wide, where the job is to state
+    // that there are two sides and which is which, and it is pressing in by the
+    // end, where the job is that they are men and they are about to hit each
+    // other. Fourteen metres of dolly, a metre of drop and eight degrees of lens
+    // over about six seconds: the figures roughly double in frame while the
+    // camera never appears to do anything but lean in.
+    [Tooltip("Metres to the side at the START. Wide enough to hold the gap and a slice of each army.")]
     public float cameraSide = 34f;
-    [Tooltip("Low, near the height of the men in the gap, so the two lines read as walls of bodies rather than as marks on a field seen from above.")]
+    [Tooltip("Metres the camera dollies in as they close. This is what stops the armies looking small: it ends at Camera Side minus this.")]
+    public float cameraCreep = 14f;
+    [Tooltip("Height at the start — above the heads, so the depth of both formations reads.")]
     public float cameraHeight = 3.2f;
-    [Tooltip("The frame has to hold the gap AND a good slice of each army, or it opens on empty ground with an army just off each edge. At 52 degrees from 34 metres out it holds about fifty-nine metres: a thirty-two metre gap plus roughly thirteen metres of each side.")]
+    [Tooltip("Height at the moment of contact. Lower, so they loom over the lens instead of being looked down on.")]
+    public float cameraEndHeight = 2f;
+    [Tooltip("Lens at the start. At 52 degrees from 34 metres the frame holds about fifty-nine metres: a thirty-two metre gap plus roughly thirteen of each side.")]
     public float cameraFov = 52f;
-    [Tooltip("Metres the camera drifts in as they close. It should feel planted and then pressed, not operated.")]
-    public float cameraCreep = 5f;
+    [Tooltip("Lens at the moment of contact. Tighter, with the dolly, rather than either one alone — a zoom on its own reads as a zoom.")]
+    public float cameraEndFov = 44f;
     public float handheld = 0.03f;
     [Tooltip("Aim height above the meeting point. Near the camera's own height, so the horizon sits level and the shot reads as standing among them.")]
     public float aimHeight = 2.4f;
@@ -156,11 +181,15 @@ public class TrailerClashDirector : MonoBehaviour
     // it. This shot is filmed ACROSS thirty metres of it, and at the march's
     // density that is a white wall. Thinned for this beat only, and eased rather
     // than switched, so the air clearing is part of the shot.
-    [Tooltip("Extinction per metre while the armies close. The march runs at about 0.28, which is opaque past fifteen metres.")]
-    public float clashFogDensity = 0.05f;
-    [Tooltip("Height of the fog layer during the shot. Lower keeps the ground misty while the bodies stand clear of it.")]
-    public float clashFogHeight = 20f;
-    public float fogEaseSeconds = 1.4f;
+    [Tooltip("Extinction per metre while the armies close. The march runs at about 0.28, which is opaque past fifteen metres; the far line here is forty away.")]
+    public float clashFogDensity = 0.1f;
+    [Tooltip("Height of the fog layer during the shot. High enough that the men are IN it rather than standing above it.")]
+    public float clashFogHeight = 26f;
+    [Range(0f, 1f)]
+    [Tooltip("The least density the noise may leave. At zero the noise carves clear holes, and a shot filmed straight through one of them looks as though the fog switched off — which is the other half of why thinning it read as losing it. Holding a floor gives an even haze that thins without vanishing.")]
+    public float clashNoiseFloor = 0.4f;
+    [Tooltip("Seconds the air takes to clear. Slow, so it happens under the held beat and is never seen as a setting changing.")]
+    public float fogEaseSeconds = 3f;
 
     [Header("Weather")]
     [Tooltip("The same Heavy Rain prefab the march uses — the march director spawns it, and the march director has finished by the time this runs.")]
@@ -188,6 +217,7 @@ public class TrailerClashDirector : MonoBehaviour
     {
         public TrailerPuppet puppet;
         public Vector3 offset;      // across (x) and back (z) within its own formation, plus jitter
+        public float lag;           // metres this one trails by at full pace
         public Vector3 scale;       // the real one; parked units wear a fraction of it
         public int snapPhase;
     }
@@ -310,8 +340,15 @@ public class TrailerClashDirector : MonoBehaviour
             if (!firedFirst && gap <= firstVolleyAtGap) { firedFirst = true; StartCoroutine(Volley()); }
             if (!firedSecond && gap <= secondVolleyAtGap) { firedSecond = true; StartCoroutine(Volley()); }
 
+            // The last few metres are held long. Everything in this shot runs on
+            // unscaled time, so Time.timeScale would do nothing here — what slows
+            // is the closing itself, which is the only clock the shot has.
+            holdFactor = 1f;
+            if (slowMoAtGap > impactGap && gap < slowMoAtGap)
+                holdFactor = Mathf.Lerp(slowMoFactor, 1f, (gap - impactGap) / (slowMoAtGap - impactGap));
+
             // Both sides close, so the gap shuts at twice one side's speed.
-            gap = Mathf.Max(impactGap, gap - speed * 2f * dt);
+            gap = Mathf.Max(impactGap, gap - speed * holdFactor * 2f * dt);
 
             PlaceEverything(false);
             PlaceCamera(Progress());
@@ -342,7 +379,14 @@ public class TrailerClashDirector : MonoBehaviour
         return Mathf.Clamp01((startGap - gap) / span);
     }
 
-    private float Gait { get { return speed * gaitScale; } }
+    private float holdFactor = 1f;
+
+    // The gait follows the HELD speed, not the intended one: if the closing
+    // slows and the legs do not, the whole field sprints on the spot.
+    private float Gait { get { return speed * holdFactor * gaitScale; } }
+
+    // 0 while they stand, 1 at full pace.
+    private float paceForLag { get { return chargeSpeed > 0.01f ? Mathf.Clamp01(speed / chargeSpeed) : 0f; } }
 
     private void RunGait()
     {
@@ -384,6 +428,12 @@ public class TrailerClashDirector : MonoBehaviour
                 offset = new Vector3(across + Random.Range(-positionJitter, positionJitter),
                                      0f,
                                      back + Random.Range(-positionJitter, positionJitter)),
+                // How far this one falls behind once the line is running. Applied
+                // in proportion to the pace, so the formation stands NEAT during
+                // the hold and strings out as they go — which is both what
+                // happens and what stops a charging line reading as one rigid
+                // object sliding across the field.
+                lag = Random.Range(0f, straggle),
                 scale = puppet.transform.localScale,
                 snapPhase = i % GroundStride,
             };
@@ -492,7 +542,7 @@ public class TrailerClashDirector : MonoBehaviour
             Unit u = army[i];
             if (u.puppet == null) continue;
 
-            Vector3 p = front + side * u.offset.x + back * u.offset.z;
+            Vector3 p = front + side * u.offset.x + back * (u.offset.z + u.lag * paceForLag);
             bool ground = groundAll || (frame % GroundStride) == u.snapPhase;
             u.puppet.Place(p, facing, ground);
             u.puppet.SetGait(Gait);
@@ -679,7 +729,7 @@ public class TrailerClashDirector : MonoBehaviour
         return ty != null ? Object.FindFirstObjectByType(ty) as Component : null;
     }
 
-    private float fogDensity0 = -1f, fogHeight0 = -1f;
+    private float fogDensity0 = -1f, fogHeight0 = -1f, fogFloor0;
 
     private IEnumerator EaseFog()
     {
@@ -688,10 +738,12 @@ public class TrailerClashDirector : MonoBehaviour
 
         FieldInfo dens = Field(fog, "density");
         FieldInfo hgt = Field(fog, "groundFogHeight");
+        FieldInfo floor = Field(fog, "noiseFloor");
         if (dens == null || hgt == null) yield break;
 
         fogDensity0 = (float)dens.GetValue(fog);
         fogHeight0 = (float)hgt.GetValue(fog);
+        if (floor != null) fogFloor0 = (float)floor.GetValue(fog);
 
         float t = 0f;
         while (t < fogEaseSeconds)
@@ -700,10 +752,21 @@ public class TrailerClashDirector : MonoBehaviour
             float k = Mathf.SmoothStep(0f, 1f, t / Mathf.Max(0.01f, fogEaseSeconds));
             dens.SetValue(fog, Mathf.Lerp(fogDensity0, clashFogDensity, k));
             hgt.SetValue(fog, Mathf.Lerp(fogHeight0, clashFogHeight, k));
+            // ==== THINNING IT IS NOT THE SAME AS KEEPING IT ====
+            //
+            // The noise only ever REMOVES density, and with the floor at zero it
+            // is free to remove all of it. At march density the holes never show
+            // because even a carved patch is still thick; thinned to a third of
+            // that, a hole is genuinely clear air, and a shot filmed straight
+            // through one looks as though the fog were switched off rather than
+            // reduced. Raising the floor is what turns "less fog" into "thinner
+            // fog" — the same air everywhere, just less of it.
+            if (floor != null) floor.SetValue(fog, Mathf.Lerp(fogFloor0, clashNoiseFloor, k));
             yield return null;
         }
         dens.SetValue(fog, clashFogDensity);
         hgt.SetValue(fog, clashFogHeight);
+        if (floor != null) floor.SetValue(fog, clashNoiseFloor);
     }
 
     // Play Mode reloads the scene, so this is only good manners — but a shot that
@@ -716,8 +779,10 @@ public class TrailerClashDirector : MonoBehaviour
 
         FieldInfo dens = Field(fog, "density");
         FieldInfo hgt = Field(fog, "groundFogHeight");
+        FieldInfo floor = Field(fog, "noiseFloor");
         if (dens != null) dens.SetValue(fog, fogDensity0);
         if (hgt != null) hgt.SetValue(fog, fogHeight0);
+        if (floor != null) floor.SetValue(fog, fogFloor0);
     }
 
     // Its settings are [SerializeField] private, so NonPublic is not optional.
@@ -753,12 +818,17 @@ public class TrailerClashDirector : MonoBehaviour
         // enter from opposite edges and close across the middle of frame, which
         // is the only framing in which an audience reads "two sides" rather than
         // "a crowd".
-        Vector3 pos = centre + side * (cameraSide - cameraCreep * k);
-        pos.y = Ground(pos) + cameraHeight;
+        // Eased at both ends, so the push has no start and no stop — a linear
+        // dolly announces itself at both, and the one thing this move must not
+        // do is be noticed.
+        float e = k * k * (3f - 2f * k);
 
+        Vector3 pos = centre + side * (cameraSide - cameraCreep * e);
         // Sit it on whatever ground is actually under it and hold its height
         // above that — on a slope a fixed world height either buries the lens or
         // leaves it floating.
+        pos.y = Ground(pos) + Mathf.Lerp(cameraHeight, cameraEndHeight, e);
+
         Vector3 aim = centre;
         aim.y = Ground(centre) + aimHeight;
 
@@ -770,7 +840,7 @@ public class TrailerClashDirector : MonoBehaviour
 
         shotCamera.transform.position = pos + shake;
         shotCamera.transform.rotation = Quaternion.LookRotation((aim - pos).normalized);
-        shotCamera.fieldOfView = cameraFov;
+        shotCamera.fieldOfView = Mathf.Lerp(cameraFov, cameraEndFov, e);
     }
 
     // ---- audio ---------------------------------------------------------------
