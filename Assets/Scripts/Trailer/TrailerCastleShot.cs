@@ -94,10 +94,24 @@ public class TrailerCastleShot : MonoBehaviour
     // getting bigger. What makes a move read as a MOVE is parallax, which needs
     // lateral travel — so the camera arcs. Modestly, here: this shot is about
     // the castle arriving, not about the camera going somewhere.
-    [Tooltip("Metres from the castle's centre the shot opens at, as a multiple of the castle's own radius. Small on purpose — the old 3.4 put the lens beyond the edge of the generated terrain, which is where the void starts.")]
-    public float startDistance = 2.4f;
-    [Tooltip("And where the push ends.")]
-    public float endDistance = 1.5f;
+    // ==== DISTANCE IS SOLVED FROM THE FRAME, NOT TYPED IN RADII ====
+    //
+    // It was a multiple of the castle's measured radius, and that radius is
+    // whatever nineteen hundred nested pieces happen to measure — outbuildings,
+    // walls, a courtyard. On a wide castle two and a half radii is a hundred and
+    // sixty metres away, which is why the shot opened on a field with something
+    // small and grey at the far end of it.
+    //
+    // Asked the other way round it cannot go wrong: how much of the frame HEIGHT
+    // should the castle fill? To make a world height H fill fraction f at
+    // vertical FOV t, the lens sits H / (2f·tan(t/2)) away. The castle frames
+    // itself at any size, on any seed.
+    [Tooltip("Fraction of the frame height the castle fills when the shot opens. Small — it is meant to be a mass in the snow, not a portrait.")]
+    [Range(0.1f, 1f)] public float startFill = 0.34f;
+    [Tooltip("And once it has come forward out of the fog.")]
+    [Range(0.1f, 1.2f)] public float endFill = 0.72f;
+    [Tooltip("The closest the lens may ever get, as a multiple of the castle's own radius. The framing maths solves for composition and knows nothing about how wide the walls are, so without this it will happily ask for a position inside them.")]
+    public float minClearance = 1.15f;
     [Tooltip("Metres the camera is kept INSIDE the terrain's edge. Past it there is no world, and a trailer frame with the engine's nothing in the corner of it is unusable.")]
     public float terrainMargin = 45f;
     [Tooltip("Degrees the camera travels AROUND the castle. This is the parallax; kept small because the reveal, not the travel, is the event.")]
@@ -113,6 +127,8 @@ public class TrailerCastleShot : MonoBehaviour
     public float endFov = 38f;
     [Tooltip("How fast the aim catches up. Low numbers let the framing float, which is what separates an operated camera from a solved one.")]
     public float aimDamping = 1.6f;
+    [Tooltip("How fast the lens catches up to where it should be. This is what absorbs the steps out of the two searches that decide the position — the hill-clearing lift and the terrain clamp — so they read as a crane arm settling rather than as a jump.")]
+    public float positionDamping = 2.4f;
     public float handheld = 0.02f;
 
     [Header("Lightning")]
@@ -291,10 +307,23 @@ public class TrailerCastleShot : MonoBehaviour
         else Debug.LogError("[TrailerCastleShot] No Region assigned — the generator will build whatever region it was already going to, and there will be no castle.");
     }
 
+    // ==== AND THE KEY IS CONSUMED ====
+    //
+    // Everywhere else the wanted-shot key deliberately OUTLIVES its launch, so
+    // Play can be pressed over and over while a shot is tuned. That is exactly
+    // wrong here, because this shot lives in GameScene — the actual game. Left
+    // set, every subsequent entry into GameScene hijacked itself into the
+    // castle reveal: no player, no enemies, no HUD, a camera flying at a castle.
+    //
+    // Cleared on read. The shot runs once per launch from the menu, which is the
+    // only way it can be run anyway — iterating on it means regenerating the
+    // world, and that is a menu action rather than a Play press.
     private static bool Armed()
     {
 #if UNITY_EDITOR
-        return UnityEditor.SessionState.GetString(TrailerShotSolo.SessionKey, string.Empty) == TrailerShotSolo.CastleShot;
+        bool mine = UnityEditor.SessionState.GetString(TrailerShotSolo.SessionKey, string.Empty) == TrailerShotSolo.CastleShot;
+        if (mine) UnityEditor.SessionState.EraseString(TrailerShotSolo.SessionKey);
+        return mine;
 #else
         return false;
 #endif
@@ -629,7 +658,7 @@ public class TrailerCastleShot : MonoBehaviour
             // Two rows, alternating, running from just in front of the lens all
             // the way in to the wall — so the near ones pass the camera on both
             // sides and the far ones converge on the gate.
-            float along = Mathf.Lerp(castleRadius * startDistance * torchNearest, castleRadius * 1.05f, k);
+            float along = Mathf.Lerp(SolveDistance(startFill, startFov) * torchNearest, castleRadius * 1.05f, k);
             float outward = (i % 2 == 0 ? 1f : -1f) * torchArcWidth * castleRadius * 0.5f * (1f - k * 0.6f);
 
             Vector3 across = new Vector3(approach.z, 0f, -approach.x);
@@ -696,6 +725,11 @@ public class TrailerCastleShot : MonoBehaviour
             foreach (var l in Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 if (l != null && l.type == LightType.Directional) { sun = l; break; }
         }
+
+        // Cached for the lightning. RenderSettings.sun is not assigned in
+        // GameScene, so Strike() was falling back to null and flashing nothing —
+        // which is why the storm had no light on it at all.
+        if (keyLight == null) keyLight = sun;
 
         if (sun != null)
         {
@@ -764,7 +798,7 @@ public class TrailerCastleShot : MonoBehaviour
     // settle and the hold keep adding, in degrees, so the frame is never locked.
     private Vector3 CameraPosition(float e, float drift)
     {
-        float dist = Mathf.Lerp(castleRadius * startDistance, castleRadius * endDistance, e);
+        float dist = Mathf.Lerp(SolveDistance(startFill, startFov), SolveDistance(endFill, endFov), e);
 
         // The arc is what makes this a move. Weighted toward the second half —
         // the opening wants to be nearly still, and the travel wants to be
@@ -777,6 +811,16 @@ public class TrailerCastleShot : MonoBehaviour
         float high = Mathf.Lerp(startHeight, castleBounds.size.y * endHeightFactor, e);
         p.y = Ground(p) + high;
         return LiftClear(p);
+    }
+
+    // How far back the lens has to be for the castle's height to fill `fill` of
+    // the frame at vertical FOV `fov`. Clamped so it can never be asked for a
+    // position inside the walls.
+    private float SolveDistance(float fill, float fov)
+    {
+        float h = Mathf.Max(4f, castleBounds.size.y);
+        float d = h / (2f * Mathf.Max(0.05f, fill) * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
+        return Mathf.Max(d, castleRadius * minClearance);
     }
 
     // ==== PAST THE TERRAIN THERE IS NO WORLD ====
@@ -857,8 +901,8 @@ public class TrailerCastleShot : MonoBehaviour
         return p + Vector3.up * maxClearLift;
     }
 
-    private Vector3 aimNow;
-    private bool aimSeeded;
+    private Vector3 aimNow, posNow;
+    private bool aimSeeded, posSeeded;
 
     private void PlaceCamera(float e, float drift)
     {
@@ -886,7 +930,26 @@ public class TrailerCastleShot : MonoBehaviour
         if (!aimSeeded) { aimNow = aim; aimSeeded = true; }
         aimNow = Vector3.Lerp(aimNow, aim, 1f - Mathf.Exp(-aimDamping * Time.unscaledDeltaTime));
 
-        cam.transform.position = p + shake;
+        // ==== THE JUDDER, AND WHY ONE FILTER FIXES ALL OF IT ====
+        //
+        // Two of the things that decide this position are SEARCHES, not
+        // formulas. LiftClear walks upward in fourteen steps until the crown is
+        // visible, and KeepOnTerrain walks inward in two-metre steps until the
+        // lens is inside the map. Both return a discrete answer, so as the
+        // camera travels the answer flips from one step to the next and the
+        // position jumps — nearly two metres for the lift. That is the bouncing,
+        // and it is not the handheld, which is two centimetres.
+        //
+        // Rather than make both searches continuous (which is a lot of maths for
+        // a shot, and would still leave the next discrete thing to find), the
+        // TARGET is computed exactly as before and the camera is moved toward it
+        // by a critically-damped filter. Any step in the target becomes a smooth
+        // catch-up, which is also what a real crane arm does with a sudden
+        // instruction.
+        if (!posSeeded) { posNow = p; posSeeded = true; }
+        posNow = Vector3.Lerp(posNow, p, 1f - Mathf.Exp(-positionDamping * Time.unscaledDeltaTime));
+
+        cam.transform.position = posNow + shake;
         cam.transform.rotation = Quaternion.LookRotation((aimNow - p).normalized);
         cam.fieldOfView = Mathf.Lerp(startFov, endFov, e);
     }

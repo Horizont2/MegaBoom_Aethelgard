@@ -22348,8 +22348,9 @@ MonoBehaviour:
   revealSeconds: 5
   holdSeconds: 2.6
   outFade: 1.8
-  startDistance: 2.4
-  endDistance: 1.5
+  startFill: 0.34
+  endFill: 0.72
+  minClearance: 1.15
   terrainMargin: 45
   arcDegrees: 18
   driftDegreesPerSecond: 0.6
@@ -22359,6 +22360,7 @@ MonoBehaviour:
   startFov: 52
   endFov: 38
   aimDamping: 1.6
+  positionDamping: 2.4
   handheld: 0.02
   keyLight: {fileID: 0}
   strikes: 4

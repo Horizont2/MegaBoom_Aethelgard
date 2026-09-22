@@ -2750,7 +2750,8 @@ public class WorldGenerator : MonoBehaviour
 
         // Keep vegetation out of the WHOLE location footprint (not just the 18m
         // point around the centre) — no trees/rocks/bushes inside a village/castle.
-        locationExclusions.Add(new Vector4(spawnedTotemPos.x, spawnedTotemPos.y, spawnedTotemPos.z, flatRadius + 6f));
+        locationExclusions.Add(new Vector4(spawnedTotemPos.x, spawnedTotemPos.y, spawnedTotemPos.z,
+                                           ExclusionRadius(camp, flatRadius)));
 
         // Self-contained locations (own terrain + water, e.g. the medieval
         // market village) drop a hole in the procedural terrain under the
@@ -2824,7 +2825,8 @@ public class WorldGenerator : MonoBehaviour
 
             forbiddenZones.Add(extraTotem.transform.position);
             roadTargets.Add(extraTotem.transform.position);
-            locationExclusions.Add(new Vector4(extraTotem.transform.position.x, extraTotem.transform.position.y, extraTotem.transform.position.z, flatRadius + 6f));
+            locationExclusions.Add(new Vector4(extraTotem.transform.position.x, extraTotem.transform.position.y, extraTotem.transform.position.z,
+                                               ExclusionRadius(extraTotem, flatRadius)));
 
             var esc = extraTotem.GetComponent<SelfContainedLocation>();
             // Same guard as the main location: no ground of its own, no hole.
@@ -3043,6 +3045,32 @@ public class WorldGenerator : MonoBehaviour
     //
     // Asking the real question fixes both, and it fixes them for any location
     // that is edited the same way later.
+    // ==== A RAISED LOCATION'S TERRITORY IS THE HILL, NOT THE FOOTPRINT ====
+    //
+    // The exclusion was the flattened pad plus six metres, which is the right
+    // answer for a location dropped on level ground. It is the wrong answer for
+    // one placed with raiseHill: the generator builds a plateau AND a slope down
+    // to the surrounding land, and hillSlopeLength is ninety metres by default.
+    //
+    // So everything that consults this list — vegetation, scatter, POIs — was
+    // free to place itself anywhere on that ninety-metre skirt. On a castle that
+    // is points of interest and reliquaries standing on the approach road and
+    // halfway up the ramparts, and worse: a POI flattens its own footprint in a
+    // later phase, which re-levels ground the location was already grounded to,
+    // and leaves the location standing in the air.
+    //
+    // The hill is the location's territory. Excluding it is what the list was
+    // always for.
+    private float ExclusionRadius(GameObject instance, float flatRadius)
+    {
+        float r = flatRadius + 6f;
+        if (instance == null) return r;
+
+        var sc = instance.GetComponent<SelfContainedLocation>();
+        if (sc != null && sc.raiseHill) r = Mathf.Max(r, flatRadius + sc.hillSlopeLength);
+        return r;
+    }
+
     private bool HasOwnGround(GameObject instance, SelfContainedLocation sc)
     {
         if (sc == null || instance == null) return false;
