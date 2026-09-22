@@ -4,27 +4,28 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-// Makes FMOD's audio recordable, because Unity Recorder cannot hear it.
+// The two ways to get FMOD's sound out of this project, under one menu.
 //
-// ==== WHY THE CHECKBOX DOES NOTHING ====
+// ==== WHY THE RECORDER'S AUDIO CHECKBOX DOES NOTHING ====
 //
-// Unity Recorder's Audio input records the output of Unity's own audio engine -
-// the AudioListener bus. FMOD does not go through Unity's audio engine at all:
+// Unity Recorder's Audio input records the output of UNITY's audio engine — the
+// AudioListener bus. FMOD does not go through Unity's audio engine at all:
 // RuntimeManager opens its own output device and mixes straight to it. So the
 // Recorder faithfully captures the Unity bus, which in this project is silent,
-// and writes a movie with no sound. Nothing is misconfigured; the two systems
+// and writes a movie with no sound. Nothing is misconfigured; the two engines
 // simply never meet.
 //
-// FMOD has its own answer, and it is one setting: the WAVWRITER output. In that
-// mode FMOD stops driving the speakers and writes its entire master mix to a
-// WAV file instead. Record the picture with Unity Recorder as usual, take the
-// sound from that file, and lay them together in an editor - which is what a
-// trailer is cut in anyway.
+// INTO UNITY is the one to use. It hangs a tap on FMOD's master bus, pushes
+// every block through Unity's own output, and the Recorder picks it up with the
+// picture, in one file, with nothing to line up afterwards. It is the newer of
+// the two and the reason this file was rewritten.
 //
-// Two things make that awkward enough to be worth a menu item rather than a
-// note in a document: while it is on you hear NOTHING in the editor, and
-// forgetting to switch it back means a week of wondering why the game is mute.
-// So it is a toggle with a tick next to it, and it says what it did.
+// TO A WAV FILE is the old way and stays because it cannot fail: FMOD's own
+// WAVWRITER output writes the whole master mix to disk and nothing has to
+// bridge anywhere. It costs you a second file to lay against the video by hand.
+//
+// They are mutually exclusive, and they say so. Two audio paths fighting over
+// one mix is the kind of thing that eats an afternoon.
 public static class FmodRecordMode
 {
     private const string SettingsPath = "Assets/Plugins/FMOD/Resources/FMODStudioSettings.asset";
@@ -37,16 +38,72 @@ public static class FmodRecordMode
     // only stays in step with the video if the DSP buffer happens to match the
     // frame duration exactly. The realtime writer runs on the wall clock, which
     // is the same clock Unity Recorder uses when it is left to record in real
-    // time - so the two match without anyone having to compute anything.
+    // time — so the two match without anyone having to compute anything.
     private const string RecordOutput = "WAVWRITER";
 
-    private const string MenuPath = "Tools/Trailer/FMOD capture for Recorder";
+    private const string BridgeMenu = "Tools/Trailer/Audio for Recorder/Into Unity (recorded with the video)";
+    private const string WavMenu = "Tools/Trailer/Audio for Recorder/To a WAV file (line up by hand)";
 
-    [MenuItem(MenuPath)]
-    private static void Toggle()
+    // ===================== into Unity =====================
+
+    [MenuItem(BridgeMenu, priority = 0)]
+    private static void ToggleBridge()
     {
-        object platform = FindEditorPlatform(out FieldInfo field);
-        if (platform == null || field == null)
+        bool turningOn = !SessionState.GetBool(FmodRecorderBridge.SessionKey, false);
+
+        if (turningOn && WavIsOn())
+        {
+            // WAVWRITER takes FMOD off the device entirely. The tap would still
+            // see the mix, so both would "work", and the result is a movie with
+            // sound AND a wav nobody needed — plus an explanation to find later.
+            SetWav(false);
+            Debug.Log("[FMOD capture] The WAV file mode was on; switched off, because only one of the two is wanted.");
+        }
+
+        SessionState.SetBool(FmodRecorderBridge.SessionKey, turningOn);
+        Menu.SetChecked(BridgeMenu, turningOn);
+
+        if (turningOn)
+        {
+            EditorUtility.DisplayDialog("FMOD goes through Unity",
+                "FMOD's master mix is now routed into Unity's audio output, so Unity Recorder records it " +
+                "together with the picture — one file, nothing to line up.\n\n" +
+                "  • Press Play. It takes effect on entering Play Mode, not now.\n" +
+                "  • You still hear everything, but through Unity rather than straight from FMOD.\n" +
+                "  • The sound lands about 40 ms behind the picture. That is under two frames at 24fps; " +
+                "the exact figure is printed to the console when it starts.\n" +
+                "  • If you hear crackle, raise CushionFrames in FmodRecorderBridge.\n\n" +
+                "This lasts for this editor session only.", "Got it");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("FMOD goes straight to the speakers again",
+                "The tap is off from the next Play. Unity Recorder will record silence again.", "OK");
+        }
+    }
+
+    [MenuItem(BridgeMenu, true)]
+    private static bool ValidateBridge()
+    {
+        Menu.SetChecked(BridgeMenu, SessionState.GetBool(FmodRecorderBridge.SessionKey, false));
+        return true;
+    }
+
+    // ===================== to a WAV file =====================
+
+    [MenuItem(WavMenu, priority = 1)]
+    private static void ToggleWav()
+    {
+        bool turningOn = !WavIsOn();
+
+        if (turningOn && SessionState.GetBool(FmodRecorderBridge.SessionKey, false))
+        {
+            SessionState.SetBool(FmodRecorderBridge.SessionKey, false);
+            Menu.SetChecked(BridgeMenu, false);
+            Debug.Log("[FMOD capture] The Unity route was on; switched off, because only one of the two is wanted.");
+        }
+
+        if (!SetWav(turningOn))
         {
             EditorUtility.DisplayDialog("FMOD capture",
                 "Could not find the Play-In-Editor platform inside " + SettingsPath +
@@ -55,18 +112,12 @@ public static class FmodRecordMode
             return;
         }
 
-        bool turningOn = !IsOn(field, platform);
-        field.SetValue(platform, turningOn ? RecordOutput : string.Empty);
-
-        EditorUtility.SetDirty((UnityEngine.Object)platform);
-        AssetDatabase.SaveAssets();
-        Menu.SetChecked(MenuPath, turningOn);
-
+        Menu.SetChecked(WavMenu, turningOn);
         string wav = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "fmodoutput.wav"));
 
         if (turningOn)
         {
-            EditorUtility.DisplayDialog("FMOD capture is ON",
+            EditorUtility.DisplayDialog("FMOD writes a WAV",
                 "FMOD will write its whole mix to a file instead of the speakers.\n\n" +
                 "  • You will hear NOTHING in the editor while this is on.\n" +
                 "  • Entering Play Mode writes:\n      " + wav + "\n" +
@@ -82,21 +133,35 @@ public static class FmodRecordMode
         }
     }
 
-    [MenuItem(MenuPath, true)]
-    private static bool ToggleValidate()
+    [MenuItem(WavMenu, true)]
+    private static bool ValidateWav()
     {
-        object platform = FindEditorPlatform(out FieldInfo field);
-        Menu.SetChecked(MenuPath, platform != null && field != null && IsOn(field, platform));
+        Menu.SetChecked(WavMenu, WavIsOn());
         return true;
     }
 
-    private static bool IsOn(FieldInfo field, object platform)
+    private static bool WavIsOn()
     {
+        FieldInfo field;
+        object platform = FindEditorPlatform(out field);
+        if (platform == null || field == null) return false;
         return string.Equals(field.GetValue(platform) as string, RecordOutput, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool SetWav(bool on)
+    {
+        FieldInfo field;
+        object platform = FindEditorPlatform(out field);
+        if (platform == null || field == null) return false;
+
+        field.SetValue(platform, on ? RecordOutput : string.Empty);
+        EditorUtility.SetDirty((UnityEngine.Object)platform);
+        AssetDatabase.SaveAssets();
+        return true;
+    }
+
     // Reached by reflection on purpose. OutputTypeName is `internal` to the
-    // FMODUnity assembly, so a normal reference would not compile - and going
+    // FMODUnity assembly, so a normal reference would not compile — and going
     // through reflection also means this tool cannot break the build if a future
     // FMOD version moves or renames it. It reports the problem instead.
     private static object FindEditorPlatform(out FieldInfo field)
