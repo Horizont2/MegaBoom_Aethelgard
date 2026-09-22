@@ -2210,7 +2210,9 @@ MonoBehaviour:
   sideLightBehind: 6
   allyTorchPrefab: {fileID: 1850256477050470, guid: 3599666ad7adbe14d964d5a8c7b8d845, type: 3}
   allyTorches: 9
-  torchHeight: 2.1
+  torchGrip: {x: 0, y: 0.06, z: 0}
+  torchStandUpX: -90
+  torchHeight: 1.4
   keyLight: {fileID: 854525243}
   strikeOnHorn: 1
   strikeAtGaps:

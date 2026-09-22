@@ -215,8 +215,14 @@ public class TrailerClashDirector : MonoBehaviour
 
     [Tooltip("Carried through the player's ranks. A line of moving flames against a line of nothing is the most literal way to say living men and dead ones, and it is the game's own torch.")]
     public GameObject allyTorchPrefab;
+    [Tooltip("How many of the player's soldiers carry one. Each is given to a real man and follows his left hand.")]
     public int allyTorches = 9;
-    public float torchHeight = 2.1f;
+    [Tooltip("Offset from the hand bone, in the hand's own space, so the shaft sits in the grip rather than through it.")]
+    public Vector3 torchGrip = new Vector3(0f, 0.06f, 0f);
+    [Tooltip("This torch prefab's mesh is authored LYING DOWN and needs minus ninety on X to stand — verified from a correctly placed instance elsewhere in the project. Rotation is written in world space each frame rather than inherited, so the flame stays upright however the hand tumbles through the run.")]
+    public float torchStandUpX = -90f;
+    [Tooltip("Height above the ground for a soldier whose rig has no hand bone to find. Only a fallback; with the hand it is not used.")]
+    public float torchHeight = 1.4f;
 
     [Header("Lightning")]
     // The scene is a storm — it rains through the whole shot — and until now
@@ -872,7 +878,6 @@ public class TrailerClashDirector : MonoBehaviour
     private readonly List<Light> allyLights = new List<Light>();
     private readonly List<Light> legionLights = new List<Light>();
     private readonly List<Transform> torches = new List<Transform>();
-    private readonly List<Vector3> torchOffsets = new List<Vector3>();
     private readonly List<Vector3> torchScales = new List<Vector3>();
 
     private void BuildSideLights()
@@ -920,15 +925,33 @@ public class TrailerClashDirector : MonoBehaviour
         }
     }
 
+    // ==== A TORCH BELONGS TO A MAN, NOT TO A GRID SQUARE ====
+    //
+    // These used to be placed on their own slots in the formation, at a fixed
+    // height, with no rotation written at all. Two things wrong with that and
+    // both were visible: nothing was holding them, so they floated; and the
+    // prefab is authored LYING DOWN, so with no rotation written they floated on
+    // their sides.
+    //
+    // Each one is handed to an actual soldier now and rides his left hand. The
+    // rig is Humanoid, so the bone can simply be asked for. Position comes from
+    // the hand; rotation is written in world space rather than inherited, so the
+    // flame stays upright however the hand tumbles through the run — which is
+    // also how a person carries one.
+    private readonly List<Transform> torchHands = new List<Transform>();
+    private readonly List<Unit> torchOwners = new List<Unit>();
+
     private void BuildTorches()
     {
-        if (allyTorchPrefab == null || allyTorches <= 0) return;
+        if (allyTorchPrefab == null || allyTorches <= 0 || allies.Count == 0) return;
 
-        int ranks = Mathf.Max(1, allyRanks);
-        int files = Mathf.Max(1, Mathf.CeilToInt(allyCount / (float)ranks));
-
-        for (int i = 0; i < allyTorches; i++)
+        for (int i = 0; i < Mathf.Min(allyTorches, allies.Count); i++)
         {
+            // Spread through the depth of the block rather than clustered: every
+            // few men, so the flames dot across the frame.
+            Unit owner = allies[(i * allies.Count) / Mathf.Max(1, Mathf.Min(allyTorches, allies.Count))];
+            if (owner == null || owner.puppet == null) continue;
+
             var go = Instantiate(allyTorchPrefab, centre, Quaternion.identity, transform);
             go.name = "Ally_Torch_" + i;
 
@@ -946,15 +969,31 @@ public class TrailerClashDirector : MonoBehaviour
             }
             foreach (var c in go.GetComponentsInChildren<Collider>(true)) if (c != null) c.enabled = false;
 
-            int rank = Random.Range(0, ranks);
-            int file = Random.Range(0, files);
-            torchOffsets.Add(new Vector3((file - (files - 1) * 0.5f) * fileSpacing,
-                                         0f,
-                                         rank * rankSpacing));
+            torchOwners.Add(owner);
+            torchHands.Add(FindHand(owner.puppet.gameObject));
             torchScales.Add(go.transform.localScale);
             go.transform.localScale = go.transform.localScale * ParkedScale;
             torches.Add(go.transform);
         }
+    }
+
+    // Humanoid first, because the hero rigs are and it is exact. The name search
+    // is for anything that is not — a generic rig still calls its hand a hand.
+    private static Transform FindHand(GameObject go)
+    {
+        var anim = go.GetComponentInChildren<Animator>();
+        if (anim != null && anim.isHuman)
+        {
+            Transform b = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+            if (b != null) return b;
+        }
+
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+        {
+            string n = t.name.ToLowerInvariant();
+            if (n.Contains("hand") && (n.Contains("l") || n.Contains("left"))) return t;
+        }
+        return null;
     }
 
     private void WakeTorches()
@@ -965,16 +1004,32 @@ public class TrailerClashDirector : MonoBehaviour
 
     private void PlaceTorches()
     {
-        if (torches.Count == 0) return;
-        Vector3 allyFront = centre - axis * (gap * 0.5f);
-
         for (int i = 0; i < torches.Count; i++)
         {
             Transform t = torches[i];
             if (t == null) continue;
-            Vector3 p = allyFront + side * torchOffsets[i].x - axis * torchOffsets[i].z;
-            p.y = Ground(p) + torchHeight;
-            t.position = p;
+
+            Transform hand = torchHands[i];
+            if (hand != null)
+            {
+                t.position = hand.TransformPoint(torchGrip);
+            }
+            else
+            {
+                // No hand on this rig — hold it at chest height on his own axis
+                // rather than dropping it on the floor.
+                Unit owner = torchOwners[i];
+                if (owner == null || owner.puppet == null) continue;
+                t.position = owner.puppet.transform.position + Vector3.up * torchHeight;
+            }
+
+            // Written in world space, not inherited: the hand rolls through a run
+            // cycle and a torch that rolls with it reads as a dropped prop. The
+            // X correction is the prefab standing up.
+            Vector3 facing = torchOwners[i] != null && torchOwners[i].puppet != null
+                           ? torchOwners[i].puppet.transform.eulerAngles
+                           : Vector3.zero;
+            t.rotation = Quaternion.Euler(torchStandUpX, facing.y, 0f);
         }
     }
 
