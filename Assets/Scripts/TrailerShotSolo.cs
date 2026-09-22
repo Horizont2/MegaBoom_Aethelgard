@@ -290,6 +290,19 @@ public static class TrailerShotSolo
             // cost in a shot that is already fighting for frames.
             Set(fog, "enableVolumetricShadows", false);
             Set(fog, "terrainCastsFogShadows", false);
+
+            // ==== AND MAKE IT REBUILD NOW, NOT WHEN IT NOTICES ====
+            //
+            // Those are the component's own serialised fields, written straight
+            // in. Its GPU side — the terrain heightmap, the noise volume, the
+            // material — is brought up to date by its Update, which does not run
+            // until the first frame has already been drawn. So the opening
+            // frames of the shot render off whatever the fog happened to have
+            // built for the scene as it was authored, with the new density
+            // already applied to it. Refresh is public and does exactly this,
+            // so the first frame is the fog this shot asked for.
+            var refresh = fog.GetType().GetMethod("Refresh", BindingFlags.Instance | BindingFlags.Public);
+            if (refresh != null) refresh.Invoke(fog, null);
         }
     }
 

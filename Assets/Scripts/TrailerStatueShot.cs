@@ -89,8 +89,11 @@ public class TrailerStatueShot : MonoBehaviour
     // is, how far away, how big, and which shader draws it. Whatever is white
     // and enormous appears in that list by name, and the next fix is aimed
     // rather than guessed.
-    [Tooltip("Log what the centre of the frame is actually looking at for the first second. Turn it off once the shot is right.")]
+    [Tooltip("Name, in the console, whatever is covering the frame. Turn it off once the shot is right.")]
     public bool diagnose = true;
+
+    [Tooltip("Seconds of black before the shot fades in. This is where the engine's first-frame shader compiles and the fog's GPU warm-up are hidden.")]
+    public float preRoll = 0.9f;
 
     [Header("Sequencing")]
     [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
@@ -582,8 +585,29 @@ public class TrailerStatueShot : MonoBehaviour
     {
         TrailerLogGuard.Arm();
         var polish = TrailerCinematicPolish.GetOrCreate();
-        polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
+
+        float total = establish + buildDuration + pierceDuration;
+
+        // ==== A BEAT OF BLACK BEFORE ANYTHING IS SHOWN ====
+        //
+        // The first second of a Unity scene is not a picture, it is a queue. URP
+        // compiles the shader variant for every material the FIRST time it is
+        // drawn, synchronously; the volumetric fog builds its terrain heightmap
+        // and its noise on the GPU over its first few Updates and renders off
+        // whatever it has until then; the culling systems settle. Whatever those
+        // frames look like, they are not the shot — and they are the frames that
+        // a screen recording starts on.
+        //
+        // So the camera is placed, the frame is held black while all of that
+        // happens, and only then does the fade begin. Nothing is lost: an
+        // opening beat of black is what the cut into this shot wants anyway, and
+        // it is also where every variant this shot needs gets compiled.
+        UpdateCamera(0f, total, 0f);
+        polish.SetFlash(Color.black);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, preRoll));
+
+        polish.OpenTrailer();
 
         // The dread bed runs under the whole shot. Without something holding the
         // low end, the silences between cracks read as the audio having stopped
@@ -591,7 +615,6 @@ public class TrailerStatueShot : MonoBehaviour
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadBed))
             AudioManager.Instance.PlaySFX3D(dreadBed, center);
 
-        float total = establish + buildDuration + pierceDuration;
         float t = 0f;
         bool burst = false;
         float nextCrackStep = establish;
