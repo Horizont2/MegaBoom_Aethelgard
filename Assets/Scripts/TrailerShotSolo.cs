@@ -31,6 +31,7 @@ public static class TrailerShotSolo
     public const string MarchShot = "march";
     public const string ClashShot = "clash";
     public const string CastleShot = "castle";
+    public const string TitleShot = "title";
 
     // The only two scenes this is allowed to touch.
     public const string TrailerScene = "Trailer_Lvl_1";
@@ -46,6 +47,7 @@ public static class TrailerShotSolo
     private const string Part2Rig = "LoreTrailer_Part2_Rig";
     private const string SceneSun = "Directional Light";
     private const string RoadDressing = "Trailer_RoadDressing";
+    private const string TitleRig = "LoreTrailer_Title_Rig";
 
     /// <summary>The shot this run was launched for, or empty when the scene is simply being played.</summary>
     public static string Active { get; private set; } = string.Empty;
@@ -95,6 +97,7 @@ public static class TrailerShotSolo
         else if (shot == MarchShot) SoloMarch();
         else if (shot == ClashShot) SoloClash();
         else if (shot == CastleShot) SoloCastle();
+        else if (shot == TitleShot) SoloTitle();
         else return;
 
         Debug.Log("[TrailerShotSolo] Playing the '" + shot + "' shot alone. Everything belonging to the other shot " +
@@ -104,7 +107,10 @@ public static class TrailerShotSolo
     // The one scene each shot belongs to. Anything unrecognised belongs nowhere.
     public static string SceneFor(string shot)
     {
-        if (shot == StatueShot || shot == RideShot) return TrailerScene;
+        // The title card needs fog, terrain and nothing else, so it films in
+        // the scene that opens instantly rather than in the one that has to
+        // generate a region first. Re-recording it is then ten seconds.
+        if (shot == StatueShot || shot == RideShot || shot == TitleShot) return TrailerScene;
         if (shot == MarchShot || shot == ClashShot) return MarchScene;
         if (shot == CastleShot) return GameScene;
         return string.Empty;
@@ -419,6 +425,84 @@ public static class TrailerShotSolo
     // the world does not exist until it has been generated. The shot clears the
     // set once there is a set to clear.
     private static void SoloCastle() { }
+
+    // ===================== the last card — the name out of the fog =====================
+    //
+    // Everything the forest scene is dressed with is in the way of this one. The
+    // card wants a field of fog, a dim moon and nothing recognisable: a statue,
+    // a road or a horse in shot would make it a location rather than an ending.
+    private static void SoloTitle()
+    {
+        GameObject rig = TrailerFind.ByName(TitleRig);
+        if (rig != null) rig.SetActive(true);
+
+        Off(Sequencer);
+        OffAll(ActIRig);
+        OffAll(Part2Rig);
+        Off(StatueRig);
+        Off(RoadDressing);
+
+        var ride = Object.FindFirstObjectByType<TrailerHorseRide>(FindObjectsInactive.Include);
+        if (ride != null) ride.gameObject.SetActive(false);
+
+        var cycle = Object.FindFirstObjectByType<DayNightCycle>(FindObjectsInactive.Include);
+        if (cycle != null) cycle.enabled = false;
+
+        SilenceWeather(rig);
+
+        Camera shotCam = null;
+        if (rig != null)
+            foreach (var c in rig.GetComponentsInChildren<Camera>(true)) { shotCam = c; break; }
+        SoloCamera(shotCam);
+
+        // The scene's own sun, kept but pulled right down. The fog scatters
+        // exactly one directional light and this card is lit by what is left of
+        // the moon; switching it off entirely would leave the fog flat and grey,
+        // with no direction in it at all.
+        Light sun = null;
+        GameObject sunGo = TrailerFind.ByName(SceneSun);
+        if (sunGo != null)
+        {
+            sunGo.SetActive(true);
+            sun = sunGo.GetComponent<Light>();
+            if (sun != null)
+            {
+                sun.intensity = 0.30f;
+                sun.color = new Color(0.46f, 0.56f, 0.78f);
+                sun.shadows = LightShadows.None;        // nothing in frame casts one
+            }
+        }
+
+        // ==== A FOG FIELD, NOT A GROUND MIST ====
+        //
+        // The other shots want the fog BELOW the lens, pooled around something.
+        // This one is the opposite: the fog IS the picture, so the layer is deep
+        // enough to swallow the horizon and the camera looks across the top of
+        // it. Dense but not opaque — the distant strikes have to be able to get
+        // through, and a solid wall would take them with it.
+        var fog = Fog();
+        if (fog != null)
+        {
+            Set(fog, "density", 0.055f);
+            Set(fog, "groundFogHeight", 30f);
+            Set(fog, "topSoftness", 0.55f);
+            Set(fog, "nearFadeDistance", 2f);
+            Set(fog, "maximumFogDistance", 320f);
+            Set(fog, "anisotropy", 0.68f);
+            Set(fog, "windSpeed", 1.6f);
+            Set(fog, "noiseAmount", 0.62f);
+            Set(fog, "followSceneFogColor", false);
+            Set(fog, "fogColor", new Color(0.30f, 0.35f, 0.46f, 1f));
+            Set(fog, "ambientColor", new Color(0.10f, 0.12f, 0.19f, 1f));
+            if (sun != null) Set(fog, "directionalLight", sun);
+
+            Set(fog, "enableVolumetricShadows", false);
+            Set(fog, "terrainCastsFogShadows", false);
+
+            var refresh = fog.GetType().GetMethod("Refresh", BindingFlags.Instance | BindingFlags.Public);
+            if (refresh != null) refresh.Invoke(fog, null);
+        }
+    }
 
     // ===================== helpers =====================
 

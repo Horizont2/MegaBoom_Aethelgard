@@ -44,6 +44,13 @@ public static class TrailerShots
     [MenuItem("Tools/Lore Trailer/Play shot 5 — the castle in the fog", priority = 4)]
     private static void PlayCastle() { Launch(TrailerShotSolo.CastleShot, "the castle reveal (region 24 is generated first)"); }
 
+    // The ending. Filmed in Trailer_Lvl_1 rather than over the castle, because
+    // the card wants fog and nothing recognisable — and because a scene that
+    // opens instantly means it can be re-recorded while an idea is still worth
+    // trying, instead of after a region generation.
+    [MenuItem("Tools/Lore Trailer/Play shot 6 — the title card", priority = 5)]
+    private static void PlayTitle() { Launch(TrailerShotSolo.TitleShot, "the title card"); }
+
     private static void Launch(string shot, string what)
     {
         // Asked of TrailerShotSolo rather than written here twice. The runtime

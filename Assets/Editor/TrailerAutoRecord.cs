@@ -289,6 +289,11 @@ public static class TrailerAutoRecord
             var d = UnityEngine.Object.FindFirstObjectByType<TrailerCastleShot>();
             return d != null && d.IsFinished;
         }
+        if (shot == TrailerShotSolo.TitleShot)
+        {
+            var d = UnityEngine.Object.FindFirstObjectByType<TrailerTitleCard>();
+            return d != null && d.IsFinished;
+        }
         return false;
     }
 
