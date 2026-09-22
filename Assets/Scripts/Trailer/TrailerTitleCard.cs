@@ -57,10 +57,43 @@ public class TrailerTitleCard : MonoBehaviour
     public int titleSize = 112;
     public int lineSize = 26;
     [Tooltip("Letter spacing the title arrives at, and the one it settles to. Loose to tight is what makes it land.")]
-    public float titleTrackingIn = 34f;
-    public float titleTrackingOut = 15f;
+    public float titleTrackingIn = 40f;
+    public float titleTrackingOut = 18f;
     [Tooltip("The title starts a touch large and settles. Above 1.10 it reads as a zoom rather than as weight.")]
     public float titleScaleIn = 1.06f;
+    // ==== THE ONLY CINZEL IN THE PROJECT IS THE LIGHT ONE ====
+    //
+    // Cinzel-VariableFont_wght SDF is baked from the variable font's DEFAULT
+    // instance, which is Regular. The static ExtraBold is in the project as a
+    // .ttf and has no SDF asset, so TextMeshPro cannot reach it — the title has
+    // been set in a light Roman serif at 112 points this whole time, which is
+    // most of why it reads thin rather than carved.
+    //
+    // Dilating the signed distance field thickens every stroke, which is what
+    // TextMeshPro's own faux-bold does (boldStyle is 0.75 on this asset). Done
+    // by hand here rather than through FontStyles.Bold, because that also adds
+    // seven units of spacing and the tracking is already being animated.
+    //
+    // The real fix is one pass of Window > TextMesh Pro > Font Asset Creator on
+    // static/Cinzel-ExtraBold.ttf; drop the result into titleFont and set this
+    // back to zero.
+    [Tooltip("Thickens the letterforms. 0 is the font as baked; 0.16 turns this project's Cinzel Regular into something with a title's weight.")]
+    [Range(0f, 0.4f)] public float faceWeight = 0.16f;
+
+    [Header("Rule")]
+    // ==== WHAT REPLACES THE LIGHTNING ====
+    //
+    // A word on its own is a word. The hairline is what makes it a title: it
+    // gives the name a base to sit on, it separates it from the line below
+    // without a gap doing all the work, and — because it draws open from the
+    // centre after the name has landed — it is a second small event, which is
+    // what the strike used to be. Quieter, and it belongs to the type instead
+    // of to the weather.
+    [Tooltip("Width in reference pixels. Shorter than the title reads as designed; matching its width reads as an underline.")]
+    public float ruleWidth = 460f;
+    public float ruleOpen = 0.8f;
+    public Color ruleColour = new Color(0.78f, 0.71f, 0.60f, 0.55f);
+
     public Color titleEmber = new Color(0.62f, 0.30f, 0.15f, 1f);
     public Color titleBone = new Color(0.94f, 0.91f, 0.85f, 1f);
     public Color lineColour = new Color(0.60f, 0.58f, 0.56f, 1f);
@@ -75,9 +108,9 @@ public class TrailerTitleCard : MonoBehaviour
     // that second is the whole reason the name lands.
     public float breathSeconds = 3.0f;
     public float titleRise = 1.3f;
-    public float titleHold = 1.7f;
+    public float titleHold = 1.2f;
     public float lineRise = 0.9f;
-    public float lineHold = 2.0f;
+    public float lineHold = 1.6f;
     public float closeSeconds = 1.5f;
 
     [Header("Camera")]
@@ -105,8 +138,8 @@ public class TrailerTitleCard : MonoBehaviour
     [Header("Weather")]
     public int embers = 90;
     public Color emberColour = new Color(1f, 0.55f, 0.22f, 0.55f);
-    [Tooltip("Distant strikes during the breath, before the name.")]
-    public int distantStrikes = 2;
+    [Tooltip("Distant strikes during the breath. Off: a card this quiet does not want weather happening in it, and the hairline carries the moment the strike used to.")]
+    public int distantStrikes = 0;
 
     [Header("Sound")]
     public string windBed = AudioID.Trailer_WindDesolate;
@@ -313,8 +346,16 @@ public class TrailerTitleCard : MonoBehaviour
             titleText.alignment = TMPro.TextAlignmentOptions.Center;
             titleText.characterSpacing = titleTrackingIn;
             titleText.raycastTarget = false;
-            Underlay(titleText);
+            Underlay(titleText, true);
         }
+
+        // The hairline, between the two. Sized to nothing here; it draws open
+        // after the name has settled.
+        ruleRect = MakeRect(canvasGO.transform, new Vector2(0.5f, 0.477f), new Vector2(0f, 4f));
+        ruleImage = ruleRect.gameObject.AddComponent<UnityEngine.UI.Image>();
+        ruleImage.sprite = Sprite.Create(Hairline(), new Rect(0f, 0f, 64f, 4f), new Vector2(0.5f, 0.5f));
+        ruleImage.color = new Color(ruleColour.r, ruleColour.g, ruleColour.b, 0f);
+        ruleImage.raycastTarget = false;
 
         var lineRect = MakeRect(canvasGO.transform, new Vector2(0.5f, 0.40f), new Vector2(1400f, 60f));
         lineGroup = lineRect.gameObject.AddComponent<CanvasGroup>();
@@ -328,7 +369,7 @@ public class TrailerTitleCard : MonoBehaviour
         line.alignment = TMPro.TextAlignmentOptions.Center;
         line.characterSpacing = 9f;
         line.raycastTarget = false;
-        Underlay(line);
+        Underlay(line, false);
     }
 
     // ==== BONE ON GREY IS NOT CONTRAST ====
@@ -342,7 +383,7 @@ public class TrailerTitleCard : MonoBehaviour
     // wide, so it is a darkening the type sits in rather than a second copy of
     // it. Everything is guarded: on a font material without the underlay pass
     // this simply does nothing instead of throwing.
-    private static void Underlay(TMPro.TMP_Text text)
+    private void Underlay(TMPro.TMP_Text text, bool weighted)
     {
         if (text == null) return;
 
@@ -351,12 +392,40 @@ public class TrailerTitleCard : MonoBehaviour
         Material m = text.fontMaterial;
         if (m == null) return;
 
+        if (weighted && faceWeight > 0.001f && m.HasProperty("_FaceDilate"))
+            m.SetFloat("_FaceDilate", faceWeight);
+
         m.EnableKeyword("UNDERLAY_ON");
         if (m.HasProperty("_UnderlayColor")) m.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.55f));
         if (m.HasProperty("_UnderlayOffsetX")) m.SetFloat("_UnderlayOffsetX", 0f);
         if (m.HasProperty("_UnderlayOffsetY")) m.SetFloat("_UnderlayOffsetY", 0f);
         if (m.HasProperty("_UnderlayDilate")) m.SetFloat("_UnderlayDilate", 0.15f);
         if (m.HasProperty("_UnderlaySoftness")) m.SetFloat("_UnderlaySoftness", 0.55f);
+    }
+
+    private RectTransform ruleRect;
+    private UnityEngine.UI.Image ruleImage;
+
+    // A hard-edged bar is a bar. Fading to nothing at both ends is what makes
+    // the same two pixels read as a rule someone drew.
+    private static Texture2D s_hairline;
+    private static Texture2D Hairline()
+    {
+        if (s_hairline != null) return s_hairline;
+
+        const int W = 64, H = 4;
+        s_hairline = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++)
+        {
+            float u = Mathf.Abs(x / (W - 1f) - 0.5f) * 2f;
+            float a = Mathf.Pow(Mathf.Clamp01(1f - u), 0.7f);
+            px[y * W + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+        }
+        s_hairline.SetPixels32(px);
+        s_hairline.Apply(false);
+        return s_hairline;
     }
 
     private static RectTransform MakeRect(Transform parent, Vector2 anchor, Vector2 size)
@@ -386,7 +455,7 @@ public class TrailerTitleCard : MonoBehaviour
         Loop(windBed);
         Loop(dreadBed);
 
-        float total = breathSeconds + titleRise + titleHold + lineRise + lineHold + closeSeconds;
+        float total = breathSeconds + titleRise + ruleOpen + titleHold + lineRise + lineHold + closeSeconds;
         StartCoroutine(DriftCamera(total));
 
         // ---- 1. the fog alone ----
@@ -415,34 +484,34 @@ public class TrailerTitleCard : MonoBehaviour
                 titleText.color = Color.Lerp(titleEmber, titleBone, e * e);
             }
 
-            // The strike lands on the frame the name reaches full, so the two
-            // read as one event: the sky opens and the title is what is under it.
-            if (k >= 0.82f && !struck)
-            {
-                struck = true;
-                // ==== INSIDE THE WEATHER, NOT ABOVE IT ====
-                //
-                // This used to go off a hundred and twenty metres out and
-                // fifty-five metres up — clear air, far above a fog layer that
-                // is eighteen metres deep. Pure Volumetric Fog scatters the
-                // directional light and nothing else, so a card up there lights
-                // precisely nothing: the fog stays exactly as bright and the
-                // flash is a disc floating over it.
-                //
-                // Down into the layer instead, and close. At 0.05 per metre the
-                // fog passes a third of the light at twenty metres and a tenth
-                // at forty, so the card comes through attenuated and smeared —
-                // which is what lightning inside cloud actually looks like.
-                Strike(camT.position + camT.forward * 42f + Vector3.up * 13f, 60f, 4.2f, 0.55f);
-            }
             yield return null;
         }
         titleGroup.alpha = 1f;
         titleRect.localScale = Vector3.one;
 
+        // ---- 3. and the rule draws under it ----
+        //
+        // From the centre out, which is the only direction that does not imply
+        // a reading order the card does not have. This is the beat the strike
+        // used to be, and it is a better one: it belongs to the type, so it
+        // cannot look like weather that wandered into a title.
+        t = 0f;
+        while (t < ruleOpen)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / Mathf.Max(0.01f, ruleOpen));
+            float e = 1f - (1f - k) * (1f - k) * (1f - k);
+
+            ruleRect.sizeDelta = new Vector2(ruleWidth * e, 4f);
+            ruleImage.color = new Color(ruleColour.r, ruleColour.g, ruleColour.b, ruleColour.a * e);
+            yield return null;
+        }
+        ruleRect.sizeDelta = new Vector2(ruleWidth, 4f);
+        ruleImage.color = ruleColour;
+
         yield return Beat(titleHold, false);
 
-        // ---- 3. and then, separately, the line ----
+        // ---- 4. and then, separately, the line ----
         t = 0f;
         while (t < lineRise)
         {
@@ -454,7 +523,7 @@ public class TrailerTitleCard : MonoBehaviour
 
         yield return Beat(lineHold, false);
 
-        // ---- 4. out ----
+        // ---- 5. out ----
         DropOut();
         t = 0f;
         while (t < closeSeconds)
@@ -470,8 +539,6 @@ public class TrailerTitleCard : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.5f);
         IsFinished = true;
     }
-
-    private bool struck;
 
     // A beat that keeps the clock running, optionally with weather in it.
     private IEnumerator Beat(float seconds, bool weather)
