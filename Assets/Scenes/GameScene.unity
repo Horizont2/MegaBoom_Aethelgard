@@ -22342,13 +22342,12 @@ MonoBehaviour:
   - RoadDecorations
   - CagedAllyEvent
   hideHUD: 1
-  placeHero: 1
-  heroAhead: 7
-  heroOffCentre: 2.4
+  removeHero: 1
   startDistance: 3.2
   endDistance: 1.9
   startHeight: 2.2
-  endHeightFactor: 0.85
+  endHeightFactor: 0.62
+  maxClearLift: 26
   startFov: 58
   endFov: 42
   craneSeconds: 12
@@ -22360,6 +22359,11 @@ MonoBehaviour:
   approachTorches: 14
   torchArcWidth: 1.6
   torchStandUpX: -90
+  torchesGiveLight: 1
+  torchLight: {r: 1, g: 0.62, b: 0.28, a: 1}
+  torchLightRange: 14
+  torchLightIntensity: 3.2
+  torchFlicker: 0.18
   holdTimeOfDay: 1
   sunElevation: 8
   sunColour: {r: 0.72, g: 0.78, b: 1, a: 1}
@@ -22373,9 +22377,21 @@ MonoBehaviour:
   fogHeightEnd: 40
   fogNoiseFloor: 0.5
   fogColour: {r: 0.55, g: 0.6, b: 0.7, a: 1}
+  rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
+  rainHeight: 14
   windBed: Trailer/Wind Desolate
-  revealSting: Trailer/Dread Bed
+  dreadBed: Trailer/Dread Bed
+  revealSting: Trailer/Thunder_Close
   crowsCue: Trailer/Crows
+  silenceBefore: 0.7
+  revealAt: 0.55
+  showTitle: 1
+  titleSprite: {fileID: 0}
+  titleFadeIn: 1.2
+  titleHold: 2.4
+  titleFadeOut: 1.4
+  titleFontSize: 96
+  titleColour: {r: 0.92, g: 0.9, b: 0.86, a: 1}
   autoPlay: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

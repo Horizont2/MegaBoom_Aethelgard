@@ -48,13 +48,18 @@ public class TrailerCastleShot : MonoBehaviour
     };
     public bool hideHUD = true;
 
-    [Header("The hero in frame")]
-    [Tooltip("Stand the player in the foreground, small, facing the castle. He is the only thing in frame whose size the audience already knows, which is the whole reason the castle reads as big.")]
-    public bool placeHero = true;
-    [Tooltip("Metres in front of the camera's opening position.")]
-    public float heroAhead = 7f;
-    [Tooltip("Metres to the side of the lens axis, so he is not dead centre.")]
-    public float heroOffCentre = 2.4f;
+    [Header("The hero")]
+    // ==== NOBODY IS IN THIS SHOT ====
+    //
+    // He was going to stand in the foreground for scale. He is not in it: the
+    // trailer has just spent four episodes on people, and the last image works
+    // because there is nobody left in it — the place, the fog and the dead.
+    //
+    // Scale comes from the torches instead. They are a known size and they recede
+    // in a line toward the gate, which is a better ruler than one figure anyway
+    // because it reads at every depth in the frame rather than at one.
+    [Tooltip("Take the player out of the shot entirely. The generated world spawns him; this removes him.")]
+    public bool removeHero = true;
 
     [Header("The crane")]
     // Three moves, in the order they are read:
@@ -67,8 +72,10 @@ public class TrailerCastleShot : MonoBehaviour
     [Tooltip("And where the push ends. Smaller is closer.")]
     public float endDistance = 1.9f;
     public float startHeight = 2.2f;
-    [Tooltip("Height at the end, as a multiple of the castle's height. Above one it looks down on the walls.")]
-    public float endHeightFactor = 0.85f;
+    [Tooltip("Height at the end, as a fraction of the castle's own height. Deliberately below one: finishing ABOVE the towers looks down on them and loses the silhouette the whole shot is built on. Just under the crown, looking up, is the frame.")]
+    public float endHeightFactor = 0.62f;
+    [Tooltip("Metres the lens may be lifted to clear the hill. The castle sits on a twenty-two metre plateau the generator raises for it, so from the valley the first half of the crane can be looking straight at a slope — this walks the camera up until the crown is actually visible.")]
+    public float maxClearLift = 26f;
     public float startFov = 58f;
     public float endFov = 42f;
     [Tooltip("Seconds the whole move takes. Slow — this is the one shot in the trailer that is allowed to breathe.")]
@@ -89,6 +96,22 @@ public class TrailerCastleShot : MonoBehaviour
     public float torchArcWidth = 1.6f;
     [Tooltip("This torch prefab's mesh is authored LYING DOWN and needs minus ninety on X to stand.")]
     public float torchStandUpX = -90f;
+    // ==== THE TORCH PREFAB HAS NO LIGHT ON IT ====
+    //
+    // It is a mesh and a flame particle, nothing else. In daylight that is fine.
+    // In the one shot of this trailer that is ABOUT volumetric fog it is a small
+    // orange sprite that illuminates nothing — and a light in volumetric fog is
+    // not a light, it is a visible cone of glowing air. That glow at a known
+    // distance is the entire mechanism by which fog reads as depth rather than
+    // as a grey card.
+    [Tooltip("Add a point light to each torch. Without it the flame lights nothing and the fog has nothing to carry.")]
+    public bool torchesGiveLight = true;
+    public Color torchLight = new Color(1f, 0.62f, 0.28f);
+    public float torchLightRange = 14f;
+    public float torchLightIntensity = 3.2f;
+    [Range(0f, 0.6f)]
+    [Tooltip("How much the flames breathe, as a fraction of their intensity. Small: a torch that pulses hard reads as a bad effect, and a whole line of them pulsing together reads as a light rig.")]
+    public float torchFlicker = 0.18f;
 
     [Header("Environment")]
     [Tooltip("Stop the day/night cycle and hold the hour the shot is lit for. Left running it walks the sun through the take.")]
@@ -113,10 +136,50 @@ public class TrailerCastleShot : MonoBehaviour
     public float fogNoiseFloor = 0.5f;
     public Color fogColour = new Color(0.55f, 0.60f, 0.70f);
 
+    [Header("Weather")]
+    // The march and the clash are both filmed in rain. Cutting from the moment of
+    // contact to a still, dry castle breaks the weather between one shot and the
+    // next, which an audience reads as a different film. It also gives the one
+    // static composition in the trailer something moving in it.
+    [Tooltip("The same Heavy Rain prefab the other two episodes use. Follows the lens, splashes off.")]
+    public GameObject rainPrefab;
+    public float rainHeight = 14f;
+
     [Header("Audio")]
     public string windBed = AudioID.Trailer_WindDesolate;
-    public string revealSting = AudioID.Trailer_Dread;
+    [Tooltip("The low bed under the whole shot. It is what makes the wind feel like weather rather than like an empty track.")]
+    public string dreadBed = AudioID.Trailer_Dread;
+    [Tooltip("Lands as the castle resolves out of the fog.")]
+    public string revealSting = AudioID.Trailer_ThunderClose;
     public string crowsCue = AudioID.Trailer_Crows;
+    // ==== THE SILENCE IS THE CUE ====
+    //
+    // A sting on top of a bed that is already running is just louder. Cutting the
+    // bed for a moment BEFORE it is what makes the sting arrive — the ear notices
+    // the absence, and then something fills it. It is the cheapest trick in the
+    // book and there is no substitute for it.
+    [Tooltip("Seconds of held silence before the reveal sting.")]
+    public float silenceBefore = 0.7f;
+    [Range(0f, 1f)]
+    [Tooltip("How far through the crane the reveal lands.")]
+    public float revealAt = 0.55f;
+
+    [Header("Title card")]
+    // ==== THE LAST SHOT OF A TRAILER IS NOT THE LAST FRAME ====
+    //
+    // This one ended on a fade and nothing else, and until now the trailer has
+    // never said what the game is called. The name is read from the project
+    // itself — Application.productName — rather than typed here, so it cannot
+    // drift away from what the build is actually called.
+    [Tooltip("Show the game's name after the fade.")]
+    public bool showTitle = true;
+    [Tooltip("Artwork, if there ever is any. Left empty the name is set as text, which is also what a title card mostly is.")]
+    public Sprite titleSprite;
+    public float titleFadeIn = 1.2f;
+    public float titleHold = 2.4f;
+    public float titleFadeOut = 1.4f;
+    public int titleFontSize = 96;
+    public Color titleColour = new Color(0.92f, 0.9f, 0.86f);
 
     [Header("Diagnostics")]
     public bool autoPlay = true;
@@ -130,6 +193,8 @@ public class TrailerCastleShot : MonoBehaviour
     private Vector3 approach;          // horizontal, from the castle toward the lens
     private Camera cam;
     private readonly List<Transform> torches = new List<Transform>();
+    private readonly List<Light> flames = new List<Light>();
+    private readonly List<float> flamePhase = new List<float>();
 
     private void Awake()
     {
@@ -189,17 +254,21 @@ public class TrailerCastleShot : MonoBehaviour
         ChooseApproach();
         SetEnvironment();
         PlaceTorches();
-        PlaceHero();
+        RemoveHero();
+
+        BuildRain();
 
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
         Loop(windBed);
-        Cue(revealSting);
+        Loop(dreadBed);
 
         // ---- 4. the crane ----
         float t = 0f;
-        bool crowed = false;
+        bool crowed = false, hushed = false, revealed = false;
+        float hushAt = Mathf.Clamp01(revealAt) * craneSeconds - silenceBefore;
+
         while (t < craneSeconds)
         {
             t += Time.unscaledDeltaTime;
@@ -211,9 +280,17 @@ public class TrailerCastleShot : MonoBehaviour
 
             PlaceCamera(e);
             ApplyFog(e);
+            FlickerTorches();
 
-            // One cry, as the castle resolves. Nothing says abandoned faster.
-            if (!crowed && k > 0.45f) { crowed = true; Cue(crowsCue); }
+            // One cry, early, while there is still nothing to look at. Nothing
+            // says abandoned faster, and it wants to be well clear of the sting.
+            if (!crowed && k > 0.22f) { crowed = true; Cue(crowsCue); }
+
+            // The beds drop out, and for the best part of a second there is
+            // nothing at all. Then the castle is there.
+            if (!hushed && t >= hushAt) { hushed = true; DropOut(); }
+            if (!revealed && k >= revealAt) { revealed = true; Cue(revealSting); Loop(windBed); }
+
             yield return null;
         }
 
@@ -223,12 +300,15 @@ public class TrailerCastleShot : MonoBehaviour
         {
             hold += Time.unscaledDeltaTime;
             PlaceCamera(1f);
+            FlickerTorches();
             yield return null;
         }
 
         polish.FadeToBlack(outFade);
         yield return new WaitForSecondsRealtime(outFade);
         DropOut();
+
+        if (showTitle) yield return StartCoroutine(TitleCard());
         IsFinished = true;
     }
 
@@ -264,42 +344,41 @@ public class TrailerCastleShot : MonoBehaviour
     // ==== WHICH SIDE TO FILM IT FROM ====
     //
     // The generator puts the castle down facing wherever it likes, so there is no
-    // "front" to point at. What there IS, reliably, is a road: the generator runs
-    // one up the hill to reach the location. Filming down the road means filming
-    // the way the place is approached, which is both the most composed angle
-    // available and the one with clear ground to put a crane on.
+    // "front" to point at, and it raises a twenty-two metre hill under it — which
+    // is the thing that actually decides the shot. From the wrong side the first
+    // half of the crane is looking at a slope.
     //
-    // Falling back to the player's own position if no road is found — he was
-    // spawned somewhere sane, so the line from him to the castle is at least
-    // walkable.
+    // This used to pick the nearest road segment, which was a guess about how
+    // WorldGenerator names and splits its road meshes rather than a measurement.
+    // The terrain itself answers the question and cannot be wrong about it: sample
+    // a ring around the castle and take the direction the land falls away
+    // FURTHEST. That is the open valley side, the longest clear sightline up to
+    // the walls, and the side the roads climb anyway.
     private void ChooseApproach()
     {
-        Transform roads = FindByName("RoadsContainer");
-        Vector3 from = Vector3.zero;
-        bool found = false;
+        Vector3 centre = castleBounds.center;
+        float bestDrop = float.NegativeInfinity;
+        Vector3 best = Vector3.forward;
 
-        if (roads != null)
+        const int Samples = 24;
+        for (int i = 0; i < Samples; i++)
         {
-            // The road point nearest the castle but outside its footprint: that
-            // is where the approach arrives from.
-            float best = float.MaxValue;
-            foreach (Transform seg in roads)
+            float a = i / (float)Samples * Mathf.PI * 2f;
+            Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+
+            // Averaged over three distances out, so a single dip or boulder near
+            // the wall cannot win the vote.
+            float drop = 0f;
+            for (int r = 1; r <= 3; r++)
             {
-                float d = Vector3.Distance(seg.position, castleBounds.center);
-                if (d < castleRadius * 1.2f || d > best) continue;
-                best = d; from = seg.position; found = true;
+                Vector3 p = centre + dir * (castleRadius * (1f + r * 0.9f));
+                drop += centre.y - Ground(p);
             }
+
+            if (drop > bestDrop) { bestDrop = drop; best = dir; }
         }
 
-        if (!found)
-        {
-            GameObject hero = GameObject.FindGameObjectWithTag("Player");
-            if (hero != null) { from = hero.transform.position; found = true; }
-        }
-
-        approach = found ? (from - castleBounds.center) : Vector3.forward * castleRadius;
-        approach.y = 0f;
-        approach = approach.sqrMagnitude > 0.01f ? approach.normalized : Vector3.forward;
+        approach = best;
     }
 
     private void ClearField()
@@ -359,29 +438,18 @@ public class TrailerCastleShot : MonoBehaviour
         }
     }
 
-    private void PlaceHero()
+    private void RemoveHero()
     {
-        if (!placeHero) return;
+        if (!removeHero) return;
 
         GameObject hero = GameObject.FindGameObjectWithTag("Player");
         if (hero == null) return;
 
-        // Everything that would walk him out of the shot, exactly as the clash
-        // does it — Strip knows about enemies, not about the player.
-        foreach (var c in hero.GetComponentsInChildren<PlayerController>(true)) if (c != null) DestroyImmediate(c);
-        foreach (var c in hero.GetComponentsInChildren<CharacterController>(true)) if (c != null) c.enabled = false;
-        foreach (var smr in hero.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-            if (smr != null) smr.updateWhenOffscreen = true;
-
-        Vector3 lens = CameraPosition(0f);
-        Vector3 toCastle = (castleBounds.center - lens); toCastle.y = 0f;
-        toCastle = toCastle.sqrMagnitude > 0.01f ? toCastle.normalized : Vector3.forward;
-        Vector3 across = new Vector3(toCastle.z, 0f, -toCastle.x);
-
-        Vector3 p = lens + toCastle * heroAhead + across * heroOffCentre;
-        p.y = Ground(p);
-        hero.transform.position = p;
-        hero.transform.rotation = Quaternion.LookRotation(toCastle);
+        // Destroyed rather than hidden. CameraFollow and the occlusion fader both
+        // hunt for him by tag, several systems keep him alive, and a hidden
+        // player still has a CharacterController quietly sliding down the hill
+        // for the length of the take.
+        DestroyImmediate(hero);
     }
 
     // ---- torches ---------------------------------------------------------------
@@ -410,7 +478,44 @@ public class TrailerCastleShot : MonoBehaviour
             var go = Instantiate(torchPrefab, p, Quaternion.Euler(torchStandUpX, Random.Range(0f, 360f), 0f), transform);
             go.name = "Castle_Torch_" + i;
             foreach (var c in go.GetComponentsInChildren<Collider>(true)) if (c != null) c.enabled = false;
+
+            if (torchesGiveLight)
+            {
+                var lgo = new GameObject("Flame");
+                lgo.transform.SetParent(go.transform, true);
+                // Placed in WORLD space, because the prop is rotated ninety
+                // degrees to stand up and the flame belongs above its head, not
+                // out of the side of it.
+                lgo.transform.position = p + Vector3.up * 1.6f;
+
+                var l = lgo.AddComponent<Light>();
+                l.type = LightType.Point;
+                l.color = torchLight;
+                l.range = torchLightRange;
+                l.intensity = torchLightIntensity;
+                // No shadows. Fourteen shadowed point lights is fourteen cube
+                // maps, and in fog the glow is doing the work, not the shadow.
+                l.shadows = LightShadows.None;
+                flames.Add(l);
+                flamePhase.Add(Random.Range(0f, 10f));
+            }
+
             torches.Add(go.transform);
+        }
+    }
+
+    // Perlin rather than random, and at a different rate per torch, so the line
+    // never pulses as one. Random flicker reads as a fault in a bulb; Perlin at
+    // incommensurate rates reads as fire.
+    private void FlickerTorches()
+    {
+        if (torchFlicker <= 0.001f) return;
+        float t = Time.unscaledTime;
+        for (int i = 0; i < flames.Count; i++)
+        {
+            if (flames[i] == null) continue;
+            float n = Mathf.PerlinNoise(flamePhase[i], t * 2.3f) - 0.5f;
+            flames[i].intensity = torchLightIntensity * (1f + n * 2f * torchFlicker);
         }
     }
 
@@ -503,7 +608,43 @@ public class TrailerCastleShot : MonoBehaviour
         Vector3 p = castleBounds.center + dir * dist;
         float high = Mathf.Lerp(startHeight, castleBounds.size.y * endHeightFactor, e);
         p.y = Ground(p) + high;
-        return p;
+        return LiftClear(p);
+    }
+
+    // ==== THE HILL IS BETWEEN THE LENS AND THE CASTLE ====
+    //
+    // Location_Castle is placed with raiseHill on and a hillHeight of twenty-two,
+    // so the generator builds a plateau under it. Opening three castle-radii out
+    // and two metres off the valley floor therefore aims the first half of the
+    // crane straight into a slope — the castle is up there, behind the ground.
+    //
+    // Rather than guess a starting height that works on one seed, the camera asks
+    // whether it can see the crown and walks upward until it can. Self-correcting
+    // on any terrain the generator produces, which is the only kind of answer
+    // worth having when the set is different every run.
+    private Vector3 LiftClear(Vector3 p)
+    {
+        Vector3 crown = castleBounds.center;
+        crown.y = castleBounds.max.y - castleBounds.size.y * 0.2f;
+
+        const int Steps = 14;
+        float step = maxClearLift / Steps;
+
+        for (int i = 0; i <= Steps; i++)
+        {
+            Vector3 from = p + Vector3.up * (step * i);
+            Vector3 to = crown - from;
+
+            // Clear if nothing is in the way, or if the first thing in the way is
+            // the castle itself — which is exactly what should be hit.
+            if (!Physics.Raycast(from, to.normalized, out RaycastHit hit, to.magnitude, ~0, QueryTriggerInteraction.Ignore))
+                return from;
+            if (hit.transform != null && hit.transform.IsChildOf(castle)) return from;
+        }
+
+        // Nothing cleared inside the allowance: take the highest tried rather than
+        // the lowest, so a bad seed gives a high wide rather than a shot of mud.
+        return p + Vector3.up * maxClearLift;
     }
 
     private void PlaceCamera(float e)
@@ -513,8 +654,12 @@ public class TrailerCastleShot : MonoBehaviour
         // Aimed at the castle's middle at the start and at its crown by the end,
         // so the rise is felt as looking further UP the building rather than as
         // the horizon dropping.
+        // Aimed at the middle at the start and at the CROWN by the end. With the
+        // camera finishing below the towers that means the last framing looks
+        // slightly up at them, which is what keeps them standing over the lens
+        // instead of being surveyed from above.
         Vector3 aim = castleBounds.center;
-        aim.y = Mathf.Lerp(castleBounds.center.y, castleBounds.max.y - castleBounds.size.y * 0.15f, e);
+        aim.y = Mathf.Lerp(castleBounds.center.y, castleBounds.max.y, e);
 
         float amp = handheld * (1f - e * 0.4f);
         float tt = Time.unscaledTime;
@@ -525,6 +670,86 @@ public class TrailerCastleShot : MonoBehaviour
         cam.transform.position = p + shake;
         cam.transform.rotation = Quaternion.LookRotation((aim - p).normalized);
         cam.fieldOfView = Mathf.Lerp(startFov, endFov, e);
+    }
+
+    // ---- weather ---------------------------------------------------------------
+
+    private void BuildRain()
+    {
+        if (rainPrefab == null || cam == null) return;
+
+        var go = Instantiate(rainPrefab);
+        go.name = "Castle_Rain";
+        var follow = go.GetComponent<TrailerRainFollow>();
+        if (follow == null) follow = go.AddComponent<TrailerRainFollow>();
+        follow.target = cam.transform;
+        follow.height = rainHeight;
+        // The ground splashes read as specks skittering over the earth at this
+        // scale rather than as water, the same as they did on the ride.
+        follow.splashes = false;
+    }
+
+    // ---- title card --------------------------------------------------------------
+
+    private IEnumerator TitleCard()
+    {
+        var canvasGO = new GameObject("TrailerTitle");
+        var canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 6000;                       // above the polish veil
+        var scaler = canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        var go = new GameObject("Title", typeof(RectTransform));
+        go.transform.SetParent(canvasGO.transform, false);
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+        var group = go.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+
+        if (titleSprite != null)
+        {
+            var img = go.AddComponent<UnityEngine.UI.Image>();
+            img.sprite = titleSprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+        }
+        else
+        {
+            // The name is READ FROM THE PROJECT, not typed here, so a card cannot
+            // end up saying something the build does not.
+            var text = go.AddComponent<TMPro.TextMeshProUGUI>();
+            // Whatever font the project already uses. Assigned only if there is
+            // one — handing TextMeshPro a null font asset throws rather than
+            // falling back, and it picks its own default perfectly well when the
+            // field is simply left alone.
+            if (TMPro.TMP_Settings.defaultFontAsset != null) text.font = TMPro.TMP_Settings.defaultFontAsset;
+            text.text = Application.productName;
+            text.fontSize = titleFontSize;
+            text.color = titleColour;
+            text.alignment = TMPro.TextAlignmentOptions.Center;
+            text.characterSpacing = 14f;                  // a title breathes
+            text.raycastTarget = false;
+        }
+
+        yield return FadeGroup(group, 0f, 1f, titleFadeIn);
+        yield return new WaitForSecondsRealtime(titleHold);
+        yield return FadeGroup(group, 1f, 0f, titleFadeOut);
+    }
+
+    private static IEnumerator FadeGroup(CanvasGroup g, float from, float to, float seconds)
+    {
+        float t = 0f;
+        while (t < seconds)
+        {
+            t += Time.unscaledDeltaTime;
+            g.alpha = Mathf.Lerp(from, to, Mathf.Clamp01(t / Mathf.Max(0.01f, seconds)));
+            yield return null;
+        }
+        g.alpha = to;
     }
 
     // ---- helpers ---------------------------------------------------------------
