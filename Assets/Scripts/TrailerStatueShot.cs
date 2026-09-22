@@ -266,6 +266,13 @@ public class TrailerStatueShot : MonoBehaviour
         ResolveSurfaceMask();
         HoldStatueKinematic();
 
+        // The numbers this shot is framed from, printed once. Every framing
+        // decision below is derived from them, so when the framing is wrong
+        // these are the first thing worth reading rather than the last.
+        Debug.Log($"[StatueShot] Statue measures {bounds.size.x:0.0} x {bounds.size.y:0.0} x {bounds.size.z:0.0} m " +
+                  $"(scale {statue.lossyScale.x:0.00}), centre {center}. Push {startDistance:0.0} -> " +
+                  $"{resolvedEndDistance:0.0} m, never closer than {MinOrbitRadius:0.0}.");
+
         BuildMaterials();
         BuildStatueDust();
         StartCoroutine(WarmDebris());
@@ -657,6 +664,7 @@ public class TrailerStatueShot : MonoBehaviour
         Vector3 pos = new Vector3(center.x + Mathf.Cos(az) * (dist + shove),
                                   bounds.min.y + h,
                                   center.z + Mathf.Sin(az) * (dist + shove));
+        pos = PushOutOfStone(pos, az);
 
         // Perlin handheld, incommensurate per axis so it never visibly repeats,
         // and louder as the statue gets worse.
@@ -688,6 +696,52 @@ public class TrailerStatueShot : MonoBehaviour
         camT.rotation = look * Quaternion.Euler(0f, yawBias, roll);
 
         shotCamera.fieldOfView = Mathf.Lerp(startFov, endFov, e) + fovKick;
+    }
+
+    // ==== THE LENS MAY NOT BE INSIDE THE STATUE ====
+    //
+    // MinOrbitRadius keeps the camera outside a CYLINDER drawn around the
+    // statue's bounding box, which is the right idea and an approximation: the
+    // bounds are a box around everything the statue's renderers cover, and the
+    // radius is taken from its horizontal diagonal. If the real geometry reaches
+    // further than that box in any direction — a plinth, an outstretched arm, a
+    // base that was modelled off-centre — the camera can still be inside the
+    // stone while the arithmetic says it is two and a half metres clear.
+    //
+    // From inside, a lit statue at point-blank range is a pale mass filling the
+    // frame with the world showing past its edges, which is exactly what the
+    // frame looks like. So rather than trust the box, ask the colliders: while
+    // anything of the statue is within `clearance` of the lens, walk the lens
+    // straight back out along its own bearing.
+    private Vector3 PushOutOfStone(Vector3 pos, float azimuth)
+    {
+        Vector3 outward = new Vector3(Mathf.Cos(azimuth), 0f, Mathf.Sin(azimuth));
+
+        // Measured by raycasting INWARD, from well outside the statue toward its
+        // axis at the lens's own height. The first thing the ray meets is the
+        // outer surface along this exact bearing, which is the number the
+        // bounding box was only ever approximating.
+        //
+        // Inward and not outward on purpose: the statue's MeshCollider is
+        // non-convex, and a ray that starts inside one leaves through a backface
+        // — which Unity does not report. Coming from outside there is always a
+        // front face to hit. (Collider.ClosestPoint is no use here for the same
+        // reason: it is only defined for convex colliders.)
+        float probe = MinOrbitRadius + 30f;
+        Vector3 from = new Vector3(center.x, pos.y, center.z) + outward * probe;
+
+        if (Physics.Raycast(from, -outward, out RaycastHit hit, probe, surfaceMask, QueryTriggerInteraction.Ignore)
+            && hit.transform.IsChildOf(statue))
+        {
+            float surfaceRadius = probe - hit.distance;
+            float want = surfaceRadius + clearance;
+
+            Vector3 flat = pos - center; flat.y = 0f;
+            if (flat.magnitude < want)
+                return new Vector3(center.x, pos.y, center.z) + outward * want;
+        }
+
+        return pos;
     }
 
     private void Kick(Vector3 fromPoint, float strength)
