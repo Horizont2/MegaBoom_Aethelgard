@@ -45,56 +45,6 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class TrailerStatueShot : MonoBehaviour
 {
-    [Header("Cost")]
-    // ==== ONE DIAL, BECAUSE THE COST IS ONE THING ====
-    //
-    // Everything expensive in this shot is the same kind of expensive: a COUNT.
-    // Fissures are line renderers that rebuild their mesh every frame on a
-    // transform that moves every frame; shafts are a realtime light and an
-    // additive quad each; motes, dust and chips are transparent overdraw; debris
-    // is a rigid body apiece. Tuning them one at a time means finding six
-    // numbers that happen to agree.
-    //
-    // They are all multiplied by this instead. At one the shot is what it was
-    // authored as; at a half it is the same shot with half of everything, which
-    // on a crowd of near-identical elements is a difference nobody can name and
-    // the frame time can.
-    [Range(0.15f, 1f)]
-    [Tooltip("Scales every count in the shot at once — fissures, shafts, motes, dust and debris. Lower it until the editor keeps up; the shot reads the same a long way down.")]
-    public float detail = 0.5f;
-
-    // ==== NO FLASHES ====
-    //
-    // Every fracture fired a vignette-and-aberration punch, and the burst
-    // flooded the lens with a full-screen white. Both are full-screen post
-    // passes landing on the frames that are already the most expensive in the
-    // shot — the punch runs a chromatic aberration pass for the whole build,
-    // and the flood is a screen-sized additive overlay on top of the burst.
-    //
-    // They were also the least missed thing in it: the stone breaking is the
-    // shot, and a flash is something put over the top of a shot.
-    [Tooltip("Vignette punches on every fracture, and the white flood on the burst. Off: the ending is the letterbox closing on the frame, with no flash over it.")]
-    public bool flashes;
-
-    // ==== WHAT IS ACTUALLY IN FRONT OF THE LENS ====
-    //
-    // Three passes at "the frame is a white wall" have each identified a
-    // different plausible culprit — the fog, the dust, the camera being inside
-    // the stone — and each fixed a real fault without fixing the symptom. That
-    // is what guessing looks like from the outside, and the reason for it is
-    // that nobody working on this can see the frame.
-    //
-    // So the frame reports itself. For the first second it names, once per
-    // distinct object, whatever the centre of the lens is pointed at: what it
-    // is, how far away, how big, and which shader draws it. Whatever is white
-    // and enormous appears in that list by name, and the next fix is aimed
-    // rather than guessed.
-    [Tooltip("Name, in the console, whatever is covering the frame. Turn it off once the shot is right.")]
-    public bool diagnose = true;
-
-    [Tooltip("Seconds of black before the shot fades in. This is where the engine's first-frame shader compiles and the fog's GPU warm-up are hidden.")]
-    public float preRoll = 0.9f;
-
     [Header("Sequencing")]
     [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
     public bool autoPlay = true;
@@ -175,14 +125,22 @@ public class TrailerStatueShot : MonoBehaviour
     public float flickerSpeed = 1.4f;
     [Tooltip("Motes drifting through each shaft. This is what makes a shaft look volumetric rather than printed.")]
     [Range(0, 60)] public int motesPerRay = 22;
-    [Tooltip("Longest a shaft may be, per metre the camera is from the statue. The push ends about five metres out, where a 24 m beam covers most of the frame; this keeps what a shaft costs roughly the same at the end of the push as at the start.")]
-    [Range(0.4f, 4f)] public float shaftLengthPerMetre = 1.1f;
-    [Tooltip("How far the shafts and the dust are eased back once the lens is right on the statue. 1 = no easing; lower = less blending to pay for, and less blow-out from ten additive shafts crossing at close range.")]
-    [Range(0.15f, 1f)] public float nearShaftFalloff = 0.45f;
 
     [Header("Collapse")]
-    public GameObject[] debrisPrefabs;
-    [Range(0, 60)] public int debrisCount = 22;
+    // ==== NO RUBBLE ====
+    //
+    // The burst used to instantiate twenty-odd rocks, cook them a collider,
+    // give each a Rigidbody and drop them all on the single frame the stone
+    // gives — while the time ramp is running and PhysX is being asked to push
+    // every one of them out of the statue's non-convex MeshCollider. Three
+    // successive passes tried to make that affordable: spawn them early, park
+    // them, keep them drawn so their shaders compile. Each fixed something real
+    // and the frame still hitched, because the last cost left is simply twenty
+    // rigid bodies born interpenetrating a concave mesh.
+    //
+    // So there is no rubble. The stone does not need to be seen coming apart:
+    // the light does that. The fissures widen as one, the chips fly, and the
+    // shaft through the lens takes the frame before there is anything to miss.
     [Tooltip("Statue tremor at full tension, in metres.")]
     public float tremorAtPeak = 0.055f;
     [Tooltip("Hide the statue mid-burst. Left OFF now that the shot ends on the flare — there is no aftermath frame to hide an intact statue in, so the swap would only pop.")]
@@ -257,10 +215,6 @@ public class TrailerStatueShot : MonoBehaviour
         public float widthScale;
     }
 
-    // Every count in the shot, put through the one dial. Floored at one so a low
-    // setting thins the shot rather than emptying it.
-    private int Scaled(int n) { return Mathf.Max(1, Mathf.RoundToInt(n * Mathf.Clamp01(detail))); }
-
     private void Start()
     {
         if (statue == null) { Debug.LogWarning("[StatueShot] No statue assigned."); enabled = false; return; }
@@ -285,26 +239,8 @@ public class TrailerStatueShot : MonoBehaviour
         ResolveSurfaceMask();
         HoldStatueKinematic();
 
-        // The numbers this shot is framed from, printed once. Every framing
-        // decision below is derived from them, so when the framing is wrong
-        // these are the first thing worth reading rather than the last.
-        Debug.Log($"[StatueShot] Statue measures {bounds.size.x:0.0} x {bounds.size.y:0.0} x {bounds.size.z:0.0} m " +
-                  $"(scale {statue.lossyScale.x:0.00}), centre {center}. Push {startDistance:0.0} -> " +
-                  $"{resolvedEndDistance:0.0} m, never closer than {MinOrbitRadius:0.0}.");
-
-        // Pressing Play on the open scene runs BOTH of its shots: the ride takes
-        // the Cinemachine brain, its weather and its season sweep run over this
-        // one, and the frame is a mess that has nothing to do with the statue.
-        // Said out loud, because it looks identical to the shot being broken.
-        if (TrailerShotSolo.Active != TrailerShotSolo.StatueShot)
-            Debug.LogWarning("[StatueShot] This scene was played directly, not launched from " +
-                             "Tools > Lore Trailer > Play shot 1. The ride shot is running at the same time — " +
-                             "its camera, its weather and its seasons are all live over this one.");
-
         BuildMaterials();
         BuildStatueDust();
-        StartCoroutine(WarmDebris());
-        if (diagnose) StartCoroutine(FrameCensus());
         if (autoPlay) Play();
     }
 
@@ -425,36 +361,17 @@ public class TrailerStatueShot : MonoBehaviour
     // look like it is under load rather than sitting still next to an effect.
     private void BuildStatueDust()
     {
-        // ==== THE STATUE IS SCALED 3.2, AND PARTICLES ARE LOCAL ====
-        //
-        // This was parented to the statue so it would ride the tremor. The
-        // statue is instantiated at 3.2 — TrailerStatueCrack already carries a
-        // scaleComp field for exactly that reason — and a ParticleSystem's
-        // shape and start size are LOCAL, so both got multiplied by it: a box
-        // three times wider than the statue, throwing particles three times the
-        // size they were written as.
-        //
-        // A hundred of those, nearly a metre across, alpha-blended, filmed from
-        // five metres, is a pale wall across the whole frame with the statue
-        // somewhere behind it — and a pale wall of large transparent quads is
-        // also the frame rate. That is the white object, and it is why the
-        // statue "disappeared".
-        //
-        // Parented to the rig instead, which is unscaled, so every number in
-        // here means metres. The tremor is five centimetres; nothing is lost by
-        // the dust not riding it.
-        sheetDust = MakeParticles("SheetDust", transform, new Color(0.52f, 0.48f, 0.56f, 0.30f));
+        sheetDust = MakeParticles("SheetDust", statue, new Color(0.52f, 0.48f, 0.56f, 0.30f));
         var m = sheetDust.main;
         m.startLifetime = 2.6f;
         m.startSpeed = 0.35f;
         m.startSize = 0.28f;
         m.gravityModifier = 0.12f;
-        m.maxParticles = Scaled(220);
+        m.maxParticles = 220;
         var sh = sheetDust.shape;
         sh.shapeType = ParticleSystemShapeType.Box;
         sh.scale = bounds.size * 0.85f;
         sheetDust.transform.position = center;
-        sheetDust.transform.rotation = Quaternion.identity;
         var em = sheetDust.emission;
         em.rateOverTime = 0f;    // driven by tension
         sheetDust.Play();
@@ -465,7 +382,7 @@ public class TrailerStatueShot : MonoBehaviour
         cm.startSpeed = 2.6f;
         cm.startSize = 0.06f;
         cm.gravityModifier = 1.1f;
-        cm.maxParticles = Scaled(260);
+        cm.maxParticles = 260;
         var ce = chipBurst.emission;
         ce.rateOverTime = 0f;
         var cs = chipBurst.shape;
@@ -585,29 +502,8 @@ public class TrailerStatueShot : MonoBehaviour
     {
         TrailerLogGuard.Arm();
         var polish = TrailerCinematicPolish.GetOrCreate();
-        TrailerAudio.SilenceStaleBeds();
-
-        float total = establish + buildDuration + pierceDuration;
-
-        // ==== A BEAT OF BLACK BEFORE ANYTHING IS SHOWN ====
-        //
-        // The first second of a Unity scene is not a picture, it is a queue. URP
-        // compiles the shader variant for every material the FIRST time it is
-        // drawn, synchronously; the volumetric fog builds its terrain heightmap
-        // and its noise on the GPU over its first few Updates and renders off
-        // whatever it has until then; the culling systems settle. Whatever those
-        // frames look like, they are not the shot — and they are the frames that
-        // a screen recording starts on.
-        //
-        // So the camera is placed, the frame is held black while all of that
-        // happens, and only then does the fade begin. Nothing is lost: an
-        // opening beat of black is what the cut into this shot wants anyway, and
-        // it is also where every variant this shot needs gets compiled.
-        UpdateCamera(0f, total, 0f);
-        polish.SetFlash(Color.black);
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, preRoll));
-
         polish.OpenTrailer();
+        TrailerAudio.SilenceStaleBeds();
 
         // The dread bed runs under the whole shot. Without something holding the
         // low end, the silences between cracks read as the audio having stopped
@@ -615,6 +511,7 @@ public class TrailerStatueShot : MonoBehaviour
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(dreadBed))
             AudioManager.Instance.PlaySFX3D(dreadBed, center);
 
+        float total = establish + buildDuration + pierceDuration;
         float t = 0f;
         bool burst = false;
         float nextCrackStep = establish;
@@ -642,7 +539,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (!burst && t >= establish && t < establish + buildDuration && t >= nextCrackStep)
             {
                 // Seed the first cracks in the opening moments, then let them run.
-                if (seeded < Scaled(seedCracks) && (seeded == 0 || Random.value < 0.5f))
+                if (seeded < seedCracks && (seeded == 0 || Random.value < 0.5f))
                 {
                     SeedCrack();
                     seeded++;
@@ -664,120 +561,11 @@ public class TrailerStatueShot : MonoBehaviour
             yield return null;
         }
 
-        // The bars are shut, which IS the black — no fade needed, and fading
-        // black onto black would only hold the shot open.
-        TrailerCinematicPolish.GetOrCreate().SetFlash(new Color(0f, 0f, 0f, 0f));
-        TearDown();
-
-        // A beat of held black so the shot has an out point rather than ending
-        // on its own last frame of motion.
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, outFade));
+        // No FadeToBlack here: the pierce has already driven the overlay to solid
+        // black. Fading again would fade black to black and hold the shot open
+        // for no reason.
         IsFinished = true;
-    }
-
-    // ==== WHAT IS ACTUALLY IN THE FRAME ====
-    //
-    // Three separate things have been blamed for the pale mass that fills this
-    // shot, each of them a real fault, and none of them the one. Every diagnosis
-    // so far was made from outside the engine, by reasoning about what OUGHT to
-    // be in front of the lens. This one asks the frame.
-    //
-    // Renderers and not raycasts: a raycast finds colliders, and every remaining
-    // candidate — a weather volume, dust, a glow card, a skinned mesh — has
-    // none. So every renderer whose bounds fall inside the frustum is measured
-    // for how much of the SCREEN it covers, and anything covering more than a
-    // twentieth of it is named with its distance, its size and its shader.
-    //
-    // Silence is an answer too: if nothing geometric covers the frame and the
-    // frame is still white, what is left is the volumetric fog, the skybox or a
-    // full-screen overlay, and the report says so rather than leaving a gap.
-    private IEnumerator FrameCensus()
-    {
-        // Two readings. One during the establish, which reports a shot that is
-        // wrong before anything has happened; one just after the burst, which
-        // reports a shot that is wrong because of what happened.
-        yield return new WaitForSecondsRealtime(1f);
-        Census("establish");
-
-        while (burstStartedAt < 0f) yield return null;
-        yield return new WaitForSecondsRealtime(0.3f);
-        Census("burst");
-    }
-
-    private void Census(string when)
-    {
-        if (shotCamera == null || camT == null) return;
-
-        Terrain terr = Terrain.activeTerrain;
-        float ground = terr != null ? terr.SampleHeight(camT.position) + terr.transform.position.y : bounds.min.y;
-        Debug.Log($"[StatueShot/frame] {when}: lens {camT.position.y - ground:0.0} m above the terrain, " +
-                  $"{Vector3.Distance(camT.position, center):0.0} m from the statue's centre, fov " +
-                  $"{shotCamera.fieldOfView:0.0}, near clip {shotCamera.nearClipPlane:0.00}. Statue " +
-                  $"{bounds.size.x:0.0} x {bounds.size.y:0.0} x {bounds.size.z:0.0} m, feet at {bounds.min.y:0.0}, " +
-                  $"solo launcher ran '{TrailerShotSolo.Active}'.");
-
-        var planes = GeometryUtility.CalculateFrustumPlanes(shotCamera);
-        var worst = new List<KeyValuePair<float, string>>();
-
-        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
-        {
-            if (r == null || !r.enabled) continue;
-            Bounds b = r.bounds;
-            if (!GeometryUtility.TestPlanesAABB(planes, b)) continue;
-
-            float cover = ScreenCoverage(b);
-            if (cover < 0.05f) continue;
-
-            string shader = r.sharedMaterial != null && r.sharedMaterial.shader != null
-                          ? r.sharedMaterial.shader.name : "<no material>";
-            worst.Add(new KeyValuePair<float, string>(cover,
-                $"{when}: {cover * 100f:0} % of frame — '{r.name}' ({r.GetType().Name}), " +
-                $"{Vector3.Distance(camT.position, b.center):0.0} m out, " +
-                $"{b.size.x:0.0} x {b.size.y:0.0} x {b.size.z:0.0} m, {shader}"));
-        }
-
-        if (worst.Count == 0)
-        {
-            Debug.Log($"[StatueShot/frame] {when}: nothing drawn by a renderer covers even a twentieth of the frame. " +
-                      "A pale frame here is therefore not geometry — it is the volumetric fog, the skybox, or a " +
-                      "full-screen overlay.");
-            return;
-        }
-
-        worst.Sort((a, b) => b.Key.CompareTo(a.Key));
-        for (int i = 0; i < worst.Count && i < 8; i++) Debug.Log("[StatueShot/frame] " + worst[i].Value);
-    }
-
-    // Fraction of the viewport the bounding box's screen rectangle covers. A box
-    // is a generous estimate of the mesh inside it, which is exactly what is
-    // wanted here: the question is which objects COULD be the wall, not what
-    // their silhouettes are.
-    private float ScreenCoverage(Bounds b)
-    {
-        Vector2 lo = new Vector2(float.MaxValue, float.MaxValue);
-        Vector2 hi = new Vector2(float.MinValue, float.MinValue);
-
-        for (int i = 0; i < 8; i++)
-        {
-            Vector3 corner = new Vector3(
-                (i & 1) == 0 ? b.min.x : b.max.x,
-                (i & 2) == 0 ? b.min.y : b.max.y,
-                (i & 4) == 0 ? b.min.z : b.max.z);
-
-            Vector3 v = shotCamera.WorldToViewportPoint(corner);
-            // A box with a corner behind the lens is a box the camera is inside
-            // or against, which has no screen rectangle and is by definition
-            // covering everything. The terrain answers this way every time, and
-            // that line is the reference the others are read against.
-            if (v.z <= 0f) return 1f;
-
-            lo = Vector2.Min(lo, new Vector2(v.x, v.y));
-            hi = Vector2.Max(hi, new Vector2(v.x, v.y));
-        }
-
-        float w = Mathf.Clamp01(hi.x) - Mathf.Clamp01(lo.x);
-        float h = Mathf.Clamp01(hi.y) - Mathf.Clamp01(lo.y);
-        return Mathf.Clamp01(w) * Mathf.Clamp01(h);
+        TearDown();
     }
 
     // ======================= camera =======================
@@ -816,9 +604,8 @@ public class TrailerStatueShot : MonoBehaviour
         }
 
         Vector3 pos = new Vector3(center.x + Mathf.Cos(az) * (dist + shove),
-                                  0f,
+                                  bounds.min.y + h,
                                   center.z + Mathf.Sin(az) * (dist + shove));
-        pos.y = LensHeight(pos, h);
 
         // Perlin handheld, incommensurate per axis so it never visibly repeats,
         // and louder as the statue gets worse.
@@ -852,37 +639,6 @@ public class TrailerStatueShot : MonoBehaviour
         shotCamera.fieldOfView = Mathf.Lerp(startFov, endFov, e) + fovKick;
     }
 
-    // ==== THE LENS IS SET FROM THE GROUND, NOT FROM THE STATUE'S FEET ====
-    //
-    // The height used to be bounds.min.y + h: the bottom of the statue's own
-    // renderer bounds. That is the ground only if the model's origin happens to
-    // sit exactly on it, and this one's does not — the mesh reaches a whisker
-    // below its own pivot while the terrain around the plinth is half a metre
-    // higher again. So a shot asking for two and a half metres was filmed from
-    // under two: below eye height, and by the end of the push low enough to put
-    // the glass inside the top of the ground fog, which is the one place in this
-    // scene where a lens can fill itself with white.
-    //
-    // Measured against the terrain under the LENS rather than under the statue,
-    // which is also the only version that survives the camera orbiting onto
-    // ground that is not level with the plinth.
-    private float LensHeight(Vector3 at, float wanted)
-    {
-        float ground = bounds.min.y;
-
-        Terrain t = Terrain.activeTerrain;
-        if (t != null)
-        {
-            float y = t.SampleHeight(at) + t.transform.position.y;
-            // Trusted only where the terrain actually is: SampleHeight answers
-            // for a point off the tile with the heightmap's edge value, which
-            // can be anything at all.
-            if (y > ground - 50f && y < ground + 50f) ground = Mathf.Max(ground, y);
-        }
-
-        return ground + wanted;
-    }
-
     private void Kick(Vector3 fromPoint, float strength)
     {
         Vector3 dir = (camT.position - fromPoint).normalized;
@@ -906,13 +662,7 @@ public class TrailerStatueShot : MonoBehaviour
         if (sheetDust != null)
         {
             var em = sheetDust.emission;
-            // Thinned as the lens arrives, for the same reason the shafts are:
-            // the camera ends up INSIDE this cloud, where a couple of hundred
-            // soft billboards stop being dust and become a screen-sized smear
-            // that costs a screen-sized amount of blending.
-            float near = Mathf.Clamp(Vector3.Distance(camT.position, center) / Mathf.Max(1f, startDistance),
-                                     nearShaftFalloff, 1f);
-            em.rateOverTime = Mathf.Lerp(0f, 90f, tension * tension) * near;
+            em.rateOverTime = Mathf.Lerp(0f, 90f, tension * tension);
         }
     }
 
@@ -924,7 +674,7 @@ public class TrailerStatueShot : MonoBehaviour
 
     private void SeedCrack()
     {
-        if (seedCount >= Scaled(maxCracks)) return;
+        if (seedCount >= maxCracks) return;
         if (!FindSurfacePoint(out Vector3 pos, out Vector3 nrm)) return;
 
         int before = cracks.Count;
@@ -936,7 +686,7 @@ public class TrailerStatueShot : MonoBehaviour
         shafts.Add(shaft);
 
         Kick(pos, 0.55f);
-        if (flashes) TrailerCinematicPolish.GetOrCreate().ImpactPunch(0.3f, 0.22f);
+        TrailerCinematicPolish.GetOrCreate().ImpactPunch(0.3f, 0.22f);
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(crackSound))
             AudioManager.Instance.PlaySFX3D(crackSound, pos);
     }
@@ -963,7 +713,7 @@ public class TrailerStatueShot : MonoBehaviour
     // cost real milliseconds to say nothing new.
     private void SpawnCrack(Vector3 pos, Vector3 nrm, int generation)
     {
-        if (cracks.Count >= Scaled(maxTotalCracks)) return;
+        if (cracks.Count >= maxTotalCracks) return;
 
         var go = new GameObject($"Crack_{cracks.Count}");
         var c = go.AddComponent<TrailerStatueCrack>();
@@ -1085,16 +835,13 @@ public class TrailerStatueShot : MonoBehaviour
             new Keyframe(0f, 0.12f), new Keyframe(0.55f, 1f), new Keyframe(1f, 0.55f));
         s.line.widthMultiplier = 0f;
 
-        // Also on the rig, not on the shaft: the shaft root is a child of the
-        // statue and would scale these by 3.2 the same way. Its position is
-        // driven every frame in UpdateShafts anyway.
-        s.motes = MakeParticles("Motes", transform, coreColor);
+        s.motes = MakeParticles("Motes", root.transform, coreColor);
         var mm = s.motes.main;
         mm.startLifetime = 2.4f;
         mm.startSpeed = 1.6f;
         mm.startSize = 0.055f;
         mm.gravityModifier = -0.02f;      // drift upward, the way lit dust does
-        mm.maxParticles = Mathf.Max(4, Scaled(motesPerRay) * 2);
+        mm.maxParticles = Mathf.Max(4, motesPerRay * 2);
         var ms = s.motes.shape;
         ms.shapeType = ParticleSystemShapeType.Cone;
         ms.angle = 7f;
@@ -1106,11 +853,6 @@ public class TrailerStatueShot : MonoBehaviour
 
     private void UpdateShafts(float t)
     {
-        float camDist = Vector3.Distance(camT.position, center);
-        // Eases the shafts back as the lens arrives rather than switching them
-        // down, so the change is never a visible step.
-        float proximity = Mathf.Clamp(camDist / Mathf.Max(1f, startDistance), nearShaftFalloff, 1f);
-
         // The shafts come out of cracks in a statue that is about to stop
         // existing. Once it goes they have no source, so they hand over to the
         // lens flare rather than hanging in the air pouring out of nothing.
@@ -1142,22 +884,7 @@ public class TrailerStatueShot : MonoBehaviour
             // stationary shaft, which is how it works in life and the only way it
             // stops looking like a lighting rig.
             Vector3 dir = statue.TransformDirection(s.dirLocal).normalized;
-            // ==== THE FILL HAS TO STAY BOUNDED AS THE LENS CLOSES ====
-            //
-            // A shaft is an additive quad 24 metres long. That is a reasonable
-            // amount of screen at the fifteen metres the push STARTS at, and an
-            // absurd one at the five it ends at — the same geometry covers about
-            // nine times the pixels. Ten of them, over a couple of hundred soft
-            // dust billboards, over a full-screen fog raymarch: the shot gets
-            // more expensive the closer it gets, which is exactly the shape of
-            // "it lags at the end".
-            //
-            // Capping the length against the camera's own distance holds the
-            // coverage roughly constant across the push. It also reads better:
-            // walking up to a beam of light, you see LESS of its length, not
-            // more, and ten shafts at full opacity from five metres blow out to
-            // white — which the note on rayHeat above already warns about.
-            float len = Mathf.Min(rayLength, Mathf.Max(3f, camDist * shaftLengthPerMetre)) * grow;
+            float len = rayLength * grow;
 
             // Occlusion. A shaft that passes through a wall destroys the shot
             // faster than any amount of shader quality can save it.
@@ -1169,13 +896,13 @@ public class TrailerStatueShot : MonoBehaviour
             s.line.SetPosition(1, origin + dir * len);
             // Intensity breathes; WIDTH does not. A shaft whose thickness pulses
             // reads as a bad effect rather than as light.
-            s.line.widthMultiplier = rayWidth * s.widthScale * grow * (0.6f + 0.6f * tension) * handover * proximity;
+            s.line.widthMultiplier = rayWidth * s.widthScale * grow * (0.6f + 0.6f * tension) * handover;
 
             // Hot only at the mouth, and only a little. The far end stays the deep
             // ember, so a shaft reads as light escaping from something burning
             // rather than as a white bar drawn across the frame.
             Color mouth = Color.Lerp(lightColor, coreColor, rayHeat * (0.5f + 0.5f * tension));
-            mouth.a = grow * rayOpacity * (0.45f + 0.55f * tension) * handover * proximity;
+            mouth.a = grow * rayOpacity * (0.45f + 0.55f * tension) * handover;
             s.line.startColor = mouth;
 
             Color tail = lightColor; tail.a = 0f;
@@ -1188,7 +915,7 @@ public class TrailerStatueShot : MonoBehaviour
                 s.motes.transform.position = origin;
                 s.motes.transform.rotation = Quaternion.LookRotation(dir);
                 var em = s.motes.emission;
-                em.rateOverTime = Scaled(motesPerRay) * grow * (0.25f + tension) * handover;
+                em.rateOverTime = motesPerRay * grow * (0.25f + tension) * handover;
             }
         }
     }
@@ -1210,7 +937,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (!string.IsNullOrEmpty(rubbleSound)) AudioManager.Instance.PlaySFX3D(rubbleSound, center);
         }
 
-        if (flashes) polish.ImpactPunch(1f, 0.7f);
+        polish.ImpactPunch(1f, 0.7f);
         polish.TimeRamp(0.32f, pierceDuration * 0.6f, 0.04f, 0.45f);
         Kick(center, 2.4f);
 
@@ -1218,7 +945,6 @@ public class TrailerStatueShot : MonoBehaviour
         for (int i = 0; i < cracks.Count; i++)
             if (cracks[i] != null) cracks[i].SetHeat(1f, crackWidthScale * 3.2f);
 
-        SpawnDebris();
         BuildPierce();
         if (chipBurst != null) chipBurst.Emit(120);
 
@@ -1284,25 +1010,6 @@ public class TrailerStatueShot : MonoBehaviour
         float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
 
         Color c;
-        if (!flashes)
-        {
-            // The shutter alone. It starts the moment the stone gives, so the
-            // closing bars ARE the last beat rather than something that happens
-            // after a flash — and there is nothing full-screen and additive on
-            // the frames that can least afford it.
-            if (!closing)
-            {
-                closing = true;
-                TrailerCinematicPolish.GetOrCreate().CloseBars(pierceDuration * 0.55f);
-            }
-            // Black comes up behind the bars only at the very end, so the last
-            // thing visible through the closing gap is the statue, not a colour.
-            c = Color.black;
-            c.a = Mathf.Clamp01((u - 0.70f) / 0.30f);
-            TrailerCinematicPolish.GetOrCreate().SetFlash(c);
-            return;
-        }
-
         if (u < 0.62f)
         {
             // Ember rising. Accelerating, because light forcing its way through
@@ -1317,202 +1024,13 @@ public class TrailerStatueShot : MonoBehaviour
         }
         else
         {
-            // ==== THE TRANSITION ====
-            //
-            // This used to lerp the white to black and stop. That is not a
-            // transition, it is the picture being switched off: nothing moves
-            // across the join, so there is no frame for an editor to cut ON and
-            // the shot simply runs out.
-            //
-            // Instead the LETTERBOX slams shut over the blowout. The bars have
-            // framed every frame of this shot from the first, so the close
-            // introduces nothing new at the last second; it is the shot shutting
-            // its own eye, and it gives an editor a moving frame to cut on.
-            //
-            // The flash HOLDS while the bars come together, and only goes black
-            // behind them at the very end. It deliberately does not clear: the
-            // statue is one unfractured mesh and never actually breaks apart, so
-            // a frame of aftermath would show it standing there intact — which is
-            // the same reason vanishOnBurst is off. The motion across the join is
-            // the shutter, not the picture.
-            float k = Mathf.Clamp01((u - 0.80f) / 0.15f);
-            c = Color.Lerp(Color.white, Color.black, k * k);
+            // The cut.
+            c = Color.Lerp(Color.white, Color.black, (u - 0.80f) / 0.20f);
             c.a = 1f;
-            if (!closing)
-            {
-                closing = true;
-                TrailerCinematicPolish.GetOrCreate().CloseBars(pierceDuration * 0.20f);
-            }
         }
 
         TrailerCinematicPolish.GetOrCreate().SetFlash(c);
     }
-
-    private bool closing;
-
-    // ==== THE STONE BREAKING INTO PIECES IS A DISK READ ====
-    //
-    // SpawnDebris used to Instantiate twenty-odd rocks on the single frame the
-    // statue bursts. Those six LProck models, their materials and their textures
-    // have not been touched at any earlier point in the shot, so that frame is
-    // where Unity goes and LOADS them — synchronously, while the time ramp is
-    // running and the burst coroutine is doing everything else it does. One
-    // frame, all of it, exactly on the beat the audience is looking at.
-    //
-    // So they are built during the establish instead: two per frame through the
-    // two and a half seconds of deliberate silence at the top of the shot, where
-    // nothing is happening and a hitch costs nothing. They sit inactive off to
-    // one side until the burst, which then only has to place them and push.
-    private readonly List<GameObject> debrisPool = new List<GameObject>();
-
-    private IEnumerator WarmDebris()
-    {
-        if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) yield break;
-
-        int want = Scaled(debrisCount);
-        for (int i = 0; i < want; i++)
-        {
-            GameObject prefab = debrisPrefabs[Random.Range(0, debrisPrefabs.Length)];
-            if (prefab == null) continue;
-
-            GameObject chunk = Instantiate(prefab, transform);
-            chunk.name = "Debris_" + i;
-
-            debrisPool.Add(chunk);
-            debrisScale.Add(chunk.transform.localScale * Random.Range(0.07f, 0.26f));
-            PrepareChunk(chunk);
-            Park(chunk);
-
-            // Two a frame. Spreading the load is the whole point; doing them all
-            // here would only move the same hitch to the top of the shot.
-            if ((i & 1) == 1) yield return null;
-        }
-    }
-
-    // ==== LOADING A MESH IS NOT THE SAME AS HAVING DRAWN IT ====
-    //
-    // Building the chunks early moved the asset load off the burst frame, and
-    // the burst still locked the editor solid. Instantiating a prefab reads its
-    // mesh, its material and its textures — it does NOT compile the shader.
-    // Under URP a material needs a compiled variant per pass and per keyword set
-    // it is actually rendered with, and Unity compiles those the first time the
-    // thing is DRAWN, synchronously, on the render thread. Six rock materials
-    // times forward, shadow caster, depth and depth-normals, times the fog and
-    // light keywords in play, is a lot of variants to compile in one frame — and
-    // a synchronous compile is not a dropped frame, it is the editor stopping.
-    //
-    // Parked chunks used to be inactive, so their first draw was the burst. Now
-    // they stay ACTIVE from the establish onward, kinematic and shrunk to
-    // effectively nothing at the statue's centre: submitted for drawing every
-    // frame, and occupying no pixels worth speaking of. Every variant the burst
-    // will need is compiled during the silence at the top of the shot, where
-    // there is nothing on screen for a stall to interrupt.
-    private const float ParkedScale = 0.004f;
-    private readonly List<Vector3> debrisScale = new List<Vector3>();
-
-    private void Park(GameObject chunk)
-    {
-        chunk.transform.position = center;
-        chunk.transform.localScale = debrisScale[debrisPool.Count - 1] * ParkedScale;
-
-        var rb = chunk.GetComponent<Rigidbody>();
-        if (rb != null) rb.isKinematic = true;          // it must not fall out of the stone
-    }
-
-    private void SpawnDebris()
-    {
-        // Everything that costs anything was done during the establish. All this
-        // frame does is move twenty transforms and set twenty velocities.
-        for (int i = 0; i < debrisPool.Count; i++)
-        {
-            GameObject chunk = debrisPool[i];
-            if (chunk == null) continue;
-
-            Vector3 from = center;
-            if (cracks.Count > 0)
-            {
-                var pick = cracks[Random.Range(0, cracks.Count)];
-                if (pick != null) from = pick.Tip;
-            }
-
-            chunk.transform.SetPositionAndRotation(from, Random.rotation);
-            chunk.transform.localScale = debrisScale[i];
-
-            var rb = chunk.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                rb.isKinematic = false;
-                Vector3 away = (from - center).normalized + Vector3.up * Random.Range(0.3f, 0.9f);
-                rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;
-                rb.angularVelocity = Random.insideUnitSphere * 8f;
-            }
-
-            debris.Add(chunk);
-            Destroy(chunk, 7f);
-        }
-        debrisPool.Clear();
-        debrisScale.Clear();
-    }
-
-    // Collider, body and collision filtering, all done off the beat.
-    private void PrepareChunk(GameObject chunk)
-    {
-        // ==== A SPHERE, NOT A COOKED CONVEX HULL ====
-        //
-        // This used to add a MeshCollider and set convex on the rock's own mesh.
-        // The LProck meshes are imported with Read/Write OFF, so PhysX cannot
-        // cook a hull from them at all: every chunk logged an error and ended up
-        // with NO collider, falling through the world — the opposite of what the
-        // code was trying to buy. And cooking twenty-odd hulls costs real time,
-        // which used to be spent on the burst frame.
-        //
-        // A sphere off the mesh's local bounds tumbles and settles convincingly
-        // for the second of screen time any of this gets, and needs no readable
-        // mesh. Mesh.bounds is metadata, available whatever the import settings.
-        if (chunk.GetComponentInChildren<Collider>() == null)
-        {
-            var mf = chunk.GetComponentInChildren<MeshFilter>();
-            var host = mf != null ? mf.gameObject : chunk;
-            var sc = host.AddComponent<SphereCollider>();
-            if (mf != null && mf.sharedMesh != null)
-            {
-                sc.center = mf.sharedMesh.bounds.center;
-                sc.radius = Mathf.Max(0.02f, mf.sharedMesh.bounds.extents.magnitude * 0.6f);
-            }
-        }
-
-        // They are launched FROM the crack tips, which are ON the statue's
-        // collider. Without this every chunk starts deeply interpenetrating a
-        // concave mesh and PhysX spends the burst frame pushing them out of it.
-        IgnoreStatue(chunk);
-
-        // NOT '??'. The null-coalescing operator compares against real null and
-        // bypasses UnityEngine.Object's == overload, so a destroyed or absent
-        // component slips through as "not null" and the next line throws.
-        var rb = chunk.GetComponent<Rigidbody>();
-        if (rb == null) rb = chunk.AddComponent<Rigidbody>();
-        rb.mass = 0.4f;
-    }
-
-    private readonly List<GameObject> debris = new List<GameObject>();
-
-    private void IgnoreStatue(GameObject chunk)
-    {
-        if (statueColliders == null)
-        {
-            statueColliders = statue.GetComponentsInChildren<Collider>(true);
-        }
-        if (statueColliders.Length == 0) return;
-
-        foreach (var mine in chunk.GetComponentsInChildren<Collider>(true))
-        {
-            if (mine == null) continue;
-            foreach (var theirs in statueColliders)
-                if (theirs != null) Physics.IgnoreCollision(mine, theirs, true);
-        }
-    }
-
-    private Collider[] statueColliders;
 
     // ==== THE SHOT HAS TO STOP COSTING SOMETHING WHEN IT ENDS ====
     //
@@ -1520,8 +1038,8 @@ public class TrailerStatueShot : MonoBehaviour
     // and the coroutine returned, and behind that black the shot carried on
     // burning: ten realtime point lights, thirty view-aligned line renderers
     // rebuilding their meshes every frame on a statue that never stops
-    // trembling, a dozen particle systems still emitting, and the debris still
-    // being simulated. You cannot see any of it, so the only symptom is that the
+    // trembling, and a dozen particle systems still emitting. You cannot see any
+    // of it, so the only symptom is that the
     // editor never recovers — which reads as a freeze that starts when the
     // statue breaks and never goes away.
     private void TearDown()
@@ -1542,16 +1060,6 @@ public class TrailerStatueShot : MonoBehaviour
 
         if (sheetDust != null) { sheetDust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(sheetDust.gameObject); }
         if (chipBurst != null) { chipBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(chipBurst.gameObject); }
-
-        for (int i = 0; i < debris.Count; i++)
-            if (debris[i] != null) Destroy(debris[i]);
-        debris.Clear();
-
-        // Anything the burst never got to use — the shot can be cut short.
-        for (int i = 0; i < debrisPool.Count; i++)
-            if (debrisPool[i] != null) Destroy(debrisPool[i]);
-        debrisPool.Clear();
-        debrisScale.Clear();
 
         // Put the stone back where it was found and let it be static again.
         if (statue != null) statue.position = statueHome;

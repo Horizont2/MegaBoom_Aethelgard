@@ -243,34 +243,11 @@ public static class TrailerShotSolo
         var fog = Fog();
         if (fog != null)
         {
-            // ==== THE LENS WAS INSIDE THE FOG ====
-            //
-            // A fourteen metre layer with the near fade pulled to a metre and a
-            // half, filmed by a camera standing two and a half metres off the
-            // ground: the lens is swimming in it. Every ray starts in dense fog
-            // a pace in front of the glass and never gets out, so the frame is a
-            // bright wall with a statue somewhere behind it — which is exactly
-            // the "big white thing in front of the camera, and the statue is
-            // gone" report. It is also a full-resolution raymarch through the
-            // thickest part of the volume on every pixel, which is the lag.
-            //
-            // The fog belongs at the statue's FEET, not around the lens. A
-            // couple of metres deep puts it below the camera entirely: mist
-            // pooled around the base, the shafts passing down through it, and
-            // clear air between the glass and the stone.
-            Set(fog, "density", 0.09f);
-            // Below the lens, and not level with it. The push ends with the
-            // glass 2.4 m off the ground; a layer 2.2 m deep with a soft top put
-            // the last second of the shot INSIDE the fog, where every ray starts
-            // in the thickest part of the volume and the frame goes pale. A
-            // metre and a half leaves the mist around the statue's feet, which
-            // is the only place it was ever wanted.
-            Set(fog, "groundFogHeight", 1.5f);
-            Set(fog, "topSoftness", 0.45f);
-            Set(fog, "nearFadeDistance", 6f);
-            Set(fog, "maximumFogDistance", 90f);
-            // Strongly forward-scattering, so the fog lights up along the shafts
-            // rather than glowing evenly everywhere.
+            Set(fog, "density", 0.075f);
+            Set(fog, "groundFogHeight", 14f);
+            Set(fog, "topSoftness", 0.5f);
+            Set(fog, "nearFadeDistance", 1.5f);
+            Set(fog, "maximumFogDistance", 120f);
             Set(fog, "anisotropy", 0.72f);
             Set(fog, "windSpeed", 1.2f);
             // Cold and fixed. Following the scene colour would hand the fog to
