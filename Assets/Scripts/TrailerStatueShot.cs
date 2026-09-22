@@ -63,6 +63,19 @@ public class TrailerStatueShot : MonoBehaviour
     [Tooltip("Scales every count in the shot at once — fissures, shafts, motes, dust and debris. Lower it until the editor keeps up; the shot reads the same a long way down.")]
     public float detail = 0.5f;
 
+    // ==== NO FLASHES ====
+    //
+    // Every fracture fired a vignette-and-aberration punch, and the burst
+    // flooded the lens with a full-screen white. Both are full-screen post
+    // passes landing on the frames that are already the most expensive in the
+    // shot — the punch runs a chromatic aberration pass for the whole build,
+    // and the flood is a screen-sized additive overlay on top of the burst.
+    //
+    // They were also the least missed thing in it: the stone breaking is the
+    // shot, and a flash is something put over the top of a shot.
+    [Tooltip("Vignette punches on every fracture, and the white flood on the burst. Off: the ending is the letterbox closing on the frame, with no flash over it.")]
+    public bool flashes;
+
     [Header("Sequencing")]
     [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
     public bool autoPlay = true;
@@ -376,7 +389,25 @@ public class TrailerStatueShot : MonoBehaviour
     // look like it is under load rather than sitting still next to an effect.
     private void BuildStatueDust()
     {
-        sheetDust = MakeParticles("SheetDust", statue, new Color(0.52f, 0.48f, 0.56f, 0.30f));
+        // ==== THE STATUE IS SCALED 3.2, AND PARTICLES ARE LOCAL ====
+        //
+        // This was parented to the statue so it would ride the tremor. The
+        // statue is instantiated at 3.2 — TrailerStatueCrack already carries a
+        // scaleComp field for exactly that reason — and a ParticleSystem's
+        // shape and start size are LOCAL, so both got multiplied by it: a box
+        // three times wider than the statue, throwing particles three times the
+        // size they were written as.
+        //
+        // A hundred of those, nearly a metre across, alpha-blended, filmed from
+        // five metres, is a pale wall across the whole frame with the statue
+        // somewhere behind it — and a pale wall of large transparent quads is
+        // also the frame rate. That is the white object, and it is why the
+        // statue "disappeared".
+        //
+        // Parented to the rig instead, which is unscaled, so every number in
+        // here means metres. The tremor is five centimetres; nothing is lost by
+        // the dust not riding it.
+        sheetDust = MakeParticles("SheetDust", transform, new Color(0.52f, 0.48f, 0.56f, 0.30f));
         var m = sheetDust.main;
         m.startLifetime = 2.6f;
         m.startSpeed = 0.35f;
@@ -387,6 +418,7 @@ public class TrailerStatueShot : MonoBehaviour
         sh.shapeType = ParticleSystemShapeType.Box;
         sh.scale = bounds.size * 0.85f;
         sheetDust.transform.position = center;
+        sheetDust.transform.rotation = Quaternion.identity;
         var em = sheetDust.emission;
         em.rateOverTime = 0f;    // driven by tension
         sheetDust.Play();
@@ -711,7 +743,7 @@ public class TrailerStatueShot : MonoBehaviour
         shafts.Add(shaft);
 
         Kick(pos, 0.55f);
-        TrailerCinematicPolish.GetOrCreate().ImpactPunch(0.3f, 0.22f);
+        if (flashes) TrailerCinematicPolish.GetOrCreate().ImpactPunch(0.3f, 0.22f);
         if (AudioManager.Instance != null && !string.IsNullOrEmpty(crackSound))
             AudioManager.Instance.PlaySFX3D(crackSound, pos);
     }
@@ -860,7 +892,10 @@ public class TrailerStatueShot : MonoBehaviour
             new Keyframe(0f, 0.12f), new Keyframe(0.55f, 1f), new Keyframe(1f, 0.55f));
         s.line.widthMultiplier = 0f;
 
-        s.motes = MakeParticles("Motes", root.transform, coreColor);
+        // Also on the rig, not on the shaft: the shaft root is a child of the
+        // statue and would scale these by 3.2 the same way. Its position is
+        // driven every frame in UpdateShafts anyway.
+        s.motes = MakeParticles("Motes", transform, coreColor);
         var mm = s.motes.main;
         mm.startLifetime = 2.4f;
         mm.startSpeed = 1.6f;
@@ -982,7 +1017,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (!string.IsNullOrEmpty(rubbleSound)) AudioManager.Instance.PlaySFX3D(rubbleSound, center);
         }
 
-        polish.ImpactPunch(1f, 0.7f);
+        if (flashes) polish.ImpactPunch(1f, 0.7f);
         polish.TimeRamp(0.32f, pierceDuration * 0.6f, 0.04f, 0.45f);
         Kick(center, 2.4f);
 
@@ -1056,6 +1091,25 @@ public class TrailerStatueShot : MonoBehaviour
         float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
 
         Color c;
+        if (!flashes)
+        {
+            // The shutter alone. It starts the moment the stone gives, so the
+            // closing bars ARE the last beat rather than something that happens
+            // after a flash — and there is nothing full-screen and additive on
+            // the frames that can least afford it.
+            if (!closing)
+            {
+                closing = true;
+                TrailerCinematicPolish.GetOrCreate().CloseBars(pierceDuration * 0.55f);
+            }
+            // Black comes up behind the bars only at the very end, so the last
+            // thing visible through the closing gap is the statue, not a colour.
+            c = Color.black;
+            c.a = Mathf.Clamp01((u - 0.70f) / 0.30f);
+            TrailerCinematicPolish.GetOrCreate().SetFlash(c);
+            return;
+        }
+
         if (u < 0.62f)
         {
             // Ember rising. Accelerating, because light forcing its way through
