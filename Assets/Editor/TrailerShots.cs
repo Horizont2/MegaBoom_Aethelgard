@@ -79,6 +79,12 @@ public static class TrailerShots
         // should not outlive the editor session.
         SessionState.SetString(TrailerShotSolo.SessionKey, shot);
 
+        // Pressed for you, on the frame Play Mode begins. By hand that press
+        // lands a second or more into the shot, which is exactly the second the
+        // shot is about — the fade from black and the establish. Switched off
+        // from the same menu.
+        TrailerAutoRecord.Arm(shot);
+
         Debug.Log("[Lore Trailer] Playing " + what + ". The other shot is switched off for this run only — " +
                   "the scene asset is not modified. Press Play again to replay the same shot; " +
                   "pick the other entry in Tools > Lore Trailer to switch.");

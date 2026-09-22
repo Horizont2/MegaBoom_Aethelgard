@@ -14,6 +14,20 @@ public class TrailerCinematicPolish : MonoBehaviour
 {
     public static TrailerCinematicPolish Instance { get; private set; }
 
+    // ==== WHEN THE SHOT ACTUALLY BEGINS ====
+    //
+    // Every shot in the trailer opens the same way: it calls OpenTrailer, which
+    // puts the frame to black and fades up. That call is the first frame of the
+    // picture, and it is not the first frame of Play Mode — the castle shot
+    // spends several seconds generating a region before it gets here, and the
+    // others spend a moment loading.
+    //
+    // Published so the editor's recorder can start on THAT frame rather than on
+    // whatever the engine is doing when Play begins. One flag, set in the one
+    // place all five shots already go through, instead of five directors each
+    // learning to announce themselves.
+    public static bool Opened { get; private set; }
+
     [Header("Letterbox")]
     [Tooltip("Height of each bar as a fraction of the screen. 0.11 is roughly 2.39:1 on a 16:9 display.")]
     [Range(0f, 0.25f)] public float barHeight = 0.11f;
@@ -39,6 +53,7 @@ public class TrailerCinematicPolish : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(this); return; }
         Instance = this;
+        Opened = false;           // statics survive a skipped domain reload
         BuildOverlay();
     }
 
@@ -324,6 +339,7 @@ public class TrailerCinematicPolish : MonoBehaviour
 
     public void OpenTrailer()
     {
+        Opened = true;
         StartCoroutine(OpenRoutine());
     }
 
