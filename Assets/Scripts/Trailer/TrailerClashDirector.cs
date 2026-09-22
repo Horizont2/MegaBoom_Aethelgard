@@ -177,10 +177,46 @@ public class TrailerClashDirector : MonoBehaviour
     public float arrowLaunchBehind = 12f;
     public float arrowSpread = 22f;
     public float arrowLaunchHeight = 1.7f;
-    [Tooltip("The streak behind the head, matching the one EnemyProjectile draws in gameplay.")]
+    [Tooltip("The streak behind the head, matching the one EnemyProjectile draws in gameplay. The player's volley.")]
     public Color arrowTrailColor = new Color(1f, 0.82f, 0.45f, 0.9f);
+    [Tooltip("The legion's volley. Reading which way a flight is travelling by its colour is the same separation the lights do, applied to the one thing that crosses the gap.")]
+    public Color legionArrowTrailColor = new Color(0.55f, 0.85f, 1f, 0.9f);
     public float arrowTrailTime = 0.18f;
     public float arrowTrailWidth = 0.075f;
+
+    [Header("Telling the two sides apart")]
+    // ==== SAME SIZE, SAME DISTANCE, SAME DARKNESS ====
+    //
+    // Putting the armies on the correct sides of frame does not make them
+    // readable. At this distance, in a 0.14-intensity storm, behind fog, both
+    // are the same mass of dark shapes — and an audience that cannot tell which
+    // is which is not watching two armies, it is watching a crowd.
+    //
+    // Film solves this with colour, and has for a century: one side warm, the
+    // other cold. Not a stylistic flourish — it is the only separation that
+    // survives small figures, low light and atmosphere all at once, because it
+    // does not depend on resolving any detail.
+    //
+    // Done with lights that travel with their own line rather than with light
+    // layers, which would need the pipeline asset changed. A point light behind
+    // a front rank mostly lights that front rank; the inverse square does the
+    // masking for free.
+    [Tooltip("Firelight on the player's army. Warm reads as living, and it is the colour their torches are already throwing.")]
+    public Color allyLight = new Color(1f, 0.66f, 0.34f);
+    [Tooltip("On the legion. Cold reads as dead, and it is the colour the lightning is, so the storm belongs to them.")]
+    public Color legionLight = new Color(0.42f, 0.78f, 0.95f);
+    [Tooltip("Lights per side, spread across that army's own front so the whole mass is washed rather than a spot in the middle of it.")]
+    public int sideLights = 3;
+    public float sideLightHeight = 5f;
+    public float sideLightRange = 34f;
+    public float sideLightIntensity = 9f;
+    [Tooltip("Metres behind its own front rank each light sits — inside the formation, so it lights its own army and falls off long before it reaches the other.")]
+    public float sideLightBehind = 6f;
+
+    [Tooltip("Carried through the player's ranks. A line of moving flames against a line of nothing is the most literal way to say living men and dead ones, and it is the game's own torch.")]
+    public GameObject allyTorchPrefab;
+    public int allyTorches = 9;
+    public float torchHeight = 2.1f;
 
     [Header("Lightning")]
     // The scene is a storm — it rains through the whole shot — and until now
@@ -314,6 +350,8 @@ public class TrailerClashDirector : MonoBehaviour
         BuildPlayer();
         BuildArrowPool();
         BuildLightning();
+        BuildSideLights();
+        BuildTorches();
 
         gap = Mathf.Max(startGap, impactGap + 1f);
         speed = 0f;
@@ -334,6 +372,7 @@ public class TrailerClashDirector : MonoBehaviour
         }
 
         WakeEveryone();
+        WakeTorches();
         ReleaseLightning();
         Desync();
         PlaceEverything(true);
@@ -621,6 +660,8 @@ public class TrailerClashDirector : MonoBehaviour
 
         Place(allies, allyFront, -axis, axis, groundAll);
         Place(enemies, enemyFront, axis, -axis, groundAll);
+        PlaceSideLights();
+        PlaceTorches();
 
         if (player != null && player.puppet != null)
         {
@@ -717,13 +758,18 @@ public class TrailerClashDirector : MonoBehaviour
             }
         }
 
-        var grad = new Gradient();
-        grad.SetKeys(
-            new[] { new GradientColorKey(arrowTrailColor, 0f), new GradientColorKey(arrowTrailColor, 1f) },
-            new[] { new GradientAlphaKey(arrowTrailColor.a, 0f), new GradientAlphaKey(0f, 1f) });
-        tr.colorGradient = grad;
+        Tint(tr, arrowTrailColor);
         tr.Clear();
         tr.emitting = false;
+    }
+
+    private static void Tint(TrailRenderer tr, Color c)
+    {
+        var grad = new Gradient();
+        grad.SetKeys(
+            new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) },
+            new[] { new GradientAlphaKey(c.a, 0f), new GradientAlphaKey(0f, 1f) });
+        tr.colorGradient = grad;
     }
 
     // Both sides loose at once, from BEHIND their own lines, so the two flights
@@ -736,8 +782,8 @@ public class TrailerClashDirector : MonoBehaviour
         float wait = volleyStagger / Mathf.Max(1, arrowsPerVolley);
         for (int i = 0; i < arrowsPerVolley; i++)
         {
-            LaunchOne(-axis, axis);     // the player's side, loosing at the legion
-            LaunchOne(axis, -axis);     // and back the other way
+            LaunchOne(-axis, axis, arrowTrailColor);        // the player's side, loosing at the legion
+            LaunchOne(axis, -axis, legionArrowTrailColor);  // and back the other way
 
             // Spread over a moment. All at once is a firework; staggered, archers.
             yield return new WaitForSecondsRealtime(wait);
@@ -745,7 +791,7 @@ public class TrailerClashDirector : MonoBehaviour
     }
 
     // `fromSide` is which half the volley leaves from, `towards` where it goes.
-    private void LaunchOne(Vector3 fromSide, Vector3 towards)
+    private void LaunchOne(Vector3 fromSide, Vector3 towards, Color streak)
     {
         if (nextArrow >= arrowPool.Count) return;
         int index = nextArrow++;
@@ -773,7 +819,7 @@ public class TrailerClashDirector : MonoBehaviour
         t.rotation = Quaternion.LookRotation(v.normalized);
 
         var tr = t.GetComponentInChildren<TrailRenderer>();
-        if (tr != null) { tr.Clear(); tr.emitting = true; }
+        if (tr != null) { Tint(tr, streak); tr.Clear(); tr.emitting = true; }
 
         arrowsInFlight.Add(new Arrow { t = t, velocity = v, life = flight + 0.35f });
     }
@@ -819,6 +865,117 @@ public class TrailerClashDirector : MonoBehaviour
             }
         }
         return centre.y;
+    }
+
+    // ---- telling the two sides apart ------------------------------------------
+
+    private readonly List<Light> allyLights = new List<Light>();
+    private readonly List<Light> legionLights = new List<Light>();
+    private readonly List<Transform> torches = new List<Transform>();
+    private readonly List<Vector3> torchOffsets = new List<Vector3>();
+    private readonly List<Vector3> torchScales = new List<Vector3>();
+
+    private void BuildSideLights()
+    {
+        BuildRig(allyLights, allyLight, "Ally");
+        BuildRig(legionLights, legionLight, "Legion");
+    }
+
+    private void BuildRig(List<Light> into, Color colour, string name)
+    {
+        for (int i = 0; i < Mathf.Max(0, sideLights); i++)
+        {
+            var go = new GameObject(name + "_Light_" + i);
+            go.transform.SetParent(transform, false);
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = colour;
+            l.range = sideLightRange;
+            l.intensity = 0f;                 // dark until the shot starts
+            l.shadows = LightShadows.None;    // six shadowed point lights is six cube maps
+            into.Add(l);
+        }
+    }
+
+    private void PlaceSideLights()
+    {
+        Vector3 allyFront = centre - axis * (gap * 0.5f);
+        Vector3 legionFront = centre + axis * (gap * 0.5f);
+        PlaceRig(allyLights, allyFront, -axis);
+        PlaceRig(legionLights, legionFront, axis);
+    }
+
+    private void PlaceRig(List<Light> rig, Vector3 front, Vector3 back)
+    {
+        for (int i = 0; i < rig.Count; i++)
+        {
+            if (rig[i] == null) continue;
+            // Spread across that army's own front — which from side-on is depth
+            // away from the lens — so the near men and the far men are both lit.
+            float across = rig.Count > 1 ? (i / (float)(rig.Count - 1) - 0.5f) * arrowSpread : 0f;
+            Vector3 p = front + back * sideLightBehind + side * across;
+            p.y = Ground(p) + sideLightHeight;
+            rig[i].transform.position = p;
+            rig[i].intensity = sideLightIntensity;
+        }
+    }
+
+    private void BuildTorches()
+    {
+        if (allyTorchPrefab == null || allyTorches <= 0) return;
+
+        int ranks = Mathf.Max(1, allyRanks);
+        int files = Mathf.Max(1, Mathf.CeilToInt(allyCount / (float)ranks));
+
+        for (int i = 0; i < allyTorches; i++)
+        {
+            var go = Instantiate(allyTorchPrefab, centre, Quaternion.identity, transform);
+            go.name = "Ally_Torch_" + i;
+
+            // ==== A PARTICLE SYSTEM IGNORES ITS PARENT'S SCALE ====
+            //
+            // Scaling mode defaults to Local, so a torch shrunk to nothing while
+            // it waits out the march would still throw a full-size flame — a row
+            // of fires hanging in mid-air over an empty field. Hierarchy makes
+            // the flame shrink with the prop, which is the whole reason the
+            // parking trick works for everything else.
+            foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = ps.main;
+                main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            }
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) if (c != null) c.enabled = false;
+
+            int rank = Random.Range(0, ranks);
+            int file = Random.Range(0, files);
+            torchOffsets.Add(new Vector3((file - (files - 1) * 0.5f) * fileSpacing,
+                                         0f,
+                                         rank * rankSpacing));
+            torchScales.Add(go.transform.localScale);
+            go.transform.localScale = go.transform.localScale * ParkedScale;
+            torches.Add(go.transform);
+        }
+    }
+
+    private void WakeTorches()
+    {
+        for (int i = 0; i < torches.Count; i++)
+            if (torches[i] != null) torches[i].localScale = torchScales[i];
+    }
+
+    private void PlaceTorches()
+    {
+        if (torches.Count == 0) return;
+        Vector3 allyFront = centre - axis * (gap * 0.5f);
+
+        for (int i = 0; i < torches.Count; i++)
+        {
+            Transform t = torches[i];
+            if (t == null) continue;
+            Vector3 p = allyFront + side * torchOffsets[i].x - axis * torchOffsets[i].z;
+            p.y = Ground(p) + torchHeight;
+            t.position = p;
+        }
     }
 
     // ---- lightning and the hero ----------------------------------------------

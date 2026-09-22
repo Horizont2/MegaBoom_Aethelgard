@@ -2201,6 +2201,16 @@ MonoBehaviour:
   handheld: 0.03
   cameraRoll: 2.2
   aimHeight: 2.4
+  allyLight: {r: 1, g: 0.66, b: 0.34, a: 1}
+  legionLight: {r: 0.42, g: 0.78, b: 0.95, a: 1}
+  sideLights: 3
+  sideLightHeight: 5
+  sideLightRange: 34
+  sideLightIntensity: 9
+  sideLightBehind: 6
+  allyTorchPrefab: {fileID: 1850256477050470, guid: 3599666ad7adbe14d964d5a8c7b8d845, type: 3}
+  allyTorches: 9
+  torchHeight: 2.1
   keyLight: {fileID: 854525243}
   strikeOnHorn: 1
   strikeAtGaps:
@@ -2223,6 +2233,7 @@ MonoBehaviour:
   arrowSpread: 22
   arrowLaunchHeight: 1.7
   arrowTrailColor: {r: 1, g: 0.82, b: 0.45, a: 0.9}
+  legionArrowTrailColor: {r: 0.55, g: 0.85, b: 1, a: 0.9}
   arrowTrailTime: 0.18
   arrowTrailWidth: 0.075
   clashFogDensity: 0.1
