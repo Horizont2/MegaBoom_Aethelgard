@@ -2167,7 +2167,7 @@ MonoBehaviour:
   advanceAxis: {x: 0.4198, y: 0, z: -0.9076}
   mirrorCamera: 0
   playerPrefab: {fileID: 2945078721770132420, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
-  playerLead: 3.4
+  playerLead: 2.2
   playerToCamera: 3
   allyPrefabs:
   - {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
@@ -2220,7 +2220,8 @@ MonoBehaviour:
   strikeBehind: 26
   lightningColor: {r: 0.82, g: 0.88, b: 1, a: 1}
   lightningIntensity: 14
-  heroSurge: 3.5
+  heroSurge: 1.2
+  heroClearance: 1.4
   heroSalute: 1
   heroSaluteBefore: 0.8
   heroSaluteTrigger: Attack
@@ -2238,6 +2239,11 @@ MonoBehaviour:
   legionArrowTrailColor: {r: 0.55, g: 0.85, b: 1, a: 0.9}
   arrowTrailTime: 0.18
   arrowTrailWidth: 0.075
+  frontRanksSwing: 1
+  swingRanks: 2
+  swingAtGap: 7
+  swingSpread: 0.3
+  swingTrigger: Attack
   clashFogDensity: 0.1
   clashFogHeight: 26
   clashNoiseFloor: 0.4

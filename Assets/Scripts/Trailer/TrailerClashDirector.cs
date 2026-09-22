@@ -77,7 +77,8 @@ public class TrailerClashDirector : MonoBehaviour
     [Header("The player's army")]
     [Tooltip("The hero himself, out in front of his own line. Left empty, the line closes up and nobody leads it.")]
     public GameObject playerPrefab;
-    public float playerLead = 3.4f;
+    [Tooltip("Metres in front of his own front rank. He is the point of the wedge, not a man on his own in a field — far enough to read as leading, close enough to still belong to the line.")]
+    public float playerLead = 2.2f;
     [Tooltip("Metres TOWARD the camera from the middle of his own front. At zero he stands in the middle of the line's depth, which from side-on means the front rank is between him and the lens — the one man the shot is composed around, hidden behind extras.")]
     public float playerToCamera = 3f;
     [Tooltip("Barracks units. Knight / Barbarian / Rogue_Hooded are the three the game hires.")]
@@ -243,13 +244,37 @@ public class TrailerClashDirector : MonoBehaviour
 
     [Header("The hero")]
     [Tooltip("Metres he pulls further ahead of his own line across the charge. A leader who keeps exactly his starting distance is just the nearest extra.")]
-    public float heroSurge = 3.5f;
+    public float heroSurge = 1.2f;
+    [Tooltip("Metres he stays SHORT of the middle of the gap, whatever his lead and surge add up to. Without it he simply kept going: his lead is a fixed distance and the gap is not, so by the cut he was several metres deep inside the enemy line with nobody near him.")]
+    public float heroClearance = 1.4f;
     [Tooltip("He raises his weapon in the last moment of the hold, before the horn. One gesture from one figure while a hundred and seventy stand still is what says the order came from him.")]
     public bool heroSalute = true;
     [Tooltip("Seconds before the horn that he raises it.")]
     public float heroSaluteBefore = 0.8f;
     [Tooltip("Trigger on the hero's controller. HeroAnimator calls it Attack; a parameter the controller does not have is a no-op through the Safe helpers.")]
     public string heroSaluteTrigger = "Attack";
+
+    [Header("The swing")]
+    // ==== THEY ARRIVE WITH THEIR WEAPONS DOWN ====
+    //
+    // Everyone in both armies runs all the way to contact still in a locomotion
+    // cycle, so the last thing the audience sees before the black is a hundred
+    // and seventy people jogging politely into each other. A front rank that
+    // raises its weapons over the last few metres turns the same frame into the
+    // instant before a blow, and it costs one trigger per man.
+    //
+    // Fired during the slow-motion hold on purpose: that beat exists to be
+    // looked at, and this is the thing to look at in it.
+    [Tooltip("Raise weapons over the last few metres.")]
+    public bool frontRanksSwing = true;
+    [Tooltip("How many ranks deep it goes, on both sides. Past the second nobody can make out an arm anyway.")]
+    public int swingRanks = 2;
+    [Tooltip("The gap at which they wind up. Inside Slow Mo At Gap, so the swing happens in the held beat.")]
+    public float swingAtGap = 7f;
+    [Tooltip("Seconds the order takes to travel down the line. Everyone on one frame is a drill display; a fraction of a second apart is a rank reacting.")]
+    public float swingSpread = 0.3f;
+    [Tooltip("Trigger on both controllers — HeroAnimator and the skeletons' both call it Attack. A parameter a controller does not have is a no-op through the Safe helpers.")]
+    public string swingTrigger = "Attack";
 
     [Header("Fog")]
     // The march is filmed INSIDE its fog on purpose — the warriors come out of
@@ -293,6 +318,7 @@ public class TrailerClashDirector : MonoBehaviour
         public TrailerPuppet puppet;
         public Vector3 offset;      // across (x) and back (z) within its own formation, plus jitter
         public float lag;           // metres this one trails by at full pace
+        public int rank;            // how far back in his own block, for the front-rank swing
         public Vector3 scale;       // the real one; parked units wear a fraction of it
         public int snapPhase;
     }
@@ -429,7 +455,7 @@ public class TrailerClashDirector : MonoBehaviour
         // Behind the legion, so the order lands on their silhouette.
         if (strikeOnHorn) StartCoroutine(Strike(axis));
 
-        bool firedFirst = false, firedSecond = false;
+        bool firedFirst = false, firedSecond = false, swung = false;
         float accel = 0f;
 
         while (gap > impactGap)
@@ -441,6 +467,12 @@ public class TrailerClashDirector : MonoBehaviour
 
             if (!firedFirst && gap <= firstVolleyAtGap) { firedFirst = true; StartCoroutine(Volley()); }
             if (!firedSecond && gap <= secondVolleyAtGap) { firedSecond = true; StartCoroutine(Volley()); }
+
+            if (frontRanksSwing && !swung && gap <= swingAtGap)
+            {
+                swung = true;
+                StartCoroutine(Swing());
+            }
 
             // Later bolts fall behind the PLAYER's line, so the two flashes do
             // not both belong to the same army.
@@ -555,6 +587,7 @@ public class TrailerClashDirector : MonoBehaviour
                 // happens and what stops a charging line reading as one rigid
                 // object sliding across the field.
                 lag = Random.Range(0f, straggle),
+                rank = rank,
                 scale = puppet.transform.localScale,
                 snapPhase = i % GroundStride,
             };
@@ -676,6 +709,12 @@ public class TrailerClashDirector : MonoBehaviour
             // charge, scaled by how far the armies have closed so it grows from
             // nothing rather than stepping.
             float lead = player.offset.z - heroSurge * Progress();
+            // Clamped against the CLOSING gap, which is the part that was
+            // missing. His lead is a fixed distance and the gap is not: by the
+            // cut the gap is three metres and he was nearly seven out, so he
+            // spent the end of the shot inside the enemy line on his own. He may
+            // never cross the middle.
+            lead = Mathf.Max(lead, -(gap * 0.5f - heroClearance));
             Vector3 p = allyFront + side * player.offset.x - axis * lead;
             bool ground = groundAll || (frame % GroundStride) == player.snapPhase;
             player.puppet.Place(p, axis, ground);
@@ -1118,6 +1157,44 @@ public class TrailerClashDirector : MonoBehaviour
 
         key.color = c0;
         key.intensity = i0;
+    }
+
+    // The front ranks of both armies wind up, and the hero with them.
+    //
+    // Deliberately not interrupted afterwards: a swing that plays out and drops
+    // back into a run would be a man taking a practice cut on the way in. The
+    // frame is taken away about a second later, so whatever pose the clip is in
+    // at that moment is the last thing anybody sees, and a raised weapon is the
+    // right one.
+    private IEnumerator Swing()
+    {
+        var line = new List<Unit>();
+        for (int i = 0; i < allies.Count; i++) if (allies[i].rank < swingRanks) line.Add(allies[i]);
+        for (int i = 0; i < enemies.Count; i++) if (enemies[i].rank < swingRanks) line.Add(enemies[i]);
+
+        // Down the line rather than all at once, and shuffled so the order does
+        // not travel from one end to the other like a drill display.
+        for (int i = line.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            Unit tmp = line[i]; line[i] = line[j]; line[j] = tmp;
+        }
+
+        if (player != null) Trigger(player);
+
+        float wait = line.Count > 0 ? swingSpread / line.Count : 0f;
+        for (int i = 0; i < line.Count; i++)
+        {
+            Trigger(line[i]);
+            if (wait > 0f) yield return new WaitForSecondsRealtime(wait);
+        }
+    }
+
+    private void Trigger(Unit u)
+    {
+        if (u == null || u.puppet == null || string.IsNullOrEmpty(swingTrigger)) return;
+        var anim = u.puppet.GetComponentInChildren<Animator>();
+        if (anim != null) anim.SetTriggerSafe(swingTrigger);
     }
 
     // One gesture from one figure while a hundred and seventy stand still.
