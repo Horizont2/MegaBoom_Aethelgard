@@ -28,8 +28,15 @@ public class TrailerSequenceDirector : MonoBehaviour
     public TrailerTerrainSeasons terrainSeason;
 
     [Header("Timing")]
-    [Tooltip("Seconds for the horse to ride the WHOLE Part 1 spline. Must match what the Act I Timeline shots were cut for (24s) — a fixed m/s broke the shot timing.")]
-    public float part1RideSeconds = 24f;
+    // Seconds for the WHOLE spline, not for the part that is filmed — the crane
+    // takes over at part1EndProgress, so the shot is about four fifths of this.
+    // It is a time and not a speed because the Act I Timeline shots were cut to
+    // a duration; a fixed m/s makes the cuts land in the wrong places whenever
+    // the road is re-drawn. Lower is faster: at 20 the gallop is a fifth quicker
+    // than the 24 it was authored at, which is as far as it can go before the
+    // handover to the crane starts arriving early.
+    [Tooltip("Seconds for the horse to ride the WHOLE Part 1 spline. Lower is a faster gallop.")]
+    public float part1RideSeconds = 20f;
     [Tooltip("Seconds to ride the whole Part 2 spline.")]
     public float part2RideSeconds = 22f;
     [Tooltip("Where Part 1 hands over to the crane. Act I's own CM_04 crane shot starts around 0.8, so we take over BEFORE it — otherwise there are two cranes and CM_04 sits in the ground aiming at the horse.")]

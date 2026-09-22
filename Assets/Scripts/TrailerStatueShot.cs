@@ -76,6 +76,22 @@ public class TrailerStatueShot : MonoBehaviour
     [Tooltip("Vignette punches on every fracture, and the white flood on the burst. Off: the ending is the letterbox closing on the frame, with no flash over it.")]
     public bool flashes;
 
+    // ==== WHAT IS ACTUALLY IN FRONT OF THE LENS ====
+    //
+    // Three passes at "the frame is a white wall" have each identified a
+    // different plausible culprit — the fog, the dust, the camera being inside
+    // the stone — and each fixed a real fault without fixing the symptom. That
+    // is what guessing looks like from the outside, and the reason for it is
+    // that nobody working on this can see the frame.
+    //
+    // So the frame reports itself. For the first second it names, once per
+    // distinct object, whatever the centre of the lens is pointed at: what it
+    // is, how far away, how big, and which shader draws it. Whatever is white
+    // and enormous appears in that list by name, and the next fix is aimed
+    // rather than guessed.
+    [Tooltip("Log what the centre of the frame is actually looking at for the first second. Turn it off once the shot is right.")]
+    public bool diagnose = true;
+
     [Header("Sequencing")]
     [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
     public bool autoPlay = true;
@@ -273,9 +289,19 @@ public class TrailerStatueShot : MonoBehaviour
                   $"(scale {statue.lossyScale.x:0.00}), centre {center}. Push {startDistance:0.0} -> " +
                   $"{resolvedEndDistance:0.0} m, never closer than {MinOrbitRadius:0.0}.");
 
+        // Pressing Play on the open scene runs BOTH of its shots: the ride takes
+        // the Cinemachine brain, its weather and its season sweep run over this
+        // one, and the frame is a mess that has nothing to do with the statue.
+        // Said out loud, because it looks identical to the shot being broken.
+        if (TrailerShotSolo.Active != TrailerShotSolo.StatueShot)
+            Debug.LogWarning("[StatueShot] This scene was played directly, not launched from " +
+                             "Tools > Lore Trailer > Play shot 1. The ride shot is running at the same time — " +
+                             "its camera, its weather and its seasons are all live over this one.");
+
         BuildMaterials();
         BuildStatueDust();
         StartCoroutine(WarmDebris());
+        if (diagnose) StartCoroutine(FrameCensus());
         if (autoPlay) Play();
     }
 
@@ -626,6 +652,111 @@ public class TrailerStatueShot : MonoBehaviour
         IsFinished = true;
     }
 
+    // ==== WHAT IS ACTUALLY IN THE FRAME ====
+    //
+    // Three separate things have been blamed for the pale mass that fills this
+    // shot, each of them a real fault, and none of them the one. Every diagnosis
+    // so far was made from outside the engine, by reasoning about what OUGHT to
+    // be in front of the lens. This one asks the frame.
+    //
+    // Renderers and not raycasts: a raycast finds colliders, and every remaining
+    // candidate — a weather volume, dust, a glow card, a skinned mesh — has
+    // none. So every renderer whose bounds fall inside the frustum is measured
+    // for how much of the SCREEN it covers, and anything covering more than a
+    // twentieth of it is named with its distance, its size and its shader.
+    //
+    // Silence is an answer too: if nothing geometric covers the frame and the
+    // frame is still white, what is left is the volumetric fog, the skybox or a
+    // full-screen overlay, and the report says so rather than leaving a gap.
+    private IEnumerator FrameCensus()
+    {
+        // Two readings. One during the establish, which reports a shot that is
+        // wrong before anything has happened; one just after the burst, which
+        // reports a shot that is wrong because of what happened.
+        yield return new WaitForSecondsRealtime(1f);
+        Census("establish");
+
+        while (burstStartedAt < 0f) yield return null;
+        yield return new WaitForSecondsRealtime(0.3f);
+        Census("burst");
+    }
+
+    private void Census(string when)
+    {
+        if (shotCamera == null || camT == null) return;
+
+        Terrain terr = Terrain.activeTerrain;
+        float ground = terr != null ? terr.SampleHeight(camT.position) + terr.transform.position.y : bounds.min.y;
+        Debug.Log($"[StatueShot/frame] {when}: lens {camT.position.y - ground:0.0} m above the terrain, " +
+                  $"{Vector3.Distance(camT.position, center):0.0} m from the statue's centre, fov " +
+                  $"{shotCamera.fieldOfView:0.0}, near clip {shotCamera.nearClipPlane:0.00}. Statue " +
+                  $"{bounds.size.x:0.0} x {bounds.size.y:0.0} x {bounds.size.z:0.0} m, feet at {bounds.min.y:0.0}, " +
+                  $"solo launcher ran '{TrailerShotSolo.Active}'.");
+
+        var planes = GeometryUtility.CalculateFrustumPlanes(shotCamera);
+        var worst = new List<KeyValuePair<float, string>>();
+
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            if (r == null || !r.enabled) continue;
+            Bounds b = r.bounds;
+            if (!GeometryUtility.TestPlanesAABB(planes, b)) continue;
+
+            float cover = ScreenCoverage(b);
+            if (cover < 0.05f) continue;
+
+            string shader = r.sharedMaterial != null && r.sharedMaterial.shader != null
+                          ? r.sharedMaterial.shader.name : "<no material>";
+            worst.Add(new KeyValuePair<float, string>(cover,
+                $"{when}: {cover * 100f:0} % of frame — '{r.name}' ({r.GetType().Name}), " +
+                $"{Vector3.Distance(camT.position, b.center):0.0} m out, " +
+                $"{b.size.x:0.0} x {b.size.y:0.0} x {b.size.z:0.0} m, {shader}"));
+        }
+
+        if (worst.Count == 0)
+        {
+            Debug.Log($"[StatueShot/frame] {when}: nothing drawn by a renderer covers even a twentieth of the frame. " +
+                      "A pale frame here is therefore not geometry — it is the volumetric fog, the skybox, or a " +
+                      "full-screen overlay.");
+            return;
+        }
+
+        worst.Sort((a, b) => b.Key.CompareTo(a.Key));
+        for (int i = 0; i < worst.Count && i < 8; i++) Debug.Log("[StatueShot/frame] " + worst[i].Value);
+    }
+
+    // Fraction of the viewport the bounding box's screen rectangle covers. A box
+    // is a generous estimate of the mesh inside it, which is exactly what is
+    // wanted here: the question is which objects COULD be the wall, not what
+    // their silhouettes are.
+    private float ScreenCoverage(Bounds b)
+    {
+        Vector2 lo = new Vector2(float.MaxValue, float.MaxValue);
+        Vector2 hi = new Vector2(float.MinValue, float.MinValue);
+
+        for (int i = 0; i < 8; i++)
+        {
+            Vector3 corner = new Vector3(
+                (i & 1) == 0 ? b.min.x : b.max.x,
+                (i & 2) == 0 ? b.min.y : b.max.y,
+                (i & 4) == 0 ? b.min.z : b.max.z);
+
+            Vector3 v = shotCamera.WorldToViewportPoint(corner);
+            // A box with a corner behind the lens is a box the camera is inside
+            // or against, which has no screen rectangle and is by definition
+            // covering everything. The terrain answers this way every time, and
+            // that line is the reference the others are read against.
+            if (v.z <= 0f) return 1f;
+
+            lo = Vector2.Min(lo, new Vector2(v.x, v.y));
+            hi = Vector2.Max(hi, new Vector2(v.x, v.y));
+        }
+
+        float w = Mathf.Clamp01(hi.x) - Mathf.Clamp01(lo.x);
+        float h = Mathf.Clamp01(hi.y) - Mathf.Clamp01(lo.y);
+        return Mathf.Clamp01(w) * Mathf.Clamp01(h);
+    }
+
     // ======================= camera =======================
 
     private void UpdateCamera(float t, float total, float dt)
@@ -662,9 +793,9 @@ public class TrailerStatueShot : MonoBehaviour
         }
 
         Vector3 pos = new Vector3(center.x + Mathf.Cos(az) * (dist + shove),
-                                  bounds.min.y + h,
+                                  0f,
                                   center.z + Mathf.Sin(az) * (dist + shove));
-        pos = PushOutOfStone(pos, az);
+        pos.y = LensHeight(pos, h);
 
         // Perlin handheld, incommensurate per axis so it never visibly repeats,
         // and louder as the statue gets worse.
@@ -698,50 +829,35 @@ public class TrailerStatueShot : MonoBehaviour
         shotCamera.fieldOfView = Mathf.Lerp(startFov, endFov, e) + fovKick;
     }
 
-    // ==== THE LENS MAY NOT BE INSIDE THE STATUE ====
+    // ==== THE LENS IS SET FROM THE GROUND, NOT FROM THE STATUE'S FEET ====
     //
-    // MinOrbitRadius keeps the camera outside a CYLINDER drawn around the
-    // statue's bounding box, which is the right idea and an approximation: the
-    // bounds are a box around everything the statue's renderers cover, and the
-    // radius is taken from its horizontal diagonal. If the real geometry reaches
-    // further than that box in any direction — a plinth, an outstretched arm, a
-    // base that was modelled off-centre — the camera can still be inside the
-    // stone while the arithmetic says it is two and a half metres clear.
+    // The height used to be bounds.min.y + h: the bottom of the statue's own
+    // renderer bounds. That is the ground only if the model's origin happens to
+    // sit exactly on it, and this one's does not — the mesh reaches a whisker
+    // below its own pivot while the terrain around the plinth is half a metre
+    // higher again. So a shot asking for two and a half metres was filmed from
+    // under two: below eye height, and by the end of the push low enough to put
+    // the glass inside the top of the ground fog, which is the one place in this
+    // scene where a lens can fill itself with white.
     //
-    // From inside, a lit statue at point-blank range is a pale mass filling the
-    // frame with the world showing past its edges, which is exactly what the
-    // frame looks like. So rather than trust the box, ask the colliders: while
-    // anything of the statue is within `clearance` of the lens, walk the lens
-    // straight back out along its own bearing.
-    private Vector3 PushOutOfStone(Vector3 pos, float azimuth)
+    // Measured against the terrain under the LENS rather than under the statue,
+    // which is also the only version that survives the camera orbiting onto
+    // ground that is not level with the plinth.
+    private float LensHeight(Vector3 at, float wanted)
     {
-        Vector3 outward = new Vector3(Mathf.Cos(azimuth), 0f, Mathf.Sin(azimuth));
+        float ground = bounds.min.y;
 
-        // Measured by raycasting INWARD, from well outside the statue toward its
-        // axis at the lens's own height. The first thing the ray meets is the
-        // outer surface along this exact bearing, which is the number the
-        // bounding box was only ever approximating.
-        //
-        // Inward and not outward on purpose: the statue's MeshCollider is
-        // non-convex, and a ray that starts inside one leaves through a backface
-        // — which Unity does not report. Coming from outside there is always a
-        // front face to hit. (Collider.ClosestPoint is no use here for the same
-        // reason: it is only defined for convex colliders.)
-        float probe = MinOrbitRadius + 30f;
-        Vector3 from = new Vector3(center.x, pos.y, center.z) + outward * probe;
-
-        if (Physics.Raycast(from, -outward, out RaycastHit hit, probe, surfaceMask, QueryTriggerInteraction.Ignore)
-            && hit.transform.IsChildOf(statue))
+        Terrain t = Terrain.activeTerrain;
+        if (t != null)
         {
-            float surfaceRadius = probe - hit.distance;
-            float want = surfaceRadius + clearance;
-
-            Vector3 flat = pos - center; flat.y = 0f;
-            if (flat.magnitude < want)
-                return new Vector3(center.x, pos.y, center.z) + outward * want;
+            float y = t.SampleHeight(at) + t.transform.position.y;
+            // Trusted only where the terrain actually is: SampleHeight answers
+            // for a point off the tile with the heightmap's edge value, which
+            // can be anything at all.
+            if (y > ground - 50f && y < ground + 50f) ground = Mathf.Max(ground, y);
         }
 
-        return pos;
+        return ground + wanted;
     }
 
     private void Kick(Vector3 fromPoint, float strength)

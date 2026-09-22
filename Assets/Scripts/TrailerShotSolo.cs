@@ -47,6 +47,9 @@ public static class TrailerShotSolo
     private const string SceneSun = "Directional Light";
     private const string RoadDressing = "Trailer_RoadDressing";
 
+    /// <summary>The shot this run was launched for, or empty when the scene is simply being played.</summary>
+    public static string Active { get; private set; } = string.Empty;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Apply()
     {
@@ -68,6 +71,14 @@ public static class TrailerShotSolo
         // at all rather than something approximate.
         string scene = SceneManager.GetActiveScene().name;
         if (scene != SceneFor(shot)) return;
+
+        // Published so a shot can say in its own log whether it was launched or
+        // merely played. Pressing Play on an open trailer scene runs EVERY shot
+        // it holds at once, and the resulting frame — two cameras, the ride's
+        // weather, a season sweep over a ten second cinematic — looks broken in
+        // ways that have nothing to do with the shot being looked at. Guessing
+        // at that from a screenshot has cost several rounds already.
+        Active = shot;
 
         // The two fogs would stack. The scene asset already has the built-in one
         // off; this is here so the shot is right even if something switched it
@@ -201,6 +212,8 @@ public static class TrailerShotSolo
         var cycle = Object.FindFirstObjectByType<DayNightCycle>(FindObjectsInactive.Include);
         if (cycle != null) cycle.enabled = false;
 
+        SilenceWeather(rig);
+
         Light moon = rig != null ? rig.GetComponentInChildren<Light>(true) : null;
         Camera shotCam = null;
         if (rig != null)
@@ -246,8 +259,14 @@ public static class TrailerShotSolo
             // pooled around the base, the shafts passing down through it, and
             // clear air between the glass and the stone.
             Set(fog, "density", 0.09f);
-            Set(fog, "groundFogHeight", 2.2f);
-            Set(fog, "topSoftness", 0.6f);
+            // Below the lens, and not level with it. The push ends with the
+            // glass 2.4 m off the ground; a layer 2.2 m deep with a soft top put
+            // the last second of the shot INSIDE the fog, where every ray starts
+            // in the thickest part of the volume and the frame goes pale. A
+            // metre and a half leaves the mist around the statue's feet, which
+            // is the only place it was ever wanted.
+            Set(fog, "groundFogHeight", 1.5f);
+            Set(fog, "topSoftness", 0.45f);
             Set(fog, "nearFadeDistance", 6f);
             Set(fog, "maximumFogDistance", 90f);
             // Strongly forward-scattering, so the fog lights up along the shafts
@@ -272,6 +291,53 @@ public static class TrailerShotSolo
             Set(fog, "enableVolumetricShadows", false);
             Set(fog, "terrainCastsFogShadows", false);
         }
+    }
+
+    // ==== SHOT 1 HAS NO WEATHER ====
+    //
+    // Trailer_Lvl_1 is dressed for the RIDE. A Heavy Rain volume sits at the
+    // scene root and chases the Main Camera every LateUpdate; the buried
+    // skeletons breathe vapour; the horse kicks up dust. None of it belongs to a
+    // locked-off ten second shot of a statue, and switching off the ride's rigs
+    // does not touch any of it, because none of it is parented to them — a
+    // volume that FOLLOWS a camera lives wherever it likes in the hierarchy.
+    //
+    // A camera-following weather volume is also exactly the shape of the fault
+    // that has been chased through this shot for four rounds: a large, bright,
+    // alpha-blended mass hanging in front of the lens from the first frame, the
+    // subject somewhere behind it, and a frame rate that collapses the moment
+    // anything else is drawn.
+    //
+    // So every particle system in the scene that is not part of the statue rig
+    // is stopped, cleared and switched off. Nothing is lost: this shot builds
+    // its own dust in code, in Start, after this has already run.
+    private static void SilenceWeather(GameObject rig)
+    {
+        Transform keep = rig != null ? rig.transform : null;
+        int stopped = 0;
+
+        foreach (var ps in Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (ps == null) continue;
+            if (keep != null && ps.transform.IsChildOf(keep)) continue;
+
+            // Cleared as well as stopped: particles already alive would
+            // otherwise hang in the air for the rest of their lifetime, which on
+            // a rain volume is most of the shot.
+            if (ps.gameObject.activeInHierarchy)
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ps.gameObject.SetActive(false);
+            stopped++;
+        }
+
+        // The follower has to go too, or it spends the shot dragging an empty
+        // volume around after a camera that is no longer rendering.
+        foreach (var follow in Object.FindObjectsByType<TrailerRainFollow>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (follow != null) follow.enabled = false;
+
+        if (stopped > 0)
+            Debug.Log("[TrailerShotSolo] " + stopped + " particle system(s) outside the statue rig switched off — " +
+                      "this shot has no rain, no breath and no hoof dust.");
     }
 
     // ===================== shot 2 — the ride through the forest =====================
