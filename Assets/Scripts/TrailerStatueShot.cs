@@ -45,6 +45,24 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class TrailerStatueShot : MonoBehaviour
 {
+    [Header("Cost")]
+    // ==== ONE DIAL, BECAUSE THE COST IS ONE THING ====
+    //
+    // Everything expensive in this shot is the same kind of expensive: a COUNT.
+    // Fissures are line renderers that rebuild their mesh every frame on a
+    // transform that moves every frame; shafts are a realtime light and an
+    // additive quad each; motes, dust and chips are transparent overdraw; debris
+    // is a rigid body apiece. Tuning them one at a time means finding six
+    // numbers that happen to agree.
+    //
+    // They are all multiplied by this instead. At one the shot is what it was
+    // authored as; at a half it is the same shot with half of everything, which
+    // on a crowd of near-identical elements is a difference nobody can name and
+    // the frame time can.
+    [Range(0.15f, 1f)]
+    [Tooltip("Scales every count in the shot at once — fissures, shafts, motes, dust and debris. Lower it until the editor keeps up; the shot reads the same a long way down.")]
+    public float detail = 0.5f;
+
     [Header("Sequencing")]
     [Tooltip("OFF when this shot is chained after another — the sequencer starts it on cue instead of it firing the moment its rig switches on.")]
     public bool autoPlay = true;
@@ -207,6 +225,10 @@ public class TrailerStatueShot : MonoBehaviour
         public float widthScale;
     }
 
+    // Every count in the shot, put through the one dial. Floored at one so a low
+    // setting thins the shot rather than emptying it.
+    private int Scaled(int n) { return Mathf.Max(1, Mathf.RoundToInt(n * Mathf.Clamp01(detail))); }
+
     private void Start()
     {
         if (statue == null) { Debug.LogWarning("[StatueShot] No statue assigned."); enabled = false; return; }
@@ -360,7 +382,7 @@ public class TrailerStatueShot : MonoBehaviour
         m.startSpeed = 0.35f;
         m.startSize = 0.28f;
         m.gravityModifier = 0.12f;
-        m.maxParticles = 220;
+        m.maxParticles = Scaled(220);
         var sh = sheetDust.shape;
         sh.shapeType = ParticleSystemShapeType.Box;
         sh.scale = bounds.size * 0.85f;
@@ -375,7 +397,7 @@ public class TrailerStatueShot : MonoBehaviour
         cm.startSpeed = 2.6f;
         cm.startSize = 0.06f;
         cm.gravityModifier = 1.1f;
-        cm.maxParticles = 260;
+        cm.maxParticles = Scaled(260);
         var ce = chipBurst.emission;
         ce.rateOverTime = 0f;
         var cs = chipBurst.shape;
@@ -532,7 +554,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (!burst && t >= establish && t < establish + buildDuration && t >= nextCrackStep)
             {
                 // Seed the first cracks in the opening moments, then let them run.
-                if (seeded < seedCracks && (seeded == 0 || Random.value < 0.5f))
+                if (seeded < Scaled(seedCracks) && (seeded == 0 || Random.value < 0.5f))
                 {
                     SeedCrack();
                     seeded++;
@@ -677,7 +699,7 @@ public class TrailerStatueShot : MonoBehaviour
 
     private void SeedCrack()
     {
-        if (seedCount >= maxCracks) return;
+        if (seedCount >= Scaled(maxCracks)) return;
         if (!FindSurfacePoint(out Vector3 pos, out Vector3 nrm)) return;
 
         int before = cracks.Count;
@@ -716,7 +738,7 @@ public class TrailerStatueShot : MonoBehaviour
     // cost real milliseconds to say nothing new.
     private void SpawnCrack(Vector3 pos, Vector3 nrm, int generation)
     {
-        if (cracks.Count >= maxTotalCracks) return;
+        if (cracks.Count >= Scaled(maxTotalCracks)) return;
 
         var go = new GameObject($"Crack_{cracks.Count}");
         var c = go.AddComponent<TrailerStatueCrack>();
@@ -844,7 +866,7 @@ public class TrailerStatueShot : MonoBehaviour
         mm.startSpeed = 1.6f;
         mm.startSize = 0.055f;
         mm.gravityModifier = -0.02f;      // drift upward, the way lit dust does
-        mm.maxParticles = Mathf.Max(4, motesPerRay * 2);
+        mm.maxParticles = Mathf.Max(4, Scaled(motesPerRay) * 2);
         var ms = s.motes.shape;
         ms.shapeType = ParticleSystemShapeType.Cone;
         ms.angle = 7f;
@@ -938,7 +960,7 @@ public class TrailerStatueShot : MonoBehaviour
                 s.motes.transform.position = origin;
                 s.motes.transform.rotation = Quaternion.LookRotation(dir);
                 var em = s.motes.emission;
-                em.rateOverTime = motesPerRay * grow * (0.25f + tension) * handover;
+                em.rateOverTime = Scaled(motesPerRay) * grow * (0.25f + tension) * handover;
             }
         }
     }
@@ -1100,7 +1122,8 @@ public class TrailerStatueShot : MonoBehaviour
     {
         if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) yield break;
 
-        for (int i = 0; i < debrisCount; i++)
+        int want = Scaled(debrisCount);
+        for (int i = 0; i < want; i++)
         {
             GameObject prefab = debrisPrefabs[Random.Range(0, debrisPrefabs.Length)];
             if (prefab == null) continue;
