@@ -182,6 +182,33 @@ public class TrailerClashDirector : MonoBehaviour
     public float arrowTrailTime = 0.18f;
     public float arrowTrailWidth = 0.075f;
 
+    [Header("Lightning")]
+    // The scene is a storm — it rains through the whole shot — and until now
+    // nothing in the sky ever did anything. One bolt on the order is the
+    // cheapest drama available here, and it lands BEHIND a line: for a fraction
+    // of a second that army is a silhouette, which is the most useful thing a
+    // flash can do for two crowds of the same colour at the same distance.
+    [Tooltip("The scene's key light, flashed white for the strike. Left empty the render settings' sun is used.")]
+    public Light keyLight;
+    [Tooltip("Strike on the horn, as they break into a run.")]
+    public bool strikeOnHorn = true;
+    [Tooltip("Gaps at which further bolts fall, LARGEST FIRST — they are consumed in order as the gap shrinks. Empty for just the one on the horn.")]
+    public float[] strikeAtGaps = { 16f };
+    [Tooltip("Metres behind the line the bolt lands. Behind, not among — a bolt inside a crowd lights faces; a bolt behind it makes a silhouette of the whole army.")]
+    public float strikeBehind = 26f;
+    public Color lightningColor = new Color(0.82f, 0.88f, 1f);
+    public float lightningIntensity = 14f;
+
+    [Header("The hero")]
+    [Tooltip("Metres he pulls further ahead of his own line across the charge. A leader who keeps exactly his starting distance is just the nearest extra.")]
+    public float heroSurge = 3.5f;
+    [Tooltip("He raises his weapon in the last moment of the hold, before the horn. One gesture from one figure while a hundred and seventy stand still is what says the order came from him.")]
+    public bool heroSalute = true;
+    [Tooltip("Seconds before the horn that he raises it.")]
+    public float heroSaluteBefore = 0.8f;
+    [Tooltip("Trigger on the hero's controller. HeroAnimator calls it Attack; a parameter the controller does not have is a no-op through the Safe helpers.")]
+    public string heroSaluteTrigger = "Attack";
+
     [Header("Fog")]
     // The march is filmed INSIDE its fog on purpose — the warriors come out of
     // it. This shot is filmed ACROSS thirty metres of it, and at the march's
@@ -286,6 +313,7 @@ public class TrailerClashDirector : MonoBehaviour
         BuildArmy(enemies, enemyPrefab != null ? new[] { enemyPrefab } : null, enemyCount, enemyRanks, false);
         BuildPlayer();
         BuildArrowPool();
+        BuildLightning();
 
         gap = Mathf.Max(startGap, impactGap + 1f);
         speed = 0f;
@@ -306,6 +334,7 @@ public class TrailerClashDirector : MonoBehaviour
         }
 
         WakeEveryone();
+        ReleaseLightning();
         Desync();
         PlaceEverything(true);
         PlaceCamera(0f);
@@ -328,9 +357,17 @@ public class TrailerClashDirector : MonoBehaviour
         RunGait();
 
         float t = 0f;
+        bool saluted = false;
         while (t < holdSeconds)
         {
             t += Time.unscaledDeltaTime;
+
+            if (heroSalute && !saluted && t >= holdSeconds - heroSaluteBefore)
+            {
+                saluted = true;
+                Salute();
+            }
+
             // Placed every frame through the hold as well. It costs nothing they
             // are not already paying, and it means the line the audience is
             // shown while it stands is exactly the line that starts running —
@@ -344,6 +381,8 @@ public class TrailerClashDirector : MonoBehaviour
         // ---- 2. RUN. The horn, and they go together. ----
         Cue(hornCue);
         Loop(marchLoop);
+        // Behind the legion, so the order lands on their silhouette.
+        if (strikeOnHorn) StartCoroutine(Strike(axis));
 
         bool firedFirst = false, firedSecond = false;
         float accel = 0f;
@@ -357,6 +396,14 @@ public class TrailerClashDirector : MonoBehaviour
 
             if (!firedFirst && gap <= firstVolleyAtGap) { firedFirst = true; StartCoroutine(Volley()); }
             if (!firedSecond && gap <= secondVolleyAtGap) { firedSecond = true; StartCoroutine(Volley()); }
+
+            // Later bolts fall behind the PLAYER's line, so the two flashes do
+            // not both belong to the same army.
+            while (nextStrike < (strikeAtGaps != null ? strikeAtGaps.Length : 0) && gap <= strikeAtGaps[nextStrike])
+            {
+                nextStrike++;
+                StartCoroutine(Strike(-axis));
+            }
 
             // The last few metres are held long. Everything in this shot runs on
             // unscaled time, so Time.timeScale would do nothing here — what slows
@@ -577,7 +624,12 @@ public class TrailerClashDirector : MonoBehaviour
 
         if (player != null && player.puppet != null)
         {
-            Vector3 p = allyFront + side * player.offset.x - axis * player.offset.z;
+            // offset.z is negative for the hero — he stands AHEAD of his own
+            // front rank — and the surge takes him further out across the
+            // charge, scaled by how far the armies have closed so it grows from
+            // nothing rather than stepping.
+            float lead = player.offset.z - heroSurge * Progress();
+            Vector3 p = allyFront + side * player.offset.x - axis * lead;
             bool ground = groundAll || (frame % GroundStride) == player.snapPhase;
             player.puppet.Place(p, axis, ground);
             player.puppet.SetGait(Gait);
@@ -767,6 +819,102 @@ public class TrailerClashDirector : MonoBehaviour
             }
         }
         return centre.y;
+    }
+
+    // ---- lightning and the hero ----------------------------------------------
+
+    private TrailerLightningStrike bolt;
+    private LineRenderer boltLine;
+    private int nextStrike;
+
+    // ==== THE BOLT IS ALSO A COLD DRAW ====
+    //
+    // TrailerLightningStrike builds its own unlit material and keeps its line
+    // renderer switched off until it fires — so the first bolt would be the
+    // first time that material is drawn, and a synchronous shader compile in the
+    // middle of a charge is the same stall the statue's debris was.
+    //
+    // It is built now and parented to the camera with a millimetre of line two
+    // metres in front of the lens: inside the frustum every frame, sub-pixel, so
+    // the variant is compiled long before anybody needs it. Unparented at the
+    // hand-off and handed back to the component.
+    private void BuildLightning()
+    {
+        var go = new GameObject("Clash_Lightning");
+        go.transform.SetParent(shotCamera != null ? shotCamera.transform : transform, false);
+
+        // The LineRenderer first: TrailerLightningStrike requires one and its
+        // Awake — which runs the instant AddComponent returns — configures it.
+        boltLine = go.AddComponent<LineRenderer>();
+        bolt = go.AddComponent<TrailerLightningStrike>();
+        bolt.thunderId = AudioID.Trailer_ThunderClose;
+
+        boltLine.useWorldSpace = false;
+        boltLine.positionCount = 2;
+        boltLine.SetPosition(0, new Vector3(0f, 0f, 2f));
+        boltLine.SetPosition(1, new Vector3(0f, 0.001f, 2f));
+        boltLine.widthMultiplier = 0.0004f;
+        boltLine.enabled = true;
+    }
+
+    private void ReleaseLightning()
+    {
+        if (bolt == null) return;
+        boltLine.enabled = false;
+        boltLine.useWorldSpace = true;
+        boltLine.widthMultiplier = bolt.boltWidth;
+        bolt.transform.SetParent(null, true);
+        bolt.transform.position = centre;
+    }
+
+    // A bolt behind one of the two lines, and the key light taken white with it.
+    // `behindWhich` is the direction from the centre toward the army it lands
+    // behind.
+    private IEnumerator Strike(Vector3 behindWhich)
+    {
+        Cue(AudioID.Trailer_RiserToStrike);
+
+        if (bolt != null)
+        {
+            Vector3 at = centre + behindWhich * (gap * 0.5f + strikeBehind)
+                       + side * Random.Range(-arrowSpread * 0.5f, arrowSpread * 0.5f);
+            at.y = Ground(at);
+            bolt.Strike(at);
+        }
+
+        Light key = keyLight != null ? keyLight : RenderSettings.sun;
+        if (key == null) yield break;
+
+        Color c0 = key.color;
+        float i0 = key.intensity;
+
+        // Real lightning is not one flash. It is two or three inside a tenth of
+        // a second, which is the difference between a light being switched on
+        // and something happening in the sky. Borrowed from the march, which
+        // already has this right.
+        int flickers = Random.Range(2, 4);
+        for (int i = 0; i < flickers; i++)
+        {
+            key.color = lightningColor;
+            key.intensity = lightningIntensity * Random.Range(0.6f, 1f);
+            yield return new WaitForSecondsRealtime(Random.Range(0.03f, 0.07f));
+
+            key.color = c0;
+            key.intensity = i0;
+            yield return new WaitForSecondsRealtime(Random.Range(0.02f, 0.06f));
+        }
+
+        key.color = c0;
+        key.intensity = i0;
+    }
+
+    // One gesture from one figure while a hundred and seventy stand still.
+    private void Salute()
+    {
+        if (player == null || player.puppet == null || string.IsNullOrEmpty(heroSaluteTrigger)) return;
+
+        var anim = player.puppet.GetComponentInChildren<Animator>();
+        if (anim != null) anim.SetTriggerSafe(heroSaluteTrigger);
     }
 
     // ---- fog -----------------------------------------------------------------

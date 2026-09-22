@@ -2201,6 +2201,17 @@ MonoBehaviour:
   handheld: 0.03
   cameraRoll: 2.2
   aimHeight: 2.4
+  keyLight: {fileID: 854525243}
+  strikeOnHorn: 1
+  strikeAtGaps:
+  - 16
+  strikeBehind: 26
+  lightningColor: {r: 0.82, g: 0.88, b: 1, a: 1}
+  lightningIntensity: 14
+  heroSurge: 3.5
+  heroSalute: 1
+  heroSaluteBefore: 0.8
+  heroSaluteTrigger: Attack
   arrowPrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
   arrowsPerVolley: 24
   firstVolleyAtGap: 24
