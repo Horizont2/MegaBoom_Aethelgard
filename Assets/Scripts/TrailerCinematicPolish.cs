@@ -23,10 +23,30 @@ public class TrailerCinematicPolish : MonoBehaviour
     // others spend a moment loading.
     //
     // Published so the editor's recorder can start on THAT frame rather than on
-    // whatever the engine is doing when Play begins. One flag, set in the one
-    // place all five shots already go through, instead of five directors each
-    // learning to announce themselves.
+    // whatever the engine is doing when Play begins.
+    //
+    // Four of the five shots go through OpenTrailer and set it for free. The
+    // march does not — it opens from a veil of its own, lifted over the first
+    // seconds of its first shot — so it says so itself through MarkOpened. That
+    // also covers the clash, which plays the march first: without it the
+    // recording of shot 4 would begin at the armies' charge and miss the whole
+    // march in front of it.
     public static bool Opened { get; private set; }
+
+    /// <summary>Called by a shot on the frame its picture begins.</summary>
+    public static void MarkOpened() { Opened = true; }
+
+    // Reset here rather than in Awake. Awake runs whenever the first caller
+    // happens to need the overlay, which in the march is AFTER the picture has
+    // already started — so resetting there would clear the flag that had just
+    // been set. SubsystemRegistration runs once per play, before any scene
+    // loads, which is the only moment that is unambiguously "before the shot".
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        Opened = false;
+        Instance = null;
+    }
 
     [Header("Letterbox")]
     [Tooltip("Height of each bar as a fraction of the screen. 0.11 is roughly 2.39:1 on a 16:9 display.")]
@@ -53,7 +73,6 @@ public class TrailerCinematicPolish : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(this); return; }
         Instance = this;
-        Opened = false;           // statics survive a skipped domain reload
         BuildOverlay();
     }
 
@@ -339,7 +358,7 @@ public class TrailerCinematicPolish : MonoBehaviour
 
     public void OpenTrailer()
     {
-        Opened = true;
+        MarkOpened();
         StartCoroutine(OpenRoutine());
     }
 

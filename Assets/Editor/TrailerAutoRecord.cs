@@ -107,7 +107,60 @@ public static class TrailerAutoRecord
             return;
         }
 
+        RequireRealtimeWhenRecordingSound();
         SessionState.SetString(PendingKey, shot);
+    }
+
+    // ==== SOUND AND CONSTANT-FRAME-RATE CAPTURE CANNOT BOTH BE TRUE ====
+    //
+    // Unity Recorder's default playback mode is Constant, and what that does is
+    // drive the GAME off Time.captureDeltaTime: every frame advances the clock
+    // by exactly one over the frame rate, however long it actually took to
+    // render. At 4K on a scene this heavy a frame takes far longer than a
+    // sixtieth of a second, so the shot crawls on the wall clock while coming
+    // out at the right speed in the file. For picture that is not a bug, it is
+    // the entire point of the mode.
+    //
+    // Audio cannot follow it. FMOD's mixer is driven by the sound card, which
+    // has never heard of captureDeltaTime, so it renders in real time: a shot
+    // that takes ninety seconds of wall clock to capture produces ninety seconds
+    // of sound for a ten second video. Nothing lines up, and nothing here can
+    // make it — there is no offline audio render to reach for. That is the
+    // stuttering, sliding sound on a 4K take.
+    //
+    // So whenever the sound is being captured, the recording goes into real
+    // time, where both clocks are the same clock. The cost is that the machine
+    // has to actually render at the target rate; at 4K it very likely cannot,
+    // and dropped frames are the price. 1080p in real time is a better trailer
+    // than 4K with the sound sliding off it.
+    private static void RequireRealtimeWhenRecordingSound()
+    {
+        if (!SessionState.GetBool(FmodRecorderBridge.SessionKey, false)) return;   // silent take; leave it alone
+
+        object settings = ControllerSettings(Window(true));
+        if (settings == null)
+        {
+            Debug.LogWarning("[Lore Trailer] Could not read the Recorder's playback mode. If the sound slides " +
+                             "against the picture, set Playback to Variable (Real-Time) in the Recorder window: " +
+                             "constant-frame-rate capture runs the game in slow motion and audio does not slow " +
+                             "down with it.");
+            return;
+        }
+
+        int changed = MakeRealtime(settings);
+        if (changed == 1)
+        {
+            Debug.Log("[Lore Trailer] The Recorder was set to constant frame rate, which cannot be recorded with " +
+                      "sound — it runs the game in slow motion and the audio keeps real time. Switched to " +
+                      "real-time playback. If the picture now drops frames at this resolution, record at 1080p: " +
+                      "a smooth 1080p take beats a 4K one with the sound sliding.");
+        }
+        else if (changed < 0)
+        {
+            Debug.LogWarning("[Lore Trailer] The Recorder's playback setting has been renamed by a package update. " +
+                             "Set Playback to Variable (Real-Time) by hand, or the sound will slide against the " +
+                             "picture on anything the machine cannot render at full rate.");
+        }
     }
 
     private static void OnPlayModeChanged(PlayModeStateChange change)
@@ -274,6 +327,44 @@ public static class TrailerAutoRecord
         if (m == null) return false;
         object r = m.Invoke(window, null);
         return r is bool && (bool)r;
+    }
+
+    // The window owns a RecorderControllerSettings; it is not public API, so it
+    // is found by type name rather than by field name — a rename of the field
+    // then costs nothing, and a rename of the type is reported.
+    private static object ControllerSettings(object window)
+    {
+        if (window == null) return null;
+        const BindingFlags F = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        Type wt = window.GetType();
+
+        foreach (FieldInfo f in wt.GetFields(F))
+            if (f.FieldType.Name == "RecorderControllerSettings") return f.GetValue(window);
+
+        foreach (PropertyInfo p in wt.GetProperties(F))
+            if (p.PropertyType.Name == "RecorderControllerSettings" && p.CanRead) return p.GetValue(window, null);
+
+        return null;
+    }
+
+    /// <summary>1 if it was changed, 0 if it was already right, -1 if the setting could not be found.</summary>
+    private static int MakeRealtime(object settings)
+    {
+        PropertyInfo p = settings.GetType().GetProperty("FrameRatePlayback", BindingFlags.Instance | BindingFlags.Public);
+        if (p == null || !p.CanWrite || !p.PropertyType.IsEnum) return -1;
+
+        object current = p.GetValue(settings, null);
+        if (current != null && current.ToString() == "Variable") return 0;
+
+        object variable;
+        try { variable = Enum.Parse(p.PropertyType, "Variable"); }
+        catch { return -1; }
+
+        p.SetValue(settings, variable, null);
+
+        var asset = settings as UnityEngine.Object;
+        if (asset != null) EditorUtility.SetDirty(asset);
+        return 1;
     }
 
     private static Type FindType(string fullName)

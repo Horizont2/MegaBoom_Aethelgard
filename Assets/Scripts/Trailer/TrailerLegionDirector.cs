@@ -1649,6 +1649,12 @@ public class TrailerLegionDirector : MonoBehaviour
 
     private IEnumerator CinematicRoutine()
     {
+        // The first frame of this episode's picture. This one does not go
+        // through TrailerCinematicPolish — it lifts a veil of its own over the
+        // opening seconds — so it has to say so, or the editor's recorder waits
+        // for an opening that never comes and the march is never recorded.
+        TrailerCinematicPolish.MarkOpened();
+
         if (playRiseIntro)
         {
             yield return StartCoroutine(RiseSequence());
