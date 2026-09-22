@@ -78,6 +78,8 @@ public class TrailerClashDirector : MonoBehaviour
     [Tooltip("The hero himself, out in front of his own line. Left empty, the line closes up and nobody leads it.")]
     public GameObject playerPrefab;
     public float playerLead = 3.4f;
+    [Tooltip("Metres TOWARD the camera from the middle of his own front. At zero he stands in the middle of the line's depth, which from side-on means the front rank is between him and the lens — the one man the shot is composed around, hidden behind extras.")]
+    public float playerToCamera = 3f;
     [Tooltip("Barracks units. Knight / Barbarian / Rogue_Hooded are the three the game hires.")]
     public GameObject[] allyPrefabs;
     [Tooltip("Ranks are what the camera sees. Files spread across each army's own front, which from side-on runs AWAY from the lens; ranks stack behind the front, which from side-on runs ACROSS the frame. So depth of formation, not width of front, is what fills the shot.")]
@@ -95,8 +97,11 @@ public class TrailerClashDirector : MonoBehaviour
     public float rankSpacing = 1.9f;
     [Tooltip("Metres of scatter on each unit's place in the grid. Zero is a chessboard; this is what makes it an army.")]
     public float positionJitter = 0.4f;
-    [Tooltip("Metres the slowest stragglers fall behind once the line is at full pace. The formation is neat while it stands and ragged while it runs, which is what stops a charge reading as one rigid block sliding across the field.")]
+    [Tooltip("Metres the slowest stragglers fall behind by the END of the charge. The formation is neat while it stands and ragged by the time it arrives, which is what stops a charge reading as one rigid block sliding across the field.")]
     public float straggle = 2.6f;
+    [Range(0f, 0.3f)]
+    [Tooltip("Spread on each soldier's animation playback rate. Without it every figure was instantiated in the same frame from the same prefab and runs in perfect lockstep forever — one soldier drawn a hundred and seventy times, which is the loudest tell a crowd was generated.")]
+    public float animatorSpeedSpread = 0.06f;
     [Tooltip("Metres between the two FRONT ranks when the shot opens. Read it together with the lens: at 48 degrees from 24 metres out the frame holds about thirty-eight metres, so a gap much wider than this opens on two crowds nobody can see.")]
     public float startGap = 32f;
 
@@ -151,6 +156,8 @@ public class TrailerClashDirector : MonoBehaviour
     [Tooltip("Lens at the moment of contact. Tighter, with the dolly, rather than either one alone — a zoom on its own reads as a zoom.")]
     public float cameraEndFov = 44f;
     public float handheld = 0.03f;
+    [Tooltip("Degrees of roll by the moment of contact, easing in from level. Rarely noticed consciously, always felt — it is the difference between a camera watching and a camera braced.")]
+    public float cameraRoll = 2.2f;
     [Tooltip("Aim height above the meeting point. Near the camera's own height, so the horizon sits level and the shot reads as standing among them.")]
     public float aimHeight = 2.4f;
 
@@ -299,6 +306,7 @@ public class TrailerClashDirector : MonoBehaviour
         }
 
         WakeEveryone();
+        Desync();
         PlaceEverything(true);
         PlaceCamera(0f);
         BuildRain();
@@ -323,6 +331,11 @@ public class TrailerClashDirector : MonoBehaviour
         while (t < holdSeconds)
         {
             t += Time.unscaledDeltaTime;
+            // Placed every frame through the hold as well. It costs nothing they
+            // are not already paying, and it means the line the audience is
+            // shown while it stands is exactly the line that starts running —
+            // no frame where anything is still settling into place.
+            PlaceEverything(false);
             PlaceCamera(0f);
             DriveArrows();
             yield return null;
@@ -390,8 +403,19 @@ public class TrailerClashDirector : MonoBehaviour
     // slows and the legs do not, the whole field sprints on the spot.
     private float Gait { get { return speed * holdFactor * gaitScale; } }
 
-    // 0 while they stand, 1 at full pace.
-    private float paceForLag { get { return chargeSpeed > 0.01f ? Mathf.Clamp01(speed / chargeSpeed) : 0f; } }
+    // ==== THE STRAGGLE HAS TO BE TIED TO DISTANCE, NOT TO PACE ====
+    //
+    // It was scaled by how close the line was to full speed, which sounds right
+    // and looks wrong. Speed goes nought to full in under a second, so every
+    // straggler was dragged back his whole two and a half metres inside that
+    // second — about three metres per second of movement RELATIVE to his
+    // neighbours, on top of the charge. On screen that is not an army fraying,
+    // it is a dozen men visibly shuffling into position as the shot opens.
+    //
+    // Tied to how far the armies have closed instead, the same displacement is
+    // spread across the whole charge: a tenth of a metre a second of drift,
+    // which reads as a line losing its edges and never as anyone correcting.
+    // (Progress() is used directly at the call site.)
 
     private void RunGait()
     {
@@ -484,7 +508,8 @@ public class TrailerClashDirector : MonoBehaviour
         player = new Unit
         {
             puppet = puppet,
-            offset = new Vector3(0f, 0f, -playerLead),   // ahead of his own front rank
+            // Ahead of his own front rank, and out toward the lens.
+            offset = new Vector3(playerToCamera, 0f, -playerLead),
             scale = puppet.transform.localScale,
             snapPhase = 0,
         };
@@ -509,6 +534,27 @@ public class TrailerClashDirector : MonoBehaviour
     private static void WakeAll(List<Unit> army)
     {
         for (int i = 0; i < army.Count; i++) Wake(army[i]);
+    }
+
+    // ==== A HUNDRED AND SEVENTY MEN IN PERFECT LOCKSTEP ====
+    //
+    // Every puppet is instantiated in the same frame from the same prefab, so
+    // every animator enters its idle at normalized time zero and stays in step
+    // with every other one forever. The result is not an army, it is one
+    // soldier drawn a hundred and seventy times — the single loudest tell that
+    // a crowd was generated, and it survives any amount of work on the
+    // formation, the camera or the lighting.
+    //
+    // Two things, both a line each: scatter the phase once so they start out of
+    // step, and give each one a slightly different playback rate so they cannot
+    // drift back into step. Six per cent is far too little to see on any one
+    // figure and quite enough to keep the field broken up.
+    private void Desync()
+    {
+        for (int i = 0; i < allies.Count; i++) if (allies[i].puppet != null) allies[i].puppet.DesyncAnimation(animatorSpeedSpread);
+        for (int i = 0; i < enemies.Count; i++) if (enemies[i].puppet != null) enemies[i].puppet.DesyncAnimation(animatorSpeedSpread);
+        // Not the hero. He is one figure and the eye is on him; a playback rate
+        // that is not quite right is visible on a man you are looking at.
     }
 
     private static void Wake(Unit u)
@@ -547,7 +593,7 @@ public class TrailerClashDirector : MonoBehaviour
             Unit u = army[i];
             if (u.puppet == null) continue;
 
-            Vector3 p = front + side * u.offset.x + back * (u.offset.z + u.lag * paceForLag);
+            Vector3 p = front + side * u.offset.x + back * (u.offset.z + u.lag * Progress());
             bool ground = groundAll || (frame % GroundStride) == u.snapPhase;
             u.puppet.Place(p, facing, ground);
             u.puppet.SetGait(Gait);
@@ -844,7 +890,8 @@ public class TrailerClashDirector : MonoBehaviour
                                     Mathf.PerlinNoise(tt * 1.1f, 7f) - 0.5f) * (amp * 2f);
 
         shotCamera.transform.position = pos + shake;
-        shotCamera.transform.rotation = Quaternion.LookRotation((aim - pos).normalized);
+        shotCamera.transform.rotation = Quaternion.LookRotation((aim - pos).normalized)
+                                      * Quaternion.Euler(0f, 0f, cameraRoll * e);
         shotCamera.fieldOfView = Mathf.Lerp(cameraFov, cameraEndFov, e);
     }
 

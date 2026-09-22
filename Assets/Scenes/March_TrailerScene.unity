@@ -2168,6 +2168,7 @@ MonoBehaviour:
   mirrorCamera: 0
   playerPrefab: {fileID: 2945078721770132420, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
   playerLead: 3.4
+  playerToCamera: 3
   allyPrefabs:
   - {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
   - {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
@@ -2181,6 +2182,7 @@ MonoBehaviour:
   rankSpacing: 1.9
   positionJitter: 0.4
   straggle: 2.6
+  animatorSpeedSpread: 0.06
   startGap: 32
   holdSeconds: 2
   chargeSpeed: 3.6
@@ -2197,6 +2199,7 @@ MonoBehaviour:
   cameraFov: 52
   cameraEndFov: 44
   handheld: 0.03
+  cameraRoll: 2.2
   aimHeight: 2.4
   arrowPrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
   arrowsPerVolley: 24

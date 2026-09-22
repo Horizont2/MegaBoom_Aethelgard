@@ -241,6 +241,21 @@ public class TrailerPuppet : MonoBehaviour
 
     public void Ground() { SnapToGround(); }
 
+    // Scatters this puppet's animation so a crowd built from one prefab in one
+    // frame does not move as one body. Two parts, and it needs both: the phase
+    // is kicked to a random point of whatever state it is in, so they START out
+    // of step, and the playback rate is nudged, so they cannot drift back INTO
+    // step over the next few seconds.
+    public void DesyncAnimation(float speedSpread)
+    {
+        if (_animator == null || _animator.runtimeAnimatorController == null) return;
+
+        var state = _animator.GetCurrentAnimatorStateInfo(0);
+        if (state.fullPathHash != 0) _animator.Play(state.fullPathHash, 0, Random.value);
+
+        if (speedSpread > 0.0001f) _animator.speed = 1f + Random.Range(-speedSpread, speedSpread);
+    }
+
     // The gait only — no movement. Written across BOTH vocabularies on purpose:
     // the skeletons run on a bool called isMoving, the hero rig on a Speed float
     // feeding a locomotion blend tree, and the Safe helpers make writing a
