@@ -1107,15 +1107,46 @@ public class TrailerStatueShot : MonoBehaviour
 
             GameObject chunk = Instantiate(prefab, transform);
             chunk.name = "Debris_" + i;
-            chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
-            PrepareChunk(chunk);
-            chunk.SetActive(false);
+
             debrisPool.Add(chunk);
+            debrisScale.Add(chunk.transform.localScale * Random.Range(0.07f, 0.26f));
+            PrepareChunk(chunk);
+            Park(chunk);
 
             // Two a frame. Spreading the load is the whole point; doing them all
             // here would only move the same hitch to the top of the shot.
             if ((i & 1) == 1) yield return null;
         }
+    }
+
+    // ==== LOADING A MESH IS NOT THE SAME AS HAVING DRAWN IT ====
+    //
+    // Building the chunks early moved the asset load off the burst frame, and
+    // the burst still locked the editor solid. Instantiating a prefab reads its
+    // mesh, its material and its textures — it does NOT compile the shader.
+    // Under URP a material needs a compiled variant per pass and per keyword set
+    // it is actually rendered with, and Unity compiles those the first time the
+    // thing is DRAWN, synchronously, on the render thread. Six rock materials
+    // times forward, shadow caster, depth and depth-normals, times the fog and
+    // light keywords in play, is a lot of variants to compile in one frame — and
+    // a synchronous compile is not a dropped frame, it is the editor stopping.
+    //
+    // Parked chunks used to be inactive, so their first draw was the burst. Now
+    // they stay ACTIVE from the establish onward, kinematic and shrunk to
+    // effectively nothing at the statue's centre: submitted for drawing every
+    // frame, and occupying no pixels worth speaking of. Every variant the burst
+    // will need is compiled during the silence at the top of the shot, where
+    // there is nothing on screen for a stall to interrupt.
+    private const float ParkedScale = 0.004f;
+    private readonly List<Vector3> debrisScale = new List<Vector3>();
+
+    private void Park(GameObject chunk)
+    {
+        chunk.transform.position = center;
+        chunk.transform.localScale = debrisScale[debrisPool.Count - 1] * ParkedScale;
+
+        var rb = chunk.GetComponent<Rigidbody>();
+        if (rb != null) rb.isKinematic = true;          // it must not fall out of the stone
     }
 
     private void SpawnDebris()
@@ -1135,16 +1166,12 @@ public class TrailerStatueShot : MonoBehaviour
             }
 
             chunk.transform.SetPositionAndRotation(from, Random.rotation);
-            chunk.SetActive(true);
-
-            // Re-applied after activation on purpose: an ignored collision pair
-            // does not survive its collider being disabled and enabled again,
-            // and these have been parked inactive since the establish.
-            IgnoreStatue(chunk);
+            chunk.transform.localScale = debrisScale[i];
 
             var rb = chunk.GetComponent<Rigidbody>();
             if (rb != null)
             {
+                rb.isKinematic = false;
                 Vector3 away = (from - center).normalized + Vector3.up * Random.Range(0.3f, 0.9f);
                 rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;
                 rb.angularVelocity = Random.insideUnitSphere * 8f;
@@ -1154,6 +1181,7 @@ public class TrailerStatueShot : MonoBehaviour
             Destroy(chunk, 7f);
         }
         debrisPool.Clear();
+        debrisScale.Clear();
     }
 
     // Collider, body and collision filtering, all done off the beat.
@@ -1253,6 +1281,7 @@ public class TrailerStatueShot : MonoBehaviour
         for (int i = 0; i < debrisPool.Count; i++)
             if (debrisPool[i] != null) Destroy(debrisPool[i]);
         debrisPool.Clear();
+        debrisScale.Clear();
 
         // Put the stone back where it was found and let it be static again.
         if (statue != null) statue.position = statueHome;
