@@ -233,6 +233,7 @@ public class TrailerStatueShot : MonoBehaviour
 
         BuildMaterials();
         BuildStatueDust();
+        StartCoroutine(WarmDebris());
         if (autoPlay) Play();
     }
 
@@ -1080,14 +1081,51 @@ public class TrailerStatueShot : MonoBehaviour
 
     private bool closing;
 
-    private void SpawnDebris()
+    // ==== THE STONE BREAKING INTO PIECES IS A DISK READ ====
+    //
+    // SpawnDebris used to Instantiate twenty-odd rocks on the single frame the
+    // statue bursts. Those six LProck models, their materials and their textures
+    // have not been touched at any earlier point in the shot, so that frame is
+    // where Unity goes and LOADS them — synchronously, while the time ramp is
+    // running and the burst coroutine is doing everything else it does. One
+    // frame, all of it, exactly on the beat the audience is looking at.
+    //
+    // So they are built during the establish instead: two per frame through the
+    // two and a half seconds of deliberate silence at the top of the shot, where
+    // nothing is happening and a hitch costs nothing. They sit inactive off to
+    // one side until the burst, which then only has to place them and push.
+    private readonly List<GameObject> debrisPool = new List<GameObject>();
+
+    private IEnumerator WarmDebris()
     {
-        if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) return;
+        if (debrisPrefabs == null || debrisPrefabs.Length == 0 || debrisCount <= 0) yield break;
 
         for (int i = 0; i < debrisCount; i++)
         {
             GameObject prefab = debrisPrefabs[Random.Range(0, debrisPrefabs.Length)];
             if (prefab == null) continue;
+
+            GameObject chunk = Instantiate(prefab, transform);
+            chunk.name = "Debris_" + i;
+            chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
+            PrepareChunk(chunk);
+            chunk.SetActive(false);
+            debrisPool.Add(chunk);
+
+            // Two a frame. Spreading the load is the whole point; doing them all
+            // here would only move the same hitch to the top of the shot.
+            if ((i & 1) == 1) yield return null;
+        }
+    }
+
+    private void SpawnDebris()
+    {
+        // Everything that costs anything was done during the establish. All this
+        // frame does is move twenty transforms and set twenty velocities.
+        for (int i = 0; i < debrisPool.Count; i++)
+        {
+            GameObject chunk = debrisPool[i];
+            if (chunk == null) continue;
 
             Vector3 from = center;
             if (cracks.Count > 0)
@@ -1096,66 +1134,66 @@ public class TrailerStatueShot : MonoBehaviour
                 if (pick != null) from = pick.Tip;
             }
 
-            // Parented to the rig. Spawned at the scene root they survive the rig
-            // being switched off, and the hierarchy fills with LProck(Clone) that
-            // nothing owns and nothing cleans up.
-            GameObject chunk = Instantiate(prefab, from, Random.rotation, transform);
-            chunk.transform.localScale *= Random.Range(0.07f, 0.26f);
+            chunk.transform.SetPositionAndRotation(from, Random.rotation);
+            chunk.SetActive(true);
 
-            // ==== A SPHERE, NOT A COOKED CONVEX HULL ====
-            //
-            // This used to add a MeshCollider and set convex on the rock's own
-            // mesh. Two things wrong with that, and both of them land on the
-            // single frame the statue bursts:
-            //
-            //   The LProck meshes are imported with Read/Write OFF, so PhysX
-            //   cannot cook a hull from them at all. Every chunk logged an error
-            //   and ended up with NO collider — it fell through the world, which
-            //   is the opposite of what the code was trying to buy.
-            //
-            //   Even where it works, cooking twenty-odd convex hulls in one frame
-            //   is a hitch by itself, and it happens while the time ramp has the
-            //   fixed step running fast and the chunks are born touching the
-            //   statue's non-convex MeshCollider.
-            //
-            // A sphere off the renderer bounds tumbles and settles convincingly
-            // for the second of screen time any of this gets, costs nothing to
-            // create, and needs no readable mesh.
-            if (chunk.GetComponentInChildren<Collider>() == null)
-            {
-                var mf = chunk.GetComponentInChildren<MeshFilter>();
-                var host = mf != null ? mf.gameObject : chunk;
-                var sc = host.AddComponent<SphereCollider>();
-                // Mesh.bounds is local-space metadata and is available even on a
-                // mesh with Read/Write off, which is exactly the case the old
-                // code could not handle. SphereCollider.radius is local too, so
-                // the two agree without any transform work.
-                if (mf != null && mf.sharedMesh != null)
-                {
-                    sc.center = mf.sharedMesh.bounds.center;
-                    sc.radius = Mathf.Max(0.02f, mf.sharedMesh.bounds.extents.magnitude * 0.6f);
-                }
-            }
-
-            // They are born ON the crack tips, which is ON the statue's collider.
-            // Without this every chunk starts deeply interpenetrating a concave
-            // mesh and PhysX spends the burst frame pushing them out of it.
+            // Re-applied after activation on purpose: an ignored collision pair
+            // does not survive its collider being disabled and enabled again,
+            // and these have been parked inactive since the establish.
             IgnoreStatue(chunk);
 
-            // NOT '??'. The null-coalescing operator compares against real null
-            // and bypasses UnityEngine.Object's == overload, so a destroyed or
-            // absent component slips through as "not null" and the next line
-            // throws MissingComponentException.
             var rb = chunk.GetComponent<Rigidbody>();
-            if (rb == null) rb = chunk.AddComponent<Rigidbody>();
-            rb.mass = 0.4f;
-            Vector3 away = (from - center).normalized + Vector3.up * Random.Range(0.3f, 0.9f);
-            rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;
-            rb.angularVelocity = Random.insideUnitSphere * 8f;
+            if (rb != null)
+            {
+                Vector3 away = (from - center).normalized + Vector3.up * Random.Range(0.3f, 0.9f);
+                rb.linearVelocity = away * Random.Range(4f, 9f) + Random.insideUnitSphere * 1.5f;
+                rb.angularVelocity = Random.insideUnitSphere * 8f;
+            }
 
             debris.Add(chunk);
             Destroy(chunk, 7f);
         }
+        debrisPool.Clear();
+    }
+
+    // Collider, body and collision filtering, all done off the beat.
+    private void PrepareChunk(GameObject chunk)
+    {
+        // ==== A SPHERE, NOT A COOKED CONVEX HULL ====
+        //
+        // This used to add a MeshCollider and set convex on the rock's own mesh.
+        // The LProck meshes are imported with Read/Write OFF, so PhysX cannot
+        // cook a hull from them at all: every chunk logged an error and ended up
+        // with NO collider, falling through the world — the opposite of what the
+        // code was trying to buy. And cooking twenty-odd hulls costs real time,
+        // which used to be spent on the burst frame.
+        //
+        // A sphere off the mesh's local bounds tumbles and settles convincingly
+        // for the second of screen time any of this gets, and needs no readable
+        // mesh. Mesh.bounds is metadata, available whatever the import settings.
+        if (chunk.GetComponentInChildren<Collider>() == null)
+        {
+            var mf = chunk.GetComponentInChildren<MeshFilter>();
+            var host = mf != null ? mf.gameObject : chunk;
+            var sc = host.AddComponent<SphereCollider>();
+            if (mf != null && mf.sharedMesh != null)
+            {
+                sc.center = mf.sharedMesh.bounds.center;
+                sc.radius = Mathf.Max(0.02f, mf.sharedMesh.bounds.extents.magnitude * 0.6f);
+            }
+        }
+
+        // They are launched FROM the crack tips, which are ON the statue's
+        // collider. Without this every chunk starts deeply interpenetrating a
+        // concave mesh and PhysX spends the burst frame pushing them out of it.
+        IgnoreStatue(chunk);
+
+        // NOT '??'. The null-coalescing operator compares against real null and
+        // bypasses UnityEngine.Object's == overload, so a destroyed or absent
+        // component slips through as "not null" and the next line throws.
+        var rb = chunk.GetComponent<Rigidbody>();
+        if (rb == null) rb = chunk.AddComponent<Rigidbody>();
+        rb.mass = 0.4f;
     }
 
     private readonly List<GameObject> debris = new List<GameObject>();
@@ -1210,6 +1248,11 @@ public class TrailerStatueShot : MonoBehaviour
         for (int i = 0; i < debris.Count; i++)
             if (debris[i] != null) Destroy(debris[i]);
         debris.Clear();
+
+        // Anything the burst never got to use — the shot can be cut short.
+        for (int i = 0; i < debrisPool.Count; i++)
+            if (debrisPool[i] != null) Destroy(debrisPool[i]);
+        debrisPool.Clear();
 
         // Put the stone back where it was found and let it be static again.
         if (statue != null) statue.position = statueHome;
