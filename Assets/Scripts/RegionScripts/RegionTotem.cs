@@ -820,14 +820,18 @@ public class RegionTotem : MonoBehaviour
         {
             float ang = (360f / _anchorsTotal) * i + Random.Range(-12f, 12f);
             Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
-            Vector3 pos = transform.position + dir * anchorRadius;
-            pos.y = GetGroundHeight(pos);
+            Vector3 wish = transform.position + dir * anchorRadius;
+            Vector3 pos = FindOpenSpot(wish, 1.4f);
+            if (Blockage(pos, 1.4f) > 0.01f)
+                Debug.LogWarning($"[Totem] '{name}' could find no open ground for anchor {i + 1} within eight " +
+                                 "metres of its place on the ring — the location is dense enough that it had to " +
+                                 "settle for the least blocked spot. Widen anchorRadius or clear the courtyard.");
             SpawnAnchor(pos, anchorHealth * Mathf.Lerp(1f, hpMult, 0.5f));
 
             for (int g = 0; g < guardsPerAnchor && guardPool != null && guardPool.Length > 0; g++)
             {
-                Vector3 gp = pos + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(2f, 4.5f));
-                gp.y = GetGroundHeight(gp);
+                Vector3 gWish = pos + (Vector3)(Random.insideUnitCircle.normalized * Random.Range(2f, 4.5f));
+                Vector3 gp = FindOpenSpot(gWish, 0.7f);
                 SpawnEntityAt(guardPool[Random.Range(0, guardPool.Length)], gp, hpMult, dmgMult);
             }
             yield return new WaitForSeconds(0.35f);
@@ -886,8 +890,7 @@ public class RegionTotem : MonoBehaviour
         {
             float ang = (360f / Mathf.Max(1, idleGarrisonCount)) * i + Random.Range(-20f, 20f);
             Vector3 dir = Quaternion.Euler(0f, ang, 0f) * Vector3.forward;
-            Vector3 p = transform.position + dir * Random.Range(idleGarrisonRadius * 0.6f, idleGarrisonRadius);
-            p.y = GetGroundHeight(p);
+            Vector3 p = FindOpenSpot(transform.position + dir * Random.Range(idleGarrisonRadius * 0.6f, idleGarrisonRadius), 0.7f);
             SpawnEntityAt(pool[Random.Range(0, pool.Length)], p, hp, dmg);
         }
     }
@@ -1143,6 +1146,84 @@ public class RegionTotem : MonoBehaviour
             RenderSettings.fogDensity = Mathf.Lerp(fromDensity, toDensity, k);
             yield return null;
         }
+    }
+
+    // ==== A PERFECT RING IS A RING THROUGH THE WALLS ====
+    //
+    // The anchors were placed at a fixed radius on evenly spaced bearings with
+    // twelve degrees of jitter, and nothing looked at what was standing there.
+    // A totem is the centre of a LOCATION — a castle, a camp — so a circle
+    // thirteen metres out runs straight through its buildings: anchors inside
+    // walls, inside towers, under floors. GetGroundHeight makes that worse
+    // rather than better, because it deliberately ignores props and returns the
+    // TERRAIN height, which is the one height guaranteed to be inside anything
+    // built on top of it.
+    //
+    // So the ring position is a WISH now, not an address. Each anchor keeps its
+    // bearing and walks outward along a golden-angle spiral until it finds open
+    // sky and open ground, and takes the best spot it saw if there is none.
+    // Never fails: an anchor that does not exist is a shield that cannot be
+    // broken and a region that cannot be captured.
+    private static readonly Collider[] s_spotProbe = new Collider[32];
+
+    private Vector3 FindOpenSpot(Vector3 ideal, float clearance)
+    {
+        Vector3 best = ideal;
+        float bestScore = float.MaxValue;
+
+        for (int attempt = 0; attempt < 24; attempt++)
+        {
+            Vector3 p = ideal;
+            if (attempt > 0)
+            {
+                // The golden angle, so successive tries never line up into a
+                // spoke and never revisit the same neighbourhood twice.
+                float ang = attempt * 137.5f * Mathf.Deg2Rad;
+                float rad = 1.5f + attempt * 0.30f;          // out to about eight metres
+                p += new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * rad;
+            }
+            p.y = GetGroundHeight(p);
+
+            // Distance from the wish is a cost, not a veto: a clear spot two
+            // metres away always beats a blocked one on the mark.
+            float score = Blockage(p, clearance) + Vector3.Distance(p, ideal) * 0.35f;
+            if (score < bestScore) { bestScore = score; best = p; }
+            if (bestScore <= 0.01f) break;                   // open ground; stop looking
+        }
+
+        return best;
+    }
+
+    private float Blockage(Vector3 p, float clearance)
+    {
+        float penalty = 0f;
+
+        int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * clearance, clearance, s_spotProbe,
+                                              ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            Collider c = s_spotProbe[i];
+            if (c == null || c is TerrainCollider) continue;
+            if (c.transform.IsChildOf(transform)) continue;              // the totem itself
+            if (c.GetComponentInParent<CorruptionAnchor>() != null) continue;
+            if (c.CompareTag("Player")) continue;                        // they will move
+            penalty += 10f;                                              // a wall, a rock, a crate
+        }
+
+        // ==== INDOORS IS SOMETHING BETWEEN THE SPOT AND THE SKY ====
+        //
+        // The sphere above catches walls, and it misses the case that matters
+        // most: the middle of a room, where the nearest wall is three metres
+        // away and the anchor is nevertheless sealed inside a building. A roof
+        // is the honest test, and it costs one ray.
+        if (Physics.Raycast(p + Vector3.up * 80f, Vector3.down, out RaycastHit above, 160f,
+                            ~0, QueryTriggerInteraction.Ignore)
+            && !(above.collider is TerrainCollider)
+            && !above.collider.transform.IsChildOf(transform)
+            && above.point.y > p.y + 2f)
+            penalty += 25f;
+
+        return penalty;
     }
 
     private float GetGroundHeight(Vector3 pos)
