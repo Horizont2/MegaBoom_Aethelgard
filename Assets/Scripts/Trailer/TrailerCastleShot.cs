@@ -62,29 +62,51 @@ public class TrailerCastleShot : MonoBehaviour
     public bool removeHero = true;
 
     [Header("The crane")]
-    // Three moves, in the order they are read:
-    //   LOW    the castle is a shape in the fog and the hero is a figure below
-    //          it. You are told there is something there before you are shown it.
-    //   RISE   the camera leaves the ground and the fog thins under it.
-    //   PUSH   it closes, the lens tightens, and the castle fills the frame.
-    [Tooltip("Metres from the castle's edge the shot opens at, as a multiple of the castle's own radius.")]
-    public float startDistance = 3.2f;
+    // ==== A DOLLY IN A STRAIGHT LINE IS A ZOOM ====
+    //
+    // The first version travelled straight down one axis with eight degrees of
+    // yaw on it, and that is not a camera move — nothing in frame changes its
+    // relationship to anything else, so the brain reads the whole thing as the
+    // picture getting bigger. Which is exactly what it looked like.
+    //
+    // What makes a move read as a MOVE is parallax: near things must slide
+    // against far things. That needs lateral travel, so the camera ARCS — forty
+    // odd degrees around the hill while it rises and closes. The towers separate
+    // from each other, the torch line sweeps through the foreground, and the
+    // castle turns to show a second face. Every one of those is the shot telling
+    // you the camera is somewhere, which a zoom cannot do at any focal length.
+    //
+    // Three timed sections, and it needs all three:
+    //   SETTLE  a beat where almost nothing happens. The castle is a shape in
+    //           the fog and you are given time to notice it before being shown
+    //           it. Openings that start moving have nothing to open ON.
+    //   CRANE   the arc, the rise, the push, the lens.
+    //   HOLD    it never quite stops. A camera that halts dead announces that a
+    //           move was being executed.
+    [Tooltip("Seconds held nearly still at the start, on the silhouette, before the crane begins.")]
+    public float settleSeconds = 2.2f;
+    [Tooltip("Metres from the castle's centre the shot opens at, as a multiple of the castle's own radius.")]
+    public float startDistance = 3.4f;
     [Tooltip("And where the push ends. Smaller is closer.")]
-    public float endDistance = 1.9f;
+    public float endDistance = 1.8f;
+    [Tooltip("Degrees the camera travels AROUND the castle across the move. This is the parallax, and it is the difference between a camera move and a zoom.")]
+    public float arcDegrees = 46f;
+    [Tooltip("Degrees per second of continuing arc during the settle and the hold, so the frame is never truly locked off.")]
+    public float driftDegreesPerSecond = 0.7f;
     public float startHeight = 2.2f;
     [Tooltip("Height at the end, as a fraction of the castle's own height. Deliberately below one: finishing ABOVE the towers looks down on them and loses the silhouette the whole shot is built on. Just under the crown, looking up, is the frame.")]
     public float endHeightFactor = 0.62f;
-    [Tooltip("Metres the lens may be lifted to clear the hill. The castle sits on a twenty-two metre plateau the generator raises for it, so from the valley the first half of the crane can be looking straight at a slope — this walks the camera up until the crown is actually visible.")]
+    [Tooltip("Metres the lens may be lifted to clear the hill. The castle sits on a twenty-two metre plateau the generator raises for it, so from the valley the crane can be looking straight at a slope — this walks the camera up until the crown is actually visible.")]
     public float maxClearLift = 26f;
     public float startFov = 58f;
-    public float endFov = 42f;
-    [Tooltip("Seconds the whole move takes. Slow — this is the one shot in the trailer that is allowed to breathe.")]
+    public float endFov = 40f;
+    [Tooltip("Seconds the crane itself takes. Slow — this is the one shot in the trailer that is allowed to breathe.")]
     public float craneSeconds = 12f;
-    [Tooltip("Degrees of yaw drift across the move. A crane that only goes up reads as a lift; a few degrees of turn reads as operated.")]
-    public float yawDrift = 8f;
+    [Tooltip("How fast the aim catches up to where it should be. Low numbers let the framing float, which is what separates an operated camera from a solved one.")]
+    public float aimDamping = 1.6f;
     public float handheld = 0.02f;
     [Tooltip("Seconds held on the final framing before the fade.")]
-    public float holdSeconds = 2f;
+    public float holdSeconds = 2.4f;
     public float outFade = 1.8f;
 
     [Header("Torches")]
@@ -137,13 +159,20 @@ public class TrailerCastleShot : MonoBehaviour
     public Color fogColour = new Color(0.55f, 0.60f, 0.70f);
 
     [Header("Weather")]
-    // The march and the clash are both filmed in rain. Cutting from the moment of
-    // contact to a still, dry castle breaks the weather between one shot and the
-    // next, which an audience reads as a different film. It also gives the one
-    // static composition in the trailer something moving in it.
-    [Tooltip("The same Heavy Rain prefab the other two episodes use. Follows the lens, splashes off.")]
-    public GameObject rainPrefab;
-    public float rainHeight = 14f;
+    // ==== REGION 24 IS A WINTER REGION ====
+    //
+    // Its regionBiome is 2. The snow in the take is not a bug and not a
+    // coincidence — it is what this region is, and it is a better last image
+    // than the rain I was about to force on it: snow drifting through a fogged
+    // valley, lit by torches, above a dead castle.
+    //
+    // So no weather is spawned here. What IS done is making sure the game's own
+    // winter branch actually engages: DayNightCycle reads the biome from
+    // PlayerPrefs, which MissionInitializer normally writes on the way in from
+    // the map. Coming straight into GameScene from a menu item skips that, so
+    // the region's biome would be whatever was last played.
+    [Tooltip("Write the region's biome to the PlayerPrefs key the game reads, since launching straight into GameScene skips the code that normally does it. Off, the weather is whatever the last real run left behind.")]
+    public bool applyRegionBiome = true;
 
     [Header("Audio")]
     public string windBed = AudioID.Trailer_WindDesolate;
@@ -196,17 +225,53 @@ public class TrailerCastleShot : MonoBehaviour
     private readonly List<Light> flames = new List<Light>();
     private readonly List<float> flamePhase = new List<float>();
 
+    // ==== IT ARMS ITSELF, RATHER THAN BEING SWITCHED ON ====
+    //
+    // This used to sit inactive in the scene and be activated by the launcher in
+    // AfterSceneLoad. That works in theory — AfterSceneLoad is after every Awake
+    // and before the first Start — but it makes the one thing this component MUST
+    // do, naming the region before WorldGenerator's Start reads it, depend on a
+    // subtlety of activation ordering. It is the kind of thing that is correct
+    // until it is not, and when it is not the symptom is a world generated for
+    // the wrong region with no error anywhere.
+    //
+    // So the object is simply ACTIVE in the scene and asks for itself whether
+    // this run is the castle shot. An ordinary Awake on an ordinary active
+    // object is guaranteed to be before every Start in the scene; there is
+    // nothing left to get wrong.
+    private bool armed;
+
     private void Awake()
     {
-        // Before WorldGenerator's Start, which is the only moment this is any
-        // use: it is what the generator reads to decide which location to build
-        // the world around.
-        if (region != null) MissionInitializer.PendingMissionRegion = region;
+        armed = Armed();
+        if (!armed) { enabled = false; return; }
+
+        // The only moment this is any use: it is what the generator reads in its
+        // Start to decide which location to build the world around.
+        if (region != null)
+        {
+            MissionInitializer.PendingMissionRegion = region;
+            // Winter, for region 24 — and written here because coming straight
+            // into GameScene skips MissionInitializer, which is what normally
+            // writes it. Without it the snow, the winter lighting and the
+            // ground drift are whichever region was played last.
+            if (applyRegionBiome) PlayerPrefs.SetInt("RegionBiomeType", (int)region.regionBiome);
+        }
+        else Debug.LogError("[TrailerCastleShot] No Region assigned — the generator will build whatever region it was already going to, and there will be no castle.");
+    }
+
+    private static bool Armed()
+    {
+#if UNITY_EDITOR
+        return UnityEditor.SessionState.GetString(TrailerShotSolo.SessionKey, string.Empty) == TrailerShotSolo.CastleShot;
+#else
+        return false;
+#endif
     }
 
     private void Start()
     {
-        if (autoPlay) StartCoroutine(Run());
+        if (armed && autoPlay) StartCoroutine(Run());
     }
 
     private IEnumerator Run()
@@ -214,11 +279,29 @@ public class TrailerCastleShot : MonoBehaviour
         TrailerLogGuard.Arm();
 
         // ---- 1. wait for the world ----
+        //
+        // On the generator's own flag rather than on the castle appearing. The
+        // location is placed early in a build that goes on for a while after it,
+        // so watching for the castle meant measuring and dressing a world that
+        // was still being assembled around it.
         float waited = 0f;
-        while (castle == null && waited < generationTimeout)
+        float lastLogged = -1f;
+        while (waited < generationTimeout)
         {
-            castle = FindCastle();
-            if (castle != null) break;
+            if (WorldGenerator.IsGenerationDone)
+            {
+                castle = FindCastle();
+                if (castle != null) break;
+            }
+
+            // Generating region 24 takes a while and a silent editor looks hung.
+            if (WorldGenerator.CurrentProgress - lastLogged >= 0.25f)
+            {
+                lastLogged = WorldGenerator.CurrentProgress;
+                Debug.Log("[TrailerCastleShot] Building region 24… " +
+                          Mathf.RoundToInt(WorldGenerator.CurrentProgress * 100f) + "%");
+            }
+
             waited += Time.unscaledDeltaTime;
             yield return null;
         }
@@ -256,15 +339,26 @@ public class TrailerCastleShot : MonoBehaviour
         PlaceTorches();
         RemoveHero();
 
-        BuildRain();
-
         var polish = TrailerCinematicPolish.GetOrCreate();
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
         Loop(windBed);
         Loop(dreadBed);
 
-        // ---- 4. the crane ----
+        // ---- 4. SETTLE. A shape in the fog, and time to notice it. ----
+        float drift = 0f;
+        float st = 0f;
+        while (st < settleSeconds)
+        {
+            st += Time.unscaledDeltaTime;
+            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
+            PlaceCamera(0f, drift);
+            ApplyFog(0f);
+            FlickerTorches();
+            yield return null;
+        }
+
+        // ---- 5. CRANE. The arc, the rise, the push. ----
         float t = 0f;
         bool crowed = false, hushed = false, revealed = false;
         float hushAt = Mathf.Clamp01(revealAt) * craneSeconds - silenceBefore;
@@ -278,7 +372,8 @@ public class TrailerCastleShot : MonoBehaviour
             // the move never announces its start or its stop.
             float e = k * k * k * (k * (k * 6f - 15f) + 10f);
 
-            PlaceCamera(e);
+            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
+            PlaceCamera(e, drift);
             ApplyFog(e);
             FlickerTorches();
 
@@ -294,12 +389,13 @@ public class TrailerCastleShot : MonoBehaviour
             yield return null;
         }
 
-        // ---- 5. hold, and out ----
+        // ---- 6. HOLD. It never quite stops. ----
         float hold = 0f;
         while (hold < holdSeconds)
         {
             hold += Time.unscaledDeltaTime;
-            PlaceCamera(1f);
+            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
+            PlaceCamera(1f, drift);
             FlickerTorches();
             yield return null;
         }
@@ -599,10 +695,16 @@ public class TrailerCastleShot : MonoBehaviour
 
     // ---- camera ----------------------------------------------------------------
 
-    private Vector3 CameraPosition(float e)
+    // `e` is the eased progress of the crane, 0..1. `drift` is the extra arc the
+    // settle and the hold keep adding, in degrees, so the frame is never locked.
+    private Vector3 CameraPosition(float e, float drift)
     {
         float dist = Mathf.Lerp(castleRadius * startDistance, castleRadius * endDistance, e);
-        float yaw = Mathf.Lerp(0f, yawDrift, e);
+
+        // The arc is what makes this a move. Weighted toward the second half —
+        // the opening wants to be nearly still, and the travel wants to be
+        // happening while the castle is already resolving out of the fog.
+        float yaw = arcDegrees * (e * e * (3f - 2f * e)) + drift;
         Vector3 dir = Quaternion.Euler(0f, yaw, 0f) * approach;
 
         Vector3 p = castleBounds.center + dir * dist;
@@ -647,9 +749,12 @@ public class TrailerCastleShot : MonoBehaviour
         return p + Vector3.up * maxClearLift;
     }
 
-    private void PlaceCamera(float e)
+    private Vector3 aimNow;
+    private bool aimSeeded;
+
+    private void PlaceCamera(float e, float drift)
     {
-        Vector3 p = CameraPosition(e);
+        Vector3 p = CameraPosition(e, drift);
 
         // Aimed at the castle's middle at the start and at its crown by the end,
         // so the rise is felt as looking further UP the building rather than as
@@ -667,26 +772,15 @@ public class TrailerCastleShot : MonoBehaviour
                                     Mathf.PerlinNoise(0f, tt * 1.7f) - 0.5f,
                                     Mathf.PerlinNoise(tt * 0.9f, 5f) - 0.5f) * (amp * 2f);
 
+        // Damped, so the framing FLOATS toward where it should be instead of
+        // being solved exactly every frame. A camera whose aim is always already
+        // correct is the single clearest sign that nobody is holding it.
+        if (!aimSeeded) { aimNow = aim; aimSeeded = true; }
+        aimNow = Vector3.Lerp(aimNow, aim, 1f - Mathf.Exp(-aimDamping * Time.unscaledDeltaTime));
+
         cam.transform.position = p + shake;
-        cam.transform.rotation = Quaternion.LookRotation((aim - p).normalized);
+        cam.transform.rotation = Quaternion.LookRotation((aimNow - p).normalized);
         cam.fieldOfView = Mathf.Lerp(startFov, endFov, e);
-    }
-
-    // ---- weather ---------------------------------------------------------------
-
-    private void BuildRain()
-    {
-        if (rainPrefab == null || cam == null) return;
-
-        var go = Instantiate(rainPrefab);
-        go.name = "Castle_Rain";
-        var follow = go.GetComponent<TrailerRainFollow>();
-        if (follow == null) follow = go.AddComponent<TrailerRainFollow>();
-        follow.target = cam.transform;
-        follow.height = rainHeight;
-        // The ground splashes read as specks skittering over the earth at this
-        // scale rather than as water, the same as they did on the ride.
-        follow.splashes = false;
     }
 
     // ---- title card --------------------------------------------------------------

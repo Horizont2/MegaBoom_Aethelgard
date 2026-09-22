@@ -337,20 +337,17 @@ public static class TrailerShotSolo
 
     // ===================== shot 5 — the castle in the fog =====================
     //
-    // Nothing is switched OFF here, because the whole live game has to run: the
-    // world does not exist until WorldGenerator has built it. The shot itself
-    // does the clearing, once there is something to clear.
+    // Nothing to do. The castle shot arms ITSELF from the same session key, and
+    // it has to: its one critical job is naming the region before
+    // WorldGenerator's Start reads it, and making that depend on this activating
+    // an object at the right moment was a correctness problem waiting to happen.
+    // An ordinary Awake on an ordinary active object is guaranteed to be before
+    // every Start in the scene; nothing here can improve on that.
     //
-    // Activated in AfterSceneLoad on purpose — that is after every Awake and
-    // before the first Start, so the shot's own Awake still lands before the
-    // generator's Start, which is the only moment at which naming the region is
-    // any use.
-    private static void SoloCastle()
-    {
-        GameObject shot = TrailerFind.ByName("TrailerCastleShot");
-        if (shot != null) shot.SetActive(true);
-        else Debug.LogWarning("[TrailerShotSolo] No 'TrailerCastleShot' object in this scene.");
-    }
+    // Nothing is switched off either, because the whole live game has to run —
+    // the world does not exist until it has been generated. The shot clears the
+    // set once there is a set to clear.
+    private static void SoloCastle() { }
 
     // ===================== helpers =====================
 
