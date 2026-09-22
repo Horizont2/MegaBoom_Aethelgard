@@ -22,28 +22,30 @@ using UnityEngine.SceneManagement;
 // same time and none of them could be judged. That is what these four do.
 public static class TrailerShots
 {
-    // Kept in step with the guard inside TrailerShotSolo, which refuses to touch
-    // any other scene.
-    private const string LvlScene = "Assets/Scenes/" + TrailerShotSolo.TrailerScene + ".unity";
-    private const string MarchScene = "Assets/Scenes/" + TrailerShotSolo.MarchScene + ".unity";
-
     // One entry per shot, in the order they are cut. Two scenes hold four shots
     // between them and every one of those shots opens itself in Start, so the
     // menu is also what decides which of them is allowed to.
     [MenuItem("Tools/Lore Trailer/Play shot 1 — the statue breaks open", priority = 0)]
-    private static void PlayStatue() { Launch(LvlScene, TrailerShotSolo.StatueShot, "the statue breaking open"); }
+    private static void PlayStatue() { Launch(TrailerShotSolo.StatueShot, "the statue breaking open"); }
 
     [MenuItem("Tools/Lore Trailer/Play shot 2 — the ride through the forest", priority = 1)]
-    private static void PlayRide() { Launch(LvlScene, TrailerShotSolo.RideShot, "the ride through the forest"); }
+    private static void PlayRide() { Launch(TrailerShotSolo.RideShot, "the ride through the forest"); }
 
     [MenuItem("Tools/Lore Trailer/Play shot 3 — the legion marches", priority = 2)]
-    private static void PlayMarch() { Launch(MarchScene, TrailerShotSolo.MarchShot, "the legion marching"); }
+    private static void PlayMarch() { Launch(TrailerShotSolo.MarchShot, "the legion marching"); }
 
     [MenuItem("Tools/Lore Trailer/Play shot 4 — the two armies meet", priority = 3)]
-    private static void PlayClash() { Launch(MarchScene, TrailerShotSolo.ClashShot, "the two armies meeting"); }
+    private static void PlayClash() { Launch(TrailerShotSolo.ClashShot, "the two armies meeting"); }
 
-    private static void Launch(string scenePath, string shot, string what)
+    private static void Launch(string shot, string what)
     {
+        // Asked of TrailerShotSolo rather than written here twice. The runtime
+        // side refuses to run a shot in a scene it does not belong to, and the
+        // two lists disagreeing is how a shot ends up half-applied to the wrong
+        // scene — switching off a light that happens to share a name, handing a
+        // camera solo a camera that is not there.
+        string scenePath = "Assets/Scenes/" + TrailerShotSolo.SceneFor(shot) + ".unity";
+
         if (EditorApplication.isPlayingOrWillChangePlaymode)
         {
             EditorUtility.DisplayDialog("Lore Trailer",

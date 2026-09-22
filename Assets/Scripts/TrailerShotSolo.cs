@@ -48,13 +48,21 @@ public static class TrailerShotSolo
         string shot = Wanted();
         if (string.IsNullOrEmpty(shot)) return;
 
+        // ==== A SHOT ONLY RUNS IN ITS OWN SCENE ====
+        //
         // The key outlives one launch on purpose (see Wanted), so it is still set
-        // the next time Play is pressed — and that might be in CampScene. Nothing
-        // below is survivable in a gameplay scene: it switches the sun off, stops
-        // the day/night cycle and leaves exactly one camera rendering. So the
-        // scene has to say it is the trailer before any of it happens.
+        // the next time Play is pressed — and that might be in a different scene.
+        // Checking only that the scene is A trailer scene was not enough: with
+        // "statue" still set, opening March_TrailerScene ran SoloStatue there,
+        // which switched off an object called "Directional Light" (the march's
+        // key light) and then handed SoloCamera a camera it could not find in a
+        // scene that has no statue rig. SoloCamera dutifully switched off every
+        // camera that was not that one, which is all of them.
+        //
+        // So the pairing is explicit, and a shot in the wrong scene does nothing
+        // at all rather than something approximate.
         string scene = SceneManager.GetActiveScene().name;
-        if (scene != TrailerScene && scene != MarchScene) return;
+        if (scene != SceneFor(shot)) return;
 
         // The two fogs would stack. The scene asset already has the built-in one
         // off; this is here so the shot is right even if something switched it
@@ -71,6 +79,14 @@ public static class TrailerShotSolo
 
         Debug.Log("[TrailerShotSolo] Playing the '" + shot + "' shot alone. Everything belonging to the other shot " +
                   "is off for this run; the scene asset is untouched. Launch the other one from Tools > Lore Trailer.");
+    }
+
+    // The one scene each shot belongs to. Anything unrecognised belongs nowhere.
+    public static string SceneFor(string shot)
+    {
+        if (shot == StatueShot || shot == RideShot) return TrailerScene;
+        if (shot == MarchShot || shot == ClashShot) return MarchScene;
+        return string.Empty;
     }
 
     // Set by the editor launcher just before it enters Play Mode. It is NOT
@@ -326,6 +342,16 @@ public static class TrailerShotSolo
     // StudioListener sits on Main Camera — keeps working.
     private static void SoloCamera(Camera keep)
     {
+        // "Keep none" is never what is meant. Called with null it used to switch
+        // off every camera in the scene and leave the game view reading
+        // "No cameras rendering", which describes the symptom and hides the
+        // cause — that the camera this shot wanted was not in this scene.
+        if (keep == null)
+        {
+            Debug.LogWarning("[TrailerShotSolo] This shot's camera is not in this scene — leaving every camera alone.");
+            return;
+        }
+
         foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (cam == null || !cam.gameObject.scene.IsValid()) continue;
