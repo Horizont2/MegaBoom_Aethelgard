@@ -483,9 +483,14 @@ public static class TrailerShotSolo
         var fog = Fog();
         if (fog != null)
         {
-            Set(fog, "density", 0.055f);
-            Set(fog, "groundFogHeight", 30f);
-            Set(fog, "topSoftness", 0.55f);
+            // Eighteen metres, not thirty. The lens sits at ten, so a layer
+            // this deep puts its TOP edge across the frame — a horizon, with
+            // sky above it — instead of closing over the camera and turning
+            // every direction into the same grey. A soft top so that edge is a
+            // gradient rather than a line.
+            Set(fog, "density", 0.05f);
+            Set(fog, "groundFogHeight", 18f);
+            Set(fog, "topSoftness", 0.6f);
             Set(fog, "nearFadeDistance", 2f);
             Set(fog, "maximumFogDistance", 320f);
             Set(fog, "anisotropy", 0.68f);

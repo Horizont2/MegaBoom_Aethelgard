@@ -66,7 +66,14 @@ public class TrailerTitleCard : MonoBehaviour
     public Color lineColour = new Color(0.60f, 0.58f, 0.56f, 1f);
 
     [Header("Timing")]
-    public float breathSeconds = 1.8f;     // fog alone, before the name
+    // ==== THE BREATH HAS TO OUTLAST THE FADE ====
+    //
+    // TrailerCinematicPolish fades up from black over 1.4 seconds. At 1.8 the
+    // name started rising four tenths of a second after the picture arrived,
+    // which is not a beat of quiet — it is the fade and the title happening at
+    // once. Three gives a full second of settled fog with nothing in it, and
+    // that second is the whole reason the name lands.
+    public float breathSeconds = 3.0f;
     public float titleRise = 1.3f;
     public float titleHold = 1.7f;
     public float lineRise = 0.9f;
@@ -74,10 +81,23 @@ public class TrailerTitleCard : MonoBehaviour
     public float closeSeconds = 1.5f;
 
     [Header("Camera")]
-    [Tooltip("Metres above the terrain. High enough to clear the treetops and look ACROSS the top of the fog, while still inside the layer — that is what makes the background a field rather than a wall.")]
-    public float cameraHeight = 22f;
-    [Tooltip("Degrees below the horizon. A few, so the fog reads as a surface and not as a wall.")]
-    public float cameraPitch = 7f;
+    // ==== LOW AND LOOKING UP, NOT HIGH AND LOOKING DOWN ====
+    //
+    // At twenty-two metres the lens was above the treetops with the fog closing
+    // everything past sixty metres, so the background was an even wash: no
+    // horizon, no silhouette, nothing for an eye to hold. A title over a flat
+    // gradient reads CLEANER than the footage before it, and cleaner reads as
+    // cheaper.
+    //
+    // Ten metres puts the lens inside the fog with the canopy still above it, so
+    // the trees at twenty to forty metres come through as dark shapes — scale,
+    // for free, out of the scene that is already there. And three degrees UP
+    // puts the top of the fog layer across the frame with sky above it, which is
+    // both a horizon and something for the strikes to be seen against.
+    [Tooltip("Metres above the terrain. Low enough that the treetops stay above the lens and read as silhouettes through the fog.")]
+    public float cameraHeight = 10f;
+    [Tooltip("Euler X. Positive looks down; a few degrees NEGATIVE lifts the top of the fog layer into frame and puts sky above it.")]
+    public float cameraPitch = -3f;
     [Tooltip("Metres the camera drifts across the whole card. Small — this is a breath, not a move.")]
     public float driftMetres = 4.5f;
     public float driftDegrees = 2.2f;
@@ -149,7 +169,11 @@ public class TrailerTitleCard : MonoBehaviour
     {
         var go = new GameObject("Embers");
         go.transform.SetParent(transform, false);
-        go.transform.position = camT.position + camT.forward * 14f - Vector3.up * 4f;
+        // Straddling the lens, not sitting under it. The box used to hang four
+        // metres BELOW the camera, which was right when the camera was
+        // twenty-two metres up and pointed down; from ten metres looking
+        // slightly up it put every ember along the bottom edge of the frame.
+        go.transform.position = camT.position + camT.forward * 16f + Vector3.up * 1f;
 
         emberSystem = go.AddComponent<ParticleSystem>();
 
@@ -170,7 +194,7 @@ public class TrailerTitleCard : MonoBehaviour
 
         var shape = emberSystem.shape;
         shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(40f, 6f, 26f);
+        shape.scale = new Vector3(46f, 16f, 30f);
 
         var em = emberSystem.emission;
         em.rateOverTime = embers / 7f;          // lifetime's worth, so the field stays even
@@ -289,9 +313,10 @@ public class TrailerTitleCard : MonoBehaviour
             titleText.alignment = TMPro.TextAlignmentOptions.Center;
             titleText.characterSpacing = titleTrackingIn;
             titleText.raycastTarget = false;
+            Underlay(titleText);
         }
 
-        var lineRect = MakeRect(canvasGO.transform, new Vector2(0.5f, 0.435f), new Vector2(1400f, 60f));
+        var lineRect = MakeRect(canvasGO.transform, new Vector2(0.5f, 0.40f), new Vector2(1400f, 60f));
         lineGroup = lineRect.gameObject.AddComponent<CanvasGroup>();
         lineGroup.alpha = 0f;
 
@@ -303,6 +328,35 @@ public class TrailerTitleCard : MonoBehaviour
         line.alignment = TMPro.TextAlignmentOptions.Center;
         line.characterSpacing = 9f;
         line.raycastTarget = false;
+        Underlay(line);
+    }
+
+    // ==== BONE ON GREY IS NOT CONTRAST ====
+    //
+    // The title and the fog behind it sit at close to the same luminance, so the
+    // words go soft at the edges — worst exactly where the fog happens to be
+    // brightest, which moves, so it reads as the text wavering.
+    //
+    // TextMeshPro's underlay is a soft dark spread behind the glyphs. Not a drop
+    // shadow offset to one side, which would read as a lower third; centred and
+    // wide, so it is a darkening the type sits in rather than a second copy of
+    // it. Everything is guarded: on a font material without the underlay pass
+    // this simply does nothing instead of throwing.
+    private static void Underlay(TMPro.TMP_Text text)
+    {
+        if (text == null) return;
+
+        // fontMaterial, not fontSharedMaterial: the shared one is the asset, and
+        // writing to it would leave the change in the project after Play.
+        Material m = text.fontMaterial;
+        if (m == null) return;
+
+        m.EnableKeyword("UNDERLAY_ON");
+        if (m.HasProperty("_UnderlayColor")) m.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.55f));
+        if (m.HasProperty("_UnderlayOffsetX")) m.SetFloat("_UnderlayOffsetX", 0f);
+        if (m.HasProperty("_UnderlayOffsetY")) m.SetFloat("_UnderlayOffsetY", 0f);
+        if (m.HasProperty("_UnderlayDilate")) m.SetFloat("_UnderlayDilate", 0.15f);
+        if (m.HasProperty("_UnderlaySoftness")) m.SetFloat("_UnderlaySoftness", 0.55f);
     }
 
     private static RectTransform MakeRect(Transform parent, Vector2 anchor, Vector2 size)
@@ -366,7 +420,20 @@ public class TrailerTitleCard : MonoBehaviour
             if (k >= 0.82f && !struck)
             {
                 struck = true;
-                Strike(camT.position + camT.forward * 120f + Vector3.up * 55f, 190f, 3.4f, 0.55f);
+                // ==== INSIDE THE WEATHER, NOT ABOVE IT ====
+                //
+                // This used to go off a hundred and twenty metres out and
+                // fifty-five metres up — clear air, far above a fog layer that
+                // is eighteen metres deep. Pure Volumetric Fog scatters the
+                // directional light and nothing else, so a card up there lights
+                // precisely nothing: the fog stays exactly as bright and the
+                // flash is a disc floating over it.
+                //
+                // Down into the layer instead, and close. At 0.05 per metre the
+                // fog passes a third of the light at twenty metres and a tenth
+                // at forty, so the card comes through attenuated and smeared —
+                // which is what lightning inside cloud actually looks like.
+                Strike(camT.position + camT.forward * 42f + Vector3.up * 13f, 60f, 4.2f, 0.55f);
             }
             yield return null;
         }
@@ -421,11 +488,16 @@ public class TrailerTitleCard : MonoBehaviour
                 nextStrike += seconds / Mathf.Max(1, distantStrikes + 1);
                 // Far away, off to one side, dim. These are not the strike — they
                 // are what makes the one on the title read as close.
+                // Same arithmetic as the close one: past about eighty metres
+                // the fog has taken everything, so "distant" here is sixty to
+                // ninety rather than the two to three hundred it was. They are
+                // not the strike — they are what makes the one on the title
+                // read as close.
                 Vector3 at = camT.position
-                           + camT.forward * Random.Range(200f, 340f)
-                           + camT.right * Random.Range(-160f, 160f)
-                           + Vector3.up * Random.Range(60f, 110f);
-                Strike(at, Random.Range(120f, 200f), 1.5f, 0.42f);
+                           + camT.forward * Random.Range(55f, 95f)
+                           + camT.right * Random.Range(-45f, 45f)
+                           + Vector3.up * Random.Range(16f, 26f);
+                Strike(at, Random.Range(50f, 80f), 2.4f, 0.4f);
             }
             yield return null;
         }
