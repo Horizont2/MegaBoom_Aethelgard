@@ -296,6 +296,19 @@ public class TrailerLegionDirector : MonoBehaviour
     public float holdBlackDuration = 0.35f;
     public UnityEngine.Events.UnityEvent onEpisodeFinished;
 
+    // True once the episode has played out. Whatever is cut in after this one
+    // watches this rather than guessing at a duration, because every beat in
+    // here is retuned regularly and a guessed delay drifts the moment one is.
+    public bool IsFinished { get; private set; }
+
+    // Hands the screen over. The episode ends holding its own black veil at full
+    // alpha — that IS the smash to black — so anything that plays next would
+    // otherwise run behind it, invisible.
+    public void ClearVeil()
+    {
+        if (veil != null) veil.alpha = 0f;
+    }
+
 
     // ---- runtime ------------------------------------------------------------
 
@@ -1966,6 +1979,7 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
             yield return new WaitForSecondsRealtime(holdBlackDuration);
         }
 
+        IsFinished = true;
         onEpisodeFinished?.Invoke();
     }
 

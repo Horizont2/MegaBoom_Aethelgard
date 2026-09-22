@@ -2134,7 +2134,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1900200011
 Transform:
   m_ObjectHideFlags: 0
@@ -2162,6 +2162,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 197994c3178e4376b7269f292b05c371, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TrailerClashDirector
+  playAfter: {fileID: 30491527}
   clashCentre: {fileID: 0}
   advanceAxis: {x: 0.4198, y: 0, z: -0.9076}
   playerPrefab: {fileID: 2945078721770132420, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
@@ -2178,20 +2179,37 @@ MonoBehaviour:
   fileSpacing: 1.6
   rankSpacing: 1.9
   positionJitter: 0.4
-  startGap: 62
-  holdSeconds: 2.4
-  walkSpeed: 1.7
-  chargeSpeed: 5.4
+  startGap: 36
+  openAtRun: 1
+  holdSeconds: 0.45
+  walkSpeed: 3.2
+  chargeSpeed: 5.6
   chargeAtGap: 30
-  chargeRampSeconds: 1.1
-  impactGap: 2.6
+  chargeRampSeconds: 1.2
+  impactGap: 3.2
   shotCamera: {fileID: 442585517}
-  cameraSide: 30
-  cameraHeight: 5.5
-  cameraFov: 32
-  cameraCreep: 3.5
-  handheld: 0.022
-  aimHeight: 1.6
+  cameraSide: 24
+  cameraHeight: 2.4
+  cameraFov: 48
+  cameraCreep: 2.5
+  handheld: 0.03
+  aimHeight: 2.2
+  arrowPrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
+  arrowsPerVolley: 24
+  firstVolleyAtGap: 32
+  secondVolleyAtGap: 18
+  volleyStagger: 0.45
+  arrowFlightSeconds: 1.5
+  arrowGravity: 22
+  arrowLaunchBehind: 14
+  arrowSpread: 26
+  arrowLaunchHeight: 1.7
+  arrowTrailColor: {r: 1, g: 0.82, b: 0.45, a: 0.9}
+  arrowTrailTime: 0.18
+  arrowTrailWidth: 0.075
+  clashFogDensity: 0.05
+  clashFogHeight: 20
+  fogEaseSeconds: 1.4
   rainPrefab: {fileID: 4711991925537274397, guid: 1476fba35f6124f498c651b7999ce501, type: 3}
   rainHeight: 12
   holdBlack: 0.7

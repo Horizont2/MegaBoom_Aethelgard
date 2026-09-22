@@ -307,14 +307,18 @@ public static class TrailerShotSolo
         if (legion != null) legion.enabled = true;
     }
 
-    // ===================== shot 4 — the two armies meet =====================
+    // ===================== shot 4 — the march, then the two armies meet =====
+    //
+    // Not the clash on its own. It is the beat AFTER the march and it waits on
+    // the march reporting finished, so playing it means playing both: the rise,
+    // the march, and then the two lines running at each other. It also has to be
+    // that way for the shot to be recordable at all — the clash builds its
+    // hundred and fifty bodies during the march so that the cut into it is not a
+    // wall of synchronous shader compilation.
     private static void SoloClash()
     {
-        // The legion director lives ON the terrain object, so it is the COMPONENT
-        // that goes, not the GameObject — switching off the terrain would take
-        // the ground out from under both armies.
         var legion = Object.FindFirstObjectByType<TrailerLegionDirector>(FindObjectsInactive.Include);
-        if (legion != null) legion.enabled = false;
+        if (legion != null) legion.enabled = true;
 
         GameObject clash = TrailerFind.ByName("TrailerClash");
         if (clash != null) clash.SetActive(true);

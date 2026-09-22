@@ -31,11 +31,12 @@ public static class TrailerShots
     [MenuItem("Tools/Lore Trailer/Play shot 2 — the ride through the forest", priority = 1)]
     private static void PlayRide() { Launch(TrailerShotSolo.RideShot, "the ride through the forest"); }
 
-    [MenuItem("Tools/Lore Trailer/Play shot 3 — the legion marches", priority = 2)]
+    [MenuItem("Tools/Lore Trailer/Play shot 3 — the legion marches (alone)", priority = 2)]
     private static void PlayMarch() { Launch(TrailerShotSolo.MarchShot, "the legion marching"); }
 
-    [MenuItem("Tools/Lore Trailer/Play shot 4 — the two armies meet", priority = 3)]
-    private static void PlayClash() { Launch(TrailerShotSolo.ClashShot, "the two armies meeting"); }
+    // The clash is the beat AFTER the march and waits on it, so this plays both.
+    [MenuItem("Tools/Lore Trailer/Play shot 4 — the march, then the armies meet", priority = 3)]
+    private static void PlayClash() { Launch(TrailerShotSolo.ClashShot, "the march and the clash that follows it"); }
 
     private static void Launch(string shot, string what)
     {
