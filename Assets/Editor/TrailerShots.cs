@@ -38,6 +38,12 @@ public static class TrailerShots
     [MenuItem("Tools/Lore Trailer/Play shot 4 — the march, then the armies meet", priority = 3)]
     private static void PlayClash() { Launch(TrailerShotSolo.ClashShot, "the march and the clash that follows it"); }
 
+    // In the live game, because the castle is Location_Castle and region 24 is
+    // the only region that uses it — the generator building that region IS the
+    // set. Expect it to take a few seconds to appear while the world is made.
+    [MenuItem("Tools/Lore Trailer/Play shot 5 — the castle in the fog", priority = 4)]
+    private static void PlayCastle() { Launch(TrailerShotSolo.CastleShot, "the castle reveal (region 24 is generated first)"); }
+
     private static void Launch(string shot, string what)
     {
         // Asked of TrailerShotSolo rather than written here twice. The runtime

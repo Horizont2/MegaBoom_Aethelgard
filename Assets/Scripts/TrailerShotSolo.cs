@@ -30,10 +30,15 @@ public static class TrailerShotSolo
     public const string RideShot = "ride";
     public const string MarchShot = "march";
     public const string ClashShot = "clash";
+    public const string CastleShot = "castle";
 
     // The only two scenes this is allowed to touch.
     public const string TrailerScene = "Trailer_Lvl_1";
     public const string MarchScene = "March_TrailerScene";
+    // The last shot is filmed in the live game: the castle is Location_Castle,
+    // nineteen hundred pieces the generator assembles on a hill of its own, and
+    // region 24 is the only region that uses it. Generating region 24 IS the set.
+    public const string GameScene = "GameScene";
 
     private const string StatueRig = "LoreTrailer_Statue_Rig";
     private const string Sequencer = "TrailerSequencer";
@@ -69,12 +74,16 @@ public static class TrailerShotSolo
         // back on, which WeatherController and DayNightCycle both do.
         RenderSettings.fog = false;
 
-        StopCulling();
+        // Not in the live game: the castle shot runs the real world, and its
+        // distance culling is what keeps a generated map affordable. The trailer
+        // scenes are hand-built and small enough not to need it.
+        if (scene != GameScene) StopCulling();
 
         if (shot == StatueShot) SoloStatue();
         else if (shot == RideShot) SoloRide();
         else if (shot == MarchShot) SoloMarch();
         else if (shot == ClashShot) SoloClash();
+        else if (shot == CastleShot) SoloCastle();
         else return;
 
         Debug.Log("[TrailerShotSolo] Playing the '" + shot + "' shot alone. Everything belonging to the other shot " +
@@ -86,6 +95,7 @@ public static class TrailerShotSolo
     {
         if (shot == StatueShot || shot == RideShot) return TrailerScene;
         if (shot == MarchShot || shot == ClashShot) return MarchScene;
+        if (shot == CastleShot) return GameScene;
         return string.Empty;
     }
 
@@ -323,6 +333,23 @@ public static class TrailerShotSolo
         GameObject clash = TrailerFind.ByName("TrailerClash");
         if (clash != null) clash.SetActive(true);
         else Debug.LogWarning("[TrailerShotSolo] No 'TrailerClash' object in this scene.");
+    }
+
+    // ===================== shot 5 — the castle in the fog =====================
+    //
+    // Nothing is switched OFF here, because the whole live game has to run: the
+    // world does not exist until WorldGenerator has built it. The shot itself
+    // does the clearing, once there is something to clear.
+    //
+    // Activated in AfterSceneLoad on purpose — that is after every Awake and
+    // before the first Start, so the shot's own Awake still lands before the
+    // generator's Start, which is the only moment at which naming the region is
+    // any use.
+    private static void SoloCastle()
+    {
+        GameObject shot = TrailerFind.ByName("TrailerCastleShot");
+        if (shot != null) shot.SetActive(true);
+        else Debug.LogWarning("[TrailerShotSolo] No 'TrailerCastleShot' object in this scene.");
     }
 
     // ===================== helpers =====================
