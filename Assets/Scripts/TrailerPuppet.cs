@@ -110,6 +110,20 @@ public class TrailerPuppet : MonoBehaviour
         }
 
         foreach (var agent in go.GetComponentsInChildren<NavMeshAgent>(true)) DestroyImmediate(agent);
+
+        // ==== ROOT MOTION ON A PUPPET IS A SECOND SET OF LEGS ====
+        //
+        // A puppet's position belongs to whoever is driving it. Leave root
+        // motion on and the animator ALSO moves the transform, from whatever is
+        // baked into the clip — and a run cycle's bake carries vertical travel,
+        // so the figure bobs against the placement it was just given.
+        //
+        // Every other driven character in this project turns this off by hand:
+        // EnemyAI, NPCGait, TrailerLegionMarch, PlayerController, the horse
+        // rider. Each one had to learn it separately, which is the argument for
+        // it living here instead.
+        foreach (var anim in go.GetComponentsInChildren<Animator>(true))
+            if (anim != null) anim.applyRootMotion = false;
         foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) rb.isKinematic = true;
         foreach (var col in go.GetComponentsInChildren<Collider>(true)) col.enabled = false;
 
@@ -204,10 +218,22 @@ public class TrailerPuppet : MonoBehaviour
 
     // Position and facing, straight from the director. Grounding is left to the
     // caller so a crowd can stagger it across frames.
+    // ==== THE HEIGHT IN `position` IS NOT A HEIGHT ====
+    //
+    // A director placing a crowd computes each position from a centre and a pair
+    // of horizontal offsets, so the Y it hands over is whatever the centre
+    // happened to be — one flat plane across the whole field. Writing that
+    // straight into the transform and only grounding every few frames means the
+    // figure sits on the plane for three frames and on the actual terrain for
+    // the fourth. Where the ground differs from the plane by a metre, that is a
+    // one-metre jump fifteen times a second: an army bouncing as it runs.
+    //
+    // So Y is never taken from the caller. It is kept from the last grounding,
+    // and only the ground itself may change it.
     public void Place(Vector3 position, Vector3 forward, bool ground)
     {
         _walking = false;
-        transform.position = position;
+        transform.position = new Vector3(position.x, transform.position.y, position.z);
         forward.y = 0f;
         if (forward.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(forward.normalized);
         if (ground) SnapToGround();

@@ -241,11 +241,17 @@ public class TrailerClashDirector : MonoBehaviour
     private int frame;
     private int nextArrow;
 
-    // Grounding every unit every frame is a raycast per soldier per frame. Spread
-    // across four the error is a couple of centimetres of height on a figure
-    // running in a straight line, for a quarter of the cost. The march director
-    // learned the same thing with three hundred.
-    private const int GroundStride = 4;
+    // ==== GROUND EVERY UNIT EVERY FRAME ====
+    //
+    // This was staggered across four frames, which is the right trade when
+    // grounding costs a physics raycast — the march director does the same with
+    // three hundred. It is the wrong trade now that grounding is a heightmap
+    // lookup, and the stagger was half of why the armies bounced: on the three
+    // frames a soldier did not re-ground he kept a height sampled a quarter of a
+    // metre back, so every figure juddered against the slope at fifteen hertz.
+    //
+    // A hundred and seventy SampleHeight calls a frame is not a cost worth that.
+    private const int GroundStride = 1;
 
     // Small enough to be a fraction of a pixel, large enough that nothing culls
     // it — a parked unit still has to be DRAWN or its shaders stay uncompiled.
