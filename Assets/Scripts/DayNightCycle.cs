@@ -119,6 +119,30 @@ public class DayNightCycle : MonoBehaviour
 
     [Header("AAA Storm Effects")]
     public GameObject lightningVFXPrefab;
+
+    // ==== THE SKY LIGHTING UP, WHICH IS NOT THE SAME AS A FLASH ====
+    //
+    // LocalLightningFlash lights the SURFACES near the strike and the ambient
+    // pulse lifts everything a little, and between them the bolt reads as
+    // something that happened to the ground. What is missing is the sky: a real
+    // strike lights the cloud it comes out of, so there is a hot patch in ONE
+    // PLACE with everything in front of it in silhouette.
+    //
+    // A light cannot do that — the sky is not a surface, and under weather the
+    // volumetric fog scatters only the sun. So it is a camera-facing additive
+    // card hung at the strike, which the atmosphere then attenuates with
+    // distance by itself: a far bolt is a dim smudge, a near one fills the sky,
+    // and nothing has to be told which is which.
+    [Header("Sky flare")]
+    [Tooltip("Light the sky at the strike, not just the ground under it.")]
+    public bool skyFlare = true;
+    public Color skyFlareColour = new Color(0.82f, 0.88f, 1f);
+    [Tooltip("Diameter in metres. Big — it is a lit cloud, not a lamp.")]
+    public float skyFlareSize = 140f;
+    [Range(0f, 6f)] public float skyFlareStrength = 2.4f;
+    public float skyFlareSeconds = 0.45f;
+    [Tooltip("Metres above a GROUND strike the glow sits. Air bolts already spawn high, so they light the sky where they are.")]
+    public float skyFlareHeight = 90f;
     public float lightningSpawnRadius = 60f;
 
     private float weatherBlend = 0f;
@@ -835,6 +859,16 @@ public class DayNightCycle : MonoBehaviour
             else spawnPos = transform.position;
 
             StartCoroutine(LocalLightningFlash(spawnPos, flashRange));
+
+            // The sky, as well as the ground. A ground bolt's glow belongs in the
+            // cloud it came out of, not at the point it hit; an air bolt already
+            // spawns eighty to a hundred and fifty metres up, so it lights the
+            // sky where it is.
+            if (skyFlare)
+            {
+                Vector3 glowAt = strikeGround ? spawnPos + Vector3.up * skyFlareHeight : spawnPos;
+                SkyFlashFlare.Flash(glowAt, skyFlareColour, skyFlareSize, skyFlareStrength, skyFlareSeconds);
+            }
             // Just a hint of global atmosphere scatter, not a daylight pulse.
             // Keep this subtle so the lightning reads as "in the sky near the
             // bolt" rather than "the world briefly turned to noon."

@@ -1171,7 +1171,13 @@ public class TrailerCastleShot : MonoBehaviour
         // torches' halos are: a big additive card hung in the sky at the strike,
         // which the fog then attenuates with distance by itself. The castle is
         // in front of it, and is therefore a silhouette.
-        Flare(strikePoint);
+        // Shared with the game's own storm now — SkyFlashFlare builds and pools
+        // its own cards, so this is the whole call.
+        SkyFlashFlare.Flash(strikePoint + Vector3.up * (castleBounds.size.y * 1.3f + 20f),
+                            lightningColour,
+                            Mathf.Max(60f, castleRadius * flareSize),
+                            flareStrength,
+                            flashAfterglow);
 
         if (key == null) yield break;
 
@@ -1207,59 +1213,6 @@ public class TrailerCastleShot : MonoBehaviour
         key.color = keyWas;
         key.intensity = keyI0;
         key.transform.rotation = rotWas;
-    }
-
-    // One card, reused. Hung in the sky ABOVE the strike, big enough to be the
-    // lit patch of cloud rather than a lamp, and gone within half a second.
-    private Transform flare;
-    private Material flareMat;
-
-    private void Flare(Vector3 ground)
-    {
-        if (flare == null)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            go.name = "Castle_Flare";
-            Destroy(go.GetComponent<Collider>());
-            go.transform.SetParent(transform, true);
-
-            var r = go.GetComponent<MeshRenderer>();
-            flareMat = new Material(GlowMaterial());
-            r.sharedMaterial = flareMat;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            r.receiveShadows = false;
-            flare = go.transform;
-        }
-
-        flare.position = ground + Vector3.up * (castleBounds.size.y * 1.3f + 20f);
-        StopCoroutine(nameof(FlareRoutine));
-        StartCoroutine(FlareRoutine());
-    }
-
-    private IEnumerator FlareRoutine()
-    {
-        float size = Mathf.Max(60f, castleRadius * flareSize);
-        float t = 0f;
-
-        while (t < flashAfterglow)
-        {
-            t += Time.unscaledDeltaTime;
-            float k = 1f - Mathf.Clamp01(t / Mathf.Max(0.01f, flashAfterglow));
-
-            // Faces the lens; grows a little as it dies, the way a lit cloud
-            // spreads rather than shrinking back to a point.
-            if (cam != null) flare.rotation = cam.transform.rotation;
-            flare.localScale = Vector3.one * size * (1f + (1f - k) * 0.35f);
-
-            Color c = lightningColour * (flareStrength * k * k);
-            c.a = 1f;
-            if (flareMat.HasProperty("_BaseColor")) flareMat.SetColor("_BaseColor", c);
-            if (flareMat.HasProperty("_Color")) flareMat.SetColor("_Color", c);
-
-            yield return null;
-        }
-
-        flare.localScale = Vector3.zero;
     }
 
     // ---- title card --------------------------------------------------------------

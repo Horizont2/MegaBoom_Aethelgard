@@ -2220,6 +2220,10 @@ MonoBehaviour:
   strikeBehind: 26
   lightningColor: {r: 0.82, g: 0.88, b: 1, a: 1}
   lightningIntensity: 14
+  skyFlareHeight: 70
+  skyFlareSize: 150
+  skyFlareStrength: 2.4
+  skyFlareSeconds: 0.45
   heroSurge: 1.2
   heroClearance: 1.4
   heroSalute: 1

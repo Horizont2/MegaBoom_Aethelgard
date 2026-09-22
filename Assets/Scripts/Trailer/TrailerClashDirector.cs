@@ -241,6 +241,15 @@ public class TrailerClashDirector : MonoBehaviour
     public float strikeBehind = 26f;
     public Color lightningColor = new Color(0.82f, 0.88f, 1f);
     public float lightningIntensity = 14f;
+    // The lit patch of cloud the bolt comes out of. A light cannot do this — the
+    // sky is not a surface, and the volumetric fog scatters only the sun — so it
+    // is an additive card, the same one the game's own storm uses now.
+    [Tooltip("Metres above the strike the glow sits.")]
+    public float skyFlareHeight = 70f;
+    [Tooltip("Diameter in metres. Big: it is a lit cloud, not a lamp.")]
+    public float skyFlareSize = 150f;
+    [Range(0f, 6f)] public float skyFlareStrength = 2.4f;
+    public float skyFlareSeconds = 0.45f;
 
     [Header("The hero")]
     [Tooltip("Metres he pulls further ahead of his own line across the charge. A leader who keeps exactly his starting distance is just the nearest extra.")]
@@ -1131,6 +1140,12 @@ public class TrailerClashDirector : MonoBehaviour
                        + side * Random.Range(-arrowSpread * 0.5f, arrowSpread * 0.5f);
             at.y = Ground(at);
             bolt.Strike(at);
+
+            // And the sky it came out of. Flashing the key light alone lifts
+            // every surface at once, which is a screen flash; this is the cloud
+            // lighting up in one place, with an army in front of it.
+            SkyFlashFlare.Flash(at + Vector3.up * skyFlareHeight, lightningColor,
+                                skyFlareSize, skyFlareStrength, skyFlareSeconds);
         }
 
         Light key = keyLight != null ? keyLight : RenderSettings.sun;
