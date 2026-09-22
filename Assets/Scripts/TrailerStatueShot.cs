@@ -946,6 +946,7 @@ public class TrailerStatueShot : MonoBehaviour
             if (cracks[i] != null) cracks[i].SetHeat(1f, crackWidthScale * 3.2f);
 
         BuildPierce();
+        BuildLensBloom();
         if (chipBurst != null) chipBurst.Emit(120);
 
         // Hide the mesh under the flare. A single mesh cannot really shatter, so
@@ -1008,28 +1009,124 @@ public class TrailerStatueShot : MonoBehaviour
         if (burstStartedAt < 0f) return;
 
         float u = Mathf.Clamp01((t - burstStartedAt) / Mathf.Max(0.05f, pierceDuration));
+        var polish = TrailerCinematicPolish.GetOrCreate();
 
-        Color c;
-        if (u < 0.62f)
+        // Where the light is on screen, THIS frame. Recomputed rather than
+        // cached on purpose: the lens is being shaken and shoved back, so the
+        // flare slides with it, and a flare that slides is a thing in the world
+        // while a flare that sits still is a graphic laid over the picture.
+        Vector3 v = shotCamera.WorldToViewportPoint(pierceOrigin);
+        Vector2 at = v.z > 0f
+                   ? new Vector2(Mathf.Clamp(v.x, -0.35f, 1.35f), Mathf.Clamp(v.y, -0.35f, 1.35f))
+                   : new Vector2(0.5f, 0.5f);
+
+        // Three beats, and the shape of each is the point.
+        //   BLOOM  the crack opens and the glow grows out of it, off-centre,
+        //          with the statue still plainly in frame behind it.
+        //   RUSH   it takes the frame: the streak reaches both edges, the
+        //          ghosts come back through the middle.
+        //   GIVE   the sensor gives up. White, then black behind it.
+        float bloom = Mathf.Clamp01(u / 0.42f);
+        float rush = Mathf.Clamp01((u - 0.30f) / 0.42f);
+        float give = Mathf.Clamp01((u - 0.72f) / 0.28f);
+
+        UpdateLensBloom(u);
+        polish.LensStrike(at, Mathf.Max(bloom * bloom * 0.8f, rush), Color.Lerp(lightColor, coreColor, bloom));
+
+        // ==== THE FLOOD IS THE LAST QUARTER, NOT THE WHOLE MOVE ====
+        //
+        // This used to drive the full-screen overlay from the first frame of the
+        // burst: ember, to core, to white. That is a screen being tinted for a
+        // second, and for that whole second there is nothing to look at except
+        // the tint and the two bars around it. The light now happens IN the
+        // picture, and the overlay does only what an overlay is good for —
+        // taking the last of the exposure and handing over to black.
+        Color flood;
+        if (u < 0.72f)
         {
-            // Ember rising. Accelerating, because light forcing its way through
-            // stone does not open at a constant rate — it gives way.
-            c = Color.Lerp(lightColor, coreColor, u / 0.62f);
-            c.a = Mathf.Clamp01((u / 0.62f) * (u / 0.62f)) * 0.95f;
+            flood = Color.white;
+            flood.a = rush * rush * 0.30f;          // the frame starts to lift
         }
-        else if (u < 0.80f)
+        else if (u < 0.88f)
         {
-            c = Color.Lerp(coreColor, Color.white, (u - 0.62f) / 0.18f);
-            c.a = 1f;
+            flood = Color.white;
+            flood.a = Mathf.Lerp(0.30f, 1f, (u - 0.72f) / 0.16f);
         }
         else
         {
-            // The cut.
-            c = Color.Lerp(Color.white, Color.black, (u - 0.80f) / 0.20f);
-            c.a = 1f;
+            float k = (u - 0.88f) / 0.12f;
+            flood = Color.Lerp(Color.white, Color.black, k * k);
+            flood.a = 1f;
         }
+        polish.SetFlash(flood);
 
-        TrailerCinematicPolish.GetOrCreate().SetFlash(c);
+        // Light spills past the matte. Bars that stay pure black while the rest
+        // of the frame blows out are the single thing that gives the move away
+        // as an overlay — for the two or three frames at the peak there should
+        // be no frame line at all.
+        float spill = Mathf.Clamp01((u - 0.68f) / 0.18f) * (1f - Mathf.Clamp01((u - 0.88f) / 0.10f));
+        polish.SetBarTint(Color.Lerp(Color.black, Color.white, spill));
+    }
+
+    // ==== AND THE LIGHT IS ALSO IN THE WORLD ====
+    //
+    // The flare above is what the GLASS does with the light. On its own it is
+    // still an effect on the picture, because the picture never shows the source
+    // — the statue is lit the same in the frame before as in the frame after.
+    //
+    // This is the source: an additive card at the fracture that grows through
+    // the move. Being in the scene, the fog scatters it, the stone occludes it,
+    // the tremor shakes it, and it foreshortens correctly as the lens is shoved
+    // back. It is one quad; the shafts have been proving this material renders
+    // since the shot was built.
+    private Transform lensBloom;
+    private Material bloomMat;
+
+    private void BuildLensBloom()
+    {
+        bloomMat = MakeUnlit(additive: true);
+        if (bloomMat.HasProperty("_BaseMap")) bloomMat.SetTexture("_BaseMap", SoftDot());
+        if (bloomMat.HasProperty("_MainTex")) bloomMat.SetTexture("_MainTex", SoftDot());
+
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        go.name = "PierceBloom";
+        Destroy(go.GetComponent<Collider>());
+
+        var r = go.GetComponent<MeshRenderer>();
+        r.sharedMaterial = bloomMat;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+
+        lensBloom = go.transform;
+        lensBloom.SetParent(transform, true);
+        lensBloom.position = pierceOrigin;
+        lensBloom.localScale = Vector3.zero;
+    }
+
+    private void UpdateLensBloom(float u)
+    {
+        if (lensBloom == null || bloomMat == null) return;
+
+        // Squared: the first third is a point at the crack, the last third owns
+        // the frame. Light forcing its way out of stone does not settle at a
+        // size, it keeps going.
+        float k = u * u;
+
+        // Lifted off the surface toward the lens as it grows. A card centred
+        // exactly on the stone has half of itself behind the stone, and depth
+        // testing cuts that half away — a growing half-disc, which looks like
+        // exactly the bug it is. Coming forward also reads as the light
+        // reaching out rather than staying printed on the rock.
+        Vector3 toLens = camT != null ? (camT.position - pierceOrigin).normalized : Vector3.up;
+        lensBloom.position = pierceOrigin + toLens * Mathf.Lerp(0.06f, 2.6f, k);
+        if (camT != null) lensBloom.rotation = camT.rotation;
+
+        lensBloom.localScale = Vector3.one * Mathf.Lerp(0.15f, 24f, k);
+
+        Color c = Color.Lerp(lightColor, Color.white, Mathf.Clamp01(u / 0.65f)) * Mathf.Lerp(1.6f, 7f, k);
+        c.a = 1f;
+        if (bloomMat.HasProperty("_BaseColor")) bloomMat.SetColor("_BaseColor", c);
+        if (bloomMat.HasProperty("_Color")) bloomMat.SetColor("_Color", c);
     }
 
     // ==== THE SHOT HAS TO STOP COSTING SOMETHING WHEN IT ENDS ====
@@ -1057,6 +1154,10 @@ public class TrailerStatueShot : MonoBehaviour
         for (int i = 0; i < cracks.Count; i++)
             if (cracks[i] != null) Destroy(cracks[i].gameObject);
         cracks.Clear();
+
+        if (lensBloom != null) { Destroy(lensBloom.gameObject); lensBloom = null; }
+        var polish = TrailerCinematicPolish.Instance;
+        if (polish != null) { polish.LensStrike(Vector2.zero, 0f, Color.black); polish.SetBarTint(Color.black); }
 
         if (sheetDust != null) { sheetDust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(sheetDust.gameObject); }
         if (chipBurst != null) { chipBurst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); Destroy(chipBurst.gameObject); }
