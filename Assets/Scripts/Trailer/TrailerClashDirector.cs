@@ -126,7 +126,6 @@ public class TrailerClashDirector : MonoBehaviour
 
     [Header("Camera")]
     public Camera shotCamera;
-    [Tooltip("Metres to the side of the line the armies close along. The lens sits in the gap BETWEEN them and watches across it, so both armies enter from opposite edges of frame.")]
     // ==== THE FRAMING IS A MOVE, NOT A POSITION ====
     //
     // A single wide has to choose between "you can see there are two armies" and
