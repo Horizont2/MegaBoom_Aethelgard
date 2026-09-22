@@ -2165,44 +2165,43 @@ MonoBehaviour:
   playAfter: {fileID: 30491527}
   clashCentre: {fileID: 0}
   advanceAxis: {x: 0.4198, y: 0, z: -0.9076}
+  mirrorCamera: 0
   playerPrefab: {fileID: 2945078721770132420, guid: 5d34ba7f24dd11642b347d3691fb2af3, type: 3}
   playerLead: 3.4
   allyPrefabs:
   - {fileID: 6038138566616355774, guid: 8830afcd99ac17647a6125ac080c5b45, type: 3}
   - {fileID: 782107236397857034, guid: 3ac50cd84eaef9c4d899b94e37617399, type: 3}
   - {fileID: 7863355636086098685, guid: dd7e9550bab61d549b88e994c7926c69, type: 3}
-  allyCount: 48
-  allyRanks: 6
+  allyCount: 56
+  allyRanks: 8
   enemyPrefab: {fileID: 4198843849923204017, guid: 2df5f64440beec145a491944718d323c, type: 3}
-  enemyCount: 96
-  enemyRanks: 8
+  enemyCount: 120
+  enemyRanks: 12
   fileSpacing: 1.6
   rankSpacing: 1.9
   positionJitter: 0.4
-  startGap: 36
-  openAtRun: 1
-  holdSeconds: 0.45
-  walkSpeed: 3.2
-  chargeSpeed: 5.6
-  chargeAtGap: 30
-  chargeRampSeconds: 1.2
+  startGap: 32
+  holdSeconds: 2
+  chargeSpeed: 3.6
+  accelSeconds: 0.9
+  gaitScale: 1
   impactGap: 3.2
   shotCamera: {fileID: 442585517}
-  cameraSide: 24
-  cameraHeight: 2.4
-  cameraFov: 48
-  cameraCreep: 2.5
+  cameraSide: 34
+  cameraHeight: 3.2
+  cameraFov: 52
+  cameraCreep: 5
   handheld: 0.03
-  aimHeight: 2.2
+  aimHeight: 2.4
   arrowPrefab: {fileID: 7621633843283918721, guid: 41912863e8706c045ac99036c140b602, type: 3}
   arrowsPerVolley: 24
-  firstVolleyAtGap: 32
-  secondVolleyAtGap: 18
+  firstVolleyAtGap: 24
+  secondVolleyAtGap: 13
   volleyStagger: 0.45
   arrowFlightSeconds: 1.5
   arrowGravity: 22
-  arrowLaunchBehind: 14
-  arrowSpread: 26
+  arrowLaunchBehind: 12
+  arrowSpread: 22
   arrowLaunchHeight: 1.7
   arrowTrailColor: {r: 1, g: 0.82, b: 0.45, a: 0.9}
   arrowTrailTime: 0.18

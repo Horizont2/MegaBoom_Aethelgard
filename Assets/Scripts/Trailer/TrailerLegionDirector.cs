@@ -309,6 +309,41 @@ public class TrailerLegionDirector : MonoBehaviour
         if (veil != null) veil.alpha = 0f;
     }
 
+    // ==== SWITCHING THE DIRECTOR OFF DOES NOT CLEAR THE FIELD ====
+    //
+    // The episode leaves three hundred skeletons, a boss and a rain volume
+    // standing exactly where the last frame put them. Disabling this component
+    // stops them MOVING and nothing else, so whatever is cut in afterwards is
+    // filmed over a field of figures standing perfectly still in the middle
+    // distance — decoration that the next shot did not ask for and cannot
+    // explain.
+    //
+    // Called on the black between episodes, where destroying three hundred
+    // GameObjects costs nothing anybody can see.
+    public void TearDown()
+    {
+        for (int i = 0; i < legion.Count; i++)
+            if (legion[i] != null && legion[i].t != null) Destroy(legion[i].t.gameObject);
+        legion.Clear();
+
+        for (int i = 0; i < risers.Count; i++)
+            if (risers[i] != null && risers[i].t != null) Destroy(risers[i].t.gameObject);
+        risers.Clear();
+
+        if (bossTransform != null) bossTransform.gameObject.SetActive(false);
+
+        // The rain volume is parented to the camera, which the next shot is
+        // about to take over and fly somewhere else.
+        if (mainCamera != null)
+        {
+            foreach (var ps in mainCamera.GetComponentsInChildren<ParticleSystem>(true))
+                if (ps != null) Destroy(ps.gameObject);
+        }
+
+        isBossMarching = false;
+        isArmyMarching = false;
+    }
+
 
     // ---- runtime ------------------------------------------------------------
 

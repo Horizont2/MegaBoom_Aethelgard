@@ -58,8 +58,21 @@ public class TrailerClashDirector : MonoBehaviour
     [Header("Where")]
     [Tooltip("The point the two lines meet. Left empty, this object's own position is used.")]
     public Transform clashCentre;
+    // ==== WHICH ARMY ENDS UP ON WHICH SIDE OF FRAME ====
+    //
+    // The camera stands at centre + side, looking back at the centre, so its
+    // forward is -side and its right is up x forward — which works out to
+    // exactly +advanceAxis. The legion's front rank sits at centre + axis, so
+    // the LEGION IS ON THE RIGHT and the player's army on the left, whatever
+    // compass direction the axis happens to point.
+    //
+    // That is the intended reading and it falls out of the geometry rather than
+    // being arranged, so it cannot quietly flip when the axis is re-aimed.
+    // Mirror Camera is there for when the shot wants the other over-the-shoulder.
     [Tooltip("The direction the LEGION faces — the player's army comes the other way. Only the horizontal part is used.")]
     public Vector3 advanceAxis = Vector3.forward;
+    [Tooltip("Put the camera on the other side of the line, which swaps the two armies left-to-right in frame. Off: the player's army is on the LEFT, the legion on the RIGHT.")]
+    public bool mirrorCamera;
 
     [Header("The player's army")]
     [Tooltip("The hero himself, out in front of his own line. Left empty, the line closes up and nobody leads it.")]
@@ -67,14 +80,15 @@ public class TrailerClashDirector : MonoBehaviour
     public float playerLead = 3.4f;
     [Tooltip("Barracks units. Knight / Barbarian / Rogue_Hooded are the three the game hires.")]
     public GameObject[] allyPrefabs;
-    public int allyCount = 48;
-    public int allyRanks = 6;
+    [Tooltip("Ranks are what the camera sees. Files spread across each army's own front, which from side-on runs AWAY from the lens; ranks stack behind the front, which from side-on runs ACROSS the frame. So depth of formation, not width of front, is what fills the shot.")]
+    public int allyCount = 56;
+    public int allyRanks = 8;
 
     [Header("The legion")]
     public GameObject enemyPrefab;
     [Tooltip("Deliberately more of them. This is not a fair fight, it is a last stand.")]
-    public int enemyCount = 96;
-    public int enemyRanks = 8;
+    public int enemyCount = 120;
+    public int enemyRanks = 12;
 
     [Header("Formation")]
     public float fileSpacing = 1.6f;
@@ -82,50 +96,55 @@ public class TrailerClashDirector : MonoBehaviour
     [Tooltip("Metres of scatter on each unit's place in the grid. Zero is a chessboard; this is what makes it an army.")]
     public float positionJitter = 0.4f;
     [Tooltip("Metres between the two FRONT ranks when the shot opens. Read it together with the lens: at 48 degrees from 24 metres out the frame holds about thirty-eight metres, so a gap much wider than this opens on two crowds nobody can see.")]
-    public float startGap = 36f;
+    public float startGap = 32f;
 
     [Header("The charge")]
-    [Tooltip("They are ALREADY running when the shot opens. A standing start needs a reason to start, and this beat arrives with its reason two episodes behind it.")]
-    public bool openAtRun = true;
-    [Tooltip("A held beat before the gap begins to close. Short — just enough to read the two lines before they commit.")]
-    public float holdSeconds = 0.45f;
-    public float walkSpeed = 3.2f;
-    public float chargeSpeed = 5.6f;
-    [Tooltip("The gap at which a walk would become a charge. Ignored when they open at a run.")]
-    public float chargeAtGap = 30f;
-    public float chargeRampSeconds = 1.2f;
+    // Three beats, and they have to be three or the shot is a blur:
+    //   HOLD    both lines standing, the hero out in front of his. This is the
+    //           only moment the audience is given to read that there are two
+    //           sides and which is which, so it is not short.
+    //   RUN     the horn, and they go. Together.
+    //   IMPACT  the frame is taken away.
+    [Tooltip("Seconds both lines stand before anything moves. This beat IS the staging — without it the shot opens mid-action and reads as chaos.")]
+    public float holdSeconds = 2f;
+    [Tooltip("Metres per second, per side. The gap closes at twice this, so it is half as fast as it sounds and still covers thirty metres in four seconds.")]
+    public float chargeSpeed = 3.6f;
+    [Tooltip("Seconds to reach full pace. An army that goes from still to sprinting on one frame reads as a playback rate.")]
+    public float accelSeconds = 0.9f;
+    [Tooltip("Multiplier on the number fed to the animators, separate from how fast they actually travel. Lower it if feet skate, raise it if they moonwalk.")]
+    public float gaitScale = 1f;
     [Tooltip("The gap at which the frame goes black. Not zero — the cut lands BEFORE anyone interpenetrates, because nothing here is animated to collide.")]
     public float impactGap = 3.2f;
 
     [Header("Camera")]
     public Camera shotCamera;
     [Tooltip("Metres to the side of the line the armies close along. The lens sits in the gap BETWEEN them and watches across it, so both armies enter from opposite edges of frame.")]
-    public float cameraSide = 24f;
-    [Tooltip("Low. At head height the two lines fill the frame and read as walls of bodies; from above they read as two crowds on a field.")]
-    public float cameraHeight = 2.4f;
-    [Tooltip("Wide enough to hold the whole gap. A long lens compresses beautifully and shows nothing — at 32 degrees this framing held seventeen metres of a thirty-six metre gap, which is why it opened on empty ground.")]
-    public float cameraFov = 48f;
-    [Tooltip("Metres the camera drifts in across the shot. Small — it should feel planted, not operated.")]
-    public float cameraCreep = 2.5f;
+    public float cameraSide = 34f;
+    [Tooltip("Low, near the height of the men in the gap, so the two lines read as walls of bodies rather than as marks on a field seen from above.")]
+    public float cameraHeight = 3.2f;
+    [Tooltip("The frame has to hold the gap AND a good slice of each army, or it opens on empty ground with an army just off each edge. At 52 degrees from 34 metres out it holds about fifty-nine metres: a thirty-two metre gap plus roughly thirteen metres of each side.")]
+    public float cameraFov = 52f;
+    [Tooltip("Metres the camera drifts in as they close. It should feel planted and then pressed, not operated.")]
+    public float cameraCreep = 5f;
     public float handheld = 0.03f;
     [Tooltip("Aim height above the meeting point. Near the camera's own height, so the horizon sits level and the shot reads as standing among them.")]
-    public float aimHeight = 2.2f;
+    public float aimHeight = 2.4f;
 
     [Header("Arrows")]
     [Tooltip("The game's own arrow. Fired in volleys from BEHIND each line, so they arc over their own army and cross in the middle of frame — the one image a low side-on camera in the gap exists to catch.")]
     public GameObject arrowPrefab;
     public int arrowsPerVolley = 24;
     [Tooltip("Gaps at which a volley leaves. One as they commit, one as they close.")]
-    public float firstVolleyAtGap = 32f;
-    public float secondVolleyAtGap = 18f;
+    public float firstVolleyAtGap = 24f;
+    public float secondVolleyAtGap = 13f;
     [Tooltip("Seconds a volley takes to leave. All at once is a firework; spread over a moment it is archers.")]
     public float volleyStagger = 0.45f;
     [Tooltip("Seconds of flight. Longer arcs higher, and the apex is what the camera sees.")]
     public float arrowFlightSeconds = 1.5f;
     public float arrowGravity = 22f;
     [Tooltip("Metres behind each front rank the volley launches from, and how wide across the line it spreads.")]
-    public float arrowLaunchBehind = 14f;
-    public float arrowSpread = 26f;
+    public float arrowLaunchBehind = 12f;
+    public float arrowSpread = 22f;
     public float arrowLaunchHeight = 1.7f;
     [Tooltip("The streak behind the head, matching the one EnemyProjectile draws in gameplay.")]
     public Color arrowTrailColor = new Color(1f, 0.82f, 0.45f, 0.9f);
@@ -216,6 +235,7 @@ public class TrailerClashDirector : MonoBehaviour
         axis = advanceAxis; axis.y = 0f;
         axis = axis.sqrMagnitude > 0.0001f ? axis.normalized : Vector3.forward;
         side = new Vector3(axis.z, 0f, -axis.x);      // perpendicular, on the horizontal
+        if (mirrorCamera) side = -side;
 
         if (shotCamera == null) shotCamera = Camera.main;
 
@@ -235,8 +255,11 @@ public class TrailerClashDirector : MonoBehaviour
 
             // Its Update still marches a boss and three hundred skeletons, and
             // its camera work would fight this one. The episode is over, so the
-            // component goes with it.
+            // component goes with it — and so does everything it spawned, or
+            // this shot is filmed over a field of figures standing perfectly
+            // still in the middle distance.
             playAfter.ClearVeil();
+            playAfter.TearDown();
             playAfter.enabled = false;
         }
 
@@ -250,35 +273,39 @@ public class TrailerClashDirector : MonoBehaviour
         polish.OpenTrailer();
         TrailerAudio.SilenceStaleBeds();
         Loop(windBed);
-        Cue(hornCue);
-        Loop(marchLoop);
         Cue3D(rattleCue, centre + axis * (gap * 0.5f));
 
-        // ---- 1. a held beat, already running ----
-        bool charging = openAtRun;
-        float rampT = openAtRun ? 0.55f : 0f;      // already up to pace, still building
-        speed = Mathf.Lerp(walkSpeed, chargeSpeed, rampT * rampT);
+        // ---- 1. HOLD. Two lines, standing. ----
+        //
+        // The whole shot depends on this beat. It is the only moment the
+        // audience is given to read that there are two sides, which is which,
+        // and that one of them has a man standing out in front of it. Open on
+        // the movement instead and every frame after it is noise.
+        speed = 0f;
+        RunGait();
 
         float t = 0f;
         while (t < holdSeconds)
         {
             t += Time.unscaledDeltaTime;
-            RunGait();
-            PlaceCamera(Progress());
+            PlaceCamera(0f);
             DriveArrows();
             yield return null;
         }
 
-        // ---- 2. the close ----
+        // ---- 2. RUN. The horn, and they go together. ----
+        Cue(hornCue);
+        Loop(marchLoop);
+
         bool firedFirst = false, firedSecond = false;
+        float accel = 0f;
 
         while (gap > impactGap)
         {
             float dt = Time.unscaledDeltaTime;
 
-            if (!charging && gap <= chargeAtGap) charging = true;
-            rampT = Mathf.MoveTowards(rampT, charging ? 1f : 0f, dt / Mathf.Max(0.05f, chargeRampSeconds));
-            speed = Mathf.Lerp(walkSpeed, chargeSpeed, rampT * rampT);
+            accel = Mathf.MoveTowards(accel, 1f, dt / Mathf.Max(0.05f, accelSeconds));
+            speed = chargeSpeed * accel * accel;    // eased in; still to sprinting in one frame is a playback rate
 
             if (!firedFirst && gap <= firstVolleyAtGap) { firedFirst = true; StartCoroutine(Volley()); }
             if (!firedSecond && gap <= secondVolleyAtGap) { firedSecond = true; StartCoroutine(Volley()); }
@@ -315,11 +342,14 @@ public class TrailerClashDirector : MonoBehaviour
         return Mathf.Clamp01((startGap - gap) / span);
     }
 
+    private float Gait { get { return speed * gaitScale; } }
+
     private void RunGait()
     {
-        for (int i = 0; i < allies.Count; i++) if (allies[i].puppet != null) allies[i].puppet.SetGait(speed);
-        for (int i = 0; i < enemies.Count; i++) if (enemies[i].puppet != null) enemies[i].puppet.SetGait(speed);
-        if (player != null && player.puppet != null) player.puppet.SetGait(speed);
+        float g = Gait;
+        for (int i = 0; i < allies.Count; i++) if (allies[i].puppet != null) allies[i].puppet.SetGait(g);
+        for (int i = 0; i < enemies.Count; i++) if (enemies[i].puppet != null) enemies[i].puppet.SetGait(g);
+        if (player != null && player.puppet != null) player.puppet.SetGait(g);
     }
 
     // ---- the armies ----------------------------------------------------------
@@ -449,7 +479,7 @@ public class TrailerClashDirector : MonoBehaviour
             Vector3 p = allyFront + side * player.offset.x - axis * player.offset.z;
             bool ground = groundAll || (frame % GroundStride) == player.snapPhase;
             player.puppet.Place(p, axis, ground);
-            player.puppet.SetGait(speed);
+            player.puppet.SetGait(Gait);
         }
     }
 
@@ -465,7 +495,7 @@ public class TrailerClashDirector : MonoBehaviour
             Vector3 p = front + side * u.offset.x + back * u.offset.z;
             bool ground = groundAll || (frame % GroundStride) == u.snapPhase;
             u.puppet.Place(p, facing, ground);
-            u.puppet.SetGait(speed);
+            u.puppet.SetGait(Gait);
         }
     }
 
