@@ -51,6 +51,34 @@ public static class TrailerShots
     [MenuItem("Tools/Lore Trailer/Play shot 6 — the title card", priority = 5)]
     private static void PlayTitle() { Launch(TrailerShotSolo.TitleShot, "the title card"); }
 
+    // ===================== stills =====================
+    //
+    // Steam shows a still on every trailer until someone presses play, and a
+    // frame lifted out of the finished H.264 carries the encoder's banding
+    // through the fog — which is the one thing a still shows off worst. These
+    // render it again from the engine instead.
+    [MenuItem("Tools/Lore Trailer/Poster frame — clean (no letterbox)  F9", priority = 30)]
+    private static void GrabClean()
+    {
+        if (!EditorApplication.isPlaying) { NotPlaying(); return; }
+        PosterFrame.GrabClean();
+    }
+
+    [MenuItem("Tools/Lore Trailer/Poster frame — as framed (with the title)  F10", priority = 31)]
+    private static void GrabFramed()
+    {
+        if (!EditorApplication.isPlaying) { NotPlaying(); return; }
+        PosterFrame.GrabFramed();
+    }
+
+    private static void NotPlaying()
+    {
+        EditorUtility.DisplayDialog("Poster frame",
+            "Nothing is being rendered — press Play first, run a shot, and grab the frame you want.\n\n" +
+            "F9 and F10 do the same thing without coming back to this menu, which matters when the frame " +
+            "you want is one second long.", "OK");
+    }
+
     private static void Launch(string shot, string what)
     {
         // Asked of TrailerShotSolo rather than written here twice. The runtime
