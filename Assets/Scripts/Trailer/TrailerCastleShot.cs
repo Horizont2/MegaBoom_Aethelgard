@@ -466,7 +466,17 @@ public class TrailerCastleShot : MonoBehaviour
         // sting on top of a bed that is already running is just louder; the
         // silence is what makes it arrive.
         DropOut();
-        yield return new WaitForSecondsRealtime(silenceBefore);
+        // ==== THE CAMERA STOPS DEAD HERE, AND THEN JUMPS ====
+        //
+        // This was a bare WaitForSecondsRealtime. For the whole silence the
+        // coroutine is parked, so nothing calls PlaceCamera — no drift, no
+        // damping, no flicker. The lens freezes absolutely still for most of a
+        // second and then the reveal starts moving it, which is the stop and the
+        // lurch. The same hole is at the end, under the fade.
+        //
+        // A wait in a shot is not an absence of a shot. It is driven like every
+        // other beat; only the progress is held.
+        yield return Beat(silenceBefore, 0f, 0f);
         Cue(revealSting);
         Loop(windBed);
 
@@ -488,18 +498,13 @@ public class TrailerCastleShot : MonoBehaviour
         }
 
         // ---- 7. HOLD. It never quite stops. ----
-        float hold = 0f;
-        while (hold < holdSeconds)
-        {
-            hold += Time.unscaledDeltaTime;
-            drift += driftDegreesPerSecond * Time.unscaledDeltaTime;
-            PlaceCamera(1f, drift);
-            FlickerTorches();
-            yield return null;
-        }
+        yield return Beat(holdSeconds, 1f, 1f);
 
         polish.FadeToBlack(outFade);
-        yield return new WaitForSecondsRealtime(outFade);
+        // Driven through the fade too. It is under black by the end, but the
+        // first half of a fade is not, and a frozen frame is exactly what an
+        // audience notices in it.
+        yield return Beat(outFade, 1f, 1f);
         DropOut();
 
         if (showTitle) yield return StartCoroutine(TitleCard());

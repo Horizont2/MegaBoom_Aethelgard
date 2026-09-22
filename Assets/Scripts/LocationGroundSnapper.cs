@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 // Drop this on a LOCATION ROOT (a town / castle / camp prefab you placed by
@@ -80,29 +81,84 @@ public class LocationGroundSnapper : MonoBehaviour
                 transform.position += new Vector3(0f, highestGround - boxBottom, 0f);
         }
 
-        // PHASE 2 — per direct child: lower ONLY the pieces left floating in the
-        // air; leave anything that ended up BELOW ground exactly as it is.
-        int moved = 0;
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            Transform child = transform.GetChild(i);
-            if (child == null) continue;
-            if (child.GetComponentInParent<NoGroundSnap>() != null) continue;
-            if (NameExcluded(child.name)) continue;
+        // PHASE 2 — EVERY PIECE, not every direct child.
+        //
+        // This walked transform.GetChild(i) and stopped there, which is the
+        // right shape for a location assembled out of a dozen props and the
+        // wrong one for this castle: it is nineteen hundred nested prefab
+        // instances, so its direct children are a handful of GROUPS. Measuring a
+        // group gives the bounds of everything in it, and the lowest point of
+        // fifty walls is almost always already on the ground — so the gap came
+        // out at nothing, the group was left alone, and every floating piece
+        // inside it stayed floating.
+        //
+        // So it descends to the pieces that actually carry geometry, and snaps
+        // each one on its own. A transform whose ancestor has already been
+        // snapped is skipped, or a piece moves twice.
+        var pieces = new List<Transform>();
+        Collect(transform, pieces);
 
-            if (!TryMeasure(child, out Vector3 footXZ, out float lowestY)) continue;
+        // Shallowest first, so the ancestor test below sees them in the order
+        // they can actually shadow each other.
+        pieces.Sort((a, b) => Depth(a).CompareTo(Depth(b)));
+
+        var snapped = new List<Transform>();
+        int moved = 0;
+
+        foreach (Transform piece in pieces)
+        {
+            if (piece == null) continue;
+            if (HasSnappedAncestor(piece, snapped)) continue;
+            if (piece.GetComponentInParent<NoGroundSnap>() != null) continue;
+            if (NameExcluded(piece.name)) continue;
+
+            if (!TryMeasure(piece, out Vector3 footXZ, out float lowestY)) continue;
             if (!TryGround(footXZ, out float groundY)) continue;
 
             float gap = lowestY - groundY;                 // >0 floating, <0 sunk
             if (gap <= tolerance) continue;                // sunk or already grounded → leave as-is
             if (gap > maxSnapDistance) continue;           // too far up → assume intentional
 
-            child.position -= new Vector3(0f, gap, 0f);    // drop floater onto the ground
+            piece.position -= new Vector3(0f, gap, 0f);    // drop floater onto the ground
+            snapped.Add(piece);
             moved++;
         }
 
         if (moved > 0)
             Debug.Log($"[LocationGroundSnapper] '{name}': lowered {moved} floating piece(s) to the ground.");
+    }
+
+    // Every transform that carries geometry of its own. A dressed location nests
+    // its props several deep, and it is the props that float — not the folders
+    // they are filed under.
+    private static void Collect(Transform root, List<Transform> into)
+    {
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform c = root.GetChild(i);
+            if (c == null) continue;
+
+            bool carriesGeometry = false;
+            foreach (var r in c.GetComponents<Renderer>())
+                if (r != null && r.enabled && !(r is ParticleSystemRenderer)) { carriesGeometry = true; break; }
+
+            if (carriesGeometry) into.Add(c);
+            Collect(c, into);
+        }
+    }
+
+    private static int Depth(Transform t)
+    {
+        int d = 0;
+        while (t.parent != null) { d++; t = t.parent; }
+        return d;
+    }
+
+    private static bool HasSnappedAncestor(Transform t, List<Transform> snapped)
+    {
+        for (Transform p = t.parent; p != null; p = p.parent)
+            if (snapped.Contains(p)) return true;
+        return false;
     }
 
     private bool NameExcluded(string n)
@@ -164,6 +220,29 @@ public class LocationGroundSnapper : MonoBehaviour
             if (h.point.y > best) { best = h.point.y; found = true; }
         }
         if (found) { y = best; return true; }
+
+        // ==== THE HOLE UNDER THE LOCATION ====
+        //
+        // A self-contained location asks WorldGenerator to punch a hole in the
+        // terrain under its footprint, and a terrain hole removes the COLLIDER
+        // as well as the surface — so a raycast straight down from inside the
+        // footprint hits nothing at all, TryGround fails, and the piece is
+        // skipped. Every piece inside the hole was therefore never snapped,
+        // which is most of the ones anybody notices.
+        //
+        // The heightmap is still there underneath: a hole hides the ground, it
+        // does not delete the data. Sampling it gives the height the land would
+        // have had, which is exactly the height the location was placed to.
+        foreach (var t in Terrain.activeTerrains)
+        {
+            if (t == null || t.terrainData == null) continue;
+            Vector3 o = t.transform.position, sz = t.terrainData.size;
+            if (fromAboveXZ.x < o.x || fromAboveXZ.x > o.x + sz.x) continue;
+            if (fromAboveXZ.z < o.z || fromAboveXZ.z > o.z + sz.z) continue;
+
+            y = t.SampleHeight(fromAboveXZ) + o.y;
+            return true;
+        }
         return false;
     }
 }
