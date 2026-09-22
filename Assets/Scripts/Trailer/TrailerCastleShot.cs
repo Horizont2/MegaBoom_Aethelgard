@@ -152,10 +152,13 @@ public class TrailerCastleShot : MonoBehaviour
     [Tooltip("Metres BEHIND the castle each bolt lands, as a multiple of its radius. Behind, not among — a bolt inside the walls lights stonework; a bolt behind them makes the whole castle a silhouette, which is the only thing worth seeing through this much fog.")]
     public float strikeBehind = 1.4f;
     public Color lightningColour = new Color(0.82f, 0.88f, 1f);
-    public float lightningIntensity = 16f;
-    [Range(0f, 3f)]
-    [Tooltip("How far past its own colour the fog is pushed on a flash. This is the strike: the volume goes bright and every solid thing in it becomes a silhouette cut out of it.")]
-    public float flashLift = 1.4f;
+    [Tooltip("On the directional light. Kept modest on purpose: it is the one light here that reaches every surface at once, so a big number on it is another screen wash. Its job is to edge the walls.")]
+    public float lightningIntensity = 5f;
+    [Tooltip("Size of the lit patch of sky, as a multiple of the castle's radius. Big — it is a cloud lighting up, not a lamp.")]
+    public float flareSize = 3.5f;
+    [Range(0f, 6f)]
+    [Tooltip("How bright that patch goes. This is the strike, and it is LOCAL — which is the whole difference between lightning and a screen flash.")]
+    public float flareStrength = 2.6f;
     [Tooltip("Seconds the air keeps glowing after the last flicker. Cutting straight back is what makes a flash read as a switch rather than as lightning.")]
     public float flashAfterglow = 0.45f;
 
@@ -1138,91 +1141,120 @@ public class TrailerCastleShot : MonoBehaviour
 
     private IEnumerator Strike()
     {
-        if (bolt != null)
-        {
-            Vector3 at = castleBounds.center - approach * (castleRadius * strikeBehind)
-                       + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)) * castleRadius * 0.6f;
-            at.y = Ground(at);
-            bolt.Strike(at);
-        }
+        Vector3 strikePoint = castleBounds.center - approach * (castleRadius * strikeBehind)
+                            + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)) * castleRadius * 0.6f;
+        strikePoint.y = Ground(strikePoint);
+        if (bolt != null) bolt.Strike(strikePoint);
 
         Light key = keyLight != null ? keyLight : RenderSettings.sun;
 
-        // ==== IN FOG, A FLASH IS THE AIR LIGHTING UP ====
+        // ==== A FLASH HAS TO HAPPEN SOMEWHERE ====
         //
-        // Flashing the directional light alone brightens the surfaces it reaches
-        // and almost nothing else, because those surfaces are behind a hundred
-        // metres of fog. What a real strike does to a fogged valley is light the
-        // FOG — the whole volume goes white for a frame and every solid thing in
-        // it becomes a silhouette cut out of that white.
+        // The last version drove the fog's colour and the ambient. That is not
+        // wrong about the physics — a strike really does light the air — but it
+        // lights it EVERYWHERE, and fog fills the frame, so a uniform change to
+        // it is a uniform tint over every pixel. Which is precisely what a
+        // screen flash is, and precisely what it looked like.
         //
-        // This fog only ever scatters one directional light, so it will not do
-        // that on its own. But its colour is a field, and driving that IS the
-        // effect: the volume goes bright, the castle is a shape in front of it,
-        // and the torches are suddenly nothing. Then it is gone.
-        Color fogWas = fogColour;
-        Color skyWas = RenderSettings.ambientSkyColor;
-        Color eqWas = RenderSettings.ambientEquatorColor;
-        Color grdWas = RenderSettings.ambientGroundColor;
-        Color keyWas = key != null ? key.color : Color.white;
-        float keyI0 = key != null ? key.intensity : 0f;
+        // What makes lightning read as lightning is that it is LOCAL: brightest
+        // at the bolt, falling away from it, so the sky has a hot patch in one
+        // place and the castle sits in front of it. That is a source with a
+        // direction, and the eye reads direction instantly.
+        //
+        // This fog cannot light locally — it scatters one directional light and
+        // nothing else. So the glow is geometry again, for the same reason the
+        // torches' halos are: a big additive card hung in the sky at the strike,
+        // which the fog then attenuates with distance by itself. The castle is
+        // in front of it, and is therefore a silhouette.
+        Flare(strikePoint);
 
-        // The sun is swung to come from BEHIND the castle for the flash, so what
-        // little it does reach edges the walls rather than washing their faces.
-        Quaternion rotWas = key != null ? key.transform.rotation : Quaternion.identity;
+        if (key == null) yield break;
 
-        // Real lightning is not one flash. It is two or three inside a tenth of a
-        // second, which is the difference between a light being switched on and
-        // something happening in the sky.
+        Color keyWas = key.color;
+        float keyI0 = key.intensity;
+        Quaternion rotWas = key.transform.rotation;
+
+        // Real lightning is not one flash. It is two or three inside a tenth of
+        // a second, which is the difference between a light being switched on
+        // and something happening in the sky.
         int flickers = Random.Range(2, 4);
         for (int i = 0; i < flickers; i++)
         {
             float f = Random.Range(0.6f, 1f);
 
-            if (key != null)
-            {
-                key.transform.rotation = Quaternion.LookRotation(approach) * Quaternion.Euler(22f, 0f, 0f);
-                key.color = lightningColour;
-                key.intensity = lightningIntensity * f;
-            }
-            SetFogColour(Color.Lerp(fogWas, lightningColour, 0.85f * f) * (1f + flashLift * f));
-            RenderSettings.ambientSkyColor = Color.Lerp(skyWas, lightningColour, 0.8f * f);
-            RenderSettings.ambientEquatorColor = Color.Lerp(eqWas, lightningColour, 0.6f * f);
-            RenderSettings.ambientGroundColor = Color.Lerp(grdWas, lightningColour, 0.35f * f);
+            // Swung BEHIND the castle for the flash, and kept modest. A
+            // directional light is the one thing here that reaches every
+            // surface at once, so a big number on it is another screen wash —
+            // its job is to edge the walls, not to light the shot.
+            key.transform.rotation = Quaternion.LookRotation(approach) * Quaternion.Euler(22f, 0f, 0f);
+            key.color = lightningColour;
+            key.intensity = lightningIntensity * f;
 
             yield return new WaitForSecondsRealtime(Random.Range(0.03f, 0.07f));
 
-            if (key != null) { key.color = keyWas; key.intensity = keyI0; key.transform.rotation = rotWas; }
-            SetFogColour(fogWas);
-            RenderSettings.ambientSkyColor = skyWas;
-            RenderSettings.ambientEquatorColor = eqWas;
-            RenderSettings.ambientGroundColor = grdWas;
+            key.color = keyWas;
+            key.intensity = keyI0;
+            key.transform.rotation = rotWas;
 
             yield return new WaitForSecondsRealtime(Random.Range(0.02f, 0.06f));
         }
 
-        // A strike leaves the air glowing for a moment after the last flicker.
-        // Cutting straight back is what makes a flash read as a switch.
+        key.color = keyWas;
+        key.intensity = keyI0;
+        key.transform.rotation = rotWas;
+    }
+
+    // One card, reused. Hung in the sky ABOVE the strike, big enough to be the
+    // lit patch of cloud rather than a lamp, and gone within half a second.
+    private Transform flare;
+    private Material flareMat;
+
+    private void Flare(Vector3 ground)
+    {
+        if (flare == null)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "Castle_Flare";
+            Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(transform, true);
+
+            var r = go.GetComponent<MeshRenderer>();
+            flareMat = new Material(GlowMaterial());
+            r.sharedMaterial = flareMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            flare = go.transform;
+        }
+
+        flare.position = ground + Vector3.up * (castleBounds.size.y * 1.3f + 20f);
+        StopCoroutine(nameof(FlareRoutine));
+        StartCoroutine(FlareRoutine());
+    }
+
+    private IEnumerator FlareRoutine()
+    {
+        float size = Mathf.Max(60f, castleRadius * flareSize);
         float t = 0f;
+
         while (t < flashAfterglow)
         {
             t += Time.unscaledDeltaTime;
             float k = 1f - Mathf.Clamp01(t / Mathf.Max(0.01f, flashAfterglow));
-            SetFogColour(Color.Lerp(fogWas, lightningColour, 0.30f * k * k));
+
+            // Faces the lens; grows a little as it dies, the way a lit cloud
+            // spreads rather than shrinking back to a point.
+            if (cam != null) flare.rotation = cam.transform.rotation;
+            flare.localScale = Vector3.one * size * (1f + (1f - k) * 0.35f);
+
+            Color c = lightningColour * (flareStrength * k * k);
+            c.a = 1f;
+            if (flareMat.HasProperty("_BaseColor")) flareMat.SetColor("_BaseColor", c);
+            if (flareMat.HasProperty("_Color")) flareMat.SetColor("_Color", c);
+
             yield return null;
         }
 
-        if (key != null) { key.color = keyWas; key.intensity = keyI0; key.transform.rotation = rotWas; }
-        SetFogColour(fogWas);
-        RenderSettings.ambientSkyColor = skyWas;
-        RenderSettings.ambientEquatorColor = eqWas;
-        RenderSettings.ambientGroundColor = grdWas;
-    }
-
-    private void SetFogColour(Color c)
-    {
-        if (fog == null || fColour == null) return;
-        fColour.SetValue(fog, c);
+        flare.localScale = Vector3.zero;
     }
 
     // ---- title card --------------------------------------------------------------

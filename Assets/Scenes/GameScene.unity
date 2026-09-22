@@ -22366,8 +22366,9 @@ MonoBehaviour:
   strikes: 4
   strikeBehind: 1.4
   lightningColour: {r: 0.82, g: 0.88, b: 1, a: 1}
-  lightningIntensity: 16
-  flashLift: 1.4
+  lightningIntensity: 5
+  flareSize: 3.5
+  flareStrength: 2.6
   flashAfterglow: 0.45
   torchPrefab: {fileID: 1850256477050470, guid: 3599666ad7adbe14d964d5a8c7b8d845, type: 3}
   approachTorches: 16
