@@ -125,6 +125,10 @@ public class TrailerStatueShot : MonoBehaviour
     public float flickerSpeed = 1.4f;
     [Tooltip("Motes drifting through each shaft. This is what makes a shaft look volumetric rather than printed.")]
     [Range(0, 60)] public int motesPerRay = 22;
+    [Tooltip("Longest a shaft may be, per metre the camera is from the statue. The push ends about five metres out, where a 24 m beam covers most of the frame; this keeps what a shaft costs roughly the same at the end of the push as at the start.")]
+    [Range(0.4f, 4f)] public float shaftLengthPerMetre = 1.1f;
+    [Tooltip("How far the shafts and the dust are eased back once the lens is right on the statue. 1 = no easing; lower = less blending to pay for, and less blow-out from ten additive shafts crossing at close range.")]
+    [Range(0.15f, 1f)] public float nearShaftFalloff = 0.45f;
 
     [Header("Collapse")]
     public GameObject[] debrisPrefabs;
@@ -549,11 +553,15 @@ public class TrailerStatueShot : MonoBehaviour
             yield return null;
         }
 
-        // No FadeToBlack here: the pierce has already driven the overlay to solid
-        // black. Fading again would fade black to black and hold the shot open
-        // for no reason.
-        IsFinished = true;
+        // The bars are shut, which IS the black — no fade needed, and fading
+        // black onto black would only hold the shot open.
+        TrailerCinematicPolish.GetOrCreate().SetFlash(new Color(0f, 0f, 0f, 0f));
         TearDown();
+
+        // A beat of held black so the shot has an out point rather than ending
+        // on its own last frame of motion.
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, outFade));
+        IsFinished = true;
     }
 
     // ======================= camera =======================
@@ -650,7 +658,13 @@ public class TrailerStatueShot : MonoBehaviour
         if (sheetDust != null)
         {
             var em = sheetDust.emission;
-            em.rateOverTime = Mathf.Lerp(0f, 90f, tension * tension);
+            // Thinned as the lens arrives, for the same reason the shafts are:
+            // the camera ends up INSIDE this cloud, where a couple of hundred
+            // soft billboards stop being dust and become a screen-sized smear
+            // that costs a screen-sized amount of blending.
+            float near = Mathf.Clamp(Vector3.Distance(camT.position, center) / Mathf.Max(1f, startDistance),
+                                     nearShaftFalloff, 1f);
+            em.rateOverTime = Mathf.Lerp(0f, 90f, tension * tension) * near;
         }
     }
 
@@ -841,6 +855,11 @@ public class TrailerStatueShot : MonoBehaviour
 
     private void UpdateShafts(float t)
     {
+        float camDist = Vector3.Distance(camT.position, center);
+        // Eases the shafts back as the lens arrives rather than switching them
+        // down, so the change is never a visible step.
+        float proximity = Mathf.Clamp(camDist / Mathf.Max(1f, startDistance), nearShaftFalloff, 1f);
+
         // The shafts come out of cracks in a statue that is about to stop
         // existing. Once it goes they have no source, so they hand over to the
         // lens flare rather than hanging in the air pouring out of nothing.
@@ -872,7 +891,22 @@ public class TrailerStatueShot : MonoBehaviour
             // stationary shaft, which is how it works in life and the only way it
             // stops looking like a lighting rig.
             Vector3 dir = statue.TransformDirection(s.dirLocal).normalized;
-            float len = rayLength * grow;
+            // ==== THE FILL HAS TO STAY BOUNDED AS THE LENS CLOSES ====
+            //
+            // A shaft is an additive quad 24 metres long. That is a reasonable
+            // amount of screen at the fifteen metres the push STARTS at, and an
+            // absurd one at the five it ends at — the same geometry covers about
+            // nine times the pixels. Ten of them, over a couple of hundred soft
+            // dust billboards, over a full-screen fog raymarch: the shot gets
+            // more expensive the closer it gets, which is exactly the shape of
+            // "it lags at the end".
+            //
+            // Capping the length against the camera's own distance holds the
+            // coverage roughly constant across the push. It also reads better:
+            // walking up to a beam of light, you see LESS of its length, not
+            // more, and ten shafts at full opacity from five metres blow out to
+            // white — which the note on rayHeat above already warns about.
+            float len = Mathf.Min(rayLength, Mathf.Max(3f, camDist * shaftLengthPerMetre)) * grow;
 
             // Occlusion. A shaft that passes through a wall destroys the shot
             // faster than any amount of shader quality can save it.
@@ -884,13 +918,13 @@ public class TrailerStatueShot : MonoBehaviour
             s.line.SetPosition(1, origin + dir * len);
             // Intensity breathes; WIDTH does not. A shaft whose thickness pulses
             // reads as a bad effect rather than as light.
-            s.line.widthMultiplier = rayWidth * s.widthScale * grow * (0.6f + 0.6f * tension) * handover;
+            s.line.widthMultiplier = rayWidth * s.widthScale * grow * (0.6f + 0.6f * tension) * handover * proximity;
 
             // Hot only at the mouth, and only a little. The far end stays the deep
             // ember, so a shaft reads as light escaping from something burning
             // rather than as a white bar drawn across the frame.
             Color mouth = Color.Lerp(lightColor, coreColor, rayHeat * (0.5f + 0.5f * tension));
-            mouth.a = grow * rayOpacity * (0.45f + 0.55f * tension) * handover;
+            mouth.a = grow * rayOpacity * (0.45f + 0.55f * tension) * handover * proximity;
             s.line.startColor = mouth;
 
             Color tail = lightColor; tail.a = 0f;
@@ -1013,13 +1047,38 @@ public class TrailerStatueShot : MonoBehaviour
         }
         else
         {
-            // The cut.
-            c = Color.Lerp(Color.white, Color.black, (u - 0.80f) / 0.20f);
+            // ==== THE TRANSITION ====
+            //
+            // This used to lerp the white to black and stop. That is not a
+            // transition, it is the picture being switched off: nothing moves
+            // across the join, so there is no frame for an editor to cut ON and
+            // the shot simply runs out.
+            //
+            // Instead the LETTERBOX slams shut over the blowout. The bars have
+            // framed every frame of this shot from the first, so the close
+            // introduces nothing new at the last second; it is the shot shutting
+            // its own eye, and it gives an editor a moving frame to cut on.
+            //
+            // The flash HOLDS while the bars come together, and only goes black
+            // behind them at the very end. It deliberately does not clear: the
+            // statue is one unfractured mesh and never actually breaks apart, so
+            // a frame of aftermath would show it standing there intact — which is
+            // the same reason vanishOnBurst is off. The motion across the join is
+            // the shutter, not the picture.
+            float k = Mathf.Clamp01((u - 0.80f) / 0.15f);
+            c = Color.Lerp(Color.white, Color.black, k * k);
             c.a = 1f;
+            if (!closing)
+            {
+                closing = true;
+                TrailerCinematicPolish.GetOrCreate().CloseBars(pierceDuration * 0.20f);
+            }
         }
 
         TrailerCinematicPolish.GetOrCreate().SetFlash(c);
     }
+
+    private bool closing;
 
     private void SpawnDebris()
     {

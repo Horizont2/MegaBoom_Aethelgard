@@ -213,6 +213,16 @@ public static class TrailerShotSolo
             Set(fog, "fogColor", new Color(0.34f, 0.40f, 0.52f, 1f));
             Set(fog, "ambientColor", new Color(0.16f, 0.19f, 0.28f, 1f));
             if (moon != null) Set(fog, "directionalLight", moon);
+
+            // Volumetric shadows cost a shadow-map lookup at EVERY raymarch step,
+            // and the terrain shadow adds a heightmap march on top of that — the
+            // fog's most expensive two settings by a distance, paid per pixel,
+            // every frame. What they buy here is the shadow the statue throws
+            // through the fog from a 0.35-intensity moon, in a shot that ends in
+            // a furnace of ember light. Nothing visible, for the largest single
+            // cost in a shot that is already fighting for frames.
+            Set(fog, "enableVolumetricShadows", false);
+            Set(fog, "terrainCastsFogShadows", false);
         }
     }
 
@@ -234,7 +244,13 @@ public static class TrailerShotSolo
         // than saved into the scene, so the full-trailer path still exists.
         var director = seq != null ? seq.GetComponent<TrailerSequenceDirector>() : null;
         if (director == null) director = Object.FindFirstObjectByType<TrailerSequenceDirector>(FindObjectsInactive.Include);
-        if (director != null) director.endAfterCrane = true;
+        if (director != null)
+        {
+            director.endAfterCrane = true;
+            // And the land stays the land it was galloping through: no season
+            // turn, no re-tinted trees, no four days of sun under the crane.
+            director.holdWorld = true;
+        }
 
         // TrailerSequenceDirector owns the rigs from here: it wakes them, parks
         // their cameras and cuts between them itself. Nothing else touches them.

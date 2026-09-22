@@ -296,8 +296,6 @@ public class TrailerLegionDirector : MonoBehaviour
     public float holdBlackDuration = 0.35f;
     public UnityEngine.Events.UnityEvent onEpisodeFinished;
 
-    [Tooltip("Optional closing beat: the map of Aethelgard, and the curse taking all of it. Runs after the axe hits the lens. Leave empty and the episode ends on the smash to black exactly as before.")]
-    public TrailerMapCurse mapCurse;
 
     // ---- runtime ------------------------------------------------------------
 
@@ -1939,50 +1937,18 @@ Cue(AudioID.Trailer_Impact, AudioID.Region_Shockwave);
 
         yield return new WaitForSecondsRealtime(0.08f);
 
-        // ==== THE MAP ARRIVES ON A FLASH, NOT OUT OF A FADE ====
+        // ==== SMASH TO BLACK ====
         //
-        // Fading up from black onto a picture is a slideshow: there is no
-        // motion carried across the join, so the eye reads it as the image
-        // being CHANGED rather than as the camera having gone somewhere. It is
-        // the single cheapest-looking transition there is, and it was what this
-        // did.
+        // The axe filling the frame IS the wipe: take the screen on contact and
+        // hold it. The next episode then starts from black, which is a cut
+        // rather than a transition to be watched.
         //
-        // The impact already blows the key light out. Cutting on that blowout
-        // is the most invisible cut available - so the veil goes WHITE for an
-        // instant and wipes off onto a map that is already there with the lens
-        // already moving, and the roll left over from the axe is still bleeding
-        // out of the frame as it does. Flash, and you are somewhere else.
-        if (mapCurse != null && mapCurse.Prepare(mainCamera))
+        // There used to be a closing beat here - the map of Aethelgard, and the
+        // curse spreading over it - reached by flashing white off the impact. It
+        // was rebuilt three times and never stopped looking like a slide at the
+        // end of a film, so it is gone rather than rebuilt a fourth time. The
+        // episode ends where it lands.
         {
-            EnsureVeil();
-            if (veilImage != null) veilImage.color = Color.white;
-            if (veil != null) veil.alpha = 1f;
-
-            Time.timeScale = 1f;
-            if (mainDirectionalLight != null)
-            {
-                mainDirectionalLight.color = rigColor;
-                mainDirectionalLight.intensity = rigIntensity;
-            }
-            StopAudioBed();
-
-            // Wipes off WHILE the map beat is already running, so the first
-            // thing the audience sees is a camera in motion.
-            StartCoroutine(FadeVeilTo(0f, flashOutSeconds));
-            yield return StartCoroutine(mapCurse.Run(mainCamera));
-
-            if (veilImage != null) veilImage.color = impactFadeColor;
-            yield return StartCoroutine(FadeVeilTo(1f, blackoutOut));
-            mapCurse.Cleanup();
-            yield return new WaitForSecondsRealtime(holdBlackDuration);
-        }
-        else
-        {
-            // ==== SMASH TO BLACK ====
-            //
-            // No map beat, so the axe filling the frame IS the wipe: take the
-            // screen on contact and hold it. The next episode then starts from
-            // black, which is a cut rather than a transition to be watched.
             if (smashToBlack)
             {
                 EnsureVeil();

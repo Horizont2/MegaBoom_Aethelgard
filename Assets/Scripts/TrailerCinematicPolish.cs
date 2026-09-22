@@ -91,9 +91,48 @@ public class TrailerCinematicPolish : MonoBehaviour
     private void SetBars(float t)
     {
         _bars = Mathf.Clamp01(t);
-        float h = barHeight * _bars * Screen.height;
+        SetBarPixels(barHeight * _bars * Screen.height);
+    }
+
+    private void SetBarPixels(float h)
+    {
         if (_top != null) ((RectTransform)_top.transform).sizeDelta = new Vector2(0f, h);
         if (_bottom != null) ((RectTransform)_bottom.transform).sizeDelta = new Vector2(0f, h);
+    }
+
+    // The letterbox closes all the way, like a shutter, and the shot is over.
+    //
+    // A shot that simply holds on black has no end — it has a stop, and an
+    // editor cutting the trailer has nothing to cut ON. This is a transition
+    // made out of the frame the shot has been wearing the whole time: the bars
+    // that have been sitting at the top and bottom since the first frame come
+    // together over the picture. Nothing new is introduced at the last second,
+    // which is what stops it reading as an effect.
+    public void CloseBars(float seconds)
+    {
+        if (_close != null) StopCoroutine(_close);
+        _close = StartCoroutine(CloseBarsRoutine(seconds));
+    }
+
+    private Coroutine _close;
+
+    private IEnumerator CloseBarsRoutine(float seconds)
+    {
+        float from = barHeight * _bars * Screen.height;
+        float to = Screen.height * 0.5f;                  // the two meet in the middle
+
+        float t = 0f;
+        while (t < seconds)
+        {
+            t += Time.unscaledDeltaTime;
+            // Accelerating. Bars that close at a constant rate read as a menu
+            // animation; bars that snap shut at the end read as a shutter.
+            float k = Mathf.Clamp01(t / Mathf.Max(0.01f, seconds));
+            SetBarPixels(Mathf.Lerp(from, to, k * k));
+            yield return null;
+        }
+        SetBarPixels(to);
+        _close = null;
     }
 
     // ── Public beats ─────────────────────────────────────────────────────

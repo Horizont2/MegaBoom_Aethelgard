@@ -71,6 +71,19 @@ public class TrailerSequenceDirector : MonoBehaviour
     [Tooltip("Seconds of fade to black that close the shot. Only used when End After Crane is on.")]
     public float craneOutFade = 1.2f;
 
+    // ==== THE WORLD DOES NOT TURN DURING A ONE-SHOT RIDE ====
+    //
+    // The time-lapse was built to carry the whole trailer from Act I to Act II,
+    // so it ran summer into winter under the crane: the terrain texture swapped,
+    // TrailerSeasonRide re-tinted every tree and swapped the birch materials for
+    // their autumn and winter versions, and the sun span through four days.
+    //
+    // As the closing move of a single ride that is not a time-lapse, it is a
+    // costume change happening behind the actor. The crane is the shot; the
+    // land should be the same land it was galloping through a second earlier.
+    [Tooltip("Hold the season, the tree colours and the sun where they started instead of turning the world under the crane. Set by the Lore Trailer launcher for the ride shot.")]
+    public bool holdWorld;
+
     public bool IsFinished { get; private set; }
 
     [Header("Horse hand-off")]
@@ -272,8 +285,11 @@ public class TrailerSequenceDirector : MonoBehaviour
     private void BeginCraneOut()
     {
         _phase = Phase.Ending;
-        if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
-        if (terrainSeason != null) terrainSeason.ApplyU(1f);
+        if (!holdWorld)
+        {
+            if (season != null) { season.ApplyU(1f); HoldWinterSun(); }
+            if (terrainSeason != null) terrainSeason.ApplyU(1f);
+        }
         StartCoroutine(CraneOutRoutine());
     }
 
@@ -387,7 +403,7 @@ public class TrailerSequenceDirector : MonoBehaviour
             _crane.InternalUpdateCameraState(Vector3.up, -1f);
         }
 
-        if (season != null)
+        if (season != null && !holdWorld)
         {
             season.driveDayNight = false;                       // we spin the sun ourselves
             if (season.sun != null) _sunYaw = season.sun.transform.eulerAngles.y;
@@ -396,17 +412,20 @@ public class TrailerSequenceDirector : MonoBehaviour
 
     private void DriveTimelapse(float f)
     {
-        float su = Mathf.Lerp(0f, 1f, f);                       // summer -> winter across the timelapse
-        if (season != null) season.ApplyU(su);
-        if (terrainSeason != null) terrainSeason.ApplyU(su);
-
-        // Several days race by.
-        if (season != null && season.sun != null)
+        if (!holdWorld)
         {
-            float pitch = 20f + f * dayNightCyclesInTimelapse * 360f;
-            season.sun.transform.rotation = Quaternion.Euler(pitch, _sunYaw, 0f);
-            float day = Mathf.Clamp01(Mathf.Sin(pitch * Mathf.Deg2Rad));
-            season.sun.intensity = Mathf.Lerp(0.05f, 1.1f, day);
+            float su = Mathf.Lerp(0f, 1f, f);                   // summer -> winter across the timelapse
+            if (season != null) season.ApplyU(su);
+            if (terrainSeason != null) terrainSeason.ApplyU(su);
+
+            // Several days race by.
+            if (season != null && season.sun != null)
+            {
+                float pitch = 20f + f * dayNightCyclesInTimelapse * 360f;
+                season.sun.transform.rotation = Quaternion.Euler(pitch, _sunYaw, 0f);
+                float day = Mathf.Clamp01(Mathf.Sin(pitch * Mathf.Deg2Rad));
+                season.sun.intensity = Mathf.Lerp(0.05f, 1.1f, day);
+            }
         }
 
         PlaceCrane(f);
