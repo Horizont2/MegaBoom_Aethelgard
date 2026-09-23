@@ -251,15 +251,50 @@ public class ScreenshotDirector : MonoBehaviour
         Transform hero = FindPlayer();
         if (hero == null) { Fail("no player in the scene"); yield break; }
 
-        // Everything a script can set is set; the instant is yours.
-        EnemySpawner.AmbientThrottle = 3f;
         EnemySpawner.IsSpawningBlocked = false;
+
+        // ==== AmbientThrottle CANNOT TURN SPAWNING UP ====
+        //
+        // It was set to 3 here, which reads like triple density and is not:
+        // every use of it is Clamp(AmbientThrottle, 0.05f, 1f), so it is a
+        // brake with no accelerator end. Three and one are the same number to
+        // the spawner, and this shot was staged at ordinary density while
+        // claiming otherwise.
+        //
+        // The levers that do move are on the spawner itself, and all of them
+        // have to move together or the others hold the line:
+        //
+        //   useDirector      — off. While it is on, the first 45 seconds are
+        //                      forced into RELAX, which also multiplies the cap
+        //                      by relaxCapFactor. The shot would be waiting out
+        //                      a rest phase.
+        //   gracePeriod      — nothing to wait out even if the director is back.
+        //   capRampMinutes   — zero, so the cap starts at the maximum instead of
+        //                      climbing to it over seven minutes.
+        //   startCap / max   — the cap itself.
+        //   baseSpawnInterval— how fast the field fills to that cap.
+        //
+        // These are instance fields on the spawner in the scene, so they die
+        // with Play Mode and nothing about the shipped pacing changes.
+        var spawner = Object.FindFirstObjectByType<EnemySpawner>();
+        if (spawner == null) { Fail("no EnemySpawner in the scene"); yield break; }
+
+        EnemySpawner.AmbientThrottle = 1f;
+        spawner.useDirector = false;
+        spawner.gracePeriod = 0f;
+        spawner.capRampMinutes = 0f;
+        spawner.maxEnemiesOnMap = Mathf.Max(spawner.maxEnemiesOnMap, 45);
+        spawner.startCap = spawner.maxEnemiesOnMap;
+        spawner.baseSpawnInterval = 0.3f;
 
         yield return Settle(30);
 
-        Debug.Log("[Screenshot] STAGED, not automatic. Midday, clear, spawning turned up, HUD on.\n" +
-                  "Fight until the Stack counter is high, then press F10 for the frame with the HUD in it. " +
-                  "A script cannot pick the moment a sword is at the top of its arc — that part is yours.");
+        Debug.Log($"[Screenshot] STAGED — this one does not write a file on its own.\n" +
+                  $"Midday, clear sky, HUD on, spawning opened up to {spawner.maxEnemiesOnMap} at once with no " +
+                  "grace period and no rest phases. Walk out, let them gather, and press F10 at the moment you " +
+                  "want — F10 is the framed grab, so the HUD is in it. It lands in the PosterFrames folder at " +
+                  "1920x1080 like the others.\nA script cannot pick the instant a sword is at the top of its " +
+                  "arc. That is the only part of this shot that was ever yours.");
     }
 
     // ===================== staging =====================

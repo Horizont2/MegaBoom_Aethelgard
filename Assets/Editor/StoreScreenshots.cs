@@ -33,7 +33,25 @@ public static class StoreScreenshots
     private static void Camp() { Launch(ScreenshotDirector.CampShot, "the camp and everything built in it"); }
 
     [MenuItem("Tools/Store Screenshots/6 — Horde fight  (STAGED — you press F10)", priority = 5)]
-    private static void Horde() { Launch(ScreenshotDirector.HordeShot, "Howling Valley, midday, spawning turned up"); }
+    private static void Horde()
+    {
+        // The five AUTO entries write a file and stop Play Mode is the only
+        // thing left to do. This one hands the game back, which looks exactly
+        // like a tool that did nothing at all unless it says so first.
+        bool go = EditorUtility.DisplayDialog(
+            "Screenshot 6 — Horde fight",
+            "This shot is not automatic, and it will not write a file by itself.\n\n" +
+            "The tool builds Howling Valley, sets midday and a clear sky, leaves the HUD on and opens spawning " +
+            "right up — no grace period, no rest phases, the on-map cap raised and reached immediately. Then it " +
+            "gives you the controls.\n\n" +
+            "Fight until the enemies are massed around you and the Stack counter is high, then press F10. That is " +
+            "the framed grab, so the HUD is in the picture. The PNG lands in the PosterFrames folder beside the " +
+            "project at 1920x1080, same as the other five.\n\n" +
+            "F10 can be pressed as many times as you like — take several and choose afterwards.",
+            "Build it and let me shoot", "Cancel");
+
+        if (go) Launch(ScreenshotDirector.HordeShot, "Howling Valley, midday, spawning opened up");
+    }
 
     private static void Launch(string shot, string what)
     {
