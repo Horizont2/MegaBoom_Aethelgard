@@ -1198,10 +1198,20 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (dodgeWindowTimer > 0) dodgeWindowTimer -= Time.unscaledDeltaTime;
 
-        if (Input.GetKeyDown(KeyCode.F10))
+        // Not in a shipped build. This was live for every player: one stray F10
+        // and they are walking through the world with no idea why, and no way
+        // back except guessing the same key again.
+        if (DevCheats.Enabled && Input.GetKeyDown(KeyCode.F10))
         {
             isNoclip = !isNoclip;
             if (characterController != null) characterController.enabled = !isNoclip;
+        }
+        else if (!DevCheats.Enabled && isNoclip)
+        {
+            // Belt: a saved or inherited state can never leave a release build
+            // flying.
+            isNoclip = false;
+            if (characterController != null) characterController.enabled = true;
         }
 
         if (isNoclip)

@@ -12,20 +12,48 @@ using UnityEngine;
 // ─────────────────────────────────────────────────────────────────
 //  App ID
 // ─────────────────────────────────────────────────────────────────
-// STEAM_APP_ID is 480 (Valve's "Spacewar" test app) as a DEVELOPMENT
-// PLACEHOLDER — it lets Steamworks initialise and exercise the whole
-// achievement / rich-presence / cloud pipeline before the game has its
-// own Steamworks App ID. When the app is registered on the Steamworks
-// partner site, replace 480 with the real App ID here (one line) — and
-// update steam_appid.txt to match. steam_appid.txt is only needed while
-// launching OUTSIDE Steam (editor / direct exe); the shipped build gets
-// its App ID injected by the Steam client, so do NOT ship steam_appid.txt
-// in the final depot.
+// ==== ONE SOURCE OF TRUTH, AND IT IS THE FILE ====
+//
+// The App ID used to be a constant here AND a number in steam_appid.txt, which
+// is two places to change and therefore one place to forget. Steam itself reads
+// steam_appid.txt when the game is launched outside the client, so that file has
+// to be right regardless; the code now reads the same file and falls back to the
+// constant only when it is missing.
+//
+// Fallback480 is Valve's "Spacewar" test app. It lets Steamworks initialise and
+// exercise the whole achievement / rich-presence / cloud pipeline before the game
+// is registered — and it is WRONG to ship: achievements land in Valve's test app,
+// the ownership check means nothing, and the overlay belongs to another product.
+// So a release build that resolves to 480 says so, loudly, every launch.
+//
+// When the app is registered: put the real number in steam_appid.txt and nowhere
+// else. The shipped build gets its App ID injected by the Steam client, so the
+// file is a development convenience — do NOT ship it in the final depot.
 public static class SteamManager
 {
-    // TODO: replace 480 with the real Steamworks App ID once the game is
-    // registered on the partner site (also update steam_appid.txt).
-    private const uint STEAM_APP_ID = 480;
+    private const uint Fallback480 = 480;
+
+    private static uint ResolveAppId()
+    {
+        try
+        {
+            // Beside the executable in a build, and the project root in the
+            // editor — dataPath's parent is both.
+            string dir = System.IO.Directory.GetParent(Application.dataPath)?.FullName;
+            if (!string.IsNullOrEmpty(dir))
+            {
+                string file = System.IO.Path.Combine(dir, "steam_appid.txt");
+                if (System.IO.File.Exists(file) &&
+                    uint.TryParse(System.IO.File.ReadAllText(file).Trim(), out uint fromFile) && fromFile != 0)
+                    return fromFile;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[SteamManager] Could not read steam_appid.txt: " + e.Message);
+        }
+        return Fallback480;
+    }
 
     private static bool s_initialised;
     private static bool s_running;
@@ -37,6 +65,19 @@ public static class SteamManager
     {
         if (s_initialised) return;
         s_initialised = true;
+
+        uint appId = ResolveAppId();
+        if (appId == Fallback480)
+        {
+            // Not a warning anyone can miss, and not one that fires in the
+            // editor a hundred times a day either: it matters when it ships.
+            string where = Application.isEditor ? "in the editor" : "IN A BUILD";
+            Debug.LogWarning($"[SteamManager] Running on Valve's Spacewar test App ID (480) {where}. " +
+                             "Achievements go to Valve's test app, the ownership check means nothing and the " +
+                             "overlay belongs to another product. Put the real App ID in steam_appid.txt " +
+                             "before shipping.");
+        }
+
         try
         {
 #if FACEPUNCH_STEAMWORKS && (UNITY_STANDALONE || UNITY_EDITOR)
@@ -44,10 +85,10 @@ public static class SteamManager
             // frame from SteamLifecycleTicker.RunCallbacks(). Init throws
             // if the Steam client isn't running / the app isn't owned —
             // the catch below drops us to standalone mode cleanly.
-            Steamworks.SteamClient.Init(STEAM_APP_ID, asyncCallbacks: false);
+            Steamworks.SteamClient.Init(appId, asyncCallbacks: false);
             s_running = Steamworks.SteamClient.IsValid;
             if (s_running)
-                GameLog.Info($"[SteamManager] Steam initialised (AppID {STEAM_APP_ID}, user '{Steamworks.SteamClient.Name}').");
+                GameLog.Info($"[SteamManager] Steam initialised (AppID {appId}, user '{Steamworks.SteamClient.Name}').");
             else
                 GameLog.Info("[SteamManager] SteamClient.Init returned invalid — running standalone.");
 #elif STEAMWORKS_NET && (UNITY_STANDALONE || UNITY_EDITOR)

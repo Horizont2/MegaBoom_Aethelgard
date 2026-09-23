@@ -383,7 +383,7 @@ public class Level1_QuestManager : MonoBehaviour
     private void Update()
     {
         // --- �����: ������� в��� ---
-        if (Input.GetKeyDown(KeyCode.F8))
+        if (DevCheats.Enabled && Input.GetKeyDown(KeyCode.F8))
         {
             DebugSkipToEscape();
         }
@@ -512,7 +512,7 @@ public class Level1_QuestManager : MonoBehaviour
         skeletonsWave1.transform.position = spawnPos;
         skeletonsWave1.transform.LookAt(new Vector3(playerTransform.position.x, spawnPos.y, playerTransform.position.z));
 
-        // АБСОЛЮТНИЙ ЗАХИСТ ВІД ВИБУХІВ: Вимикаємо КОЛАЙДЕРИ та фізику ДО активації об'єкта
+        // АБСОЛЮТН�?Й ЗАХ�?СТ ВІД В�?БУХІВ: Вимикаємо КОЛАЙДЕР�? та фізику ДО активації об'єкта
         foreach (EnemyAI ai in skeletonsWave1.GetComponentsInChildren<EnemyAI>(true))
             if (ai != null) ai.isCinematicFrozen = true;
         foreach (var agent in skeletonsWave1.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true))
@@ -619,7 +619,7 @@ public class Level1_QuestManager : MonoBehaviour
         skeletonsHordeWave2.transform.position = hordePos;
         skeletonsHordeWave2.transform.LookAt(new Vector3(playerTransform.position.x, hordePos.y, playerTransform.position.z));
 
-        // АБСОЛЮТНИЙ ЗАХИСТ ВІД ВИБУХІВ: Вимикаємо КОЛАЙДЕРИ та фізику ДО активації об'єкта
+        // АБСОЛЮТН�?Й ЗАХ�?СТ ВІД В�?БУХІВ: Вимикаємо КОЛАЙДЕР�? та фізику ДО активації об'єкта
         foreach (EnemyAI ai in skeletonsHordeWave2.GetComponentsInChildren<EnemyAI>(true))
             if (ai != null) ai.isCinematicFrozen = true;
         foreach (var agent in skeletonsHordeWave2.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true))
@@ -680,7 +680,7 @@ public class Level1_QuestManager : MonoBehaviour
         Vector3 approachDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : Vector3.forward;
         Vector3 endPos = targetPosition - approachDir * 8f + Vector3.up * 5f;
 
-        // Перевіряємо землю ТІЛЬКИ для кінцевої точки, щоб камера не впала під карту
+        // Перевіряємо землю ТІЛЬК�? для кінцевої точки, щоб камера не впала під карту
         float endGround = SampleGroundY(endPos);
         endPos.y = Mathf.Min(endPos.y, endGround + 6f);
         endPos.y = Mathf.Max(endPos.y, endGround + 3f);
@@ -700,7 +700,7 @@ public class Level1_QuestManager : MonoBehaviour
             Vector3 m2 = Vector3.Lerp(midPos, endPos, t);
             Vector3 camPos = Vector3.Lerp(m1, m2, t);
 
-            // ВИДАЛЕНО: жорстке вирівнювання (Clamp) по землі під час польоту.
+            // В�?ДАЛЕНО: жорстке вирівнювання (Clamp) по землі під час польоту.
             // Тепер камера просто плавно пролетить по ідеальній дузі без стрибків!
 
             mainCam.transform.position = camPos;

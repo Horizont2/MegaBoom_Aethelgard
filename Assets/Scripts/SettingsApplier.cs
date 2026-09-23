@@ -88,7 +88,24 @@ public class SettingsApplier : MonoBehaviour
     public static void ApplyResolution()
     {
         int widthIndex = PlayerPrefs.GetInt("Settings_ResolutionIndex", -1);
-        int mode = PlayerPrefs.GetInt("Settings_WindowMode", 0);
+        // ==== BORDERLESS BY DEFAULT, AND THIS IS THE ALT-TAB CRASH ====
+        //
+        // The default here was 0, which is ExclusiveFullScreen — the one mode
+        // where alt-tab forces a REAL display mode change and a D3D device
+        // reset. Every new player started in it. Add the Steam overlay, which
+        // hooks the same device, and that reset is the best-documented native
+        // crash family on Windows; when it does not crash it still gives the
+        // long black flicker people complain about.
+        //
+        // Player Settings already prefers a borderless window (fullscreenMode
+        // is 1 there). This line was quietly overriding it on first launch.
+        // FullScreenWindow costs nothing measurable on Windows 10 and 11 —
+        // the compositor flips it like an exclusive surface — and alt-tab
+        // becomes a focus change rather than a mode change.
+        //
+        // Exclusive stays available for anyone who wants it; it is just no
+        // longer what a player gets without asking.
+        int mode = PlayerPrefs.GetInt("Settings_WindowMode", 1);
         int rrIdx = PlayerPrefs.GetInt("Settings_RefreshRateIndex", -1);
 
         Resolution[] all = Screen.resolutions;

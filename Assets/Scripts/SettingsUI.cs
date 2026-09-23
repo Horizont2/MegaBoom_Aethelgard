@@ -550,7 +550,8 @@ public class SettingsUI : MonoBehaviour
         if (resolutionDropdown && resolutionDropdown.options.Count > 0)
             resolutionDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_ResolutionIndex", DefaultResolutionIndex()), 0, resolutionDropdown.options.Count - 1);
         if (windowModeDropdown)
-            windowModeDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_WindowMode", 0), 0, 2);
+            // Borderless, matching SettingsApplier — see the note there on alt-tab.
+            windowModeDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_WindowMode", 1), 0, 2);
         if (refreshRateDropdown && refreshRateDropdown.options.Count > 0)
             refreshRateDropdown.value = Mathf.Clamp(PlayerPrefs.GetInt("Settings_RefreshRateIndex", 0), 0, refreshRateDropdown.options.Count - 1);
         if (monitorDropdown && monitorDropdown.options.Count > 0)

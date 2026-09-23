@@ -169,7 +169,7 @@ PlayerSettings:
   androidMinAspectRatio: 1
   applicationIdentifier:
     Android: com.UnityTechnologies.com.unity.template.urpblank
-    Standalone: com.Unity-Technologies.com.unity.template.urp-blank
+    Standalone: com.HorizonGames.HollowSiege
     iPhone: com.Unity-Technologies.com.unity.template.urp-blank
   buildNumber:
     Standalone: 1
@@ -877,7 +877,7 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: MegaBonk
+  metroPackageName: Hollow Siege
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
