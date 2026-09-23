@@ -155,7 +155,7 @@ public class ScreenshotDirector : MonoBehaviour
         ClearCombatants();
         HideHero();
 
-        Transform castle = FindByName("Castle");
+        Transform castle = FindLocation("Castle");
         if (castle == null) { Fail("no Location_Castle in this region"); yield break; }
 
         // Three quarters of the frame, from below the hill so it stands over
@@ -228,9 +228,9 @@ public class ScreenshotDirector : MonoBehaviour
         foreach (var building in FindObjectsByType<CampBuilding>(FindObjectsSortMode.None))
         {
             if (building == null) continue;
-            foreach (var r in building.GetComponentsInChildren<Renderer>())
+            foreach (var r in building.GetComponentsInChildren<Renderer>(true))
             {
-                if (r == null || !r.enabled) continue;
+                if (r == null || r is ParticleSystemRenderer) continue;
                 if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
             }
         }
@@ -505,11 +505,19 @@ public class ScreenshotDirector : MonoBehaviour
 
     private void Frame(Transform subject, float fill, float fov, float pitch, float yawOffset)
     {
+        // Inactive and disabled renderers count, because what is switched off
+        // right now says nothing about how big the thing is. DistanceOptimizer
+        // deactivates whatever is far from the camera and LODGroup disables
+        // renderers outright at range, so measuring only what is currently
+        // drawing gives the size of the nearest corner of a castle rather than
+        // the castle. Their bounds are still correct — a renderer's bounds come
+        // from its mesh and its transform, neither of which cares whether it is
+        // being drawn.
         Bounds b = default;
         bool any = false;
-        foreach (var r in subject.GetComponentsInChildren<Renderer>())
+        foreach (var r in subject.GetComponentsInChildren<Renderer>(true))
         {
-            if (r == null || !r.enabled || r is ParticleSystemRenderer) continue;
+            if (r == null || r is ParticleSystemRenderer) continue;
             if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
         }
         if (!any) { b = new Bounds(subject.position, Vector3.one * 8f); }
@@ -525,13 +533,57 @@ public class ScreenshotDirector : MonoBehaviour
         float distance = height / (2f * Mathf.Max(0.05f, fill) * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
         distance = Mathf.Max(distance, new Vector2(b.extents.x, b.extents.z).magnitude + 6f);
 
-        Quaternion yaw = Quaternion.Euler(0f, yawOffset, 0f);
-        Vector3 back = yaw * Vector3.forward;
+        // yawOffset is a nudge off the open side, not a compass bearing — see
+        // OpenSide. A fixed world yaw was as likely to point into a hillside as
+        // along the valley, and from inside a hill the lens gets shoved up above
+        // the subject and ends up looking down at the ground.
+        Vector3 back = Quaternion.Euler(0f, yawOffset, 0f) * OpenSide(b);
 
         Vector3 at = b.center - back * distance + Vector3.up * (distance * Mathf.Tan(pitch * Mathf.Deg2Rad));
-        at.y = Mathf.Max(at.y, GroundAt(at) + 2f);        // never underground
+
+        float ground = GroundAt(at);
+        if (at.y < ground + 2f) at.y = ground + 2f;       // never underground
 
         Place(at, Quaternion.LookRotation((b.center - at).normalized), fov);
+
+        Debug.Log($"[Screenshot] Framed a subject {b.size.y:0.0}m tall and {b.size.x:0.0}x{b.size.z:0.0}m across " +
+                  $"from {distance:0}m, {at.y - ground:0.0}m above the ground under the lens.");
+    }
+
+    // ==== WHICH SIDE TO STAND ON ====
+    //
+    // The generator raises a hill under a location and faces it wherever it
+    // likes, so there is no side that is reliably the front. Sample a ring
+    // around the subject and take the direction the land falls away furthest:
+    // that is the open valley side, the longest clear sightline, and the side
+    // the generated roads climb anyway.
+    //
+    // Same measurement the trailer's castle shot makes, for the same reason.
+    private static Vector3 OpenSide(Bounds b)
+    {
+        if (Terrain.activeTerrain == null) return Vector3.forward;   // camp, or any scene with no terrain
+
+        float radius = Mathf.Max(8f, new Vector2(b.extents.x, b.extents.z).magnitude);
+        Vector3 centre = b.center;
+
+        float bestDrop = float.NegativeInfinity;
+        Vector3 best = Vector3.forward;
+
+        const int Samples = 24;
+        for (int i = 0; i < Samples; i++)
+        {
+            float a = i / (float)Samples * Mathf.PI * 2f;
+            Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+
+            // Averaged over three distances out, so one dip or boulder near the
+            // wall cannot win the vote.
+            float drop = 0f;
+            for (int r = 1; r <= 3; r++)
+                drop += centre.y - GroundAt(centre + dir * (radius * (1f + r * 0.9f)));
+
+            if (drop > bestDrop) { bestDrop = drop; best = dir; }
+        }
+        return best;
     }
 
     private static float GroundAt(Vector3 p)
@@ -549,16 +601,40 @@ public class ScreenshotDirector : MonoBehaviour
         return found != null ? found.transform : null;
     }
 
-    private static Transform FindByName(string contains)
+    // ==== A NAME IS NOT A WAY TO FIND A LOCATION ====
+    //
+    // This used to search every Transform in the scene for one whose name
+    // contained "Castle", root objects first and then anything at all. The
+    // generated castle is Location_Castle(Clone) and it is NOT a root — it hangs
+    // under a container the generator makes — so the first pass always missed
+    // and the second pass returned whichever of its nineteen hundred nested
+    // pieces happened to come back first. Frame a single flagstone and you get
+    // a camera six metres from a flagstone, which is exactly the floor the shot
+    // came back as.
+    //
+    // A generated location always carries SelfContainedLocation, which is what
+    // the trailer's own castle shot matches on. That finds the location, not a
+    // brick inside it.
+    private static Transform FindLocation(string contains)
     {
         string want = contains.ToLowerInvariant();
-        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
-            if (t != null && t.parent == null && t.name.ToLowerInvariant().Contains(want)) return t;
 
-        // Second pass including children — a location is often nested under a
-        // container the generator made.
+        foreach (var sc in Object.FindObjectsByType<SelfContainedLocation>(
+                     FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (sc == null) continue;
+            if (sc.name.ToLowerInvariant().Contains(want)) return sc.transform;
+        }
+
+        // Nothing carrying the component matched, so fall back to a name — but
+        // only on an object with no SelfContainedLocation above it, which keeps
+        // a nested piece from being mistaken for the whole thing.
         foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
-            if (t != null && t.name.ToLowerInvariant().Contains(want)) return t;
+        {
+            if (t == null || !t.name.ToLowerInvariant().Contains(want)) continue;
+            if (t.GetComponentInParent<SelfContainedLocation>() != null) continue;
+            return t;
+        }
         return null;
     }
 
