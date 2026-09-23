@@ -10283,7 +10283,7 @@ MonoBehaviour:
   bottomPadding: 20
   topPadding: 160
   terrainEdgeFade: 0
-  terrainFollow: 0.9
+  terrainFollow: 1
   rebuildWhenTerrainChanges: 1
   density: 0.015
   groundFogHeight: 60
@@ -10308,7 +10308,7 @@ MonoBehaviour:
   minimumRaySteps: 7
   targetStepLength: 105
   maximumFogDistance: 1200
-  nearFadeDistance: 25
+  nearFadeDistance: 6
   farFadeStart: 0
   fogColor: {r: 0.63, g: 0.7, b: 0.76, a: 1}
   followSceneFogColor: 1

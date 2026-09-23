@@ -17,8 +17,25 @@ using System.Collections.Generic;
 public class CampEconomyManager : MonoBehaviour
 {
     [Header("Economy Settings")]
-    [Tooltip("How often (seconds) accrued passive income is flushed to the stash while in camp.")]
-    public float resourceTickInterval = 60f;
+    // ==== IT ARRIVES, IT IS NOT COLLECTED ====
+    //
+    // The map used to pop clickable resource icons onto conquered regions, and
+    // they paid out of the same per-hour numbers this class already accrues —
+    // so the regions paid twice, and how much a player got depended on how
+    // often they opened the map and clicked. The icons are gone; this is now
+    // the only way region income reaches the stash.
+    //
+    // A payout every quarter of an hour or so, rather than the old silent
+    // minute tick: often enough that a session sees several, rare enough that
+    // each one is an event worth a line on screen saying where it came from.
+    // The interval only decides how often it is HANDED OVER — the amount is
+    // accrued per hour either way, so nobody loses income by it being slower.
+    [Tooltip("Shortest gap between region payouts, in minutes.")]
+    public float payoutMinutesMin = 15f;
+    [Tooltip("Longest gap between region payouts, in minutes.")]
+    public float payoutMinutesMax = 30f;
+    [Tooltip("Announce each payout on screen. Off: the resources still arrive, just silently.")]
+    public bool announcePayout = true;
     [Tooltip("Maximum hours of offline income granted on camp entry, so a long absence can't dump a huge windfall.")]
     public float maxOfflineHours = 8f;
 
@@ -100,12 +117,18 @@ public class CampEconomyManager : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(resourceTickInterval);
-            TickPassiveIncome();
+            // Qualified: this file has both `using System;` and
+            // `using UnityEngine;`, so a bare Random is ambiguous and will not
+            // compile.
+            float minutes = UnityEngine.Random.Range(Mathf.Min(payoutMinutesMin, payoutMinutesMax),
+                                                     Mathf.Max(payoutMinutesMin, payoutMinutesMax));
+            float seconds = Mathf.Max(5f, minutes * 60f);
+            yield return new WaitForSeconds(seconds);
+            TickPassiveIncome(seconds);
         }
     }
 
-    private void TickPassiveIncome()
+    private void TickPassiveIncome(float elapsedSeconds)
     {
         if (ResourceManager.Instance == null) return;
 
@@ -114,7 +137,10 @@ public class CampEconomyManager : MonoBehaviour
 
         // Convert per-hour → per-tick and carry the fraction so small yields
         // (e.g. 5 wood/hr) accumulate instead of truncating to zero each tick.
-        float tickFraction = resourceTickInterval / 3600f;
+        // The elapsed time is passed in rather than read from a field: the gap
+        // between payouts varies now, and paying a fixed fraction for a varying
+        // wait would quietly under- or over-pay every single time.
+        float tickFraction = elapsedSeconds / 3600f;
         accWood += wood * tickFraction;
         accStone += stone * tickFraction;
         accFood += food * tickFraction;
@@ -139,6 +165,25 @@ public class CampEconomyManager : MonoBehaviour
         // Advance the offline baseline as we go so leaving mid-accrual doesn't
         // double-count the time we just paid out live.
         StampCollectTime();
+
+        Announce(flushWood, flushStone, flushFood, flushDiamonds);
+    }
+
+    // One line naming where it came from. Without it the numbers in the corner
+    // simply change on their own, and a player who was not watching that corner
+    // never learns that holding regions is what pays for anything.
+    private void Announce(int wood, int stone, int food, int diamonds)
+    {
+        if (!announcePayout) return;
+        if (wood <= 0 && stone <= 0 && food <= 0 && diamonds <= 0) return;
+
+        var parts = new List<string>(4);
+        if (wood > 0) parts.Add($"+{wood} {LocalizationManager.Tr("Wood")}");
+        if (stone > 0) parts.Add($"+{stone} {LocalizationManager.Tr("Stone")}");
+        if (food > 0) parts.Add($"+{food} {LocalizationManager.Tr("Food")}");
+        if (diamonds > 0) parts.Add($"+{diamonds} {LocalizationManager.Tr("Diamond")}");
+
+        ToastManager.Show($"{LocalizationManager.Tr("REGION_INCOME")}: {string.Join("  ", parts)}");
     }
 
     private void StampCollectTime()

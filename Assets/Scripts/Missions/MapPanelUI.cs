@@ -442,6 +442,30 @@ public class MapPanelUI : MonoBehaviour
                     {
                         Debug.LogError("[MapPanelUI] The upgrade went through but its presentation threw. " + e);
                     }
+                    finally
+                    {
+                        // ==== AND THEN COME OUT OF THE CONFIRM STATE ====
+                        //
+                        // Nothing did. The level went up in PlayerPrefs and the
+                        // panel never heard about it: isConfirmingUpgrade stayed
+                        // latched, the button still read CONFIRM, the action
+                        // button stayed disabled, and the before/after preview
+                        // was still showing the arrows for the level that had
+                        // just been bought.
+                        //
+                        // So the screen said the same thing after the upgrade as
+                        // before it — which is the "it always upgrades to the
+                        // same level" report — and the next click went straight
+                        // down the confirm branch with no confirmation step and
+                        // spent again.
+                        //
+                        // ResetUpgradeButtonState clears the flag, restores the
+                        // button and calls PopulateData, which re-reads the level
+                        // and redraws the costs. In a finally, because a throwing
+                        // particle system must not be able to leave the panel
+                        // stuck the way it was before.
+                        ResetUpgradeButtonState();
+                    }
                 }
             }
             else
