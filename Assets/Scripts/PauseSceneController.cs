@@ -68,20 +68,46 @@ public class PauseSceneController : MonoBehaviour
 
     // ==== THE PAUSE LOCATION WAS LIVING IN A DIFFERENT YEAR ====
     //
-    // Camp trees and bushes are re-skinned per season by SmartSeasonManager,
-    // and this vista was outside all of it: high summer behind a pause menu
-    // opened in a snowbound camp.
+    // Camp trees and bushes are re-skinned per season by SmartSeasonManager and
+    // this vista was outside all of it: high summer behind a pause menu opened
+    // in a snowbound camp.
     //
-    // The hook existed - foliageRoots plus RegisterDynamicFoliage - and did
-    // nothing whenever the array was left empty, which is easy to do and
-    // impossible to notice. Empty now means the whole pause location, which is
-    // what somebody filling that array in by hand would have selected anyway.
-    // Naming roots explicitly still works and is still faster.
+    // ==== AND THEN IT REPAINTED THE WATER ====
     //
-    // The terrain is handled too. Foliage is mesh renderers and re-skinning
-    // them is enough; ground colour comes from a texture pushed into one
-    // shared material, so a terrain with a material of its own never heard
-    // about the season at all.
+    // The first attempt handed SmartSeasonManager this whole transform when
+    // foliageRoots was empty. That is wrong, and the reason is in the
+    // manager's own filter: AddFoliage rejects only names that read as wood,
+    // trunk or branch, and takes everything else. It gets away with that in
+    // the camp because the camp points it at tree containers. Given a whole
+    // location it swapped the leaf material onto the water, the props and the
+    // logs.
+    //
+    // So candidates are picked by name here, the way the manager's own
+    // wood/trunk test picks its exclusions, and only those subtrees are
+    // handed over. foliageRoots still wins outright when it is filled in -
+    // it is exact, and this is a guess.
+    private static readonly string[] FoliageNameHints =
+    {
+        "tree", "bush", "shrub", "leaf", "leaves", "foliage", "plant", "grass",
+        "vegetation", "flora", "fern", "hedge",
+    };
+
+    // Named like foliage but is not: these keep their own materials.
+    private static readonly string[] FoliageNameBlockers =
+    {
+        "water", "river", "lake", "waterfall", "log", "stump", "trunk", "branch",
+        "wood", "plank", "rock", "stone", "prop", "vfx", "particle", "fx",
+    };
+
+    private static bool LooksLikeFoliage(string name)
+    {
+        foreach (var bad in FoliageNameBlockers)
+            if (name.IndexOf(bad, System.StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        foreach (var good in FoliageNameHints)
+            if (name.IndexOf(good, System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        return false;
+    }
+
     private void RegisterSeasonalScenery()
     {
         SmartSeasonManager seasonMgr = SmartSeasonManager.Instance;
@@ -92,14 +118,31 @@ public class PauseSceneController : MonoBehaviour
         {
             foreach (Transform root in foliageRoots)
                 if (root != null) seasonMgr.RegisterDynamicFoliage(root);
-        }
-        else
-        {
-            seasonMgr.RegisterDynamicFoliage(transform);
+
+            foliageRegistered = true;
+            return;
         }
 
-        foreach (var t in GetComponentsInChildren<Terrain>(true))
-            seasonMgr.RegisterDynamicTerrain(t);
+        // Nothing assigned, so guess - and register the highest match in each
+        // branch rather than every match, so a "Trees" container is handed over
+        // once instead of once per tree inside it.
+        int found = 0;
+        foreach (Transform t in GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t == transform) continue;
+            if (!LooksLikeFoliage(t.name)) continue;
+            if (t.parent != null && t.parent != transform && LooksLikeFoliage(t.parent.name)) continue;
+
+            seasonMgr.RegisterDynamicFoliage(t);
+            found++;
+        }
+
+        if (found == 0)
+        {
+            Debug.LogWarning($"[PauseScene] '{name}' has nothing under it whose name reads as foliage, so the " +
+                             "pause location will not follow the season. Drag its tree and bush containers into " +
+                             "Foliage Roots.", this);
+        }
 
         foliageRegistered = true;
     }
