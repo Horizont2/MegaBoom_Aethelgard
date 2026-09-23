@@ -56,7 +56,9 @@ public static class TrailerShots
     // Steam shows a still on every trailer until someone presses play, and a
     // frame lifted out of the finished H.264 carries the encoder's banding
     // through the fog — which is the one thing a still shows off worst. These
-    // render it again from the engine instead.
+    // render it again from the engine instead, at 1920x1080 and ready to
+    // upload: rendered at twice that and scaled down, so the edges are
+    // supersampled rather than aliased.
     [MenuItem("Tools/Lore Trailer/Poster frame — clean (no letterbox)  F9", priority = 30)]
     private static void GrabClean()
     {

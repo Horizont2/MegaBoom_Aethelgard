@@ -23,22 +23,30 @@ using UnityEngine;
 // F10 captures the frame as it stands, bars and title and all, for when you
 // want the card itself as the still.
 //
-// ==== RENDER BIG, DELIVER SMALL ====
+// ==== RENDER BIG, DELIVER SMALL, AND DO THE SHRINKING HERE ====
 //
-// The default is 4K for a thumbnail that ships at 1920x1080. That is not waste:
-// these cameras have antialiasing off, and downscaling a 4K render by half is
-// the cheapest and best antialiasing there is. Do the downscale last, in an
-// image editor, and the edges come out cleaner than anything the engine would
-// have given at 1080 directly.
+// The file that lands on disk is 1920x1080, ready to upload — no resizing step
+// in an image editor, because a step a person has to remember is a step that
+// eventually gets skipped.
+//
+// It is still RENDERED at twice that and scaled down before it is written.
+// These cameras have antialiasing off, and a two-to-one downscale averages
+// exactly four source pixels into each delivered one: a box filter, which is
+// the cheapest and best antialiasing available and better than anything the
+// engine would have produced at 1080 directly. The cost is one extra buffer
+// for the length of one frame.
 public static class PosterFrame
 {
     public static KeyCode cleanKey = KeyCode.F9;
     public static KeyCode framedKey = KeyCode.F10;
 
-    // 4K, to be halved on delivery. Steam wants the thumbnail at the video's own
-    // size, which for a 1080p trailer is 1920x1080.
-    public static int width = 3840;
-    public static int height = 2160;
+    // What comes out. Steam wants a screenshot at the size it will be shown,
+    // and for this game that is 1080p.
+    public static int width = 1920;
+    public static int height = 1080;
+
+    [Tooltip("Rendered at this multiple of the output size, then scaled down. Two is a clean box filter; one switches supersampling off.")]
+    public static int supersample = 2;
 
     private const string Folder = "PosterFrames";
 
@@ -53,8 +61,12 @@ public static class PosterFrame
 #endif
     }
 
+    private static Listener s_listener;
+
     private sealed class Listener : MonoBehaviour
     {
+        private void Awake() { s_listener = this; }
+
         private void Update()
         {
             if (Input.GetKeyDown(cleanKey)) GrabClean();
@@ -70,28 +82,42 @@ public static class PosterFrame
         Camera cam = Shooting();
         if (cam == null) { Debug.LogWarning("[PosterFrame] No enabled camera to render."); return; }
 
-        RenderTexture rt = null;
+        int ss = Mathf.Clamp(supersample, 1, 4);
+        int bigW = width * ss, bigH = height * ss;
+
+        RenderTexture big = null, small = null;
         RenderTexture wasActive = RenderTexture.active;
         RenderTexture wasTarget = cam.targetTexture;
         float wasAspect = cam.aspect;
 
         try
         {
-            rt = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            rt.Create();
+            big = new RenderTexture(bigW, bigH, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            big.filterMode = FilterMode.Bilinear;     // the blit below depends on it
+            big.Create();
 
             // Without this the camera keeps the game view's aspect and the
             // framing quietly changes between what you saw and what you get.
             cam.aspect = (float)width / height;
-            cam.targetTexture = rt;
+            cam.targetTexture = big;
             cam.Render();
 
-            RenderTexture.active = rt;
+            // A bilinear blit from exactly twice the size samples each
+            // destination pixel at the meeting point of four source pixels, so
+            // it averages all four. That is a box filter, which is what a
+            // downscale should be — and why the supersample has to be a whole
+            // number.
+            small = RenderTexture.GetTemporary(width, height, 0,
+                                               RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            small.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(big, small);
+
+            RenderTexture.active = small;
             var shot = new Texture2D(width, height, TextureFormat.RGBA32, false);
             shot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
             shot.Apply(false);
 
-            Write(shot.EncodeToPNG(), "clean");
+            Write(shot.EncodeToPNG(), "clean", bigW, bigH);
             Object.DestroyImmediate(shot);
         }
         finally
@@ -99,24 +125,73 @@ public static class PosterFrame
             cam.targetTexture = wasTarget;
             cam.aspect = wasAspect;
             RenderTexture.active = wasActive;
-            if (rt != null) { rt.Release(); Object.DestroyImmediate(rt); }
+            if (small != null) RenderTexture.ReleaseTemporary(small);
+            if (big != null) { big.Release(); Object.DestroyImmediate(big); }
         }
     }
 
     // ===================== the frame as it stands =====================
 
-    /// <summary>Exactly what is on screen, letterbox and title included.</summary>
+    /// <summary>Exactly what is on screen, letterbox and HUD included, delivered at the output size.</summary>
     public static void GrabFramed()
     {
-        // Whole numbers only: superSize renders the game view that many times
-        // over, so anything else would land on a size nobody asked for.
-        int super = Mathf.Clamp(Mathf.RoundToInt((float)width / Mathf.Max(1, Screen.width)), 1, 4);
-        string path = Path(("framed_x" + super));
+        if (s_listener == null)
+        {
+            Debug.LogWarning("[PosterFrame] Not in Play Mode, so there is no frame to capture.");
+            return;
+        }
+        s_listener.StartCoroutine(FramedRoutine());
+    }
 
-        ScreenCapture.CaptureScreenshot(path, super);
-        Debug.Log("[PosterFrame] Frame captured at " + (Screen.width * super) + "x" + (Screen.height * super) +
-                  " (game view x" + super + ") -> " + path +
-                  "\nIt is written at the end of this frame, so give it a moment before opening it.");
+    // ==== WHY THIS ONE IS A COROUTINE ====
+    //
+    // It used to call ScreenCapture.CaptureScreenshot, which writes the file
+    // itself — at the game view's size times the supersample, with no way to
+    // scale it down. That is how the framed grab ended up being the one shot
+    // that still needed resizing by hand.
+    //
+    // CaptureScreenshotAsTexture hands the pixels back instead, so they can be
+    // scaled here like the clean grab is. It has one rule: it must be called
+    // after everything has finished drawing, or it captures a half-built frame.
+    // Hence the wait, and hence a coroutine.
+    private static System.Collections.IEnumerator FramedRoutine()
+    {
+        yield return new WaitForEndOfFrame();
+
+        int ss = Mathf.Clamp(supersample, 1, 4);
+        Texture2D raw = ScreenCapture.CaptureScreenshotAsTexture(ss);
+        if (raw == null)
+        {
+            Debug.LogWarning("[PosterFrame] The screen capture came back empty.");
+            yield break;
+        }
+
+        int bigW = raw.width, bigH = raw.height;
+        RenderTexture wasActive = RenderTexture.active;
+        RenderTexture small = null;
+
+        try
+        {
+            small = RenderTexture.GetTemporary(width, height, 0,
+                                               RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            small.filterMode = FilterMode.Bilinear;
+            raw.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(raw, small);
+
+            RenderTexture.active = small;
+            var shot = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            shot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            shot.Apply(false);
+
+            Write(shot.EncodeToPNG(), "framed", bigW, bigH);
+            Object.DestroyImmediate(shot);
+        }
+        finally
+        {
+            RenderTexture.active = wasActive;
+            if (small != null) RenderTexture.ReleaseTemporary(small);
+            Object.DestroyImmediate(raw);
+        }
     }
 
     // ===================== plumbing =====================
@@ -135,18 +210,18 @@ public static class PosterFrame
         return best;
     }
 
-    private static void Write(byte[] png, string kind)
+    private static void Write(byte[] png, string kind, int renderedW, int renderedH)
     {
         string path = Path(kind);
         File.WriteAllBytes(path, png);
-        Debug.Log("[PosterFrame] " + width + "x" + height + " -> " + path +
-                  "\nHalve it to 1920x1080 in an image editor before uploading; that downscale is the antialiasing.");
+        Debug.Log($"[PosterFrame] {width}x{height}, rendered at {renderedW}x{renderedH} and scaled down " +
+                  $"-> {path}\nReady to upload as it is.");
     }
 
     private static string Path(string kind)
     {
-        // Beside the project rather than inside Assets, so a few dozen 4K PNGs
-        // never end up in the asset database being imported.
+        // Beside the project rather than inside Assets, so a pile of PNGs never
+        // ends up in the asset database being imported as textures.
         string dir = System.IO.Path.Combine(Directory.GetCurrentDirectory(), Folder);
         Directory.CreateDirectory(dir);
 

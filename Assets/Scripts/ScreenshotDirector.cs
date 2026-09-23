@@ -416,8 +416,8 @@ public class ScreenshotDirector : MonoBehaviour
         if (clean) PosterFrame.GrabClean();
         else PosterFrame.GrabFramed();
 
-        Debug.Log($"[Screenshot] '{shot}' written to the PosterFrames folder beside the project. " +
-                  "Halve it to 1920x1080 before uploading — that downscale is the antialiasing.");
+        Debug.Log($"[Screenshot] '{shot}' written to the PosterFrames folder beside the project, " +
+                  "1920x1080 and ready to upload.");
     }
 
     private void Fail(string why)
