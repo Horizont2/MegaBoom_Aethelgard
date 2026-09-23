@@ -132,15 +132,41 @@ public class WorldMapArmyMarker : MonoBehaviour
         MercenaryCampaignManager.OnCampaignReturned -= RemoveMarker;
     }
 
+    // Reused so a per-frame sweep costs no allocation.
+    private readonly HashSet<int> liveCampaignIDs = new HashSet<int>();
+    private readonly List<int> orphanScratch = new List<int>(4);
+
     private void Update()
     {
         if (MercenaryCampaignManager.Instance == null) return;
 
+        liveCampaignIDs.Clear();
         foreach (var c in MercenaryCampaignManager.Instance.ActiveCampaigns)
         {
+            liveCampaignIDs.Add(c.campaignID);
             if (!markers.TryGetValue(c.campaignID, out var m) || m == null) { EnsureMarker(c); continue; }
             UpdateMarker(m, c);
         }
+
+        // ==== A MARKER WITHOUT A CAMPAIGN IS A GHOST ====
+        //
+        // Markers were only ever removed by OnCampaignReturned. Miss that one
+        // event - and it was the last line of CompleteCampaign, behind
+        // everything that could throw - and the figurine stayed on the map with
+        // nothing left to drive it, frozen at the last point it was drawn,
+        // which on the final frame of a return leg is the camp node.
+        //
+        // The campaign list is the truth about which armies exist. Anything
+        // holding a marker that is not in it has already come home, whatever
+        // the events did or did not say.
+        if (markers.Count == liveCampaignIDs.Count) return;
+
+        orphanScratch.Clear();
+        foreach (var kv in markers)
+            if (!liveCampaignIDs.Contains(kv.Key)) orphanScratch.Add(kv.Key);
+
+        for (int i = 0; i < orphanScratch.Count; i++)
+            RemoveMarkerByID(orphanScratch[i]);
     }
 
     private void EnsureMarker(MercenaryCampaign c)
@@ -215,23 +241,31 @@ public class WorldMapArmyMarker : MonoBehaviour
     private void RemoveMarker(MercenaryCampaign c)
     {
         if (c == null) return;
-        markerTimers.Remove(c.campaignID);
-        lastTimerSecond.Remove(c.campaignID);
-        if (markers.TryGetValue(c.campaignID, out var rt))
+        RemoveMarkerByID(c.campaignID);
+    }
+
+    // Takes an id rather than a campaign, because the orphan sweep above finds
+    // markers whose campaign object is already gone.
+    private void RemoveMarkerByID(int campaignID)
+    {
+        markerTimers.Remove(campaignID);
+        lastTimerSecond.Remove(campaignID);
+        lastPhaseSeen.Remove(campaignID);
+        if (markers.TryGetValue(campaignID, out var rt))
         {
             if (rt != null) Destroy(rt.gameObject);
-            markers.Remove(c.campaignID);
+            markers.Remove(campaignID);
         }
-        if (routeDashes.TryGetValue(c.campaignID, out var dashes))
+        if (routeDashes.TryGetValue(campaignID, out var dashes))
         {
             foreach (var d in dashes) if (d != null) Destroy(d.gameObject);
-            routeDashes.Remove(c.campaignID);
+            routeDashes.Remove(campaignID);
         }
-        paths.Remove(c.campaignID);
-        pathCumLen.Remove(c.campaignID);
-        smoothedPos.Remove(c.campaignID);
-        smoothVel.Remove(c.campaignID);
-        smoothedRot.Remove(c.campaignID);
+        paths.Remove(campaignID);
+        pathCumLen.Remove(campaignID);
+        smoothedPos.Remove(campaignID);
+        smoothVel.Remove(campaignID);
+        smoothedRot.Remove(campaignID);
     }
 
     // Spawn one Image per dash along the polyline, oriented to match its

@@ -239,10 +239,46 @@ public class MercenaryCampaignManager : MonoBehaviour
     // Called once the return trip finishes: release survivors, hand rewards,
     // and clear the campaign. Marks the region as Conquered on a win so the
     // world map updates the same way locations do.
+    // ==== THE ARMY MUST COME HOME EVEN IF THE PARTY THROWS ====
+    //
+    // OnCampaignReturned was the last line of this method, after the region
+    // conquest, two toasts, an audio call and a tutorial hint. Every one of
+    // those can throw - a localisation string with the wrong number of format
+    // arguments, a null region in the catalogue, a missing audio event - and
+    // the caller catches the exception and writes a warning nobody reads.
+    //
+    // When that happened the event never fired, and the event is the only
+    // thing that removes the army figurine from the world map. The campaign
+    // had already been taken out of the active list by the caller, so nothing
+    // would ever touch that marker again: it froze at the last place it was
+    // drawn, which on the final frame of the return leg is the camp node. That
+    // is the icon stuck on the camp.
+    //
+    // Releasing the units stays first, and the event now fires from a finally,
+    // so the army is home and the marker is gone whatever else went wrong.
     private void CompleteCampaign(MercenaryCampaign c)
     {
-        if (MercenaryRoster.Instance != null)
+        try
+        {
+            CompleteCampaignBody(c);
+        }
+        finally
+        {
+            OnCampaignReturned?.Invoke(c);
+        }
+    }
+
+    private void CompleteCampaignBody(MercenaryCampaign c)
+    {
+        if (MercenaryRoster.Instance == null)
+        {
+            Debug.LogError($"[MercenaryCampaignManager] Campaign {c.campaignID} came home with no MercenaryRoster " +
+                           "in the game. Its units cannot be released and will stay marked as away.");
+        }
+        else
+        {
             MercenaryRoster.Instance.ReleaseFromCampaign(c.campaignID);
+        }
 
         var region = FindRegionByID(c.regionID);
         string regionName = region != null ? LocalizationManager.Tr(region.regionName) : "?";
@@ -322,7 +358,6 @@ public class MercenaryCampaignManager : MonoBehaviour
                 7f);
         }
 
-        OnCampaignReturned?.Invoke(c);
     }
 
     private RegionData FindRegionByID(int id)

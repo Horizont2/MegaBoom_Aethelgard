@@ -178,8 +178,36 @@ public class StorageWorkerAI : MonoBehaviour
             Log($"picked up {carrying} from {source.buildingName}");
 
             // ---- back ----
+            //
+            // ==== HE MUST NOT BANK FROM WHEREVER HE HAPPENS TO BE ====
+            //
+            // The outbound leg checks arrivedOk and gives up on a building it
+            // cannot reach. This one did not. So a failed walk to the vault -
+            // no path, off the navmesh, or a forty-five second timeout - fell
+            // straight through to Deliver, and the load went into the stash
+            // from wherever he was standing. That is the worker who carries
+            // resources without walking anywhere.
+            //
+            // He keeps the load and keeps trying instead. A vault he genuinely
+            // cannot reach now shows up as a porter standing in the camp
+            // holding a crate, which is a thing somebody can see and fix,
+            // rather than as an economy that works with nobody moving.
             Enter(State.ToVault);
-            yield return Walk(dropPoint.position, "the vault");
+            int vaultTries = 0;
+            while (true)
+            {
+                yield return Walk(dropPoint.position, "the vault");
+                if (arrivedOk) break;
+
+                vaultTries++;
+                if (vaultTries == 1)
+                {
+                    Debug.LogError($"[Storage] '{name}' is carrying {carrying} and cannot reach the vault. " +
+                                   "Walk logged the reason above. He will keep trying and will not deliver " +
+                                   "until he gets there.", this);
+                }
+                yield return new WaitForSeconds(idlePollSeconds);
+            }
 
             // ---- unload ----
             Enter(State.Unloading);
@@ -201,7 +229,7 @@ public class StorageWorkerAI : MonoBehaviour
         if (agent == null || !agent.isOnNavMesh)
         {
             yield return StartCoroutine(PlaceOnNavMesh());
-            if (agent == null || !agent.isOnNavMesh) { Log($"cannot walk to {what}: not on the navmesh"); yield break; }
+            if (agent == null || !agent.isOnNavMesh) { Stuck($"cannot walk to {what}: he is not on the navmesh"); yield break; }
         }
 
         // ==== A DESTINATION UNDER HIS OWN FEET IS NOT A JOURNEY ====
@@ -213,7 +241,7 @@ public class StorageWorkerAI : MonoBehaviour
         // the bug everyone was looking at.
         if (!NavMesh.SamplePosition(target, out NavMeshHit onMesh, 6f, agent.areaMask))
         {
-            Log($"cannot walk to {what}: no navmesh within six metres of it");
+            Stuck($"cannot walk to {what}: there is no navmesh within six metres of it");
             yield break;
         }
 
@@ -228,7 +256,7 @@ public class StorageWorkerAI : MonoBehaviour
         var path = new NavMeshPath();
         if (!agent.CalculatePath(onMesh.position, path) || path.status != NavMeshPathStatus.PathComplete)
         {
-            Log($"cannot walk to {what}: no complete path to it");
+            Stuck($"cannot walk to {what}: no complete path leads there");
             yield break;
         }
 
@@ -244,7 +272,7 @@ public class StorageWorkerAI : MonoBehaviour
         }
 
         arrivedOk = spent < walkTimeout;
-        if (!arrivedOk) Log($"gave up walking to {what} after {walkTimeout:0}s");
+        if (!arrivedOk) Stuck($"gave up walking to {what} after {walkTimeout:0}s");
 
         agent.isStopped = true;
     }
@@ -389,5 +417,17 @@ public class StorageWorkerAI : MonoBehaviour
     private void Log(string what)
     {
         GameLog.Info($"[Storage] {what}");
+    }
+
+    // ==== A LEG THAT CANNOT BE WALKED IS NOT ROUTINE ====
+    //
+    // These reasons used to go out through Log, which is Debug.Log and which is
+    // one line among hundreds. "The porter never moves" is a bug somebody will
+    // spend an evening on, and the answer was already being printed where
+    // nobody would ever pick it out. A warning is yellow, it carries the object
+    // so clicking it selects him in the hierarchy, and it cannot be missed.
+    private void Stuck(string what)
+    {
+        Debug.LogWarning($"[Storage] {what}", this);
     }
 }
