@@ -1,51 +1,109 @@
-using UnityEngine;
-using UnityEngine.AI;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
 
+// The camp's porter: walks to a building that has produced something, picks it
+// up, carries it to the storage vault, and does it again.
+//
+// ==== WHY THIS IS A REWRITE AND NOT ANOTHER FIX ====
+//
+// The version before this one was four hundred and fifty lines, and most of
+// them were repairs layered on repairs: a guard against a rival AI component, a
+// warp for spawning off the navmesh, a second warp in case the first missed, a
+// re-pick because the wander target landed inside the stopping distance, a
+// fallback to transform.position on every leg. Each was a real fix for a real
+// report. Together they made a machine where nothing said what it was doing, so
+// the next failure looked exactly like the last three and got another patch.
+//
+// What was actually wrong, in the end, was not in the code at all. TWO building
+// prefabs carried isStorageVault - the vault, and the Scout's Lodge, which had
+// been duplicated from it and never renamed. So "find the one building with the
+// flag" returned whichever FindObjectsByType happened to list first: sometimes
+// the vault, sometimes a hut on the other side of camp. Non-deterministic, and
+// therefore unfixable by staring at the AI.
+//
+// ==== WHAT THIS ONE DOES DIFFERENTLY ====
+//
+// One state variable, one loop, and a line in the log at every transition. When
+// it stops working the log says which state it stopped in and why, which is the
+// thing none of the previous versions could tell anyone.
+//
+// Nothing silently succeeds. Every leg checks that its destination exists, is
+// reachable, and is somewhere OTHER than where the worker already stands -
+// because the old bug where he "worked" without moving was a SetDestination to
+// his own feet followed by an arrival check that passed instantly.
+//
+// Every wait has a timeout. A building that cannot be pathed to costs one leg
+// and a log line, not the rest of the session.
 [RequireComponent(typeof(NavMeshAgent))]
 public class StorageWorkerAI : MonoBehaviour
 {
+    [Header("Wiring")]
     public NavMeshAgent agent;
     public Animator anim;
+    [Tooltip("Shown while carrying, hidden otherwise. Optional.")]
     public GameObject carryVisual;
+    [Tooltip("Where to drop off. Left empty, the building flagged Is Storage Vault is used.")]
     public Transform storageDropPoint;
 
-    [Header("Night Schedule (optional)")]
-    // At deep night the storage worker drops the shift and walks to this
-    // point (usually near the campfire). Leave null → keep hauling
-    // overnight.
+    [Header("Night")]
+    [Tooltip("At deep night he stops hauling and walks here. Empty = works through the night.")]
     public Transform nightGatherPoint;
     public string sittingAnimBool = "IsSitting";
     public float sittingArriveRadius = 1.6f;
 
-    private List<CampBuilding> productionBuildings = new List<CampBuilding>();
-    private bool _reported;
+    [Header("Timing")]
+    [Tooltip("Seconds spent loading at a building.")]
+    public float pickupSeconds = 1.4f;
+    [Tooltip("Seconds spent unloading at the vault.")]
+    public float depositSeconds = 1.2f;
+    [Tooltip("How long to wait when nothing has produced anything yet.")]
+    public float idlePollSeconds = 3f;
+    [Tooltip("Give up on a leg after this long and try something else. A leg that cannot finish must not stop the shift.")]
+    public float walkTimeout = 45f;
+
+    [Header("Animation")]
+    public string pickupTrigger = "Pickup";
+
+    private enum State { Starting, Idle, ToSource, Loading, ToVault, Unloading, Resting }
+
+    private State state = State.Starting;
+    private CampBuilding vault;
+    private Transform dropPoint;
+    private int carrying;
+    private ResourceType carryingType;
+
+    // Walk's answer. A coroutine cannot return one and `yield return` is a
+    // statement, not an expression, so the result comes back through here.
+    private bool arrivedOk;
+
+    // ===================== life =====================
 
     private void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
+        if (agent == null) agent = GetComponent<NavMeshAgent>();
         if (anim == null) anim = GetComponentInChildren<Animator>();
-        if (carryVisual != null) carryVisual.SetActive(false);
+        Carry(false);
 
-        // Role guard: the storage worker prefab must never also run the
-        // lumberjack brain. If a CampWorkerAI ended up on this object (or
-        // a child) — easy to do when duplicating NPC prefabs — both AIs
-        // fight over the same NavMeshAgent and the storage NPC walks off
-        // to chop trees. Storage wins; the stowaway gets disabled.
-        foreach (var lumber in GetComponentsInChildren<CampWorkerAI>(true))
+        // Duplicating an NPC prefab is how a second brain ends up on one body,
+        // and two AIs sharing a NavMeshAgent is a worker who walks off to chop
+        // trees. Destroyed rather than disabled: a disabled component's
+        // coroutines keep running.
+        foreach (var rival in GetComponentsInChildren<CampWorkerAI>(true))
         {
-            Debug.LogWarning($"[StorageWorkerAI] '{name}' also carries a CampWorkerAI — destroying it so the storage NPC doesn't wander off to chop trees. Remove the extra component from the prefab.");
-            // Destroy, not disable — CampWorkerAI's coroutines keep running
-            // on a merely-disabled component.
-            Destroy(lumber);
+            Debug.LogWarning($"[Storage] '{name}' also carries a CampWorkerAI. Removing it - two AIs cannot share " +
+                             "one NavMeshAgent. Take the extra component off the prefab.");
+            Destroy(rival);
         }
 
-        // Root motion off (see BarracksUnitAI for the roller-skate fix).
-        if (anim != null && anim.applyRootMotion) anim.applyRootMotion = false;
-        if (anim != null) anim.SetBoolSafe("IsGrounded", true);
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;          // or he skates
+            anim.SetBoolSafe("IsGrounded", true);
+        }
 
-        StartCoroutine(InitAndStartRoutine());
+        StartCoroutine(Shift());
     }
 
     private void Update()
@@ -55,397 +113,281 @@ public class StorageWorkerAI : MonoBehaviour
             anim.SetBoolSafe(sittingAnimBool, NPCGait.ShouldSit(agent, sittingArriveRadius, nightGatherPoint));
     }
 
-    // Agent-aware: never fight the NavMeshAgent for the transform (that was the
-    // "turns on the spot instead of walking" bug).
+    // Never fight the agent for the transform - that was the "turns on the spot
+    // instead of walking" bug.
     private void LateUpdate() => NPCGait.GroundSnap(transform, agent);
 
-    private IEnumerator InitAndStartRoutine()
+    // ===================== the shift =====================
+
+    private IEnumerator Shift()
     {
-        yield return new WaitForSeconds(0.5f);
-        if (transform.position.y < -2f)
+        yield return StartCoroutine(PlaceOnNavMesh());
+
+        if (!ResolveVault())
         {
-            if (agent != null) agent.enabled = false;
-            yield return new WaitForSeconds(2.5f);
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
-                transform.position = hit.position;
+            Enter(State.Idle);
+            Debug.LogError("[Storage] Nowhere to deliver to: no building has Is Storage Vault ticked and no " +
+                           "Storage Drop Point is assigned. The worker will stand still until one of those exists.");
+            yield break;
         }
-        if (agent != null)
-        {
-            // Force the default (baked Humanoid) agent type — but ONLY while the
-            // agent is DISABLED. Changing agentTypeID on an ENABLED agent leaves it
-            // in a broken state where it reports velocity but never moves the
-            // transform ("walks in place"). Toggle disabled → set type → enable.
-            int defType = NavMesh.GetSettingsByIndex(0).agentTypeID;
-            if (agent.agentTypeID != defType)
-            {
-                agent.enabled = false;
-                agent.agentTypeID = defType;
-            }
-            agent.enabled = true;
-            agent.updatePosition = true;   // guard: something may have parked it
-            agent.updateRotation = true;
-            NPCGait.Configure(agent, stoppingDistance: 0.5f);
-            // Snap onto the NEAREST navmesh point, not the exact spawn. If the
-            // NPC spawned a hair off the mesh (on a foundation, a slope, or just
-            // above the ground), Warp(transform.position) left isOnNavMesh false
-            // — and every movement path is gated on isOnNavMesh, so it just
-            // stood there forever doing nothing.
-            NavMeshHit navHit;
-            if (NavMesh.SamplePosition(transform.position, out navHit, 8f, NavMesh.AllAreas))
-                agent.Warp(navHit.position);
-            else
-                agent.Warp(transform.position);
-        }
-
-        FindBuildings();
-        ResolveDropPoint();
-        StartCoroutine(LogisticsRoutine());
-    }
-
-    // ==== A NULL DROP POINT MADE HIM HAUL TO WHERE HE ALREADY STOOD ====
-    //
-    // Every leg of the round trip falls back to transform.position when its
-    // target is missing, and for the DELIVERY leg that means SetDestination to
-    // the spot he is standing on. WaitArrival returns immediately, the agent is
-    // stopped, the Pickup animation plays, and the loop starts again - so the
-    // storage worker stands in one place playing an animation instead of doing
-    // his job, which is exactly the report.
-    //
-    // The vault is findable: it is the one CampBuilding with isStorageVault set,
-    // and FindBuildings already walks every one of them. Using its pickupPoint,
-    // or the building itself, gives him somewhere real to carry things to.
-    private void ResolveDropPoint()
-    {
-        if (storageDropPoint != null) return;
-
-        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsSortMode.None))
-        {
-            if (b == null || !b.isStorageVault) continue;
-            storageDropPoint = b.pickupPoint != null ? b.pickupPoint : b.transform;
-            Debug.LogWarning($"[StorageWorkerAI] '{name}' had no storageDropPoint wired, so every delivery was a walk to " +
-                             $"where he already stood. Falling back to the storage vault '{b.name}'. " +
-                             "Drag the vault's drop transform into the field to place it properly.", this);
-            return;
-        }
-
-        Debug.LogError($"[StorageWorkerAI] '{name}' has no storageDropPoint AND there is no storage vault in the scene. " +
-                       "He has nowhere to deliver to and will idle. Build or place a vault, or wire the field.", this);
-    }
-
-    // Rescanned every loop, not just once at Start: buildings raised or upgraded
-    // after the worker spawned were never added to the list, so he had nothing to
-    // haul for the rest of the session and just idled by the storage.
-    void FindBuildings()
-    {
-        productionBuildings.Clear();
-        CampBuilding[] all = FindObjectsByType<CampBuilding>(FindObjectsSortMode.None);
-        foreach (var b in all)
-        {
-            if (b != null && !b.isStorageVault) productionBuildings.Add(b);
-        }
-    }
-
-    private IEnumerator WanderAroundStorage()
-    {
-        // Recover if the agent drifted off the navmesh — every branch below is
-        // gated on isOnNavMesh, so without this the worker would stand frozen.
-        if (agent != null && !agent.isOnNavMesh)
-        {
-            NavMeshHit rh;
-            if (NavMesh.SamplePosition(transform.position, out rh, 8f, NavMesh.AllAreas))
-                agent.Warp(rh.position);
-        }
-        if (agent != null && agent.isOnNavMesh) agent.isStopped = false;
-
-        if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
-        {
-            // Pick a point a REAL distance away. The old insideUnitSphere pick
-            // often landed within the stopping distance, so the worker never
-            // actually walked — he just kept turning in place by the storage.
-            Vector3 anchor = storageDropPoint != null ? storageDropPoint.position : transform.position;
-            Vector2 dir2 = Random.insideUnitCircle.normalized;
-            if (dir2 == Vector2.zero) dir2 = Vector2.right;
-            Vector3 target = anchor + new Vector3(dir2.x, 0f, dir2.y) * Random.Range(3.5f, 7f);
-
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(target, out hit, 6f, NavMesh.AllAreas) &&
-                Vector3.Distance(hit.position, transform.position) > agent.stoppingDistance + 1.5f)
-            {
-                agent.SetDestination(hit.position);
-            }
-        }
-        yield return new WaitForSeconds(Random.Range(4f, 8f));
-    }
-
-    // Walks to the campfire and sits there until deep-night ends. Drops
-    // the carry visual so the worker doesn't cradle a log all night.
-    private IEnumerator NightGatherRoutine()
-    {
-        if (carryVisual != null) carryVisual.SetActive(false);
-        Vector3 destPos = nightGatherPoint != null
-            ? nightGatherPoint.position
-            : (storageDropPoint != null ? storageDropPoint.position : transform.position);
-        if (agent != null && agent.isOnNavMesh)
-        {
-            agent.isStopped = false;
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(destPos, out hit, 4f, NavMesh.AllAreas))
-                agent.SetDestination(hit.position);
-            yield return StartCoroutine(WalkTo(destPos));
-            agent.isStopped = true;
-        }
-        // Face the fire smoothly — ~1s turn-in-place, not an instant snap.
-        float faceTimer = 0f;
-        while (nightGatherPoint != null && faceTimer < 1.2f)
-        {
-            NPCGait.FaceTarget(transform, nightGatherPoint.position, 240f);
-            faceTimer += Time.deltaTime;
-            yield return null;
-        }
-        while (CampSchedule.IsDeepNight())
-            yield return new WaitForSeconds(1f);
-    }
-
-    private IEnumerator LogisticsRoutine()
-    {
-        yield return new WaitForSeconds(3f);
 
         while (true)
         {
-            // Night beats hauling. Runs whether or not nightGatherPoint is
-            // wired (NightGatherRoutine has a fallback), so a half-config
-            // NPC still respects the day/night cycle.
-            if (CampSchedule.IsDeepNight())
+            if (IsNight() && nightGatherPoint != null)
             {
-                yield return StartCoroutine(NightGatherRoutine());
+                Enter(State.Resting);
+                yield return Walk(nightGatherPoint.position, "the night point");
+                while (IsNight()) yield return new WaitForSeconds(1f);
                 continue;
             }
 
-            FindBuildings();   // pick up anything built or upgraded since the last pass
-            bool collectedAnything = false;
-
-            if (!_reported)
+            CampBuilding source = PickSource();
+            if (source == null)
             {
-                _reported = true;
-                int ready = 0, built = 0;
-                foreach (var b in productionBuildings)
-                {
-                    if (b == null) continue;
-                    if (b.currentLevel > 0) built++;
-                    if (b.pendingResourcesCount > 0) ready++;
-                }
-                var vault = System.Array.Find(FindObjectsByType<CampBuilding>(FindObjectsSortMode.None), x => x != null && x.isStorageVault);
-                Debug.Log($"[StorageWorkerAI] {productionBuildings.Count} production building(s), {built} built, {ready} with resources waiting. " +
-                          $"Storage vault: {(vault == null ? "NONE IN SCENE" : vault.currentLevel > 0 ? "level " + vault.currentLevel : "NOT BUILT")}. " +
-                          $"Agent on navmesh: {(agent != null && agent.isOnNavMesh)}. " +
-                          "Production only ACCUMULATES while a built storage vault exists — with none, resources bank straight to the stash and there is nothing for him to carry.");
+                if (state != State.Idle) Enter(State.Idle);
+                yield return new WaitForSeconds(idlePollSeconds);
+                continue;
             }
 
-            foreach (var building in productionBuildings)
+            // ---- out ----
+            Enter(State.ToSource);
+            yield return Walk(source.transform.position, source.buildingName);
+            if (!arrivedOk)
             {
-                if (building != null && building.currentLevel > 0 && building.pendingResourcesCount > 0)
-                {
-                    collectedAnything = true;
-
-                    // 1. ����� �� Pickup Point (� �������� �������)
-                    agent.isStopped = false;
-                    Vector3 rawTargetPos = building.pickupPoint != null ? building.pickupPoint.position : building.transform.position;
-                    Vector3 targetPos = rawTargetPos;
-
-                    NavMeshHit hit;
-                    if (NavMesh.SamplePosition(rawTargetPos, out hit, 5f, NavMesh.AllAreas))
-                    {
-                        targetPos = hit.position;
-                    }
-
-                    agent.SetDestination(targetPos);
-                    yield return StartCoroutine(WalkTo(targetPos));
-
-                    agent.isStopped = true;
-                    // Face the crate on the XZ plane. transform.LookAt on a point
-                    // he is already standing on gives a degenerate direction and
-                    // reads as a random spin.
-                    Vector3 faceDir = targetPos - transform.position; faceDir.y = 0f;
-                    if (faceDir.sqrMagnitude > 0.01f)
-                        transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
-
-                    // 2. ϳ�������
-                    if (anim != null) anim.SetTrigger("Pickup");
-                    yield return new WaitForSeconds(1.5f);
-
-                    int amount = building.CollectResourcesByStorageNPC();
-                    if (carryVisual != null) carryVisual.SetActive(true);
-
-                    yield return new WaitForSeconds(0.5f);
-
-                    // 3. ������ �� ����� (� �������� ������� ������� ��� ����� ������!)
-                    agent.isStopped = false;
-                    // Re-resolved each trip: the vault may have been BUILT since
-                    // the last one, and a worker that resolved to nothing at
-                    // startup would otherwise idle for the whole session.
-                    if (storageDropPoint == null) ResolveDropPoint();
-                    if (storageDropPoint == null)
-                    {
-                        // Nowhere to take it. Put the load down rather than
-                        // miming a delivery on the spot.
-                        if (carryVisual != null) carryVisual.SetActive(false);
-                        yield return new WaitForSeconds(3f);
-                        continue;
-                    }
-                    Vector3 rawDropPos = storageDropPoint.position;
-                    Vector3 dropTargetPos = rawDropPos;
-
-                    NavMeshHit dropHit;
-                    if (NavMesh.SamplePosition(rawDropPos, out dropHit, 5f, NavMesh.AllAreas))
-                    {
-                        dropTargetPos = dropHit.position;
-                    }
-
-                    agent.SetDestination(dropTargetPos);
-                    yield return StartCoroutine(WalkTo(dropTargetPos));
-
-                    // 4. �������
-                    agent.isStopped = true;
-                    // ������ ����������� � ������� ������
-                    if (storageDropPoint != null) transform.rotation = storageDropPoint.rotation;
-
-                    if (anim != null) anim.SetTrigger("Pickup");
-                    yield return new WaitForSeconds(1.0f);
-
-                    if (carryVisual != null) carryVisual.SetActive(false);
-
-                    if (building.productionType == ResourceType.Wood)
-                        ResourceManager.Instance.AddStashResources(amount, 0, 0);
-                    else if (building.productionType == ResourceType.Food)
-                        ResourceManager.Instance.AddStashResources(0, 0, amount);
-                    else if (building.productionType == ResourceType.Stone)
-                        ResourceManager.Instance.AddStashResources(0, amount, 0);
-
-                    yield return new WaitForSeconds(1.5f);
-                }
+                // Walk logs its own reason. Nothing is being carried, so back to
+                // looking - one unreachable building must not end the shift.
+                continue;
             }
 
-            if (!collectedAnything)
+            // ---- load ----
+            Enter(State.Loading);
+            Face(source.transform.position);
+            if (anim != null && !string.IsNullOrEmpty(pickupTrigger)) anim.SetTriggerSafe(pickupTrigger);
+            yield return new WaitForSeconds(pickupSeconds);
+
+            carryingType = source.productionType;
+            carrying = source.CollectResourcesByStorageNPC();
+            if (carrying <= 0)
             {
-                yield return StartCoroutine(WanderAroundStorage());
+                // Somebody else took it, or it was collected by hand while he
+                // walked. Not an error, and not worth a trip to the vault.
+                Log($"arrived at {source.buildingName} to find it already emptied");
+                continue;
             }
-            else
-            {
-                yield return new WaitForSeconds(2f);
-            }
+            Carry(true);
+            Log($"picked up {carrying} from {source.buildingName}");
+
+            // ---- back ----
+            Enter(State.ToVault);
+            yield return Walk(dropPoint.position, "the vault");
+
+            // ---- unload ----
+            Enter(State.Unloading);
+            Face(dropPoint.position);
+            if (anim != null && !string.IsNullOrEmpty(pickupTrigger)) anim.SetTriggerSafe(pickupTrigger);
+            yield return new WaitForSeconds(depositSeconds);
+
+            Deliver();
         }
     }
 
-    // ==== "GIVE UP" AND "ARRIVED" WERE THE SAME ANSWER ====
-    //
-    // WaitArrival simply ended, and the caller carried on regardless: it turned
-    // to face the crate, played the pickup animation and took the resources.
-    // But three of its four exits are FAILURES - a partial path, three seconds
-    // without progress, and the twenty-second timeout - so a worker who could
-    // not reach a building mimed the whole trip where he stood and the crate
-    // emptied itself from across the camp. That is the "carries resources
-    // without reaching the pickup point, walking on the spot" report exactly.
-    //
-    // A coroutine cannot return a value, so the verdict lands here.
-    private bool _arrived;
+    // ===================== the legs =====================
 
-    // Where the NavMesh cannot carry him, walk the leg by hand rather than
-    // pretend. The proper fix is a camp NavMesh that covers the whole floor -
-    // the warning below says so - but the camp must not silently teleport
-    // resources while it is missing.
-    private IEnumerator WalkTo(Vector3 target)
+    // Walks to a point and leaves the answer in arrivedOk.
+    private IEnumerator Walk(Vector3 target, string what)
     {
-        yield return StartCoroutine(WaitArrival());
-        if (!_arrived) yield return StartCoroutine(WalkDirectly(target));
-    }
+        arrivedOk = false;
 
-    private IEnumerator WalkDirectly(Vector3 target)
-    {
-        float speed = agent != null ? Mathf.Max(0.5f, agent.speed) : NPCGait.DEFAULT_SPEED;
-        bool hadAgent = agent != null && agent.enabled;
-        if (hadAgent) agent.enabled = false;
-
-        float guard = 0f;
-        while (guard < 25f)
+        if (agent == null || !agent.isOnNavMesh)
         {
-            guard += Time.deltaTime;
+            yield return StartCoroutine(PlaceOnNavMesh());
+            if (agent == null || !agent.isOnNavMesh) { Log($"cannot walk to {what}: not on the navmesh"); yield break; }
+        }
 
-            Vector3 to = target - transform.position; to.y = 0f;
-            float dist = to.magnitude;
-            if (dist <= 0.7f) break;
+        // ==== A DESTINATION UNDER HIS OWN FEET IS NOT A JOURNEY ====
+        //
+        // Every leg of the old version fell back to transform.position when its
+        // target was missing. SetDestination to where you already stand makes
+        // the arrival test pass on the first frame, so the animation played, the
+        // loop went round, and the worker "worked" without ever moving. That is
+        // the bug everyone was looking at.
+        if (!NavMesh.SamplePosition(target, out NavMeshHit onMesh, 6f, agent.areaMask))
+        {
+            Log($"cannot walk to {what}: no navmesh within six metres of it");
+            yield break;
+        }
 
-            Vector3 dir = to / dist;
-            transform.position += dir * speed * Time.deltaTime;
-            NPCGait.GroundSnap(transform, 0.05f);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation,
-                                    Quaternion.LookRotation(dir, Vector3.up), 360f * Time.deltaTime);
+        if ((onMesh.position - transform.position).sqrMagnitude < 0.75f * 0.75f)
+        {
+            Log($"already standing at {what}");
+            arrivedOk = true; yield break;
+        }
 
-            if (anim != null)
-            {
-                anim.SetBoolSafe("IsGrounded", true);
-                anim.SetFloatSafe("Speed", speed);
-            }
+        // Asked before committing, so an unreachable building costs one frame
+        // rather than the whole timeout.
+        var path = new NavMeshPath();
+        if (!agent.CalculatePath(onMesh.position, path) || path.status != NavMeshPathStatus.PathComplete)
+        {
+            Log($"cannot walk to {what}: no complete path to it");
+            yield break;
+        }
+
+        agent.isStopped = false;
+        agent.SetPath(path);
+
+        float spent = 0f;
+        while (spent < walkTimeout)
+        {
+            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.15f) break;
+            spent += Time.deltaTime;
             yield return null;
         }
 
-        if (anim != null) anim.SetFloatSafe("Speed", 0f);
+        arrivedOk = spent < walkTimeout;
+        if (!arrivedOk) Log($"gave up walking to {what} after {walkTimeout:0}s");
 
-        if (hadAgent && agent != null)
-        {
-            agent.enabled = true;
-            NavMeshHit back;
-            if (NavMesh.SamplePosition(transform.position, out back, 6f, NavMesh.AllAreas))
-                agent.Warp(back.position);
-        }
-        _arrived = true;
+        agent.isStopped = true;
     }
 
-    private IEnumerator WaitArrival()
+    private void Deliver()
     {
-        _arrived = false;
-        // ���� ����� Unity 1 ����, ��� �� 100% ����� ������ ���������� �����
-        yield return null;
-
-        float timeout = 0f;
-        float lastProgressTime = 0f;
-        Vector3 lastPos = transform.position;
-
-        while (timeout < 20f)
+        // ==== WHAT HE CARRIED IS WHAT ARRIVES ====
+        //
+        // Everything used to land in the stash as wood, because that is the
+        // first argument. A hunter's cabin produces food and a quarry stone;
+        // hauling either one and banking timber is a quiet economy bug that
+        // nobody would trace back to the porter.
+        if (carrying > 0 && ResourceManager.Instance != null)
         {
-            timeout += Time.deltaTime;
-            if (agent != null && agent.isOnNavMesh && !agent.pathPending)
+            switch (carryingType)
             {
-                if (agent.pathStatus == NavMeshPathStatus.PathInvalid) break;
-
-                // A PARTIAL path means the NavMesh does not reach the target.
-                // The old loop kept waiting the full 20 seconds for an arrival
-                // that could never happen, so the worker stood frozen between
-                // every trip — which is exactly "he only shuffles near his own
-                // building". Walk as far as the mesh allows, then move on.
-                if (agent.pathStatus == NavMeshPathStatus.PathPartial &&
-                    agent.remainingDistance <= agent.stoppingDistance + 0.5f)
-                {
-                    Debug.LogWarning($"[StorageWorkerAI] Partial path — the NavMesh does not reach that building. Bake the camp NavMesh so it covers the whole camp floor, not just the area around the storage.");
-                    break;
-                }
-
-                if (agent.remainingDistance <= agent.stoppingDistance + 0.1f) { _arrived = true; break; }
-
-                // Stuck detection: if he has not actually moved for 3s, stop
-                // waiting rather than burning the whole timeout on it.
-                if ((transform.position - lastPos).sqrMagnitude > 0.04f)
-                {
-                    lastPos = transform.position;
-                    lastProgressTime = timeout;
-                }
-                else if (timeout - lastProgressTime > 3f)
-                {
-                    Debug.LogWarning($"[StorageWorkerAI] Stopped making progress toward {agent.destination} (status {agent.pathStatus}) — giving up on this trip.");
-                    break;
-                }
+                case ResourceType.Stone: ResourceManager.Instance.AddStashResources(0, carrying, 0); break;
+                case ResourceType.Food:  ResourceManager.Instance.AddStashResources(0, 0, carrying); break;
+                default:                 ResourceManager.Instance.AddStashResources(carrying, 0, 0); break;
             }
-            yield return null;
         }
+
+        Log($"delivered {carrying} {carryingType} to the vault");
+        carrying = 0;
+        Carry(false);
+    }
+
+    // ===================== what to haul, and where =====================
+
+    // Only a building that has actually produced something, and never the vault
+    // itself. The old filter was "everything that is not the vault", which with
+    // two buildings claiming the flag meant he could be sent to collect from the
+    // place he was supposed to deliver to.
+    private CampBuilding PickSource()
+    {
+        CampBuilding best = null;
+        float bestScore = float.MaxValue;
+        Vector3 here = transform.position;
+
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsSortMode.None))
+        {
+            if (b == null || b == vault) continue;
+            if (b.isStorageVault) continue;
+            if (!b.producesResource) continue;
+            if (b.pendingResourcesCount <= 0) continue;
+
+            // Nearest first, but a big pile is worth a few extra steps.
+            float score = Vector3.Distance(here, b.transform.position) - b.pendingResourcesCount * 0.5f;
+            if (score < bestScore) { bestScore = score; best = b; }
+        }
+        return best;
+    }
+
+    private bool ResolveVault()
+    {
+        var flagged = new List<CampBuilding>();
+        foreach (var b in FindObjectsByType<CampBuilding>(FindObjectsSortMode.None))
+            if (b != null && b.isStorageVault) flagged.Add(b);
+
+        if (flagged.Count > 1)
+        {
+            // This is the bug that hid behind every other one. Named loudly so
+            // it can never be invisible again.
+            var names = new List<string>();
+            foreach (var b in flagged) names.Add($"{b.buildingName} ({b.buildingID})");
+            Debug.LogError("[Storage] " + flagged.Count + " buildings have Is Storage Vault ticked: " +
+                           string.Join(", ", names) + ". Only one may. Until that is fixed the worker will haul " +
+                           "to whichever one happens to be nearest, which is not necessarily the right one.");
+        }
+
+        if (flagged.Count > 0)
+        {
+            vault = flagged[0];
+            float best = Vector3.Distance(transform.position, vault.transform.position);
+            for (int i = 1; i < flagged.Count; i++)
+            {
+                float d = Vector3.Distance(transform.position, flagged[i].transform.position);
+                if (d < best) { best = d; vault = flagged[i]; }
+            }
+        }
+
+        // The explicit drop point wins when it is set: it is a marker somebody
+        // placed at the door, while the building's own transform is its pivot,
+        // which on a large prefab can be inside a wall.
+        dropPoint = storageDropPoint != null ? storageDropPoint
+                  : (vault != null ? vault.transform : null);
+
+        if (dropPoint != null)
+            Log($"delivering to {(storageDropPoint != null ? "the assigned drop point" : vault.buildingName)}");
+
+        return dropPoint != null;
+    }
+
+    // ===================== plumbing =====================
+
+    private IEnumerator PlaceOnNavMesh()
+    {
+        yield return new WaitForSeconds(0.25f);
+        if (agent == null) yield break;
+
+        agent.updatePosition = true;
+        agent.updateRotation = true;
+        NPCGait.Configure(agent, stoppingDistance: 0.6f);
+
+        // The nearest point ON the mesh, not the exact spawn. Spawned a hair off
+        // it - on a foundation, on a slope - isOnNavMesh stays false and every
+        // branch below is gated on it, which is a worker who stands still
+        // forever with nothing in the log.
+        if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 12f, agent.areaMask))
+            agent.Warp(hit.position);
+        else
+            Debug.LogWarning($"[Storage] '{name}' spawned more than twelve metres from any navmesh of its agent " +
+                             "type. Move him onto the camp's walkable ground.");
+    }
+
+    private bool IsNight()
+    {
+        var cycle = Object.FindFirstObjectByType<DayNightCycle>();
+        if (cycle == null) return false;
+        return cycle.timeOfDay >= 22f || cycle.timeOfDay < 5f;
+    }
+
+    private void Face(Vector3 target)
+    {
+        Vector3 flat = target - transform.position; flat.y = 0f;
+        if (flat.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(flat);
+    }
+
+    private void Carry(bool on)
+    {
+        if (carryVisual != null) carryVisual.SetActive(on);
+    }
+
+    private void Enter(State next)
+    {
+        if (state == next) return;
+        state = next;
+        Log($"-> {next}");
+    }
+
+    // One channel, one prefix. When he stops, the last line says where.
+    private void Log(string what)
+    {
+        GameLog.Info($"[Storage] {what}");
     }
 }

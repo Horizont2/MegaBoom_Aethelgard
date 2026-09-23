@@ -286,10 +286,10 @@ MonoBehaviour:
   realModel: {fileID: 0}
   buildingIconSprite: {fileID: -1396327385, guid: 36f86e4917af9a649888a6f5eded386c, type: 3}
   resourceVisuals: []
-  buildingName: STORAGE VAULT
+  buildingName: SCOUT'S LODGE
   description: A reinforced cellar to keep your camp's resources safe from the harsh
     weather and scavengers.
-  isStorageVault: 1
+  isStorageVault: 0
   currentLevel: 0
   levels:
   - costWood: 120
