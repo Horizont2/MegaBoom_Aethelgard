@@ -66,6 +66,11 @@ public class ScreenshotDirector : MonoBehaviour
 #endif
     }
 
+    // Set from the generator's own completion event, which is subscribed to in
+    // Boot — before the generator has run a line, so the finish cannot be
+    // missed no matter how the two objects' Start calls happen to be ordered.
+    private static bool s_worldReady;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Boot()
     {
@@ -79,10 +84,30 @@ public class ScreenshotDirector : MonoBehaviour
 #endif
         if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != SceneFor(shot)) return;
 
+        // ==== THE REGION HAS TO BE PICKED HERE, NOT IN THE COROUTINE ====
+        //
+        // WorldGenerator.Start reads MissionInitializer.PendingMissionRegion and
+        // then immediately starts generating. This callback runs after every
+        // Awake and BEFORE the first Start, so it is the last moment the choice
+        // can still be read.
+        //
+        // It used to be done from the director's own coroutine, which is a Start
+        // on an object created right here — queued behind every object the scene
+        // itself brought, the generator among them. By the time the region was
+        // set the map was already being built from the previous one, so the
+        // tool obediently photographed whatever region happened to be loaded
+        // last.
+        s_worldReady = false;
+        WorldGenerator.OnWorldGenerationComplete -= MarkWorldReady;
+        WorldGenerator.OnWorldGenerationComplete += MarkWorldReady;
+        ForceRegion(RegionFor(shot));
+
         var go = new GameObject("ScreenshotDirector");
         go.hideFlags = HideFlags.DontSave;
         go.AddComponent<ScreenshotDirector>().shot = shot;
     }
+
+    private static void MarkWorldReady() { s_worldReady = true; }
 
     private string shot;
     private Camera cam;
@@ -93,16 +118,22 @@ public class ScreenshotDirector : MonoBehaviour
     {
         TrailerLogGuard.Arm();
 
-        // The region has to be chosen before anything generates, and Boot runs
-        // after Awake — so this is the last moment it can still matter, and it
-        // only matters when the world has not started yet.
-        ForceRegion(RegionFor(shot));
-
         yield return WaitForWorld();
-        yield return null;
+
+        // The generator reports done while the last of the world is still
+        // arriving: locations settle onto their colliders over the following
+        // frames, and the hero is still falling from the thousand metres the
+        // generator parks him at. Composing a frame in the middle of that is
+        // how a shot ends up with a building halfway into the ground.
+        yield return new WaitForSecondsRealtime(2f);
 
         cam = Camera.main;
         if (cam == null) { Debug.LogWarning("[Screenshot] No main camera."); yield break; }
+
+        // The horde shot is handed back to the player, so the gameplay camera
+        // has to keep working for it. Every other shot is composed by the tool,
+        // and for those the lens stops belonging to the game.
+        if (shot != HordeShot) TakeCamera();
 
         switch (shot)
         {
@@ -122,6 +153,7 @@ public class ScreenshotDirector : MonoBehaviour
         Sky(21.5f, WeatherState.Storm);
         Hud(false);
         ClearCombatants();
+        HideHero();
 
         Transform castle = FindByName("Castle");
         if (castle == null) { Fail("no Location_Castle in this region"); yield break; }
@@ -138,6 +170,7 @@ public class ScreenshotDirector : MonoBehaviour
         Sky(9f, WeatherState.Precipitation);
         Hud(false);
         ClearCombatants();
+        HideHero();
 
         // No subject — a vista is the point. High, looking out across the land.
         Terrain t = Terrain.activeTerrain;
@@ -147,9 +180,7 @@ public class ScreenshotDirector : MonoBehaviour
         Vector3 at = t.transform.position + new Vector3(size.x * 0.32f, 0f, size.z * 0.38f);
         at.y = t.SampleHeight(at) + t.transform.position.y + 34f;
 
-        cam.transform.position = at;
-        cam.transform.rotation = Quaternion.Euler(9f, 55f, 0f);
-        cam.fieldOfView = 58f;
+        Place(at, Quaternion.Euler(9f, 55f, 0f), 58f);
 
         yield return Settle(90);
         Grab(clean: true);
@@ -159,6 +190,8 @@ public class ScreenshotDirector : MonoBehaviour
     {
         Sky(7.5f, WeatherState.Clear);
         Hud(false);
+        ClearCombatants();
+        HideHero();
 
         Transform site = FindByType<Reliquary>();
         if (site == null) { Fail("no reliquary was placed in this region — reroll, they are capped at two"); yield break; }
@@ -241,10 +274,9 @@ public class ScreenshotDirector : MonoBehaviour
     // This whole tool only exists in the editor, so it asks the asset database
     // directly. That is not a shortcut around a runtime problem; the shipped
     // game never runs a line of this.
-    private void ForceRegion(int regionNumber)
+    private static void ForceRegion(int regionNumber)
     {
         if (regionNumber < 0) return;
-        if (WorldGenerator.IsGenerationDone) return;      // too late to matter, and nothing to fix
 
         RegionData region = LoadRegion(regionNumber);
         if (region == null)
@@ -256,6 +288,13 @@ public class ScreenshotDirector : MonoBehaviour
 
         MissionInitializer.PendingMissionRegion = region;
         PlayerPrefs.SetInt("RegionBiomeType", (int)region.regionBiome);
+        PlayerPrefs.SetInt("IsRegionMission", 1);
+
+        // The generator asks GameManager first and only falls back to the
+        // pending region, so a GameManager left over from the camp would
+        // quietly win this argument.
+        if (GameManager.Instance != null) GameManager.Instance.currentRegion = region;
+
         Debug.Log($"[Screenshot] Region {regionNumber} — {region.regionName}.");
     }
 
@@ -284,10 +323,20 @@ public class ScreenshotDirector : MonoBehaviour
 
     private IEnumerator WaitForWorld()
     {
-        if (Object.FindFirstObjectByType<WorldGenerator>() == null) yield break;
+        // One frame first, so every Start in the scene has run — including the
+        // generator's, which is what clears IsGenerationDone from the previous
+        // run. Polling the flag before that reads the last session's answer and
+        // walks straight past a world that has not been built yet.
+        yield return null;
+
+        if (Object.FindFirstObjectByType<WorldGenerator>() == null && !s_worldReady)
+        {
+            Debug.Log("[Screenshot] No WorldGenerator in this scene — nothing to wait for.");
+            yield break;
+        }
 
         float waited = 0f, logged = -1f;
-        while (!WorldGenerator.IsGenerationDone && waited < 180f)
+        while (!s_worldReady && !WorldGenerator.IsGenerationDone && waited < 300f)
         {
             if (WorldGenerator.CurrentProgress - logged >= 0.25f)
             {
@@ -297,6 +346,128 @@ public class ScreenshotDirector : MonoBehaviour
             waited += Time.unscaledDeltaTime;
             yield return null;
         }
+
+        if (!s_worldReady && !WorldGenerator.IsGenerationDone)
+            Debug.LogWarning($"[Screenshot] The world was still building after {waited:0}s. Shooting anyway — " +
+                             "expect the frame to be missing some of it.");
+        else
+            Debug.Log($"[Screenshot] World ready after {waited:0.0}s.");
+    }
+
+    // ===================== taking the lens away from the game =====================
+
+    // ==== NOTHING ELSE MAY MOVE THIS CAMERA ====
+    //
+    // CameraFollow sits on the Main Camera and rewrites its position, rotation
+    // and field of view in LateUpdate, every single frame, from the hero's
+    // shoulder. The director composes its frame from a coroutine, which runs in
+    // the Update phase — so the shot was composed and then thrown away again
+    // before it was ever drawn. That is the whole reason every screenshot came
+    // out of the gameplay camera no matter where the tool pointed it.
+    //
+    // isCinematicMode is the project's own way of saying the camera is not the
+    // game's right now, and the trailer and every cutscene use it. It is set
+    // here too, but it is not trusted on its own: the composed pose is put back
+    // from Application.onBeforeRender, which fires after every LateUpdate in
+    // the frame and immediately before anything is drawn. Whatever else in this
+    // project ever decides to move the main camera, it moves it earlier than
+    // that, and the shot wins.
+    private bool posePinned;
+    private Vector3 pinPos;
+    private Quaternion pinRot;
+    private Transform distanceProxy;
+
+    private void TakeCamera()
+    {
+        var follow = cam.GetComponent<CameraFollow>();
+        if (follow != null) follow.isCinematicMode = true;
+
+        var collision = cam.GetComponent<CameraCollision>();
+        if (collision != null) collision.isCinematicMode = true;
+
+        // Occlusion fades whatever stands between the lens and the hero. With
+        // the lens somewhere else entirely that is an arbitrary list of
+        // buildings going half-transparent in the middle of the shot.
+        var occlusion = cam.GetComponent<CameraOcclusion>();
+        if (occlusion != null) occlusion.enabled = false;
+
+        var bob = cam.GetComponent<CameraBobbing>();
+        if (bob != null) bob.enabled = false;
+
+        // Minimap markers live on their own layer, so the whole set leaves the
+        // frame in one line rather than being hunted down object by object.
+        int minimap = LayerMask.NameToLayer("MinimapOnly");
+        if (minimap >= 0) cam.cullingMask &= ~(1 << minimap);
+
+        FollowTheLensInsteadOfTheHero();
+
+        Application.onBeforeRender -= Pin;
+        Application.onBeforeRender += Pin;
+    }
+
+    // ==== THE WORLD SWITCHES ITSELF OFF AROUND THE HERO, NOT THE CAMERA ====
+    //
+    // DistanceOptimizer deactivates every registered object further than
+    // disableDistance from the PLAYER — 155m on the lowest foliage preset. Fly
+    // the camera to a castle on the far side of the region and everything
+    // around it is already switched off, so the tool photographs a bare hill
+    // with a castle on it.
+    //
+    // It only ever reads that one transform, so handing it a stand-in that sits
+    // where the lens sits is enough. Nothing about the hero changes, and the
+    // proxy dies with this object.
+    private void FollowTheLensInsteadOfTheHero()
+    {
+        if (DistanceOptimizer.Instance == null) return;
+
+        var go = new GameObject("ScreenshotDistanceProxy");
+        go.hideFlags = HideFlags.DontSave;
+        distanceProxy = go.transform;
+        distanceProxy.position = cam.transform.position;
+        DistanceOptimizer.Instance.player = distanceProxy;
+
+        // A normal sweep is five hundred objects a frame, which is right when
+        // the reference point drifts a metre at a time. This one jumps across
+        // the region in one step, and the whole list has to catch up before the
+        // shutter — the frame budget does not matter to a screenshot.
+        DistanceOptimizer.Instance.checksPerFrame = int.MaxValue;
+    }
+
+    /// <summary>Puts the lens somewhere and keeps it there until the shot is written.</summary>
+    private void Place(Vector3 position, Quaternion rotation, float fov)
+    {
+        cam.transform.SetPositionAndRotation(position, rotation);
+        cam.fieldOfView = fov;
+
+        pinPos = position;
+        pinRot = rotation;
+        posePinned = true;
+
+        if (distanceProxy != null) distanceProxy.position = position;
+    }
+
+    private void Pin()
+    {
+        if (!posePinned || cam == null) return;
+        cam.transform.SetPositionAndRotation(pinPos, pinRot);
+    }
+
+    private void OnDestroy()
+    {
+        Application.onBeforeRender -= Pin;
+        if (distanceProxy != null) Destroy(distanceProxy.gameObject);
+    }
+
+    // A figure standing wherever the generator happened to drop him is not part
+    // of an architectural shot, and he is never where you would have put him.
+    // Hiding the renderers rather than moving him leaves his actual position
+    // and state alone.
+    private void HideHero()
+    {
+        Transform hero = FindPlayer();
+        if (hero == null) return;
+        foreach (var r in hero.GetComponentsInChildren<Renderer>(true))
+            if (r != null) r.enabled = false;
     }
 
     private void Sky(float hour, WeatherState weather)
@@ -360,9 +531,7 @@ public class ScreenshotDirector : MonoBehaviour
         Vector3 at = b.center - back * distance + Vector3.up * (distance * Mathf.Tan(pitch * Mathf.Deg2Rad));
         at.y = Mathf.Max(at.y, GroundAt(at) + 2f);        // never underground
 
-        cam.transform.position = at;
-        cam.transform.rotation = Quaternion.LookRotation((b.center - at).normalized);
-        cam.fieldOfView = fov;
+        Place(at, Quaternion.LookRotation((b.center - at).normalized), fov);
     }
 
     private static float GroundAt(Vector3 p)
@@ -413,11 +582,15 @@ public class ScreenshotDirector : MonoBehaviour
 
     private void Grab(bool clean)
     {
-        if (clean) PosterFrame.GrabClean();
+        // Handed the camera by name rather than letting PosterFrame guess at the
+        // one with the highest depth — the shot is composed on this one and no
+        // other.
+        if (clean) PosterFrame.GrabClean(cam);
         else PosterFrame.GrabFramed();
 
         Debug.Log($"[Screenshot] '{shot}' written to the PosterFrames folder beside the project, " +
-                  "1920x1080 and ready to upload.");
+                  "1920x1080 and ready to upload.\nThe camera stays where the shot was taken, so F9 gives the " +
+                  "same frame again. Stop Play Mode to give it back to the game.");
     }
 
     private void Fail(string why)

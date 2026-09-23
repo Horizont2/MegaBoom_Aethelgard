@@ -77,9 +77,10 @@ public static class PosterFrame
     // ===================== the clean one =====================
 
     /// <summary>The shot camera at full size, without the letterbox or anything else screen-space.</summary>
-    public static void GrabClean()
+    /// <param name="explicitCam">The camera to render. Left null, the one currently making the picture is found.</param>
+    public static void GrabClean(Camera explicitCam = null)
     {
-        Camera cam = Shooting();
+        Camera cam = explicitCam != null ? explicitCam : Shooting();
         if (cam == null) { Debug.LogWarning("[PosterFrame] No enabled camera to render."); return; }
 
         int ss = Mathf.Clamp(supersample, 1, 4);
