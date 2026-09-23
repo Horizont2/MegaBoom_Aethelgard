@@ -410,6 +410,10 @@ public class SmartSeasonManager : MonoBehaviour
         Color startFog = currentSeasonFogColor;
 
         if (globalMaterial != null && tex != null) globalMaterial.SetTexture("_BaseMap", tex);
+        // Kept so scenery registered LATER - the pause location, which only
+        // wakes up when somebody pauses - can be given the season that is
+        // already running instead of whatever it shipped with.
+        if (tex != null) currentSeasonTexture = tex;
 
         float elapsed = 0f;
         float actualDuration = (startSun == new Color(0, 0, 0, 0)) ? 0.1f : transitionDuration;
@@ -494,6 +498,35 @@ public class SmartSeasonManager : MonoBehaviour
             directionalLight.intensity = defaultSunIntensity;
             directionalLight.transform.localRotation = Quaternion.Euler(50f, 170f, 0f);
         }
+    }
+
+    // The texture the current season painted, remembered for latecomers.
+    private Texture2D currentSeasonTexture;
+
+    // ==== SCENERY THAT IS NOT PART OF THE CAMP STILL LIVES IN THE YEAR ====
+    //
+    // The pause location is a self-contained little vista with its own terrain
+    // and its own trees, and it was outside the season system entirely: high
+    // summer in the middle of a snowbound camp. Its foliage goes through
+    // RegisterDynamicFoliage like any other late arrival; its terrain needs
+    // this, because the seasonal ground texture is pushed into one shared
+    // material and a terrain with a material of its own never hears about it.
+    //
+    // Safe to call repeatedly - a terrain already known is skipped, and the
+    // material write is idempotent.
+    public void RegisterDynamicTerrain(Terrain terrain)
+    {
+        if (terrain == null) return;
+        if (!cachedTerrains.Contains(terrain)) cachedTerrains.Add(terrain);
+
+        if (currentSeasonTexture != null)
+        {
+            Material m = terrain.materialTemplate;
+            if (m != null && m != globalMaterial && m.HasProperty("_BaseMap"))
+                m.SetTexture("_BaseMap", currentSeasonTexture);
+        }
+
+        UpdateTerrainTrees(currentSeason);
     }
 
     public void RegisterDynamicFoliage(Transform root)

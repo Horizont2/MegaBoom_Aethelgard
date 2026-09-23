@@ -261,7 +261,19 @@ public class PlayerController : MonoBehaviour, IDamageable
     private const float MAX_TOTAL_DR = 0.65f;        // hard cap on damage reduction from gear
     private const float ATTACK_SPEED_SCALE = 0.5f;   // dampening on the weapon attack-speed bonus
     private const float MIN_ATTACK_COOLDOWN = 0.28f; // floor so attacks can't get trivially fast
-    private const float MAX_CRIT_CHANCE = 0.85f;     // clamp so maxed crit stays below certainty
+    // ==== THE CAP WAS DECLARED IN ONE PLACE AND APPLIED IN ONE PLACE ====
+    //
+    // This says out loud that maxed crit must stay below certainty, and the
+    // gear load at startup obeys it. The level-up card did not: it clamped to
+    // 1f, its own number, so Keen Eye kept adding five points a pick straight
+    // past the cap. A run that took it a few times on a good sword ended up
+    // critting on essentially every swing, which reads as a bug rather than as
+    // a build - the yellow numbers stop meaning anything when they are all the
+    // numbers.
+    //
+    // Public and const so there is exactly one cap in the project and anything
+    // that raises crit has to go through it.
+    public const float MAX_CRIT_CHANCE = 0.85f;      // clamp so maxed crit stays below certainty
     private float baseAttackCooldown = 0f;           // captured inspector cooldown before gear scaling
 
     // === LvlUp-driven RPG stats (extended in this polish pass) ===

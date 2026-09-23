@@ -289,7 +289,21 @@ public class MercenaryCampaignManager : MonoBehaviour
             if (ResourceManager.Instance != null && c.diamondsAwarded > 0)
                 ResourceManager.Instance.AddDiamonds(c.diamondsAwarded);
 
-            if (region != null)
+            // ==== A REGION THAT CANNOT BE FOUND IS NOT A REASON TO GO QUIET ====
+            //
+            // FindRegionByID walks regionCatalogue, a list assigned by hand in
+            // the inspector. A campaign whose region is missing from it fell
+            // through this if, paid out the diamonds, announced a victory with
+            // "?" for the region name and never conquered anything. The army
+            // came home, one soldier short, and the map was unchanged - with
+            // nothing anywhere saying why.
+            if (region == null)
+            {
+                Debug.LogError($"[MercenaryCampaignManager] Won the campaign for region {c.regionID}, but no " +
+                               "RegionData with that id is in regionCatalogue on this object. The region cannot " +
+                               "be conquered. Assign the full list of regions in the inspector.", this);
+            }
+            else
             {
                 // Route through MapProgressionManager when it's live —
                 // that handles PlayerPrefs, neighbour unlock, and event.
@@ -328,6 +342,28 @@ public class MercenaryCampaignManager : MonoBehaviour
                         }
                     }
                     PlayerPrefs.Save();
+                }
+
+                // ==== SAY WHETHER IT ACTUALLY LANDED ====
+                //
+                // Two different code paths write this, one of them chosen by
+                // whether a manager happens to exist in the current scene, and
+                // the state itself only shows up the next time the map is
+                // opened. Reading it straight back turns "the region did not
+                // become conquered" from a guess into a fact, and says which
+                // of the two paths was taken.
+                int savedState = PlayerPrefs.GetInt("RegionState_" + region.regionID, -1);
+                string via = MapProgressionManager.Instance != null ? "MapProgressionManager" : "PlayerPrefs directly";
+                if (savedState == (int)RegionState.Conquered)
+                {
+                    GameLog.Info($"[Merc] '{region.regionName}' conquered via {via} " +
+                                 $"(RegionState_{region.regionID} = Conquered).");
+                }
+                else
+                {
+                    Debug.LogError($"[MercenaryCampaignManager] Won '{region.regionName}' and wrote the state via " +
+                                   $"{via}, but RegionState_{region.regionID} reads back as {savedState}. " +
+                                   "The region will still look unconquered on the map.", this);
                 }
             }
 
