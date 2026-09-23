@@ -934,6 +934,44 @@ public class AudioManager : MonoBehaviour
         sfxDictionary.Add("Dialogue/Dialogue8", dialogue8);
         sfxDictionary.Add("Dialogue/Dialogue9", dialogue9);
         sfxDictionary.Add("Dialogue/Dialogue10", dialogue10);
+
+        AuditUnwiredEvents();
+    }
+
+    // ==== AN UNWIRED EVENT IS INVISIBLE UNTIL SOMEBODY REPORTS IT ====
+    //
+    // Shop_Equip and Shop_Upgrade have no FMOD event assigned in ShopScene, so
+    // equipping falls back to UI_Click and an upgrade falls back to
+    // UI_LevelUp. Nothing is silent and nothing warns, which is why it reads as
+    // "the equip sound sometimes does not play": it never plays, and what you
+    // hear instead is the same click every other button makes.
+    //
+    // The fallback table is the right behaviour - silence at the moment of a
+    // purchase is worse than a borrowed sound. What was missing is anybody
+    // saying which ones are borrowed. One line at startup lists them, so the
+    // set of events still to author is a list rather than a thing discovered
+    // one complaint at a time.
+    private void AuditUnwiredEvents()
+    {
+        if (sfxDictionary == null) return;
+
+        var borrowed = new List<string>();
+        var silent = new List<string>();
+
+        foreach (var kv in sfxDictionary)
+        {
+            if (kv.Value != null && !kv.Value.fmodEvent.IsNull) continue;
+            if (s_sfxFallback.TryGetValue(kv.Key, out string fb)) borrowed.Add($"{kv.Key} -> {fb}");
+            else silent.Add(kv.Key);
+        }
+
+        if (borrowed.Count > 0)
+            Debug.Log($"[Audio] {borrowed.Count} event(s) unassigned, playing a stand-in:\n  " +
+                      string.Join("\n  ", borrowed), this);
+
+        if (silent.Count > 0)
+            Debug.LogWarning($"[Audio] {silent.Count} event(s) unassigned with NO fallback - these are silent:\n  " +
+                             string.Join("\n  ", silent), this);
     }
 
     public void PlayUI(string soundName) { PlaySFX(soundName); }
