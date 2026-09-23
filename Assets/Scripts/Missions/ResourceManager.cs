@@ -500,7 +500,31 @@ public class ResourceManager : MonoBehaviour
     // objects (which only existed on the camp HUD). Routes through
     // GlobalHUD so the polished left-side stack shows on every scene
     // (camp, region capture, gameplay).
+    // ==== A TOAST MUST NOT BE ABLE TO CANCEL A TRANSACTION ====
+    //
+    // SpendStashResources subtracts the resources and then calls this. It is
+    // the last, purely cosmetic step of a purchase - and for a long time it
+    // was also the step that could kill one. A throw in the HUD's label
+    // building (see GlobalHUD.AdoptHudFontStyle for what was throwing and why)
+    // propagated out of SpendStashResources and abandoned whatever the caller
+    // was half way through: the region upgrade took the wood, threw here, and
+    // never wrote the level, played the sound or refreshed the map.
+    //
+    // The specific throw is fixed. This is the rule that makes the class of
+    // bug impossible: whatever the HUD does, the money has already moved and
+    // the caller is entitled to carry on. A line the player did not see is a
+    // cosmetic loss; a purchase that charged and did nothing is not.
     private void ShowResourceToast(int amount, string label, Color color)
+    {
+        try { ShowResourceToastBody(amount, label, color); }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ResourceManager] The '{label}' gain/spend line could not be drawn. The transaction " +
+                           "itself went through. " + e);
+        }
+    }
+
+    private void ShowResourceToastBody(int amount, string label, Color color)
     {
         if (GlobalHUD.Instance == null || amount == 0) return;
         // Coalescing toast: passive income trickles in every tick, so this

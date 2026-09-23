@@ -390,7 +390,7 @@ public class GlobalHUD : MonoBehaviour
         txtRect.offsetMax = Vector2.zero;
 
         skipPromptText = txtObj.AddComponent<TextMeshProUGUI>();
-        GiveFontAndOutline(skipPromptText, 0.2f);
+        AdoptHudFontStyle(skipPromptText);
         skipPromptText.text = LocalizationManager.Tr("Press <b>SPACE</b> to Skip");
         skipPromptText.fontSize = 24f;
         skipPromptText.alignment = TextAlignmentOptions.Center;
@@ -1674,54 +1674,60 @@ public class GlobalHUD : MonoBehaviour
     private const float RESOURCE_TOAST_HOLD = 1.6f;
 
 
-    // ==== A RUNTIME TMP WITH NO FONT HAS NO MATERIAL, AND OUTLINE NEEDS ONE ====
+    // ==== DO NOT BUILD A TMP MATERIAL AT RUNTIME. BORROW ONE. ====
     //
-    // AddComponent<TextMeshProUGUI>() gives you a label with no font asset
-    // unless TMP_Settings has a default one to hand it. No font means no
-    // material, and outlineWidth's setter does `new Material(fontSharedMaterial)`
-    // - so it throws ArgumentNullException deep inside TMP, with a stack that
-    // names nothing recognisable.
+    // These labels are created with AddComponent<TextMeshProUGUI>() and then
+    // had an outline set on them, and that one line has been breaking
+    // purchases across the whole game.
     //
-    // That one throw was doing a lot of damage, because SpendStashResources
-    // subtracts the resources FIRST and then asks for a "-50 Wood" line. Every
-    // purchase in the game that spent stash on a label with no live toast took
-    // the money, threw here, and abandoned whatever it was doing - which is why
-    // a region upgrade charged the player, played no sound and never raised the
-    // level. Same for any other spend that happens to be the first of its kind.
+    // outlineWidth's setter instances a material off the font's own material.
+    // With no font asset there is nothing to instance from and it throws
+    // ArgumentNullException; give it a font and it still throws, now a
+    // NullReferenceException from inside SetOutlineThickness, because a TMP
+    // added this frame has not finished standing itself up. Either way the
+    // exception lands in the middle of somebody's transaction.
     //
-    // A label built here now borrows the font off something authored in this
-    // HUD, which is both guaranteed to work and the right typeface anyway, and
-    // the outline is only applied once there is a material to instance.
-    private TMP_FontAsset _runtimeLabelFont;
+    // It damaged a lot, because SpendStashResources subtracts the resources
+    // FIRST and then asks for a "-50 Wood" line. The coalescing branch reuses a
+    // live toast and never touched this, so a spend only died when it was the
+    // first of its resource in the last 1.6 seconds - intermittent, and fatal
+    // to the region upgrade, which is the first thing most sessions buy.
+    //
+    // So nothing is instanced any more. The label takes the font AND the
+    // material off a label authored in this HUD, which already has both, and
+    // already has whatever outline the game's text uses. It is one assignment,
+    // it cannot throw, and it makes these lines match the rest of the HUD
+    // rather than approximate it.
+    private TMP_Text _styleSource;
 
-    private TMP_FontAsset RuntimeLabelFont()
+    private TMP_Text StyleSource()
     {
-        if (_runtimeLabelFont != null) return _runtimeLabelFont;
+        if (_styleSource != null) return _styleSource;
 
         foreach (var t in GetComponentsInChildren<TMP_Text>(true))
         {
-            if (t != null && t.font != null) { _runtimeLabelFont = t.font; break; }
+            if (t == null) continue;
+            if (t.font == null || t.fontSharedMaterial == null) continue;
+            _styleSource = t;
+            break;
         }
-        if (_runtimeLabelFont == null) _runtimeLabelFont = TMP_Settings.defaultFontAsset;
-
-        if (_runtimeLabelFont == null)
-            Debug.LogWarning("[GlobalHUD] No TMP font asset anywhere in this HUD and none set as the TMP default, " +
-                             "so runtime labels will have no outline. Set Project Settings > TextMesh Pro > " +
-                             "Default Font Asset.", this);
-
-        return _runtimeLabelFont;
+        return _styleSource;
     }
 
-    private void GiveFontAndOutline(TMP_Text tmp, float outline)
+    private void AdoptHudFontStyle(TMP_Text tmp)
     {
         if (tmp == null) return;
 
-        var font = RuntimeLabelFont();
-        if (font != null && tmp.font == null) tmp.font = font;
+        var src = StyleSource();
+        if (src == null)
+        {
+            Debug.LogWarning("[GlobalHUD] No authored TMP label in this HUD to take a font from, so runtime " +
+                             "labels fall back to whatever TMP hands them.", this);
+            return;
+        }
 
-        if (tmp.fontSharedMaterial == null) return;   // nothing to instance an outline from
-        tmp.outlineWidth = outline;
-        tmp.outlineColor = Color.black;
+        tmp.font = src.font;
+        tmp.fontSharedMaterial = src.fontSharedMaterial;
     }
 
     public void ShowResourceGain(int amount, string label, Color color)
@@ -1748,7 +1754,7 @@ public class GlobalHUD : MonoBehaviour
         rt.sizeDelta = new Vector2(400f, 36f);
 
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
-        GiveFontAndOutline(tmp, 0.18f);
+        AdoptHudFontStyle(tmp);
         tmp.fontSize = 26f; tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Left; tmp.raycastTarget = false;
 
@@ -1990,7 +1996,7 @@ public class GlobalHUD : MonoBehaviour
         rt.anchoredPosition = new Vector2(0f, 0f);
 
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
-        GiveFontAndOutline(tmp, 0.18f);
+        AdoptHudFontStyle(tmp);
         tmp.text = text;
         tmp.fontSize = 26f;
         tmp.fontStyle = FontStyles.Bold;
