@@ -1292,7 +1292,18 @@ public class ShopManager : MonoBehaviour
             WeaponData w = selectedWeaponData;
             int lvl = PlayerPrefs.GetInt("WeaponLevel_" + w.weaponID, 0);
             bool isBought = PlayerPrefs.GetInt("WeaponUnlocked_" + w.weaponID, w.price == 0 ? 1 : 0) == 1;
-            bool isEquipped = PlayerPrefs.GetInt("SelectedWeaponID", 0) == w.weaponID;
+            // ==== SHIELDS ARE NOT TRACKED BY SelectedWeaponID ====
+            //
+            // The list rows already knew this — there is a long note above
+            // ResolveEquippedShieldID about it — and the DETAIL panel was
+            // missed. It asked SelectedWeaponID for every category, and that
+            // key holds the sword. A shield can never match it, so the default
+            // shield, which the player is carrying from the first second, came
+            // up as not equipped: the button read EQUIP and stayed clickable.
+            int equippedID = w.category == ItemCategory.Shield
+                           ? ResolveEquippedShieldID()
+                           : PlayerPrefs.GetInt("SelectedWeaponID", 0);
+            bool isEquipped = equippedID == w.weaponID;
 
             UpdateItemDetails(w.weaponName, w.description, w.icon, lvl, w.maxUpgradeLevel, w.price, isBought, isEquipped, myDiamonds, w.GetUpgradeCost(lvl));
             bool wPreview = isBought && lvl < w.maxUpgradeLevel;

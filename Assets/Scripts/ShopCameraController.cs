@@ -22,6 +22,11 @@ public class ShopCameraController : MonoBehaviour
     // НОВЕ: Ракурс для огляду зброї
     public Transform weaponView;
 
+    // Shields hang on the other arm, so the weapon view frames the wrong side
+    // of the hero for them. Assign a transform here and point the shield
+    // category button at MoveToShield (or MoveToCategory with 7).
+    public Transform shieldView;
+
     private Coroutine moveCoroutine;
 
     private void Awake()
@@ -53,12 +58,20 @@ public class ShopCameraController : MonoBehaviour
             case 4: target = legsView; break;   // Legs
             case 5: target = feetView; break;   // Feet
             case 6: target = weaponView; break; // НОВЕ: Weapon (Зброя)
+            case 7: target = shieldView; break; // Shield
         }
 
         if (target != null) MoveToTarget(target);
     }
 
     // Метод для кнопки "Back to Categories"
+    // Named, so the shield button in the UI does not have to carry a magic
+    // number that means nothing to whoever opens the inspector next.
+    public void MoveToShield()
+    {
+        MoveToTarget(shieldView != null ? shieldView : (weaponView != null ? weaponView : defaultView));
+    }
+
     public void MoveToDefault()
     {
         if (defaultView != null) MoveToTarget(defaultView);
