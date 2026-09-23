@@ -390,13 +390,12 @@ public class GlobalHUD : MonoBehaviour
         txtRect.offsetMax = Vector2.zero;
 
         skipPromptText = txtObj.AddComponent<TextMeshProUGUI>();
+        GiveFontAndOutline(skipPromptText, 0.2f);
         skipPromptText.text = LocalizationManager.Tr("Press <b>SPACE</b> to Skip");
         skipPromptText.fontSize = 24f;
         skipPromptText.alignment = TextAlignmentOptions.Center;
         skipPromptText.color = new Color(1f, 0.92f, 0.72f, 0.9f);
         skipPromptText.fontStyle = FontStyles.Normal;
-        skipPromptText.outlineWidth = 0.2f;
-        skipPromptText.outlineColor = Color.black;
         skipPromptText.raycastTarget = false;
 
         hostRect.SetAsLastSibling();
@@ -1674,6 +1673,57 @@ public class GlobalHUD : MonoBehaviour
     private readonly Dictionary<string, ResourceToast> resourceToasts = new Dictionary<string, ResourceToast>();
     private const float RESOURCE_TOAST_HOLD = 1.6f;
 
+
+    // ==== A RUNTIME TMP WITH NO FONT HAS NO MATERIAL, AND OUTLINE NEEDS ONE ====
+    //
+    // AddComponent<TextMeshProUGUI>() gives you a label with no font asset
+    // unless TMP_Settings has a default one to hand it. No font means no
+    // material, and outlineWidth's setter does `new Material(fontSharedMaterial)`
+    // - so it throws ArgumentNullException deep inside TMP, with a stack that
+    // names nothing recognisable.
+    //
+    // That one throw was doing a lot of damage, because SpendStashResources
+    // subtracts the resources FIRST and then asks for a "-50 Wood" line. Every
+    // purchase in the game that spent stash on a label with no live toast took
+    // the money, threw here, and abandoned whatever it was doing - which is why
+    // a region upgrade charged the player, played no sound and never raised the
+    // level. Same for any other spend that happens to be the first of its kind.
+    //
+    // A label built here now borrows the font off something authored in this
+    // HUD, which is both guaranteed to work and the right typeface anyway, and
+    // the outline is only applied once there is a material to instance.
+    private TMP_FontAsset _runtimeLabelFont;
+
+    private TMP_FontAsset RuntimeLabelFont()
+    {
+        if (_runtimeLabelFont != null) return _runtimeLabelFont;
+
+        foreach (var t in GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (t != null && t.font != null) { _runtimeLabelFont = t.font; break; }
+        }
+        if (_runtimeLabelFont == null) _runtimeLabelFont = TMP_Settings.defaultFontAsset;
+
+        if (_runtimeLabelFont == null)
+            Debug.LogWarning("[GlobalHUD] No TMP font asset anywhere in this HUD and none set as the TMP default, " +
+                             "so runtime labels will have no outline. Set Project Settings > TextMesh Pro > " +
+                             "Default Font Asset.", this);
+
+        return _runtimeLabelFont;
+    }
+
+    private void GiveFontAndOutline(TMP_Text tmp, float outline)
+    {
+        if (tmp == null) return;
+
+        var font = RuntimeLabelFont();
+        if (font != null && tmp.font == null) tmp.font = font;
+
+        if (tmp.fontSharedMaterial == null) return;   // nothing to instance an outline from
+        tmp.outlineWidth = outline;
+        tmp.outlineColor = Color.black;
+    }
+
     public void ShowResourceGain(int amount, string label, Color color)
     {
         if (!gameObject.activeInHierarchy || amount == 0) return;
@@ -1698,8 +1748,8 @@ public class GlobalHUD : MonoBehaviour
         rt.sizeDelta = new Vector2(400f, 36f);
 
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
+        GiveFontAndOutline(tmp, 0.18f);
         tmp.fontSize = 26f; tmp.fontStyle = FontStyles.Bold;
-        tmp.outlineWidth = 0.18f; tmp.outlineColor = Color.black;
         tmp.alignment = TextAlignmentOptions.Left; tmp.raycastTarget = false;
 
         var toast = new ResourceToast { rt = rt, tmp = tmp, total = amount, color = color, expire = Time.unscaledTime + RESOURCE_TOAST_HOLD };
@@ -1940,12 +1990,11 @@ public class GlobalHUD : MonoBehaviour
         rt.anchoredPosition = new Vector2(0f, 0f);
 
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
+        GiveFontAndOutline(tmp, 0.18f);
         tmp.text = text;
         tmp.fontSize = 26f;
         tmp.fontStyle = FontStyles.Bold;
         tmp.color = color;
-        tmp.outlineWidth = 0.18f;
-        tmp.outlineColor = Color.black;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.raycastTarget = false;
 
