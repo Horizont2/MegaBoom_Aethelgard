@@ -168,6 +168,29 @@ public class MapPanelUI : MonoBehaviour
 
     public void ClosePanel()
     {
+        // ==== CLOSED MEANS CLOSED NOW, NOT WHEN THE SLIDE FINISHES ====
+        //
+        // IsPanelOpen() is canvasGroup.interactable, and the only thing that
+        // cleared it was the last line of AnimatePanel. So the panel counted as
+        // open for the whole quarter-second slide - and if anything cut that
+        // coroutine short it counted as open forever. Closing the map disables
+        // the map canvas at the end of CloseMapSequence, which is exactly the
+        // kind of thing that cuts a coroutine short.
+        //
+        // A panel stuck reporting open is not a cosmetic problem. GlobalHUD's
+        // Escape handler asks MapPanelUI whether it is open before it reaches
+        // the pause menu, and closes it and swallows the key if it says yes.
+        // One stuck flag and Escape never pauses the game again for the rest of
+        // the session - which is the report.
+        //
+        // Interactivity ends the moment the close is asked for. The animation
+        // is only the picture sliding away.
+        if (canvasGroup != null)
+        {
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+        }
+
         if (currentRegion == null) return;
         ToggleUpgradeFocus(false);
 

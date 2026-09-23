@@ -236,6 +236,22 @@ public class DayNightCycle : MonoBehaviour
 
         if (snowVFXPrefab != null)
         {
+            // ==== THE "PREFAB" IS AN OBJECT IN THE SCENE ====
+            //
+            // The field is named prefab and typed GameObject, and in GameScene
+            // it points at the Snow Particles instance sitting in the scene.
+            // Instantiate happily clones a scene object — and leaves the
+            // ORIGINAL running. So the game got two snowfalls: the clone, which
+            // every weather and season rule below operates on, and the source,
+            // which nothing has a reference to and nothing can ever switch off.
+            //
+            // The line below this was meant to prevent exactly that, but it
+            // switches off snowVFX, which is a different field and is empty in
+            // both scenes. Silencing the source is the only thing that closes
+            // it. A real prefab asset has no scene, so this touches nothing
+            // when the field is used the way its name suggests.
+            if (snowVFXPrefab.scene.IsValid()) snowVFXPrefab.SetActive(false);
+
             var spawned = Instantiate(snowVFXPrefab, transform);
             var ps = spawned.GetComponentInChildren<ParticleSystem>(true);
             if (ps != null)

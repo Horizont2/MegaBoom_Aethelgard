@@ -216,12 +216,21 @@ public class GlobalHUD : MonoBehaviour
             if (BarracksUpgradePanel.IsOpen) return;
             if (NoticeBoardManager.IsAnyBoardOpen) return;
 
+            // ==== A REGION PANEL CANNOT LEGITIMATELY BE OPEN DOWN HERE ====
+            //
+            // MapTableInteract.IsMapActive is checked a few lines above and
+            // returns, so by this point the map table is shut. A MapPanelUI
+            // still reporting itself open is therefore a leftover, and
+            // swallowing the key for it means Escape never reaches the pause
+            // menu again.
+            //
+            // So it is closed, and then the key carries on to the pause menu
+            // instead of being eaten. The panel not clearing its own flag is
+            // fixed in MapPanelUI.ClosePanel; this is the second lock on the
+            // same door, because being unable to pause is much worse than
+            // closing a panel that was already shut.
             MapPanelUI mapPanel = FindFirstObjectByType<MapPanelUI>();
-            if (mapPanel != null && mapPanel.IsPanelOpen())
-            {
-                mapPanel.ClosePanel();
-                return;
-            }
+            if (mapPanel != null && mapPanel.IsPanelOpen()) mapPanel.ClosePanel();
 
             string sceneName = SceneManager.GetActiveScene().name;
             if (sceneName == "ShopScene")

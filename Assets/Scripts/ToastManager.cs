@@ -32,39 +32,28 @@ public static class ToastManager
     }
 }
 
-// ==== EVERY TOAST IN THE GAME WAS BEING THROWN AWAY ====
+// ==== TOASTS GO IN THE SAME FEED AS EVERYTHING ELSE ====
 //
-// The comment above says Show is "a silent no-op" when no ToastUIController is
-// in the scene. A GUID search across every .unity and .prefab returns nothing:
-// there is no controller, anywhere, and there never has been. So all twelve
-// callers — quicksave, quickload, a lore entry found, an achievement unlocked,
-// the army being full, a camp-guide step completed, and every mercenary
-// campaign result — have been posting to an event with no subscribers.
+// There is no ToastUIController in any scene - a GUID search across every
+// .unity and .prefab returns nothing - so every caller (quicksave, quickload,
+// a lore entry found, an achievement unlocked, the army being full, a camp
+// guide step, every mercenary campaign result) was posting to an event with no
+// subscribers, and the messages were discarded.
 //
-// That is why a campaign's outcome could only be discovered by opening the
-// world map: the toast that was supposed to announce it was discarded the
-// moment it was raised.
+// The first attempt at fixing that built its own canvas at runtime and stacked
+// dark plates in the top right. It made the messages visible and it was wrong:
+// the game already has a place where it tells you things, the feed in the
+// bottom left that prints "+12 Wood" when you pick something up, and a second
+// notification system in a second corner in a second style reads as two
+// different games.
 //
-// This renders them. It is deliberately plain — a stack in the top right, a
-// dark plate, an accent bar in the kind's colour — because it exists to make
-// the existing messages VISIBLE, not to be the final art. Authoring a real
-// ToastUIController switches it off automatically; it never draws alongside
-// one.
-public class FallbackToastRenderer : MonoBehaviour
+// So a toast is now a line in that feed, in the same container and the same
+// font as a felled tree or a chest, tinted by kind. Nothing about the callers
+// changes. Authoring a real ToastUIController still switches this off.
+public static class FallbackToastRenderer
 {
-    private static FallbackToastRenderer s_instance;
     private static bool s_controllerChecked;
     private static bool s_controllerPresent;
-
-    private RectTransform _stack;
-    private readonly List<RectTransform> _live = new List<RectTransform>(6);
-
-    private const int MaxOnScreen = 4;
-    private const float Hold = 3.2f;
-    private const float Fade = 0.28f;
-    private const float Width = 460f;
-    private const float Height = 64f;
-    private const float Gap = 8f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Hook()
@@ -90,153 +79,28 @@ public class FallbackToastRenderer : MonoBehaviour
         }
         if (s_controllerPresent) return;
 
-        if (s_instance == null)
+        // The menu has no HUD, and a message with nowhere to go should still
+        // leave a trace rather than disappear the way these used to.
+        if (GlobalHUD.Instance == null)
         {
-            var go = new GameObject("[Toasts]");
-            DontDestroyOnLoad(go);
-            s_instance = go.AddComponent<FallbackToastRenderer>();
-            s_instance.Build(go);
+            Debug.Log("[Toast] " + req.text);
+            return;
         }
-        s_instance.Spawn(req);
+
+        GlobalHUD.Instance.ShowPickupPopup(req.text, TintFor(req.kind));
     }
 
-    private void Build(GameObject go)
-    {
-        var canvas = go.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        // Above the HUD, below the victory screen (5000) and the trailer's
-        // impact veil, so a toast never covers a scene transition.
-        canvas.sortingOrder = 4000;
-
-        var scaler = go.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
-        var stackGo = new GameObject("Stack", typeof(RectTransform));
-        _stack = stackGo.GetComponent<RectTransform>();
-        _stack.SetParent(go.transform, false);
-        // Top right: the objective and boss bars own the top centre, the
-        // prompt owns the bottom centre and resource gains the bottom left.
-        _stack.anchorMin = _stack.anchorMax = new Vector2(1f, 1f);
-        _stack.pivot = new Vector2(1f, 1f);
-        _stack.anchoredPosition = new Vector2(-28f, -28f);
-        _stack.sizeDelta = new Vector2(Width, 0f);
-    }
-
-    private void Spawn(ToastManager.ToastRequest req)
-    {
-        while (_live.Count >= MaxOnScreen)
-        {
-            if (_live[0] != null) Destroy(_live[0].gameObject);
-            _live.RemoveAt(0);
-        }
-
-        var go = new GameObject("Toast", typeof(RectTransform));
-        var rt = go.GetComponent<RectTransform>();
-        rt.SetParent(_stack, false);
-        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(1f, 1f);
-        rt.sizeDelta = new Vector2(Width, Height);
-
-        var group = go.AddComponent<CanvasGroup>();
-        group.alpha = 0f;
-        group.blocksRaycasts = false;
-        group.interactable = false;
-
-        var plate = go.AddComponent<Image>();
-        plate.color = new Color(0.06f, 0.06f, 0.07f, 0.9f);
-        plate.raycastTarget = false;
-
-        var barGo = new GameObject("Accent", typeof(RectTransform));
-        var barRt = barGo.GetComponent<RectTransform>();
-        barRt.SetParent(rt, false);
-        barRt.anchorMin = new Vector2(0f, 0f);
-        barRt.anchorMax = new Vector2(0f, 1f);
-        barRt.pivot = new Vector2(0f, 0.5f);
-        barRt.sizeDelta = new Vector2(5f, 0f);
-        barRt.anchoredPosition = Vector2.zero;
-        var bar = barGo.AddComponent<Image>();
-        bar.color = AccentFor(req.kind);
-        bar.raycastTarget = false;
-
-        var labelGo = new GameObject("Label", typeof(RectTransform));
-        var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.SetParent(rt, false);
-        labelRt.anchorMin = Vector2.zero;
-        labelRt.anchorMax = Vector2.one;
-        labelRt.offsetMin = new Vector2(18f, 6f);
-        labelRt.offsetMax = new Vector2(-14f, -6f);
-        var label = labelGo.AddComponent<TextMeshProUGUI>();
-        label.text = req.text;
-        label.fontSize = 22f;
-        label.alignment = TextAlignmentOptions.MidlineLeft;
-        label.overflowMode = TextOverflowModes.Ellipsis;
-        label.color = new Color(0.93f, 0.92f, 0.89f);
-        label.raycastTarget = false;
-        // The text is already localised by the caller; do not let the canvas
-        // walker re-capture it as a key and put English back.
-        labelGo.AddComponent<NoAutoLocalize>();
-
-        _live.Add(rt);
-        Relayout();
-        StartCoroutine(Life(rt, group));
-    }
-
-    private void Relayout()
-    {
-        for (int i = 0; i < _live.Count; i++)
-        {
-            if (_live[i] == null) continue;
-            _live[i].anchoredPosition = new Vector2(0f, -i * (Height + Gap));
-        }
-    }
-
-    private IEnumerator Life(RectTransform rt, CanvasGroup group)
-    {
-        // Unscaled throughout: a toast that announces a campaign result must
-        // still be readable with the map open, the game paused, or a level-up
-        // card holding timeScale at zero.
-        float t = 0f;
-        Vector2 home = rt.anchoredPosition;
-        while (t < 1f && rt != null)
-        {
-            t += Time.unscaledDeltaTime / Fade;
-            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
-            group.alpha = k;
-            rt.anchoredPosition = home + new Vector2(Mathf.Lerp(40f, 0f, k), 0f);
-            yield return null;
-        }
-        if (rt != null) { group.alpha = 1f; rt.anchoredPosition = home; }
-
-        float hold = 0f;
-        while (hold < Hold) { hold += Time.unscaledDeltaTime; yield return null; }
-
-        t = 0f;
-        while (t < 1f && rt != null)
-        {
-            t += Time.unscaledDeltaTime / Fade;
-            group.alpha = 1f - Mathf.Clamp01(t);
-            yield return null;
-        }
-
-        if (rt != null)
-        {
-            _live.Remove(rt);
-            Destroy(rt.gameObject);
-            Relayout();
-        }
-    }
-
-    private static Color AccentFor(ToastManager.ToastKind kind)
+    // Kind still reads at a glance, but as the colour of the line rather than
+    // as a coloured bar on a plate of its own.
+    private static Color TintFor(ToastManager.ToastKind kind)
     {
         switch (kind)
         {
-            case ToastManager.ToastKind.Achievement: return new Color(0.95f, 0.78f, 0.35f);
-            case ToastManager.ToastKind.Save:        return new Color(0.45f, 0.78f, 0.95f);
-            case ToastManager.ToastKind.Warning:     return new Color(0.95f, 0.45f, 0.35f);
-            case ToastManager.ToastKind.Lore:        return new Color(0.72f, 0.58f, 0.95f);
-            default:                                  return new Color(0.7f, 0.72f, 0.74f);
+            case ToastManager.ToastKind.Achievement: return new Color(0.98f, 0.82f, 0.38f);
+            case ToastManager.ToastKind.Save:        return new Color(0.55f, 0.82f, 0.98f);
+            case ToastManager.ToastKind.Warning:     return new Color(0.98f, 0.52f, 0.40f);
+            case ToastManager.ToastKind.Lore:        return new Color(0.78f, 0.64f, 0.98f);
+            default:                                  return new Color(0.93f, 0.92f, 0.89f);
         }
     }
 }

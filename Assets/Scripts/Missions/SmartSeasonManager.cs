@@ -162,6 +162,24 @@ public class SmartSeasonManager : MonoBehaviour
         //  ешуЇмо VFX один раз
         if (snowParticlesPrefab != null)
         {
+            // ==== THE "PREFAB" IS AN OBJECT IN THE SCENE ====
+            //
+            // The field is named prefab and typed GameObject, and in CampScene
+            // it points at the child of Snow_VFX - an object sitting in the
+            // scene, switched on. Instantiate clones a scene object perfectly
+            // well and leaves the ORIGINAL running, so the camp had two
+            // snowfalls: the clone, which ApplySeason turns on in winter and
+            // off the rest of the year, and the source, which nothing holds a
+            // reference to and nothing can switch off. That is the snow that
+            // falls in the camp in every season.
+            //
+            // The line below was meant to stop it, but it switches off
+            // snowParticles - a different field, and empty in this scene.
+            // Silencing the source is what actually closes it, and a real
+            // prefab asset has no scene, so nothing happens when the field is
+            // used the way its name suggests.
+            if (snowParticlesPrefab.scene.IsValid()) snowParticlesPrefab.SetActive(false);
+
             var spawnedSnow = Instantiate(snowParticlesPrefab, transform);
             if (spawnedSnow.GetComponentInChildren<ParticleSystem>(true) != null)
             {
