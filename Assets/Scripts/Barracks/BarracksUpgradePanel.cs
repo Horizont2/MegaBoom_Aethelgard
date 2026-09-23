@@ -350,6 +350,20 @@ public class BarracksUpgradePanel : MonoBehaviour
         RefreshHireTab(r);
         RefreshUpgradeTab(r);
         RefreshBarracksTab();
+
+        // ==== ROWS BUILT AFTER THE PANEL OPENED WERE NEVER SOLIDIFIED ====
+        //
+        // Open() solidifies the whole subtree once, which fixes every control
+        // that exists at that moment. The hire and upgrade rows do not: they
+        // are instantiated from a prefab by the three Refresh calls above, and
+        // a row spawned after that single sweep keeps Unity's default disabled
+        // colour - the normal colour at about half alpha.
+        //
+        // Switching category is what builds them, so the buttons the player
+        // just navigated to are exactly the ones that come out dark. Sweeping
+        // again here catches every row however it arrived, and Dim is
+        // idempotent, so doing it to the same button twice costs nothing.
+        if (rootObject != null) UIButtonState.SolidifyAllUnder(rootObject.transform);
     }
 
     private void RefreshHeaderPips()
