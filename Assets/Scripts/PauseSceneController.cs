@@ -56,6 +56,54 @@ public class PauseSceneController : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // Registered here as well as on the first pause. Doing it only on pause
+        // meant the very first frame the player ever saw of this place was in
+        // whatever season it was authored in, with the correct one arriving a
+        // frame later. It is the same call twice and the second one is nearly
+        // free - every renderer is remembered in a HashSet.
+        RegisterSeasonalScenery();
+    }
+
+    // ==== THE PAUSE LOCATION WAS LIVING IN A DIFFERENT YEAR ====
+    //
+    // Camp trees and bushes are re-skinned per season by SmartSeasonManager,
+    // and this vista was outside all of it: high summer behind a pause menu
+    // opened in a snowbound camp.
+    //
+    // The hook existed - foliageRoots plus RegisterDynamicFoliage - and did
+    // nothing whenever the array was left empty, which is easy to do and
+    // impossible to notice. Empty now means the whole pause location, which is
+    // what somebody filling that array in by hand would have selected anyway.
+    // Naming roots explicitly still works and is still faster.
+    //
+    // The terrain is handled too. Foliage is mesh renderers and re-skinning
+    // them is enough; ground colour comes from a texture pushed into one
+    // shared material, so a terrain with a material of its own never heard
+    // about the season at all.
+    private void RegisterSeasonalScenery()
+    {
+        SmartSeasonManager seasonMgr = SmartSeasonManager.Instance;
+        if (seasonMgr == null) seasonMgr = FindFirstObjectByType<SmartSeasonManager>();
+        if (seasonMgr == null) return;
+
+        if (foliageRoots != null && foliageRoots.Length > 0)
+        {
+            foreach (Transform root in foliageRoots)
+                if (root != null) seasonMgr.RegisterDynamicFoliage(root);
+        }
+        else
+        {
+            seasonMgr.RegisterDynamicFoliage(transform);
+        }
+
+        foreach (var t in GetComponentsInChildren<Terrain>(true))
+            seasonMgr.RegisterDynamicTerrain(t);
+
+        foliageRegistered = true;
+    }
+
     public void EnterPause()
     {
         // Read the transition edge BEFORE flipping the flag so a double
@@ -72,20 +120,7 @@ public class PauseSceneController : MonoBehaviour
             player.isControlBlocked = true;
         }
 
-        if (foliageRoots != null && foliageRoots.Length > 0)
-        {
-            SmartSeasonManager seasonMgr = SmartSeasonManager.Instance;
-            if (seasonMgr == null) seasonMgr = FindFirstObjectByType<SmartSeasonManager>();
-
-            if (seasonMgr != null)
-            {
-                foreach (Transform root in foliageRoots)
-                {
-                    if (root != null) seasonMgr.RegisterDynamicFoliage(root);
-                }
-                foliageRegistered = true;
-            }
-        }
+        RegisterSeasonalScenery();
 
         // ЖОРСТКЕ ВІДКЛЮЧЕННЯ ГОЛОВНОЇ КАМЕРИ
         if (Camera.main != null)

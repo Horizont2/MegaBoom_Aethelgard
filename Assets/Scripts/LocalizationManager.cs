@@ -1787,6 +1787,7 @@ public static class LocalizationManager
         // Shop tabs
         Add5("Sword",              "Меч",          "Espada",            "Schwert",            "Épée",              "Miecz");
         Add5("Axe",                "Топор",        "Hacha",             "Axt",                "Hache",             "Topór");
+        Add5("Shield",             "Щит",          "Escudo",            "Schild",             "Bouclier",          "Tarcza");
         Add5("Helmet",             "Шлем",         "Casco",             "Helm",               "Casque",            "Hełm");
         Add5("Gloves",             "Перчатки",     "Guantes",           "Handschuhe",         "Gantelets",         "Rękawice");
         Add5("Legguards",          "Поножи",       "Grebas",            "Beinschienen",       "Jambières",         "Nagolenniki");
@@ -3683,6 +3684,7 @@ public static class LocalizationManager
         // === Shop category labels (Inspector-authored on tab buttons) ===
         AddSelf("Sword",     "Меч");
         AddSelf("Axe",       "Сокира");
+        AddSelf("Shield",    "Щит");
         AddSelf("Helmet",    "Шолом");
         AddSelf("Gloves",    "Рукавиці");
         AddSelf("Legguards", "Поножі");

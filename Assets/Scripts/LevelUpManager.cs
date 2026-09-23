@@ -289,7 +289,11 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeType.HealthRegen: if (player != null) player.healthRegenRate += upgrade.amount; break;
 
             case UpgradeType.CritChance:
-                if (player != null) player.globalCritChance = Mathf.Clamp(player.globalCritChance + upgrade.amount, 0f, 1f);
+                // Clamped to the player's own cap, not to 1f. See
+                // PlayerController.MAX_CRIT_CHANCE - a second, higher limit
+                // here is how crit walked past it a pick at a time.
+                if (player != null) player.globalCritChance =
+                    Mathf.Clamp(player.globalCritChance + upgrade.amount, 0f, PlayerController.MAX_CRIT_CHANCE);
                 break;
             case UpgradeType.CritDamage:
                 if (player != null) player.critDamageMultiplier += upgrade.amount;
