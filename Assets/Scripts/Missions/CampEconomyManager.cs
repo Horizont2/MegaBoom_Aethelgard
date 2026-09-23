@@ -179,18 +179,36 @@ public class CampEconomyManager : MonoBehaviour
     // One line naming where it came from. Without it the numbers in the corner
     // simply change on their own, and a player who was not watching that corner
     // never learns that holding regions is what pays for anything.
+    //
+    // ==== IT WAS SAYING EVERYTHING TWICE, IN TWO DIFFERENT PLACES ====
+    //
+    // This used to build "+12 Wood  +8 Stone" itself and hand it to
+    // ToastManager. Two things were wrong with that.
+    //
+    // The numbers were already on screen. AddStashResources and AddDiamonds
+    // call GlobalHUD.ShowResourceGain on their way through, so the bottom-left
+    // feed had printed "+12 Wood" and "+8 Stone" before this line ran. The
+    // banner repeated them in a second place, in a second style.
+    //
+    // And that second style is a panel ToastManager's fallback renderer builds
+    // at runtime when no ToastUIController is in the scene — which is why the
+    // payout looked nothing like every other thing the game tells you about
+    // resources.
+    //
+    // So the numbers are left to the feed that was already printing them, and
+    // all this adds is the attribution, through ShowPickupPopup: the same
+    // container, the same font, the same stack as a chest or a felled tree.
+    // Called after the resources have been added, so it sits above them.
     private void Announce(int wood, int stone, int food, int diamonds)
     {
         if (!announcePayout) return;
         if (wood <= 0 && stone <= 0 && food <= 0 && diamonds <= 0) return;
+        if (GlobalHUD.Instance == null) return;
 
-        var parts = new List<string>(4);
-        if (wood > 0) parts.Add($"+{wood} {LocalizationManager.Tr("Wood")}");
-        if (stone > 0) parts.Add($"+{stone} {LocalizationManager.Tr("Stone")}");
-        if (food > 0) parts.Add($"+{food} {LocalizationManager.Tr("Food")}");
-        if (diamonds > 0) parts.Add($"+{diamonds} {LocalizationManager.Tr("Diamond")}");
-
-        ToastManager.Show($"{LocalizationManager.Tr("REGION_INCOME")}: {string.Join("  ", parts)}");
+        // Pale gold — reads as tribute next to the wood, stone and food lines
+        // it will be sitting on top of, without competing with any of them.
+        GlobalHUD.Instance.ShowPickupPopup(LocalizationManager.Tr("REGION_INCOME"),
+                                           new Color(0.96f, 0.86f, 0.56f));
     }
 
 }

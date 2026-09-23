@@ -428,20 +428,61 @@ public class MapPanelUI : MonoBehaviour
                     // must never cost the player a level.
                     ResourceManager.Instance.SpendStashResources(nextLevelData.costWood, nextLevelData.costStone, nextLevelData.costFood);
                     int newLevel = currentLevel + 1;
-                    PlayerPrefs.SetInt("RegionLevel_" + currentRegion.regionID, newLevel);
+                    string levelKey = "RegionLevel_" + currentRegion.regionID;
+                    PlayerPrefs.SetInt(levelKey, newLevel);
                     PlayerPrefs.Save();
 
-                    try
+                    // ==== SAY WHAT ACTUALLY HAPPENED ====
+                    //
+                    // The report is that resources are spent and the region stays
+                    // on the same level, and from the code alone there is no way
+                    // to tell whether the write is failing or whether it worked
+                    // and nothing redrew. So the level is read straight back out
+                    // of PlayerPrefs and both numbers go to the console with the
+                    // key they were written under. One line settles it.
+                    int readBack = PlayerPrefs.GetInt(levelKey, -1);
+                    if (readBack != newLevel)
                     {
-                        if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone);
-                        if (upgradeSuccessVFX != null) upgradeSuccessVFX.Play();
-                        StartCoroutine(ShakePanel());
-                        if (MapProgressionManager.Instance != null) MapProgressionManager.Instance.RefreshMapState();
+                        Debug.LogError($"[MapPanelUI] '{currentRegion.regionName}' was charged for level {newLevel} " +
+                                       $"but {levelKey} reads back as {readBack}. The resources are gone and the " +
+                                       "level did not move.");
                     }
-                    catch (System.Exception e)
+                    else
                     {
-                        Debug.LogError("[MapPanelUI] The upgrade went through but its presentation threw. " + e);
+                        Debug.Log($"[MapPanelUI] '{currentRegion.regionName}' upgraded {currentLevel} -> {newLevel} " +
+                                  $"({levelKey}).");
                     }
+
+                    // ==== TELLING THE REST OF THE GAME IS NOT DECORATION ====
+                    //
+                    // RefreshMapState was the LAST line inside the presentation
+                    // try, behind a sound, a particle system and a coroutine. It
+                    // is not presentation: it raises OnMapStateChanged, which is
+                    // how every RegionUI on the map learns to re-read the level
+                    // and swap its icon. Anything above it that threw took it down
+                    // too, and then the level HAD changed while every region on
+                    // the map carried on drawing the old one - which is exactly
+                    // what "the region stays on the same level" looks like.
+                    //
+                    // It runs first now, outside the try, with the same standing
+                    // as the spend and the save.
+                    if (MapProgressionManager.Instance != null) MapProgressionManager.Instance.RefreshMapState();
+
+                    // ==== ONE FAILURE MUST NOT SWALLOW THE OTHERS ====
+                    //
+                    // These were three statements sharing one try. An unassigned
+                    // particle system took the shake down with it; a sound that
+                    // threw took both. Each stands alone now and names itself, so
+                    // a missing upgrade sound stays a missing upgrade sound
+                    // instead of becoming a missing everything.
+                    try { if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX(AudioID.Camp_BuildDone); }
+                    catch (System.Exception e) { Debug.LogError("[MapPanelUI] The upgrade sound threw. " + e); }
+
+                    try { if (upgradeSuccessVFX != null) upgradeSuccessVFX.Play(); }
+                    catch (System.Exception e) { Debug.LogError("[MapPanelUI] The upgrade VFX threw. " + e); }
+
+                    try { StartCoroutine(ShakePanel()); }
+                    catch (System.Exception e) { Debug.LogError("[MapPanelUI] The upgrade panel shake threw. " + e); }
                     finally
                     {
                         // ==== AND THEN COME OUT OF THE CONFIRM STATE ====

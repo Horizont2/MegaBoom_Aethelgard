@@ -269,15 +269,45 @@ public class DayNightCycle : MonoBehaviour
     }
 
     [Header("Weather Volume")]
-    [Tooltip("Horizontal size of the rain/snow emitter box (metres). Should comfortably exceed the visible radius so it never looks like a narrow strip.")]
+    [Tooltip("Fallback horizontal size of the rain/snow emitter box, in metres. ONLY used when the particle system has no usable box shape of its own — an authored shape is left exactly as authored.")]
     public float weatherBoxSize = 75f;
     [Tooltip("Height above the player the weather emitter sits at.")]
     public float weatherBoxHeight = 28f;
     private Transform weatherFollowTarget;
 
+    // Below this the footprint is too small to be a deliberate choice for
+    // weather — it is a default nobody touched, and the fallback applies.
+    private const float MinAuthoredFootprint = 10f;
+
     private void ConfigureWeatherVolume(ParticleSystem ps)
     {
         if (ps == null) return;
+
+        // ==== THE EMITTER MUST NOT HANG OFF THE CAMERA ====
+        //
+        // Rain_VFX is parented to the Main Camera in GameScene, and this is the
+        // whole reason the rain reads as a line.
+        //
+        // The emitter box is flat — a horizontal sheet the drops start from,
+        // which is exactly right. As a child of the camera it inherits the
+        // camera's rotation, so CameraFollow's pitch tips that sheet over with
+        // the view. Tip a flat plane far enough and you are looking at it
+        // edge-on: a strip of rain across the middle of the screen with nothing
+        // either side of it. Every drop still spawns somewhere in the box, but
+        // the box is now standing on its side.
+        //
+        // FollowWeatherToPlayer was written to prevent this and cannot: it
+        // resets the rotation in Update, and CameraFollow rotates the camera in
+        // LateUpdate, which is after. The correction was undone before every
+        // single frame was drawn.
+        //
+        // Nothing is gained by the parenting — this script sets the world
+        // position every frame anyway — so the link is cut. Detached, the
+        // identity rotation stays identity and the order of Update and
+        // LateUpdate stops mattering at all.
+        if (ps.transform.parent != null) ps.transform.SetParent(null, true);
+        ps.transform.rotation = Quaternion.identity;
+
         var main = ps.main;
         main.simulationSpace = ParticleSystemSimulationSpace.World; // don't rotate with the camera
         main.loop = true;                                           // never one-shot → keeps falling
@@ -293,12 +323,52 @@ public class DayNightCycle : MonoBehaviour
         int need = (rate > 0f && life > 0f) ? Mathf.CeilToInt(rate * life * 3f) : 1500;
         main.maxParticles = Mathf.Clamp(Mathf.Max(main.maxParticles, need), 1500, 6000);
 
+        // ==== DO NOT REDESIGN A SHAPE SOMEBODY AUTHORED ====
+        //
+        // This used to run unconditionally:
+        //
+        //     shape.shapeType = Box;
+        //     shape.scale = new Vector3(weatherBoxSize, 1f, weatherBoxSize);
+        //
+        // which threw away whatever was set on the emitter at startup, every
+        // time. Author a tall box so the drops begin at a spread of heights and
+        // you get back a one-metre sheet; author a wider or narrower footprint
+        // and you get back seventy-five. The rest of the volume was not failing
+        // to work — it stopped existing before the first frame.
+        //
+        // The intent behind it was real: with no shape set at all, the drops
+        // fall in a narrow column that vanishes when the camera turns. So the
+        // fallback stays, for the case it was actually written for.
         var shape = ps.shape;
-        shape.enabled = true;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(weatherBoxSize, 1f, weatherBoxSize);
-        // Emit straight down regardless of where the camera looks.
-        ps.transform.rotation = Quaternion.identity;
+        bool authored = shape.enabled
+                     && shape.shapeType == ParticleSystemShapeType.Box
+                     && shape.scale.x >= MinAuthoredFootprint
+                     && shape.scale.z >= MinAuthoredFootprint;
+
+        if (!authored)
+        {
+            // A flat sheet is the right default for falling weather, so height
+            // stays at one — but an authored height is kept if there was one.
+            float height = shape.shapeType == ParticleSystemShapeType.Box
+                         ? Mathf.Max(shape.scale.y, 1f)
+                         : 1f;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(weatherBoxSize, height, weatherBoxSize);
+
+            Debug.Log($"[DayNightCycle] {ps.name} had no usable emitter box, so the fallback " +
+                      $"{weatherBoxSize}x{height}x{weatherBoxSize} was applied. Set a Box shape on the " +
+                      "particle system itself and it will be used as authored.", ps);
+        }
+        else
+        {
+            // Scaling Mode multiplies the shape by the transform, so the size in
+            // the inspector is not the size in the world. Say the real one.
+            Vector3 s = shape.scale;
+            Vector3 t = ps.transform.lossyScale;
+            Debug.Log($"[DayNightCycle] {ps.name} emitter box used as authored: {s.x:0.#}x{s.y:0.#}x{s.z:0.#} " +
+                      $"-> {s.x * t.x:0.#}x{s.y * t.y:0.#}x{s.z * t.z:0.#} m in the world.", ps);
+        }
     }
 
     // Keep the weather volume centred over the player each frame (position only —
