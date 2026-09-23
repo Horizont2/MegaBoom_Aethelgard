@@ -117,6 +117,47 @@ public static class BuildShieldIcons
         return list;
     }
 
+    private static Texture2D RenderPass(PreviewRenderUtility pru, Color background)
+    {
+        pru.camera.backgroundColor = background;
+        pru.BeginStaticPreview(new Rect(0f, 0f, IconSize, IconSize));
+        pru.camera.Render();
+        return pru.EndStaticPreview();
+    }
+
+    // alpha = 1 - (white - black) per channel, taking the strongest channel so a
+    // saturated edge does not go see-through. Colour is the black pass divided
+    // back out by that alpha, because the black pass is the colour already
+    // multiplied by it.
+    private static Texture2D Key(Texture2D onBlack, Texture2D onWhite)
+    {
+        Color[] b = onBlack.GetPixels();
+        Color[] w = onWhite.GetPixels();
+        if (b.Length != w.Length) return null;
+
+        var outPx = new Color[b.Length];
+        int solid = 0;
+
+        for (int i = 0; i < b.Length; i++)
+        {
+            float a = 1f - Mathf.Max(Mathf.Max(w[i].r - b[i].r, w[i].g - b[i].g), w[i].b - b[i].b);
+            a = Mathf.Clamp01(a);
+            if (a > 0.02f) solid++;
+
+            Color c = a > 0.001f ? new Color(b[i].r / a, b[i].g / a, b[i].b / a) : Color.clear;
+            outPx[i] = new Color(Mathf.Clamp01(c.r), Mathf.Clamp01(c.g), Mathf.Clamp01(c.b), a);
+        }
+
+        // Nothing was drawn. Writing this out is how a shield ends up with a
+        // black square for an icon and nobody finds out until it is on screen.
+        if (solid < b.Length / 400) return null;
+
+        var tex = new Texture2D(onBlack.width, onBlack.height, TextureFormat.RGBA32, false);
+        tex.SetPixels(outPx);
+        tex.Apply(false);
+        return tex;
+    }
+
     private static Texture2D RenderIcon(GameObject prefab)
     {
         var pru = new PreviewRenderUtility();
@@ -157,7 +198,6 @@ public static class BuildShieldIcons
             pru.camera.nearClipPlane = 0.01f;
             pru.camera.farClipPlane = radius * 40f;
             pru.camera.clearFlags = CameraClearFlags.SolidColor;
-            pru.camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
 
             // Key from the upper left, a dim cool fill opposite it, so the rim
             // and the boss both read instead of the whole face going flat.
@@ -172,11 +212,26 @@ public static class BuildShieldIcons
             }
             pru.ambientColor = new Color(0.32f, 0.33f, 0.36f, 0f);
 
-            pru.BeginStaticPreview(new Rect(0f, 0f, IconSize, IconSize));
-            pru.camera.Render();
-            Texture2D tex = pru.EndStaticPreview();
-
+            // ==== ENDSTATICPREVIEW HAS NO ALPHA, SO IT IS KEYED OUT ====
+            //
+            // Whatever the camera's background alpha is set to, the texture that
+            // comes back is OPAQUE — the four icons this tool wrote were plain
+            // RGB, which is why a shield in the list is a square with a
+            // background rather than a shield.
+            //
+            // So it is rendered twice, once on black and once on white. Anything
+            // solid looks the same in both; anything transparent differs by
+            // exactly how transparent it is. That gives the alpha, and dividing
+            // the black pass by it gives back the unmultiplied colour. It is the
+            // oldest trick in compositing and it needs nothing from the pipeline.
+            Texture2D onBlack = RenderPass(pru, Color.black);
+            Texture2D onWhite = RenderPass(pru, Color.white);
             Object.DestroyImmediate(inst);
+
+            if (onBlack == null || onWhite == null) return null;
+            Texture2D tex = Key(onBlack, onWhite);
+            Object.DestroyImmediate(onBlack);
+            Object.DestroyImmediate(onWhite);
             return tex;
         }
         finally
