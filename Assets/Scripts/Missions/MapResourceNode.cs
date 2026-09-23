@@ -36,6 +36,19 @@ public class MapResourceNode : MonoBehaviour, IPointerClickHandler
 
     public int GetCurrentAccumulated()
     {
+        // ==== DORMANT, AND IT MUST NOT WAKE UP ====
+        //
+        // These nodes are no longer spawned: CampEconomyManager pays region
+        // income on its own, and having both meant the same numbers were
+        // granted twice. The class survives because prefabs and scenes still
+        // reference it.
+        //
+        // What is left below reads wall-clock time, which is the one thing the
+        // economy is no longer allowed to do - time with the game closed earns
+        // nothing now. So a node placed by hand pays zero rather than quietly
+        // reopening the offline income that was just removed.
+        return 0;
+#pragma warning disable 162
         if (myRegion == null) return 0;
 
         string prefsKey = $"LastCollect_{myRegion.regionID}_{resourceType}";
@@ -63,6 +76,7 @@ public class MapResourceNode : MonoBehaviour, IPointerClickHandler
         }
 
         return Mathf.FloorToInt(hoursPassed * ratePerHour);
+    #pragma warning restore 162
     }
 
     private void CollectResource()

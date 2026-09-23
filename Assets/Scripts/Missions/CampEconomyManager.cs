@@ -9,9 +9,9 @@ using System.Collections.Generic;
 //   * accrues each region's per-HOUR yield in real time (float accumulators
 //     flushed to whole resources every tick — so a 5/hr region still pays out
 //     instead of rounding to 0), and
-//   * grants an offline lump on camp entry for the real time elapsed since the
-//     last collection (missions, quitting the game), capped so a week away
-//     doesn't dump a windfall.
+//   * grants a lump on camp entry for the time the player spent AWAY FROM CAMP
+//     IN THIS SESSION — a mission, the map, the barracks — capped, so leaving
+//     the camp is not a way to stop earning.
 // Values live on RegionData.upgradeLevels[level-1] (passiveWood/Stone/Food/
 // Diamonds), the same fields the region-upgrade UI spends resources to raise.
 public class CampEconomyManager : MonoBehaviour
@@ -36,17 +36,30 @@ public class CampEconomyManager : MonoBehaviour
     public float payoutMinutesMax = 30f;
     [Tooltip("Announce each payout on screen. Off: the resources still arrive, just silently.")]
     public bool announcePayout = true;
-    [Tooltip("Maximum hours of offline income granted on camp entry, so a long absence can't dump a huge windfall.")]
-    public float maxOfflineHours = 8f;
+    [Tooltip("Most hours of away-from-camp time a single camp entry can be paid for. A cap, not a target.")]
+    public float maxAwayHours = 2f;
 
-    private const string LAST_COLLECT_KEY = "LastPassiveCollectTicks";
+    // ==== TIME THE GAME WAS CLOSED EARNS NOTHING ====
+    //
+    // This used to stamp DateTime.UtcNow into PlayerPrefs and pay for the
+    // wall-clock gap on the next camp entry, so shutting the game down was a
+    // way to earn: quit for a day, come back to a windfall. The regions are
+    // supposed to pay you for holding them while you play, not for not playing.
+    //
+    // So the clock is Time.realtimeSinceStartup, which starts at zero when the
+    // application does and keeps running across scene loads. A static, because
+    // this component only exists in the camp scene and the time worth paying
+    // for is precisely the time it did not exist — the mission, the map, the
+    // barracks. Nothing is written to disk, so a closed game has no clock at
+    // all and nothing to catch up on.
+    private static float s_paidUpToRealtime;
 
     // Fractional carry so sub-1/hr yields still add up over time.
     private float accWood, accStone, accFood, accDiamonds;
 
     private void Start()
     {
-        GrantOfflineIncome();
+        GrantTimeAwayFromCamp();
         StartCoroutine(EconomyTickRoutine());
     }
 
@@ -73,34 +86,26 @@ public class CampEconomyManager : MonoBehaviour
         }
     }
 
-    private void GrantOfflineIncome()
+    // Pays for the stretch of THIS SESSION spent outside the camp. The tick
+    // below only runs while this component is alive, and it is alive only in
+    // the camp scene — without this, a long mission would earn nothing at all
+    // and the fastest way to get rich would be to stand still in the camp.
+    private void GrantTimeAwayFromCamp()
     {
+        float now = Time.realtimeSinceStartup;
+        float away = now - s_paidUpToRealtime;
+        s_paidUpToRealtime = now;
+
         AccumulatePerHour(out int wood, out int stone, out int food, out int diamonds);
-        if (wood == 0 && stone == 0 && food == 0 && diamonds == 0)
-        {
-            StampCollectTime();
-            return;
-        }
+        if (wood == 0 && stone == 0 && food == 0 && diamonds == 0) return;
 
-        double hours = 0d;
-        string saved = PlayerPrefs.GetString(LAST_COLLECT_KEY, "");
-        if (!string.IsNullOrEmpty(saved) && long.TryParse(saved, out long lastTicks))
-        {
-            try
-            {
-                TimeSpan span = DateTime.UtcNow - new DateTime(lastTicks, DateTimeKind.Utc);
-                hours = Mathf.Clamp((float)span.TotalHours, 0f, maxOfflineHours);
-            }
-            catch { hours = 0d; }
-        }
-        StampCollectTime();
+        float hours = Mathf.Clamp(away / 3600f, 0f, Mathf.Max(0f, maxAwayHours));
+        if (hours <= 0f) return;
 
-        if (hours <= 0d) return;
-
-        int addWood = Mathf.FloorToInt((float)(wood * hours));
-        int addStone = Mathf.FloorToInt((float)(stone * hours));
-        int addFood = Mathf.FloorToInt((float)(food * hours));
-        int addDiamonds = Mathf.FloorToInt((float)(diamonds * hours));
+        int addWood = Mathf.FloorToInt(wood * hours);
+        int addStone = Mathf.FloorToInt(stone * hours);
+        int addFood = Mathf.FloorToInt(food * hours);
+        int addDiamonds = Mathf.FloorToInt(diamonds * hours);
 
         if (ResourceManager.Instance != null)
         {
@@ -110,7 +115,9 @@ public class CampEconomyManager : MonoBehaviour
                 ResourceManager.Instance.AddDiamonds(addDiamonds);
         }
 
-        GameLog.Info($"[Economy] Offline income for {hours:0.0}h: +{addWood}W +{addStone}S +{addFood}F +{addDiamonds}D");
+        GameLog.Info($"[Economy] {hours:0.00}h away from camp this session: " +
+                     $"+{addWood}W +{addStone}S +{addFood}F +{addDiamonds}D");
+        Announce(addWood, addStone, addFood, addDiamonds);
     }
 
     private IEnumerator EconomyTickRoutine()
@@ -162,9 +169,9 @@ public class CampEconomyManager : MonoBehaviour
             accDiamonds -= flushDiamonds;
         }
 
-        // Advance the offline baseline as we go so leaving mid-accrual doesn't
-        // double-count the time we just paid out live.
-        StampCollectTime();
+        // Advance the session clock as we go, so the next camp entry does not
+        // pay a second time for the stretch that was just paid live.
+        s_paidUpToRealtime = Time.realtimeSinceStartup;
 
         Announce(flushWood, flushStone, flushFood, flushDiamonds);
     }
@@ -186,8 +193,4 @@ public class CampEconomyManager : MonoBehaviour
         ToastManager.Show($"{LocalizationManager.Tr("REGION_INCOME")}: {string.Join("  ", parts)}");
     }
 
-    private void StampCollectTime()
-    {
-        PlayerPrefs.SetString(LAST_COLLECT_KEY, DateTime.UtcNow.Ticks.ToString());
-    }
 }
