@@ -44,7 +44,7 @@ public class MinimapCamera : MonoBehaviour
         transform.parent = null;
 
         _cam = GetComponent<Camera>();
-        if (_cam != null) _cam.enabled = false;   // we drive it by hand from now on
+        if (_cam != null) _cam.enabled = false;   // the pipeline draws it only on the frames we ask for
     }
 
     private void LateUpdate()
@@ -66,11 +66,38 @@ public class MinimapCamera : MonoBehaviour
         // fullscreen map is open, a menu is up, the HUD is hidden - the second
         // render pass is pure waste. This is the saving that costs nothing in
         // smoothness, because there is nothing to be smooth.
-        if (!MinimapVisible()) return;
+        if (!MinimapVisible())
+        {
+            // Hidden mid-cycle: make sure we are not leaving the camera switched
+            // on, or it would draw every frame for nothing.
+            if (_cam.enabled) _cam.enabled = false;
+            return;
+        }
+
+        // ==== NEVER CALL Camera.Render() UNDER A SCRIPTABLE PIPELINE ====
+        //
+        // This used to be _cam.Render(), every throttle interval, from
+        // LateUpdate. Under URP that means driving a camera through the
+        // pipeline from inside the frame the pipeline is already building, and
+        // it is not supported. Most of the time it works; some of the time the
+        // process goes down in native code with no managed stack to explain
+        // it. This runs whenever the minimap is on screen, which is nearly
+        // always - a far better match for "it crashes now and then" than any
+        // one feature.
+        //
+        // Toggling `enabled` gets the same throttling out of the pipeline's own
+        // loop: the frame we switch it on, URP draws this camera exactly once
+        // as part of its normal pass, and then we switch it straight back off.
+        // Same render, same rate, from inside the frame instead of across it.
+        if (_cam.enabled)
+        {
+            _cam.enabled = false;        // the frame we asked for has been drawn
+            return;
+        }
 
         if (Time.unscaledTime < _nextRender) return;
         _nextRender = Time.unscaledTime + 1f / Mathf.Max(1f, renderHz);
-        _cam.Render();
+        _cam.enabled = true;             // URP draws it at the end of THIS frame
     }
 
     // The RawImage the render texture is shown on. Resolved once; if there is

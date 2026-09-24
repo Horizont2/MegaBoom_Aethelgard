@@ -80,8 +80,32 @@ public static class PosterFrame
     /// <param name="explicitCam">The camera to render. Left null, the one currently making the picture is found.</param>
     public static void GrabClean(Camera explicitCam = null)
     {
+        if (s_listener == null)
+        {
+            Debug.LogWarning("[PosterFrame] Not in Play Mode, so there is nothing to render.");
+            return;
+        }
+        s_listener.StartCoroutine(CleanRoutine(explicitCam));
+    }
+
+    // ==== WHY THIS WAITS, TOO ====
+    //
+    // It used to call cam.Render() straight out of Update. Under a scriptable
+    // render pipeline that means asking a camera to render while the pipeline
+    // is part-way through setting up the very frame that camera belongs to,
+    // and it is not supported: sometimes a black frame, sometimes a corrupt
+    // one, and sometimes the editor goes down with it. Screenshots taking the
+    // game with them was this.
+    //
+    // After WaitForEndOfFrame the pipeline is finished and the camera is free.
+    // GrabFramed already had to wait for its own reasons; now both keys behave
+    // the same way and neither reaches into the middle of a frame.
+    private static System.Collections.IEnumerator CleanRoutine(Camera explicitCam)
+    {
+        yield return new WaitForEndOfFrame();
+
         Camera cam = explicitCam != null ? explicitCam : Shooting();
-        if (cam == null) { Debug.LogWarning("[PosterFrame] No enabled camera to render."); return; }
+        if (cam == null) { Debug.LogWarning("[PosterFrame] No enabled camera to render."); yield break; }
 
         int ss = Mathf.Clamp(supersample, 1, 4);
         int bigW = width * ss, bigH = height * ss;
@@ -119,7 +143,7 @@ public static class PosterFrame
             shot.Apply(false);
 
             Write(shot.EncodeToPNG(), "clean", bigW, bigH);
-            Object.DestroyImmediate(shot);
+            Object.Destroy(shot);
         }
         finally
         {
@@ -127,7 +151,15 @@ public static class PosterFrame
             cam.aspect = wasAspect;
             RenderTexture.active = wasActive;
             if (small != null) RenderTexture.ReleaseTemporary(small);
-            if (big != null) { big.Release(); Object.DestroyImmediate(big); }
+            // ==== Destroy, NOT DestroyImmediate ====
+            //
+            // DestroyImmediate frees the memory on the spot. The GPU may still
+            // be reading this surface for the frame that is being submitted,
+            // and pulling it out from under the driver is a native crash with
+            // no managed stack to explain it - the other half of "it crashes
+            // when I take screenshots". Destroy defers to the end of the
+            // frame, by which time nothing is using it.
+            if (big != null) { big.Release(); Object.Destroy(big); }
         }
     }
 
@@ -185,13 +217,13 @@ public static class PosterFrame
             shot.Apply(false);
 
             Write(shot.EncodeToPNG(), "framed", bigW, bigH);
-            Object.DestroyImmediate(shot);
+            Object.Destroy(shot);
         }
         finally
         {
             RenderTexture.active = wasActive;
             if (small != null) RenderTexture.ReleaseTemporary(small);
-            Object.DestroyImmediate(raw);
+            Object.Destroy(raw);
         }
     }
 
