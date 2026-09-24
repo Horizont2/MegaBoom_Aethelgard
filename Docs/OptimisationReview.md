@@ -79,28 +79,22 @@ buffer into `_CameraOpaqueTexture` after the opaque pass, every frame, for as
 long as the game is running. (`m_OpaqueDownsampling: 1` halves it, so it is a
 half-resolution copy rather than a full one — better, not free.)
 
-Exactly **one** thing in the project reads it:
+**DONE — and it turned out to be free.** Two things in the project sample the
+scene colour, and neither one ships:
 
-```
-Assets/UI_BlurShader.shadergraph
-```
+| Shader | Materials | Used by |
+|---|---|---|
+| `UI_BlurShader.shadergraph` | `UI_BlurMaterial`, `UI_BlurMaterial2` | nothing — no prefab, no scene, no script |
+| `Bitgem/.../WaterVolume-URP.shadergraph` | `example-water-01/02/03` | only Bitgem's own example scene |
 
-A UI blur. Which is on screen when a menu is open, and not otherwise.
+The water the game actually uses is `MI_Water_MeadowsLake`, whose shader is
+`M_Water_Lake_Amp.shader`, and that does not sample scene colour at all. So the
+copy was being made every frame, for the whole session, for nobody.
 
-So the game pays a copy and its bandwidth through every second of gameplay to
-support an effect that is visible during a fraction of it. Three ways out, best
-first:
+`m_RequireOpaqueTexture` is now 0 on `PC_RPAsset` (Mobile already had it off).
+Nothing looks different, because nothing was reading it.
 
-1. **Blur the UI without the opaque texture.** A blurred panel does not need the
-   live scene behind it — a downscaled grab taken once when the panel opens
-   looks the same and costs nothing while it is closed.
-2. **Turn the opaque texture on only while a blurring panel is open.**
-   `UniversalRenderPipelineAsset.supportsCameraOpaqueTexture` is settable at
-   runtime.
-3. Leave it and accept the cost, now that it is a known one rather than an
-   accident.
-
-`m_RequireDepthTexture: 1` stays either way — the volumetric fog needs it.
+`m_RequireDepthTexture: 1` stays — the volumetric fog needs it.
 
 ---
 
