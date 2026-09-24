@@ -118,8 +118,26 @@ public static class BattleResolver
         if (armyScore <= 0) return 0f;
         if (enemyStrength <= 0) return MaxWinChance;
 
+        // ==== THE BAND WAS TOO WIDE FOR WHAT A LOSS COSTS ====
+        //
+        // Half strength was a certain loss and one and a half times was a
+        // certain win, which put an evenly matched fight at exactly 50% and
+        // meant an army had to be half again the size of what it faced before
+        // the odds felt safe. That is a reasonable curve when a defeat costs a
+        // few soldiers. It is not one when a defeat costs the entire company:
+        // the player reads 65%, sends everything they own, and loses all of it
+        // one time in three. The number is honest - the dice really are rolled
+        // against it - but the shape behind it asks for more than the stake
+        // can bear.
+        //
+        // Narrowed at both ends rather than shifted: 0.55 to 1.3. Parity now
+        // reads about 60% instead of 50%, and the ceiling arrives at 1.3x
+        // instead of 1.5x, so a clearly stronger army stops being a coin toss
+        // with extra steps. Below 0.55 it is still a flat loss - being
+        // outmatched has not become survivable, it just takes slightly less
+        // overwhelming force to be favoured.
         float ratio = armyScore / (float)enemyStrength;
-        float chance = Mathf.InverseLerp(0.5f, 1.5f, ratio) + TacticWinChanceBonus(tactic);
+        float chance = Mathf.InverseLerp(0.55f, 1.3f, ratio) + TacticWinChanceBonus(tactic);
         return Mathf.Clamp(chance, 0f, MaxWinChance);
     }
 

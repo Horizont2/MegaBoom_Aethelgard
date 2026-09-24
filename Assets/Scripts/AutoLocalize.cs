@@ -62,9 +62,38 @@ public class AutoLocalize : MonoBehaviour
     [Tooltip("GameObjects with this tag are skipped — use for game name, dynamic counters, player input. Leave empty to localise everything.")]
     public string ignoreTag = "DontLocalize";
 
-    private readonly List<(TMP_Text tmp, string key)> tmpTargets = new List<(TMP_Text, string)>();
-    private readonly List<(Text legacy, string key)> legacyTargets = new List<(Text, string)>();
+    // ==== A LABEL SOMEBODY ELSE WRITES TO IS NOT OURS TO MANAGE ====
+    //
+    // This walker captures whatever a label says at OnEnable and treats that
+    // literal as its translation key, forever. That is fine for text authored
+    // in the prefab and wrong for text a script fills in: the objective cards,
+    // the quest lines, anything populated at runtime. On the next language
+    // change ApplyAll wrote the captured key straight back over it.
+    //
+    // For the camp objective card the captured literal was TMP's own
+    // placeholder, "New Text", so switching to German replaced a live
+    // objective with "Neu Text" - the placeholder, translated. That is both
+    // halves of the report at once: a card reading New Text, and other lines
+    // that "do not change language" because they were never ours.
+    //
+    // So each target remembers what we last wrote to it. If the label no
+    // longer says that, it has an owner, and we let go of it permanently.
+    private sealed class Target
+    {
+        public TMP_Text tmp;
+        public Text legacy;
+        public string key;
+        public string lastApplied;   // null until we have written once
+    }
+
+    private readonly List<Target> tmpTargets = new List<Target>();
+    private readonly List<Target> legacyTargets = new List<Target>();
     private bool captured;
+
+    // TMP's placeholder on a freshly added component. A label still saying
+    // this was never filled in, and translating it just produces a translated
+    // placeholder.
+    private const string TmpPlaceholder = "New Text";
 
     private void OnEnable()
     {
@@ -112,7 +141,14 @@ public class AutoLocalize : MonoBehaviour
             if (IsPartOfDropdown(t.transform)) continue;
             string key = (t.text ?? "").Trim();
             if (string.IsNullOrEmpty(key)) continue;
-            tmpTargets.Add((t, key));
+            if (key == TmpPlaceholder)
+            {
+                Debug.LogWarning($"[AutoLocalize] '{t.name}' still says \"{TmpPlaceholder}\" - TMP's placeholder. " +
+                                 "Nothing filled it in, so it is left alone rather than translated into a " +
+                                 "placeholder in another language.", t);
+                continue;
+            }
+            tmpTargets.Add(new Target { tmp = t, key = key });
         }
         Text[] legacy = GetComponentsInChildren<Text>(true);
         foreach (var t in legacy)
@@ -123,7 +159,7 @@ public class AutoLocalize : MonoBehaviour
             if (t.GetComponentInParent<NoAutoLocalize>() != null) continue;
             string key = (t.text ?? "").Trim();
             if (string.IsNullOrEmpty(key)) continue;
-            legacyTargets.Add((t, key));
+            legacyTargets.Add(new Target { legacy = t, key = key });
         }
     }
 
@@ -141,15 +177,28 @@ public class AutoLocalize : MonoBehaviour
 
     private void ApplyAll()
     {
-        foreach (var (tmp, key) in tmpTargets)
+        for (int i = tmpTargets.Count - 1; i >= 0; i--)
         {
-            if (tmp == null) continue;
-            tmp.text = SmartTranslate(key);
+            var t = tmpTargets[i];
+            if (t.tmp == null) { tmpTargets.RemoveAt(i); continue; }
+
+            // Changed since we last wrote it, so it belongs to whatever code
+            // put that there. Dropped for good - re-capturing would make the
+            // runtime string the new key and translate THAT next time.
+            if (t.lastApplied != null && t.tmp.text != t.lastApplied) { tmpTargets.RemoveAt(i); continue; }
+
+            t.lastApplied = SmartTranslate(t.key);
+            t.tmp.text = t.lastApplied;
         }
-        foreach (var (legacy, key) in legacyTargets)
+
+        for (int i = legacyTargets.Count - 1; i >= 0; i--)
         {
-            if (legacy == null) continue;
-            legacy.text = SmartTranslate(key);
+            var t = legacyTargets[i];
+            if (t.legacy == null) { legacyTargets.RemoveAt(i); continue; }
+            if (t.lastApplied != null && t.legacy.text != t.lastApplied) { legacyTargets.RemoveAt(i); continue; }
+
+            t.lastApplied = SmartTranslate(t.key);
+            t.legacy.text = t.lastApplied;
         }
     }
 

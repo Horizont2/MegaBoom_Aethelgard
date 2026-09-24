@@ -212,6 +212,31 @@ public class MissionManager : MonoBehaviour
         SaveMissions();
     }
 
+    // ==== THE CARDS WERE TRANSLATED ONCE AND NEVER AGAIN ====
+    //
+    // CreateUIForMission calls Tr at the moment the mission is handed out and
+    // that string is then simply the card's text for the rest of the session.
+    // Change language in the options and the HUD around them turns over while
+    // the objective cards sit there in whichever language they were born in -
+    // which is the half of the report about texts that do not follow the
+    // language.
+    //
+    // AutoLocalize cannot help here: it manages labels whose text was authored
+    // in the prefab, and these are filled in by this class at runtime.
+    private void OnEnable()  { LocalizationManager.OnLanguageChanged += RelabelMissions; }
+    private void OnDisable() { LocalizationManager.OnLanguageChanged -= RelabelMissions; }
+
+    private void RelabelMissions()
+    {
+        foreach (ActiveMission mission in activeMissions)
+        {
+            if (mission == null || mission.uiElement == null || mission.data == null) continue;
+            mission.uiElement.Relabel(
+                LocalizationManager.Tr(mission.data.missionName),
+                MissionData.BuildObjectiveShort(mission.data.missionType));
+        }
+    }
+
     private void CreateUIForMission(ActiveMission mission)
     {
         if (missionUIPrefab == null || missionUIParent == null) return;

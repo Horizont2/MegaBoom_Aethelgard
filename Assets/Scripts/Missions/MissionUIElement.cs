@@ -67,6 +67,24 @@ public class MissionUIElement : MonoBehaviour
         _homeCached = true;
     }
 
+    // ==== SWAPPING LANGUAGE MUST NOT RESTART THE CARD ====
+    //
+    // Setup rewinds everything: it stops the coroutines, puts the plate back
+    // home, clears the completed flash and re-types the description from zero.
+    // That is right when a mission begins and wrong when the player only
+    // changed language in the options - the card would replay its entrance and
+    // lose its struck-through completed state.
+    //
+    // This writes the two strings and nothing else. Progress, animation state
+    // and completion are left exactly as they are.
+    public void Relabel(string title, string description)
+    {
+        if (isCompleted) return;   // the struck-through card keeps what it has
+        if (titleText != null) titleText.text = title;
+        baseDescription = description;
+        ApplyDescription();
+    }
+
     public void Setup(string title, string description, int current, int target)
     {
         isCompleted = false;
