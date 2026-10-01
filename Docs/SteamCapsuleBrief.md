@@ -354,12 +354,52 @@ the artwork without anything reading as a panel or a box.
    120×45.
 4. Exact upload sizes are in `Docs/SteamStorePage.md`, section 8.
 
+### The files
+
+All in `Docs/capsule/`, all built from `28.webp` plus `wordmark.png`.
+
+| File | Size | Notes |
+|---|---|---|
+| `master_3072.png` | 3072 × 1302 | the composite everything else is cut from |
+| `header_920x430.png` | 920 × 430 | the one people actually see |
+| `main_1232x706.png` | 1232 × 706 | store page top and front-page carousels |
+| `small_462x174.png` | 462 × 174 | survives better than expected, but see below |
+| `vertical_748x896.png` | 748 × 896 | built separately, not cropped |
+| `library_600x900.png` | 600 × 900 | built separately, not cropped |
+| `libraryhero_3840x1240.png` | 3840 × 1240 | soft, see below |
+
+`placement.html` makes the landscape composite, `portrait.html` the two
+portrait ones. The portraits cannot be cut out of the landscape master: crop a
+2.36:1 picture to 0.67:1 and the wordmark loses both ends. They take the same
+artwork scaled to fill the taller frame and the wordmark re-laid at a width
+that fits — which works because the composition was built as a centre column
+in the first place, skull over valley over hero.
+
+### Two honest caveats
+
+**Resolution.** The source artwork is 1024 × 434. The master is a 3×
+browser upscale of it, so the big formats are soft — `libraryhero_3840x1240`
+most of all, which is effectively 3.75× from source. The header, main, small
+and both portraits are all downscales from the master and look fine. For
+genuinely sharp large assets the original full-resolution render is needed;
+these are then rebuilt in a minute from the same two files.
+
+**The small capsule.** It came out readable, which is a pleasant surprise, but
+Steam shows it at 120 × 45 in search. The brief's advice stands: build that
+one as the wordmark on a flat dark ground rather than a shrunken capsule.
+
 ### A note on the tooling
 
-Headless Chromium in this container loses about 66px of height between
-`--window-size` and the actual viewport, so these pages are rendered with
-headroom and the surplus cut off afterwards by `Docs/capsule/pngcrop.py` —
-pure stdlib, because the Playwright ffmpeg build has no PNG decoder.
+Headless Chromium in this container does not map `--window-size` to the
+viewport exactly — it loses about sixty pixels of height — so every page here
+is rendered with headroom and trimmed afterwards by `Docs/capsule/pngtool.py`,
+a pure-stdlib PNG read/crop/write. ffmpeg would be the obvious tool and the
+Playwright build of it has no PNG decoder.
+
+That trim is also what the first attempt got wrong: it cropped to an assumed
+height instead of the real one, and left fifteen rows of the page's white
+background along the bottom edge. `pngtool.content_bottom` now finds the last
+non-transparent row and the crop follows the picture rather than a guess.
 
 ---
 
