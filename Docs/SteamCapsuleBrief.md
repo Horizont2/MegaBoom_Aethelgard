@@ -310,19 +310,56 @@ Legible at 460×215 and at 231×87 on both a cold slate ground and a warm one.
 At 120×45 the word still reads and the ember becomes a warm smear, which is
 fine — the small capsule is its own asset anyway.
 
-### Placing it
+### Placing it — done, and the numbers
 
-1. **In the reserved band** the prompt asks for — between the bottom of the
-   ribcage and the castle, centred. Clear of the fingers.
-2. **Width about 55–65% of the frame.** Wider than that and it fights the arms;
-   narrower and it stops being the first thing read.
-3. **Check at 460×215 and 231×87 before anything else.** If the skull stops
+`Docs/capsule/capsule_placed.png` is the finished composite.
+`Docs/capsule/placement.html` reproduces it at any resolution.
+
+Four positions were tried on the artwork before settling. Written down so the
+reasoning survives:
+
+| | Result |
+|---|---|
+| Over the castle, 46% wide (first attempt) | Hides the castle, and sits on the brightest, busiest part of the valley |
+| Spanning the arms, 70% wide | Collides with both forearms |
+| Low, over the ridge above the hero | Cuts through the hero's head |
+| **Between the forearms, above the castle, 62% wide** | **Clear of everything, on the eye path from skull to hero** |
+
+Expressed as fractions of the image, so they hold at any size:
+
+- **Wordmark PNG width — 62.5% of image width**, horizontally centred.
+  (The glyphs themselves are about 53% of frame; the PNG carries padding.)
+- **Wordmark PNG top edge — 56.7% of image height.**
+- **Scrim behind it** — a radial gradient ellipse, 74% of image width and 35%
+  of image height, top edge at 53%, centred: `rgba(6,14,20,.62)` at the centre
+  falling to transparent at 72%.
+
+The scrim earns its place. Without it the mark sits on misty blue-grey hills
+at roughly its own value and the contrast is poor; with it the word lifts off
+the artwork without anything reading as a panel or a box.
+
+### Then
+
+1. **Check at 460×215 and 231×87 before anything else.** If the skull stops
    reading at those sizes, raise its contrast against the sky rather than
    making it bigger.
-4. **The small capsule (462×174) is a separate asset.** Title-only wordmark on
-   a flat dark ground, maybe one ember crack behind it. Anything else is mud at
+2. **The drawn border.** The artwork has a double parchment rule with corner
+   ornaments, which the prompt asked it not to have. Cropping a capsule out of
+   this will slice through it, and half a border looks worse than either
+   having one or not. Either crop just inside the rule so it is gone
+   completely, or regenerate with the FULL BLEED wording now at the top of the
+   prompt.
+3. **The small capsule (462×174) is a separate asset.** Wordmark on a flat
+   dark ground, maybe one ember crack behind it. Anything else is mud at
    120×45.
-5. Exact upload sizes are in `Docs/SteamStorePage.md`, section 8.
+4. Exact upload sizes are in `Docs/SteamStorePage.md`, section 8.
+
+### A note on the tooling
+
+Headless Chromium in this container loses about 66px of height between
+`--window-size` and the actual viewport, so these pages are rendered with
+headroom and the surplus cut off afterwards by `Docs/capsule/pngcrop.py` —
+pure stdlib, because the Playwright ffmpeg build has no PNG decoder.
 
 ---
 
