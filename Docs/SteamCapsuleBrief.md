@@ -89,6 +89,31 @@ Generate it **without any text or logo**. AI text is always subtly wrong, and
 you want the wordmark placed by hand anyway so it sits in the arch cleanly and
 stays sharp when the capsule is downscaled.
 
+### What the first pass got right, and what it lost
+
+The arch, the parchment dissolve, the ember fractures, the falling ash and the
+three-colour palette all landed. Keep them.
+
+Six things to correct, one of them structural:
+
+1. **The fingers and the anchors became separate objects.** The spikes stood
+   free in the valley while the hands floated above them, so the pose read as
+   *presenting* the land rather than holding it down. This was the whole idea
+   and it has to be unambiguous: the fingers do not point at the anchors, they
+   **become** them.
+2. **The hero came out as a Roman legionary** — tunic, bare legs, crested
+   galea, short sword. Wrong century and wrong game.
+3. **He was lit from the front** like a protagonist portrait, competing with
+   the skull. He is a silhouette and a ruler for scale, nothing more.
+4. **The arms ran almost horizontal**, which reads as a shrug. They need to
+   descend steeply.
+5. **The valley came out cold and grey.** It is supposed to be the warm,
+   bright thing being taken.
+6. **A drawn rectangular border** framed the whole picture. A capsule gets
+   cropped; a painted frame reads as a mistake.
+
+### Prompt, second pass
+
 ```
 Stylised painterly video game key art, wide landscape composition, dark
 heroic fantasy. Rendered in the look of a flat-shaded low-poly 3D game —
@@ -97,74 +122,97 @@ no plastic render sheen. Painterly brushwork over hard-edged forms.
 
 SUBJECT. A colossal skeletal overlord seated on a throne of black thorned
 iron, high in a storm sky, filling the upper third of the frame. Only his
-upper body is visible; the storm swallows the rest. A tall jagged iron crown,
-half of it broken. Empty eye sockets lit from within by a dim orange ember
-glow. His bones are pale grey-bone, weathered like old stone, and split by
-thin molten-orange fractures that glow from inside, as if the skeleton is
-cracked stone with fire behind it. Tattered black-grey cloth hangs from his
-shoulders and shreds upward into the clouds.
+upper body is visible; the storm swallows the rest. He wears a tall jagged
+crown forged of blackened iron — angular broken spikes, like a shattered
+fortress wall, NOT antlers and NOT organic thorns. Empty eye sockets lit from
+within by a dim orange ember glow. His bones are pale grey-bone, weathered like
+old stone, split by thin molten-orange fractures that glow from inside, as if
+the skeleton is cracked stone with fire behind it. Tattered black-grey cloth
+hangs from his shoulders and shreds upward into the clouds.
 
-THE ARMS. His two arms reach down and forward out of the sky, curving
-symmetrically toward the viewer, enclosing the landscape below in a wide arch.
-This is not an embrace — it is a cage. The arms frame the image like a
-proscenium. His long skeletal fingers do not touch the land gently: they are
-driven into the valley floor as enormous black obsidian spikes, half bone and
-half monument, each one sunk deep into the earth with cracked soil and faint
-orange fissures radiating out from where it entered. At the base of the nearest
-spike stands a carved stone totem wrapped in a dim violet barrier glow.
+THE ARMS, AND THIS IS THE MOST IMPORTANT PART OF THE IMAGE. His two arms
+reach down STEEPLY out of the sky toward the viewer — descending at roughly
+forty-five degrees, not spread horizontally — curving symmetrically inward so
+they enclose the landscape below in a tall narrow arch. This is not an embrace
+and not a presentation: it is a cage, and the arms are the bars.
+
+His skeletal fingers reach all the way down to the ground and PIERCE IT. Each
+fingertip continues seamlessly into an enormous black obsidian spike driven
+deep into the valley floor. There is NO GAP between hand and spike — bone
+transitions directly into glossy black stone partway down each finger, so the
+spikes are visibly the ends of his fingers and not separate monuments standing
+nearby. Where each one enters the earth the ground is split and heaved up,
+with orange molten fissures radiating outward across the soil. At the base of
+the nearest spike stands a small carved stone totem wrapped in a dim violet
+barrier glow.
 
 THE LAND INSIDE THE ARCH. A wide fantasy valley seen from a high vantage:
-low rolling hills, dark pine and white birch forest, a river, and on a raised
-hill at the centre a fortified stone castle with towers and banners, small in
-the frame. Thick blue-grey fog lies in the low ground between the hills,
-glowing faintly where light hits it. A few tiny warm orange campfires dot the
-forest. The valley is the brightest, warmest part of the picture.
+low rolling hills covered in dark pine and white birch forest, a river winding
+through, and on a raised hill at the centre a fortified stone castle with
+towers and banners. Thick blue-grey fog lies in the low ground. This valley is
+the WARMEST AND BRIGHTEST part of the whole image — late golden light rakes
+across the treetops and the castle walls, a dozen small campfires glow amber
+in the forest, and warm light catches the top of the fog. It must read as
+something alive and worth saving, in clear contrast to the cold storm above.
+No sand, no dunes, no desert — the foreground slopes are dark earth and grass.
 
-THE DISSOLVE AT THE EDGES. Toward the outer rim of the arch, where the
-fingers meet the ground, the three-dimensional landscape gradually turns into
-an old hand-drawn parchment map: cream-coloured vellum, brown ink hatching for
-the mountains, a dashed ink travel road, a hexagonal wax seal with a heraldic
-sigil, faded compass lines. The transition is soft and painterly — real terrain
-at the centre, drawn cartography at the edges, the two blending through a band
-of fog and ash. Do not make it a flat map lying on a table; it is the world
-itself fraying into parchment.
+THE DISSOLVE AT THE EDGES. Toward the outer rim of the arch, the
+three-dimensional landscape gradually turns into an old hand-drawn parchment
+map: cream-coloured vellum, brown ink hatching for the mountains, a dashed ink
+travel road, a hexagonal wax seal with a heraldic sigil, faded compass lines.
+The transition is soft and painterly — real terrain at the centre, drawn
+cartography at the edges, blending through a band of fog and ash. The parchment
+runs off the edges of the picture; it does NOT form a drawn rectangular border
+or a frame around the image.
 
 THE HERO. At the very bottom centre, on a dark ridge in the foreground, a
-single small armoured knight stands with his back to the viewer, facing up into
-the valley and the overlord. He is tiny — no more than a tenth of the frame
-height — a pure backlit silhouette with warm rim light along his shoulders.
-Dark plate armour with brass trim, a crested helm, and a round shield slung on
-his back. He is the only human figure in the image.
+single small warrior stands with his back to the viewer, facing up into the
+valley and the overlord. He is TINY — no more than one tenth of the frame
+height — and he is a PURE BACKLIT SILHOUETTE: almost black, with only a thin
+warm rim of light along one shoulder and the edge of his shield. No face, no
+front lighting, no spotlight on him.
+
+He is a NORTHERN MEDIEVAL KNIGHT, not a Roman and not an ancient soldier.
+Full-length dark steel plate armour over mail, covering the legs completely
+with plate greaves — no tunic, no leather skirt, no strips of hanging leather,
+no bare legs, no sandals. A heavy tattered cloak falls to his calves. A closed
+medieval helm with a low crest. A round wooden shield slung flat across his
+back, not held out at his side. A long straight arming sword hanging at his
+hip, point down. Tall, narrow, upright silhouette.
 
 ATMOSPHERE. Fine black ash falls across the whole frame like snow, heavier
 near the overlord, catching the firelight as it drifts. Thin streaks of pale
 lightning inside the storm clouds behind the crown. Volumetric god-rays
-breaking through the clouds down into the valley.
+breaking through the clouds down into the valley, angled so they do not cross
+the centre of the frame.
 
 LIGHTING AND COLOUR. Strictly three colours. Cold deep teal and navy blue in
 the storm sky and the fog. Warm ember orange in the fractures, the campfires,
-the eye sockets and the rim light on the hero. Cream parchment at the outer
-edges. High contrast between the cold upper half and the warm lower half. The
-brightest point of the image is the valley inside the arch; the darkest is the
-foreground ridge the hero stands on.
+the eye sockets and the hero's rim light. Cream parchment at the outer edges.
+Strong contrast between the cold upper half and the warm lower half.
 
-COMPOSITION. Strong vertical symmetry. Skull and crown centred in the top
-third. The arch of the arms frames a clear open area of negative space in the
-middle of the frame directly above the hero — leave this area uncluttered and
-relatively dark, it is reserved for a logo. Cinematic wide framing, clean
-silhouette reading at small sizes, strong shape language.
+COMPOSITION AND RESERVED SPACE. Strong vertical symmetry. Skull and crown
+centred in the top third. Between the bottom of the ribcage and the castle
+there must be a clear horizontal band of calm, uncluttered, relatively DARK
+sky and fog running the full width of the frame — no god-rays, no ash streaks,
+no detail in it. This band is reserved for a logo and must stay empty.
+Cinematic wide framing, clean silhouette reading at small sizes.
 
-NO TEXT. No letters, no words, no logo, no watermark, no signature, no UI.
+NO TEXT. No letters, no words, no logo, no watermark, no signature, no UI,
+no border, no frame.
 ```
 
 **Negative prompt** (if the tool takes one):
 
 ```
+roman legionary, roman soldier, centurion, galea, gladius, pteruges,
+leather skirt, bare legs, sandals, greek hoplite, spartan,
 text, letters, words, logo, watermark, signature, UI, HUD, interface,
+border, frame, picture frame, rectangular outline, card border, vignette box,
 photorealistic, hyperrealistic, photograph, 3D render sheen, plastic,
-cluttered, busy background, many characters, crowd, gore, blood,
-anime, chibi, cartoon mascot, oversaturated, neon, purple-and-teal gradient,
-lens flare spam, motion blur, frame, border, collage
+antler crown, organic horns, cluttered, busy, many characters, crowd,
+gore, blood, anime, chibi, cartoon mascot, oversaturated, neon,
+desert, sand dunes, lens flare spam, motion blur, collage
 ```
 
 **Aspect ratio:** generate at **16:9 or 21:9 wide**, as large as the tool
@@ -172,7 +220,18 @@ allows. You will crop to 920×430 for the header and 1232×706 for the main
 capsule. Generate a **second pass at 2:3 portrait** with the same prompt for
 the 600×900 library capsule, or crop the centre column out of the wide one.
 
----
+### If the fingers still will not merge with the spikes
+
+Some generators refuse to fuse two objects described in one sentence. Two
+fallbacks, in order:
+
+1. Reword as a single object: *"two enormous claws of black obsidian, each
+   shaped like a skeletal hand, growing out of the sky and stabbing into the
+   valley floor"* — describe the hand and the spike as one thing from the
+   start rather than joining them.
+2. Accept separate spikes and fix it in Photoshop: paint the fingertips darker
+   and extend them down into the spike tops. It is twenty minutes of work and
+   it is the one detail worth doing by hand, because it is the whole idea.
 
 ## 4. After it is generated
 
