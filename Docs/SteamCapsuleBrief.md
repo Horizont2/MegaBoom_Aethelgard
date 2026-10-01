@@ -253,26 +253,38 @@ including the ones whose capsules you were looking at.
 
 ### It is already made
 
-`Docs/capsule/wordmark_full.png` — 3000×820, transparent background
-`Docs/capsule/wordmark_title_only.png` — 3000×620, transparent background
+`Docs/capsule/wordmark.png` — 3000×560, transparent background.
+`Docs/capsule/wordmark.html` regenerates it.
 
-Set in **Cinzel Black**, the game's own display face, already in the project at
-`Assets/DownloadedFonts/Cinzel`. Aged-gold vertical gradient from near-white
-through to burnt amber, a heavy near-black outline behind the fill so it holds
-over both the storm and the valley, and a soft drop shadow. The rule and
-diamond between the two lines echo the trailer's title card.
+**Flat, one colour, no gradient, no outline, no ornament.** The only idea in
+it is the weight contrast: HOLLOW set light and open, SIEGE set black and
+tight. That reads as the two halves of the title rather than as decoration,
+and the heavy half is what survives being shrunk to 231 px. Cinzel, the game's
+own display face, already in the project.
 
-Regenerate or retune with `Docs/capsule/wordmark.html` through headless
-Chromium, the same way the store-page PDF is made:
+The only effect on it is a soft drop shadow, and that is a necessity rather
+than a style — the mark has to hold when it sits over the bright valley.
 
-```
-chrome --headless --hide-scrollbars --default-background-color=00000000 \
-       --window-size=3000,820 --screenshot=out.png file://.../wordmark.html
-```
+#### What it deliberately is not
 
-Checked at size: at 460×215 the full mark including the subtitle is still
-legible. At 231×87 use the title-only version. At 120×45 nothing reads, which
-is why the small capsule is its own asset.
+The first attempt was a vertical gold gradient with a heavy black keyline, a
+drop shadow and an ornamental rule with a diamond. All four at once is the
+default Photoshop layer style for fantasy logos, and it read as a free asset
+pack. Each one on its own is survivable; together they are the look.
+
+#### The crack idea, and why it is not in here
+
+The strongest concept was a fracture running through the letterforms, echoing
+the trailer's split statue. It was tried three ways and it is not in the file.
+The problem is the light: a glow behind a gap has to be masked to the shape of
+the gap, and in CSS it is a blurred rectangle that bleeds over the letters and
+reads as a highlighter stroke rather than heat coming out of a break.
+
+It is still a good idea and it is worth doing **in Photoshop**, where the glow
+can be clipped to the gap: split the wordmark along an irregular horizontal
+path, offset the lower half by about ten pixels right and four down, and put
+the ember glow on a layer clipped to the gap only. Half an hour. Until then
+the plain mark is better than a badly executed clever one.
 
 ### Placing it
 

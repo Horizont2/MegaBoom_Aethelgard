@@ -1,38 +1,35 @@
-<!doctype html><html><head><meta charset="utf-8"><style>
+<!doctype html><html><head><meta charset="utf-8">
+<!--
+  Hollow Siege wordmark.
+
+  Flat, one colour, no gradient, no outline, no ornament. The only idea in it
+  is the weight contrast: HOLLOW set light and open, SIEGE set black and tight.
+  That reads as the two halves of the title rather than as decoration, and it
+  is the thing that survives being shrunk to 231px.
+
+  What it deliberately is NOT: a vertical gold gradient with a heavy black
+  keyline and a drop shadow and an ornamental divider. That combination is the
+  default Photoshop layer style for fantasy logos and it reads as a free asset
+  pack, which is exactly how the first attempt came out.
+
+  Render:
+    chrome --headless --hide-scrollbars --default-background-color=00000000 \
+           --window-size=3000,560 --screenshot=out.png file://.../wordmark.html
+-->
+<style>
+@font-face{font-family:'Cinzel';font-weight:400;
+  src:url('file:///home/user/MegaBonk/Assets/DownloadedFonts/Cinzel/static/Cinzel-Regular.ttf');}
 @font-face{font-family:'Cinzel';font-weight:900;
   src:url('file:///home/user/MegaBonk/Assets/DownloadedFonts/Cinzel/static/Cinzel-Black.ttf');}
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:transparent;overflow:hidden;}
-.wrap{width:3000px;height:820px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;}
-
-/* Two stacked copies: the back one is the outline, the front one is the fill.
-   A -webkit-text-stroke on a background-clip:text element seams along the
-   inner contours, which is what put the hairlines through the W and the G. */
-.stack{position:relative;}
-.stack .back,.stack .front{
-  font-family:'Cinzel';font-weight:900;line-height:1.05;white-space:nowrap;}
-.stack .back{-webkit-text-stroke:14px #140d07;color:#140d07;
-  filter:drop-shadow(0 12px 16px rgba(0,0,0,.8));}
-.stack .front{position:absolute;inset:0;
-  background-image:linear-gradient(180deg,#fffaf0 0%,#f7e8c6 28%,#e3c07f 56%,#c08939 82%,#8e5119 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;}
-
-.t .back,.t .front{font-size:290px;letter-spacing:0.075em;text-indent:0.075em;}
-.s .back,.s .front{font-size:74px;letter-spacing:0.40em;text-indent:0.40em;}
-.s .back{-webkit-text-stroke:9px #140d07;}
-.s .front{background-image:linear-gradient(180deg,#f0e4c8 0%,#c9b082 100%);}
-
-.rule{display:flex;align-items:center;justify-content:center;gap:30px;
-  width:1820px;margin:40px 0 30px;}
-.rule .ln{height:7px;flex:1;
-  background:linear-gradient(90deg,rgba(201,162,94,0),#c9a25e 30%,#e8cf9c 50%,#c9a25e 70%,rgba(201,162,94,0));
-  filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
-.rule .dia{width:26px;height:26px;transform:rotate(45deg);background:#e8963f;
-  box-shadow:0 0 0 5px #140d07;}
+html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+.wrap{width:3000px;height:560px;display:flex;align-items:center;justify-content:center}
+.mark{font-family:'Cinzel';font-size:268px;line-height:1.02;white-space:nowrap;
+  color:#ece6d8;
+  /* Just enough shadow to hold over a bright valley. Not a style, a necessity. */
+  filter:drop-shadow(0 6px 22px rgba(0,0,0,.62)) drop-shadow(0 1px 3px rgba(0,0,0,.5));}
+.mark .l{font-weight:400;letter-spacing:.145em}
+.mark .h{font-weight:900;letter-spacing:.045em}
 </style></head><body>
-<div class="wrap">
-  <div class="stack t"><div class="back">HOLLOW SIEGE</div><div class="front">HOLLOW SIEGE</div></div>
-  <div class="rule"><div class="ln"></div><div class="dia"></div><div class="ln"></div></div>
-  <div class="stack s"><div class="back">KINGDOM OF AETHELGARD</div><div class="front">KINGDOM OF AETHELGARD</div></div>
-</div></body></html>
+<div class="wrap"><div class="mark"><span class="l">HOLLOW</span> <span class="h">SIEGE</span></div></div>
+</body></html>
