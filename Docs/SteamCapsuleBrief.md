@@ -233,17 +233,60 @@ fallbacks, in order:
    and extend them down into the spike tops. It is twenty minutes of work and
    it is the one detail worth doing by hand, because it is the whole idea.
 
-## 4. After it is generated
+## 4. The wordmark
 
-1. **Place the wordmark by hand** in the negative space inside the arch, in
-   Cinzel — the game's own display face, already in the project at
-   `Assets/DownloadedFonts/Cinzel`. Keep it clear of the fingers.
-2. **Check it at 460×215 and at 231×87.** If the skull stops reading, raise its
-   contrast against the sky rather than making it bigger.
-3. **The small capsule (462×174) is a separate asset.** Logo on a flat dark
-   ground with maybe one ember crack behind it. Anything else turns to mud at
+**The capsule carries the title — every Steam capsule does.** The reason the
+prompt says NO TEXT is not that the capsule should have none; it is that the
+generator must not be the thing that draws it. Two reasons, and the second one
+matters more than the first:
+
+- AI letterforms come back subtly wrong. Serifs that do not match between two
+  instances of the same letter, invented glyphs, kerning that drifts. On a
+  three-word title at capsule size it is visible.
+- Steam shows the header at 920×430, then 460×215, then 231×87. Type that was
+  painted into the image is just pixels and turns to mush on the way down.
+  Type set as type stays crisp, and can be nudged, rescaled and re-weighted per
+  capsule without regenerating the art.
+
+So: generate the art clean, set the title on top. It is what every studio does,
+including the ones whose capsules you were looking at.
+
+### It is already made
+
+`Docs/capsule/wordmark_full.png` — 3000×820, transparent background
+`Docs/capsule/wordmark_title_only.png` — 3000×620, transparent background
+
+Set in **Cinzel Black**, the game's own display face, already in the project at
+`Assets/DownloadedFonts/Cinzel`. Aged-gold vertical gradient from near-white
+through to burnt amber, a heavy near-black outline behind the fill so it holds
+over both the storm and the valley, and a soft drop shadow. The rule and
+diamond between the two lines echo the trailer's title card.
+
+Regenerate or retune with `Docs/capsule/wordmark.html` through headless
+Chromium, the same way the store-page PDF is made:
+
+```
+chrome --headless --hide-scrollbars --default-background-color=00000000 \
+       --window-size=3000,820 --screenshot=out.png file://.../wordmark.html
+```
+
+Checked at size: at 460×215 the full mark including the subtitle is still
+legible. At 231×87 use the title-only version. At 120×45 nothing reads, which
+is why the small capsule is its own asset.
+
+### Placing it
+
+1. **In the reserved band** the prompt asks for — between the bottom of the
+   ribcage and the castle, centred. Clear of the fingers.
+2. **Width about 55–65% of the frame.** Wider than that and it fights the arms;
+   narrower and it stops being the first thing read.
+3. **Check at 460×215 and 231×87 before anything else.** If the skull stops
+   reading at those sizes, raise its contrast against the sky rather than
+   making it bigger.
+4. **The small capsule (462×174) is a separate asset.** Title-only wordmark on
+   a flat dark ground, maybe one ember crack behind it. Anything else is mud at
    120×45.
-4. Exact upload sizes are in `Docs/SteamStorePage.md`, section 8.
+5. Exact upload sizes are in `Docs/SteamStorePage.md`, section 8.
 
 ---
 
