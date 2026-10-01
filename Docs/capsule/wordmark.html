@@ -1,35 +1,51 @@
 <!doctype html><html><head><meta charset="utf-8">
 <!--
-  Hollow Siege wordmark.
+  Hollow Siege wordmark — carved stone, split by an ember fracture.
+  Echoes the cracked statue the cinematic trailer opens on.
 
-  Flat, one colour, no gradient, no outline, no ornament. The only idea in it
-  is the weight contrast: HOLLOW set light and open, SIEGE set black and tight.
-  That reads as the two halves of the title rather than as decoration, and it
-  is the thing that survives being shrunk to 231px.
+  FOUR LAYERS, ALL CLIPPED TO THE GLYPHS.
+    1  bone, upper half, clipped along an irregular break
+    2  bone slightly darker, lower half, same break, offset 9px right / 3px down
+    3  heat, upper half
+    4  heat, lower half
+  The heat layers are a thin orange band in a background-image that is then
+  background-clip:text — so the glow exists ONLY inside the letterforms and
+  blooms off the glyph shape. Blurring a rectangle behind the text instead,
+  which was the first attempt, bleeds over the letters and reads as a
+  highlighter stroke.
 
-  What it deliberately is NOT: a vertical gold gradient with a heavy black
-  keyline and a drop shadow and an ornamental divider. That combination is the
-  default Photoshop layer style for fantasy logos and it reads as a free asset
-  pack, which is exactly how the first attempt came out.
+  THE HALVES OVERLAP BY ~3%. With a gap between the clip paths the background
+  shows through along the whole word and it reads as a strikethrough. The
+  displacement, not a gap, is what says "broken".
 
   Render:
     chrome --headless --hide-scrollbars --default-background-color=00000000 \
            --window-size=3000,560 --screenshot=out.png file://.../wordmark.html
 -->
 <style>
-@font-face{font-family:'Cinzel';font-weight:400;
-  src:url('file:///home/user/MegaBonk/Assets/DownloadedFonts/Cinzel/static/Cinzel-Regular.ttf');}
 @font-face{font-family:'Cinzel';font-weight:900;
   src:url('file:///home/user/MegaBonk/Assets/DownloadedFonts/Cinzel/static/Cinzel-Black.ttf');}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:transparent;overflow:hidden}
 .wrap{width:3000px;height:560px;display:flex;align-items:center;justify-content:center}
-.mark{font-family:'Cinzel';font-size:268px;line-height:1.02;white-space:nowrap;
-  color:#ece6d8;
-  /* Just enough shadow to hold over a bright valley. Not a style, a necessity. */
-  filter:drop-shadow(0 6px 22px rgba(0,0,0,.62)) drop-shadow(0 1px 3px rgba(0,0,0,.5));}
-.mark .l{font-weight:400;letter-spacing:.145em}
-.mark .h{font-weight:900;letter-spacing:.045em}
+.m{position:relative;display:inline-block;line-height:1.02;white-space:nowrap;
+   font-family:'Cinzel';font-weight:900;font-size:268px;
+   letter-spacing:.055em;text-indent:.055em;
+   filter:drop-shadow(0 7px 24px rgba(0,0,0,.6)) drop-shadow(0 1px 3px rgba(0,0,0,.45));}
+.m > span{display:block;position:absolute;inset:0}
+.m > span:first-child{position:relative}
+.TOP{clip-path:polygon(0 0,100% 0,100% 53%,91% 56%,83% 51%,70% 57%,61% 52%,50% 58%,39% 53%,28% 57%,17% 52%,8% 56%,0 53%)}
+.BOT{clip-path:polygon(0 50%,8% 53%,17% 49%,28% 54%,39% 50%,50% 55%,61% 49%,70% 54%,83% 48%,91% 53%,100% 50%,100% 100%,0 100%);
+     transform:translate(9px,3px)}
+.bone{color:#ece6d8}
+.bone.lo{color:#cdc6b5}
+.heat{-webkit-background-clip:text;background-clip:text;color:transparent;
+  background-image:linear-gradient(180deg,transparent 47.5%,#ff8f2a 50.5%,#ffe6c2 52.2%,#ff8f2a 53.8%,transparent 57%);
+  filter:drop-shadow(0 0 8px rgba(255,130,30,.9)) drop-shadow(0 0 22px rgba(255,105,15,.4));}
 </style></head><body>
-<div class="wrap"><div class="mark"><span class="l">HOLLOW</span> <span class="h">SIEGE</span></div></div>
-</body></html>
+<div class="wrap"><div class="m">
+  <span class="bone TOP">HOLLOW SIEGE</span>
+  <span class="bone lo BOT">HOLLOW SIEGE</span>
+  <span class="heat TOP">HOLLOW SIEGE</span>
+  <span class="heat BOT">HOLLOW SIEGE</span>
+</div></div></body></html>

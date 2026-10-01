@@ -272,35 +272,43 @@ including the ones whose capsules you were looking at.
 `Docs/capsule/wordmark.png` — 3000×560, transparent background.
 `Docs/capsule/wordmark.html` regenerates it.
 
-**Flat, one colour, no gradient, no outline, no ornament.** The only idea in
-it is the weight contrast: HOLLOW set light and open, SIEGE set black and
-tight. That reads as the two halves of the title rather than as decoration,
-and the heavy half is what survives being shrunk to 231 px. Cinzel, the game's
-own display face, already in the project.
+Cinzel Black, the game's own display face. Carved bone-white stone, **split by
+an ember fracture** — the same signature as the cracked statue the cinematic
+trailer opens on, and the same orange as the molten fissures around the
+anchors in the artwork. The lower half of the word is displaced nine pixels
+right and three down and sits a shade darker, so the break reads as
+displacement rather than as a drawn line.
 
-The only effect on it is a soft drop shadow, and that is a necessity rather
-than a style — the mark has to hold when it sits over the bright valley.
+No gradient, no keyline, no ornament, no subtitle. One idea, executed cleanly.
+
+#### How the fracture is built, because it is easy to get wrong
+
+Four layers, all clipped to the glyphs: bone upper half, bone lower half,
+heat upper, heat lower.
+
+The heat layers are a thin orange band in a `background-image` that is then
+`background-clip: text`. That is the whole trick — **the glow exists only
+inside the letterforms** and blooms off the glyph shape. The obvious approach,
+a blurred orange rectangle sitting behind the text, bleeds across the letters
+and reads as a highlighter stroke; that was the first two attempts and both
+were thrown away.
+
+The two halves **overlap by about 3%**. With a gap between the clip paths the
+background shows through along the whole word and you are back to a
+strikethrough. The displacement is what says broken, not a gap.
 
 #### What it deliberately is not
 
 The first attempt was a vertical gold gradient with a heavy black keyline, a
 drop shadow and an ornamental rule with a diamond. All four at once is the
-default Photoshop layer style for fantasy logos, and it read as a free asset
-pack. Each one on its own is survivable; together they are the look.
+default Photoshop layer style for fantasy logos and it read as a free asset
+pack. Each one alone is survivable; together they are the look.
 
-#### The crack idea, and why it is not in here
+#### Checked at size
 
-The strongest concept was a fracture running through the letterforms, echoing
-the trailer's split statue. It was tried three ways and it is not in the file.
-The problem is the light: a glow behind a gap has to be masked to the shape of
-the gap, and in CSS it is a blurred rectangle that bleeds over the letters and
-reads as a highlighter stroke rather than heat coming out of a break.
-
-It is still a good idea and it is worth doing **in Photoshop**, where the glow
-can be clipped to the gap: split the wordmark along an irregular horizontal
-path, offset the lower half by about ten pixels right and four down, and put
-the ember glow on a layer clipped to the gap only. Half an hour. Until then
-the plain mark is better than a badly executed clever one.
+Legible at 460×215 and at 231×87 on both a cold slate ground and a warm one.
+At 120×45 the word still reads and the ember becomes a warm smear, which is
+fine — the small capsule is its own asset anyway.
 
 ### Placing it
 
