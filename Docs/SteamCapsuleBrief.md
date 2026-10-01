@@ -116,15 +116,21 @@ Six things to correct, one of them structural:
 
 ```
 Stylised painterly video game key art, wide landscape composition, dark
-heroic fantasy. Rendered in the look of a flat-shaded low-poly 3D game —
+heroic fantasy. FULL BLEED: the artwork runs off all four edges of the
+canvas. There is no drawn border, no ruled frame line, no double rule, no
+corner ornament, no inner rectangle and no margin — nothing is framed, the
+picture simply ends at the edge of the image. Rendered in the look of a flat-shaded low-poly 3D game —
 clean readable shapes, simplified planes, no photorealism, no micro-detail,
 no plastic render sheen. Painterly brushwork over hard-edged forms.
 
 SUBJECT. A colossal skeletal overlord seated on a throne of black thorned
 iron, high in a storm sky, filling the upper third of the frame. Only his
 upper body is visible; the storm swallows the rest. He wears a tall jagged
-crown forged of blackened iron — angular broken spikes, like a shattered
-fortress wall, NOT antlers and NOT organic thorns. Empty eye sockets lit from
+crown forged of blackened iron — flat angular blades and broken spikes rising
+straight up like a shattered battlement. Nothing branches. No antlers, no
+horns, no thorn shapes curving outward from the temples or the shoulders. The
+skull and crown together occupy roughly a quarter of the image width and read
+as a single clear silhouette from across a room. Empty eye sockets lit from
 within by a dim orange ember glow. His bones are pale grey-bone, weathered like
 old stone, split by thin molten-orange fractures that glow from inside, as if
 the skeleton is cracked stone with fire behind it. Tattered black-grey cloth
@@ -136,15 +142,18 @@ forty-five degrees, not spread horizontally — curving symmetrically inward so
 they enclose the landscape below in a tall narrow arch. This is not an embrace
 and not a presentation: it is a cage, and the arms are the bars.
 
-His skeletal fingers reach all the way down to the ground and PIERCE IT. Each
-fingertip continues seamlessly into an enormous black obsidian spike driven
-deep into the valley floor. There is NO GAP between hand and spike — bone
+ALL FIVE skeletal fingers of each hand reach all the way down to the ground
+and PIERCE IT — not two and not three, the hands must still read as hands.
+Each fingertip continues seamlessly into a black obsidian spike driven deep
+into the valley floor. There is NO GAP between hand and spike — bone
 transitions directly into glossy black stone partway down each finger, so the
 spikes are visibly the ends of his fingers and not separate monuments standing
 nearby. Where each one enters the earth the ground is split and heaved up,
 with orange molten fissures radiating outward across the soil. At the base of
-the nearest spike stands a small carved stone totem wrapped in a dim violet
-barrier glow.
+the nearest spike stands a short carved stone totem pole — a weathered pillar
+with a crude carved face, clearly an object and not a person — wrapped in a
+dim violet barrier glow. No robed figure, no hooded person, no standing
+character.
 
 THE LAND INSIDE THE ARCH. A wide fantasy valley seen from a high vantage:
 low rolling hills covered in dark pine and white birch forest, a river winding
@@ -192,10 +201,15 @@ the eye sockets and the hero's rim light. Cream parchment at the outer edges.
 Strong contrast between the cold upper half and the warm lower half.
 
 COMPOSITION AND RESERVED SPACE. Strong vertical symmetry. Skull and crown
-centred in the top third. Between the bottom of the ribcage and the castle
-there must be a clear horizontal band of calm, uncluttered, relatively DARK
-sky and fog running the full width of the frame — no god-rays, no ash streaks,
-no detail in it. This band is reserved for a logo and must stay empty.
+centred in the top third.
+
+Directly below the ribcage and ABOVE the castle there must be an EMPTY
+HORIZONTAL BAND spanning the full width of the picture, about one eighth of
+the image height. It contains nothing but dark storm cloud and flat fog: no
+god-rays, no ash, no lightning, no hills, no treeline, no castle. Push the
+castle and the whole valley down below this band. This band is reserved for a
+logo and must stay clear and dark.
+
 Cinematic wide framing, clean silhouette reading at small sizes.
 
 NO TEXT. No letters, no words, no logo, no watermark, no signature, no UI,
@@ -208,7 +222,9 @@ no border, no frame.
 roman legionary, roman soldier, centurion, galea, gladius, pteruges,
 leather skirt, bare legs, sandals, greek hoplite, spartan,
 text, letters, words, logo, watermark, signature, UI, HUD, interface,
-border, frame, picture frame, rectangular outline, card border, vignette box,
+border, frame, framed, picture frame, ruled border, double border, rectangular
+outline, card border, corner ornament, inner rectangle, margin, matte,
+vignette box, bordered illustration, tarot card, poster frame,
 photorealistic, hyperrealistic, photograph, 3D render sheen, plastic,
 antler crown, organic horns, cluttered, busy, many characters, crowd,
 gore, blood, anime, chibi, cartoon mascot, oversaturated, neon,
